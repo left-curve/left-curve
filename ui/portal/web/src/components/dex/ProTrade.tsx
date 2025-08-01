@@ -169,11 +169,11 @@ const ProTradeOverview: React.FC = () => {
 const ProTradeChart: React.FC = () => {
   const { state } = useProTrade();
   const { isLg } = useMediaQuery();
-  const { baseCoin, quoteCoin } = state;
+  const { baseCoin, quoteCoin, orders } = state;
 
   const chartComponent = useMemo(
-    () => <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} />,
-    [baseCoin, quoteCoin],
+    () => <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />,
+    [baseCoin, quoteCoin, orders],
   );
 
   const mobileContainer = usePortalTarget("#chartiq-container");

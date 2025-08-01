@@ -70,17 +70,16 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
       timeUnit: timeUnit,
     });
 
-    const date = new Date(endDate);
-    date.setMilliseconds(0);
+    const date = endDate.toJSON();
 
     const { nodes } = await queryClient.fetchQuery({
-      queryKey: ["candles", pairSymbol, date.toJSON(), candleInterval],
+      queryKey: ["candles", pairSymbol, date, candleInterval],
       queryFn: () =>
         client.queryCandles({
           baseDenom: baseCoin.denom,
           quoteDenom: quoteCoin.denom,
           interval: candleInterval,
-          earlierThan: date.toJSON(),
+          earlierThan: date,
         }),
     });
 
@@ -124,16 +123,16 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
       DT: new Date(candle.timeStart),
       Open: +Decimal(candle.open)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(),
+        .toFixed(5),
       High: +Decimal(candle.high)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(),
+        .toFixed(5),
       Low: +Decimal(candle.low)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(),
+        .toFixed(5),
       Close: +Decimal(candle.close)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(),
+        .toFixed(5),
     }));
   }
 
