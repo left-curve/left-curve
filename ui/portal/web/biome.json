@@ -5,6 +5,7 @@
   "linter": {
     "rules": {
       "a11y": {
+        "noStaticElementInteractions": "off",
         "noSvgWithoutTitle": "off",
         "useKeyWithClickEvents": "off"
       }

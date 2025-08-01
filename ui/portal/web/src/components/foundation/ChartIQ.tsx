@@ -8,7 +8,7 @@ import "@left-curve/chartiq/js/addOns";
 import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { CIQ } from "@left-curve/chartiq/js/components";
 import { useConfig, usePublicClient } from "@left-curve/store";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createChartIQConfig, createChartIQDataFeed } from "~/chartiq";
 import { useApp } from "~/hooks/useApp";
 
@@ -19,23 +19,33 @@ import "@left-curve/chartiq/css/stx-chart.css";
 import "@left-curve/chartiq/css/chartiq.css";
 import "@left-curve/chartiq/css/webcomponents.css";
 
-export const ChartIQ = ({ coins }) => {
+import { useQueryClient } from "@tanstack/react-query";
+
+type ChartIQProps = {
+  coins: { base: AnyCoin; quote: AnyCoin };
+};
+
+export const ChartIQ: React.FC<ChartIQProps> = ({ coins }) => {
   const uiContextRef = useRef<CIQ.UI.Context | null>(null);
   const container = useRef<HTMLElement | null>(null);
   const isMounted = useRef(false);
   const { isMd } = useMediaQuery();
 
   const publicClient = usePublicClient();
+  const queryClient = useQueryClient();
   const { subscriptions } = useApp();
   const { coins: allCoins } = useConfig();
 
-  const { current: dataFeed } = useRef(
-    createChartIQDataFeed({
-      client: publicClient,
-      subscriptions,
-      updateChartData: (params) => uiContextRef.current?.stx?.updateChartData(params),
-      coins: allCoins.bySymbol,
-    }),
+  const dataFeed = useMemo(
+    () =>
+      createChartIQDataFeed({
+        client: publicClient,
+        queryClient,
+        subscriptions,
+        updateChartData: (params) => uiContextRef.current?.stx?.updateChartData(params),
+        coins: allCoins.bySymbol,
+      }),
+    [allCoins, queryClient, publicClient],
   );
 
   const { theme } = useTheme();
@@ -75,8 +85,6 @@ export const ChartIQ = ({ coins }) => {
         { id: "Volume" },
         { "Up Volume": volumeColor.up, "Down Volume": volumeColor.down },
       );
-
-      stx.setPeriodicity(5, "minute", 0, true);
 
       stx.candleWidthPercent = 0.9;
       stx.chart.yAxis.zoom = -0.0000001;
@@ -144,25 +152,25 @@ export const ChartIQ = ({ coins }) => {
             text=""
             binding="Layout.periodicity"
           />
-          <cq-menu
-            class="nav-dropdown ciq-views alignright-md alignright-sm"
-            config="views"
-            text="Views"
-            icon="views"
-            responsive=""
-            tooltip="Views"
-          />
-          <cq-menu
-            class="nav-dropdown ciq-studies alignright"
-            cq-focus="input"
-            config="studies"
-            text="Studies"
-            icon="studies"
-            responsive=""
-            tooltip="Studies"
-          />
           <div className="ciq-menu-section">
             <div className="ciq-dropdowns">
+              <cq-menu
+                class="nav-dropdown ciq-views alignright-md alignright-sm"
+                config="views"
+                text="Views"
+                icon="views"
+                responsive=""
+                tooltip="Views"
+              />
+              <cq-menu
+                class="nav-dropdown ciq-studies alignright"
+                cq-focus="input"
+                config="studies"
+                text="Studies"
+                icon="studies"
+                responsive=""
+                tooltip="Studies"
+              />
               <cq-menu
                 class="nav-dropdown ciq-preferences alignright"
                 reader="Preferences"
@@ -185,14 +193,6 @@ export const ChartIQ = ({ coins }) => {
                   min-height="300"
                   cq-drawing-edit="none"
                   cq-keystroke-claim=""
-                />
-                <cq-drawing-settings
-                  class="palette-settings"
-                  docked="true"
-                  hide="true"
-                  orientation="horizontal"
-                  min-height="40"
-                  cq-drawing-edit="none"
                 />
               </div>
             </cq-palette-dock>
