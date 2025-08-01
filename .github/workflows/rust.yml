@@ -96,9 +96,12 @@ jobs:
 
   test:
     needs: [format]
-    name: Lint + Test
+    name: Lint + Test (+ Coverage)
     runs-on: self-hosted
     timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
     # Don't use this, it raises permissions issues on self hosted runners
     # container:
     #   image: ghcr.io/left-curve/left-curve/native-builder
@@ -179,11 +182,19 @@ jobs:
             exit 1
           fi
 
-      - name: Run tests
+      - name: Run tests and collect coverage
         run: |
-          cargo test --all-features
+          mkdir -p target/coverage
+          cargo llvm-cov --workspace --all-features \
+                         --lcov  --output-path target/coverage/lcov.info
         env:
           RUST_BACKTRACE: 1
+
+      - name: Upload coverage to Qlty
+        uses: qltysh/qlty-action/coverage@v1
+        with:
+          files: target/coverage/lcov.info
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
 
   build:
     timeout-minutes: 20
