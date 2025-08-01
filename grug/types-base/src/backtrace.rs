@@ -113,6 +113,8 @@ mod tests {
         Named { x: u32 },
         #[error(transparent)]
         Unamed(InnerError),
+        #[error("unit")]
+        Unit,
     }
 
     #[grug_macros::backtrace(crate)]

@@ -1,7 +1,10 @@
 use {
     proc_macro::TokenStream,
-    quote::quote,
-    syn::{Data, DeriveInput, Fields, Ident, Path, parse::Parse, parse_macro_input, parse_quote},
+    quote::{format_ident, quote},
+    syn::{
+        Data, DeriveInput, Field, Fields, FieldsUnnamed, Ident, Path, parse::Parse,
+        parse_macro_input, parse_quote, punctuated::Punctuated, token::Paren,
+    },
 };
 
 struct InputArgs {
@@ -37,6 +40,8 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     let mut impl_from = vec![];
 
     let mut match_statement = vec![];
+
+    let mut builder_impl = vec![];
 
     if let Data::Enum(en) = &mut input.data {
         for variant in en.variants.iter_mut() {
@@ -98,7 +103,31 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                         Self::#variant_ident(backtrace) => backtrace.backtrace(),
                     });
                 },
-                _ => {},
+                Fields::Unit => {
+                    let bt_field: Field = parse_quote! {
+                       #crate_path::BT
+                    };
+
+                    let mut unnamed = Punctuated::new();
+                    unnamed.push(bt_field);
+
+                    variant.fields = Fields::Unnamed(FieldsUnnamed {
+                        paren_token: Paren::default(),
+                        unnamed,
+                    });
+
+                    match_statement.push(quote! {
+                        Self::#variant_ident(backtrace) => backtrace.clone(),
+                    });
+
+                    let fn_name = to_snake_case(&variant.ident);
+
+                    builder_impl.push(quote! {
+                       pub fn #fn_name() -> Self {
+                        Self::#variant_ident(#crate_path::BT::default())
+                       }
+                    });
+                },
             }
         }
     }
@@ -118,6 +147,52 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                 }
             }
         }
+
+        impl #input_ident {
+            #(#builder_impl)*
+        }
+
     }
     .into()
+}
+
+fn to_snake_case(s: &Ident) -> Ident {
+    let s = s.to_string();
+    let mut result = String::with_capacity(s.len());
+    let mut prev_lower = false;
+
+    for c in s.chars() {
+        if c.is_uppercase() {
+            if prev_lower {
+                result.push('_');
+            }
+            for lc in c.to_lowercase() {
+                result.push(lc);
+            }
+            prev_lower = false;
+        } else if c.is_alphanumeric() {
+            if c.is_lowercase() {
+                prev_lower = true;
+            } else {
+                prev_lower = false;
+            }
+            result.push(c);
+        } else {
+            // sostituisci separatori con underscore, evita multi-underscore
+            if !result.ends_with('_') && !result.is_empty() {
+                result.push('_');
+            }
+            prev_lower = false;
+        }
+    }
+
+    // rimuovi underscore iniziali/finali e doppi
+    let trimmed = result
+        .trim_matches('_')
+        .split('_')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join("_");
+
+    format_ident!("{}", trimmed)
 }

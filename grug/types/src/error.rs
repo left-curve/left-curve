@@ -6,7 +6,8 @@ use {
     thiserror::Error,
 };
 
-#[derive(Debug, Clone, Error)]
+#[grug_macros::backtrace]
+#[derive(Clone)]
 pub enum VerificationError {
     #[error("data is of incorrect length")]
     IncorrectLength,
@@ -23,9 +24,9 @@ impl VerificationError {
     /// `VerificationError`.
     pub fn from_error_code(error_code: u32) -> Self {
         match error_code {
-            1 => Self::IncorrectLength,
-            2 => Self::InvalidRecoveryId,
-            3 => Self::Unauthentic,
+            1 => Self::incorrect_length(),
+            2 => Self::invalid_recovery_id(),
+            3 => Self::unauthentic(),
             _ => unreachable!("unknown verification error code: {error_code}, must be 1-3"),
         }
     }
