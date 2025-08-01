@@ -261,17 +261,12 @@ export function createChartIQConfig(params: CreateChartIQConfigParameters) {
     },
     // @ts-ignore
     layout: {
-      periodicity: 1,
-      interval: 5,
+      periodicity: 5,
+      interval: 1,
       timeUnit: "minute",
     },
     // @ts-ignore
     chart: {
-      layout: {
-        periodicity: 1,
-        interval: 1,
-        timeUnit: "minute",
-      },
       yAxis: {
         position: "right",
       },
