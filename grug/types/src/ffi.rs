@@ -1,3 +1,5 @@
+use grug_types_base::{Backtraceable, BacktracedError};
+
 use crate::Event;
 
 /// Result of which the error is a string.
@@ -11,7 +13,7 @@ use crate::Event;
 ///   from the module to the host);
 /// - the Wasm module calls an import function provided by the host (result is
 ///   passed from the host to the module).
-pub type GenericResult<T> = Result<T, String>;
+pub type GenericResult<T> = Result<T, BacktracedError<String>>;
 
 /// The result for executing a submessage.
 ///
@@ -26,9 +28,12 @@ pub trait GenericResultExt<T> {
 
 impl<T, E> GenericResultExt<T> for Result<T, E>
 where
-    E: ToString,
+    E: Backtraceable,
 {
     fn into_generic_result(self) -> GenericResult<T> {
-        self.map_err(|e| e.to_string())
+        self.map_err(|e| {
+            let (err, bt) = e.split();
+            BacktracedError::new_with_bt(err, bt)
+        })
     }
 }

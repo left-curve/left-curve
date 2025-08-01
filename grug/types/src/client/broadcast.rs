@@ -4,6 +4,7 @@ use {
         Hash256, HashExt, Message, NonEmpty, QueryClient, Signer, StdError, Tx, TxOutcome,
     },
     async_trait::async_trait,
+    grug_types_base::BacktracedError,
     serde::Serialize,
 };
 
@@ -317,7 +318,7 @@ where
 
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("failed to estimate gas consumption: {0}")]
-pub struct GasEstimateError(String);
+pub struct GasEstimateError(BacktracedError<String>);
 
 /// Skip the CLI prompt confirmation, always consider it as if the user accepted.
 fn no_confirmation<E>(_tx: &Tx) -> Result<bool, E> {

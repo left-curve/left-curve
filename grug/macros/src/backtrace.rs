@@ -117,7 +117,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                     let mut iter = unamed.unnamed.iter_mut();
                     let field = iter.next().expect("no unnamed fields");
                     let original_ty = &field.ty.clone();
-                    field.ty = parse_quote! { #crate_path::UnnamedBacktrace<#original_ty> };
+                    field.ty = parse_quote! { #crate_path::BacktracedError<#original_ty> };
 
                     // Impl conversion from original type to the error type
                     // fresh will capture the backtrace now, otherwise we will
@@ -127,7 +127,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                         impl_from.push(quote! {
                             impl From<#original_ty> for #input_ident {
                                 fn from(t: #original_ty) -> Self {
-                                    Self::#variant_ident(#crate_path::UnnamedBacktrace::new(t))
+                                    Self::#variant_ident(#crate_path::BacktracedError::new(t))
                                 }
                             }
                         });
@@ -136,7 +136,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                             impl From<#original_ty> for #input_ident {
                                 fn from(t: #original_ty) -> Self {
                                     let bt = #crate_path::Backtraceable::backtrace(&t);
-                                    Self::#variant_ident(#crate_path::UnnamedBacktrace::new_with_bt(t, bt))
+                                    Self::#variant_ident(#crate_path::BacktracedError::new_with_bt(t, bt))
                                 }
                             }
                         });
@@ -150,7 +150,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
 
                     builder_impl.push(quote! {
                         #pub_ident #fn_name(self, value: #original_ty) -> Self {
-                            Self::#variant_ident(#crate_path::UnnamedBacktrace::new(value))
+                            Self::#variant_ident(#crate_path::BacktracedError::new(value))
                         }
                     });
                 },

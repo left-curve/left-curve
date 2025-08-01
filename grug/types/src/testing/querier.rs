@@ -5,12 +5,13 @@ use {
         QueryResponse, StdError, StdResult, Storage,
     },
     grug_math::{NumberConst, Uint128},
+    grug_types_base::BacktracedError,
     serde::Serialize,
     std::collections::BTreeMap,
 };
 
 /// A function that handles Wasm smart queries.
-type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
+type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> Result<Json, BacktracedError<String>>>;
 
 // ------------------------------- mock querier --------------------------------
 
@@ -248,7 +249,7 @@ impl Querier for MockQuerier {
                     .smart_query_handler
                     .as_ref()
                     .expect("[MockQuerier]: smart query handler not set");
-                let response = handler(req.contract, req.msg).map_err(StdError::host)?;
+                let response = handler(req.contract, req.msg).map_err(StdError::Host)?;
                 Ok(QueryResponse::WasmSmart(response))
             },
             Query::Multi(reqs) => {

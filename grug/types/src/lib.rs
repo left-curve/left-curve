@@ -51,9 +51,10 @@ pub use {
     address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
     changeset::*, code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, dec_coin::*,
     denom::*, empty::*, encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*,
-    hash::*, hashers::*, imports::*, inner::*, jellyfish_merkle::*, json::*, length_bounded::*,
-    lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*, serializers::*,
-    shared::*, signer::*, status::*, time::*, transfer::*, tx::*, unique_vec::*, utils::*,
+    grug_types_base::*, hash::*, hashers::*, imports::*, inner::*, jellyfish_merkle::*, json::*,
+    length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
+    serializers::*, shared::*, signer::*, status::*, time::*, transfer::*, tx::*, unique_vec::*,
+    utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

@@ -305,42 +305,42 @@ impl BorshDeserialize for Denom {
 #[cfg(test)]
 mod tests {
     use {
-        crate::{BorshDeExt, BorshSerExt, Denom, GenericResult, JsonDeExt, JsonSerExt, ResultExt},
+        crate::{BorshDeExt, BorshSerExt, Denom, JsonDeExt, JsonSerExt, ResultExt},
         std::str::FromStr,
         test_case::test_case,
     };
 
     #[test_case(
         "uosmo",
-        GenericResult::Ok(Denom::new_unchecked(["uosmo"]));
+        Result::Ok(Denom::new_unchecked(["uosmo"]));
         "valid denom with one part"
     )]
     #[test_case(
         "gamm/pool/1234",
-        GenericResult::Ok(Denom::new_unchecked(["gamm", "pool", "1234"]));
+        Result::Ok(Denom::new_unchecked(["gamm", "pool", "1234"]));
         "valid denom with multiple parts"
     )]
     #[test_case(
         "",
-        GenericResult::Err("too short or too long".to_string());
+        Result::Err("too short or too long");
         "empty denom"
     )]
     #[test_case(
         "a".repeat(129),
-        GenericResult::Err("too short or too long".to_string());
+        Result::Err("too short or too long");
         "invalid denom that is too long"
     )]
     #[test_case(
         "gamm//1234",
-        GenericResult::Err("empty part".to_string());
+        Result::Err("empty part");
         "invalid denom with empty subdenom"
     )]
     #[test_case(
         "gamm/&/1234",
-        GenericResult::Err("non-alphanumeric character".to_string());
+        Result::Err("non-alphanumeric character");
         "invalid denom with non-alphanumeric character"
     )]
-    fn creating_denom_from_string<T>(input: T, expect: GenericResult<Denom>)
+    fn creating_denom_from_string<T>(input: T, expect: Result<Denom, &'static str>)
     where
         T: AsRef<str>,
     {

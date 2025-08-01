@@ -9,6 +9,7 @@ use {
         Json, Label, ReplyOn, Timestamp, TxEvents,
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_types_base::BacktracedError,
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
     strum_macros::{Display, EnumDiscriminants},
@@ -38,7 +39,7 @@ pub struct FlatEventInfo {
 #[serde(rename_all = "snake_case")]
 pub enum FlatEventStatus {
     Ok,
-    Failed(String),
+    Failed(BacktracedError<String>),
     NestedFailed,
     Handled(String),
 }

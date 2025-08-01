@@ -446,11 +446,7 @@ where
         );
 
         if let Err((_, err)) = events.withhold.as_result() {
-            return Ok(new_check_tx_outcome(
-                gas_tracker,
-                Err(err.to_string()),
-                events,
-            ));
+            return Ok(new_check_tx_outcome(gas_tracker, Err(err.clone()), events));
         }
 
         events.authenticate = do_authenticate(
@@ -465,7 +461,7 @@ where
         .into_commitment_status();
 
         let result = if let Err((_, err)) = events.authenticate.as_result() {
-            Err(err.to_string())
+            Err(err.clone())
         } else {
             Ok(())
         };
@@ -498,7 +494,7 @@ where
         if prove {
             // We can't do Merkle proof for smart queries. Only raw store query
             // can be Merkle proved.
-            return Err(AppError::ProofNotSupported);
+            return Err(AppError::proof_not_supported());
         }
 
         let version = if height == 0 {
@@ -564,12 +560,12 @@ where
 
         // We can't "prove" a gas simulation
         if prove {
-            return Err(AppError::ProofNotSupported);
+            return Err(AppError::proof_not_supported());
         }
 
         // We can't simulate gas at a block height
         if height != 0 && height != block.height {
-            return Err(AppError::PastHeightNotSupported);
+            return Err(AppError::past_height_not_supported());
         }
 
         // Create a `Tx` from the unsigned transaction.
@@ -738,8 +734,7 @@ where
     );
 
     if let Some(err) = events.withhold.maybe_error() {
-        let err = err.to_string();
-        return new_tx_outcome(gas_tracker, events, Err(err));
+        return new_tx_outcome(gas_tracker, events, Err(err.clone()));
     }
 
     // Call the sender account's `authenticate` function.
@@ -770,7 +765,6 @@ where
     let request_backrun = match events.authenticate.as_result() {
         Err((_, err)) => {
             drop(msg_buffer);
-            let err = err.to_string();
             return process_finalize_fee(
                 vm,
                 fee_buffer,
@@ -779,7 +773,7 @@ where
                 tx,
                 mode,
                 events,
-                Err(err),
+                Err(err.clone()),
                 trace_opt,
             );
         },
@@ -816,7 +810,6 @@ where
     match events.msgs_and_backrun.maybe_error() {
         Some(err) => {
             drop(msg_buffer);
-            let err = err.to_string();
             return process_finalize_fee(
                 vm,
                 fee_buffer,
@@ -825,7 +818,7 @@ where
                 tx,
                 mode,
                 events,
-                Err(err),
+                Err(err.clone()),
                 trace_opt,
             );
         },

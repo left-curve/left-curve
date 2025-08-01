@@ -150,7 +150,7 @@ where
                 data: events.to_json_vec()?.into(),
                 gas_wanted: gas_limit as i64,
                 gas_used: gas_used as i64,
-                log: err,
+                log: err.to_string_backtraced(),
                 ..Default::default()
             },
             Err(err) => response::CheckTx {

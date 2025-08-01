@@ -1,5 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
+    grug_types_base::BacktracedError,
     serde::{Deserialize, Serialize},
 };
 
@@ -11,18 +12,24 @@ pub enum CommitmentStatus<T> {
     /// The state changes have been committed.
     Committed(T),
     /// The state changes have been discarded because its execution failed.
-    Failed { event: T, error: String },
+    Failed {
+        event: T,
+        error: BacktracedError<String>,
+    },
     /// The state changes have been discarded, despite its execution was
     /// successful, but some other parts of the transaction execution flow
     /// failed; specifically, the `finalize_fee` call on taxman.
-    Reverted { event: T, revert_by: String },
+    Reverted {
+        event: T,
+        revert_by: BacktracedError<String>,
+    },
     /// The execution was not reached because earlier parts of the transaction
     /// execution flow failed.
     NotReached,
 }
 
 impl<T> CommitmentStatus<T> {
-    pub fn maybe_error(&self) -> Option<&str> {
+    pub fn maybe_error(&self) -> Option<&BacktracedError<String>> {
         match self {
             Self::Failed { error, .. }
             | Self::Reverted {
@@ -32,7 +39,7 @@ impl<T> CommitmentStatus<T> {
         }
     }
 
-    pub fn as_result(&self) -> Result<&T, (&T, &str)> {
+    pub fn as_result(&self) -> Result<&T, (&T, &BacktracedError<String>)> {
         match self {
             Self::Committed(event) => Ok(event),
             Self::Failed { event, error }
@@ -53,7 +60,10 @@ pub enum EventStatus<T> {
     /// A nested event failed.
     NestedFailed(T),
     /// The event failed.
-    Failed { event: T, error: String },
+    Failed {
+        event: T,
+        error: BacktracedError<String>,
+    },
     /// Not reached because a previous event failed.
     NotReached,
 }

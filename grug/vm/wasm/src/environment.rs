@@ -282,7 +282,7 @@ mod test {
         grug_types::{
             BlockInfo, Hash256, MockStorage, Order, Shared, StdError, Storage, Timestamp,
         },
-        grug_types_base::UnnamedBacktrace,
+        grug_types_base::BacktracedError,
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
@@ -517,8 +517,8 @@ mod test {
 
         assert!(matches!(
             consume(1, &mut env, &mut store).unwrap_err(),
-            VmError::Std(UnnamedBacktrace {
-                value: StdError::OutOfGas {
+            VmError::Std(BacktracedError {
+                error: StdError::OutOfGas {
                     limit: 100,
                     used: 100,
                     comment: "consume_gas",
@@ -545,8 +545,8 @@ mod test {
 
         assert!(matches!(
             err,
-            VmError::Std(UnnamedBacktrace {
-                value: StdError::OutOfGas {
+            VmError::Std(BacktracedError {
+                error: StdError::OutOfGas {
                     limit: 100,
                     used: 101,
                     comment: "comment",
