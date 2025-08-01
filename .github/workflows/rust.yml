@@ -153,7 +153,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.88
-          components: clippy
+          components: clippy, llvm-tools-preview
 
       # - name: Create psql database
       #   run: |
@@ -181,6 +181,9 @@ jobs:
             echo "::error::GraphQL schema is out of date. Please run 'just build-graphql-schema' locally and commit the changes."
             exit 1
           fi
+
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov
 
       - name: Run tests and collect coverage
         run: |
