@@ -85,6 +85,8 @@ impl Display for BT {
     }
 }
 
+// TODO: if the target is wasm, always clear the backtrace
+
 #[derive(Serialize, Deserialize, Clone, BorshSerialize, BorshDeserialize, Eq)]
 pub struct BacktracedError<T> {
     pub error: T,
