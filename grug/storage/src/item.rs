@@ -45,6 +45,7 @@ mod test {
         borsh::{BorshDeserialize, BorshSerialize},
         grug_math::{MathError, Number, NumberConst, Uint128},
         grug_types::{MockStorage, StdError, StdResult},
+        grug_types_base::UnnamedBacktrace,
     };
 
     #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]
@@ -236,7 +237,10 @@ mod test {
             Ok(None)
         });
 
-        assert!(matches!(res, Err(StdError::Math(MathError::DivisionByZero { a })) if a == "1"));
+        assert!(matches!(
+            res,
+            Err(StdError::Math(UnnamedBacktrace { value: MathError::DivisionByZero { a, .. }, .. })) if a == "1"
+        ));
         assert_eq!(CONFIG.load(&storage).unwrap(), cfg);
     }
 

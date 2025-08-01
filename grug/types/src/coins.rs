@@ -237,7 +237,7 @@ impl Coins {
         let coin = coin.try_into()?;
 
         let Some(amount) = self.0.get_mut(&coin.denom) else {
-            return Err(StdError::DenomNotFound { denom: coin.denom });
+            return Err(StdError::denom_not_found(coin.denom));
         };
 
         amount.checked_sub_assign(coin.amount)?;

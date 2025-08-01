@@ -45,16 +45,22 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     if let Data::Enum(en) = &mut input.data {
         for variant in en.variants.iter_mut() {
-            let mut fresh = false;
+            let mut is_fresh = false;
+            let mut is_private = false;
 
             variant.attrs.retain(|a| {
                 if a.path().is_ident("backtrace") {
                     let inner = a.parse_args::<Ident>().unwrap();
 
                     if inner == "fresh" {
-                        fresh = true;
+                        is_fresh = true;
+                    } else if inner == "private_constructor" {
+                        is_private = true;
                     } else {
-                        panic!("expected `fresh` attribute, got `{}`", inner);
+                        panic!(
+                            "expected `fresh` | `private_constructor` attribute, got `{}`",
+                            inner
+                        );
                     }
                     false
                 } else {
@@ -62,16 +68,49 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                 }
             });
 
+            let pub_ident = if is_private {
+                quote! {fn}
+            } else {
+                quote! {pub fn}
+            };
+
             let variant_ident = &variant.ident;
 
             match &mut variant.fields {
                 Fields::Named(fields) => {
+                    match_statement.push(quote! {
+                        Self::#variant_ident{backtrace,..} => backtrace.clone(),
+                    });
+
+                    let fn_name = to_snake_case(&variant.ident, is_private);
+
+                    let mut inputs = vec![];
+
+                    let mut values = vec![];
+
+                    for f in &fields.named {
+                        let ident = f.ident.clone().unwrap();
+                        let ty = f.ty.clone();
+                        inputs.push(quote! {
+                            #ident: #ty,
+                        });
+
+                        values.push(quote! {
+                            #ident: #ident,
+                        });
+                    }
+
                     fields.named.push(parse_quote! {
                         backtrace: #crate_path::BT
                     });
 
-                    match_statement.push(quote! {
-                        Self::#variant_ident{backtrace,..} => backtrace.clone(),
+                    builder_impl.push(quote! {
+                        #pub_ident #fn_name(#(#inputs)*) -> Self {
+                            Self::#variant_ident {
+                                #(#values)*
+                                backtrace: #crate_path::BT::default(),
+                            }
+                        }
                     });
                 },
                 Fields::Unnamed(unamed) => {
@@ -80,7 +119,11 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                     let original_ty = &field.ty.clone();
                     field.ty = parse_quote! { #crate_path::UnnamedBacktrace<#original_ty> };
 
-                    if fresh {
+                    // Impl conversion from original type to the error type
+                    // fresh will capture the backtrace now, otherwise we will
+                    // use the backtrace from the original type (require original
+                    // type to implement `Backtraceable`).
+                    if is_fresh {
                         impl_from.push(quote! {
                             impl From<#original_ty> for #input_ident {
                                 fn from(t: #original_ty) -> Self {
@@ -102,6 +145,14 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                     match_statement.push(quote! {
                         Self::#variant_ident(backtrace) => backtrace.backtrace(),
                     });
+
+                    let fn_name = to_snake_case(&variant.ident, is_private);
+
+                    builder_impl.push(quote! {
+                        #pub_ident #fn_name(self, value: #original_ty) -> Self {
+                            Self::#variant_ident(#crate_path::UnnamedBacktrace::new(value))
+                        }
+                    });
                 },
                 Fields::Unit => {
                     let bt_field: Field = parse_quote! {
@@ -120,10 +171,10 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                         Self::#variant_ident(backtrace) => backtrace.clone(),
                     });
 
-                    let fn_name = to_snake_case(&variant.ident);
+                    let fn_name = to_snake_case(&variant.ident, is_private);
 
                     builder_impl.push(quote! {
-                       pub fn #fn_name() -> Self {
+                        #pub_ident #fn_name() -> Self {
                         Self::#variant_ident(#crate_path::BT::default())
                        }
                     });
@@ -156,7 +207,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     .into()
 }
 
-fn to_snake_case(s: &Ident) -> Ident {
+fn to_snake_case(s: &Ident, is_private: bool) -> Ident {
     let s = s.to_string();
     let mut result = String::with_capacity(s.len());
     let mut prev_lower = false;
@@ -178,7 +229,6 @@ fn to_snake_case(s: &Ident) -> Ident {
             }
             result.push(c);
         } else {
-            // sostituisci separatori con underscore, evita multi-underscore
             if !result.ends_with('_') && !result.is_empty() {
                 result.push('_');
             }
@@ -186,7 +236,6 @@ fn to_snake_case(s: &Ident) -> Ident {
         }
     }
 
-    // rimuovi underscore iniziali/finali e doppi
     let trimmed = result
         .trim_matches('_')
         .split('_')
@@ -194,5 +243,9 @@ fn to_snake_case(s: &Ident) -> Ident {
         .collect::<Vec<_>>()
         .join("_");
 
-    format_ident!("{}", trimmed)
+    if is_private {
+        format_ident!("_{}", trimmed)
+    } else {
+        format_ident!("{}", trimmed)
+    }
 }

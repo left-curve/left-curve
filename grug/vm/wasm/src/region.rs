@@ -70,21 +70,21 @@ impl TryFrom<UncheckedRegion> for Region {
 
     fn try_from(unchecked: UncheckedRegion) -> Result<Self, Self::Error> {
         if unchecked.offset == 0 {
-            return Err(VmError::RegionZeroOffset);
+            return Err(VmError::region_zero_offset());
         }
 
         if unchecked.length > unchecked.capacity {
-            return Err(VmError::RegionLengthExceedsCapacity {
-                length: unchecked.length,
-                capacity: unchecked.capacity,
-            });
+            return Err(VmError::region_length_exceeds_capacity(
+                unchecked.length,
+                unchecked.capacity,
+            ));
         }
 
         if unchecked.capacity > (u32::MAX - unchecked.offset) {
-            return Err(VmError::RegionOutOfRange {
-                offset: unchecked.offset,
-                capacity: unchecked.capacity,
-            });
+            return Err(VmError::region_out_of_range(
+                unchecked.offset,
+                unchecked.capacity,
+            ));
         }
 
         Ok(Region {
@@ -174,7 +174,7 @@ mod tests {
             length: 250,
         },
         |res| {
-            assert!(matches!(res, Err(VmError::RegionZeroOffset)));
+            assert!(matches!(res, Err(VmError::RegionZeroOffset {..})));
         };
         "zero offset"
     )]
@@ -185,7 +185,7 @@ mod tests {
             length: 501,
         },
         |res| {
-            assert!(matches!(res, Err(VmError::RegionLengthExceedsCapacity { length, capacity }) if length == 501 && capacity == 500));
+            assert!(matches!(res, Err(VmError::RegionLengthExceedsCapacity { length, capacity, .. }) if length == 501 && capacity == 500));
         };
         "length exceeding capacity"
     )]
@@ -196,7 +196,7 @@ mod tests {
             length: 501,
         },
         |res| {
-            assert!(matches!(res, Err(VmError::RegionOutOfRange { offset, capacity }) if offset == 23 && capacity == u32::MAX));
+            assert!(matches!(res, Err(VmError::RegionOutOfRange { offset, capacity, .. }) if offset == 23 && capacity == u32::MAX));
         };
         "exceeding address space 1"
     )]
@@ -207,7 +207,7 @@ mod tests {
             length: 0,
         },
         |res| {
-            assert!(matches!(res, Err(VmError::RegionOutOfRange { offset, capacity }) if offset == u32::MAX && capacity == 1));
+            assert!(matches!(res, Err(VmError::RegionOutOfRange { offset, capacity, .. }) if offset == u32::MAX && capacity == 1));
         };
         "exceeding address space 2"
     )]

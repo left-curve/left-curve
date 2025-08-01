@@ -18,4 +18,5 @@ prost      = { workspace = true }
 serde      = { workspace = true }
 
 [dev-dependencies]
-test-case = { workspace = true }
+grug-types-base = { workspace = true }
+test-case       = { workspace = true }

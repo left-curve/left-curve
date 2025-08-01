@@ -32,7 +32,7 @@ where
     /// Error if `add` and `remove` have an intersection.
     pub fn new(add: BTreeMap<K, V>, remove: BTreeSet<K>) -> StdResult<Self> {
         if add.keys().any(|k| remove.contains(k)) {
-            return Err(StdError::InvalidChangeSet);
+            return Err(StdError::invalid_change_set());
         }
 
         Ok(Self { add, remove })

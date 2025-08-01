@@ -63,19 +63,29 @@ impl Display for BT {
     }
 }
 
-pub struct UnnamedBacktrace<T>(T, BT);
+#[derive(Clone)]
+pub struct UnnamedBacktrace<T> {
+    pub value: T,
+    pub backtrace: BT,
+}
 
 impl<T> UnnamedBacktrace<T> {
     pub fn new(t: T) -> Self {
-        Self(t, BT::default())
+        Self {
+            value: t,
+            backtrace: BT::default(),
+        }
     }
 
     pub fn new_with_bt(t: T, bt: BT) -> Self {
-        Self(t, bt)
+        Self {
+            value: t,
+            backtrace: bt,
+        }
     }
 
     pub fn backtrace(&self) -> BT {
-        self.1.clone()
+        self.backtrace.clone()
     }
 }
 
@@ -86,7 +96,7 @@ where
     T: Display,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.value)
     }
 }
 
@@ -95,7 +105,7 @@ where
     T: Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        write!(f, "{:?}", self.value)
     }
 }
 
@@ -120,7 +130,8 @@ mod tests {
     #[grug_macros::backtrace(crate)]
     enum InnerError {
         #[error("my error: {x}")]
-        MyError { x: u32 },
+        #[backtrace(private_constructor)]
+        MyError { x: u32, y: u64 },
     }
 
     #[derive(Debug, thiserror::Error)]
@@ -133,5 +144,7 @@ mod tests {
     fn test_macro() {
         let inner = NonBacktraceableError::MyError { x: 1 };
         let e: Error = inner.into();
+
+        let a = InnerError::_my_error(1, 2);
     }
 }

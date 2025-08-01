@@ -91,7 +91,7 @@ impl Environment {
     pub fn advance_iterator(&mut self, iterator_id: i32) -> VmResult<Option<Record>> {
         self.iterators
             .get_mut(&iterator_id)
-            .ok_or(VmError::IteratorNotFound { iterator_id })
+            .ok_or(VmError::iterator_not_found(iterator_id))
             .map(|iter| iter.next(&self.storage))
     }
 
@@ -108,7 +108,7 @@ impl Environment {
 
     pub fn set_wasmer_memory(&mut self, instance: &Instance) -> VmResult<()> {
         if self.wasmer_memory.is_some() {
-            return Err(VmError::WasmerMemoryAlreadySet);
+            return Err(VmError::wasmer_memory_already_set());
         }
 
         let memory = instance.exports.get_memory("memory")?;
@@ -119,7 +119,7 @@ impl Environment {
 
     pub fn set_wasmer_instance(&mut self, instance: &Instance) -> VmResult<()> {
         if self.wasmer_instance.is_some() {
-            return Err(VmError::WasmerInstanceAlreadySet);
+            return Err(VmError::wasmer_instance_already_set());
         }
 
         self.wasmer_instance = Some(NonNull::from(instance));
@@ -133,12 +133,14 @@ impl Environment {
     {
         self.wasmer_memory
             .as_ref()
-            .ok_or(VmError::WasmerMemoryNotSet)
+            .ok_or(VmError::wasmer_memory_not_set())
             .map(|mem| mem.view(store))
     }
 
     pub fn get_wasmer_instance(&self) -> VmResult<&Instance> {
-        let instance_ptr = self.wasmer_instance.ok_or(VmError::WasmerInstanceNotSet)?;
+        let instance_ptr = self
+            .wasmer_instance
+            .ok_or(VmError::wasmer_instance_not_set())?;
         unsafe { Ok(instance_ptr.as_ref()) }
     }
 
@@ -154,11 +156,7 @@ impl Environment {
         let ret = self.call_function(store, name, args)?;
 
         if ret.len() != 1 {
-            return Err(VmError::ReturnCount {
-                name: name.into(),
-                expect: 1,
-                actual: ret.len(),
-            });
+            return Err(VmError::return_count(name.into(), 1, ret.len()));
         }
 
         Ok(ret[0].clone())
@@ -176,11 +174,7 @@ impl Environment {
         let ret = self.call_function(store, name, args)?;
 
         if !ret.is_empty() {
-            return Err(VmError::ReturnCount {
-                name: name.into(),
-                expect: 0,
-                actual: ret.len(),
-            });
+            return Err(VmError::return_count(name.into(), 0, ret.len()));
         }
 
         Ok(())
@@ -231,11 +225,11 @@ impl Environment {
                 self.gas_tracker.consume(self.gas_checkpoint, name)?;
                 self.gas_checkpoint = 0;
 
-                Err(StdError::OutOfGas {
-                    limit: self.gas_tracker.limit().unwrap_or(u64::MAX),
-                    used: self.gas_tracker.used(),
-                    comment: name,
-                }
+                Err(StdError::out_of_gas(
+                    self.gas_tracker.limit().unwrap_or(u64::MAX),
+                    self.gas_tracker.used(),
+                    name,
+                )
                 .into())
             },
             // The call succeeded, but gas depleted: impossible senario.
@@ -288,6 +282,7 @@ mod test {
         grug_types::{
             BlockInfo, Hash256, MockStorage, Order, Shared, StdError, Storage, Timestamp,
         },
+        grug_types_base::UnnamedBacktrace,
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
@@ -374,14 +369,14 @@ mod test {
     #[test_case(
         "0_1",
         vec![],
-        Err(VmError::ReturnCount { name: "0_1".to_string(), expect: 0, actual: 1 }),
+        Err(VmError::return_count("0_1".into(), 0, 1).into()),
         0;
         "0 in - 1 out: fails return count"
     )]
     #[test_case(
         "0_1",
         vec![1],
-        Err(VmError::Runtime(RuntimeError::new("Parameters of type [I32] did not match signature [] -> [I32]"))),
+        Err(VmError::from(RuntimeError::new("Parameters of type [I32] did not match signature [] -> [I32]"))),
         1;
         "0 in - 1 out: fails invalid signature"
     )]
@@ -396,7 +391,7 @@ mod test {
     #[test_case(
         "1_0",
         vec![20],
-        Err(VmError::ReturnCount { name: "1_0".to_string(), expect: 1, actual: 0 }),
+        Err(VmError::return_count("1_0".into(), 1, 0).into()),
         1;
         "1 in - 0 out: fails return count"
     )]
@@ -411,7 +406,7 @@ mod test {
     #[test_case(
         "1_1",
         vec![20],
-        Err(VmError::ReturnCount { name: "1_1".to_string(), expect: 0, actual: 1 }),
+        Err(VmError::return_count("1_1".into(), 0, 1).into()),
         0;
         "1 in - 1 out: fails return count"
     )]
@@ -426,7 +421,7 @@ mod test {
     #[test_case(
         "2_1",
         vec![20, 22],
-        Err(VmError::ReturnCount { name: "2_1".to_string(), expect: 0, actual: 1 }),
+        Err(VmError::return_count("2_1".into(), 0, 1).into()),
         0;
         "2 in 1 out: fails return count"
     )]
@@ -522,10 +517,14 @@ mod test {
 
         assert!(matches!(
             consume(1, &mut env, &mut store).unwrap_err(),
-            VmError::Std(StdError::OutOfGas {
-                limit: 100,
-                used: 100,
-                comment: "consume_gas",
+            VmError::Std(UnnamedBacktrace {
+                value: StdError::OutOfGas {
+                    limit: 100,
+                    used: 100,
+                    comment: "consume_gas",
+                    ..
+                },
+                ..
             })
         ));
     }
@@ -546,10 +545,14 @@ mod test {
 
         assert!(matches!(
             err,
-            VmError::Std(StdError::OutOfGas {
-                limit: 100,
-                used: 101,
-                comment: "comment",
+            VmError::Std(UnnamedBacktrace {
+                value: StdError::OutOfGas {
+                    limit: 100,
+                    used: 101,
+                    comment: "comment",
+                    ..
+                },
+                ..
             })
         ));
     }

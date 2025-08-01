@@ -89,7 +89,7 @@ fn immutable_state() {
             key: "larry".to_string(),
             value: "engineer".to_string(),
         })
-        .should_fail_with_error(VmError::ImmutableState);
+        .should_fail_with_error(VmError::immutable_state());
 
     // Execute the tester contract.
     //
@@ -112,7 +112,7 @@ fn immutable_state() {
             )
             .unwrap(),
         )
-        .should_fail_with_error(VmError::ImmutableState);
+        .should_fail_with_error(VmError::immutable_state());
 }
 
 #[test]
@@ -123,7 +123,7 @@ fn query_stack_overflow() {
     // a loop. Should raise the "exceeded max query depth" error.
     suite
         .query_wasm_smart(tester, grug_tester::QueryStackOverflowRequest {})
-        .should_fail_with_error(VmError::ExceedMaxQueryDepth);
+        .should_fail_with_error(VmError::exceed_max_query_depth());
 }
 
 #[test]

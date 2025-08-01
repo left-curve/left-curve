@@ -1,8 +1,10 @@
-use {std::any::type_name, thiserror::Error};
+use {grug_types_base::BT, std::any::type_name};
 
-#[derive(Debug, Clone, Error)]
+#[grug_macros::backtrace]
+#[derive(Clone)]
 pub enum MathError {
     #[error("failed to parse string `{input}` into {ty}: {reason}")]
+    #[backtrace(private_constructor)]
     ParseNumber {
         ty: &'static str,
         input: String,
@@ -10,6 +12,7 @@ pub enum MathError {
     },
 
     #[error("conversion overflow: {source_type}({value}) > {target_type}::MAX")]
+    #[backtrace(private_constructor)]
     OverflowConversion {
         source_type: &'static str,
         target_type: &'static str,
@@ -17,6 +20,7 @@ pub enum MathError {
     },
 
     #[error("addition overflow: {a} + {b} (type: {ty})")]
+    #[backtrace(private_constructor)]
     OverflowAdd {
         ty: &'static str,
         a: String,
@@ -24,6 +28,7 @@ pub enum MathError {
     },
 
     #[error("subtraction overflow: {a} - {b} (type: {ty})")]
+    #[backtrace(private_constructor)]
     OverflowSub {
         ty: &'static str,
         a: String,
@@ -31,6 +36,7 @@ pub enum MathError {
     },
 
     #[error("multiplication overflow: {a} (type: {t1}) * {b} (type: {t2})")]
+    #[backtrace(private_constructor)]
     OverflowMul {
         t1: &'static str,
         t2: &'static str,
@@ -39,6 +45,7 @@ pub enum MathError {
     },
 
     #[error("power overflow: {a} ^ {b} (type: {ty})")]
+    #[backtrace(private_constructor)]
     OverflowPow {
         ty: &'static str,
         a: String,
@@ -46,18 +53,23 @@ pub enum MathError {
     },
 
     #[error("left shift overflow: {a} << {b}")]
+    #[backtrace(private_constructor)]
     OverflowShl { a: String, b: u32 },
 
     #[error("right shift overflow: {a} >> {b}")]
+    #[backtrace(private_constructor)]
     OverflowShr { a: String, b: u32 },
 
     #[error("division by zero: {a} / 0")]
+    #[backtrace(private_constructor)]
     DivisionByZero { a: String },
 
     #[error("remainder by zero: {a} % 0")]
+    #[backtrace(private_constructor)]
     RemainderByZero { a: String },
 
     #[error("multiply a non-negative lhs with a negative rhs: {ty}({a}) * {b}")]
+    #[backtrace(private_constructor)]
     NegativeMul {
         ty: &'static str,
         a: String,
@@ -65,6 +77,7 @@ pub enum MathError {
     },
 
     #[error("divide a non-negative lhs with a negative rhs: {ty}({a}) / {b}")]
+    #[backtrace(private_constructor)]
     NegativeDiv {
         ty: &'static str,
         a: String,
@@ -72,6 +85,7 @@ pub enum MathError {
     },
 
     #[error("square root of negative: sqrt({a})")]
+    #[backtrace(private_constructor)]
     NegativeSqrt { a: String },
 
     #[error("square root failed")]
@@ -91,6 +105,7 @@ impl MathError {
             ty: type_name::<T>(),
             input: input.to_string(),
             reason: reason.to_string(),
+            backtrace: BT::default(),
         }
     }
 
@@ -98,33 +113,21 @@ impl MathError {
     where
         A: ToString,
     {
-        Self::OverflowConversion {
-            source_type: type_name::<A>(),
-            target_type: type_name::<B>(),
-            value: source.to_string(),
-        }
+        Self::_overflow_conversion(type_name::<A>(), type_name::<B>(), source.to_string())
     }
 
     pub fn overflow_add<T>(a: T, b: T) -> Self
     where
         T: ToString,
     {
-        Self::OverflowAdd {
-            ty: type_name::<T>(),
-            a: a.to_string(),
-            b: b.to_string(),
-        }
+        Self::_overflow_add(type_name::<T>(), a.to_string(), b.to_string())
     }
 
     pub fn overflow_sub<T>(a: T, b: T) -> Self
     where
         T: ToString,
     {
-        Self::OverflowSub {
-            ty: type_name::<T>(),
-            a: a.to_string(),
-            b: b.to_string(),
-        }
+        Self::_overflow_sub(type_name::<T>(), a.to_string(), b.to_string())
     }
 
     pub fn overflow_mul<T1, T2>(a: T1, b: T2) -> Self
@@ -132,57 +135,47 @@ impl MathError {
         T1: ToString,
         T2: ToString,
     {
-        Self::OverflowMul {
-            t1: type_name::<T1>(),
-            t2: type_name::<T2>(),
-            a: a.to_string(),
-            b: b.to_string(),
-        }
+        Self::_overflow_mul(
+            type_name::<T1>(),
+            type_name::<T2>(),
+            a.to_string(),
+            b.to_string(),
+        )
     }
 
     pub fn overflow_pow<T>(a: T, b: u32) -> Self
     where
         T: ToString,
     {
-        Self::OverflowPow {
-            ty: type_name::<T>(),
-            a: a.to_string(),
-            b: b.to_string(),
-        }
+        Self::_overflow_pow(type_name::<T>(), a.to_string(), b.to_string())
     }
 
     pub fn overflow_shl<T>(a: T, b: u32) -> Self
     where
         T: ToString,
     {
-        Self::OverflowShl {
-            a: a.to_string(),
-            b,
-        }
+        Self::_overflow_shl(a.to_string(), b)
     }
 
     pub fn overflow_shr<T>(a: T, b: u32) -> Self
     where
         T: ToString,
     {
-        Self::OverflowShr {
-            a: a.to_string(),
-            b,
-        }
+        Self::_overflow_shr(a.to_string(), b)
     }
 
     pub fn division_by_zero<T>(a: T) -> Self
     where
         T: ToString,
     {
-        Self::DivisionByZero { a: a.to_string() }
+        Self::_division_by_zero(a.to_string())
     }
 
     pub fn remainder_by_zero<T>(a: T) -> Self
     where
         T: ToString,
     {
-        Self::RemainderByZero { a: a.to_string() }
+        Self::_remainder_by_zero(a.to_string())
     }
 
     pub fn negative_mul<A, B>(a: A, b: B) -> Self
@@ -190,11 +183,7 @@ impl MathError {
         A: ToString,
         B: ToString,
     {
-        Self::NegativeMul {
-            ty: type_name::<A>(),
-            a: a.to_string(),
-            b: b.to_string(),
-        }
+        Self::_negative_mul(type_name::<A>(), a.to_string(), b.to_string())
     }
 
     pub fn negative_div<A, B>(a: A, b: B) -> Self
@@ -202,22 +191,14 @@ impl MathError {
         A: ToString,
         B: ToString,
     {
-        Self::NegativeDiv {
-            ty: type_name::<A>(),
-            a: a.to_string(),
-            b: b.to_string(),
-        }
+        Self::_negative_div(type_name::<A>(), a.to_string(), b.to_string())
     }
 
     pub fn negative_sqrt<T>(a: T) -> Self
     where
         T: ToString,
     {
-        Self::NegativeSqrt { a: a.to_string() }
-    }
-
-    pub fn zero_log() -> Self {
-        Self::ZeroLog
+        Self::_negative_sqrt(a.to_string())
     }
 }
 

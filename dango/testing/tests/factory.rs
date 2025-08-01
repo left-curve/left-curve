@@ -628,7 +628,7 @@ fn malicious_register_user() {
             )
             .unwrap(),
         )
-        .should_fail_with_error(VerificationError::Unauthentic);
+        .should_fail_with_error(VerificationError::unauthentic());
 
     // The attacker can also try falsify a signature. Since the attacker doesn't
     // know the user's private key, he signs with a different private key.
@@ -648,7 +648,7 @@ fn malicious_register_user() {
             )
             .unwrap(),
         )
-        .should_fail_with_error(VerificationError::Unauthentic);
+        .should_fail_with_error(VerificationError::unauthentic());
 
     // What if attacker also changes the `key` in the instantiate message?
     // Signature verification should pass, but the derived deposit address would
