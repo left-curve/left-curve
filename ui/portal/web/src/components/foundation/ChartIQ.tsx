@@ -13,6 +13,8 @@ import { createChartIQConfig, createChartIQDataFeed } from "~/chartiq";
 import { useApp } from "~/hooks/useApp";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { Decimal } from "@left-curve/dango/utils";
+
 import "@left-curve/chartiq/examples/translations/translationSample";
 
 import "@left-curve/chartiq/css/normalize.css";
@@ -21,12 +23,14 @@ import "@left-curve/chartiq/css/chartiq.css";
 import "@left-curve/chartiq/css/webcomponents.css";
 
 import type { AnyCoin } from "@left-curve/store/types";
+import type { OrdersByUserResponse } from "@left-curve/dango/types";
 
 type ChartIQProps = {
   coins: { base: AnyCoin; quote: AnyCoin };
+  orders: OrdersByUserResponse[];
 };
 
-export const ChartIQ: React.FC<ChartIQProps> = ({ coins }) => {
+export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
   const uiContextRef = useRef<CIQ.UI.Context | null>(null);
   const container = useRef<HTMLElement | null>(null);
   const { isMd } = useMediaQuery();
@@ -62,6 +66,11 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins }) => {
   const { subscriptions } = useApp();
   const { coins: allCoins } = useConfig();
 
+  const { theme } = useTheme();
+
+  const volumeColor =
+    theme === "dark" ? { up: "#66C86A", down: "#FF6B6B" } : { up: "#25B12A", down: "#E71818" };
+
   const dataFeed = useMemo(
     () =>
       createChartIQDataFeed({
@@ -73,8 +82,6 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins }) => {
       }),
     [allCoins, queryClient, publicClient],
   );
-
-  const { theme } = useTheme();
 
   useEffect(() => {
     if (uiContextRef.current) return;
@@ -97,9 +104,6 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins }) => {
       const { channelWrite } = CIQ.UI.BaseComponent.prototype;
       channelWrite(stx.uiContext.config.channels.drawing, true, stx);
     }
-
-    const volumeColor =
-      theme === "dark" ? { up: "#66C86A", down: "#FF6B6B" } : { up: "#25B12A", down: "#E71818" };
 
     CIQ.Studies.addStudy(
       stx,
@@ -129,6 +133,47 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins }) => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const ref = uiContextRef.current?.stx.append("draw", () => {
+      const stx = uiContextRef.current?.stx;
+      for (const order of orders) {
+        const price = Decimal(order.price)
+          .times(
+            Decimal(10).pow(
+              allCoins.byDenom[order.baseDenom].decimals -
+                allCoins.byDenom[order.quoteDenom].decimals,
+            ),
+          )
+          .toFixed(5);
+
+        const y = stx.pixelFromPrice(price, stx.chart.panel);
+        const color = order.direction === "bid" ? volumeColor.up : volumeColor.down;
+
+        stx.plotLine({
+          x0: 0,
+          x1: 1,
+          y0: y,
+          y1: y,
+          color,
+          type: "horizontal",
+          lineWidth: 1,
+          context: stx.chart.context,
+        });
+        stx.createYAxisLabel(
+          stx.chart.panel,
+          order.price,
+          stx.pixelFromTransformedValue(price),
+          color,
+          "white",
+        );
+      }
+    });
+
+    return () => {
+      uiContextRef.current?.stx.removeInjection(ref);
+    };
+  }, [orders]);
 
   useEffect(() => {
     if (!uiContextRef.current) return;
