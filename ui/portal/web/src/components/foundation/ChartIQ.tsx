@@ -7,10 +7,11 @@ import "@left-curve/chartiq/js/addOns";
 
 import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { CIQ } from "@left-curve/chartiq/js/components";
-import { useConfig, usePublicClient } from "@left-curve/store";
-import { useEffect, useMemo, useRef } from "react";
+import { useConfig, usePublicClient, useStorage } from "@left-curve/store";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { createChartIQConfig, createChartIQDataFeed } from "~/chartiq";
 import { useApp } from "~/hooks/useApp";
+import { useQueryClient } from "@tanstack/react-query";
 
 import "@left-curve/chartiq/examples/translations/translationSample";
 
@@ -19,7 +20,7 @@ import "@left-curve/chartiq/css/stx-chart.css";
 import "@left-curve/chartiq/css/chartiq.css";
 import "@left-curve/chartiq/css/webcomponents.css";
 
-import { useQueryClient } from "@tanstack/react-query";
+import type { AnyCoin } from "@left-curve/store/types";
 
 type ChartIQProps = {
   coins: { base: AnyCoin; quote: AnyCoin };
@@ -28,8 +29,33 @@ type ChartIQProps = {
 export const ChartIQ: React.FC<ChartIQProps> = ({ coins }) => {
   const uiContextRef = useRef<CIQ.UI.Context | null>(null);
   const container = useRef<HTMLElement | null>(null);
-  const isMounted = useRef(false);
   const { isMd } = useMediaQuery();
+
+  const { base, quote } = coins;
+
+  const pairSymbol = `${base.symbol}-${quote.symbol}`;
+
+  const [chartPreferences, setChartPreferences] = useStorage(`chartiq.${pairSymbol}`, {
+    initialValue: {},
+  });
+
+  const changeChartPreferences = useCallback(
+    (s: Record<string, unknown>) => setChartPreferences((prev) => ({ ...prev, ...s })),
+    [setChartPreferences],
+  );
+
+  const handleLayoutChange = useCallback(
+    ({ stx }) => changeChartPreferences({ layout: stx.exportLayout(true) }),
+    [setChartPreferences],
+  );
+  const handleDrawingChange = useCallback(
+    ({ stx }) => changeChartPreferences({ drawings: stx.exportDrawings() }),
+    [setChartPreferences],
+  );
+  const handlePreferencesChange = useCallback(
+    ({ stx }) => changeChartPreferences({ preferences: stx.exportPreferences() }),
+    [setChartPreferences],
+  );
 
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
@@ -50,73 +76,92 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins }) => {
 
   const { theme } = useTheme();
 
-  const { base, quote } = coins;
-
-  const pairSymbol = `${base.symbol}-${quote.symbol}`;
-
   useEffect(() => {
-    if (!isMounted.current) {
-      const uiContext = new CIQ.UI.Chart().createChartAndUI({
-        container: container.current!,
-        config: createChartIQConfig({
-          pairSymbol,
-          dataFeed,
-          theme,
-        }),
-      });
+    if (uiContextRef.current) return;
+    const uiContext = new CIQ.UI.Chart().createChartAndUI({
+      container: container.current!,
+      config: createChartIQConfig({
+        pairSymbol,
+        dataFeed,
+        theme,
+      }),
+    });
 
-      uiContextRef.current = uiContext;
+    uiContextRef.current = uiContext;
 
-      const { stx } = uiContext;
+    const { stx } = uiContext;
 
-      dataFeed.setStx(stx);
+    dataFeed.setStx(stx);
 
-      if (isMd) {
-        const { channelWrite } = CIQ.UI.BaseComponent.prototype;
-        channelWrite(stx.uiContext.config.channels.drawing, true, stx);
-      }
-
-      const volumeColor =
-        theme === "dark" ? { up: "#66C86A", down: "#FF6B6B" } : { up: "#25B12A", down: "#E71818" };
-
-      CIQ.Studies.addStudy(
-        stx,
-        "volume",
-        { id: "Volume" },
-        { "Up Volume": volumeColor.up, "Down Volume": volumeColor.down },
-      );
-
-      stx.candleWidthPercent = 0.9;
-      stx.chart.yAxis.zoom = -0.0000001;
-      stx.chart.maxTicks = 40;
-      stx.controls.mSticky = false;
-
-      stx.animations.zoom = new CIQ.EaseMachine("easeOutCubic", 1);
-      stx.swipeRelease = () => {};
-
-      stx.controls.chartControls.style.display = "none";
-      stx.controls.chartControls = null;
-      stx.layout.smartzoom = false;
-      stx.highlightPrimarySeries = false;
-      Object.assign(window, { stx, CIQ });
-
-      isMounted.current = true;
+    if (isMd) {
+      const { channelWrite } = CIQ.UI.BaseComponent.prototype;
+      channelWrite(stx.uiContext.config.channels.drawing, true, stx);
     }
 
+    const volumeColor =
+      theme === "dark" ? { up: "#66C86A", down: "#FF6B6B" } : { up: "#25B12A", down: "#E71818" };
+
+    CIQ.Studies.addStudy(
+      stx,
+      "volume",
+      { id: "Volume" },
+      { "Up Volume": volumeColor.up, "Down Volume": volumeColor.down },
+    );
+
+    stx.candleWidthPercent = 0.9;
+    stx.chart.yAxis.zoom = -0.0000001;
+    stx.chart.maxTicks = 40;
+    stx.controls.mSticky = false;
+
+    stx.animations.zoom = new CIQ.EaseMachine("easeOutCubic", 1);
+    stx.swipeRelease = () => {};
+
+    stx.controls.chartControls.style.display = "none";
+    stx.controls.chartControls = null;
+    stx.layout.smartzoom = false;
+    stx.highlightPrimarySeries = false;
+
     return () => {
-      if (uiContextRef.current) {
-        uiContextRef.current.stx.destroy();
-        uiContextRef.current.stx.draw = () => {};
+      if (uiContext) {
+        uiContext.stx.destroy();
+        uiContext.stx.draw = () => {};
         uiContextRef.current = null;
       }
     };
   }, []);
 
   useEffect(() => {
-    if (!isMounted.current || !uiContextRef.current) return;
-    uiContextRef.current.stx.chartId = pairSymbol;
-    uiContextRef.current.stx.chart.symbol = pairSymbol;
+    if (!uiContextRef.current) return;
     uiContextRef.current.changeSymbol({ symbol: pairSymbol });
+
+    if (chartPreferences.drawings) {
+      uiContextRef.current.stx.importDrawings(chartPreferences.drawings);
+    }
+
+    if (chartPreferences.layout) {
+      uiContextRef.current.stx.importLayout(chartPreferences.layout, {
+        managePeriodicity: true,
+        preserveTicksAndCandleWidth: true,
+      });
+    }
+
+    if (chartPreferences.preferences) {
+      uiContextRef.current.stx.importPreferences(chartPreferences.preferences);
+    }
+
+    uiContextRef.current.stx.addEventListener("layout", handleLayoutChange);
+    uiContextRef.current.stx.addEventListener("drawing", handleDrawingChange);
+    uiContextRef.current.stx.addEventListener("preferences", handlePreferencesChange);
+
+    return () => {
+      uiContextRef.current?.stx.removeEventListener({ type: "layout", cb: handleLayoutChange });
+      uiContextRef.current?.stx.removeEventListener({ type: "drawing", cb: handleDrawingChange });
+      uiContextRef.current?.stx.removeEventListener({
+        type: "preferences",
+        cb: handlePreferencesChange,
+      });
+      uiContextRef.current?.stx.clearDrawings(true, false);
+    };
   }, [pairSymbol]);
 
   return (
