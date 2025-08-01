@@ -35,8 +35,9 @@ mod tester {
 
     pub fn cron_execute(ctx: SudoCtx) -> StdResult<Response> {
         let job = JOB.load(ctx.storage).unwrap();
+        let msg = Message::transfer(job.receiver, job.coin).unwrap().unwrap();
 
-        Ok(Response::new().add_message(Message::transfer(job.receiver, job.coin).unwrap()))
+        Ok(Response::new().add_message(msg))
     }
 }
 

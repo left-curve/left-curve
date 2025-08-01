@@ -98,7 +98,9 @@ fn cant_transfer_to_lending() {
     suite
         .send_message(
             &mut accounts.user1,
-            Message::transfer(contracts.lending, coins! { usdc::DENOM.clone() => 123 }).unwrap(),
+            Message::transfer(contracts.lending, coins! { usdc::DENOM.clone() => 123 })
+                .unwrap()
+                .unwrap(),
         )
         .should_fail_with_error(VmError::function_not_found("receive"));
 }

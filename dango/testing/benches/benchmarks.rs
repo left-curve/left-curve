@@ -91,7 +91,9 @@ where
             );
 
             // Sign the transaction.
-            let msg = Message::transfer(receiver, coins! { usdc::DENOM.clone() => 123 }).unwrap();
+            let msg = Message::transfer(receiver, coins! { usdc::DENOM.clone() => 123 })
+                .unwrap()
+                .unwrap();
 
             let (data, credential) = accounts
                 .owner

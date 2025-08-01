@@ -177,7 +177,9 @@ where
         C: TryInto<Coins> + Send,
         StdError: From<C::Error>,
     {
-        let msg = Message::transfer(to, coins)?;
+        let msg = Message::transfer(to, coins)?
+            .ok_or_else(|| StdError::invalid_coins("can't send empty coins"))?;
+
         self.send_message(signer, msg, gas_opt, chain_id).await
     }
 

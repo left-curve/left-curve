@@ -112,17 +112,13 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let fees = fees.into_coins_floor();
 
     Ok(Response::new()
-        .may_add_message(if !refunds.is_empty() {
-            Some(Message::Transfer(refunds))
-        } else {
-            None
-        })
-        .may_add_message(if fees.is_non_empty() {
+        .may_add_message(refunds.map(Message::Transfer))
+        .may_add_message(if let Some(payments) = fee_payments.into_batch() {
             Some(Message::execute(
                 app_cfg.addresses.taxman,
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Trade,
-                    payments: fee_payments.into_batch(),
+                    payments,
                 },
                 fees,
             )?)

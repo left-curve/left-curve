@@ -24,6 +24,7 @@ fn first_nonce_too_big() {
                 accounts.user2.address(),
                 coins! { dango::DENOM.clone() => 100 },
             )
+            .unwrap()
             .unwrap(),
         ]);
 

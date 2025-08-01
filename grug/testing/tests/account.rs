@@ -2,7 +2,7 @@ use {
     grug_math::{NumberConst, Uint128},
     grug_mock_account::Credential,
     grug_testing::TestBuilder,
-    grug_types::{Coins, Duration, JsonDeExt, Message, NonEmpty, ResultExt, Timestamp, Tx},
+    grug_types::{Coins, Duration, JsonDeExt, Message, NonEmpty, ResultExt, Timestamp, Tx, coins},
     grug_vm_rust::ContractBuilder,
 };
 
@@ -18,7 +18,9 @@ fn check_tx_and_finalize() {
         .build();
 
     let transfer_msg =
-        Message::transfer(accounts["larry"].address, Coins::one("uatom", 10).unwrap()).unwrap();
+        Message::transfer(accounts["larry"].address, Coins::one("uatom", 10).unwrap())
+            .unwrap()
+            .unwrap();
 
     // Create a tx to set sequence to 1.
     suite
@@ -223,10 +225,7 @@ fn backrunning_with_error() {
 
     // Attempt to make a transfer; should fail.
     suite
-        .send_message(
-            &mut accounts["sender"],
-            Message::transfer(receiver, Coins::one("ugrug", 123).unwrap()).unwrap(),
-        )
+        .transfer(&mut accounts["sender"], receiver, coins! { "ugrug" => 123 })
         .should_fail_with_error("division by zero: 1 / 0");
 
     // Transfer should have been reverted, and sender doesn't get bad kids.

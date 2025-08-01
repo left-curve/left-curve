@@ -116,7 +116,7 @@ fn withdraw(ctx: MutableCtx) -> anyhow::Result<Response> {
                 Coins::new(),
             )?
         })
-        .add_message(Message::transfer(ctx.sender, withdrawn)?))
+        .may_add_message(Message::transfer(ctx.sender, withdrawn)?))
 }
 
 fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
@@ -150,7 +150,7 @@ fn borrow(ctx: MutableCtx, coins: NonEmpty<Coins>) -> anyhow::Result<Response> {
 
     // Transfer the coins to the caller
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, coins.inner().clone())?)
+        .may_add_message(Message::transfer(ctx.sender, coins.inner().clone())?)
         .add_event(Borrowed {
             user: ctx.sender,
             borrowed: coins.into_inner(),
@@ -179,11 +179,7 @@ fn repay(ctx: MutableCtx) -> anyhow::Result<Response> {
     };
 
     Ok(Response::new()
-        .may_add_message(if refunds.is_non_empty() {
-            Some(Message::transfer(ctx.sender, refunds.clone())?)
-        } else {
-            None
-        })
+        .may_add_message(Message::transfer(ctx.sender, refunds.clone())?)
         .add_event(Repaid {
             user: ctx.sender,
             repaid: ctx.funds,

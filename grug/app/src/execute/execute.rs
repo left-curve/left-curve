@@ -5,7 +5,7 @@ use {
         _do_transfer, AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
     },
-    grug_types::{Addr, BlockInfo, Context, EvtExecute, MsgExecute, Storage, btree_map},
+    grug_types::{Addr, BlockInfo, Context, EvtExecute, MsgExecute, NonEmpty, Storage, btree_map},
 };
 
 pub fn do_execute<VM>(
@@ -84,7 +84,9 @@ where
                 block,
                 msg_depth,
                 sender,
-                btree_map! { msg.contract => msg.funds.clone() },
+                NonEmpty::new_unchecked(btree_map! {
+                    msg.contract => NonEmpty::new_unchecked(msg.funds.clone()),
+                }),
                 false,
                 trace_opt,
             ),

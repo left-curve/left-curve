@@ -64,6 +64,7 @@ async fn index_transfer_events() -> anyhow::Result<()> {
         accounts.user1.address(),
         Coins::one(usdc::DENOM.clone(), 123).unwrap(),
     )
+    .unwrap()
     .unwrap();
 
     suite

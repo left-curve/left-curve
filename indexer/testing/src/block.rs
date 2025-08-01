@@ -56,7 +56,7 @@ pub async fn create_blocks(
         mock_client
             .send_message(
                 &mut accounts["sender"],
-                grug_types::Message::transfer(sender, Coins::one(denom.clone(), 2_000)?)?,
+                grug_types::Message::transfer(sender, Coins::one(denom.clone(), 2_000)?)?.unwrap(), // unwraping is safe here because we know the coins isn't empty
                 grug_types::GasOption::Predefined { gas_limit: 2000 },
                 &chain_id,
             )

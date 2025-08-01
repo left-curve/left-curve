@@ -15,7 +15,8 @@ use {
     },
     grug::{
         Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero,
-        Message, MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
+        Message, MutableCtx, NonEmpty, NonZero, QuerierExt, Response, Uint128, UniqueVec,
+        btree_map, coins,
     },
 };
 
@@ -147,7 +148,7 @@ fn batch_update_orders(
         .map_err(|e| anyhow!("insufficient funds for batch updating orders: {e}"))?;
 
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, ctx.funds)?)
+        .may_add_message(Message::transfer(ctx.sender, ctx.funds)?)
         .add_events(events)?)
 }
 
@@ -273,7 +274,7 @@ fn withdraw_liquidity(
                 Coins::new(), // No funds needed for burning
             )?
         })
-        .add_message(Message::transfer(ctx.sender, refunds)?))
+        .may_add_message(Message::transfer(ctx.sender, refunds)?))
 }
 
 fn swap_exact_amount_in(
@@ -316,15 +317,17 @@ fn swap_exact_amount_in(
     }
 
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, output.clone())?)
+        .may_add_message(Message::transfer(ctx.sender, output.clone())?)
         .may_add_message(if protocol_fee.is_non_zero() {
             Some(Message::execute(
                 app_cfg.addresses.taxman,
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Trade,
-                    payments: btree_map! {
-                        ctx.sender => coins! { output.denom.clone() => protocol_fee },
-                    },
+                    payments: NonEmpty::new_unchecked(btree_map! {
+                        ctx.sender => NonEmpty::new_unchecked(coins! {
+                            output.denom.clone() => protocol_fee,
+                        }),
+                    }),
                 },
                 coins! { output.denom.clone() => protocol_fee },
             )?)
@@ -371,15 +374,17 @@ fn swap_exact_amount_out(
     }
 
     Ok(Response::new()
-        .add_message(Message::transfer(ctx.sender, ctx.funds)?)
+        .may_add_message(Message::transfer(ctx.sender, ctx.funds)?)
         .may_add_message(if protocol_fee.is_non_zero() {
             Some(Message::execute(
                 app_cfg.addresses.taxman,
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Trade,
-                    payments: btree_map! {
-                        ctx.sender => coins! { output.denom.clone() => protocol_fee },
-                    },
+                    payments: NonEmpty::new_unchecked(btree_map! {
+                        ctx.sender => NonEmpty::new_unchecked(coins! {
+                            output.denom.clone() => protocol_fee,
+                        }),
+                    }),
                 },
                 coins! { output.denom.clone() => protocol_fee },
             )?)
@@ -403,7 +408,7 @@ fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     Ok(Response::new()
         .add_events(events)?
-        .add_message(refunds.into_message()))
+        .may_add_message(refunds.into_message()))
 }
 
 // ----------------------------------- tests -----------------------------------
@@ -559,7 +564,9 @@ mod tests {
         assert_eq!(res.submsgs.len(), 1);
         assert_eq!(
             res.submsgs[0].msg,
-            Message::Transfer(btree_map! { sender => expected_refunds })
+            Message::transfer(sender, expected_refunds)
+                .unwrap()
+                .unwrap()
         );
     }
 }

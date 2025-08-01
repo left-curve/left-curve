@@ -5,8 +5,8 @@ use {
         Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
     },
     grug::{
-        Addr, BankMsg, Coins, Denom, EventBuilder, IsZero, MutableCtx, Number, NumberConst, Part,
-        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
+        Addr, BankMsg, Coins, Denom, EventBuilder, Inner, IsZero, MutableCtx, Number, NumberConst,
+        Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
     },
     std::collections::HashMap,
 };
@@ -256,7 +256,7 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
     let mut events = EventBuilder::with_capacity(msg.transfers.len() * 3);
 
-    for (to, coins) in msg.transfers {
+    for (to, coins) in msg.transfers.into_inner() {
         // If the recipient exists, increase the recipient's balance. Otherwise,
         // 1. withhold the tokens in the bank contract;
         // 2. record the transfer in the `ORPHANED_TRANSFERS` map.
@@ -266,14 +266,14 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
         } else {
             ORPHANED_TRANSFERS.may_update(ctx.storage, (msg.from, to), |amount| {
                 let mut amount = amount.unwrap_or_default();
-                amount.insert_many(coins.clone())?;
+                amount.insert_many(coins.inner().clone())?;
                 Ok::<_, StdError>(amount)
             })?;
 
             ctx.contract
         };
 
-        for coin in &coins {
+        for coin in coins.inner() {
             decrease_balance(ctx.storage, &msg.from, coin.denom, *coin.amount)?;
             increase_balance(ctx.storage, &recipient, coin.denom, *coin.amount)?;
         }
@@ -283,7 +283,7 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
                 Some(TransferOrphaned {
                     from: msg.from,
                     to,
-                    coins: coins.clone(),
+                    coins: coins.inner().clone(),
                 })
             } else {
                 None
@@ -291,12 +291,12 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
             .push(Sent {
                 user: msg.from,
                 to: recipient,
-                coins: coins.clone(),
+                coins: coins.inner().clone(),
             })?
             .push(Received {
                 user: recipient,
                 from: msg.from,
-                coins,
+                coins: coins.into_inner(),
             })?;
     }
 

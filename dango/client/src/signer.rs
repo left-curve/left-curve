@@ -223,8 +223,12 @@ mod tests {
         let tx = signer
             .sign_transaction(
                 NonEmpty::new_unchecked(vec![
-                    Message::transfer(Addr::mock(2), Coins::one("uatom", 100).unwrap()).unwrap(),
-                    Message::transfer(Addr::mock(3), Coins::one("uosmo", 500).unwrap()).unwrap(),
+                    Message::transfer(Addr::mock(2), Coins::one("uatom", 100).unwrap())
+                        .unwrap()
+                        .unwrap(),
+                    Message::transfer(Addr::mock(3), Coins::one("uosmo", 500).unwrap())
+                        .unwrap()
+                        .unwrap(),
                 ]),
                 "dango-1",
                 100_000_000,
@@ -275,6 +279,7 @@ mod tests {
                         Addr::from_str("0x01bba610cbbfe9df0c99b8862f3ad41b2f646553").unwrap(),
                         Coins::one("hyp/all/btc", 100).unwrap(),
                     )
+                    .unwrap()
                     .unwrap(),
                 ]),
                 "dev-6",

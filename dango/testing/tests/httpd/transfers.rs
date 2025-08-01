@@ -526,10 +526,13 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(_idx) = rx.recv().await {
-            let msgs = vec![Message::transfer(
-                accounts.user2.address(),
-                Coins::one(usdc::DENOM.clone(), 123).unwrap(),
-            )?];
+            let msgs = vec![
+                Message::transfer(
+                    accounts.user2.address(),
+                    Coins::one(usdc::DENOM.clone(), 123).unwrap(),
+                )?
+                .unwrap(), // safe to unwrap because we know the coins is non-empty
+            ];
 
             suite
                 .send_messages_with_gas(

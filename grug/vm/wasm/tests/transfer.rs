@@ -39,10 +39,18 @@ fn transfers() {
         &mut accounts["sender"],
         2_500_000,
         NonEmpty::new_unchecked(vec![
-            Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
-            Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
-            Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
-            Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap())
+                .unwrap()
+                .unwrap(),
+            Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap())
+                .unwrap()
+                .unwrap(),
+            Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap())
+                .unwrap()
+                .unwrap(),
+            Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap())
+                .unwrap()
+                .unwrap(),
         ]),
     );
 
@@ -98,7 +106,9 @@ fn transfers_with_insufficient_gas_limit() {
     let outcome = suite.send_message_with_gas(
         &mut accounts["sender"],
         200_000,
-        Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
+        Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap())
+            .unwrap()
+            .unwrap(),
     );
 
     outcome.clone().should_fail();

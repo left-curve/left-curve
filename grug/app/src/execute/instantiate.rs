@@ -8,7 +8,7 @@ use {
     },
     grug_types::{
         Addr, BlockInfo, CodeStatus, Context, ContractInfo, EvtInstantiate, MsgInstantiate,
-        StdResult, Storage, btree_map,
+        NonEmpty, StdResult, Storage, btree_map,
     },
 };
 
@@ -123,7 +123,9 @@ where
                 block,
                 msg_depth,
                 sender,
-                btree_map! { address => msg.funds.clone() },
+                NonEmpty::new_unchecked(btree_map! {
+                    address => NonEmpty::new_unchecked(msg.funds.clone()),
+                }),
                 false,
                 trace_opt,
             ),

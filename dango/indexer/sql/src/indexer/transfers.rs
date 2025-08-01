@@ -1,5 +1,6 @@
 use {
     crate::{entity, error::Error},
+    grug::Inner,
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
     indexer_sql::entity as main_entity,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait},
@@ -77,14 +78,13 @@ pub(crate) async fn save_transfers(
                 .transfers
                 .iter()
                 .flat_map(|(recipient, coins)| {
-                    #[cfg(feature = "tracing")]
-                    if coins.is_empty() {
-                        tracing::debug!(
-                            "Transfer detected but coins is empty, won't create transfers",
-                        );
-                    }
+                    debug_assert!(
+                        coins.is_non_empty(),
+                        "transfer detected but coins is empty, this shouldn't happen!"
+                    );
 
                     coins
+                        .inner()
                         .into_iter()
                         .map(|coin| {
                             let res = entity::transfers::ActiveModel {
