@@ -86,8 +86,6 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins }) => {
         { "Up Volume": volumeColor.up, "Down Volume": volumeColor.down },
       );
 
-      stx.setPeriodicity(5, "minute", 0, true);
-
       stx.candleWidthPercent = 0.9;
       stx.chart.yAxis.zoom = -0.0000001;
       stx.chart.maxTicks = 40;

@@ -70,14 +70,17 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
       timeUnit: timeUnit,
     });
 
+    const date = new Date(endDate);
+    date.setMilliseconds(0);
+
     const { nodes } = await queryClient.fetchQuery({
-      queryKey: ["candles", pairSymbol, endDate.toJSON(), candleInterval],
+      queryKey: ["candles", pairSymbol, date.toJSON(), candleInterval],
       queryFn: () =>
         client.queryCandles({
           baseDenom: baseCoin.denom,
           quoteDenom: quoteCoin.denom,
           interval: candleInterval,
-          earlierThan: endDate.toJSON(),
+          earlierThan: date.toJSON(),
         }),
     });
 
@@ -257,14 +260,23 @@ export function createChartIQConfig(params: CreateChartIQConfigParameters) {
       whitespace: 0,
     },
     // @ts-ignore
+    layout: {
+      periodicity: 1,
+      interval: 5,
+      timeUnit: "minute",
+    },
+    // @ts-ignore
     chart: {
+      layout: {
+        periodicity: 1,
+        interval: 1,
+        timeUnit: "minute",
+      },
       yAxis: {
         position: "right",
       },
     },
   };
-
-  config.chartEngineParams;
 
   config.quoteFeeds = [
     {
