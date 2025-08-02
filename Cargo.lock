@@ -3466,6 +3466,7 @@ name = "dango-client"
 version = "0.0.0"
 dependencies = [
  "aes-gcm",
+ "alloy",
  "anyhow",
  "bip32",
  "dango-account-factory",

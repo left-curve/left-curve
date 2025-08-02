@@ -1,5 +1,5 @@
 use {
-    dango_client::SingleSigner,
+    dango_client::{CredentialType, SingleSigner},
     dango_types::config::AppConfig,
     grug::{Addr, BroadcastClientExt, ClientWrapper, GasOption, JsonSerExt, QueryClientExt, addr},
     grug_app::GAS_COSTS,
@@ -28,6 +28,7 @@ async fn main() -> anyhow::Result<()> {
         CURRENT_OWNER_USERNAME,
         CURRENT_OWNER,
         CURRENT_OWNER_PRIVATE_KEY,
+        CredentialType::Secp256k1,
     )?
     .query_nonce(&client)
     .await?;
