@@ -6,9 +6,9 @@ use {
         taxman::{Config, ExecuteMsg, FeeType, InstantiateMsg, ReceiveFee},
     },
     grug::{
-        Addr, AuthCtx, AuthMode, Coins, ContractEvent, IsZero, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, QuerierExt, Response, StdResult, Tx, TxOutcome, Uint128,
-        coins,
+        Addr, AuthCtx, AuthMode, Coins, ContractEvent, Inner, IsZero, Message, MultiplyFraction,
+        MutableCtx, NonEmpty, Number, NumberConst, QuerierExt, Response, StdResult, Tx, TxOutcome,
+        Uint128, coins,
     },
     std::collections::BTreeMap,
 };
@@ -40,14 +40,18 @@ fn configure(ctx: MutableCtx, new_cfg: Config) -> anyhow::Result<Response> {
     Ok(Response::new())
 }
 
-fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow::Result<Response> {
+fn pay(
+    ctx: MutableCtx,
+    ty: FeeType,
+    payments: NonEmpty<BTreeMap<Addr, NonEmpty<Coins>>>,
+) -> anyhow::Result<Response> {
     ensure!(ctx.funds.is_non_empty(), "funds cannot be empty!");
 
     // Ensure funds add up to the total amount of payments.
     let total = payments
         .values()
         .try_fold(Coins::new(), |mut acc, coins| -> StdResult<_> {
-            acc.insert_many(coins.clone())?;
+            acc.insert_many(coins.inner().clone())?;
             Ok(acc)
         })?;
 
@@ -65,13 +69,14 @@ fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow:
     // For now, nothing to do.
     // In the future, we will implement affiliate fees.
     let events = payments
+        .into_inner()
         .into_iter()
         .map(|(user, amount)| {
             ContractEvent::new(&ReceiveFee {
                 handler: ctx.sender,
                 user,
                 ty,
-                amount,
+                amount: amount.into_inner(),
             })
         })
         .collect::<StdResult<Vec<_>>>()?;
@@ -118,7 +123,7 @@ pub fn withhold_fee(ctx: AuthCtx, tx: Tx) -> StdResult<Response> {
             &bank::ExecuteMsg::ForceTransfer {
                 from: tx.sender,
                 to: ctx.contract,
-                coins: coins! { fee_cfg.fee_denom.clone() => withhold_amount },
+                coins: coins! { fee_cfg.fee_denom.clone() => withhold_amount }, /* safe to use `coins!` macro because we've ensured `withhold_amount` is non-zero */
             },
             Coins::new(),
         )?)
@@ -163,7 +168,7 @@ pub fn finalize_fee(ctx: AuthCtx, tx: Tx, outcome: TxOutcome) -> StdResult<Respo
             &bank::ExecuteMsg::ForceTransfer {
                 from: ctx.contract,
                 to: tx.sender,
-                coins: coins! { fee_cfg.fee_denom.clone() => refund_amount },
+                coins: coins! { fee_cfg.fee_denom.clone() => refund_amount }, /* safe to use `coins!` macro because we've ensured `refund_amount` is non-zero */
             },
             Coins::new(),
         )?)

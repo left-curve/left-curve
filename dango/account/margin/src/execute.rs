@@ -247,7 +247,7 @@ pub fn liquidate(ctx: MutableCtx, collateral_denom: Denom) -> anyhow::Result<Res
     Ok(Response::new()
         .add_message(cancel_msg)
         .add_message(repay_msg)
-        .add_message(send_msg)
+        .may_add_message(send_msg)
         .add_event(Liquidate {
             collateral_denom,
             repay_coins,

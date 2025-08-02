@@ -12,7 +12,11 @@ use {
 
 /// Build a [`Coins`](crate::Coins) with the given denoms and amounts.
 ///
-/// Panic if input is invalid, e.g. invalid denom or zero amount(s).
+/// ## Panics
+///
+/// Panic if input is invalid, e.g. invalid denom or zero amount(s). Only use
+/// this macro when you're sure the input is valid, or in cases where panicking
+/// is acceptable, such as in tests.
 #[macro_export]
 macro_rules! coins {
     ($($denom:expr => $amount:expr),* $(,)?) => {{
@@ -476,7 +480,12 @@ where
 
 impl From<Coin> for Coins {
     fn from(coin: Coin) -> Self {
-        Self([(coin.denom, coin.amount)].into())
+        // Note: empty coins if the amount is zero.
+        if coin.amount.is_zero() {
+            return Self::new();
+        }
+
+        Self(btree_map! { coin.denom => coin.amount })
     }
 }
 

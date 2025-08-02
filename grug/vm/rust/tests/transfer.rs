@@ -30,10 +30,18 @@ fn transfers() {
         .send_messages(
             &mut accounts["sender"],
             NonEmpty::new_unchecked(vec![
-                Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap()).unwrap(),
-                Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap()).unwrap(),
-                Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap()).unwrap(),
-                Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap()).unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 10).unwrap())
+                    .unwrap()
+                    .unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 15).unwrap())
+                    .unwrap()
+                    .unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 20).unwrap())
+                    .unwrap()
+                    .unwrap(),
+                Message::transfer(to, Coins::one(DENOM.clone(), 25).unwrap())
+                    .unwrap()
+                    .unwrap(),
             ]),
         )
         .should_succeed();
