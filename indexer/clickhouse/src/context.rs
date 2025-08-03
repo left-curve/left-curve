@@ -34,8 +34,9 @@ impl Context {
             .with_password(&password)
             .with_database(&database);
 
-        let pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
-        let candle_pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let pubsub: Arc<dyn PubSub<u64> + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let candle_pubsub: Arc<dyn PubSub<u64> + Send + Sync> =
+            Arc::new(pubsub::MemoryPubSub::new(100));
 
         Self {
             clickhouse_client,
