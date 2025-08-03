@@ -1,7 +1,10 @@
 use {
     crate::pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
     indexer_sql_migration::{Migrator, MigratorTrait},
-    sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection},
+    sea_orm::{
+        ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
+        sqlx::{self},
+    },
     std::sync::Arc,
 };
 

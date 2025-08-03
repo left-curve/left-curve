@@ -7,6 +7,8 @@ use {
     tokio_stream::Stream,
 };
 
+/// NOTE: beware, this is doing one psql connection per subscriber.
+/// Not ideal for high load, use `Postgres` instead.
 #[derive(Clone)]
 pub struct PostgresPubSub {
     pool: sqlx::PgPool,
