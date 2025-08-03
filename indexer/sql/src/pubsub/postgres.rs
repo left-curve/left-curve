@@ -23,14 +23,10 @@ where
     I: Clone + Send + 'static,
     I: serde::de::DeserializeOwned,
 {
-    pub async fn new(pool: sqlx::PgPool) -> Result<Self> {
+    pub async fn new(pool: sqlx::PgPool, name: &'static str) -> Result<Self> {
         let (sender, _) = broadcast::channel::<I>(128);
 
-        let result = Self {
-            sender,
-            pool,
-            name: "blocks",
-        };
+        let result = Self { sender, pool, name };
 
         result.connect().await?;
 

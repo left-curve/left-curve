@@ -21,9 +21,13 @@ impl Context {
         let new_pubsub: Arc<dyn PubSub<u64> + Send + Sync> = match &self.db {
             DatabaseConnection::SqlxPostgresPoolConnection(_) => {
                 let pool: &sqlx::PgPool = self.db.get_postgres_connection_pool();
-                Arc::new(PostgresPubSub::new(pool.clone()).await.map_err(|e| {
-                    sea_orm::DbErr::Custom(format!("Failed to create PostgresPubSub: {e}"))
-                })?)
+                Arc::new(
+                    PostgresPubSub::new(pool.clone(), "blocks")
+                        .await
+                        .map_err(|e| {
+                            sea_orm::DbErr::Custom(format!("Failed to create PostgresPubSub: {e}"))
+                        })?,
+                )
             },
             _ => {
                 // For non-Postgres databases, use in-memory pubsub

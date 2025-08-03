@@ -37,7 +37,7 @@ mod tests {
             sqlx::PgPool::connect(format!("postgres://postgres@{db_host}/grug_test").as_str())
                 .await?;
 
-        let pubsub = PostgresPubSub::new(pool.clone()).await?;
+        let pubsub = PostgresPubSub::new(pool.clone(), "blocks").await?;
         let pubsub_clone = pubsub.clone();
 
         {
