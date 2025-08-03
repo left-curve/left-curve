@@ -8,12 +8,15 @@ use {
 };
 
 #[derive(Clone)]
-pub struct PostgresPubSub {
-    sender: broadcast::Sender<u64>,
+pub struct PostgresPubSub<I>
+where
+    I: Clone + Send + 'static,
+{
+    sender: broadcast::Sender<I>,
     pool: sqlx::PgPool,
 }
 
-impl PostgresPubSub {
+impl PostgresPubSub<u64> {
     pub async fn new(pool: sqlx::PgPool) -> Result<Self> {
         let (sender, _) = broadcast::channel::<u64>(128);
 
@@ -72,7 +75,7 @@ impl PostgresPubSub {
 }
 
 #[async_trait]
-impl PubSub for PostgresPubSub {
+impl PubSub<u64> for PostgresPubSub<u64> {
     async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
         let rx = self.sender.subscribe();
 
@@ -81,9 +84,9 @@ impl PubSub for PostgresPubSub {
         ))
     }
 
-    async fn publish(&self, block_height: u64) -> Result<usize> {
+    async fn publish(&self, item: u64) -> Result<usize> {
         sqlx::query("select pg_notify('blocks', json_build_object('block_height', $1)::text)")
-            .bind(block_height as i64)
+            .bind(item as i64)
             .execute(&self.pool)
             .await?;
 

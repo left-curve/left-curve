@@ -6,10 +6,10 @@ pub use {memory::MemoryPubSub, postgres::PostgresPubSub};
 
 use {crate::error::Result, async_trait::async_trait, std::pin::Pin, tokio_stream::Stream};
 #[async_trait]
-pub trait PubSub {
-    async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>>;
+pub trait PubSub<I> {
+    async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = I> + Send + '_>>>;
 
-    async fn publish(&self, block_height: u64) -> Result<usize>;
+    async fn publish(&self, item: I) -> Result<usize>;
 }
 
 pub enum PubSubType {

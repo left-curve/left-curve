@@ -7,11 +7,14 @@ use {
 };
 
 /// In-memory pubsub implementation.
-pub struct MemoryPubSub {
-    pub sender: broadcast::Sender<u64>,
+pub struct MemoryPubSub<I> {
+    pub sender: broadcast::Sender<I>,
 }
 
-impl MemoryPubSub {
+impl<I> MemoryPubSub<I>
+where
+    I: Clone + Send + 'static,
+{
     pub fn new(capacity: usize) -> Self {
         let (sender, _) = broadcast::channel(capacity);
 
@@ -20,8 +23,11 @@ impl MemoryPubSub {
 }
 
 #[async_trait]
-impl PubSub for MemoryPubSub {
-    async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
+impl<I> PubSub<I> for MemoryPubSub<I>
+where
+    I: Clone + Send + 'static,
+{
+    async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = I> + Send + '_>>> {
         let rx = self.sender.subscribe();
 
         Ok(Box::pin(
@@ -29,9 +35,9 @@ impl PubSub for MemoryPubSub {
         ))
     }
 
-    async fn publish(&self, block_height: u64) -> Result<usize> {
+    async fn publish(&self, item: I) -> Result<usize> {
         // NOTE: Discarding the error as it happens if no receivers are connected.
         // There is no way to know if there are any receivers connected without RACE conditions.
-        Ok(self.sender.send(block_height).unwrap_or_default())
+        Ok(self.sender.send(item).unwrap_or_default())
     }
 }

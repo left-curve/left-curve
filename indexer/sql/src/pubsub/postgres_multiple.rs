@@ -19,7 +19,7 @@ impl PostgresPubSub {
 }
 
 #[async_trait]
-impl PubSub for PostgresPubSub {
+impl PubSub<u64> for PostgresPubSub {
     async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
         let mut listener = PgListener::connect_with(&self.pool).await?;
 
