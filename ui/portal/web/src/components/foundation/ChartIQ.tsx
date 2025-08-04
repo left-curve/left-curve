@@ -114,6 +114,14 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
       { "Up Volume": volumeColor.up, "Down Volume": volumeColor.down },
     );
 
+    stx.formatYAxisPrice = (price, params) => {
+      if (params?.display?.includes("-")) {
+        return formatNumber(price, { ...formatNumberOptions, maxSignificantDigits: 5 });
+      }
+
+      return formatNumber(price, { ...formatNumberOptions, notation: "compact" });
+    };
+
     stx.candleWidthPercent = 0.9;
     stx.chart.yAxis.zoom = -0.0000001;
     stx.chart.maxTicks = 40;
