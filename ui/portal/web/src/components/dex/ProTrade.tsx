@@ -280,7 +280,7 @@ const ProTradeOrders: React.FC = () => {
       cell: ({ row }) => (
         <Cell.Number
           formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
-          value={Decimal("476190476190")
+          value={Decimal(row.original.amount)
             .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
             .toFixed()}
         />
