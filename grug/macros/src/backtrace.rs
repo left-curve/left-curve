@@ -57,10 +57,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                     } else if inner == "private_constructor" {
                         is_private = true;
                     } else {
-                        panic!(
-                            "expected `new` | `private_constructor` attribute, got `{}`",
-                            inner
-                        );
+                        panic!("expected `new` | `private_constructor` attribute, got `{inner}`",);
                     }
                     false
                 } else {
@@ -226,11 +223,7 @@ fn to_snake_case(s: &Ident, is_private: bool) -> Ident {
             }
             prev_lower = false;
         } else if c.is_alphanumeric() {
-            if c.is_lowercase() {
-                prev_lower = true;
-            } else {
-                prev_lower = false;
-            }
+            prev_lower = c.is_lowercase();
             result.push(c);
         } else {
             if !result.ends_with('_') && !result.is_empty() {

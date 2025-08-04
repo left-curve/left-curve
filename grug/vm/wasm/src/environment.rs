@@ -369,7 +369,7 @@ mod test {
     #[test_case(
         "0_1",
         vec![],
-        Err(VmError::return_count("0_1".into(), 0, 1).into()),
+        Err(VmError::return_count("0_1".into(), 0, 1)),
         0;
         "0 in - 1 out: fails return count"
     )]
@@ -391,7 +391,7 @@ mod test {
     #[test_case(
         "1_0",
         vec![20],
-        Err(VmError::return_count("1_0".into(), 1, 0).into()),
+        Err(VmError::return_count("1_0".into(), 1, 0)),
         1;
         "1 in - 0 out: fails return count"
     )]
@@ -406,7 +406,7 @@ mod test {
     #[test_case(
         "1_1",
         vec![20],
-        Err(VmError::return_count("1_1".into(), 0, 1).into()),
+        Err(VmError::return_count("1_1".into(), 0, 1)),
         0;
         "1 in - 1 out: fails return count"
     )]
@@ -421,7 +421,7 @@ mod test {
     #[test_case(
         "2_1",
         vec![20, 22],
-        Err(VmError::return_count("2_1".into(), 0, 1).into()),
+        Err(VmError::return_count("2_1".into(), 0, 1)),
         0;
         "2 in 1 out: fails return count"
     )]

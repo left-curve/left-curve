@@ -166,7 +166,7 @@ where
             )?
             .map_err(|msg| AppError::Guest {
                 address: ctx.contract,
-                name: name,
+                name,
                 msg: msg.error,
                 backtrace: msg.backtrace
             })
