@@ -100,10 +100,7 @@ where
         // Make sure the genesis block height is zero. This is necessary to
         // ensure that block height always matches the DB version.
         if block.height != 0 {
-            return Err(AppError::IncorrectBlockHeight {
-                expect: 0,
-                actual: block.height,
-            });
+            return Err(AppError::incorrect_block_height(0, block.height));
         }
 
         // Create gas tracker for genesis.
@@ -237,10 +234,10 @@ where
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
         if block.info.height != last_finalized_block.height + 1 {
-            return Err(AppError::IncorrectBlockHeight {
-                expect: last_finalized_block.height + 1,
-                actual: block.info.height,
-            });
+            return Err(AppError::incorrect_block_height(
+                last_finalized_block.height + 1,
+                block.info.height,
+            ));
         }
 
         // Process transactions one-by-one.
@@ -734,7 +731,8 @@ where
     );
 
     if let Some(err) = events.withhold.maybe_error() {
-        return new_tx_outcome(gas_tracker, events, Err(err.clone()));
+        let err = err.clone();
+        return new_tx_outcome(gas_tracker, events, Err(err));
     }
 
     // Call the sender account's `authenticate` function.
@@ -764,6 +762,7 @@ where
 
     let request_backrun = match events.authenticate.as_result() {
         Err((_, err)) => {
+            let err = err.clone();
             drop(msg_buffer);
             return process_finalize_fee(
                 vm,
@@ -773,7 +772,7 @@ where
                 tx,
                 mode,
                 events,
-                Err(err.clone()),
+                Err(err),
                 trace_opt,
             );
         },
@@ -809,6 +808,7 @@ where
 
     match events.msgs_and_backrun.maybe_error() {
         Some(err) => {
+            let err = err.clone();
             drop(msg_buffer);
             return process_finalize_fee(
                 vm,
@@ -818,7 +818,7 @@ where
                 tx,
                 mode,
                 events,
-                Err(err.clone()),
+                Err(err),
                 trace_opt,
             );
         },
@@ -945,10 +945,10 @@ where
             new_tx_outcome(gas_tracker, events, result)
         },
         CommitmentStatus::Failed { error, .. } => {
-            let err = error.to_string();
-            let events = events.finalize_fails(evt_finalize, "idk");
+            let error = error.clone();
+            let events = events.finalize_fails(evt_finalize, &error);
             drop(buffer);
-            new_tx_outcome(gas_tracker, events, Err(err))
+            new_tx_outcome(gas_tracker, events, Err(error))
         },
         CommitmentStatus::NotReached | CommitmentStatus::Reverted { .. } => {
             unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`");

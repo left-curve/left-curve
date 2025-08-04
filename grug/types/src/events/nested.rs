@@ -3,7 +3,7 @@ use {
         Addr, CheckedContractEvent, Coins, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types_base::BacktracedError,
+    grug_types_base::{Backtraceable, BacktracedError},
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -379,21 +379,30 @@ pub enum SubEventStatus {
     },
     /// The event failed but the error was handled.
     /// State changes are reverted but the tx continues.
-    Handled { event: Event, error: String },
+    Handled {
+        event: Event,
+        error: BacktracedError<String>,
+    },
 }
 
 impl SubEventStatus {
-    pub fn failed(event: Event, error: BacktracedError<String>) -> Self {
-        Self::Failed { event, error }
+    pub fn failed<E>(event: Event, error: E) -> Self
+    where
+        E: Backtraceable,
+    {
+        Self::Failed {
+            event,
+            error: error.into_generic_backtraced_error(),
+        }
     }
 
     pub fn handled<E>(event: Event, error: E) -> Self
     where
-        E: ToString,
+        E: Backtraceable,
     {
         Self::Handled {
             event,
-            error: error.to_string(),
+            error: error.into_generic_backtraced_error(),
         }
     }
 }

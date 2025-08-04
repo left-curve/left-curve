@@ -6,8 +6,8 @@ use {
     },
 };
 
-// #[derive(Clone, Debug, Error)]
 #[grug_macros::backtrace]
+#[derive(Clone)]
 pub enum AppError {
     #[error(transparent)]
     Std(StdError),
@@ -63,8 +63,8 @@ pub enum AppError {
 }
 
 /// Dedicated error type for indexer operations
-// #[derive(Clone, Debug, Error)]
 #[grug_macros::backtrace]
+#[derive(Clone)]
 pub enum IndexerError {
     #[error("indexer is already running")]
     AlreadyRunning,
@@ -72,9 +72,8 @@ pub enum IndexerError {
     #[error("indexer is not running")]
     NotRunning,
 
-    #[error("I/O error: {0}")]
-    #[backtrace(fresh)]
-    Io(std::io::Error),
+    #[error("I/O error: {error}")]
+    Io { error: String },
 
     #[error("storage error: {error}")]
     Storage { error: String },

@@ -3573,6 +3573,7 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
+ "grug-macros",
  "grug-math",
  "grug-types",
  "indexer-disk-saver",
@@ -4853,6 +4854,7 @@ version = "0.0.0"
 dependencies = [
  "grug-app",
  "grug-jmt",
+ "grug-macros",
  "grug-types",
  "hex-literal",
  "ics23",
@@ -4867,6 +4869,7 @@ name = "grug-db-disk-lite"
 version = "0.0.0"
 dependencies = [
  "grug-app",
+ "grug-macros",
  "grug-types",
  "rocksdb",
  "sha2 0.10.9",
@@ -4881,6 +4884,7 @@ version = "0.0.0"
 dependencies = [
  "grug-app",
  "grug-jmt",
+ "grug-macros",
  "grug-types",
  "thiserror 2.0.12",
 ]
@@ -5114,6 +5118,7 @@ name = "grug-vm-hybrid"
 version = "0.0.0"
 dependencies = [
  "grug-app",
+ "grug-macros",
  "grug-types",
  "grug-vm-rust",
  "grug-vm-wasm",
@@ -5127,6 +5132,7 @@ dependencies = [
  "elsa",
  "grug-app",
  "grug-crypto",
+ "grug-macros",
  "grug-math",
  "grug-testing",
  "grug-types",
@@ -5152,7 +5158,6 @@ dependencies = [
  "grug-tester",
  "grug-testing",
  "grug-types",
- "grug-types-base",
  "grug-vm-wasm",
  "k256",
  "p256",
@@ -5887,6 +5892,7 @@ dependencies = [
  "grug",
  "grug-app",
  "grug-httpd",
+ "grug-macros",
  "grug-types",
  "indexer-hooked",
  "indexer-httpd",
@@ -6048,6 +6054,7 @@ dependencies = [
  "borsh 1.5.7",
  "futures",
  "grug-app",
+ "grug-macros",
  "grug-types",
  "indexer-disk-saver",
  "indexer-hooked",

@@ -1,6 +1,9 @@
-use grug_types_base::{Backtraceable, BacktracedError};
-
-use crate::Event;
+use {
+    crate::Event,
+    borsh::{BorshDeserialize, BorshSerialize},
+    grug_types_base::{Backtraceable, BacktracedError},
+    std::ops::Deref,
+};
 
 /// Result of which the error is a string.
 ///
@@ -15,10 +18,38 @@ use crate::Event;
 ///   passed from the host to the module).
 pub type GenericResult<T> = Result<T, BacktracedError<String>>;
 
+pub type QueryResult<T> = Result<T, String>;
+
 /// The result for executing a submessage.
 ///
 /// This is provided to the contract in the `reply` entry point.
-pub type SubMsgResult = GenericResult<Event>;
+#[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
+pub struct SubMsgResult(Result<Event, String>);
+
+impl SubMsgResult {
+    pub fn ok(event: Event) -> Self {
+        Self(Ok(event))
+    }
+
+    pub fn err<E>(error: &E) -> Self
+    where
+        E: Backtraceable,
+    {
+        Self(Err(error.error()))
+    }
+
+    pub fn into_result(self) -> Result<Event, String> {
+        self.0
+    }
+}
+
+impl Deref for SubMsgResult {
+    type Target = Result<Event, String>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 /// Describes an error of which the error can be stringified, and thus, can be
 /// passed across the FFI boundary.
@@ -31,9 +62,6 @@ where
     E: Backtraceable,
 {
     fn into_generic_result(self) -> GenericResult<T> {
-        self.map_err(|e| {
-            let (err, bt) = e.split();
-            BacktracedError::new_with_bt(err, bt)
-        })
+        self.map_err(Backtraceable::into_generic_backtraced_error)
     }
 }

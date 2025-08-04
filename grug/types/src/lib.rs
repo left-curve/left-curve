@@ -72,5 +72,5 @@ pub use {client::*, testing::*};
 // Dependencies used by the procedural macros.
 #[doc(hidden)]
 pub mod __private {
-    pub use {::borsh, ::hex_literal, ::serde, ::serde_json, ::serde_with};
+    pub use {::borsh, ::grug_types_base, ::hex_literal, ::serde, ::serde_json, ::serde_with};
 }

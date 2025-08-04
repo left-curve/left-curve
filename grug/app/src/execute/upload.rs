@@ -62,11 +62,11 @@ fn _do_upload(
     let cfg = CONFIG.load_with_gas(storage, gas_tracker.clone())?;
 
     if !has_permission(&cfg.permissions.upload, cfg.owner, uploader) {
-        return Err(AppError::Unauthorized);
+        return Err(AppError::unauthorized());
     }
 
     if CODES.has_with_gas(storage, gas_tracker.clone(), code_hash)? {
-        return Err(AppError::CodeExists { code_hash });
+        return Err(AppError::code_exists(code_hash));
     }
 
     CODES.save_with_gas(storage, gas_tracker, code_hash, &Code {

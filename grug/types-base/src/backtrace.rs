@@ -1,7 +1,10 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     core::error,
-    serde::{Deserialize, Serialize},
+    serde::{
+        Deserialize, Serialize,
+        de::{self, Visitor},
+    },
     std::{
         backtrace::{self},
         error::Error,
@@ -12,23 +15,29 @@ use {
 };
 
 pub trait Backtraceable {
-    fn split(self) -> (String, BT);
-
+    fn into_generic_backtraced_error(self) -> BacktracedError<String>;
     fn backtrace(&self) -> BT;
+    fn error(&self) -> String;
 }
 
 impl Backtraceable for anyhow::Error {
-    fn split(self) -> (String, BT) {
+    fn into_generic_backtraced_error(self) -> BacktracedError<String> {
         let bt = self.backtrace().into();
-        (self.to_string(), bt)
+        BacktracedError::new_with_bt(self.to_string(), bt)
     }
 
     fn backtrace(&self) -> BT {
         self.backtrace().into()
     }
+
+    fn error(&self) -> String {
+        self.to_string()
+    }
 }
 
-#[derive(Clone, Serialize, Deserialize, Eq, PartialEq)]
+// ------------------------------------ BT -------------------------------------
+
+#[derive(Clone, Eq, PartialEq)]
 pub struct BT(Arc<String>);
 
 impl BorshSerialize for BT {
@@ -36,7 +45,15 @@ impl BorshSerialize for BT {
     where
         W: io::Write,
     {
-        BorshSerialize::serialize(self.0.as_ref(), writer)
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            BorshSerialize::serialize(self.0.as_ref(), writer)
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            BorshSerialize::serialize("", writer)
+        }
     }
 }
 
@@ -45,14 +62,80 @@ impl BorshDeserialize for BT {
     where
         R: io::Read,
     {
-        let s = String::deserialize_reader(reader)?;
-        Ok(BT(Arc::new(s)))
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Ok(BT(Arc::new(String::deserialize_reader(reader)?)))
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            Ok(BT(Default::default()))
+        }
+    }
+}
+
+struct BTVisitor;
+
+impl<'de> Visitor<'de> for BTVisitor {
+    type Value = BT;
+
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("a string-encoded backtrace")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Ok(BT(Arc::new(v.to_string())))
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            Ok(BT(Default::default()))
+        }
+    }
+}
+
+impl Serialize for BT {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            serializer.serialize_str(self.0.as_ref())
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            serializer.serialize_str("")
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for BT {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_str(BTVisitor)
     }
 }
 
 impl Default for BT {
     fn default() -> Self {
-        (&backtrace::Backtrace::capture()).into()
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            (&backtrace::Backtrace::capture()).into()
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            BT(Arc::new("".to_string()))
+        }
     }
 }
 
@@ -85,7 +168,7 @@ impl Display for BT {
     }
 }
 
-// TODO: if the target is wasm, always clear the backtrace
+// ----------------------------- Backtraced Error ------------------------------
 
 #[derive(Serialize, Deserialize, Clone, BorshSerialize, BorshDeserialize, Eq)]
 pub struct BacktracedError<T> {
@@ -98,6 +181,13 @@ impl<T> BacktracedError<T> {
         Self {
             error: t,
             backtrace: BT::default(),
+        }
+    }
+
+    pub fn new_without_bt(t: T) -> Self {
+        Self {
+            error: t,
+            backtrace: BT(Arc::new("".to_string())),
         }
     }
 
@@ -160,7 +250,7 @@ mod tests {
     #[grug_macros::backtrace(crate)]
     enum Error {
         #[error(transparent)]
-        #[backtrace(fresh)]
+        #[backtrace(new)]
         NonBacktraceable(NonBacktraceableError),
         #[error("hi {x}")]
         Named { x: u32 },
@@ -186,8 +276,8 @@ mod tests {
     #[test]
     fn test_macro() {
         let inner = NonBacktraceableError::MyError { x: 1 };
-        let e: Error = inner.into();
 
-        let a = InnerError::_my_error(1, 2);
+        let _: Error = inner.into();
+        InnerError::_my_error(1, 2);
     }
 }

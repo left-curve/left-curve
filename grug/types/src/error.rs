@@ -5,7 +5,7 @@ use {
     std::{any::type_name, array::TryFromSliceError, convert::Infallible},
 };
 
-#[grug_macros::backtrace]
+#[grug_macros::backtrace(grug_types_base)]
 #[derive(Clone)]
 pub enum VerificationError {
     #[error("data is of incorrect length")]
@@ -31,19 +31,19 @@ impl VerificationError {
     }
 }
 
-#[grug_macros::backtrace]
+#[grug_macros::backtrace(grug_types_base)]
 #[derive(Clone)]
 pub enum StdError {
     #[error(transparent)]
-    #[backtrace(fresh)]
+    #[backtrace(new)]
     Infallible(Infallible),
 
     #[error(transparent)]
-    #[backtrace(fresh)]
+    #[backtrace(new)]
     TryFromSlice(TryFromSliceError),
 
     #[error(transparent)]
-    #[backtrace(fresh)]
+    #[backtrace(new)]
     Decode(DecodeError),
 
     #[error(transparent)]
@@ -54,7 +54,7 @@ pub enum StdError {
 
     #[error("host returned error: {0}")]
     #[backtrace(private_constructor)]
-    #[backtrace(fresh)]
+    #[backtrace(new)]
     Host(String),
 
     #[error("invalid denom `{denom}`: {reason}")]

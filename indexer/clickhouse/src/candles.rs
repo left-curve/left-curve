@@ -27,11 +27,11 @@ impl Indexer {
     ) -> Result<()> {
         let block = ctx
             .get::<grug_types::Block>()
-            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?;
+            .ok_or(IndexerError::missing_block_or_block_outcome())?;
 
         let block_outcome = ctx
             .get::<grug_types::BlockOutcome>()
-            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?;
+            .ok_or(IndexerError::missing_block_or_block_outcome())?;
 
         let dex = querier.as_ref().query_dex()?;
 

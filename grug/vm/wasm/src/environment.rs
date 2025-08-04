@@ -280,9 +280,9 @@ mod test {
         crate::{Environment, GAS_PER_OPERATION, Iterator, VmError, VmResult, WasmVm},
         grug_app::{GasTracker, QuerierProviderImpl, StorageProvider},
         grug_types::{
-            BlockInfo, Hash256, MockStorage, Order, Shared, StdError, Storage, Timestamp,
+            BacktracedError, BlockInfo, Hash256, MockStorage, Order, Shared, StdError, Storage,
+            Timestamp,
         },
-        grug_types_base::BacktracedError,
         std::sync::Arc,
         test_case::test_case,
         wasmer::{

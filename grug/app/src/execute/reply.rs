@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 #[cfg(feature = "tracing")]
 use dyn_event::dyn_event;
 use {
@@ -16,7 +18,7 @@ pub fn do_reply<VM>(
     msg_depth: usize,
     contract: Addr,
     msg: &Json,
-    result: &SubMsgResult,
+    result: SubMsgResult,
     reply_on: &ReplyOn,
     trace_opt: TraceOption,
 ) -> EventResult<EvtReply>
@@ -61,7 +63,7 @@ fn _do_reply<VM>(
     msg_depth: usize,
     contract: Addr,
     msg: &Json,
-    result: &SubMsgResult,
+    result: SubMsgResult,
     reply_on: &ReplyOn,
     trace_opt: TraceOption,
 ) -> EventResult<EvtReply>
@@ -102,7 +104,7 @@ where
             code_hash,
             &ctx,
             msg,
-            result,
+            result.deref(),
             trace_opt,
         ),
         evt => guest_event

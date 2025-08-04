@@ -1,6 +1,6 @@
 use {
     grug_app::AppError,
-    grug_types::StdError,
+    grug_types::{Backtraceable, StdError},
     std::string::FromUtf8Error,
     wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError},
 };
@@ -12,19 +12,19 @@ pub enum VmError {
     Std(StdError),
 
     #[error(transparent)]
-    #[backtrace(fresh)]
+    #[backtrace(new)]
     FromUtf8(FromUtf8Error),
 
     #[error(transparent)]
-    #[backtrace(fresh)]
+    #[backtrace(new)]
     Export(ExportError),
 
     #[error(transparent)]
-    #[backtrace(fresh)]
+    #[backtrace(new)]
     MemoryAccess(MemoryAccessError),
 
     #[error(transparent)]
-    #[backtrace(fresh)]
+    #[backtrace(new)]
     Runtime(RuntimeError),
 
     // The wasmer `CompileError` and `InstantiateError` are big (56 and 128 bytes,
@@ -102,7 +102,11 @@ impl From<VmError> for RuntimeError {
 
 impl From<VmError> for AppError {
     fn from(err: VmError) -> Self {
-        AppError::Vm(err.to_string())
+        let err = err.into_generic_backtraced_error();
+        AppError::Vm {
+            error: err.error,
+            backtrace: err.backtrace,
+        }
     }
 }
 

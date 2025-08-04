@@ -22,7 +22,6 @@ grug-crypto        = { workspace = true }
 grug-macros        = { workspace = true }
 grug-testing       = { workspace = true, optional = true }
 grug-types         = { workspace = true }
-grug-types-base    = { workspace = true }
 serde              = { workspace = true }
 thiserror          = { workspace = true }
 tracing            = { workspace = true }

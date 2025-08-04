@@ -383,9 +383,9 @@ impl DexAction {
                         // an unfortunate combination of parameters, not an bug
                         // in the contract.
                         if let Err(err) = &tx_outcome.result {
-                            err.contains("insufficient liquidity")
-                                || err.contains("output amount after fee must be positive") // this refers to output after _liquidity fee_
-                                || err.contains("output amount is zero") // this refers to output after _protocol fee_
+                            err.error.contains("insufficient liquidity")
+                                || err.error.contains("output amount after fee must be positive") // this refers to output after _liquidity fee_
+                                || err.error.contains("output amount is zero") // this refers to output after _protocol fee_
                         } else {
                             true
                         }
@@ -410,8 +410,8 @@ impl DexAction {
                         // We expect the transaction to succeed, unless for two
                         // specific reasons:
                         if let Err(err) = &tx_outcome.result {
-                            err.contains("insufficient liquidity")
-                                || err.contains("input amount must be positive")
+                            err.error.contains("insufficient liquidity")
+                                || err.error.contains("input amount must be positive")
                         } else {
                             true
                         }

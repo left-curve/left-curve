@@ -13,12 +13,13 @@ version       = { workspace = true }
 ibc = ["grug-app/ibc", "grug-jmt/ibc", "ics23"]
 
 [dependencies]
-grug-app   = { workspace = true }
-grug-jmt   = { workspace = true }
-grug-types = { workspace = true }
-ics23      = { workspace = true, optional = true }
-rocksdb    = { workspace = true }
-thiserror  = { workspace = true }
+grug-app    = { workspace = true }
+grug-jmt    = { workspace = true }
+grug-macros = { workspace = true }
+grug-types  = { workspace = true }
+ics23       = { workspace = true, optional = true }
+rocksdb     = { workspace = true }
+thiserror   = { workspace = true }
 
 [dev-dependencies]
 hex-literal  = { workspace = true }

@@ -91,7 +91,7 @@ enum CoingeckoPriceFeederError {
 
 impl From<CoingeckoPriceFeederError> for AppError {
     fn from(err: CoingeckoPriceFeederError) -> Self {
-        AppError::PrepareProposal(err.to_string())
+        AppError::prepare_proposal(err.to_string())
     }
 }
 

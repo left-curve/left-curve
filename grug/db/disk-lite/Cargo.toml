@@ -10,12 +10,13 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-grug-app   = { workspace = true }
-grug-types = { workspace = true }
-rocksdb    = { workspace = true }
-sha2       = { workspace = true }
-tempfile   = { workspace = true }
-thiserror  = { workspace = true }
+grug-app    = { workspace = true }
+grug-macros = { workspace = true }
+grug-types  = { workspace = true }
+rocksdb     = { workspace = true }
+sha2        = { workspace = true }
+tempfile    = { workspace = true }
+thiserror   = { workspace = true }
 
 [dev-dependencies]
 temp-rocksdb = { workspace = true }

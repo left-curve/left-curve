@@ -1,24 +1,27 @@
 use {
     grug_app::{AppError, GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{Context, Hash256},
+    grug_types::{Backtraceable, Context, Hash256},
     grug_vm_rust::{RustInstance, RustVm},
     grug_vm_wasm::{WasmInstance, WasmVm},
     std::collections::HashSet,
-    thiserror::Error,
 };
 
-#[derive(Debug, Error)]
+#[grug_macros::backtrace]
 pub enum VmError {
     #[error("RustVm error: {0}")]
-    Rust(#[from] grug_vm_rust::VmError),
+    Rust(grug_vm_rust::VmError),
 
     #[error("WasmVm error: {0}")]
-    Wasm(#[from] grug_vm_wasm::VmError),
+    Wasm(grug_vm_wasm::VmError),
 }
 
 impl From<VmError> for AppError {
     fn from(err: VmError) -> Self {
-        AppError::Vm(err.to_string())
+        let err = err.into_generic_backtraced_error();
+        AppError::Vm {
+            error: err.error,
+            backtrace: err.backtrace,
+        }
     }
 }
 

@@ -62,7 +62,12 @@ impl Models {
                     transaction_idx: Set(transaction_idx as i32),
                     transaction_type: Set(FlatCategory::Tx),
                     has_succeeded: Set(tx_outcome.result.is_ok()),
-                    error_message: Set(tx_outcome.clone().result.err()),
+                    error_message: Set(tx_outcome
+                        .clone()
+                        .result
+                        .err()
+                        .map(|err| err.to_json_string())
+                        .transpose()?),
                     gas_wanted: Set(tx.gas_limit.try_into()?),
                     gas_used: Set(tx_outcome.gas_used.try_into()?),
                     created_at: Set(created_at),

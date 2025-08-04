@@ -14,7 +14,7 @@ struct InputArgs {
 impl Parse for InputArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let crate_name = if input.is_empty() {
-            syn::parse_quote!(grug_types_base)
+            syn::parse_quote!(grug_types::__private::grug_types_base)
         } else {
             input.parse()?
         };
@@ -52,13 +52,13 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                 if a.path().is_ident("backtrace") {
                     let inner = a.parse_args::<Ident>().unwrap();
 
-                    if inner == "fresh" {
+                    if inner == "new" {
                         is_fresh = true;
                     } else if inner == "private_constructor" {
                         is_private = true;
                     } else {
                         panic!(
-                            "expected `fresh` | `private_constructor` attribute, got `{}`",
+                            "expected `new` | `private_constructor` attribute, got `{}`",
                             inner
                         );
                     }
@@ -188,14 +188,18 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
         #input
         #(#impl_from)*
         impl #crate_path::Backtraceable for #input_ident {
-            fn split(self) -> (String, #crate_path::BT) {
-                (self.to_string(), self.backtrace())
+            fn into_generic_backtraced_error(self) -> #crate_path::BacktracedError<String> {
+                self.into_generic_backtraced_error()
             }
 
             fn backtrace(&self) -> #crate_path::BT {
                 match self {
                     #(#match_statement)*
                 }
+            }
+
+            fn error(&self) -> String {
+                self.to_string()
             }
         }
 

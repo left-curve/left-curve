@@ -47,10 +47,7 @@ fn _do_configure(
 
     // Make sure the sender is authorized to set the config.
     if sender != cfg.owner {
-        return Err(AppError::NotOwner {
-            sender,
-            owner: cfg.owner,
-        });
+        return Err(AppError::not_owner(sender, cfg.owner));
     }
 
     if let Some(new_cfg) = msg.new_cfg {

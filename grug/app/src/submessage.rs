@@ -1,8 +1,8 @@
 use {
     crate::{AppError, EventResult, GasTracker, TraceOption, Vm, do_reply, process_msg},
     grug_types::{
-        Addr, BlockInfo, Buffer, EventStatus, GenericResult, ReplyOn, Shared, Storage, SubEvent,
-        SubEventStatus, SubMessage,
+        Addr, Backtraceable, BlockInfo, Buffer, EventStatus, ReplyOn, Shared, Storage, SubEvent,
+        SubEventStatus, SubMessage, SubMsgResult,
     },
 };
 
@@ -26,7 +26,7 @@ macro_rules! try_add_subevent {
                     event: $submsg_event,
                     reply: Some(EventStatus::Failed {
                         event,
-                        error: error.to_string(),
+                        error: error.clone().into_generic_backtraced_error(),
                     }),
                 }));
                 return EventResult::NestedErr {
@@ -77,7 +77,7 @@ where
     if msg_depth > MAX_MESSAGE_DEPTH {
         return EventResult::Err {
             event: vec![],
-            error: AppError::ExceedMaxMessageDepth,
+            error: AppError::exceed_max_message_depth(),
         };
     }
 
@@ -108,7 +108,7 @@ where
                     msg_depth + 1, // important: increase message depth
                     sender,
                     payload,
-                    &GenericResult::Ok(submsg_event.clone()),
+                    SubMsgResult::ok(submsg_event.clone()),
                     &submsg.reply_on,
                     trace_opt,
                 );
@@ -131,7 +131,7 @@ where
                     msg_depth + 1, // important: increase message depth
                     sender,
                     payload,
-                    &GenericResult::Err(err.to_string()),
+                    SubMsgResult::err(&err),
                     &submsg.reply_on,
                     trace_opt,
                 );

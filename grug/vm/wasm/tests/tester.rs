@@ -9,8 +9,8 @@ use {
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
-        Addr, Binary, Coins, Denom, GenericResult, InnerMut, Message, QuerierExt, QueryRequest,
-        ResultExt, VerificationError,
+        Addr, Backtraceable, Binary, Coins, Denom, GenericResult, InnerMut, Message, QuerierExt,
+        QueryRequest, ResultExt, VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
     rand::rngs::OsRng,
@@ -143,7 +143,7 @@ fn message_stack_overflow() {
             )
             .unwrap(),
         )
-        .should_fail_with_error(AppError::ExceedMaxMessageDepth);
+        .should_fail_with_error(AppError::exceed_max_message_depth());
 }
 
 // ------------------------------- crypto tests --------------------------------
@@ -209,7 +209,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.pk.inner_mut().pop();
         req
     },
-    GenericResult::Err(VerificationError::incorrect_length().to_string());
+    GenericResult::Err(VerificationError::incorrect_length().into_generic_backtraced_error());
     "invalid secp256r1: incorrect pk length"
 )]
 #[test_case(
@@ -218,7 +218,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.sig.inner_mut().pop();
         req
     },
-    GenericResult::Err(VerificationError::incorrect_length().to_string());
+    GenericResult::Err(VerificationError::incorrect_length().into_generic_backtraced_error());
     "invalid secp256r1: incorrect signature length"
 )]
 #[test_case(
@@ -227,7 +227,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.msg_hash.inner_mut().pop();
         req
     },
-    GenericResult::Err(VerificationError::incorrect_length().to_string());
+    GenericResult::Err(VerificationError::incorrect_length().into_generic_backtraced_error());
     "invalid secp256r1: incorrect msg hash length"
 )]
 #[test_case(
@@ -238,7 +238,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.pk = vk.to_sec1_bytes().to_vec().into();
         req
     },
-    GenericResult::Err(VerificationError::unauthentic().to_string());
+    GenericResult::Err(VerificationError::unauthentic().into_generic_backtraced_error());
     "invalid secp256r1: different pk"
 )]
 #[test_case(
@@ -247,7 +247,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.msg_hash = sha2_256(WRONG_MSG).to_vec().into();
         req
     },
-    GenericResult::Err(VerificationError::unauthentic().to_string());
+    GenericResult::Err(VerificationError::unauthentic().into_generic_backtraced_error());
     "invalid secp256r1: different msg"
 )]
 // ----- Secp256k1 -----
@@ -263,7 +263,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.pk.inner_mut().push(0);
         req
     },
-    GenericResult::Err(VerificationError::incorrect_length().to_string());
+    GenericResult::Err(VerificationError::incorrect_length().into_generic_backtraced_error());
     "invalid secp256k1: incorrect pk length"
 )]
 #[test_case(
@@ -272,7 +272,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.sig.inner_mut().push(0);
         req
     },
-    GenericResult::Err(VerificationError::incorrect_length().to_string());
+    GenericResult::Err(VerificationError::incorrect_length().into_generic_backtraced_error());
     "invalid secp256k1: incorrect signature length"
 )]
 #[test_case(
@@ -281,7 +281,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.msg_hash.inner_mut().push(0);
         req
     },
-    GenericResult::Err(VerificationError::incorrect_length().to_string());
+    GenericResult::Err(VerificationError::incorrect_length().into_generic_backtraced_error());
     "invalid secp256k1: incorrect msg hash length"
 )]
 #[test_case(
@@ -292,7 +292,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.pk = vk.to_sec1_bytes().to_vec().into();
         req
     },
-    GenericResult::Err(VerificationError::unauthentic().to_string());
+    GenericResult::Err(VerificationError::unauthentic().into_generic_backtraced_error());
     "invalid secp256k1: different pk"
 )]
 #[test_case(
@@ -301,7 +301,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.msg_hash = sha2_256(WRONG_MSG).to_vec().into();
         req
     },
-    GenericResult::Err(VerificationError::unauthentic().to_string());
+    GenericResult::Err(VerificationError::unauthentic().into_generic_backtraced_error());
     "invalid secp256k1: different msg"
 )]
 // ----- Ed25519 -----
@@ -317,7 +317,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.pk.inner_mut().push(123);
         req
     },
-    GenericResult::Err(VerificationError::incorrect_length().to_string());
+    GenericResult::Err(VerificationError::incorrect_length().into_generic_backtraced_error());
     "invalid ed25519: incorrect pk length"
 )]
 #[test_case(
@@ -326,7 +326,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.sig.inner_mut().push(123);
         req
     },
-    GenericResult::Err(VerificationError::incorrect_length().to_string());
+    GenericResult::Err(VerificationError::incorrect_length().into_generic_backtraced_error());
     "invalid ed25519: incorrect signature length"
 )]
 #[test_case(
@@ -335,7 +335,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.msg_hash.inner_mut().push(123);
         req
     },
-    GenericResult::Err(VerificationError::incorrect_length().to_string());
+    GenericResult::Err(VerificationError::incorrect_length().into_generic_backtraced_error());
     "invalid ed25519: incorrect msg hash length"
 )]
 #[test_case(
@@ -346,7 +346,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.pk = vk.as_bytes().to_vec().into();
         req
     },
-        GenericResult::Err(VerificationError::unauthentic().to_string());
+        GenericResult::Err(VerificationError::unauthentic().into_generic_backtraced_error());
     "invalid ed25519: different pk"
 )]
 #[test_case(
@@ -355,7 +355,7 @@ fn generate_ed25519_verify_request() -> QueryVerifyEd25519Request {
         req.msg_hash = sha2_512(WRONG_MSG).to_vec().into();
         req
     },
-    GenericResult::Err(VerificationError::unauthentic().to_string());
+    GenericResult::Err(VerificationError::unauthentic().into_generic_backtraced_error());
     "invalid ed25519: different msg"
 )]
 fn verifying_signature<G, M, R>(

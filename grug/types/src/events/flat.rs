@@ -41,7 +41,7 @@ pub enum FlatEventStatus {
     Ok,
     Failed(BacktracedError<String>),
     NestedFailed,
-    Handled(String),
+    Handled(BacktracedError<String>),
 }
 
 impl From<&FlatEventStatus> for i16 {
