@@ -1,9 +1,12 @@
 use {
     dango_testing::setup_test_naive,
-    dango_types::{constants::usdc, taxman},
+    dango_types::{
+        constants::{dango, usdc},
+        taxman,
+    },
     grug::{
         Addressable, BalanceChange, Coins, Inner, MultiplyFraction, ResultExt, Udec128, Uint128,
-        btree_map,
+        btree_map, coins,
     },
 };
 
@@ -74,7 +77,9 @@ fn fee_rate_update_works() {
 
     // Someone else sends a transaction.
     let success = suite
-        .transfer(&mut accounts.user1, accounts.owner.address(), Coins::new())
+        .transfer(&mut accounts.user1, accounts.owner.address(), coins! {
+            dango::DENOM.clone() => 123,
+        })
         .should_succeed();
 
     // Gas fee should be calculated using the new rate.

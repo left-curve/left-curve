@@ -10,9 +10,9 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst,
-        Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map,
-        coins,
+        Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, NonEmpty, Number,
+        NumberConst, Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128,
+        btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -220,9 +220,9 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
                 taxman,
                 &taxman::ExecuteMsg::Pay {
                     ty: FeeType::Withdraw,
-                    payments: btree_map! {
-                        ctx.sender => coins! { coin.denom.clone() => fee },
-                    },
+                    payments: NonEmpty::new_unchecked(btree_map! {
+                        ctx.sender => NonEmpty::new_unchecked(coins! { coin.denom.clone() => fee }),
+                    }),
                 },
                 coins! { coin.denom => fee },
             )?)

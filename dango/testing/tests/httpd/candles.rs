@@ -393,10 +393,13 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
     let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(_idx) = rx.recv().await {
-            let msgs = vec![Message::transfer(
-                accounts.user2.address(),
-                Coins::one(usdc::DENOM.clone(), 123).unwrap(),
-            )?];
+            let msgs = vec![
+                Message::transfer(
+                    accounts.user2.address(),
+                    Coins::one(usdc::DENOM.clone(), 123).unwrap(),
+                )?
+                .unwrap(), // safe to unwrap because we know the coins is non-empty
+            ];
 
             let mut suite_guard = suite_clone.lock().await;
 

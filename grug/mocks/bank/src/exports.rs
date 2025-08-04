@@ -5,7 +5,7 @@ use {
     },
     anyhow::bail,
     grug_types::{
-        BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Json, JsonSerExt, MutableCtx,
+        BankMsg, BankQuery, BankQueryResponse, ImmutableCtx, Inner, Json, JsonSerExt, MutableCtx,
         Response, StdResult, SudoCtx,
     },
 };
@@ -83,7 +83,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
 }
 
 pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
-    for (to, coins) in msg.transfers {
+    for (to, coins) in msg.transfers.into_inner() {
         transfer(ctx.storage, msg.from, to, &coins)?;
     }
 

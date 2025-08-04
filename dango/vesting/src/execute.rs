@@ -70,18 +70,13 @@ fn terminate(ctx: MutableCtx, user: Addr) -> anyhow::Result<Response> {
 
     // Any unvested tokens is clawed back.
     let refund = position.total.checked_sub(vested)?;
-    let refund_msg = if refund.is_non_zero() {
-        Some(Message::transfer(
-            owner,
-            Coin::new(dango::DENOM.clone(), refund)?,
-        )?)
-    } else {
-        None
-    };
 
     POSITIONS.save(ctx.storage, user, &position)?;
 
-    Ok(Response::new().may_add_message(refund_msg))
+    Ok(Response::new().may_add_message(Message::transfer(
+        owner,
+        Coin::new(dango::DENOM.clone(), refund)?,
+    )?))
 }
 
 fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
@@ -96,7 +91,7 @@ fn claim(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     POSITIONS.save(ctx.storage, ctx.sender, &position)?;
 
-    Ok(Response::new().add_message(Message::transfer(
+    Ok(Response::new().may_add_message(Message::transfer(
         ctx.sender,
         Coin::new(dango::DENOM.clone(), claimable)?,
     )?))

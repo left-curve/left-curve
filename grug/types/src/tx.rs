@@ -140,28 +140,52 @@ impl Message {
         .into())
     }
 
-    pub fn transfer<C>(to: Addr, coins: C) -> StdResult<Self>
+    /// Returns:
+    ///
+    /// - `Ok(Some(...))` if the transfer is valid and non-empty.
+    /// - `Ok(None)` if the transfer is empty.
+    /// - `Err(...)` if the transfer is invalid.
+    pub fn transfer<C>(to: Addr, coins: C) -> StdResult<Option<Self>>
     where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        Ok(Message::Transfer(btree_map! { to => coins.try_into()? }))
+        let coins = coins.try_into()?;
+        if coins.is_empty() {
+            return Ok(None);
+        }
+
+        Ok(Some(Message::Transfer(NonEmpty::new_unchecked(
+            btree_map! { to => NonEmpty::new_unchecked(coins) },
+        ))))
     }
 
-    pub fn batch_transfer<I, C>(transfers: I) -> StdResult<Self>
+    /// Returns:
+    ///
+    /// - `Ok(Some(...))` if the transfer is valid and non-empty.
+    /// - `Ok(None)` if the transfer is empty.
+    /// - `Err(...)` if the transfer is invalid.
+    pub fn batch_transfer<I, C>(transfers: I) -> StdResult<Option<Self>>
     where
         I: IntoIterator<Item = (Addr, C)>,
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        transfers
+        let transfers = transfers
             .into_iter()
-            .map(|(to, coins)| {
-                let coins = coins.try_into()?;
-                Ok((to, coins))
+            .filter_map(|(to, coins)| match coins.try_into() {
+                Ok(coins) => {
+                    if coins.is_non_empty() {
+                        Some(Ok((to, NonEmpty::new_unchecked(coins))))
+                    } else {
+                        None
+                    }
+                },
+                Err(err) => Some(Err(err.into())),
             })
-            .collect::<StdResult<_>>()
-            .map(Message::Transfer)
+            .collect::<StdResult<BTreeMap<_, _>>>()?;
+
+        Ok(NonEmpty::new(transfers).ok().map(Message::Transfer))
     }
 
     pub fn upload<B>(code: B) -> Self
@@ -232,7 +256,7 @@ pub struct MsgConfigure {
 }
 
 // recipient => coins
-pub type MsgTransfer = BTreeMap<Addr, Coins>;
+pub type MsgTransfer = NonEmpty<BTreeMap<Addr, NonEmpty<Coins>>>;
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

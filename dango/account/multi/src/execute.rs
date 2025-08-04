@@ -289,11 +289,12 @@ mod tests {
             account::multi::{self, Params},
             account_factory::{self, Account, AccountParams},
             config::{AppAddresses, AppConfig},
+            constants::dango,
         },
         grug::{
             Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Json, JsonSerExt,
             MOCK_BLOCK, MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp,
-            btree_map,
+            btree_map, coins,
         },
         std::{collections::BTreeMap, str::FromStr},
         test_case::test_case,
@@ -373,7 +374,9 @@ mod tests {
                 sender: MULTI,
                 gas_limit: 1_000_000,
                 msgs: NonEmpty::new_unchecked(vec![
-                    Message::transfer(Addr::mock(123), Coins::new()).unwrap(),
+                    Message::transfer(Addr::mock(123), coins! { dango::DENOM.clone() => 100 })
+                        .unwrap()
+                        .unwrap(),
                 ]),
                 data: Metadata {
                     username: member1,
@@ -758,6 +761,7 @@ mod tests {
                 description: None,
                 messages: vec![
                     Message::transfer(Addr::mock(123), Coins::one("uusdc", 12_345).unwrap())
+                        .unwrap()
                         .unwrap(),
                 ],
                 status: Status::Voting {
