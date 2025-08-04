@@ -264,16 +264,10 @@ const ProTradeOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={formatNumberOptions}
-          value={formatNumber(
-            Decimal(row.original.remaining)
-              .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
-              .toFixed(),
-            {
-              ...formatNumberOptions,
-              maxSignificantDigits: 10,
-            },
-          )}
+          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          value={Decimal(row.original.remaining)
+            .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
+            .toFixed()}
         />
       ),
     },
@@ -285,16 +279,10 @@ const ProTradeOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={formatNumberOptions}
-          value={formatNumber(
-            Decimal(row.original.amount)
-              .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
-              .toFixed(),
-            {
-              ...formatNumberOptions,
-              maxSignificantDigits: 10,
-            },
-          )}
+          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          value={Decimal("476190476190")
+            .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
+            .toFixed()}
         />
       ),
     },
