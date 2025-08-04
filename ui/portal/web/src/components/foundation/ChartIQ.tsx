@@ -13,7 +13,7 @@ import { createChartIQConfig, createChartIQDataFeed } from "~/chartiq";
 import { useApp } from "~/hooks/useApp";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
 
 import "@left-curve/chartiq/examples/translations/translationSample";
 
@@ -34,7 +34,9 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
   const uiContextRef = useRef<CIQ.UI.Context | null>(null);
   const container = useRef<HTMLElement | null>(null);
   const { isMd } = useMediaQuery();
+  const { settings } = useApp();
 
+  const { formatNumberOptions } = settings;
   const { base, quote } = coins;
 
   const pairSymbol = `${base.symbol}-${quote.symbol}`;
@@ -138,13 +140,14 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
     const ref = uiContextRef.current?.stx.append("draw", () => {
       const stx = uiContextRef.current?.stx;
       for (const order of orders) {
+        const baseCoin = allCoins.byDenom[order.baseDenom];
+        const quoteCoin = allCoins.byDenom[order.quoteDenom];
+
+        const pairSymbol = `${baseCoin.symbol}-${quoteCoin.symbol}`;
+        if (stx.chart.symbol !== pairSymbol) continue;
+
         const price = Decimal(order.price)
-          .times(
-            Decimal(10).pow(
-              allCoins.byDenom[order.baseDenom].decimals -
-                allCoins.byDenom[order.quoteDenom].decimals,
-            ),
-          )
+          .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
           .toFixed(5);
 
         const y = stx.pixelFromPrice(price, stx.chart.panel);
@@ -162,7 +165,7 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
         });
         stx.createYAxisLabel(
           stx.chart.panel,
-          order.price,
+          formatNumber(price, { ...formatNumberOptions, maxSignificantDigits: 5 }),
           stx.pixelFromTransformedValue(price),
           color,
           "white",
