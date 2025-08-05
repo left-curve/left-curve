@@ -1,4 +1,7 @@
-use {crate::AppResult, grug_types::Storage};
+use {
+    crate::AppResult,
+    grug_types::{BlockInfo, Storage},
+};
 
 pub struct UpgradeHandler<VM> {
     /// An optional message to be printed to tracing logs.
@@ -7,5 +10,5 @@ pub struct UpgradeHandler<VM> {
     pub height: u64,
     /// An action to perform.
     /// The function takes the state storage and the VM instance as inputs, and returns empty.
-    pub action: Box<dyn Fn(Box<dyn Storage>, VM) -> AppResult<()> + Send + Sync>,
+    pub action: Box<dyn Fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()> + Send + Sync>,
 }

@@ -260,14 +260,13 @@ where
                     "Performing upgrade"
                 );
 
-                (upgrade_handler.action)(Box::new(buffer.clone()), self.vm.clone()).unwrap_or_else(
-                    |err| {
+                (upgrade_handler.action)(Box::new(buffer.clone()), self.vm.clone(), block.info)
+                    .unwrap_or_else(|err| {
                         panic!(
                             "upgrade failed! height: {}, reason: {}",
                             upgrade_handler.height, err
                         );
-                    },
-                );
+                    });
             }
         }
 
