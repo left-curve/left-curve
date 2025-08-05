@@ -35,7 +35,7 @@ RUN rm -rf left-curve
 
 FROM rust:1.88.0-alpine AS wasm-opt
 
-ARG BINARYEN_GIT_TAG="version_119"
+ARG BINARYEN_GIT_TAG="version_123"
 
 # Install build dependencies
 RUN apk update && apk add --no-cache build-base clang cmake git ninja python3
