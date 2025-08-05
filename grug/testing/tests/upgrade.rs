@@ -59,11 +59,11 @@ fn upgrading_without_calling_contract() {
     });
 }
 
-/// Do an upgrade that involves changing a contract's internal state.
+/// Do an upgrade that involves calling a contract.
 ///
-/// In this test, we assume there is an alternative bank contract where balances
-/// are stored as 256 (instead of 128) bit numbers. During the upgrade, we need
-/// to load all the 128-bit balances, convert them to 256-bit, and save.
+/// In this test, we upgrade to an alternative bank contract where balances are
+/// stored as 256 (instead of 128) bit numbers. During the upgrade, we need to
+/// load all the 128-bit balances, convert them to 256-bit, and save.
 ///
 /// In practice, this can be easily done with a simple contract migration, but
 /// here for testing purpose, we go with a full chain upgrade.
@@ -76,16 +76,23 @@ fn upgrading_with_calling_contract() {
             grug_types::{Addr, Denom, Empty, MutableCtx, Order, Response, StdResult},
         };
 
+        // NOTE: using `Uint256` here.
         pub const BALANCES_BY_ADDR: Map<(Addr, &Denom), Uint256> = Map::new("bu");
 
         /// Call this function to convert all balances to 256-bit.
         pub fn execute(ctx: MutableCtx, _msg: Empty) -> StdResult<Response> {
-            // Loop through all the balances and convert them to 256-bit.
+            // Load all entries from the _old_ map and loop through them.
+            // Do not confuse:
+            // - The old map is `grug_mock_bank::BALANCES_BY_ADDR`.
+            // - The new map is `new_mock_bank::BALANCES_BY_ADDR`.
             for ((addr, denom), amount) in grug_mock_bank::BALANCES_BY_ADDR
                 .range(ctx.storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()?
             {
+                // Convert the 128-bit amount to 256-bit.
                 let amount = amount.into_next();
+
+                // Save the 256-bit amount in the _new_ map.
                 BALANCES_BY_ADDR.save(ctx.storage, (addr, &denom), &amount)?;
             }
 
