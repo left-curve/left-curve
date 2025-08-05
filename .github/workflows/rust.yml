@@ -76,7 +76,7 @@ jobs:
         run: rustup run nightly cargo fmt --check --all
 
   check-graphql-schema:
-    name: Format
+    name: Check GraphQL schema changes
     runs-on: [self-hosted]
     steps:
       - name: Checkout sources
@@ -95,7 +95,7 @@ jobs:
 
   check-no-features:
     needs: [push-manifest]
-    name: Check no features (${{ matrix.partition }})
+    name: Check each crate with no features (${{ matrix.partition }})
     runs-on: self-hosted
     strategy:
       matrix:
