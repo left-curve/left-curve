@@ -23,7 +23,7 @@
     path: "{{ item }}"
     state: directory
     mode: '0755'
-  loop: ["{{ config_dir }}", "{{ data_dir }}"]
+  loop: ["{{ config_dir }}"]
 
 - name: Copy postgres config
   become: true
@@ -43,18 +43,18 @@
     image: "postgres:{{ psql_version }}"
     restart_policy: unless-stopped
     state: started
-    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     env:
       POSTGRES_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
       POSTGRES_PASSWORD: "{{ db_password }}"
+      POSTGRES_INITDB_ARGS: "-c include=/etc/postgresql/postgresql.conf"
     ports:
       - "127.0.0.1:{{ host_port }}:5432"
     volumes:
       - "{{ data_dir }}:/var/lib/postgresql/data"
-      - "{{ config_dir }}/postgresql.conf:/etc/postgresql/postgresql.conf"
-      - "{{ config_dir }}/init.sql:/docker-entrypoint-initdb.d/init.sql"
+      - "{{ config_dir }}/postgresql.conf:/etc/postgresql/postgresql.conf:ro"
+      - "{{ config_dir }}/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"
     healthcheck:
-      test: ["CMD", "pg_isready", "-q"]
+      test: ["CMD", "pg_isready", "-U", "{{ lookup('env','DB_USER', default='postgres') }}", "-q"]
       interval: 2s
       timeout: 5s
       retries: 10

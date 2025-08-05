@@ -37,6 +37,7 @@ scrape_configs:
         - '100.96.253.40:9100'  # ovh1
         - '100.107.248.71:9100' # ovh2
         - 'node-exporter:9100' # ovh3
+        - '100.114.160.24:9100' # ovh4
 
   - job_name: 'clickhouse'
     static_configs:

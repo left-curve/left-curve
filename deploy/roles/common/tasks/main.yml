@@ -1,3 +1,10 @@
+- name: Change password for the Ansible‐connected user
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    password: "{{ ansible_user_password | password_hash('sha512') }}"
+    update_password: always
+  when: ansible_user_password != ''
+
 - name: Install locales package
   apt:
     name: locales
@@ -64,7 +71,7 @@
   tags: setup
 - ufw: default=deny direction=incoming
   tags: setup
-- name: Allow SSH on non-tailscale when no tailscale0 exists
+- name: Allow SSH on non-tailscale
   ufw:
     rule: allow
     direction: in
@@ -74,14 +81,11 @@
     - ssh
     # mosh
     - '60000:61000'
-  when: "'tailscale0' not in ansible_facts.interfaces"
 - name: Allow any port on tailscale0
   ufw:
     rule: allow
     direction: in
     interface: tailscale0
-    proto: tcp
-  when: "'tailscale0' in ansible_facts.interfaces"
 - ufw:
     rule: allow
     direction: in
@@ -115,55 +119,3 @@
   with_items:
     - 10-banner
     - 20-sysinfo
-
-- name: Check existing swap file
-  stat:
-    path: /swapfile
-  register: swap_stat
-
-- name: Check if swap is active
-  command: swapon --show=NAME --noheadings
-  register: active_swaps
-  changed_when: false
-
-- name: Disable swap if wrong size
-  command: swapoff /swapfile
-  when:
-    - swap_stat.stat.exists
-    - swap_stat.stat.size != (32 * 1024 * 1024 * 1024)
-    - '"/swapfile" in active_swaps.stdout'
-
-- name: Remove swap file if wrong size
-  file:
-    path: /swapfile
-    state: absent
-  when: swap_stat.stat.exists and swap_stat.stat.size != (32 * 1024 * 1024 * 1024)
-
-- name: Create 32G swap file
-  command: fallocate -l 32G /swapfile
-  args:
-    creates: /swapfile
-
-- name: Create swap file
-  command: fallocate -l 32G /swapfile
-  args:
-    creates: /swapfile2
-
-- name: Set swap file permissions
-  file:
-    path: /swapfile2
-    mode: '0600'
-
-- name: Make swap file
-  command: mkswap /swapfile
-  args:
-    creates: /swapfile2
-
-- name: Enable swap file
-  command: swapon /swapfile2
-
-- name: Add swap to fstab
-  lineinfile:
-    path: /etc/fstab
-    line: '/swapfile2 none swap sw 0 0'
-    state: present
