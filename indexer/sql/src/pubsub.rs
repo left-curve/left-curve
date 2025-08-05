@@ -1,10 +1,11 @@
+use {crate::error::Result, async_trait::async_trait, std::pin::Pin, tokio_stream::Stream};
+
 pub mod memory;
 pub mod postgres;
 pub mod postgres_multiple;
 
 pub use {memory::MemoryPubSub, postgres::PostgresPubSub};
 
-use {crate::error::Result, async_trait::async_trait, std::pin::Pin, tokio_stream::Stream};
 #[async_trait]
 pub trait PubSub {
     async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>>;
