@@ -1,11 +1,13 @@
 import { useStorage } from "@left-curve/store";
 import { useEffect } from "react";
 
-export type Themes = "dark" | "light" | "system";
+export type ThemesSchema = "dark" | "light" | "system";
+export type Themes = "dark" | "light";
 
 export type UseThemeReturnType = {
   theme: Themes;
-  setTheme: (theme: Themes) => void;
+  themeSchema: ThemesSchema;
+  setThemeSchema: (theme: ThemesSchema) => void;
 };
 
 const getPreferredScheme = (): Themes => {
@@ -16,20 +18,20 @@ const getPreferredScheme = (): Themes => {
 };
 
 export function useTheme(): UseThemeReturnType {
-  const [theme, setTheme] = useStorage<Themes>("app.theme", {
+  const [themeSchema, setThemeSchema] = useStorage<ThemesSchema>("app.theme", {
     initialValue: "system",
     sync: true,
   });
+
+  const theme = themeSchema === "system" ? getPreferredScheme() : themeSchema;
 
   useEffect(() => {
     const root = window.document.documentElement;
 
     root.classList.remove("light", "dark");
 
-    const isSystemTheme = theme === "system";
-
-    root.classList.add(isSystemTheme ? getPreferredScheme() : theme);
+    root.classList.add(theme);
   }, [theme]);
 
-  return { theme, setTheme };
+  return { theme, themeSchema, setThemeSchema };
 }

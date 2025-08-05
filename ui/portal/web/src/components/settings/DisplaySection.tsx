@@ -77,7 +77,7 @@ const FormatNumberSection: React.FC = () => {
 };
 
 const ThemeSection: React.FC = () => {
-  const { theme, setTheme } = useTheme();
+  const { themeSchema, setThemeSchema } = useTheme();
 
   return (
     <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
@@ -86,9 +86,9 @@ const ThemeSection: React.FC = () => {
         <span className="diatype-m-bold text-secondary-700">{m["settings.theme"]()}</span>
       </p>
       <Tabs
-        selectedTab={theme}
+        selectedTab={themeSchema}
         layoutId="theme"
-        onTabChange={(value) => setTheme(value as "system" | "light" | "dark")}
+        onTabChange={(value) => setThemeSchema(value as "system" | "light" | "dark")}
         classNames={{ base: "exposure-sm-italic" }}
       >
         <Tab title="system">System</Tab>
