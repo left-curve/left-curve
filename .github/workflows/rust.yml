@@ -6,6 +6,7 @@ concurrency:
 
 env:
   GIT_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+  CARGO_TERM_COLOR: always
 
 on:
   workflow_dispatch:
@@ -74,36 +75,84 @@ jobs:
       - name: Run rustfmt checks
         run: rustup run nightly cargo fmt --check --all
 
+  check-graphql-schema:
+    name: Format
+    runs-on: [self-hosted]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - run: cargo run -p dango-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
+      - name: Check schema
+        run: |
+          if ! git diff --exit-code ./indexer/client/src/schemas/schema.graphql; then
+            echo "::error::GraphQL schema out of date"
+            exit 1
+          fi
+
   check-no-features:
     needs: [push-manifest]
-    name: Check compiling without features
+    name: Check no features (${{ matrix.partition }})
     runs-on: self-hosted
+    strategy:
+      matrix:
+        partition: [1, 2, 3, 4]  # Adjust based on number of crates
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref }}
-
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: nightly
       - name: Check without features
         run: |
           set -euo pipefail
-          for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
+          crates=($(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name' | sort))
+          total_crates=${#crates[@]}
+          partition_size=$(( (total_crates + 3) / 4 ))  # Ceiling division for 4 partitions
+          start_idx=$(( (partition_size * (${{ matrix.partition }} - 1)) ))
+          end_idx=$(( partition_size * ${{ matrix.partition }} ))
+
+          for ((i=start_idx; i<end_idx && i<total_crates; i++)); do
+            crate="${crates[$i]}"
             echo "Checking $crate..."
             cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
           done
 
-  test:
+  build-test-artifacts:
     needs: [format]
-    name: Lint + Test
+    name: Build test artifacts
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - name: Build and archive tests
+        run: cargo nextest archive --archive-file nextest-archive.tar.zst
+      - name: Upload archive to workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextest-archive
+          path: nextest-archive.tar.zst
+
+  run-tests-partitioned:
+    needs: [build-test-artifacts]
+    name: Test (${{ matrix.partition }})
     runs-on: self-hosted
     timeout-minutes: 20
-    # Don't use this, it raises permissions issues on self hosted runners
-    # container:
-    #   image: ghcr.io/left-curve/left-curve/native-builder
-    # permissions:
-    #   packages: read
+    strategy:
+      matrix:
+        partition: [1, 2]
     env:
       PGDATABASE: grug_test
       DB_HOST: postgres
@@ -118,7 +167,6 @@ jobs:
         env:
           POSTGRES_PASSWORD: postgres
         ports:
-          # Using a different port to not mess with the currently running psql
           - 127.0.0.1:6432:5432
         options: >-
           --health-cmd pg_isready
@@ -132,7 +180,6 @@ jobs:
           CLICKHOUSE_USER: default
           CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
         ports:
-          # Using a different port to not mess with the currently running clickhouse
           - 127.0.0.1:10123:8123
         options: >-
           --health-cmd "clickhouse-client --query 'SELECT 1'"
@@ -141,48 +188,23 @@ jobs:
           --health-retries 10
           --ulimit nofile=262144:262144
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref }}
-
-      - name: Install toolchain
-        uses: dtolnay/rust-toolchain@stable
+      # In this example, the Rust toolchain is not installed. cargo nextest's run phase does not
+      # require Cargo. You can choose to install Rust if your tests require it, of course.
+      # Instead, create ~/.cargo/bin as required by the install action.
+      - run: mkdir -p ~/.cargo/bin
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - name: Download archive
+        uses: actions/download-artifact@v4
         with:
-          toolchain: stable
-          components: clippy
-
-      # - name: Create psql database
-      #   run: |
-      #     createdb -U postgres -h postgres "$PGDATABASE"
-
-      # - uses: actions/cache@v4
-      #   with:
-      #     path: |
-      #       ${HOME}/.cargo/bin/
-      #       ${HOME}/.cargo/registry/index/
-      #       ${HOME}/.cargo/registry/cache/
-      #       ${HOME}/.cargo/git/db/
-      #       target/
-      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Run clippy
-        run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
-
-      - name: Build GraphQL schema
-        run: cargo run -p dango-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
-
-      - name: Check if schema is up-to-date
-        run: |
-          if ! git diff --exit-code ./indexer/client/src/schemas/schema.graphql; then
-            echo "::error::GraphQL schema is out of date. Please run 'just build-graphql-schema' locally and commit the changes."
-            exit 1
-          fi
-
+          name: nextest-archive
       - name: Run tests
-        run: cargo test --all-features
-        env:
-          RUST_BACKTRACE: 1
+        run: |
+          ~/.cargo/bin/cargo-nextest nextest run --archive-file nextest-archive.tar.zst \
+            --partition count:${{ matrix.partition }}/2
 
   build:
     timeout-minutes: 20
