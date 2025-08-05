@@ -31,49 +31,51 @@ scrape_configs:
       - targets: ['grafana:{{ grafana_port | default(3000) }}']
 
   - job_name: 'node-exporter'
-    scrape_interval: 30s
     static_configs:
       - targets:
-        - '100.96.253.40:9100'  # ovh1
-        - '100.107.248.71:9100' # ovh2
-        - 'node-exporter:9100' # ovh3
+        - 'ovh1:9100'
+        - 'ovh2:9100'
+        - 'node-exporter:9100' # self
+        - 'ovh4:9100'
+        - 'ovh5:9100'
+        - 'ovh6:9100'
+        - 'ovh7:9100'
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: 'node-exporter:9100'
+      target_label: instance
+      replacement: 'ovh3:9100'
 
   - job_name: 'clickhouse'
     static_configs:
-      - targets: ['100.96.253.40:9126'] # ovh1
-        labels:
-          environment: 'production'
-          network: 'devnet'
-      - targets: ['100.107.248.71:9126'] # ovh2
-        labels:
-          environment: 'production'
-          network: 'testnet'
-    scrape_interval: 30s
+      - targets: ['ovh1:9126']
+      - targets: ['ovh2:9126']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['ovh1:9187']
+      - targets: ['ovh2:9187']
 
   - job_name: 'dango'
     static_configs:
-      - targets: ['100.96.253.40:9191'] # ovh1
+      - targets: ['ovh1:9191'] # ovh1
         labels:
           service: 'dango'
           environment: 'production'
           network: 'devnet'
-      - targets: ['100.107.248.71:9191'] # ovh2
+      - targets: ['ovh2:9191'] # ovh2
         labels:
           service: 'dango'
           environment: 'production'
           network: 'testnet'
-    scrape_interval: 15s
 
   - job_name: 'cometbft'
     static_configs:
-      - targets: ['100.96.253.40:26660'] # ovh1
+      - targets: ['ovh1:26660'] # ovh1
         labels:
-          service: 'cometbft'
           environment: 'production'
           network: 'devnet'
-      - targets: ['100.107.248.71:26660'] # ovh2
+      - targets: ['ovh2:26660'] # ovh2
         labels:
-          service: 'cometbft'
           environment: 'production'
           network: 'testnet'
-    scrape_interval: 15s
