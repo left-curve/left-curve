@@ -61,8 +61,8 @@ BINARYEN_GIT_TAG := "version_123"
 # Build and publish optimizer Docker image
 docker-build-optimizer:
   docker buildx build \
-    --push \
-    --platform linux/amd64,linux/arm64 \
+    --load \
+    --platform linux/arm64 \
     --build-arg GIT_COMMIT={{LEFT_CURVE_GIT_COMMIT}} \
     --build-arg BINARYEN_GIT_TAG={{BINARYEN_GIT_TAG}} \
     --tag {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}} \

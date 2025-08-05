@@ -17,8 +17,17 @@ grug-app   = { workspace = true }
 grug-jmt   = { workspace = true }
 grug-types = { workspace = true }
 ics23      = { workspace = true, optional = true }
-rocksdb    = { workspace = true }
 thiserror  = { workspace = true }
+
+#
+# For RocksDB:
+# On musl platforms, use "static" linking; otherwise, use "runtime" linking.
+#
+[target.'cfg(target_env = "musl")'.dependencies]
+rocksdb = { workspace = true, features = ["bindgen-static"] }
+
+[target.'cfg(not(target_env = "musl"))'.dependencies]
+rocksdb = { workspace = true, features = ["bindgen-runtime"] }
 
 [dev-dependencies]
 hex-literal  = { workspace = true }

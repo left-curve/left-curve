@@ -12,10 +12,19 @@ version       = { workspace = true }
 [dependencies]
 grug-app   = { workspace = true }
 grug-types = { workspace = true }
-rocksdb    = { workspace = true }
 sha2       = { workspace = true }
 tempfile   = { workspace = true }
 thiserror  = { workspace = true }
+
+#
+# For RocksDB:
+# On musl platforms, use "static" linking; otherwise, use "runtime" linking.
+#
+[target.'cfg(target_env = "musl")'.dependencies]
+rocksdb = { workspace = true, features = ["bindgen-static"] }
+
+[target.'cfg(not(target_env = "musl"))'.dependencies]
+rocksdb = { workspace = true, features = ["bindgen-runtime"] }
 
 [dev-dependencies]
 temp-rocksdb = { workspace = true }
