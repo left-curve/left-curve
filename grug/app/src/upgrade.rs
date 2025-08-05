@@ -10,5 +10,5 @@ pub struct UpgradeHandler<VM> {
     pub height: u64,
     /// An action to perform.
     /// The function takes the state storage and the VM instance as inputs, and returns empty.
-    pub action: Box<dyn Fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()> + Send + Sync>,
+    pub action: fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>,
 }

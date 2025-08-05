@@ -190,14 +190,15 @@ where
         self
     }
 
-    pub fn set_upgrade_handler<F>(mut self, height: u64, action: F) -> Self
-    where
-        F: Fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()> + Send + Sync + 'static,
-    {
+    pub fn set_upgrade_handler(
+        mut self,
+        height: u64,
+        action: fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>,
+    ) -> Self {
         self.upgrade_handler = Some(UpgradeHandler {
             description: Some("oonga boonga"),
             height,
-            action: Box::new(action),
+            action,
         });
         self
     }
