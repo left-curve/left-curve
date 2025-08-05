@@ -12,9 +12,7 @@ services:
       - '--storage.tsdb.wal-compression'          # compress in-RAM WAL buffers
       - '--storage.tsdb.min-block-duration=2h'    # smaller head blocks
       - '--storage.tsdb.max-block-duration=8h'
-      - '--storage.tsdb.chunk-target-size=512KiB' # smaller in-RAM chunks
       - '--web.enable-lifecycle'
-      - '--remote.write.url=http://victoriametrics:8428/api/v1/write'
     ports:
       - "{{ tailscale_ip }}:{{ prometheus_port }}:9090"
     volumes:
@@ -25,7 +23,7 @@ services:
     depends_on:
       - alertmanager
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9090/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -41,7 +39,7 @@ services:
       - -retentionPeriod=365
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget","--no-verbose","--tries=1","--spider","http://localhost:8428/health"]
+      test: ["CMD", "wget","--no-verbose","--tries=1","--spider","http://127.0.0.1:8428/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -59,7 +57,7 @@ services:
       - ./alertmanager-data:/alertmanager
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9093/-/healthy"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9093/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
