@@ -51,9 +51,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
   const [isQuestBannerVisible, setQuestBannerVisibility] = useState(true);
 
-  // Initialize theme
-  const theme = useTheme();
-
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
     version: 1.3,
