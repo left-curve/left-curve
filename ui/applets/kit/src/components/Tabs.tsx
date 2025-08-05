@@ -69,7 +69,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
         return (
           <motion.button
             className={twMerge(styles.button(), { "flex-1": fullWidth }, classNames?.button)}
-            key={`navLink-${e}`}
+            key={`navLink-${elemKey}`}
             onClick={() => setActiveTab(elemKey)}
           >
             {isKey ? (

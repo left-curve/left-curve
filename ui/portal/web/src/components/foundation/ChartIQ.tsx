@@ -43,6 +43,7 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
 
   const [chartPreferences, setChartPreferences] = useStorage(`chartiq.${pairSymbol}`, {
     initialValue: {},
+    sync: true,
   });
 
   const changeChartPreferences = useCallback(
