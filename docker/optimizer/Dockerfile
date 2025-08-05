@@ -19,7 +19,7 @@ RUN echo "Cloning commit: $GIT_COMMIT" \
   && git remote add origin https://github.com/left-curve/left-curve.git \
   && git fetch --depth 1 origin $GIT_COMMIT \
   && git checkout FETCH_HEAD \
-  && cargo install --path dango/cli \
+  && RUSTFLAGS='-C link-arg=-s' cargo install --path dango/cli \
   && cd .. \
   && rm -rf left-curve
 
