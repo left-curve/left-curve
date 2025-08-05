@@ -24,8 +24,17 @@ fn upgrading_without_calling_contract() {
         .set_block_time(Duration::from_seconds(1))
         .add_account("owner", Coins::new())
         .set_owner("owner")
-        .set_upgrade_handler(3, |mut storage, _vm, _block| {
+        .set_upgrade_handler(3, |mut storage, _vm, block| {
+            assert_eq!(
+                block.height,
+                3,
+                "incorrect upgrade block height! expecting: {}, got: {}",
+                3,
+                block.height
+            );
+
             CHAIN_ID.save(&mut storage, &NEW_CHAIN_ID.to_string())?;
+
             Ok(())
         })
         // .set_tracing_level(Some(tracing::Level::INFO)) // uncomment this to see tracing logs
@@ -88,6 +97,14 @@ fn upgrading_with_calling_contract() {
 
     let (mut suite, accounts) = TestBuilder::new()
         .set_upgrade_handler(3, |mut storage, vm, block| {
+            assert_eq!(
+                block.height,
+                3,
+                "incorrect upgrade block height! expecting: {}, got: {}",
+                3,
+                block.height
+            );
+
             let cfg = CONFIG.load(&storage)?;
             let bank_contract = CONTRACTS.load(&storage, cfg.bank)?;
 
