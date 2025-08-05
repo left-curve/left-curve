@@ -135,8 +135,8 @@ jobs:
       PGDATABASE: grug_test
       DB_HOST: postgres
       CLICKHOUSE_HOST: localhost
-      CLICKHOUSE_PORT: ${{ (github.run_id % 1000) * 10 + 20000 + matrix.partition }}
-      POSTGRES_PORT: ${{ (github.run_id % 1000) * 10 + 30000 + matrix.partition }}
+      CLICKHOUSE_PORT: ${{ github.run_id * 10 + 20000 + matrix.partition }}
+      POSTGRES_PORT: ${{ github.run_id * 10 + 30000 + matrix.partition }}
       CLICKHOUSE_DATABASE: grug_test
       CLICKHOUSE_USER: default
     services:
