@@ -28,6 +28,7 @@ fn upgrading_without_calling_contract() {
             CHAIN_ID.save(&mut storage, &NEW_CHAIN_ID.to_string())?;
             Ok(())
         })
+        // .set_tracing_level(Some(tracing::Level::INFO)) // uncomment this to see tracing logs
         .build();
 
     // Block 1. Upgrade doesn't happen yet.
@@ -123,6 +124,7 @@ fn upgrading_with_calling_contract() {
         })
         .add_account("owner", coins! { denom.clone() => 123 })
         .set_owner("owner")
+        // .set_tracing_level(Some(tracing::Level::INFO)) // uncomment this to see tracing logs
         .build();
 
     let bank = suite.query_bank().unwrap();

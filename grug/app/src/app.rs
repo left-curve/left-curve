@@ -257,7 +257,7 @@ where
                 tracing::info!(
                     height = upgrade_handler.height,
                     description = upgrade_handler.description.unwrap_or(""),
-                    "Performing upgrade"
+                    "Performing chain upgrade"
                 );
 
                 (upgrade_handler.action)(Box::new(buffer.clone()), self.vm.clone(), block.info)
