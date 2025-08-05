@@ -18,12 +18,32 @@
       - db_password | length > 0
     fail_msg: "DB_PASSWORD must be set and non-empty, aborting deployment."
 
+- name: Ensure directories exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop: ["{{ config_dir }}", "{{ data_dir }}"]
+
+- name: Copy postgres config
+  become: true
+  become_user: root
+  copy:
+    src: "{{ item }}"
+    dest: "{{ config_dir }}/{{ item }}"
+    mode: '0644'
+    owner: '{{ deploy_user }}'
+  loop:
+    - postgresql.conf
+    - init.sql
+
 - name: Deploy postgres container
   docker_container:
     name: "{{ container_name }}"
     image: "postgres:{{ psql_version }}"
     restart_policy: unless-stopped
     state: started
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
     env:
       POSTGRES_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
       POSTGRES_PASSWORD: "{{ db_password }}"
@@ -31,6 +51,8 @@
       - "127.0.0.1:{{ host_port }}:5432"
     volumes:
       - "{{ data_dir }}:/var/lib/postgresql/data"
+      - "{{ config_dir }}/postgresql.conf:/etc/postgresql/postgresql.conf"
+      - "{{ config_dir }}/init.sql:/docker-entrypoint-initdb.d/init.sql"
     healthcheck:
       test: ["CMD", "pg_isready", "-q"]
       interval: 2s

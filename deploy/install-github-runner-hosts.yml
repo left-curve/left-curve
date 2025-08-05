@@ -8,15 +8,17 @@
   roles:
     - MonolithProjects.github_actions_runner
   tasks:
-    - name: Set environment variables in GitHub Actions runner systemd service
+    - name: Ensure restart policy in GitHub Actions runner service
       blockinfile:
         path: "/etc/systemd/system/actions.runner.{{ github_account }}.{{ hostname }}.service"
-        marker: "# {mark} GitHub Runner Env Vars"
-        insertafter: '[Service]'
+        insertafter: '^\[Service\]'
+        marker: "# {mark} runner service options"
         block: |
           Environment="PATH=/home/{{ runner_user }}/.cargo/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
           Environment="CARGO_HOME=/home/{{ runner_user }}/.cargo"
           Environment="RUSTUP_HOME=/home/{{ runner_user }}/.rustup"
+          Restart=always
+          RestartSec=5
       notify:
         - Reload systemd
         - Restart github-actions-runner
