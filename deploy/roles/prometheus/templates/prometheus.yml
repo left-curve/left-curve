@@ -1,6 +1,6 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 30s
+  evaluation_interval: 1m
 
 rule_files:
   - "alert-rules.yml"
@@ -22,15 +22,27 @@ scrape_configs:
 
   - job_name: 'grafana'
     static_configs:
-      - targets: ['{{ tailscale_ip }}:{{ grafana_port | default(3000) }}']
+      - targets: ['grafana:{{ grafana_port | default(3000) }}']
 
   - job_name: 'node-exporter'
+    scrape_interval: 30s
     static_configs:
       - targets:
         - '100.96.253.40:9100'  # ovh1
         - '100.107.248.71:9100' # ovh2
-        - '{{ tailscale_ip }}:9100' # ovh3
-    scrape_interval: 15s
+        - 'node-exporter:9100' # ovh3
+
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['100.96.253.40:9126'] # ovh1
+        labels:
+          environment: 'production'
+          network: 'devnet'
+      - targets: ['100.107.248.71:9126'] # ovh2
+        labels:
+          environment: 'production'
+          network: 'testnet'
+    scrape_interval: 30s
 
   - job_name: 'dango'
     static_configs:

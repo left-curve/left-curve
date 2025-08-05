@@ -115,3 +115,55 @@
   with_items:
     - 10-banner
     - 20-sysinfo
+
+- name: Check existing swap file
+  stat:
+    path: /swapfile
+  register: swap_stat
+
+- name: Check if swap is active
+  command: swapon --show=NAME --noheadings
+  register: active_swaps
+  changed_when: false
+
+- name: Disable swap if wrong size
+  command: swapoff /swapfile
+  when:
+    - swap_stat.stat.exists
+    - swap_stat.stat.size != (32 * 1024 * 1024 * 1024)
+    - '"/swapfile" in active_swaps.stdout'
+
+- name: Remove swap file if wrong size
+  file:
+    path: /swapfile
+    state: absent
+  when: swap_stat.stat.exists and swap_stat.stat.size != (32 * 1024 * 1024 * 1024)
+
+- name: Create 32G swap file
+  command: fallocate -l 32G /swapfile
+  args:
+    creates: /swapfile
+
+- name: Create swap file
+  command: fallocate -l 32G /swapfile
+  args:
+    creates: /swapfile2
+
+- name: Set swap file permissions
+  file:
+    path: /swapfile2
+    mode: '0600'
+
+- name: Make swap file
+  command: mkswap /swapfile
+  args:
+    creates: /swapfile2
+
+- name: Enable swap file
+  command: swapon /swapfile2
+
+- name: Add swap to fstab
+  lineinfile:
+    path: /etc/fstab
+    line: '/swapfile2 none swap sw 0 0'
+    state: present
