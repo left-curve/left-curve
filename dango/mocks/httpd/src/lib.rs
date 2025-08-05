@@ -121,7 +121,6 @@ where
     );
 
     let indexer_clickhouse_context = indexer_clickhouse::context::Context::new(
-        indexer_context.clone(),
         "http://localhost:8123".to_string(),
         "default".to_string(),
         "default".to_string(),

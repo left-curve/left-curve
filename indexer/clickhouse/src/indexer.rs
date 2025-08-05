@@ -135,12 +135,11 @@ impl grug_app::Indexer for Indexer {
 
             #[cfg(feature = "metrics")]
             histogram!(
-                "indexer.clickhouse.post_indexing.duration",
-                "block_height" => block_height.to_string()
+                "indexer.clickhouse.post_indexing.duration"
             )
             .record(start.elapsed().as_secs_f64());
 
-            if let Err(_err) = context.pubsub.publish_block_minted(block_height).await {
+            if let Err(_err) = context.pubsub.publish(block_height).await {
                 #[cfg(feature = "tracing")]
                 tracing::error!(err = %_err, block_height, "Can't publish block minted in `post_indexing`");
                 return Ok(());
@@ -167,8 +166,35 @@ impl Drop for Indexer {
 }
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
+    use metrics::{describe_counter, describe_gauge};
+
     describe_histogram!(
         "indexer.clickhouse.post_indexing.duration",
         "Post indexing duration in seconds"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.candles.cache.hits",
+        "Number of candle cache hits"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.candles.cache.misses",
+        "Number of candle cache misses"
+    );
+
+    describe_histogram!(
+        "indexer.clickhouse.candles.cache.lookup.duration.seconds",
+        "Time spent on cache lookups"
+    );
+
+    describe_gauge!(
+        "indexer.clickhouse.candles.cache.size.entries",
+        "Current number of keys in cache"
+    );
+
+    describe_gauge!(
+        "indexer.clickhouse.candles.cache.size.candles",
+        "Total number of candles in cache"
     );
 }

@@ -336,7 +336,7 @@ export function createConfig<
     const allCoins = coins.getState()!;
     if (!denom.includes("dex")) return allCoins.byDenom[denom];
     const [_, __, baseDenom, quoteDenom] = denom.split("/");
-    const coinsArray = Object.values(allCoins);
+    const coinsArray = Object.values(allCoins.byDenom);
     const baseCoin = coinsArray.find((x) => x.denom.includes(baseDenom))!;
     const quoteCoin = coinsArray.find((x) => x.denom.includes(quoteDenom))!;
 

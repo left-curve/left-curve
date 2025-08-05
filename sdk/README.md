@@ -19,7 +19,7 @@ You can find more info in our [documentation](https://grug-sdk.pages.dev/).
 
 ## Supported JS environments
 
-Packages in the workspace are compiled to JavaScript ES2021, targeting the latest ECMAScript standard, and support both ESM and CJS module formats.
+Packages in the workspace are compiled to JavaScript ES2022, targeting the latest ECMAScript standard, and support both ESM and CJS module formats.
 
 1. Node.js 21+
 2. Modern browsers (Chromium/Firefox/Safari)

@@ -35,7 +35,7 @@ export function accountSubscription<
   const { username, sinceBlockHeight, ...callbacks } = parameters;
 
   const query = /* GraphQL */ `
-    subscription ($username: String, $sinceBlockHeight: Int) {
+    subscription AccountsSubscription ($username: String, $sinceBlockHeight: Int) {
       accounts(username: $username, sinceBlockHeight: $sinceBlockHeight) {
         accountIndex
         address

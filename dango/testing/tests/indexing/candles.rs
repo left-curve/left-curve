@@ -82,7 +82,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
                         quote_denom: usdc::DENOM.clone(),
                         direction,
                         amount: NonZero::new_unchecked(amount),
-                        price,
+                        price: NonZero::new_unchecked(price),
                     }],
                     cancels: None,
                 },
@@ -131,7 +131,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish()?;
 
     let pair_price_query_builder =
-        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string());
+        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string()).with_limit(1);
 
     let pair_price = pair_price_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())
@@ -154,7 +154,8 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         CandleInterval::OneMinute,
         "dango".to_string(),
         "bridge/usdc".to_string(),
-    );
+    )
+    .with_limit(1);
 
     let candle_1m = candle_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())
@@ -389,14 +390,14 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: NonZero::new_unchecked(Uint128::new(2)),
-                        price: Udec128_24::new(100_000),
+                        price: NonZero::new_unchecked(Udec128_24::new(100_000)),
                     },
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(1)),
-                        price: Udec128_24::new(100_000),
+                        price: NonZero::new_unchecked(Udec128_24::new(100_000)),
                     },
                 ],
                 cancels: None,
@@ -420,7 +421,10 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
-    assert_that!(candle_1m.candles).has_length(1);
+    assert!(
+        candle_1m.candles.len() == 1,
+        "Expected one candle after first block, received: {candle_1m:#?}"
+    );
 
     let candle = &candle_1m.candles[0];
 
@@ -466,14 +470,14 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: NonZero::new_unchecked(Uint128::new(2)),
-                        price: Udec128_24::new(99_999),
+                        price: NonZero::new_unchecked(Udec128_24::new(99_999)),
                     },
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(1)),
-                        price: Udec128_24::new(100_000),
+                        price: NonZero::new_unchecked(Udec128_24::new(100_000)),
                     },
                 ],
                 cancels: None,
@@ -537,14 +541,14 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: NonZero::new_unchecked(Uint128::new(1)),
-                        price: Udec128_24::new(100_000),
+                        price: NonZero::new_unchecked(Udec128_24::new(100_000)),
                     },
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(2)),
-                        price: Udec128_24::new(100_001),
+                        price: NonZero::new_unchecked(Udec128_24::new(100_001)),
                     },
                 ],
                 cancels: None,
@@ -687,14 +691,18 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Ask,
                         amount: NonZero::new_unchecked(Uint128::new(20000000000000)),
-                        price: Udec128_24::from_str("0.000000003836916198").unwrap(),
+                        price: NonZero::new_unchecked(
+                            Udec128_24::from_str("0.000000003836916198").unwrap(),
+                        ),
                     },
                     CreateLimitOrderRequest {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         direction: Direction::Bid,
                         amount: NonZero::new_unchecked(Uint128::new(20000000000000)),
-                        price: Udec128_24::from_str("0.000000003836916198").unwrap(),
+                        price: NonZero::new_unchecked(
+                            Udec128_24::from_str("0.000000003836916198").unwrap(),
+                        ),
                     },
                 ],
                 cancels: None,
@@ -709,7 +717,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish()?;
 
     let pair_price_query_builder =
-        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string());
+        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string()).with_limit(1);
 
     let pair_price = pair_price_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())
@@ -775,7 +783,7 @@ async fn create_pair_prices(
                         quote_denom: usdc::DENOM.clone(),
                         direction,
                         amount: NonZero::new_unchecked(amount),
-                        price,
+                        price: NonZero::new_unchecked(price),
                     }],
                     cancels: None,
                 },

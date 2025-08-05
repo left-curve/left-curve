@@ -121,7 +121,7 @@ export async function createWebAuthnCredential(
       raw: credential,
       getPublicKey,
     };
-  } catch (error) {
+  } catch (_error) {
     throw new Error("credential creation failed.");
   }
 }

@@ -1,7 +1,7 @@
 use {
-    crate::PassiveOrder,
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
+    dango_types::dex::PassiveOrder,
     grug::{
         Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128,
         Udec128_24, Uint64, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,

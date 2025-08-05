@@ -17,3 +17,4 @@
     project_src: "{{ dozzle_dir }}"
     pull: missing
     state: present
+    recreate: always

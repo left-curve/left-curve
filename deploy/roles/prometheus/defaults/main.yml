@@ -1,0 +1,6 @@
+---
+prometheus_dir: "{{ ansible_env.HOME }}/prometheus"
+prometheus_port: 9091
+prometheus_retention: "30d"
+alertmanager_port: 9093
+victoriametrics_port: 8428

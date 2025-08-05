@@ -23,7 +23,6 @@ const [RadioGroupProvider, useRadioGroup] = createContext<RadioGroupContextType>
 
 export type RadioGroupProps = {
   label?: string | ReactNode;
-  name?: string;
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
@@ -38,14 +37,13 @@ export const Container: React.FC<PropsWithChildren<RadioGroupProps>> = ({ childr
 export const Group: React.FC<PropsWithChildren<RadioGroupProps>> = ({
   children,
   label,
-  name,
   value: _value,
   defaultValue,
   onChange,
   isDisabled = false,
   error,
 }) => {
-  const groupName = name ?? useId();
+  const groupName = useId();
   const [value, setValue] = useControlledState(_value, onChange, defaultValue);
 
   const context: RadioGroupContextType = {

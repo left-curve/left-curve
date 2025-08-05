@@ -1,6 +1,6 @@
 use {
-    crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
-    dango_types::dex::{Direction, OrderId},
+    super::FillingOutcome,
+    dango_types::dex::{Direction, ExtendedOrderId, MarketOrder, Order, OrderId, OrderTrait},
     grug::{
         IsZero, Number, NumberConst, Signed, StdResult, Udec128, Udec128_6, Udec128_24, Unsigned,
     },
@@ -60,6 +60,16 @@ where
         let Some(best_price) = current_best_price else {
             break;
         };
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                market_order_id = market_order_id.to_string(),
+                limit_order_id = ?limit_order.extended_id(),
+                best_price = best_price.to_string(),
+                "Matching market order"
+            );
+        }
 
         // Calculate the cutoff price for the current market order
         let cutoff_price = match market_order_direction {
@@ -152,7 +162,9 @@ where
         // We do not refund the market order since that would allow spamming the
         // contract with tiny market orders at no cost.
         if filled_base.is_zero() {
-            market_orders.next();
+            current_market_order = market_orders.next();
+            current_best_price = Some(*price);
+
             continue;
         }
 
@@ -161,7 +173,9 @@ where
         if market_order_direction == Direction::Ask {
             let filled_quote = filled_base.checked_mul(*price)?;
             if filled_quote.is_zero() {
-                market_orders.next();
+                current_market_order = market_orders.next();
+                current_best_price = Some(*price);
+
                 continue;
             }
         }
@@ -342,7 +356,7 @@ fn update_filling_outcome(
 mod tests {
     use {
         super::*,
-        crate::LimitOrder,
+        dango_types::dex::LimitOrder,
         grug::{Addr, Uint128},
     };
 

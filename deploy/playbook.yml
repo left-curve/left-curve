@@ -1,6 +1,12 @@
 - hosts: all
   become: true
+  vars:
+    tailscale_iface: tailscale0
+    tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
   roles:
     - common
     - users
     - docker
+    - tailscale
+    - node-exporter
+    - promtail

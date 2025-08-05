@@ -15,8 +15,6 @@ export type CandlesSubscriptionParameters = SubscriptionCallbacks<{
   baseDenom: Denom;
   quoteDenom: Denom;
   interval: CandleIntervals;
-  laterThan?: Date;
-  limit?: number;
 };
 
 export type CandlesSubscriptionReturnType = () => void;
@@ -36,22 +34,18 @@ export function candlesSubscription<
 ): CandlesSubscriptionReturnType {
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
-  const { baseDenom, quoteDenom, interval, laterThan, limit, ...callbacks } = parameters;
+  const { baseDenom, quoteDenom, interval, ...callbacks } = parameters;
 
   const query = /* GraphQL */ `
-    subscription (
+    subscription CandlesSubscription (
       $baseDenom: String!
       $quoteDenom: String!
       $interval: CandleInterval!
-      $laterThan: DateTime
-      $limit: Int
     ) {
       candles(
         baseDenom: $baseDenom
         quoteDenom: $quoteDenom
         interval: $interval
-        laterThan: $laterThan
-        limit: $limit
       ) {
         quoteDenom
         baseDenom
@@ -70,8 +64,5 @@ export function candlesSubscription<
       }
     }
   `;
-  return client.subscribe(
-    { query, variables: { baseDenom, quoteDenom, interval, laterThan, limit } },
-    callbacks,
-  );
+  return client.subscribe({ query, variables: { baseDenom, quoteDenom, interval } }, callbacks);
 }

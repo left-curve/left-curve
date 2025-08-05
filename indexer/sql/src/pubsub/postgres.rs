@@ -2,22 +2,31 @@ use {
     crate::{error::Result, pubsub::PubSub},
     async_trait::async_trait,
     sea_orm::sqlx::{self, postgres::PgListener},
+    serde::{Serialize, de::DeserializeOwned},
     std::pin::Pin,
     tokio::sync::broadcast,
     tokio_stream::{Stream, StreamExt, wrappers::BroadcastStream},
 };
 
 #[derive(Clone)]
-pub struct PostgresPubSub {
-    sender: broadcast::Sender<u64>,
+pub struct PostgresPubSub<I>
+where
+    I: Clone + Send + 'static,
+{
+    sender: broadcast::Sender<I>,
     pool: sqlx::PgPool,
+    name: &'static str,
 }
 
-impl PostgresPubSub {
-    pub async fn new(pool: sqlx::PgPool) -> Result<Self> {
-        let (sender, _) = broadcast::channel::<u64>(128);
+impl<I> PostgresPubSub<I>
+where
+    I: Clone + Send + 'static,
+    I: serde::de::DeserializeOwned,
+{
+    pub async fn new(pool: sqlx::PgPool, name: &'static str) -> Result<Self> {
+        let (sender, _) = broadcast::channel::<I>(128);
 
-        let result = Self { sender, pool };
+        let result = Self { sender, pool, name };
 
         result.connect().await?;
 
@@ -28,9 +37,11 @@ impl PostgresPubSub {
         let sender = self.sender.clone();
         let mut listener = PgListener::connect_with(&self.pool).await?;
 
+        let name = self.name.to_string();
+
         tokio::spawn(async move {
             loop {
-                if let Err(_e) = listener.listen("blocks").await {
+                if let Err(_e) = listener.listen(&name).await {
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %_e, "Listen error");
 
@@ -46,14 +57,8 @@ impl PostgresPubSub {
                 loop {
                     match listener.recv().await {
                         Ok(notification) => {
-                            if let Ok(data) =
-                                serde_json::from_str::<serde_json::Value>(notification.payload())
-                            {
-                                if let Some(block_height) =
-                                    data.get("block_height").and_then(|v| v.as_u64())
-                                {
-                                    let _ = sender.send(block_height); // Ignore send errors
-                                }
+                            if let Ok(item) = serde_json::from_str::<I>(notification.payload()) {
+                                let _ = sender.send(item); // Ignore send errors
                             }
                         },
                         Err(_e) => {
@@ -72,8 +77,11 @@ impl PostgresPubSub {
 }
 
 #[async_trait]
-impl PubSub for PostgresPubSub {
-    async fn subscribe_block_minted(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
+impl<I> PubSub<I> for PostgresPubSub<I>
+where
+    I: Clone + Send + Sync + Serialize + DeserializeOwned,
+{
+    async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = I> + Send + '_>>> {
         let rx = self.sender.subscribe();
 
         Ok(Box::pin(
@@ -81,9 +89,12 @@ impl PubSub for PostgresPubSub {
         ))
     }
 
-    async fn publish_block_minted(&self, block_height: u64) -> Result<usize> {
-        sqlx::query("select pg_notify('blocks', json_build_object('block_height', $1)::text)")
-            .bind(block_height as i64)
+    async fn publish(&self, item: I) -> Result<usize> {
+        let json_data = serde_json::to_string(&item)?;
+
+        sqlx::query("select pg_notify($1, $2)")
+            .bind(self.name)
+            .bind(json_data)
             .execute(&self.pool)
             .await?;
 

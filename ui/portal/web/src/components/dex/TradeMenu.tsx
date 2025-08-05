@@ -135,7 +135,8 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           inputEndContent="%"
           value={rangeValue}
           onChange={(v) => {
-            const size = Decimal(maxSizeAmount).mul(Decimal(v).div(100));
+            const newValue = Math.min(100, v);
+            const size = Decimal(maxSizeAmount).mul(Decimal(newValue).div(100));
             const length = size.toFixed().split(".")[1]?.length || 0;
             setValue("size", size.toFixed(length < 19 ? length : 18));
           }}
@@ -148,7 +149,9 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               variant={action === "sell" ? "primary" : "tertiary"}
               fullWidth
               size="md"
-              isDisabled={amount === "0" || (operation === "limit" && priceAmount === "0")}
+              isDisabled={
+                Decimal(amount).lte(0) || (operation === "limit" && Decimal(priceAmount).lte(0))
+              }
               isLoading={submission.isPending}
               onClick={() => submission.mutateAsync()}
             >

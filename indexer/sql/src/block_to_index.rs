@@ -54,7 +54,11 @@ impl BlockToIndex {
         let existing_block = entity::blocks::Entity::find()
             .filter(entity::blocks::Column::BlockHeight.eq(self.block.info.height))
             .one(&db)
-            .await?;
+            .await
+            .inspect_err(|_e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_e, "Failed to check if block exists");
+            })?;
 
         if existing_block.is_some() {
             return Ok(());
@@ -62,7 +66,11 @@ impl BlockToIndex {
 
         entity::blocks::Entity::insert(models.block)
             .exec_without_returning(&db)
-            .await?;
+            .await
+            .inspect_err(|_e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_e, "Failed to insert block");
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -73,21 +81,40 @@ impl BlockToIndex {
         }
 
         if !models.transactions.is_empty() {
+            #[cfg(feature = "tracing")]
+            let transactions_len = models.transactions.len();
+
             entity::transactions::Entity::insert_many(models.transactions)
                 .exec_without_returning(&db)
-                .await?;
+                .await.inspect_err(|_e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_e, transactions_len=transactions_len, "Failed to insert transactions");
+                })?;
         }
 
         if !models.messages.is_empty() {
+            #[cfg(feature = "tracing")]
+            let messages_len = models.messages.len();
+
             entity::messages::Entity::insert_many(models.messages)
                 .exec_without_returning(&db)
-                .await?;
+                .await.inspect_err(|_e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_e, messages_len=messages_len, "Failed to insert messages");
+                })?;
         }
 
         if !models.events.is_empty() {
+            #[cfg(feature = "tracing")]
+            let events_len = models.events.len();
+
             entity::events::Entity::insert_many(models.events)
                 .exec_without_returning(&db)
-                .await?;
+                .await
+                .inspect_err(|_e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_e, events_len=events_len, "Failed to insert events");
+                })?;
         }
 
         db.commit().await?;

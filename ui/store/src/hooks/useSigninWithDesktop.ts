@@ -25,7 +25,8 @@ export type UseSigninWithDesktopReturnType = UseSubmitTxReturnType<
 
 export function useSigninWithDesktop(parameters: UseSigninWithDesktopParameters) {
   const { url, expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000), mutation } = parameters;
-  const connectors = parameters?.connectors ?? useConnectors();
+  const fallbackConnectors = useConnectors();
+  const connectors = parameters?.connectors ?? fallbackConnectors;
   const chainId = useChainId();
 
   return useSubmitTx({

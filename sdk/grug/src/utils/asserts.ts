@@ -145,8 +145,7 @@ export function assertDeepEqual(a: any, b: any) {
     length = keys.length;
     if (length !== Object.keys(b).length) return false;
 
-    for (i = length; i-- !== 0; )
-      if (!Object.prototype.hasOwnProperty.call(b, keys[i]!)) return false;
+    for (i = length; i-- !== 0; ) if (!Object.hasOwn(b, keys[i]!)) return false;
 
     for (i = length; i-- !== 0; ) {
       const key = keys[i];
@@ -158,6 +157,6 @@ export function assertDeepEqual(a: any, b: any) {
   }
 
   // true if both NaN, false otherwise
-  // biome-ignore lint/suspicious/noSelfCompare: <explanation>
+  // biome-ignore lint/suspicious/noSelfCompare: it uses self-comparison to check for NaN
   return a !== a && b !== b;
 }

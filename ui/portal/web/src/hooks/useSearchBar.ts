@@ -1,5 +1,5 @@
 import { isValidAddress } from "@left-curve/dango";
-import { camelToTitleCase, wait } from "@left-curve/dango/utils";
+import { wait } from "@left-curve/dango/utils";
 import { useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import fuzzysort from "fuzzysort";
@@ -59,7 +59,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
   }, [favApplets]);
 
   const { data, ...query } = useQuery({
-    queryKey: ["searchBar", searchText],
+    queryKey: ["searchBar", searchText, favApplets],
     queryFn: async ({ signal }) => {
       if (!searchText.length) {
         setSearchResult(noResult);

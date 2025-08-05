@@ -1,0 +1,79 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 1m
+
+rule_files:
+  - "alert-rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+remote_write:
+  - url: http://victoriametrics:8428/api/v1/write
+    queue_config:
+      max_samples_per_send: 10000
+      batch_send_deadline: 5s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:{{ grafana_port | default(3000) }}']
+
+  - job_name: 'node-exporter'
+    scrape_interval: 30s
+    static_configs:
+      - targets:
+        - '100.96.253.40:9100'  # ovh1
+        - '100.107.248.71:9100' # ovh2
+        - 'node-exporter:9100' # ovh3
+
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['100.96.253.40:9126'] # ovh1
+        labels:
+          environment: 'production'
+          network: 'devnet'
+      - targets: ['100.107.248.71:9126'] # ovh2
+        labels:
+          environment: 'production'
+          network: 'testnet'
+    scrape_interval: 30s
+
+  - job_name: 'dango'
+    static_configs:
+      - targets: ['100.96.253.40:9191'] # ovh1
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'devnet'
+      - targets: ['100.107.248.71:9191'] # ovh2
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'testnet'
+    scrape_interval: 15s
+
+  - job_name: 'cometbft'
+    static_configs:
+      - targets: ['100.96.253.40:26660'] # ovh1
+        labels:
+          service: 'cometbft'
+          environment: 'production'
+          network: 'devnet'
+      - targets: ['100.107.248.71:26660'] # ovh2
+        labels:
+          service: 'cometbft'
+          environment: 'production'
+          network: 'testnet'
+    scrape_interval: 15s
