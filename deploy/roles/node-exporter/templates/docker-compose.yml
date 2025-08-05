@@ -14,3 +14,8 @@ services:
       - /sys:/host/sys:ro
       - /:/rootfs:ro
     restart: unless-stopped
+
+networks:
+  default:
+    name: monitoring
+    external: true
