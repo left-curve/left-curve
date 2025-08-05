@@ -54,13 +54,17 @@ book:
 # --------------------------------- Optimizer ----------------------------------
 
 OPTIMIZER_NAME := "leftcurve/optimizer"
-OPTIMIZER_VERSION := "0.1.1"
+OPTIMIZER_VERSION := "0.2.0"
+LEFT_CURVE_GIT_COMMIT := "9dc88f02549d65b0f308f489fa67fbfcf8edaa5c"
+BINARYEN_GIT_TAG := "version_123"
 
 # Build and publish optimizer Docker image
 docker-build-optimizer:
   docker buildx build \
     --push \
     --platform linux/amd64,linux/arm64 \
+    --build-arg GIT_COMMIT={{LEFT_CURVE_GIT_COMMIT}} \
+    --build-arg BINARYEN_GIT_TAG={{BINARYEN_GIT_TAG}} \
     --tag {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}} \
     --target optimizer \
     docker/optimizer
