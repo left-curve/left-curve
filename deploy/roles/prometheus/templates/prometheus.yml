@@ -33,10 +33,13 @@ scrape_configs:
   - job_name: 'node-exporter'
     static_configs:
       - targets:
-        - 'ovh1:9100'  # ovh1
-        - 'ovh2:9100' # ovh2
-        - 'node-exporter:9100' # ovh3
-        - 'ovh4:9100' # ovh4
+        - 'ovh1:9100'
+        - 'ovh2:9100'
+        - 'node-exporter:9100' # self
+        - 'ovh4:9100'
+        - 'ovh5:9100'
+        - 'ovh6:9100'
+        - 'ovh7:9100'
 
   - job_name: 'clickhouse'
     static_configs:
