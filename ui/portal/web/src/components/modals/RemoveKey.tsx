@@ -21,6 +21,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
 
   const { mutateAsync: removeKey, isPending } = useSubmitTx({
     mutation: {
+      meta: { invalidateKeys: [["user_keys"]] },
       mutationFn: async () => {
         if (!account || !signingClient) throw new Error("We couldn't process the request");
 

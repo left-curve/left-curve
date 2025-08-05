@@ -17,6 +17,7 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
 
   const { mutateAsync: addKey, isPending } = useSubmitTx({
     mutation: {
+      meta: { invalidateKeys: [["user_keys"], ["quests", account?.username]] },
       mutationFn: async (connectorId: string) => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("Connector not found");
