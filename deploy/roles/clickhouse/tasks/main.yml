@@ -12,9 +12,13 @@
     fail_msg: "CLICKHOUSE_PASSWORD must be set and non-empty, aborting deployment."
 
 - name: Copy config files
+  become: true
+  become_user: root
   template:
     src: "{{ item }}"
     dest: "{{ config_dir }}/{{ item }}"
+    mode: '0644'
+    owner: '{{ deploy_user }}'
   loop:
     - config.xml
     - users.xml
@@ -33,6 +37,7 @@
       - "127.0.0.1:9000:9000" # Native TCP interface
       - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
       - "127.0.0.1:9004:9004" # MySQL compatibility interface
+      - "{{ tailscale_ip }}:9126:9126" # Prometheus metrics
     volumes:
       - "{{ data_dir }}:/var/lib/clickhouse"
       - "{{ logs_dir }}:/var/log/clickhouse-server"
