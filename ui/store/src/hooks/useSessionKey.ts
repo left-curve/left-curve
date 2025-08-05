@@ -10,6 +10,7 @@ import useStorage from "./useStorage.js";
 import { encodeBase64 } from "@left-curve/dango/encoding";
 import type { SigningSession, SigningSessionInfo } from "@left-curve/dango/types";
 import type { Connector } from "../types/connector.js";
+import { useEffect, useState } from "react";
 
 export type UseSessionKeyParameters = {
   session?: SigningSession;
@@ -38,6 +39,9 @@ export type UseSessionKeyReturnType = {
 export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSessionKeyReturnType {
   const config = useConfig();
   const { username, connector } = useAccount();
+
+  const [channel] = useState(new BroadcastChannel("dango.session"));
+
   const [session, setSession] = useStorage<SigningSession | null>("session_key", {
     initialValue: parameters.session,
     storage: createStorage({ storage: sessionStorage }),
@@ -57,6 +61,31 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
       });
     },
   });
+
+  useEffect(() => {
+    if (!session) channel.postMessage({ type: "request" });
+    return () => {
+      channel.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    function handleMessage({ data: event }: MessageEvent) {
+      if (event.type === "request" && session) {
+        channel.postMessage({ type: "response", data: session });
+      }
+
+      if (event.type === "response") {
+        console.log("Session updated from BroadcastChannel", event.data);
+        setSession(event.data);
+      }
+    }
+    channel.addEventListener("message", handleMessage);
+
+    return () => {
+      channel.removeEventListener("message", handleMessage);
+    };
+  }, [session]);
 
   async function createSessionKey(
     parameters: CreateSessionKeyParameters,

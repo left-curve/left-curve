@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "../query.js";
 import { createStorage } from "../storages/createStorage.js";
 
@@ -11,13 +11,17 @@ export type UseStorageOptions<T = undefined> = {
   version?: number;
   enabled?: boolean;
   migrations?: Record<number, (data: any) => T>;
+  sync?: boolean;
 };
 export function useStorage<T = undefined>(
   key: string,
   options: UseStorageOptions<T> = {},
 ): [T extends undefined ? null : T, Dispatch<SetStateAction<T>>] {
+  const [channel] = useState(new BroadcastChannel(`dango.storage.${key}`));
+
   const {
     enabled = true,
+    sync = false,
     initialValue: _initialValue_,
     storage: _storage_,
     version: __version__ = 1,
@@ -97,10 +101,24 @@ export function useStorage<T = undefined>(
       })();
 
       storage.setItem(key, { version: __version__, value: newState });
+      if (sync) channel.postMessage(newState);
       refetch();
     },
     [storage, key, refetch, __version__],
   );
+
+  useEffect(() => {
+    if (!sync) return;
+    function updateStorage(event: MessageEvent) {
+      setValue(event.data);
+    }
+    channel.addEventListener("message", updateStorage);
+
+    return () => {
+      channel.removeEventListener("message", updateStorage);
+      channel.close();
+    };
+  }, []);
 
   return [data as any, setValue];
 }
