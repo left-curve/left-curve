@@ -8,12 +8,12 @@ use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
         Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NaiveProposalPreparer, NaiveQuerier,
-        NullIndexer, ProposalPreparer, QuerierProviderImpl, TraceOption, Vm, catch_and_push_event,
-        catch_and_update_event, do_authenticate, do_backrun, do_configure, do_cron_execute,
-        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upload,
-        do_withhold_fee, query_app_config, query_balance, query_balances, query_code, query_codes,
-        query_config, query_contract, query_contracts, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart,
+        NullIndexer, ProposalPreparer, QuerierProviderImpl, TraceOption, UpgradeHandler, Vm,
+        catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
+        do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
+        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
+        query_codes, query_config, query_contract, query_contracts, query_status, query_supplies,
+        query_supply, query_wasm_raw, query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -50,16 +50,25 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
+    upgrade_handler: Arc<Option<UpgradeHandler<VM>>>,
 }
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
-    pub fn new(db: DB, vm: VM, pp: PP, indexer: ID, query_gas_limit: u64) -> Self {
+    pub fn new(
+        db: DB,
+        vm: VM,
+        pp: PP,
+        indexer: ID,
+        query_gas_limit: u64,
+        upgrade_handler: Option<UpgradeHandler<VM>>,
+    ) -> Self {
         Self {
             db,
             vm,
             pp,
             indexer,
             query_gas_limit,
+            upgrade_handler: Arc::new(upgrade_handler),
         }
     }
 }
@@ -77,6 +86,7 @@ where
             pp: self.pp.clone(),
             indexer: NullIndexer,
             query_gas_limit: self.query_gas_limit,
+            upgrade_handler: Arc::clone(&self.upgrade_handler),
         }
     }
 }
@@ -227,13 +237,6 @@ where
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
-        let mut cron_outcomes = vec![];
-        let mut tx_outcomes = vec![];
-
-        let mut indexer_ctx = crate::IndexerContext::new();
-        self.indexer
-            .pre_indexing(block.info.height, &mut indexer_ctx)?;
-
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
         if block.info.height != last_finalized_block.height + 1 {
@@ -242,6 +245,38 @@ where
                 actual: block.info.height,
             });
         }
+
+        // If an upgrade handler exists, and we're at the scheduled block height,
+        // then run the upgrade action.
+        //
+        // The action MUST succeed. It failing is considered a fatal error, and
+        // we panic.
+        if let Some(upgrade_handler) = self.upgrade_handler.as_ref() {
+            if upgrade_handler.height == block.info.height {
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    height = upgrade_handler.height,
+                    description = upgrade_handler.description.unwrap_or(""),
+                    "Performing upgrade"
+                );
+
+                (upgrade_handler.action)(Box::new(buffer.clone()), self.vm.clone()).unwrap_or_else(
+                    |err| {
+                        panic!(
+                            "upgrade failed! height: {}, reason: {}",
+                            upgrade_handler.height, err
+                        );
+                    },
+                );
+            }
+        }
+
+        let mut cron_outcomes = vec![];
+        let mut tx_outcomes = vec![];
+
+        let mut indexer_ctx = crate::IndexerContext::new();
+        self.indexer
+            .pre_indexing(block.info.height, &mut indexer_ctx)?;
 
         // Process transactions one-by-one.
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
@@ -1055,6 +1090,10 @@ where
     AppError: From<VM::Error>,
 {
     match req {
+        Query::Status(_req) => {
+            let res = query_status(&storage, gas_tracker)?;
+            Ok(QueryResponse::Status(res))
+        },
         Query::Config(_req) => {
             let res = query_config(&storage, gas_tracker)?;
             Ok(QueryResponse::Config(res))
