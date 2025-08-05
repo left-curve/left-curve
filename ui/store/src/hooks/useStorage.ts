@@ -110,13 +110,13 @@ export function useStorage<T = undefined>(
   useEffect(() => {
     if (!sync) return;
     function updateStorage(event: MessageEvent) {
-      setValue(event.data);
+      storage.setItem(key, { version: __version__, value: event.data });
+      refetch();
     }
     channel.addEventListener("message", updateStorage);
 
     return () => {
       channel.removeEventListener("message", updateStorage);
-      channel.close();
     };
   }, []);
 

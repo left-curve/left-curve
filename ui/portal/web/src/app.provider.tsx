@@ -69,6 +69,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
         notation: "standard",
       },
     },
+    sync: true,
     migrations: {
       1.2: (state: AppState["settings"]) => {
         state.showWelcome = true;

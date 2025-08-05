@@ -64,9 +64,6 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
 
   useEffect(() => {
     if (!session) channel.postMessage({ type: "request" });
-    return () => {
-      channel.close();
-    };
   }, []);
 
   useEffect(() => {
@@ -76,7 +73,6 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
       }
 
       if (event.type === "response") {
-        console.log("Session updated from BroadcastChannel", event.data);
         setSession(event.data);
       }
     }

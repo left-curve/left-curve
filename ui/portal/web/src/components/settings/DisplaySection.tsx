@@ -57,7 +57,7 @@ const FormatNumberSection: React.FC = () => {
       </p>
 
       <Select
-        defaultValue={formatNumberOptions?.mask.toString() || "1"}
+        value={formatNumberOptions?.mask.toString() || "1"}
         onChange={(key) => [
           changeSettings({
             formatNumberOptions: {
@@ -79,14 +79,6 @@ const FormatNumberSection: React.FC = () => {
 const ThemeSection: React.FC = () => {
   const { theme, setTheme } = useTheme();
 
-  const changeTheme = (key: string) => {
-    if (key === "system") {
-      setTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-      return;
-    }
-    setTheme(key as "dark" | "light");
-  };
-
   return (
     <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
@@ -94,9 +86,9 @@ const ThemeSection: React.FC = () => {
         <span className="diatype-m-bold text-secondary-700">{m["settings.theme"]()}</span>
       </p>
       <Tabs
-        defaultKey={theme}
+        selectedTab={theme}
         layoutId="theme"
-        onTabChange={changeTheme}
+        onTabChange={(value) => setTheme(value as "system" | "light" | "dark")}
         classNames={{ base: "exposure-sm-italic" }}
       >
         <Tab title="system">System</Tab>

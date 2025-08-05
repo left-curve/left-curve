@@ -1,15 +1,14 @@
 import { useStorage } from "@left-curve/store";
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 
-export type ThemeType = "dark" | "light";
+export type Themes = "dark" | "light" | "system";
 
 export type UseThemeReturnType = {
-  theme: ThemeType;
-  setTheme: (theme: ThemeType) => void;
-  toggleTheme: () => void;
+  theme: Themes;
+  setTheme: (theme: Themes) => void;
 };
 
-const getInitialTheme = (): ThemeType => {
+const getPreferredScheme = (): Themes => {
   if (typeof window !== "undefined" && window.matchMedia) {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
@@ -17,8 +16,9 @@ const getInitialTheme = (): ThemeType => {
 };
 
 export function useTheme(): UseThemeReturnType {
-  const [theme, setTheme] = useStorage<ThemeType>("app.theme", {
-    initialValue: getInitialTheme(),
+  const [theme, setTheme] = useStorage<Themes>("app.theme", {
+    initialValue: "system",
+    sync: true,
   });
 
   useEffect(() => {
@@ -26,23 +26,10 @@ export function useTheme(): UseThemeReturnType {
 
     root.classList.remove("light", "dark");
 
-    root.classList.add(theme);
+    const isSystemTheme = theme === "system";
+
+    root.classList.add(isSystemTheme ? getPreferredScheme() : theme);
   }, [theme]);
 
-  const toggleTheme = useCallback(() => {
-    setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
-  }, [setTheme]);
-
-  const setThemeInfo = useCallback(
-    (newTheme: ThemeType) => {
-      setTheme(newTheme);
-    },
-    [setTheme],
-  );
-
-  return {
-    theme,
-    setTheme: setThemeInfo,
-    toggleTheme,
-  };
+  return { theme, setTheme };
 }

@@ -9,6 +9,7 @@ export function useFavApplets() {
   const [favApplets, setFavApplets] = useStorage<Record<string, AppletMetadata>>("app.applets", {
     initialValue: DEFAULT_FAV_APPLETS,
     version: 1.5,
+    sync: true,
     migrations: {
       1.1: (oldValue: Record<string, AppletMetadata>) => {
         return Object.keys(oldValue).reduce((acc, appletId) => {
