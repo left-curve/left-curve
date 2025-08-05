@@ -54,13 +54,11 @@ export function useSubmitTx<
   const { account } = useAccount();
   const { refetch: refreshBalances } = useBalances({ address: account?.address });
 
-  const { mutationFn, mutationKey, meta = {} } = mutation;
+  const { mutationFn } = mutation;
 
   return useMutation<TData, TError, TVariables, TContext>(
     {
       ...mutation,
-      mutationKey,
-      meta: { mutationKey, ...meta },
       onSuccess: (...params) => {
         refreshBalances();
         mutation.onSuccess?.(...params);
