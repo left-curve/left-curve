@@ -526,7 +526,7 @@
       "title": "Galxe Quest",
       "quest": {
         "connectEthereumWallet": "Connect your Ethereum wallet",
-        "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more transactions on Ethereum mainnet",
+        "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more outgoing transaction on Ethereum mainnet",
         "completeLimitOrder": "Complete a limit order",
         "completeMarketOrder": "Complete a market order",
         "swapAtLeastInPairs": "Trade in 3 different token pairs ({number} remaining)",
