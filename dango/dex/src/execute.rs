@@ -438,6 +438,10 @@ fn set_paused(ctx: MutableCtx, state: AuctionState) -> anyhow::Result<Response> 
 }
 
 fn callback_msg(ctx: MutableCtx, msg: CallbackMsg) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.contract,
+        "you don't have the right, O you don't have the right"
+    );
     match msg {
         CallbackMsg::Auction {} => auction(ctx),
     }
