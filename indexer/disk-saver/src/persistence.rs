@@ -95,7 +95,7 @@ impl DiskPersistence {
         // why we would want to overwrite a block.
         if self.file_path.exists() {
             #[cfg(feature = "tracing")]
-            tracing::error!(file_path = %self.file_path.display(), "File already exists, saving anyway");
+            tracing::warn!(file_path = %self.file_path.display(), "File already exists, saving anyway");
         }
 
         let serialized = data.to_borsh_vec()?;
@@ -140,7 +140,7 @@ impl DiskPersistence {
         // we should have `self.compressed` to true.
         if compressed_path.exists() {
             #[cfg(feature = "tracing")]
-            tracing::error!(file_path = %self.file_path.display(), "Compressed file already exists, saving anyway");
+            tracing::warn!(file_path = %self.file_path.display(), "Compressed file already exists, saving anyway");
         }
 
         // Compress the file
