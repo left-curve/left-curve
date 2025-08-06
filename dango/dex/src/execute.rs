@@ -579,6 +579,9 @@ mod tests {
         let sender = Addr::mock(1);
         let mut ctx = MockContext::new().with_sender(sender).with_funds(funds);
 
+        // Set the pause state as unpaused.
+        PAUSED.save(&mut ctx.storage, &false).unwrap();
+
         // Create the dango-usdc pair.
         // The specific parameters don't matter. We just need the pair to exist.
         PAIRS
