@@ -35,6 +35,11 @@ const HALF: Udec128 = Udec128::new_percent(50);
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    // Do nothing if trading is paused.
+    if PAUSED.load(ctx.storage).unwrap_or(false) {
+        return Ok(Response::new());
+    }
+
     _cron_execute(ctx.storage, ctx.api, ctx.querier, ctx.block).inspect_err(|err| {
         #[cfg(feature = "tracing")]
         tracing::error!(%err, "ERROR IN DEX CRONJOB! HALTING TRADING");
