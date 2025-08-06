@@ -107,7 +107,8 @@
       ALTER USER dango
       SETTINGS
         max_concurrent_queries_for_user = 0,
-        max_memory_usage = 30000000000,
+        max_memory_usage = 32000000000,
+        max_memory_usage_for_user = 48000000000,
         max_threads = 12
 
 - name: Copy app.toml
