@@ -1168,7 +1168,7 @@ fn only_owner_can_create_passive_pool() {
         .execute(
             &mut accounts.user1,
             contracts.dex,
-            &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
                 base_denom: xrp::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
@@ -1179,17 +1179,17 @@ fn only_owner_can_create_passive_pool() {
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
-            }]),
+            }])),
             Coins::new(),
         )
-        .should_fail_with_error("only the owner can update a trading pair parameters");
+        .should_fail_with_error("you don't have the right, O you don't have the right");
 
     // Attempt to create pair as owner. Should succeed.
     suite
         .execute(
             &mut accounts.owner,
             contracts.dex,
-            &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
                 base_denom: xrp::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
@@ -1200,7 +1200,7 @@ fn only_owner_can_create_passive_pool() {
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
-            }]),
+            }])),
             Coins::new(),
         )
         .should_succeed();
@@ -1353,7 +1353,7 @@ fn provide_liquidity(
                 .execute(
                     &mut accounts.owner,
                     contracts.dex,
-                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
@@ -1361,7 +1361,7 @@ fn provide_liquidity(
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             pool_type,
                         },
-                    }]),
+                    }])),
                     Coins::new(),
                 )
                 .should_succeed();
@@ -1467,7 +1467,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                 .execute(
                     &mut accounts.owner,
                     contracts.dex,
-                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
@@ -1478,7 +1478,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
                             },
                         },
-                    }]),
+                    }])),
                     Coins::new(),
                 )
                 .should_succeed();
@@ -1544,7 +1544,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                 .execute(
                     &mut accounts.owner,
                     contracts.dex,
-                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
@@ -1552,7 +1552,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             pool_type: pair_params.pool_type.clone(),
                         },
-                    }]),
+                    }])),
                     Coins::new(),
                 )
                 .should_succeed();
@@ -1934,15 +1934,17 @@ fn swap_exact_amount_in(
                     .execute(
                         &mut accounts.owner,
                         contracts.dex,
-                        &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            params: PairParams {
-                                lp_denom: pair_params.lp_denom.clone(),
-                                swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
-                                pool_type: pair_params.pool_type.clone(),
+                        &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![
+                            PairUpdate {
+                                base_denom: base_denom.clone(),
+                                quote_denom: quote_denom.clone(),
+                                params: PairParams {
+                                    lp_denom: pair_params.lp_denom.clone(),
+                                    swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                                    pool_type: pair_params.pool_type.clone(),
+                                },
                             },
-                        }]),
+                        ])),
                         Coins::new(),
                     )
                     .should_succeed();
@@ -2288,11 +2290,11 @@ fn swap_exact_amount_out(
                 .execute(
                     &mut accounts.owner,
                     contracts.dex,
-                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
                         base_denom: base_denom.clone(),
                         quote_denom: quote_denom.clone(),
                         params,
-                    }]),
+                    }])),
                     Coins::new(),
                 )
                 .should_succeed();
@@ -2403,7 +2405,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 .execute(
                     &mut accounts.owner,
                     contracts.dex,
-                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
@@ -2414,7 +2416,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
                             },
                         },
-                    }]),
+                    }])),
                     Coins::new(),
                 )
                 .should_succeed();
@@ -2881,7 +2883,7 @@ fn curve_on_orderbook(
                 .execute(
                     &mut accounts.owner,
                     contracts.dex,
-                    &dex::ExecuteMsg::BatchUpdatePairs(vec![PairUpdate {
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
@@ -2889,7 +2891,7 @@ fn curve_on_orderbook(
                             pool_type,
                             swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                         },
-                    }]),
+                    }])),
                     pool_liquidity.clone(),
                 )
                 .should_succeed();

@@ -538,11 +538,14 @@ async fn create_pair_prices(
 
     // Make a block with the order submissions. Ensure all transactions were
     // successful.
-    let res = suite.make_block(txs).block_outcome;
-
-    res.tx_outcomes.into_iter().for_each(|outcome| {
-        outcome.should_succeed();
-    });
+    suite
+        .make_block(txs)
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
 
     Ok(())
 }

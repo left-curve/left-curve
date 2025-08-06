@@ -3,38 +3,61 @@ mod order_creation;
 
 use {
     crate::{
-        AUCTION_STATE, MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, RESERVES, auction,
+        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PAUSED, RESERVES,
         core::{self, PassiveLiquidityPool},
+        cron,
     },
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, bank,
         dex::{
-            AuctionState, AuctionStopped, CallbackMsg, CancelOrderRequest, CreateLimitOrderRequest,
-            CreateMarketOrderRequest, ExecuteMsg, InstantiateMsg, LP_NAMESPACE, NAMESPACE,
-            OwnerMsg, PairId, PairUpdate, ReplyMsg, Swapped,
+            CallbackMsg, CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest,
+            ExecuteMsg, InstantiateMsg, LP_NAMESPACE, NAMESPACE, OwnerMsg, PairId, PairUpdate,
+            Paused, Swapped, Unpaused,
         },
         taxman::{self, FeeType},
     },
     grug::{
-        Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, GenericResult, Inner,
-        IsZero, Message, MutableCtx, NonZero, QuerierExt, Response, SubMsgResult, SudoCtx, Uint128,
-        UniqueVec, btree_map, coins,
+        Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero,
+        Message, MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
     },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &false)?;
     batch_update_pairs(ctx, msg.pairs)
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::Owner(msg) => owner_msg(ctx, msg),
-        ExecuteMsg::Callback(msg) => callback_msg(ctx, msg),
-        ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
+        ExecuteMsg::Owner(msg) => {
+            // Only the chain owner can call owner functions.
+            ensure!(
+                ctx.sender == ctx.querier.query_owner()?,
+                "you don't have the right, O you don't have the right"
+            );
+
+            match msg {
+                OwnerMsg::SetPaused(true) => pause(ctx),
+                OwnerMsg::SetPaused(false) => unpause(ctx),
+                OwnerMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
+                OwnerMsg::ForceCancelOrders {} => force_cancel_orders(ctx),
+            }
+        },
+        ExecuteMsg::Callback(msg) => {
+            // Only the contract itself can call callback functions.
+            ensure!(
+                ctx.sender == ctx.contract,
+                "you don't have the right, O you don't have the right"
+            );
+
+            match msg {
+                CallbackMsg::Auction {} => cron::auction(ctx),
+            }
+        },
         ExecuteMsg::BatchUpdateOrders {
             creates_market,
             creates_limit,
@@ -58,14 +81,16 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-#[cfg_attr(not(feature = "library"), grug::export)]
-pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> anyhow::Result<Response> {
-    if let (ReplyMsg::Auction, GenericResult::Err(error)) = (msg, res) {
-        AUCTION_STATE.save(ctx.storage, &AuctionState::Paused(error.clone()))?;
-        return Ok(Response::new().add_event(AuctionStopped { error })?);
-    }
+fn pause(ctx: MutableCtx) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &true)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_event(Paused { error: None })?)
+}
+
+fn unpause(ctx: MutableCtx) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &false)?;
+
+    Ok(Response::new().add_event(Unpaused {})?)
 }
 
 fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
@@ -101,6 +126,12 @@ fn batch_update_orders(
     creates_limit: Vec<CreateLimitOrderRequest>,
     cancels: Option<CancelOrderRequest>,
 ) -> anyhow::Result<Response> {
+    // Creating or canceling orders is not allowed when the contract is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't update orders when trading is paused"
+    );
+
     let mut deposits = Coins::new();
     let mut refunds = DecCoins::new();
     let mut events = EventBuilder::new();
@@ -409,39 +440,12 @@ fn swap_exact_amount_out(
         })?)
 }
 
-fn owner_msg(ctx: MutableCtx, msg: OwnerMsg) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ctx.querier.query_owner()?,
-        "you don't have the right, O you don't have the right"
-    );
-    match msg {
-        OwnerMsg::ForceCancelOrders => force_cancel_orders(ctx),
-        OwnerMsg::SetPaused(paused) => set_paused(ctx, paused),
-    }
-}
-
 fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage)?;
 
     Ok(Response::new()
         .add_events(events)?
         .add_message(refunds.into_message()))
-}
-
-fn set_paused(ctx: MutableCtx, state: AuctionState) -> anyhow::Result<Response> {
-    AUCTION_STATE.save(ctx.storage, &state)?;
-
-    Ok(Response::new())
-}
-
-fn callback_msg(ctx: MutableCtx, msg: CallbackMsg) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ctx.contract,
-        "you don't have the right, O you don't have the right"
-    );
-    match msg {
-        CallbackMsg::Auction => auction(ctx),
-    }
 }
 
 // ----------------------------------- tests -----------------------------------

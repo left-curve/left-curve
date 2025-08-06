@@ -1,7 +1,7 @@
 use {
     crate::{
         account_factory::Username,
-        dex::{AuctionState, Direction, OrderId, PairParams, PairUpdate, PassiveOrder},
+        dex::{Direction, OrderId, PairParams, PairUpdate, PassiveOrder},
     },
     grug::{
         Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6, Udec128_24,
@@ -110,10 +110,6 @@ pub enum ExecuteMsg {
     Owner(OwnerMsg),
     /// Messages only the contract itself can call.
     Callback(CallbackMsg),
-    /// Create new, or modify the parametes of existing, trading pairs.
-    ///
-    /// Can only be called by the chain owner.
-    BatchUpdatePairs(Vec<PairUpdate>),
     /// Create or cancel multiple limit orders in one batch.
     BatchUpdateOrders {
         creates_market: Vec<CreateMarketOrderRequest>,
@@ -161,25 +157,30 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde)]
 pub enum OwnerMsg {
-    /// pause or unpause trading
-    SetPaused(AuctionState),
+    /// pause or unpause trading.
+    SetPaused(bool),
+    /// Create new, or modify the parameters of existing, trading pairs.
+    BatchUpdatePairs(Vec<PairUpdate>),
     /// Forcibly cancel all orders (limit, market, incoming) and refund the users.
-    ForceCancelOrders,
+    ForceCancelOrders {},
 }
 
 #[grug::derive(Serde)]
 pub enum CallbackMsg {
     /// perform the batch auction; called during `cron_execute`
-    Auction,
+    Auction {},
 }
 
 #[grug::derive(Serde)]
 pub enum ReplyMsg {
-    Auction,
+    AfterAuction {},
 }
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Returns whether tracing is paused.
+    #[returns(bool)]
+    Paused {},
     /// Query the parameters of a single trading pair.
     #[returns(PairParams)]
     Pair {
@@ -280,10 +281,6 @@ pub enum QueryMsg {
         /// Up to how many orders to return.
         limit: Option<u32>,
     },
-
-    /// Returns the auction state.
-    #[returns(AuctionState)]
-    AuctionState,
 }
 
 /// Identifier of a trading pair. Consists of the base asset and quote asset

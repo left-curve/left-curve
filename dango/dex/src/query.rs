@@ -1,7 +1,6 @@
 use {
     crate::{
-        AUCTION_STATE, LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, RESERVES, VOLUMES,
-        VOLUMES_BY_USER,
+        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, VOLUMES, VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
     },
     dango_oracle::OracleQuerier,
@@ -9,9 +8,8 @@ use {
         DangoQuerier,
         account_factory::Username,
         dex::{
-            AuctionState, Direction, OrderId, OrderResponse, OrdersByPairResponse,
-            OrdersByUserResponse, PairId, PairParams, PairUpdate, PassiveOrder, QueryMsg,
-            ReservesResponse, SwapRoute,
+            Direction, OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId,
+            PairParams, PairUpdate, PassiveOrder, QueryMsg, ReservesResponse, SwapRoute,
         },
     },
     grug::{
@@ -25,6 +23,10 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
+        QueryMsg::Paused {} => {
+            let res = query_paused(ctx)?;
+            res.to_json_value()
+        },
         QueryMsg::Pair {
             base_denom,
             quote_denom,
@@ -114,12 +116,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_reflect_curve(ctx, base_denom, quote_denom, direction, limit)?;
             res.to_json_value()
         },
-        QueryMsg::AuctionState => {
-            let res = query_auction_state(ctx)?;
-            res.to_json_value()
-        },
     }
     .map_err(Into::into)
+}
+
+fn query_paused(ctx: ImmutableCtx) -> StdResult<bool> {
+    PAUSED.load(ctx.storage)
 }
 
 fn query_pair(ctx: ImmutableCtx, base_denom: Denom, quote_denom: Denom) -> StdResult<PairParams> {
@@ -447,8 +449,4 @@ fn query_reflect_curve(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     Ok(orders.take(limit).collect())
-}
-
-fn query_auction_state(ctx: ImmutableCtx) -> StdResult<AuctionState> {
-    AUCTION_STATE.load(ctx.storage)
 }

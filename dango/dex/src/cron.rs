@@ -1,6 +1,6 @@
 use {
     crate::{
-        AUCTION_STATE, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS,
+        INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED,
         RESERVES, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, Prependable,
@@ -13,15 +13,15 @@ use {
         DangoQuerier,
         account_factory::Username,
         dex::{
-            AuctionState, AuctionStopped, CallbackMsg, Direction, ExecuteMsg, LimitOrdersMatched,
-            Order, OrderFilled, OrderTrait,
+            CallbackMsg, Direction, ExecuteMsg, LimitOrdersMatched, Order, OrderFilled, OrderTrait,
+            Paused, ReplyMsg,
         },
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Json, Message, MutableCtx,
+        Addr, Api, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MutableCtx,
         Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult, Storage,
-        SubMessage, SudoCtx, TransferBuilder, Udec128, Udec128_6, Udec128_24,
+        SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6, Udec128_24,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -37,21 +37,40 @@ const HALF: Udec128 = Udec128::new_percent(50);
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
-    if let AuctionState::Paused(error) = AUCTION_STATE
-        .load(ctx.storage)
-        .unwrap_or(AuctionState::Ongoing)
-    {
-        return Ok(Response::new().add_event(AuctionStopped { error })?);
-    };
+    // Skip the auction if trading is paused.
+    if PAUSED.load(ctx.storage)? {
+        return Ok(Response::new());
+    }
 
+    // Use submessage "reply on error" to catch errors that may happen during
+    // the auction.
     Ok(Response::new().add_submessage(SubMessage::reply_on_error(
         Message::execute(
             ctx.contract,
-            &ExecuteMsg::Callback(CallbackMsg::Auction),
-            Coins::default(),
+            &ExecuteMsg::Callback(CallbackMsg::Auction {}),
+            Coins::new(),
         )?,
-        &Json::null(),
+        &ReplyMsg::AfterAuction {},
     )?))
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
+    match msg {
+        ReplyMsg::AfterAuction {} => {
+            let error = res.unwrap_err(); // safe to unwrap because we only request reply on error
+
+            #[cfg(feature = "library")]
+            {
+                tracing::error!(error, "AUCTION FAILED");
+            }
+
+            // Pause trading in case of a failure.
+            PAUSED.save(ctx.storage, &true)?;
+
+            Response::new().add_event(Paused { error: Some(error) })
+        },
+    }
 }
 
 pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
