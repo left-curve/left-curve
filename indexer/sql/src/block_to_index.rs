@@ -21,7 +21,7 @@ pub struct BlockToIndex {
     filename: PathBuf,
 }
 
-/// Maximum number of item to insert in a single `insert_many` operation.
+/// Maximum number of items to insert in a single `insert_many` operation.
 /// This to avoid the following psql error:
 /// PgConnection::run(): too many arguments for query
 /// See discussion here:
