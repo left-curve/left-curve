@@ -46,6 +46,21 @@ scrape_configs:
       target_label: instance
       replacement: 'ovh3:9100'
 
+  - job_name: 'promtail'
+    static_configs:
+      - targets: ['ovh1:9080']
+      - targets: ['ovh2:9080']
+      - targets: ['node-exporter:9080']
+      - targets: ['ovh4:9080']
+      - targets: ['ovh5:9080']
+      - targets: ['ovh6:9080']
+      - targets: ['ovh7:9080']
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: 'node-exporter:9080'
+      target_label: instance
+      replacement: 'ovh3:9080'
+
   - job_name: 'clickhouse'
     static_configs:
       - targets: ['ovh1:9126']
