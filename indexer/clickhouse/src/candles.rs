@@ -11,8 +11,8 @@ use {
         dex::{OrderFilled, PairId},
     },
     grug::{
-        CommitmentStatus, EventName, EventStatus, EvtCron, JsonDeExt, Number, NumberConst,
-        Udec128_6,
+        CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
+        FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten, Number, NumberConst, Udec128_6,
     },
     std::{collections::HashMap, str::FromStr, time::Duration},
     strum::IntoEnumIterator,
@@ -31,7 +31,8 @@ impl Indexer {
 
         let block_outcome = ctx
             .get::<grug_types::BlockOutcome>()
-            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?;
+            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?
+            .clone();
 
         let dex = querier.as_ref().query_dex()?;
 
@@ -41,12 +42,12 @@ impl Indexer {
 
         // DEX order execution happens exclusively in the end-block cronjob, so
         // we loop through the block's cron outcomes.
-        for outcome in &block_outcome.cron_outcomes {
+        for outcome in block_outcome.cron_outcomes {
             // If the event wasn't successful, skip it.
             let CommitmentStatus::Committed(EventStatus::Ok(EvtCron {
                 guest_event: EventStatus::Ok(event),
                 ..
-            })) = &outcome.cron_event
+            })) = outcome.cron_event
             else {
                 continue;
             };
@@ -59,7 +60,21 @@ impl Indexer {
             // Loop through the DEX events in the reverse order. Meaning, for each
             // trading pair, its closing price is determined by the last executed
             // order in this block.
-            for event in event.contract_events.iter().rev() {
+            for event in event
+                .naive_flatten(FlatCommitmentStatus::Committed, FlatEventStatus::Ok)
+                .into_iter()
+                .rev()
+            {
+                let FlatEventInfo {
+                    event: FlatEvent::ContractEvent(event),
+                    commitment_status: FlatCommitmentStatus::Committed,
+                    event_status: FlatEventStatus::Ok,
+                    ..
+                } = event
+                else {
+                    continue;
+                };
+
                 // We look for the "order filled" event, regardless whether it's
                 // a limit order or a market order.
                 if event.ty == OrderFilled::EVENT_NAME {
