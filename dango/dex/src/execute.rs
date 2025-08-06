@@ -3,16 +3,18 @@ mod order_creation;
 
 use {
     crate::{
-        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, RESERVES,
+        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PAUSED, RESERVES,
         core::{self, PassiveLiquidityPool},
+        cron,
     },
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, bank,
         dex::{
-            CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
-            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, Swapped,
+            CallbackMsg, CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest,
+            ExecuteMsg, InstantiateMsg, LP_NAMESPACE, NAMESPACE, OwnerMsg, PairId, PairUpdate,
+            Paused, Swapped, Unpaused,
         },
         taxman::{self, FeeType},
     },
@@ -24,13 +26,38 @@ use {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &false)?;
     batch_update_pairs(ctx, msg.pairs)
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
+        ExecuteMsg::Owner(msg) => {
+            // Only the chain owner can call owner functions.
+            ensure!(
+                ctx.sender == ctx.querier.query_owner()?,
+                "you don't have the right, O you don't have the right"
+            );
+
+            match msg {
+                OwnerMsg::SetPaused(true) => pause(ctx),
+                OwnerMsg::SetPaused(false) => unpause(ctx),
+                OwnerMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
+                OwnerMsg::ForceCancelOrders {} => force_cancel_orders(ctx),
+            }
+        },
+        ExecuteMsg::Callback(msg) => {
+            // Only the contract itself can call callback functions.
+            ensure!(
+                ctx.sender == ctx.contract,
+                "you don't have the right, O you don't have the right"
+            );
+
+            match msg {
+                CallbackMsg::Auction {} => cron::auction(ctx),
+            }
+        },
         ExecuteMsg::BatchUpdateOrders {
             creates_market,
             creates_limit,
@@ -51,8 +78,19 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::SwapExactAmountOut { route, output } => {
             swap_exact_amount_out(ctx, route.into_inner(), output)
         },
-        ExecuteMsg::ForceCancelOrders {} => force_cancel_orders(ctx),
     }
+}
+
+fn pause(ctx: MutableCtx) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &true)?;
+
+    Ok(Response::new().add_event(Paused { error: None })?)
+}
+
+fn unpause(ctx: MutableCtx) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &false)?;
+
+    Ok(Response::new().add_event(Unpaused {})?)
 }
 
 fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
@@ -88,6 +126,12 @@ fn batch_update_orders(
     creates_limit: Vec<CreateLimitOrderRequest>,
     cancels: Option<CancelOrderRequest>,
 ) -> anyhow::Result<Response> {
+    // Creating or canceling orders is not allowed when the contract is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't update orders when trading is paused"
+    );
+
     let mut deposits = Coins::new();
     let mut refunds = DecCoins::new();
     let mut events = EventBuilder::new();
@@ -397,11 +441,6 @@ fn swap_exact_amount_out(
 }
 
 fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    ensure!(
-        ctx.sender == ctx.querier.query_owner()?,
-        "you don't have the right, O you don't have the right"
-    );
-
     let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage)?;
 
     Ok(Response::new()
@@ -539,6 +578,9 @@ mod tests {
     fn overfunded_order_refund_works(msg: ExecuteMsg, funds: Coins, expected_refunds: Coins) {
         let sender = Addr::mock(1);
         let mut ctx = MockContext::new().with_sender(sender).with_funds(funds);
+
+        // Set the pause state as unpaused.
+        PAUSED.save(&mut ctx.storage, &false).unwrap();
 
         // Create the dango-usdc pair.
         // The specific parameters don't matter. We just need the pair to exist.
