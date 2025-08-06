@@ -418,7 +418,7 @@ fn owner_msg(ctx: MutableCtx, msg: OwnerMsg) -> anyhow::Result<Response> {
         "you don't have the right, O you don't have the right"
     );
     match msg {
-        OwnerMsg::ForceCancelOrders {} => force_cancel_orders(ctx),
+        OwnerMsg::ForceCancelOrders => force_cancel_orders(ctx),
         OwnerMsg::SetPaused(paused) => set_paused(ctx, paused),
     }
 }
@@ -443,7 +443,7 @@ fn callback_msg(ctx: MutableCtx, msg: CallbackMsg) -> anyhow::Result<Response> {
         "you don't have the right, O you don't have the right"
     );
     match msg {
-        CallbackMsg::Auction {} => auction(ctx),
+        CallbackMsg::Auction => auction(ctx),
     }
 }
 
