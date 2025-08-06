@@ -61,19 +61,27 @@ jobs:
           toolchain: nightly
           components: rustfmt
 
-      # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
-      # - uses: actions/cache@v4
-      #   with:
-      #     path: |
-      #       ${HOME}/.cargo/bin/
-      #       ${HOME}/.cargo/registry/index/
-      #       ${HOME}/.cargo/registry/cache/
-      #       ${HOME}/.cargo/git/db/
-      #       target/
-      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Run rustfmt checks
         run: rustup run nightly cargo fmt --check --all
+
+  clippy:
+    name: Clippy
+    runs-on: [self-hosted]
+    needs: [format]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: rustfmt
+
+      - name: Run clippy
+        run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
 
   check-graphql-schema:
     name: Check GraphQL schema
@@ -125,6 +133,7 @@ jobs:
 
   run-tests-partitioned:
     name: Test (${{ matrix.partition }})
+    needs: [format]
     runs-on: self-hosted
     timeout-minutes: 20
     strategy:
