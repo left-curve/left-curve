@@ -139,33 +139,47 @@ jobs:
       POSTGRES_PORT: ${{ github.run_id * 10 + 30000 + matrix.partition }}
       CLICKHOUSE_DATABASE: grug_test
       CLICKHOUSE_USER: default
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 127.0.0.1:{{ env.POSTGRES_PORT }}:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      clickhouse:
-        image: clickhouse/clickhouse-server:latest
-        env:
-          CLICKHOUSE_DB: grug_test
-          CLICKHOUSE_USER: default
-          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-        ports:
-          - 127.0.0.1:{{ env.CLICKHOUSE_PORT }}:8123
-        options: >-
-          --health-cmd "clickhouse-client --query 'SELECT 1'"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-          --ulimit nofile=262144:262144
     steps:
+      - name: Detect runner and set ports
+        run: |
+          # Extract runner number from hostname
+          RUNNER_NUM=$(hostname | grep -o '[0-9]*$' || echo "1")
+
+          # Base ports: 20001, 20002, 20003, 20004 per runner
+          PG_PORT=$((20000 + RUNNER_NUM))
+          CH_PORT=$((30000 + RUNNER_NUM))
+
+          echo "POSTGRES_PORT=$PG_PORT" >> $GITHUB_ENV
+          echo "CLICKHOUSE_PORT=$CH_PORT" >> $GITHUB_ENV
+          echo "Using runner $RUNNER_NUM with ports PG:$PG_PORT CH:$CH_PORT"
+      # NOTE: I can't use the services option because I need dynamic ports as
+      # env variable to avoid port conflicts since we run multiple runners
+      # per host.
+      - name: Start services
+        run: |
+          docker run -d --name pg-${{ github.run_id }}-${{ matrix.partition }} \
+            -e POSTGRES_PASSWORD=postgres \
+            -p 127.0.0.1:$POSTGRES_PORT:5432 \
+            --health-cmd="pg_isready" \
+            --health-interval=10s \
+            --health-timeout=5s \
+            --health-retries=5 \
+          postgres:17
+
+          docker run -d --name ch-${{ github.run_id }}-${{ matrix.partition }} \
+            -e CLICKHOUSE_DB=grug_test -e CLICKHOUSE_USER=default \
+            -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
+            -p 127.0.0.1:$CLICKHOUSE_PORT:8123\
+            --health-cmd="clickhouse-client --query 'SELECT 1'" \
+            --health-interval=5s \
+            --health-timeout=5s \
+            --health-retries=10 \
+            --ulimit nofile=262144:262144 \
+          clickhouse/clickhouse-server:latest
+      - name: Wait for services
+        run: |
+          timeout 120 bash -c 'until [ "$(docker inspect --format="{{.State.Health.Status}}" pg-${{ github.run_id }}-${{ matrix.partition }})" == "healthy" ]; do sleep 2; done'
+          timeout 120 bash -c 'until [ "$(docker inspect --format="{{.State.Health.Status}}" ch-${{ github.run_id }}-${{ matrix.partition }})" == "healthy" ]; do sleep 2; done'
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref }}
@@ -178,6 +192,11 @@ jobs:
       - name: Run tests
         run: |
           ~/.cargo/bin/cargo-nextest nextest run --all-features --partition count:${{ matrix.partition }}/2
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop pg-${{ github.run_id }}-${{ matrix.partition }} ch-${{ github.run_id }}-${{ matrix.partition }} || true
+          docker rm pg-${{ github.run_id }}-${{ matrix.partition }} ch-${{ github.run_id }}-${{ matrix.partition }} || true
 
   build:
     timeout-minutes: 20
