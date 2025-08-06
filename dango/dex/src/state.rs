@@ -1,10 +1,10 @@
 use {
     dango_types::{
         account_factory::Username,
-        dex::{Direction, LimitOrder, MarketOrder, OrderId, PairParams},
+        dex::{AuctionState, Direction, LimitOrder, MarketOrder, OrderId, PairParams},
     },
     grug::{
-        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, NumberConst, Timestamp,
+        Addr, CoinPair, Counter, Denom, IndexedMap, Item, Map, MultiIndex, NumberConst, Timestamp,
         Udec128_6, Udec128_24, Uint64, UniqueIndex,
     },
 };
@@ -16,6 +16,8 @@ pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
 pub const RESERVES: Map<(&Denom, &Denom), CoinPair> = Map::new("reserve");
 
 pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", Uint64::ONE, Uint64::ONE);
+
+pub const AUCTION_STATE: Item<AuctionState> = Item::new("auction_state");
 
 pub const MARKET_ORDERS: IndexedMap<MarketOrderKey, MarketOrder, MarketOrderIndex> =
     IndexedMap::new("market_order", MarketOrderIndex {

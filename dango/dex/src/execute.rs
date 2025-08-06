@@ -3,7 +3,7 @@ mod order_creation;
 
 use {
     crate::{
-        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, RESERVES,
+        AUCTION_STATE, MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, RESERVES, auction,
         core::{self, PassiveLiquidityPool},
     },
     anyhow::{anyhow, ensure},
@@ -11,14 +11,16 @@ use {
     dango_types::{
         DangoQuerier, bank,
         dex::{
-            CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
-            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, Swapped,
+            AuctionState, AuctionStopped, CallbackMsg, CancelOrderRequest, CreateLimitOrderRequest,
+            CreateMarketOrderRequest, ExecuteMsg, InstantiateMsg, LP_NAMESPACE, NAMESPACE,
+            OwnerMsg, PairId, PairUpdate, ReplyMsg, Swapped,
         },
         taxman::{self, FeeType},
     },
     grug::{
-        Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero,
-        Message, MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
+        Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, GenericResult, Inner,
+        IsZero, Message, MutableCtx, NonZero, QuerierExt, Response, SubMsgResult, SudoCtx, Uint128,
+        UniqueVec, btree_map, coins,
     },
 };
 
@@ -30,6 +32,8 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
+        ExecuteMsg::Owner(msg) => owner_msg(ctx, msg),
+        ExecuteMsg::Callback(msg) => callback_msg(ctx, msg),
         ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
         ExecuteMsg::BatchUpdateOrders {
             creates_market,
@@ -51,8 +55,20 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::SwapExactAmountOut { route, output } => {
             swap_exact_amount_out(ctx, route.into_inner(), output)
         },
-        ExecuteMsg::ForceCancelOrders {} => force_cancel_orders(ctx),
     }
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> anyhow::Result<Response> {
+    match (msg, res) {
+        (ReplyMsg::Auction, GenericResult::Err(error)) => {
+            AUCTION_STATE.save(ctx.storage, &AuctionState::Paused(error.clone()))?;
+            return Ok(Response::new().add_event(AuctionStopped { error })?);
+        },
+        _ => {},
+    }
+
+    Ok(Response::new())
 }
 
 fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
@@ -396,17 +412,35 @@ fn swap_exact_amount_out(
         })?)
 }
 
-fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
+fn owner_msg(ctx: MutableCtx, msg: OwnerMsg) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "you don't have the right, O you don't have the right"
     );
+    match msg {
+        OwnerMsg::ForceCancelOrders {} => force_cancel_orders(ctx),
+        OwnerMsg::SetPaused(paused) => set_paused(ctx, paused),
+    }
+}
 
+fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage)?;
 
     Ok(Response::new()
         .add_events(events)?
         .add_message(refunds.into_message()))
+}
+
+fn set_paused(ctx: MutableCtx, state: AuctionState) -> anyhow::Result<Response> {
+    AUCTION_STATE.save(ctx.storage, &state)?;
+
+    Ok(Response::new())
+}
+
+fn callback_msg(ctx: MutableCtx, msg: CallbackMsg) -> anyhow::Result<Response> {
+    match msg {
+        CallbackMsg::Auction {} => auction(ctx),
+    }
 }
 
 // ----------------------------------- tests -----------------------------------

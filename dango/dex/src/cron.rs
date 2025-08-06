@@ -1,7 +1,7 @@
 use {
     crate::{
-        INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, RESERVES,
-        VOLUMES, VOLUMES_BY_USER,
+        AUCTION_STATE, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS,
+        RESERVES, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, Prependable,
             fill_orders, match_and_fill_market_orders, match_limit_orders,
@@ -12,13 +12,16 @@ use {
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        dex::{Direction, LimitOrdersMatched, Order, OrderFilled, OrderTrait},
+        dex::{
+            AuctionState, AuctionStopped, CallbackMsg, Direction, ExecuteMsg, LimitOrdersMatched,
+            Order, OrderFilled, OrderTrait,
+        },
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
-        Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
-        Udec128, Udec128_6, Udec128_24,
+        Addr, Api, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Json, Message, MutableCtx,
+        Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult, Storage,
+        SubMessage, SudoCtx, TransferBuilder, Udec128, Udec128_6, Udec128_24,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -34,6 +37,24 @@ const HALF: Udec128 = Udec128::new_percent(50);
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    if let AuctionState::Paused(error) = AUCTION_STATE
+        .load(ctx.storage)
+        .unwrap_or(AuctionState::Ongoing)
+    {
+        return Ok(Response::new().add_event(AuctionStopped { error })?);
+    };
+
+    Ok(Response::new().add_submessage(SubMessage::reply_on_error(
+        Message::execute(
+            ctx.contract,
+            &ExecuteMsg::Callback(CallbackMsg::Auction),
+            Coins::default(),
+        )?,
+        &Json::null(),
+    )?))
+}
+
+pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     let app_cfg = ctx.querier.query_dango_config()?;
 
     let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier)

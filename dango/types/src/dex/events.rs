@@ -82,3 +82,9 @@ pub struct Swapped {
     pub input: Coin,
     pub output: Coin,
 }
+
+#[grug::derive(Serde)]
+#[grug::event("auction_stopped")]
+pub struct AuctionStopped {
+    pub error: String,
+}

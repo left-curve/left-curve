@@ -1,10 +1,11 @@
+mod auction;
 mod direction;
 mod events;
 mod msgs;
 mod order;
 mod pair;
 
-pub use {direction::*, events::*, msgs::*, order::*, pair::*};
+pub use {auction::*, direction::*, events::*, msgs::*, order::*, pair::*};
 
 use {grug::Part, std::sync::LazyLock};
 

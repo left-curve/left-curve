@@ -1,7 +1,7 @@
 use {
     crate::{
         account_factory::Username,
-        dex::{Direction, OrderId, PairParams, PairUpdate, PassiveOrder},
+        dex::{AuctionState, Direction, OrderId, PairParams, PairUpdate, PassiveOrder},
     },
     grug::{
         Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6, Udec128_24,
@@ -106,6 +106,10 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
+    /// Messages only the chain owner can call.
+    Owner(OwnerMsg),
+    /// Messages only the contract itself can call.
+    Callback(CallbackMsg),
     /// Create new, or modify the parametes of existing, trading pairs.
     ///
     /// Can only be called by the chain owner.
@@ -153,10 +157,25 @@ pub enum ExecuteMsg {
         route: SwapRoute,
         output: NonZero<Coin>,
     },
+}
+
+#[grug::derive(Serde)]
+pub enum OwnerMsg {
+    /// pause or unpause trading
+    SetPaused(AuctionState),
     /// Forcibly cancel all orders (limit, market, incoming) and refund the users.
-    ///
-    /// Can only be called by the chain owner. Used to recover from critical bugs.
-    ForceCancelOrders {},
+    ForceCancelOrders,
+}
+
+#[grug::derive(Serde)]
+pub enum CallbackMsg {
+    /// perform the batch auction; called during `cron_execute`
+    Auction,
+}
+
+#[grug::derive(Serde)]
+pub enum ReplyMsg {
+    Auction,
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -261,6 +280,10 @@ pub enum QueryMsg {
         /// Up to how many orders to return.
         limit: Option<u32>,
     },
+
+    /// Returns the auction state.
+    #[returns(AuctionState)]
+    AuctionState,
 }
 
 /// Identifier of a trading pair. Consists of the base asset and quote asset
