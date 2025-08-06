@@ -1,9 +1,10 @@
-use grug::{QueryClient, Signer};
+use {
+    crate::auth::Nonce,
+    grug::{QueryClient, Signer},
+};
 
-use crate::auth::Nonce;
-
-#[async_trait::async_trait]
 /// Represent a signer that can query and update its nonce.
+#[async_trait::async_trait]
 pub trait SequencedSigner: Signer {
     async fn query_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
     where
