@@ -58,7 +58,7 @@ where
 }
 
 #[test]
-fn lol() {
+fn testnet_debug() {
     let db = WrapperDb::new(DiskDbLite::open("../../testnet_data").unwrap());
 
     let (mut suite, ..) = setup_suite_with_db_and_vm(
@@ -73,6 +73,7 @@ fn lol() {
 
     let chain_id = suite.query_status().unwrap();
     suite.chain_id = chain_id.chain_id;
+    println!("{}", chain_id.last_finalized_block.height);
     suite.block = chain_id.last_finalized_block;
 
     let res = suite.make_empty_block().block_outcome;
