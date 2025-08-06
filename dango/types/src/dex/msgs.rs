@@ -163,6 +163,14 @@ pub enum ExecuteMsg {
     ForceCancelOrders {},
 }
 
+#[grug::derive(Serde)]
+pub enum ReplyMsg {
+    /// Indicates an error happened during the transfer call in the bank contract.
+    ErrorInTransfer {},
+    /// Indicates an error happened during the fee payment in the taxman contract.
+    ErrorInFeePayment {},
+}
+
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
     /// Query whether trading is paused.

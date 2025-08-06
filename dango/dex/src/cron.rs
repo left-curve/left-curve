@@ -12,13 +12,14 @@ use {
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        dex::{Direction, LimitOrdersMatched, Order, OrderFilled, OrderTrait},
+        dex::{Direction, LimitOrdersMatched, Order, OrderFilled, OrderTrait, ReplyMsg},
         taxman::{self, FeeType},
     },
     grug::{
         Addr, Api, BlockInfo, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number,
         NumberConst, Order as IterationOrder, QuerierWrapper, Response, StdError, StdResult,
-        Storage, SudoCtx, TransferBuilder, Udec128, Udec128_6, Udec128_24,
+        Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
+        Udec128_24,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -40,9 +41,42 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
         // Pause trading in case of an error.
         PAUSED.save(ctx.storage, &true).unwrap_or_else(|err| {
-            panic!("failed to pause trading after cronjob error: {err}");
+            panic!("failed to pause trading after error during `cron_execute`: {err}");
         });
     })
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
+    // We only request replies on error, so the result should be an error.
+    let err = res.unwrap_err();
+
+    match msg {
+        ReplyMsg::ErrorInTransfer {} => {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                err,
+                "ERROR IN BANK TRANSFER AFTER DEX CRONJOB! HALTING TRADING"
+            );
+
+            PAUSED.save(ctx.storage, &true).unwrap_or_else(|err| {
+                panic!("failed to pause trading after error during bank transfer: {err}");
+            });
+        },
+        ReplyMsg::ErrorInFeePayment {} => {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                err,
+                "ERROR IN TAXMAN FEE PAYMENT AFTER DEX CRONJOB! HALTING TRADING"
+            );
+
+            PAUSED.save(ctx.storage, &true).unwrap_or_else(|err| {
+                panic!("failed to pause trading after error during taxman fee payment: {err}");
+            });
+        },
+    }
+
+    Ok(Response::new())
 }
 
 fn _cron_execute(
@@ -131,19 +165,25 @@ fn _cron_execute(
     let fees = fees.into_coins_floor();
 
     Ok(Response::new()
-        .may_add_message(if !refunds.is_empty() {
-            Some(Message::Transfer(refunds))
+        .may_add_submessage(if !refunds.is_empty() {
+            Some(SubMessage::reply_on_error(
+                Message::Transfer(refunds),
+                &ReplyMsg::ErrorInTransfer {},
+            )?)
         } else {
             None
         })
-        .may_add_message(if fees.is_non_empty() {
-            Some(Message::execute(
-                app_cfg.addresses.taxman,
-                &taxman::ExecuteMsg::Pay {
-                    ty: FeeType::Trade,
-                    payments: fee_payments.into_batch(),
-                },
-                fees,
+        .may_add_submessage(if fees.is_non_empty() {
+            Some(SubMessage::reply_on_error(
+                Message::execute(
+                    app_cfg.addresses.taxman,
+                    &taxman::ExecuteMsg::Pay {
+                        ty: FeeType::Trade,
+                        payments: fee_payments.into_batch(),
+                    },
+                    fees,
+                )?,
+                &ReplyMsg::ErrorInFeePayment {},
             )?)
         } else {
             None
