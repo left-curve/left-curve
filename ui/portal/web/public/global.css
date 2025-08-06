@@ -164,6 +164,7 @@ body {
 
   .max-h-available {
     max-height: 100vh;
+    /* biome-ignore lint/suspicious/noDuplicateProperties: Adding browser-specific properties */
     max-height: -moz-available;
     max-height: -webkit-fill-available;
     max-height: -webkit-stretch;
@@ -178,6 +179,10 @@ body {
 .react-json-view .variable-value div {
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
   color: theme("colors.white.100") !important;
+}
+
+.fp-overflow {
+width: 100%;
 }
 
 /* ChartIQ */

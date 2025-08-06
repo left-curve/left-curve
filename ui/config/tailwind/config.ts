@@ -232,6 +232,7 @@ export const tailwindConfig: Partial<Config> = {
         "spinner-ease-spin": "spinner-spin 0.8s ease infinite",
         "spinner-linear-spin": "spinner-spin 0.8s linear infinite",
         pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        levitate: "levitate 2s ease-in-out infinite",
       },
       keyframes: {
         "spinner-spin": {
@@ -254,6 +255,20 @@ export const tailwindConfig: Partial<Config> = {
         },
         pulse: {
           "50%": { opacity: "0.5" },
+        },
+        levitate: {
+          "0%": {
+            opacity: "1",
+            transform: "translateY(0px)",
+          },
+          "50%": {
+            opacity: "0.4",
+            transform: "translateY(-10px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0px)",
+          },
         },
       },
     },

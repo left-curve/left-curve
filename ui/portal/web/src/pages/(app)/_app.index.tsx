@@ -2,7 +2,7 @@ import ReactFullpage from "@fullpage/react-fullpage";
 import { createFileRoute } from "@tanstack/react-router";
 import { m } from "~/paraglide/messages";
 
-import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { IconChevronDown, useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { AppletsSection } from "~/components/overview/AppletsSection";
 import { SearchMenu } from "~/components/foundation/SearchMenu";
 
@@ -30,10 +30,10 @@ function OverviewComponent() {
         licenseKey={getFullpageLicenseKey()}
         scrollingSpeed={1000}
         credits={{ enabled: false }}
-        render={() => {
+        render={({ fullpageApi }) => {
           return (
             <ReactFullpage.Wrapper>
-              <div className="section min-h-svh">
+              <div className="section min-h-svh flex items-center justify-center relative w-full">
                 <div className="lg:max-w-3xl mx-auto p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
                   <img
                     src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
@@ -47,6 +47,15 @@ function OverviewComponent() {
                     </div>
                   )}
                   <AppletsSection />
+                </div>
+                <div
+                  className="absolute bottom-[6rem] lg:bottom-[10rem] left-1/2 -translate-x-1/2 cursor-pointer diatype-m-medium"
+                  onClick={() => fullpageApi.moveSectionDown()}
+                >
+                  <div className="animate-levitate flex items-center justify-center flex-col">
+                    <p>{m["welcome.scroll"]()}</p>
+                    <IconChevronDown className="w-6 h-6" />
+                  </div>
                 </div>
               </div>
               {/* {isSearchBarVisible ? null : (
@@ -63,37 +72,6 @@ function OverviewComponent() {
           );
         }}
       />
-      {/*       <ReactFullpage
-        licenseKey={getFullpageLicenseKey()}
-        scrollingSpeed={1000}
-        credits={{ enabled: false }}
-        render={() => {
-          return (
-            <ReactFullpage.Wrapper>
-              <header className="lg:max-w-3xl mx-auto border border-red-500 p-4 min-h-[calc(100svh-80px)] w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
-                <img
-                  src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
-                  alt="Dango"
-                  className="max-w-[10rem] lg:max-w-[13rem]"
-                />
-                {isLg && (
-                  <div className="relative w-full h-11">
-                    {" "}
-                    <SearchMenu />
-                  </div>
-                )}
-                <AppletsSection />
-              </header>
-              <section className="border border-red-500 w-full min-h-[calc(100svh-80px)] flex items-center justify-center">
-                Section 1
-              </section>
-              <section className="border border-red-500 w-full min-h-[calc(100svh-80px)] flex items-center justify-center">
-                Section 2
-              </section>
-            </ReactFullpage.Wrapper>
-          );
-        }}
-      /> */}
     </div>
   );
 }

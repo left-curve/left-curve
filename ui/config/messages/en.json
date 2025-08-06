@@ -319,7 +319,8 @@
   },
   "welcome": {
     "title": "Welcome to Dango",
-    "description": "We’re delighted to have you with us and look forward to seeing what you do next."
+    "description": "We’re delighted to have you with us and look forward to seeing what you do next.",
+    "scroll": "Scroll to learn more"
   },
   "signup": {
     "mobileModal": {
