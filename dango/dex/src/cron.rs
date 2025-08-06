@@ -62,7 +62,7 @@ pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Respon
 
             #[cfg(feature = "library")]
             {
-                tracing::error!(error, "AUCTION FAILED");
+                tracing::error!(error, "!!! AUCTION FAILED !!!");
             }
 
             // Pause trading in case of a failure.
