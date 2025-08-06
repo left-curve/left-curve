@@ -1,6 +1,6 @@
 use {
     crate::{
-        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, RESERVES, VOLUMES, VOLUMES_BY_USER,
+        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, VOLUMES, VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
     },
     dango_oracle::OracleQuerier,
@@ -23,6 +23,10 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
+        QueryMsg::Paused {} => {
+            let res = PAUSED.load(ctx.storage)?;
+            res.to_json_value()
+        },
         QueryMsg::Pair {
             base_denom,
             quote_denom,

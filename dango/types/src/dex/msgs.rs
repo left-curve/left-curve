@@ -106,6 +106,10 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
+    /// Pause or unpause trading.
+    ///
+    /// If paused, orders can't be created or canceled.
+    SetPaused(bool), /* TODO: should we make this more granular, with create and cancel controlled separately? */
     /// Create new, or modify the parametes of existing, trading pairs.
     ///
     /// Can only be called by the chain owner.
@@ -161,6 +165,9 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query whether trading is paused.
+    #[returns(bool)]
+    Paused {},
     /// Query the parameters of a single trading pair.
     #[returns(PairParams)]
     Pair {

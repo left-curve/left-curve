@@ -3,7 +3,7 @@ mod order_creation;
 
 use {
     crate::{
-        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, RESERVES,
+        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PAUSED, RESERVES,
         core::{self, PassiveLiquidityPool},
     },
     anyhow::{anyhow, ensure},
@@ -30,6 +30,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
+        ExecuteMsg::SetPaused(paused) => set_paused(ctx, paused),
         ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
         ExecuteMsg::BatchUpdateOrders {
             creates_market,
@@ -53,6 +54,17 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         },
         ExecuteMsg::ForceCancelOrders {} => force_cancel_orders(ctx),
     }
+}
+
+fn set_paused(ctx: MutableCtx, paused: bool) -> anyhow::Result<Response> {
+    ensure!(
+        ctx.sender == ctx.querier.query_owner()?,
+        "only the owner can pause or unpause trading"
+    );
+
+    PAUSED.save(ctx.storage, &paused)?;
+
+    Ok(Response::new())
 }
 
 fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
@@ -88,6 +100,12 @@ fn batch_update_orders(
     creates_limit: Vec<CreateLimitOrderRequest>,
     cancels: Option<CancelOrderRequest>,
 ) -> anyhow::Result<Response> {
+    // Creating or canceling ordes is disallowed if trading is paused.
+    ensure!(
+        !PAUSED.may_load(ctx.storage)?.unwrap_or(false),
+        "trading is paused"
+    );
+
     let mut deposits = Coins::new();
     let mut refunds = DecCoins::new();
     let mut events = EventBuilder::new();

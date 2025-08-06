@@ -1,7 +1,7 @@
 use {
     crate::{
-        INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, RESERVES,
-        VOLUMES, VOLUMES_BY_USER,
+        INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED,
+        RESERVES, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, Prependable,
             fill_orders, match_and_fill_market_orders, match_limit_orders,
@@ -16,9 +16,9 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
-        Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
-        Udec128, Udec128_6, Udec128_24,
+        Addr, Api, BlockInfo, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number,
+        NumberConst, Order as IterationOrder, QuerierWrapper, Response, StdError, StdResult,
+        Storage, SudoCtx, TransferBuilder, Udec128, Udec128_6, Udec128_24,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -34,11 +34,28 @@ const HALF: Udec128 = Udec128::new_percent(50);
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
-    let app_cfg = ctx.querier.query_dango_config()?;
+    _cron_execute(ctx.storage, ctx.api, ctx.querier, ctx.block).inspect_err(|err| {
+        #[cfg(feature = "tracing")]
+        tracing::error!(%err, "ERROR IN DEX CRONJOB! HALTING TRADING");
 
-    let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier)
-        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
-    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
+        // Pause trading in case of an error.
+        PAUSED.save(ctx.storage, &true).unwrap_or_else(|err| {
+            panic!("failed to pause trading after cronjob error: {err}");
+        });
+    })
+}
+
+fn _cron_execute(
+    storage: &mut dyn Storage,
+    api: &dyn Api,
+    querier: QuerierWrapper,
+    block: BlockInfo,
+) -> anyhow::Result<Response> {
+    let app_cfg = querier.query_dango_config()?;
+
+    let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, querier)
+        .with_no_older_than(block.timestamp - MAX_ORACLE_STALENESS);
+    let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, querier);
 
     let mut events = EventBuilder::new();
     let mut refunds = TransferBuilder::<DecCoins<6>>::new();
@@ -48,18 +65,18 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut fee_payments = TransferBuilder::<DecCoins<6>>::new();
 
     // Collect incoming orders and clear the temporary storage.
-    let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
+    let incoming_orders = INCOMING_ORDERS.drain(storage, None, None)?;
 
     // Add incoming orders to the persistent storage.
     for (order_key, order) in incoming_orders.values() {
         debug_assert!(
-            order.created_at_block_height == ctx.block.height,
+            order.created_at_block_height == block.height,
             "incoming order was created in a previous block! creation height: {}, current height: {}",
             order.created_at_block_height,
-            ctx.block.height
+            block.height
         );
 
-        LIMIT_ORDERS.save(ctx.storage, order_key.clone(), order)?;
+        LIMIT_ORDERS.save(storage, order_key.clone(), order)?;
     }
 
     // Find all the unique pairs that have received new orders in the block.
@@ -70,7 +87,7 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     // Find all the pairs that have market orders in the block.
     let pairs_with_market_orders = MARKET_ORDERS
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
+        .keys(storage, None, None, IterationOrder::Ascending)
         .map(|res| res.map(|(pair, ..)| pair))
         .collect::<StdResult<BTreeSet<_>>>()?;
 
@@ -79,9 +96,9 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     // TODO: spawn a thread for each pair to process them in parallel.
     for (base_denom, quote_denom) in pairs_with_limit_orders.union(&pairs_with_market_orders) {
         clear_orders_of_pair(
-            ctx.storage,
-            ctx.api,
-            ctx.block.height,
+            storage,
+            api,
+            block.height,
             app_cfg.addresses.dex,
             &mut oracle_querier,
             &mut account_querier,
@@ -100,12 +117,12 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     // Save the updated volumes.
     for (address, volume) in volumes {
-        VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
+        VOLUMES.save(storage, (&address, block.timestamp), &volume)?;
         // TODO: purge volume data that are too old.
     }
 
     for (username, volume) in volumes_by_username {
-        VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
+        VOLUMES_BY_USER.save(storage, (&username, block.timestamp), &volume)?;
         // TODO: purge volume data that are too old.
     }
 
