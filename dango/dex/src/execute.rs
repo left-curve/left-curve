@@ -60,12 +60,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> anyhow::Result<Response> {
-    match (msg, res) {
-        (ReplyMsg::Auction, GenericResult::Err(error)) => {
-            AUCTION_STATE.save(ctx.storage, &AuctionState::Paused(error.clone()))?;
-            return Ok(Response::new().add_event(AuctionStopped { error })?);
-        },
-        _ => {},
+    if let (ReplyMsg::Auction, GenericResult::Err(error)) = (msg, res) {
+        AUCTION_STATE.save(ctx.storage, &AuctionState::Paused(error.clone()))?;
+        return Ok(Response::new().add_event(AuctionStopped { error })?);
     }
 
     Ok(Response::new())
