@@ -19,14 +19,17 @@
       vars:
         runner_dir: /opt/actions-runner-2
         runner_name: "{{ hostname }}-2"
+        runner_state: absent
     - role: MonolithProjects.github_actions_runner
       vars:
         runner_dir: /opt/actions-runner-3
         runner_name: "{{ hostname }}-3"
+        runner_state: absent
     - role: MonolithProjects.github_actions_runner
       vars:
         runner_dir: /opt/actions-runner-4
         runner_name: "{{ hostname }}-4"
+        runner_state: absent
 
   tasks:
     - name: Ensure restart policy in GitHub Actions runner service
