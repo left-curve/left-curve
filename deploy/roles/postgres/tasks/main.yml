@@ -37,6 +37,18 @@
     - postgresql.conf
     - init.sql
 
+- name: Configure kernel parameters for memory optimization
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { key: 'vm.swappiness', value: '1' }
+    - { key: 'vm.vfs_cache_pressure', value: '50' }
+  become: true
+  become_user: root
+
 - name: Create postgres network
   docker_network:
     name: postgres

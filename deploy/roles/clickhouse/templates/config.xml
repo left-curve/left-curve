@@ -81,6 +81,10 @@
     <!-- Format schemas -->
     <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
 
+  <max_memory_usage>32000000000</max_memory_usage>
+  <max_memory_usage_for_user>48000000000</max_memory_usage_for_user>
+  <max_server_memory_usage>64000000000</max_server_memory_usage>
+
   <prometheus>
     <endpoint>/metrics</endpoint>
     <port>9126</port>
