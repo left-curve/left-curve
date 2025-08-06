@@ -124,7 +124,6 @@ jobs:
           done
 
   run-tests-partitioned:
-    needs: [build-test-artifacts]
     name: Test (${{ matrix.partition }})
     runs-on: self-hosted
     timeout-minutes: 20
