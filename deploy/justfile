@@ -21,7 +21,7 @@ deploy-github-runners:
   ansible-playbook setup-github-runner-hosts.yml
   ansible-playbook install-github-runner-hosts.yml
 
-deploy-mainnet:
+deploy-testnet:
   ansible-playbook cometbft.yml --limit 100.107.248.71 -e '{"dango_networks":["testnet"]}'
   ansible-playbook dango.yml --limit 100.107.248.71 -e dango_image_tag=latest -e "dango_db_password=$DANGO_DB_PASSWORD" -e '{"dango_networks":["testnet"]}'
   ansible-playbook bots.yml --limit 100.107.248.71 -e '{"dango_networks":["testnet"]}' -e faucet_version=latest
