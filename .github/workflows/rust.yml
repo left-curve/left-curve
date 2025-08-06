@@ -6,6 +6,7 @@ concurrency:
 
 env:
   GIT_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+  CARGO_TERM_COLOR: always
 
 on:
   workflow_dispatch:
@@ -60,86 +61,13 @@ jobs:
           toolchain: nightly
           components: rustfmt
 
-      # This ends up being 8GB and takes 60sec to pull, which is too slow just for formatting.
-      # - uses: actions/cache@v4
-      #   with:
-      #     path: |
-      #       ${HOME}/.cargo/bin/
-      #       ${HOME}/.cargo/registry/index/
-      #       ${HOME}/.cargo/registry/cache/
-      #       ${HOME}/.cargo/git/db/
-      #       target/
-      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
       - name: Run rustfmt checks
         run: rustup run nightly cargo fmt --check --all
 
-  check-no-features:
-    needs: [push-manifest]
-    name: Check compiling without features
-    runs-on: self-hosted
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref }}
-
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-      - name: Check without features
-        run: |
-          set -euo pipefail
-          for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
-            echo "Checking $crate..."
-            cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
-          done
-
-  test:
+  clippy:
+    name: Clippy
+    runs-on: [self-hosted]
     needs: [format]
-    name: Lint + Test
-    runs-on: self-hosted
-    timeout-minutes: 20
-    # Don't use this, it raises permissions issues on self hosted runners
-    # container:
-    #   image: ghcr.io/left-curve/left-curve/native-builder
-    # permissions:
-    #   packages: read
-    env:
-      PGDATABASE: grug_test
-      DB_HOST: postgres
-      CLICKHOUSE_HOST: localhost
-      CLICKHOUSE_PORT: 10123
-      POSTGRES_PORT: 6432
-      CLICKHOUSE_DATABASE: grug_test
-      CLICKHOUSE_USER: default
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          # Using a different port to not mess with the currently running psql
-          - 127.0.0.1:6432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      clickhouse:
-        image: clickhouse/clickhouse-server:latest
-        env:
-          CLICKHOUSE_DB: grug_test
-          CLICKHOUSE_USER: default
-          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-        ports:
-          # Using a different port to not mess with the currently running clickhouse
-          - 127.0.0.1:10123:8123
-        options: >-
-          --health-cmd "clickhouse-client --query 'SELECT 1'"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-          --ulimit nofile=262144:262144
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -149,40 +77,132 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          components: clippy
-
-      # - name: Create psql database
-      #   run: |
-      #     createdb -U postgres -h postgres "$PGDATABASE"
-
-      # - uses: actions/cache@v4
-      #   with:
-      #     path: |
-      #       ${HOME}/.cargo/bin/
-      #       ${HOME}/.cargo/registry/index/
-      #       ${HOME}/.cargo/registry/cache/
-      #       ${HOME}/.cargo/git/db/
-      #       target/
-      #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          toolchain: nightly
+          components: rustfmt
 
       - name: Run clippy
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
 
-      - name: Build GraphQL schema
-        run: cargo run -p dango-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
-
-      - name: Check if schema is up-to-date
+  check-graphql-schema:
+    name: Check GraphQL schema
+    runs-on: [self-hosted]
+    needs: [format]
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - run: cargo run -p dango-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
+      - name: Check schema
         run: |
           if ! git diff --exit-code ./indexer/client/src/schemas/schema.graphql; then
-            echo "::error::GraphQL schema is out of date. Please run 'just build-graphql-schema' locally and commit the changes."
+            echo "::error::GraphQL schema out of date"
             exit 1
           fi
 
+  check-no-features:
+    needs: [push-manifest]
+    name: Check each crate with no features (${{ matrix.partition }})
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        partition: [1, 2, 3, 4]  # Adjust based on number of crates
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+      - name: Check without features
+        run: |
+          set -euo pipefail
+          crates=($(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name' | sort))
+          total_crates=${#crates[@]}
+          partition_size=$(( (total_crates + 3) / 4 ))  # Ceiling division for 4 partitions
+          start_idx=$(( (partition_size * (${{ matrix.partition }} - 1)) ))
+          end_idx=$(( partition_size * ${{ matrix.partition }} ))
+
+          for ((i=start_idx; i<end_idx && i<total_crates; i++)); do
+            crate="${crates[$i]}"
+            echo "Checking $crate..."
+            cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
+          done
+
+  run-tests-partitioned:
+    name: Test (${{ matrix.partition }})
+    needs: [format]
+    runs-on: self-hosted
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        partition: [1, 2]
+    env:
+      PGDATABASE: grug_test
+      DB_HOST: postgres
+      CLICKHOUSE_HOST: localhost
+      CLICKHOUSE_DATABASE: grug_test
+      CLICKHOUSE_USER: default
+    steps:
+      - name: Detect runner and set ports
+        run: |
+          # Extract runner number from hostname
+          RUNNER_NUM=$(hostname | grep -o '[0-9]*$' || echo "1")
+
+          # Base ports: 20001, 20002, 20003, 20004 per runner
+          PG_PORT=$((20000 + RUNNER_NUM))
+          CH_PORT=$((30000 + RUNNER_NUM))
+
+          echo "POSTGRES_PORT=$PG_PORT" >> $GITHUB_ENV
+          echo "CLICKHOUSE_PORT=$CH_PORT" >> $GITHUB_ENV
+          echo "Using runner $RUNNER_NUM with ports PG:$PG_PORT CH:$CH_PORT"
+      # NOTE: I can't use the services option because I need dynamic ports as
+      # env variable to avoid port conflicts since we run multiple runners
+      # per host.
+      - name: Start services
+        run: |
+          docker run -d --name pg-${{ github.run_id }}-${{ matrix.partition }} \
+            -e POSTGRES_PASSWORD=postgres \
+            -p 127.0.0.1:$POSTGRES_PORT:5432 \
+            --health-cmd="pg_isready" \
+            --health-interval=10s \
+            --health-timeout=5s \
+            --health-retries=5 \
+          postgres:17
+
+          docker run -d --name ch-${{ github.run_id }}-${{ matrix.partition }} \
+            -e CLICKHOUSE_DB=grug_test -e CLICKHOUSE_USER=default \
+            -e CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1 \
+            -p 127.0.0.1:$CLICKHOUSE_PORT:8123\
+            --health-cmd="clickhouse-client --query 'SELECT 1'" \
+            --health-interval=5s \
+            --health-timeout=5s \
+            --health-retries=10 \
+            --ulimit nofile=262144:262144 \
+          clickhouse/clickhouse-server:latest
+      - name: Wait for services
+        run: |
+          timeout 120 bash -c 'until [ "$(docker inspect --format="{{.State.Health.Status}}" pg-${{ github.run_id }}-${{ matrix.partition }})" == "healthy" ]; do sleep 2; done'
+          timeout 120 bash -c 'until [ "$(docker inspect --format="{{.State.Health.Status}}" ch-${{ github.run_id }}-${{ matrix.partition }})" == "healthy" ]; do sleep 2; done'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
       - name: Run tests
-        run: cargo test --all-features
-        env:
-          RUST_BACKTRACE: 1
+        run: |
+          ~/.cargo/bin/cargo-nextest nextest run --all-features --partition count:${{ matrix.partition }}/2
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop pg-${{ github.run_id }}-${{ matrix.partition }} ch-${{ github.run_id }}-${{ matrix.partition }} || true
+          docker rm pg-${{ github.run_id }}-${{ matrix.partition }} ch-${{ github.run_id }}-${{ matrix.partition }} || true
 
   build:
     timeout-minutes: 20
@@ -197,7 +217,7 @@ jobs:
           # - [self-hosted, macOS]
     name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
-    needs: [test]
+    needs: [run-tests-partitioned]
     permissions:
       packages: write
     steps:
@@ -313,6 +333,7 @@ jobs:
           docker run --rm ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} dango || true
 
   push-manifest:
+    name: Push a multi-arch docker image
     permissions:
       packages: write
     needs: [build]
