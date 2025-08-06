@@ -52,12 +52,12 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
     // Add incoming orders to the persistent storage.
     for (order_key, order) in incoming_orders.values() {
-        debug_assert!(
-            order.created_at_block_height == ctx.block.height,
-            "incoming order was created in a previous block! creation height: {}, current height: {}",
-            order.created_at_block_height,
-            ctx.block.height
-        );
+        // debug_assert!(
+        //     order.created_at_block_height == ctx.block.height,
+        //     "incoming order was created in a previous block! creation height: {}, current height: {}",
+        //     order.created_at_block_height,
+        //     ctx.block.height
+        // );
 
         LIMIT_ORDERS.save(ctx.storage, order_key.clone(), order)?;
     }

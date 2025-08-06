@@ -13,8 +13,8 @@ use {
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
         Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
-        Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, QueryStatusResponse, Signer,
-        StdError, StdResult, Tx, TxOutcome, UnsignedTx,
+        Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, QueryStatusRequest,
+        QueryStatusResponse, Signer, StdError, StdResult, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
@@ -172,10 +172,15 @@ where
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
         let app = App::new(db, vm, pp, id, u64::MAX, upgrade_handler);
 
-        app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
-            .unwrap_or_else(|err| {
-                panic!("fatal error while initializing chain: {err}");
-            });
+        if app
+            .do_query_app(Query::Status(QueryStatusRequest {}), 0, false)
+            .is_err()
+        {
+            app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
+                .unwrap_or_else(|err| {
+                    panic!("fatal error while initializing chain: {err}");
+                });
+        }
 
         Self {
             app,
