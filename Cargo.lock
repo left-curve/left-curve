@@ -3458,6 +3458,7 @@ version = "0.0.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
+ "async-trait",
  "bip32",
  "dango-account-factory",
  "dango-auth",
@@ -3689,6 +3690,7 @@ dependencies = [
  "assert-json-diff",
  "assertor",
  "async-graphql",
+ "async-trait",
  "bip32",
  "chrono",
  "clickhouse",
@@ -3752,6 +3754,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-graphql",
+ "async-trait",
  "grug",
  "hyperlane-types",
  "paste",
