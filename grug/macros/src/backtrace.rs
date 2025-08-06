@@ -186,7 +186,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
         #(#impl_from)*
         impl #crate_path::Backtraceable for #input_ident {
             fn into_generic_backtraced_error(self) -> #crate_path::BacktracedError<String> {
-                self.into_generic_backtraced_error()
+                #crate_path::BacktracedError::new_with_bt(self.to_string(), self.backtrace())
             }
 
             fn backtrace(&self) -> #crate_path::BT {
