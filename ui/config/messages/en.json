@@ -327,10 +327,10 @@
     "leverageUpDescription": "with Dango’s unified trading account with low cost and high capital efficiency. Spot, perps, vaults; one account, under a unified margin system.",
     "earn": "Earn",
     "earnDescription": "passive yields on your idle assets, by participating in Dango’s passive market making vaults. Make your money work for you!",
-    "community": "community",
-    "dangbros": "Dangbros",
     "join": "Join the ",
-    "of": "of"
+    "community": "community",
+    "of": "of",
+    "dangbros": "Dangbros"
   },
   "signup": {
     "mobileModal": {
