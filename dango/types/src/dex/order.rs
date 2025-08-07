@@ -1,6 +1,4 @@
-use grug::{
-    Addr, MathResult, Number, NumberConst, Udec128, Udec128_6, Udec128_24, Uint64, Uint128,
-};
+use grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64, Uint128};
 
 /// Numerical identifier of an order (limit or market).
 ///
@@ -102,14 +100,15 @@ pub struct MarketOrder {
     pub user: Addr,
     /// The order's identifier.
     pub id: OrderId,
+    /// The "limit price" of this market order, calculated by the previous block's
+    /// best available price and the order's maximum slippage.
+    pub price: Udec128_24,
     /// For BUY orders, the amount of quote asset; for SELL orders, that of the
     /// base asset.
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the unit as the
     /// `amount` field.
     pub remaining: Udec128_6,
-    /// Max slippage percentage.
-    pub max_slippage: Udec128,
 }
 
 #[grug::derive(Borsh, Serde)]

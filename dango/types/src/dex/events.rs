@@ -35,8 +35,8 @@ pub struct OrderCanceled {
 }
 
 #[grug::derive(Serde)]
-#[grug::event("limit_orders_matched")]
-pub struct LimitOrdersMatched {
+#[grug::event("orders_matched")]
+pub struct OrdersMatched {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub clearing_price: Udec128_24,
@@ -60,8 +60,6 @@ pub struct OrderFilled {
     pub refund_quote: Udec128_6,
     pub fee_base: Udec128_6,
     pub fee_quote: Udec128_6,
-    /// The price at which the order was executed.
-    pub clearing_price: Udec128_24,
     /// Whether the order was _completed_ filled and cleared from the book.
     pub cleared: bool,
 }
