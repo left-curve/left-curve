@@ -408,6 +408,7 @@ fn clear_orders_of_pair(
         refund_quote,
         fee_base,
         fee_quote,
+        clearing_price,
     } in filling_outcomes
     {
         let (user, id) = if let Some((order_id, user)) = order.id_and_user() {
@@ -479,6 +480,7 @@ fn clear_orders_of_pair(
             refund_quote,
             fee_base,
             fee_quote,
+            clearing_price,
             cleared: order.remaining().is_zero(),
         })?;
 
