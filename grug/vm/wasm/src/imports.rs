@@ -456,7 +456,7 @@ mod tests {
             write_to_memory(env, &mut store, data)
         }
 
-        fn fe_mut(&mut self) -> FunctionEnvMut<Environment> {
+        fn fe_mut(&mut self) -> FunctionEnvMut<'_, Environment> {
             self.fe.clone().into_mut(&mut self.store)
         }
 

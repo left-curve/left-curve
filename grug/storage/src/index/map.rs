@@ -35,11 +35,11 @@ where
         }
     }
 
-    pub fn path_raw(&self, key_raw: &[u8]) -> Path<T, C> {
+    pub fn path_raw(&self, key_raw: &[u8]) -> Path<'_, T, C> {
         self.primary.path_raw(key_raw)
     }
 
-    pub fn path(&self, key: K) -> Path<T, C> {
+    pub fn path(&self, key: K) -> Path<'_, T, C> {
         self.primary.path(key)
     }
 

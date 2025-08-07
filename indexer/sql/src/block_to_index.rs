@@ -1,5 +1,6 @@
 #[cfg(feature = "metrics")]
-use metrics::counter;
+use {metrics::counter, std::time::Instant};
+
 use {
     crate::{active_model::Models, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -26,7 +27,7 @@ pub struct BlockToIndex {
 /// PgConnection::run(): too many arguments for query
 /// See discussion here:
 /// https://www.postgresql.org/message-id/13394.1533697144%40sss.pgh.pa.us
-const MAX_ROWS_INSERT: usize = 2048;
+pub const MAX_ROWS_INSERT: usize = 2048;
 
 impl BlockToIndex {
     pub fn new(filename: PathBuf, block: Block, block_outcome: BlockOutcome) -> Self {
@@ -43,6 +44,9 @@ impl BlockToIndex {
         db: DatabaseConnection,
         #[allow(unused_variables)] indexer_id: u64,
     ) -> error::Result<()> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
         #[cfg(feature = "tracing")]
         tracing::info!(
             block_height = self.block.info.height,
@@ -78,6 +82,9 @@ impl BlockToIndex {
             .inspect_err(|_e| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(err = %_e, "Failed to insert block");
+
+                #[cfg(feature = "metrics")]
+                counter!("indexer.database.errors.total").increment(1);
             })?;
 
         #[cfg(feature = "metrics")]
@@ -105,6 +112,9 @@ impl BlockToIndex {
                 .await.inspect_err(|_e| {
                     #[cfg(feature = "tracing")]
                     tracing::error!(err = %_e, transactions_len=transactions_len, "Failed to insert transactions");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
                 })?;
             }
         }
@@ -126,6 +136,9 @@ impl BlockToIndex {
                 .await.inspect_err(|_e| {
                     #[cfg(feature = "tracing")]
                     tracing::error!(err = %_e, messages_len=messages_len, "Failed to insert messages");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
                 })?;
             }
         }
@@ -148,11 +161,17 @@ impl BlockToIndex {
                 .inspect_err(|_e| {
                     #[cfg(feature = "tracing")]
                     tracing::error!(err = %_e, events_len=events_len, "Failed to insert events");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
                 })?;
             }
         }
 
         db.commit().await?;
+
+        #[cfg(feature = "metrics")]
+        metrics::histogram!("indexer.block_save.duration").record(start.elapsed().as_secs_f64());
 
         Ok(())
     }

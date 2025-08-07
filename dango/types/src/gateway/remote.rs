@@ -19,7 +19,7 @@ impl PrimaryKey for Remote {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<grug::RawKey> {
+    fn raw_keys(&self) -> Vec<grug::RawKey<'_>> {
         let bytes = match self {
             Remote::Warp { domain, contract } => {
                 // tag:           1 byte

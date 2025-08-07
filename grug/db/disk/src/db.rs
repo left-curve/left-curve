@@ -594,25 +594,25 @@ pub(crate) fn new_read_options(
     opts
 }
 
-fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_DEFAULT).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }
 
-pub(crate) fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+pub(crate) fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }
 
-fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_STATE_STORAGE).unwrap_or_else(|| {
         panic!("failed to find state storage column family");
     })
 }
 
-fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_STATE_COMMITMENT).unwrap_or_else(|| {
         panic!("failed to find state commitment column family");
     })
