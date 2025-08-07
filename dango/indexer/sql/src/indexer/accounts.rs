@@ -121,14 +121,17 @@ pub(crate) async fn save_accounts(
         tracing::info!("No account related events found");
     }
 
-    counter!("indexer.dango.hooks.users_registered.total")
-        .increment(user_registered_events.len() as u64);
-    counter!("indexer.dango.hooks.accounts_registered.total")
-        .increment(account_registered_events.len() as u64);
-    counter!("indexer.dango.hooks.keys_added.total")
-        .increment(account_key_added_events.len() as u64);
-    counter!("indexer.dango.hooks.keys_removed.total")
-        .increment(account_key_removed_events.len() as u64);
+    #[cfg(feature = "metrics")]
+    {
+        counter!("indexer.dango.hooks.users_registered.total")
+            .increment(user_registered_events.len() as u64);
+        counter!("indexer.dango.hooks.accounts_registered.total")
+            .increment(account_registered_events.len() as u64);
+        counter!("indexer.dango.hooks.keys_added.total")
+            .increment(account_key_added_events.len() as u64);
+        counter!("indexer.dango.hooks.keys_removed.total")
+            .increment(account_key_removed_events.len() as u64);
+    }
 
     if !user_registered_events.is_empty() {
         #[cfg(feature = "tracing")]
