@@ -9,7 +9,8 @@ use {
     grug::{EventName, Inner, JsonDeExt},
     grug_app::QuerierProvider,
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
-    indexer_sql::block_to_index::BlockToIndex,
+    indexer_sql::block_to_index::{BlockToIndex, MAX_ROWS_INSERT},
+    itertools::Itertools,
     sea_orm::{
         ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait,
     },
@@ -17,6 +18,8 @@ use {
 };
 #[cfg(feature = "metrics")]
 use {
+    metrics::counter,
+    metrics::describe_counter,
     metrics::{describe_histogram, histogram},
     std::time::Instant,
 };
@@ -118,6 +121,15 @@ pub(crate) async fn save_accounts(
         tracing::info!("No account related events found");
     }
 
+    counter!("indexer.dango.hooks.users_registered.total")
+        .increment(user_registered_events.len() as u64);
+    counter!("indexer.dango.hooks.accounts_registered.total")
+        .increment(account_registered_events.len() as u64);
+    counter!("indexer.dango.hooks.keys_added.total")
+        .increment(account_key_added_events.len() as u64);
+    counter!("indexer.dango.hooks.keys_removed.total")
+        .increment(account_key_removed_events.len() as u64);
+
     if !user_registered_events.is_empty() {
         #[cfg(feature = "tracing")]
         tracing::info!("Detected `user_registered_events`: {user_registered_events:?}");
@@ -146,12 +158,29 @@ pub(crate) async fn save_accounts(
                 })
                 .collect::<Vec<_>>();
 
-            entity::users::Entity::insert_many(new_users)
-                .exec_without_returning(&txn)
-                .await?;
-            entity::public_keys::Entity::insert_many(new_public_keys)
-                .exec_without_returning(&txn)
-                .await?;
+            for users in new_users
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::users::Entity::insert_many(users)
+                    .exec_without_returning(&txn)
+                    .await?;
+            }
+
+            for public_keys in new_public_keys
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::public_keys::Entity::insert_many(public_keys)
+                    .exec_without_returning(&txn)
+                    .await?;
+            }
         }
     }
 
@@ -191,6 +220,9 @@ pub(crate) async fn save_accounts(
                             user_id: Set(user_id),
                         };
 
+                        #[cfg(feature = "metrics")]
+                        counter!("indexer.dango.hooks.accounts.total").increment(1);
+
                         entity::accounts_users::Entity::insert(new_account_user)
                             .exec_without_returning(&txn)
                             .await?;
@@ -210,6 +242,9 @@ pub(crate) async fn save_accounts(
                                 account_id: Set(new_account_id),
                                 user_id: Set(user_id),
                             };
+
+                            #[cfg(feature = "metrics")]
+                            counter!("indexer.dango.hooks.accounts.total").increment(1);
 
                             entity::accounts_users::Entity::insert(new_account_user)
                                 .exec_without_returning(&txn)
@@ -272,5 +307,32 @@ pub fn init_metrics() {
     describe_histogram!(
         "indexer.dango.hooks.accounts.duration",
         "Account hook duration in seconds"
+    );
+
+    describe_counter!(
+        "indexer.dango.hooks.accounts.total",
+        "Total account hook executions"
+    );
+
+    describe_counter!(
+        "indexer.dango.hooks.users_registered.total",
+        "Total users registered"
+    );
+
+    describe_counter!(
+        "indexer.dango.hooks.accounts_registered.total",
+        "Total accounts registered"
+    );
+
+    describe_counter!("indexer.dango.hooks.keys_added.total", "Total keys added");
+
+    describe_counter!(
+        "indexer.dango.hooks.keys_removed.total",
+        "Total keys removed"
+    );
+
+    describe_counter!(
+        "indexer.dango.hooks.accounts.errors.total",
+        "Total account hook errors"
     );
 }
