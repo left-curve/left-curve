@@ -45,7 +45,9 @@ pub struct OrdersMatched {
 }
 
 #[grug::derive(Serde)]
-#[grug::event("order_filled")]
+// TODO: change the event name to just `order_filled`. this would be an API-breaking change,
+// so only do this after testnet-2 has ended.
+#[grug::event("limit_order_filled")]
 pub struct OrderFilled {
     pub user: Addr,
     // `None` if the order is from the passive liquidity pool.
@@ -60,6 +62,8 @@ pub struct OrderFilled {
     pub refund_quote: Udec128_6,
     pub fee_base: Udec128_6,
     pub fee_quote: Udec128_6,
+    /// The price at which the order was executed.
+    pub clearing_price: Udec128_24,
     /// Whether the order was _completed_ filled and cleared from the book.
     pub cleared: bool,
 }
