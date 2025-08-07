@@ -12,8 +12,11 @@ export function AppletsSection() {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,_minmax(64px,_1fr))] lg:flex lg:flex-wrap gap-4 md:gap-8 w-full md:min-h-fit lg:justify-center">
       {Object.values(favApplets).map((applet) => (
-        <div className="w-[80px] h-auto fles items-center justify-center">
-          <div key={applet.title} className="flex flex-col items-center gap-2">
+        <div
+          className="w-[80px] h-auto flex items-center justify-center"
+          key={`applets.section.${applet.title}}`}
+        >
+          <div className="flex flex-col items-center gap-2">
             <Link
               to={applet.path}
               className="h-16 w-16 md:h-20 md:w-20 shadow-account-card bg-primary-red hover:bg-surface-secondary-red transition-all rounded-xl p-[10px]"
