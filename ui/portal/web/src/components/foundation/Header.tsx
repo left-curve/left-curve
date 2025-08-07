@@ -40,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
   const isProSwap = location.pathname.includes("trade");
 
-  const hideSearchBar = isProSwap && !isLg || location.pathname === "/" && isLg;
+  const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
 
   return (
     <header
@@ -49,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",
+        { "lg:fixed h-fit": location.pathname === "/" },
       )}
     >
       <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
@@ -67,10 +68,10 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             },
           )}
         >
-          {!hideSearchBar ?  (
-            <SearchMenu />
+          {!hideSearchBar ? <SearchMenu /> : null}
+          {isProSwap && !isLg ? (
+            <div id="trade-buttons" className="flex gap-2 items-center justify-center w-full" />
           ) : null}
-          { isProSwap && !isLg ? <div id="trade-buttons" className="flex gap-2 items-center justify-center w-full" /> : null }
           <Hamburger />
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
