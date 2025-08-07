@@ -20,7 +20,7 @@ const [LandingProvider, useLanding] = createContext<LandingProps>({
 const LandingContainer: React.FC<PropsWithChildren> = ({ children }) => {
   const { setQuestBannerVisibility } = useApp();
   return (
-    <div className="w-full mx-auto flex flex-col gap-6 pt-4 lg:pt-0 pb-16 flex-1">
+    <div className="w-full mx-auto flex flex-col gap-6 pt-0 pb-16 flex-1">
       <ReactFullpage
         beforeLeave={(_, destination) => setQuestBannerVisibility(destination.isFirst)}
         licenseKey={decodeUtf8(decodeBase64(import.meta.env.PUBLIC_FP || "RkFMTEJBQ0tfS0VZCg=="))}
@@ -45,7 +45,7 @@ const Header: React.FC = () => {
 
   return (
     <div className="section min-h-svh flex items-center justify-center relative w-full">
-      <div className="lg:max-w-3xl mx-auto p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
+      <div className="lg:max-w-3xl min-h-svh mx-auto pb-[15rem] p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
         <img
           src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
           alt="Dango"
@@ -132,10 +132,10 @@ const SectionGreen: React.FC = () => {
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(212.63deg,_rgba(239,_240,_173,_0.4)_19.52%,_#EFF0AD_94.1%)] dark:bg-[linear-gradient(212.63deg,_#373634_19.52%,_#666654_94.1%)] p-4 lg:p-0">
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center">
         <div className="flex flex-col gap-2 max-w-[40rem]">
-          <h1 className="display-heading-l md:display-heading-2xl text-green-bean-800 dark:text-primary-green">
+          <h1 className="display-heading-l md:display-heading-2xl text-green-bean-800 dark:text-foreground-primary-green">
             Earn
           </h1>
-          <p className="diatype-m-regular md:h1-medium text-green-bean-800 dark:text-primary-green">
+          <p className="diatype-m-regular md:h1-medium text-green-bean-800 dark:text-foreground-primary-green">
             passive yields on your idle assets, by participating in Dango’s passive market making
             vaults. Make your money work for you!
           </p>
