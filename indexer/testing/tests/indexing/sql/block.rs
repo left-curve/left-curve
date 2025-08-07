@@ -412,7 +412,7 @@ pub mod replier {
     }
 
     pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
-        let msg = match (res.into_result(), msg) {
+        let msg = match (res, msg) {
             (Result::Err(_), ReplyMsg::Fail(execute_msg))
             | (Result::Ok(_), ReplyMsg::Ok(execute_msg)) => execute_msg,
             _ => panic!("invalid reply"),
