@@ -7,7 +7,7 @@ use {
     clap::{Parser, Subcommand},
     colored::Colorize,
     config_parser::parse_config,
-    dango_client::{SigningKey, SingleSigner},
+    dango_client::{CredentialType, SigningKey, SingleSigner},
     dango_types::config::AppConfig,
     grug_app::GAS_COSTS,
     grug_client::TendermintRpcClient,
@@ -173,7 +173,8 @@ impl TxCmd {
             let key_path = app_dir.keys_dir().join(format!("{}.json", self.key));
             let password = read_password("🔑 Enter the password to decrypt the key".bold())?;
             let sk = SigningKey::from_file(&key_path, &password)?;
-            let signer = SingleSigner::new(&self.username, self.address, sk)?;
+            let signer =
+                SingleSigner::new(&self.username, self.address, sk, CredentialType::Secp256k1)?;
             if let Some(nonce) = self.nonce {
                 signer.with_nonce(nonce)
             } else {

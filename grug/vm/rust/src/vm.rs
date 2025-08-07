@@ -85,6 +85,7 @@ impl Instance for RustInstance {
                     &MockApi,
                     &self.querier,
                 )?;
+
                 res.to_borsh_vec()
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {

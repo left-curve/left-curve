@@ -134,6 +134,16 @@ impl SigningKey {
         signature.to_bytes().into()
     }
 
+    pub fn sign_digest_with_recovery_id(&self, digest: [u8; 32]) -> [u8; 65] {
+        let digest = Identity256::from(digest);
+        let (signature, recovery_id) = self.inner.sign_digest_recoverable(digest).unwrap();
+        let mut sig = [0; 65];
+        sig[..64].copy_from_slice(&signature.to_bytes());
+        let recover_id = recovery_id.to_byte();
+        sig[64] = recover_id;
+        sig
+    }
+
     /// Return the private key as a byte array.
     pub fn private_key(&self) -> [u8; 32] {
         self.inner.to_bytes().into()
@@ -142,5 +152,10 @@ impl SigningKey {
     /// Return the public key as a byte array.
     pub fn public_key(&self) -> [u8; 33] {
         self.inner.verifying_key().to_bytes()
+    }
+
+    pub fn extended_public_key(&self) -> [u8; 65] {
+        let a = self.inner.verifying_key().to_encoded_point(false);
+        a.as_bytes().try_into().unwrap()
     }
 }
