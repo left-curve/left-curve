@@ -1,7 +1,14 @@
 [project]
-dependencies    = ["jupyterlab>=4.4.2", "matplotlib>=3.10.3", "numpy>=2.2.6", "pandas>=2.2.3"]
-description     = "Python prototypes for algorithms used in Dango (https://dango.exchange/) DeFi products"
+description     = "Python prototypes and devops tooling for Dango"
 name            = "dango"
-readme          = "notebooks/README.md"
+readme          = "README.md"
 requires-python = ">=3.13"
 version         = "0.0.0"
+
+dependencies = [
+  "ansible>=11.8.0",
+  "jupyterlab>=4.4.2",
+  "matplotlib>=3.10.3",
+  "numpy>=2.2.6",
+  "pandas>=2.2.3",
+]

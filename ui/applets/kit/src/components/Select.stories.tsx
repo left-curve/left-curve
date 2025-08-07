@@ -23,12 +23,10 @@ type Store = StoryObj<typeof Select>;
 
 const Template: React.FC<SelectProps> = (args) => {
   return (
-    <>
-      <Select {...args}>
-        <Select.Item value="1">1st Option</Select.Item>
-        <Select.Item value="2">2nd Option</Select.Item>
-      </Select>
-    </>
+    <Select {...args}>
+      <Select.Item value="1">1st Option</Select.Item>
+      <Select.Item value="2">2nd Option</Select.Item>
+    </Select>
   );
 };
 

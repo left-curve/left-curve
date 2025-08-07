@@ -156,7 +156,7 @@ where
                 if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
                     let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
 
-                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()).await?);
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
 
                 Ok::<(), IndexerError>(())
@@ -199,7 +199,7 @@ where
                 if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
                     let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
 
-                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()).await?);
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
 
                 Ok::<(), IndexerError>(())
@@ -591,7 +591,7 @@ impl IndexerTrait for Indexer {
                 return Ok(());
             }
 
-            if let Err(_err) = context.pubsub.publish_block_minted(block_height).await {
+            if let Err(_err) = context.pubsub.publish(block_height).await {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
                     err = %_err,

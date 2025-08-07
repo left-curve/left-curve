@@ -13,6 +13,7 @@ version       = { workspace = true }
 aes-gcm     = { workspace = true, features = ["std"] }
 alloy       = { workspace = true }
 anyhow      = { workspace = true }
+async-trait = { workspace = true }
 bip32       = { workspace = true }
 dango-auth  = { workspace = true }
 dango-types = { workspace = true }

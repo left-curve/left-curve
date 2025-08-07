@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noTemplateCurlyInString: it uses template literals for URL replacement */
+
 import {
   useAccount,
   useAppConfig,
@@ -59,6 +61,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
     Record<string, { contract: AddressInfo } | { account: AddressInfo }>
   >("app.known_addresses", {
     initialValue: {},
+    sync: true,
   });
 
   const blockExplorer = chain.blockExplorer;

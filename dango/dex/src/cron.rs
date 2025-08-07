@@ -1,22 +1,27 @@
 use {
     crate::{
-        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS,
-        MatchingOutcome, MergedOrders, Order, OrderTrait, PAIRS, PassiveLiquidityPool, Prependable,
-        RESERVES, VOLUMES, VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders,
-        match_limit_orders,
+        INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED,
+        RESERVES, VOLUMES, VOLUMES_BY_USER,
+        core::{
+            FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, Prependable,
+            fill_orders, match_and_fill_market_orders, match_limit_orders,
+        },
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        dex::{Direction, LimitOrdersMatched, OrderFilled},
+        dex::{
+            CallbackMsg, Direction, ExecuteMsg, LimitOrdersMatched, Order, OrderFilled, OrderTrait,
+            Paused, ReplyMsg,
+        },
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
-        Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
-        Udec128, Udec128_6, Udec128_24,
+        Addr, Api, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MutableCtx,
+        Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult, Storage,
+        SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6, Udec128_24,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -32,6 +37,43 @@ const HALF: Udec128 = Udec128::new_percent(50);
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    // Skip the auction if trading is paused.
+    if PAUSED.load(ctx.storage)? {
+        return Ok(Response::new());
+    }
+
+    // Use submessage "reply on error" to catch errors that may happen during
+    // the auction.
+    Ok(Response::new().add_submessage(SubMessage::reply_on_error(
+        Message::execute(
+            ctx.contract,
+            &ExecuteMsg::Callback(CallbackMsg::Auction {}),
+            Coins::new(),
+        )?,
+        &ReplyMsg::AfterAuction {},
+    )?))
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
+    match msg {
+        ReplyMsg::AfterAuction {} => {
+            let error = res.unwrap_err(); // safe to unwrap because we only request reply on error
+
+            #[cfg(feature = "library")]
+            {
+                tracing::error!(error, "!!! AUCTION FAILED !!!");
+            }
+
+            // Pause trading in case of a failure.
+            PAUSED.save(ctx.storage, &true)?;
+
+            Response::new().add_event(Paused { error: Some(error) })
+        },
+    }
+}
+
+pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     let app_cfg = ctx.querier.query_dango_config()?;
 
     let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier)
@@ -412,7 +454,7 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            *limit_order.price,
+                            limit_order.price,
                             order_id,
                         ),
                     )?;
@@ -422,7 +464,7 @@ fn clear_orders_of_pair(
                         (
                             (base_denom.clone(), quote_denom.clone()),
                             order_direction,
-                            *limit_order.price,
+                            limit_order.price,
                             order_id,
                         ),
                         &limit_order,

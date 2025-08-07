@@ -6,7 +6,6 @@ import {
   useSigningClient,
   useSubmitTx,
 } from "@left-curve/store";
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -156,7 +155,6 @@ export const Deposit: React.FC = () => {
 
   const { value: fundsAmount, error } = inputs.amount || {};
 
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { toast, showModal, subscriptions } = useApp();
   const { coins } = useConfig();
@@ -165,7 +163,7 @@ export const Deposit: React.FC = () => {
   const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 
-  const { data: balances = {}, refetch: refreshBalances } = useBalances({
+  const { data: balances = {} } = useBalances({
     address: account?.address,
   });
 
@@ -189,6 +187,7 @@ export const Deposit: React.FC = () => {
       error: m["signup.errors.couldntCompleteRequest"](),
     },
     mutation: {
+      invalidateKeys: [["quests", account?.username]],
       mutationFn: async () => {
         if (!signingClient) throw new Error("error: no signing client");
 
@@ -204,9 +203,7 @@ export const Deposit: React.FC = () => {
 
         await refreshAccounts?.();
       },
-      onSuccess: async () => {
-        await refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
+      onSuccess: () => {
         navigate({ to: "/" });
       },
     },

@@ -17,10 +17,14 @@ setup:
   source .venv/bin/activate && pip install ansible
   source .venv/bin/activate && ansible-galaxy collection install -r requirements.yml
 
-# Run the github runner installation playbooks
-install-runners:
-  source .venv/bin/activate && ansible-playbook setup-github-runner-hosts.yml
-  source .venv/bin/activate && ansible-playbook install-github-runner-hosts.yml
+deploy-github-runners:
+  ansible-playbook setup-github-runner-hosts.yml
+  ansible-playbook install-github-runner-hosts.yml
+
+deploy-testnet:
+  ansible-playbook cometbft.yml --limit 100.107.248.71 -e '{"dango_networks":["testnet"]}'
+  ansible-playbook dango.yml --limit 100.107.248.71 -e dango_image_tag=latest -e "dango_db_password=$DANGO_DB_PASSWORD" -e '{"dango_networks":["testnet"]}'
+  ansible-playbook bots.yml --limit 100.107.248.71 -e '{"dango_networks":["testnet"]}' -e faucet_version=latest
 
 deploy-bots:
   ansible-playbook bots.yml
@@ -34,6 +38,9 @@ cold-deploy-dango:
 deploy-dango:
   ansible-playbook dango.yml --tags setup
   ansible-playbook dango.yml --skip-tags setup
+
+deploy-monitoring:
+  ansible-playbook monitoring.yml
 
 reset-deploy:
   ansible-playbook reset-cometbft.yml

@@ -1,14 +1,15 @@
 use {
-    crate::{LimitOrder, MarketOrder},
     dango_types::{
         account_factory::Username,
-        dex::{Direction, OrderId, PairParams},
+        dex::{Direction, LimitOrder, MarketOrder, OrderId, PairParams},
     },
     grug::{
-        Addr, CoinPair, Counter, Denom, IndexedMap, Map, MultiIndex, NumberConst, Timestamp,
+        Addr, CoinPair, Counter, Denom, IndexedMap, Item, Map, MultiIndex, NumberConst, Timestamp,
         Udec128_6, Udec128_24, Uint64, UniqueIndex,
     },
 };
+
+pub const PAUSED: Item<bool> = Item::new("paused");
 
 // (base_denom, quote_denom) => params
 pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");

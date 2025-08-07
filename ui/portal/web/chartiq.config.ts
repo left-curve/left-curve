@@ -6,13 +6,16 @@ import getLicenseKey from "@left-curve/chartiq/license/key";
 import { Decimal } from "@left-curve/dango/utils";
 
 getLicenseKey(CIQ);
+createChartIQUIOverride();
 
 import type { Candle, CandleIntervals, PublicClient } from "@left-curve/dango/types";
 import type { useConfig } from "@left-curve/store";
 import type { AnyCoin } from "@left-curve/store/types";
+import type { QueryClient } from "@tanstack/react-query";
 
 type CreateChartIQDataFeedParameters = {
   client: PublicClient;
+  queryClient: QueryClient;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
   coins: Record<string, AnyCoin>;
   updateChartData: (
@@ -34,7 +37,7 @@ type CreateChartIQDataFeedParameters = {
 };
 
 export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameters) {
-  const { client, subscriptions, coins, updateChartData } = parameters;
+  const { client, queryClient, subscriptions, coins, updateChartData } = parameters;
 
   let _unsubscribe: () => void = () => {};
 
@@ -52,7 +55,7 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
 
   async function queryCandles(
     pairSymbol: string,
-    startDate: Date,
+    _startDate: Date,
     endDate: Date,
     params: { stx: CIQ.ChartEngine; symbol: string },
   ) {
@@ -67,12 +70,17 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
       timeUnit: timeUnit,
     });
 
-    const { nodes } = await client.queryCandles({
-      baseDenom: baseCoin.denom,
-      quoteDenom: quoteCoin.denom,
-      interval: candleInterval,
-      laterThan: startDate.toJSON(),
-      earlierThan: endDate.toJSON(),
+    const date = endDate.toJSON();
+
+    const { nodes } = await queryClient.fetchQuery({
+      queryKey: ["candles", pairSymbol, date, candleInterval],
+      queryFn: () =>
+        client.queryCandles({
+          baseDenom: baseCoin.denom,
+          quoteDenom: quoteCoin.denom,
+          interval: candleInterval,
+          earlierThan: date,
+        }),
     });
 
     return candlesToChartIQData(nodes, baseCoin, quoteCoin);
@@ -115,16 +123,16 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
       DT: new Date(candle.timeStart),
       Open: +Decimal(candle.open)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(),
+        .toFixed(5),
       High: +Decimal(candle.high)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(),
+        .toFixed(5),
       Low: +Decimal(candle.low)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(),
+        .toFixed(5),
       Close: +Decimal(candle.close)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(),
+        .toFixed(5),
     }));
   }
 
@@ -146,7 +154,6 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
         baseDenom: baseCoin.denom,
         quoteDenom: quoteCoin.denom,
         interval: candleInterval,
-        limit: 1,
       },
       listener: ({ candles }) => {
         const chartData = candlesToChartIQData(candles, baseCoin, quoteCoin);
@@ -250,6 +257,12 @@ export function createChartIQConfig(params: CreateChartIQConfigParameters) {
       ...config.chartEngineParams?.preferences,
       currentPriceLine: true,
       whitespace: 0,
+    },
+    // @ts-ignore
+    layout: {
+      periodicity: 5,
+      interval: 1,
+      timeUnit: "minute",
     },
     // @ts-ignore
     chart: {
@@ -468,4 +481,46 @@ export function createChartIQConfig(params: CreateChartIQConfigParameters) {
   };
 
   return config;
+}
+
+function createChartIQUIOverride() {
+  class CustomTitle extends CIQ.UI.components("cq-chart-title")[0].classDefinition {}
+
+  CustomTitle.markup = `
+    <cq-symbol class="hide-outline"></cq-symbol>
+
+    <cq-menu
+      class="ciq-period"
+      config="period"
+      reader="Periodicity"
+      text
+      binding="Layout.periodicity"
+      title="Interval Selector"
+      lift-dropdown
+    ></cq-menu>
+
+    <cq-chart-price>
+      <span id="pricelabel" hidden>Current Price</span>
+
+      <div role="group" aria-labelledby="pricelabel">
+        <cq-current-price role="marquee" cq-animate></cq-current-price>
+      </div>
+
+      <span>
+        <span id="changelabel" hidden>Change</span>
+
+        <div role="group" aria-labelledby="changelabel">
+          <div class="ciq-screen-reader" accessiblechange role="marquee"></div>
+        </div>
+        <cq-change aria-hidden="true">
+          <div class="ico"></div>
+          <cq-todays-change></cq-todays-change>
+          <cq-todays-change-pct></cq-todays-change-pct>
+        </cq-change>
+      </span>
+    </cq-chart-price>
+    <div class="exchange"></div>
+  `;
+
+  CIQ.UI.addComponentDefinition("cq-chart-title", CustomTitle);
 }

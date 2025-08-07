@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { m } from "~/paraglide/messages";
 
-import { IconButton, IconChevronDown, IconInfo, Tooltip } from "@left-curve/applets-kit";
+import { IconButton, IconChevronDown } from "@left-curve/applets-kit";
 import { AppletsSection } from "~/components/overview/AppletsSection";
 import { DotsIndicator } from "~/components/overview/SwippeableAccountCard";
 import { WelcomeSection } from "~/components/overview/WelcomeSection";

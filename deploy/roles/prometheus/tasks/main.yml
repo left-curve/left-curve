@@ -1,0 +1,29 @@
+- name: Ensure directories exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop: ["{{ prometheus_dir }}/config", "{{ prometheus_dir }}/data", "{{ prometheus_dir }}/alertmanager-data"]
+
+- name: Copy files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "{{ playbook_dir }}/roles/prometheus/templates/prometheus.yml", dest: "{{ prometheus_dir }}/config/prometheus.yml" }
+        - { src: "{{ playbook_dir }}/roles/prometheus/templates/alertmanager.yml", dest: "{{ prometheus_dir }}/config/alertmanager.yml" }
+        - { src: "{{ playbook_dir }}/roles/prometheus/templates/docker-compose.yml", dest: "{{ prometheus_dir }}/docker-compose.yml" }
+    - copy:
+        src: "{{ playbook_dir }}/roles/prometheus/files/alert-rules.yml"
+        dest: "{{ prometheus_dir }}/config/alert-rules.yml"
+
+- name: Launch Prometheus stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ prometheus_dir }}"
+    pull: missing
+    state: present
+    recreate: always

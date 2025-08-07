@@ -1,6 +1,6 @@
 use {
     crate::{BALANCES, METADATAS, NAMESPACE_OWNERS, ORPHANED_TRANSFERS, SUPPLIES},
-    anyhow::{bail, ensure},
+    anyhow::{anyhow, bail, ensure},
     dango_types::bank::{
         Burned, ExecuteMsg, InstantiateMsg, Metadata, Minted, Received, Sent, TransferOrphaned,
     },
@@ -253,7 +253,7 @@ fn recover_transfer(ctx: MutableCtx, sender: Addr, recipient: Addr) -> anyhow::R
 ///    contract. Either the sender or the recipient (once it exists) can claim
 ///    the tokens by calling the `recover_transfer` method.
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
+pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> anyhow::Result<Response> {
     let mut events = EventBuilder::with_capacity(msg.transfers.len() * 3);
 
     for (to, coins) in msg.transfers {
@@ -300,39 +300,47 @@ pub fn bank_execute(ctx: SudoCtx, msg: BankMsg) -> StdResult<Response> {
             })?;
     }
 
-    Response::new().add_events(events)
+    Ok(Response::new().add_events(events)?)
 }
 
 fn increase_supply(
     storage: &mut dyn Storage,
     denom: &Denom,
     amount: Uint128,
-) -> StdResult<Option<Uint128>> {
-    SUPPLIES.may_modify(storage, denom, |maybe_supply| {
-        let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_add(amount)?;
-        // Only write to storage if the supply is non-zero.
-        if supply.is_zero() {
-            Ok(None)
-        } else {
-            Ok(Some(supply))
-        }
-    })
+) -> anyhow::Result<Option<Uint128>> {
+    SUPPLIES
+        .may_modify(storage, denom, |maybe_supply| -> StdResult<_> {
+            let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_add(amount)?;
+            // Only write to storage if the supply is non-zero.
+            if supply.is_zero() {
+                Ok(None)
+            } else {
+                Ok(Some(supply))
+            }
+        })
+        .map_err(|err| {
+            anyhow!("failed to increase supply! denom: {denom}, amount: {amount}, reason: {err}")
+        })
 }
 
 fn decrease_supply(
     storage: &mut dyn Storage,
     denom: &Denom,
     amount: Uint128,
-) -> StdResult<Option<Uint128>> {
-    SUPPLIES.may_modify(storage, denom, |maybe_supply| {
-        let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_sub(amount)?;
-        // If supply is reduced to zero, delete it, to save disk space.
-        if supply.is_zero() {
-            Ok(None)
-        } else {
-            Ok(Some(supply))
-        }
-    })
+) -> anyhow::Result<Option<Uint128>> {
+    SUPPLIES
+        .may_modify(storage, denom, |maybe_supply| -> StdResult<_> {
+            let supply = maybe_supply.unwrap_or(Uint128::ZERO).checked_sub(amount)?;
+            // If supply is reduced to zero, delete it, to save disk space.
+            if supply.is_zero() {
+                Ok(None)
+            } else {
+                Ok(Some(supply))
+            }
+        })
+        .map_err(|err| {
+            anyhow!("failed to decrease supply! denom: {denom}, amount: {amount}, reason: {err}")
+        })
 }
 
 fn increase_balance(
@@ -340,16 +348,22 @@ fn increase_balance(
     address: &Addr,
     denom: &Denom,
     amount: Uint128,
-) -> StdResult<Option<Uint128>> {
-    BALANCES.may_modify(storage, (address, denom), |maybe_balance| {
-        let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_add(amount)?;
-        // Only write to storage if the balance is non-zero.
-        if balance.is_zero() {
-            Ok(None)
-        } else {
-            Ok(Some(balance))
-        }
-    })
+) -> anyhow::Result<Option<Uint128>> {
+    BALANCES
+        .may_modify(storage, (address, denom), |maybe_balance| -> StdResult<_> {
+            let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_add(amount)?;
+            // Only write to storage if the balance is non-zero.
+            if balance.is_zero() {
+                Ok(None)
+            } else {
+                Ok(Some(balance))
+            }
+        })
+        .map_err(|err| {
+            anyhow!(
+                "failed to increase balance! address: {address}, denom: {denom}, amount: {amount}, reason: {err}"
+            )
+        })
 }
 
 fn decrease_balance(
@@ -357,14 +371,20 @@ fn decrease_balance(
     address: &Addr,
     denom: &Denom,
     amount: Uint128,
-) -> StdResult<Option<Uint128>> {
-    BALANCES.may_modify(storage, (address, denom), |maybe_balance| {
-        let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_sub(amount)?;
-        // If balance is reduced to zero, delete it, to save disk space.
-        if balance.is_zero() {
-            Ok(None)
-        } else {
-            Ok(Some(balance))
-        }
-    })
+) -> anyhow::Result<Option<Uint128>> {
+    BALANCES
+        .may_modify(storage, (address, denom), |maybe_balance| -> StdResult<_> {
+            let balance = maybe_balance.unwrap_or(Uint128::ZERO).checked_sub(amount)?;
+            // If balance is reduced to zero, delete it, to save disk space.
+            if balance.is_zero() {
+                Ok(None)
+            } else {
+                Ok(Some(balance))
+            }
+        })
+        .map_err(|err| {
+            anyhow!(
+                "failed to decrease balance! address: {address}, denom: {denom}, amount: {amount}, reason: {err}"
+            )
+        })
 }

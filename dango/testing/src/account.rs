@@ -1,18 +1,19 @@
 use {
     crate::{TestSuite, create_signature},
     dango_types::{
-        account::single,
+        account::{single, spot},
         account_factory::{
             self, AccountParams, AccountType, NewUserSalt, QueryCodeHashRequest,
             QueryNextAccountIndexRequest, RegisterUserData, Salt, Username,
         },
-        auth::{Credential, Key, Metadata, SignDoc, Signature, StandardCredential},
+        auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
+        signer::SequencedSigner,
     },
     digest::{consts::U32, generic_array::GenericArray},
     grug::{
         Addr, Addressable, Coins, Defined, Duration, Hash256, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QuerierExt, ResultExt, SignData, Signer, StdError,
-        StdResult, Tx, Undefined, UnsignedTx, btree_map,
+        MaybeDefined, Message, NonEmpty, QuerierExt, QueryClient, QueryClientExt, ResultExt,
+        SignData, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx, btree_map,
     },
     grug_app::{AppError, Db, Indexer, ProposalPreparer, Vm},
     k256::{ecdsa::SigningKey, elliptic_curve::rand_core::OsRng},
@@ -420,6 +421,40 @@ impl Signer for TestAccount {
             data: data.to_json_value()?,
             credential: credential.to_json_value()?,
         })
+    }
+}
+
+#[async_trait::async_trait]
+impl SequencedSigner for TestAccount<Defined<Addr>> {
+    async fn query_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        // If the account hasn't sent any transaction yet, use 0 as nonce.
+        // Otherwise, use the latest seen nonce + 1.
+        let nonce = client
+            .query_wasm_smart(
+                self.address.into_inner(),
+                spot::QuerySeenNoncesRequest {},
+                None,
+            )
+            .await?
+            .last()
+            .map(|newest_nonce| newest_nonce + 1)
+            .unwrap_or(0);
+
+        Ok(nonce)
+    }
+
+    async fn update_nonce<C>(&mut self, client: &C) -> anyhow::Result<()>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        self.nonce = self.query_nonce(client).await?;
+
+        Ok(())
     }
 }
 

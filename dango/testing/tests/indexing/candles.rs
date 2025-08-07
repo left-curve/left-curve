@@ -131,7 +131,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish()?;
 
     let pair_price_query_builder =
-        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string());
+        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string()).with_limit(1);
 
     let pair_price = pair_price_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())
@@ -154,7 +154,8 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
         CandleInterval::OneMinute,
         "dango".to_string(),
         "bridge/usdc".to_string(),
-    );
+    )
+    .with_limit(1);
 
     let candle_1m = candle_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())
@@ -420,7 +421,10 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
-    assert_that!(candle_1m.candles).has_length(1);
+    assert!(
+        candle_1m.candles.len() == 1,
+        "Expected one candle after first block, received: {candle_1m:#?}"
+    );
 
     let candle = &candle_1m.candles[0];
 
@@ -713,7 +717,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
     suite.app.indexer.wait_for_finish()?;
 
     let pair_price_query_builder =
-        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string());
+        PairPriceQueryBuilder::new("dango".to_string(), "bridge/usdc".to_string()).with_limit(1);
 
     let pair_price = pair_price_query_builder
         .fetch_one(clickhouse_context.clickhouse_client())

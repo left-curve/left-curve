@@ -24,6 +24,7 @@ export async function transfer<transport extends Transport>(
     extraTypes: Object.entries(transfer).reduce(
       (acc, [address, coins], i) => {
         acc.Transfer.push({ name: address, type: `Coin${i}` });
+        // biome-ignore lint/performance/noAccumulatingSpread: This is a dynamic type
         return Object.assign(acc, { [`Coin${i}`]: getCoinsTypedData(coins) });
       },
       Object.assign({ Transfer: [] }),

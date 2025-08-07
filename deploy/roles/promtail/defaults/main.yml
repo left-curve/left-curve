@@ -1,0 +1,4 @@
+---
+promtail_dir: "{{ ansible_env.HOME }}/promtail"
+promtail_port: 9080
+loki_url: "http://100.122.37.57:3100"

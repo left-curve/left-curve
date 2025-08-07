@@ -1,5 +1,5 @@
 use {
-    crate::{LimitOrder, Order, PassiveOrder},
+    dango_types::dex::{LimitOrder, Order, PassiveOrder},
     grug::{Order as IterationOrder, StdResult, Udec128_24},
     std::{cmp::Ordering, iter::Peekable},
 };

@@ -1,0 +1,37 @@
+- name: Ensure directories exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop: ["{{ grafana_dir }}/config", "{{ grafana_dir }}/data", "{{ grafana_dir }}/dashboards"]
+
+- name: Copy files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "{{ playbook_dir }}/roles/grafana/templates/grafana.ini", dest: "{{ grafana_dir }}/config/grafana.ini" }
+        - { src: "{{ playbook_dir }}/roles/grafana/templates/datasources.yml", dest: "{{ grafana_dir }}/config/datasources.yml" }
+        - { src: "{{ playbook_dir }}/roles/grafana/templates/dashboards.yml", dest: "{{ grafana_dir }}/config/dashboards.yml" }
+        - { src: "{{ playbook_dir }}/roles/grafana/templates/docker-compose.yml", dest: "{{ grafana_dir }}/docker-compose.yml" }
+
+- name: Copy dashboard files
+  become: true
+  become_user: root
+  template:
+    src: "{{ item }}"
+    dest: "{{ grafana_dir }}/dashboards/{{ item | basename }}"
+    owner: "{{ deploy_user }}"
+  with_fileglob:
+    - "{{ playbook_dir }}/roles/grafana/templates/dashboards/*.json"
+
+- name: Launch Grafana stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ grafana_dir }}"
+    pull: missing
+    state: present
+    recreate: always

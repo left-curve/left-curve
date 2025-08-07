@@ -1,6 +1,6 @@
 use {
-    crate::{ExtendedOrderId, FillingOutcome, MarketOrder, Order, OrderTrait},
-    dango_types::dex::{Direction, OrderId},
+    super::FillingOutcome,
+    dango_types::dex::{Direction, ExtendedOrderId, MarketOrder, Order, OrderId, OrderTrait},
     grug::{
         IsZero, Number, NumberConst, Signed, StdResult, Udec128, Udec128_6, Udec128_24, Unsigned,
     },
@@ -60,6 +60,16 @@ where
         let Some(best_price) = current_best_price else {
             break;
         };
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                market_order_id = market_order_id.to_string(),
+                limit_order_id = ?limit_order.extended_id(),
+                best_price = best_price.to_string(),
+                "Matching market order"
+            );
+        }
 
         // Calculate the cutoff price for the current market order
         let cutoff_price = match market_order_direction {
@@ -129,18 +139,14 @@ where
             // to refund the amount that was not filled.
             match market_order_direction {
                 Direction::Bid => {
-                    filling_outcome.refund_quote.checked_add_assign(
-                        market_order.remaining.checked_sub(
-                            market_order_amount_to_match_in_base.checked_mul(*price)?,
-                        )?,
-                    )?;
+                    filling_outcome.refund_quote = market_order
+                        .remaining
+                        .checked_sub(market_order_amount_to_match_in_base.checked_mul(*price)?)?;
                 },
                 Direction::Ask => {
-                    filling_outcome.refund_base.checked_add_assign(
-                        market_order
-                            .remaining
-                            .checked_sub(market_order_amount_to_match_in_base)?,
-                    )?;
+                    filling_outcome.refund_base = market_order
+                        .remaining
+                        .checked_sub(market_order_amount_to_match_in_base)?;
                 },
             }
 
@@ -152,7 +158,9 @@ where
         // We do not refund the market order since that would allow spamming the
         // contract with tiny market orders at no cost.
         if filled_base.is_zero() {
-            market_orders.next();
+            current_market_order = market_orders.next();
+            current_best_price = Some(*price);
+
             continue;
         }
 
@@ -161,7 +169,9 @@ where
         if market_order_direction == Direction::Ask {
             let filled_quote = filled_base.checked_mul(*price)?;
             if filled_quote.is_zero() {
-                market_orders.next();
+                current_market_order = market_orders.next();
+                current_best_price = Some(*price);
+
                 continue;
             }
         }
@@ -342,8 +352,8 @@ fn update_filling_outcome(
 mod tests {
     use {
         super::*,
-        crate::LimitOrder,
-        grug::{Addr, NonZero, Uint128},
+        dango_types::dex::LimitOrder,
+        grug::{Addr, Uint128},
     };
 
     /// Two SELL limit orders, one with a price significantly lower than the other.
@@ -371,8 +381,8 @@ mod tests {
                 Order::Limit(LimitOrder {
                     user: Addr::mock(1),
                     id: OrderId::new(1),
-                    price: NonZero::new_unchecked(Udec128_24::new(10)),
-                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                    price: Udec128_24::new(10),
+                    amount: Uint128::new(1),
                     remaining: Udec128_6::new(1),
                     created_at_block_height: 0,
                 }),
@@ -382,8 +392,8 @@ mod tests {
                 Order::Limit(LimitOrder {
                     user: Addr::mock(2),
                     id: OrderId::new(2),
-                    price: NonZero::new_unchecked(Udec128_24::new(1000)),
-                    amount: NonZero::new_unchecked(Uint128::new(2)),
+                    price: Udec128_24::new(1000),
+                    amount: Uint128::new(2),
                     remaining: Udec128_6::new(2),
                     created_at_block_height: 0,
                 }),
@@ -396,14 +406,14 @@ mod tests {
             (OrderId::new(3), MarketOrder {
                 user: Addr::mock(3),
                 id: OrderId::new(3),
-                amount: NonZero::new_unchecked(Uint128::new(10)), /* base amount 1 * price 10, should exactly consume limit order 1 */
+                amount: Uint128::new(10), /* base amount 1 * price 10, should exactly consume limit order 1 */
                 remaining: Udec128_6::new(10),
                 max_slippage: Udec128::ZERO,
             }),
             (OrderId::new(4), MarketOrder {
                 user: Addr::mock(4),
                 id: OrderId::new(4),
-                amount: NonZero::new_unchecked(Uint128::new(1000)), // should consume 1 of the 2 base tokens for sale by limit order #2
+                amount: Uint128::new(1000), // should consume 1 of the 2 base tokens for sale by limit order #2
                 remaining: Udec128_6::new(1000),
                 max_slippage: Udec128::ZERO,
             }),

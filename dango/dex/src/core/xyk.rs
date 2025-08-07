@@ -1,6 +1,6 @@
 use {
-    crate::PassiveOrder,
     anyhow::ensure,
+    dango_types::dex::PassiveOrder,
     grug::{
         Bounded, CoinPair, Exponentiate, IsZero, MathResult, MultiplyFraction, MultiplyRatio,
         Number, NumberConst, Udec128, Udec128_24, Uint64, Uint128, ZeroExclusiveOneExclusive,

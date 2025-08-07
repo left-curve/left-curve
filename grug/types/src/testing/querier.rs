@@ -1,8 +1,8 @@
 use {
     crate::{
-        Addr, Binary, Code, CodeStatus, Coin, Config, ContractInfo, Denom, GenericResult,
-        GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage, Order, Querier, Query,
-        QueryResponse, StdError, StdResult, Storage,
+        Addr, Binary, BlockInfo, Code, CodeStatus, Coin, Config, ContractInfo, Denom,
+        GenericResult, GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage, Order,
+        Querier, Query, QueryResponse, QueryStatusResponse, StdError, StdResult, Storage,
     },
     grug_math::{NumberConst, Uint128},
     serde::Serialize,
@@ -18,6 +18,7 @@ type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
 /// purpose.
 #[derive(Default)]
 pub struct MockQuerier {
+    status: Option<QueryStatusResponse>,
     config: Option<Config>,
     app_config: Option<Json>,
     balances: BTreeMap<Addr, BTreeMap<Denom, Uint128>>,
@@ -31,6 +32,17 @@ pub struct MockQuerier {
 impl MockQuerier {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn with_status<T>(mut self, chain_id: T, last_finalized_block: BlockInfo) -> Self
+    where
+        T: Into<String>,
+    {
+        self.status = Some(QueryStatusResponse {
+            chain_id: chain_id.into(),
+            last_finalized_block,
+        });
+        self
     }
 
     pub fn with_config(mut self, config: Config) -> Self {
@@ -112,6 +124,13 @@ impl MockQuerier {
 impl Querier for MockQuerier {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         match req {
+            Query::Status(_req) => {
+                let status = self
+                    .status
+                    .clone()
+                    .expect("[MockQuerier]: status is not set");
+                Ok(QueryResponse::Status(status))
+            },
             Query::Config(_req) => {
                 let cfg = self
                     .config

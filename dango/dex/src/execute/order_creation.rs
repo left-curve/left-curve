@@ -1,8 +1,9 @@
 use {
-    crate::{INCOMING_ORDERS, LimitOrder, MARKET_ORDERS, MarketOrder, NEXT_ORDER_ID, PAIRS},
+    crate::{INCOMING_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS},
     anyhow::ensure,
     dango_types::dex::{
-        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, OrderCreated, OrderKind,
+        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, LimitOrder, MarketOrder,
+        OrderCreated, OrderKind,
     },
     grug::{Addr, Coin, Coins, EventBuilder, MultiplyFraction, Storage},
 };
@@ -68,8 +69,8 @@ pub(super) fn create_limit_order(
             LimitOrder {
                 user,
                 id: order_id,
-                price: order.price,
-                amount: order.amount,
+                price: *order.price,
+                amount: *order.amount,
                 remaining: order.amount.checked_into_dec()?,
                 created_at_block_height: current_block_height,
             },
@@ -130,7 +131,7 @@ pub(super) fn create_market_order(
         &MarketOrder {
             user,
             id: order_id,
-            amount: order.amount,
+            amount: *order.amount,
             remaining: order.amount.checked_into_dec()?,
             max_slippage: order.max_slippage,
         },

@@ -23,7 +23,7 @@ function MaintenanceApplet() {
           <img
             src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
             alt="Dango"
-            className="max-w-[10rem] lg:max-w-max"
+            className="max-w-[12rem] lg:max-w-[18rem]"
           />
         </div>
       </div>

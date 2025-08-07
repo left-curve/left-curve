@@ -44,8 +44,8 @@
     <background_pool_size>16</background_pool_size>
     <background_merges_mutations_concurrency_ratio>2</background_merges_mutations_concurrency_ratio>
 
-    <max_server_memory_usage_to_ram_ratio>0.9</max_server_memory_usage_to_ram_ratio>
-    <max_concurrent_queries>200</max_concurrent_queries>
+    <max_server_memory_usage_to_ram_ratio>0.6</max_server_memory_usage_to_ram_ratio>
+    <max_concurrent_queries>100</max_concurrent_queries>
 
     <!-- Timezone -->
     <timezone>UTC</timezone>
@@ -80,4 +80,13 @@
 
     <!-- Format schemas -->
     <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+
+  <prometheus>
+    <endpoint>/metrics</endpoint>
+    <port>9126</port>
+    <metrics>true</metrics>
+    <events>true</events>
+    <asynchronous_metrics>true</asynchronous_metrics>
+  </prometheus>
+
 </clickhouse>

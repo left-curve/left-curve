@@ -38,7 +38,7 @@ type CellAssetProps = Prettify<
 >;
 
 const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
-  const { coins, getCoinInfo } = useConfig();
+  const { getCoinInfo } = useConfig();
 
   const coin = asset || getCoinInfo(denom as string);
 

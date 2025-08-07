@@ -11,7 +11,7 @@ version       = { workspace = true }
 
 [features]
 async-graphql = ["dep:async-graphql", "dep:indexer-httpd", "grug-types/async-graphql"]
-metrics       = ["dep:metrics", "indexer-httpd/metrics"]
+metrics       = ["dep:metrics", "grug-httpd/metrics", "indexer-httpd/metrics"]
 testing       = ["clickhouse/test-util"]
 tracing       = ["dep:tracing"]
 
@@ -29,6 +29,7 @@ dango-types    = { workspace = true }
 futures        = { workspace = true }
 grug           = { workspace = true }
 grug-app       = { workspace = true }
+grug-httpd     = { workspace = true }
 grug-types     = { workspace = true, features = ["chrono"] }
 indexer-hooked = { workspace = true }
 indexer-httpd  = { workspace = true, optional = true }

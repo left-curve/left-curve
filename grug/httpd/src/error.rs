@@ -7,6 +7,9 @@ pub enum Error {
 
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("Actix web metrics builder error")]
+    ActixWebMetricsBuilder,
 }
 
 impl From<async_graphql::Error> for Error {

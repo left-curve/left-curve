@@ -109,6 +109,15 @@ pub(crate) async fn save_accounts(
     // I have to do with chunks to avoid psql errors with too many items
     let chunk_size = 1000;
 
+    #[cfg(feature = "tracing")]
+    if user_registered_events.is_empty()
+        && account_registered_events.is_empty()
+        && account_key_added_events.is_empty()
+        && account_key_removed_events.is_empty()
+    {
+        tracing::info!("No account related events found");
+    }
+
     if !user_registered_events.is_empty() {
         #[cfg(feature = "tracing")]
         tracing::info!("Detected `user_registered_events`: {user_registered_events:?}");
@@ -253,11 +262,7 @@ pub(crate) async fn save_accounts(
     txn.commit().await?;
 
     #[cfg(feature = "metrics")]
-    histogram!(
-        "indexer.dango.hooks.accounts.duration",
-        "block_height" => block.block.info.height.to_string()
-    )
-    .record(start.elapsed().as_secs_f64());
+    histogram!("indexer.dango.hooks.accounts.duration").record(start.elapsed().as_secs_f64());
 
     Ok(())
 }

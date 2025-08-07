@@ -1,0 +1,73 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time={{ prometheus_retention }}'
+      - '--storage.tsdb.retention.size=20GB'      # cap on disk+RAM index
+      - '--storage.tsdb.wal-compression'          # compress in-RAM WAL buffers
+      - '--storage.tsdb.min-block-duration=2h'    # smaller head blocks
+      - '--storage.tsdb.max-block-duration=8h'
+      - '--web.enable-lifecycle'
+    ports:
+      - "{{ tailscale_ip }}:{{ prometheus_port }}:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./config/alert-rules.yml:/etc/prometheus/alert-rules.yml
+      - ./data:/prometheus
+    restart: unless-stopped
+    depends_on:
+      - alertmanager
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics
+    ports:
+      - "{{ tailscale_ip }}:{{ victoriametrics_port }}:8428"
+    volumes:
+      - ./victoria-metrics-data:/victoria-metrics-data
+    command:
+      - -storageDataPath=/victoria-metrics-data
+      - -retentionPeriod=365
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget","--no-verbose","--tries=1","--spider","http://127.0.0.1:8428/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    ports:
+      - "{{ tailscale_ip }}:{{ alertmanager_port }}:9093"
+    volumes:
+      - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./alertmanager-data:/alertmanager
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  alertmanager-discord:
+    image: benjojo/alertmanager-discord
+    environment:
+      - DISCORD_WEBHOOK={{ discord_webhook }}
+
+networks:
+  default:
+    name: monitoring
+    external: true

@@ -2315,15 +2315,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bob"
-version = "0.0.0"
-dependencies = [
- "glob",
- "serde",
- "toml 0.8.22",
-]
-
-[[package]]
 name = "borsh"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3468,6 +3459,7 @@ dependencies = [
  "aes-gcm",
  "alloy",
  "anyhow",
+ "async-trait",
  "bip32",
  "dango-account-factory",
  "dango-auth",
@@ -3676,6 +3668,7 @@ dependencies = [
  "grug-app",
  "hex-literal",
  "indexer-client",
+ "num-format",
  "tokio",
 ]
 
@@ -3698,12 +3691,15 @@ dependencies = [
  "assert-json-diff",
  "assertor",
  "async-graphql",
+ "async-trait",
  "bip32",
  "chrono",
  "clickhouse",
  "criterion",
  "dango-account-factory",
  "dango-auth",
+ "dango-bank",
+ "dango-dex",
  "dango-gateway",
  "dango-genesis",
  "dango-httpd",
@@ -3712,6 +3708,7 @@ dependencies = [
  "dango-mock-httpd",
  "dango-oracle",
  "dango-proposal-preparer",
+ "dango-taxman",
  "dango-types",
  "digest 0.10.7",
  "grug",
@@ -3761,6 +3758,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-graphql",
+ "async-trait",
  "grug",
  "hyperlane-types",
  "paste",
@@ -5865,6 +5863,7 @@ dependencies = [
  "futures",
  "grug",
  "grug-app",
+ "grug-httpd",
  "grug-types",
  "indexer-hooked",
  "indexer-httpd",
@@ -5984,6 +5983,7 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "clap",
+ "futures",
  "futures-util",
  "grug-app",
  "grug-httpd",
@@ -6865,6 +6865,16 @@ name = "num-conv"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
+
+[[package]]
+name = "num-format"
+version = "0.4.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a652d9771a63711fd3c3deb670acfbe5c30a4072e664d7a3bf5a9e1056ac72c3"
+dependencies = [
+ "arrayvec",
+ "itoa",
+]
 
 [[package]]
 name = "num-integer"

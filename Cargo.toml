@@ -25,7 +25,6 @@ members = [
   "dango/vesting",
   "dango/warp",
   "grug/app",
-  "grug/bob-the-builder",
   "grug/client",
   "grug/crypto",
   "grug/db/disk",
@@ -140,6 +139,7 @@ k256                        = "0.13"
 lzma-rs                     = "0.3"
 metrics                     = "0.24"
 metrics-exporter-prometheus = "0.17"
+num-format                  = "0.4"
 num_cpus                    = "1"
 p256                        = "0.13"
 paste                       = "1"

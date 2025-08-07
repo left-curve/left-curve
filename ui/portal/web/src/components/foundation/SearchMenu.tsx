@@ -51,7 +51,7 @@ const SearchMenu: React.FC = () => {
         setSearchText("");
         inputRef.current?.blur();
       } else if (
-        !["INPUT", "TEXT"].includes(window.document.activeElement?.nodeName || "") &&
+        !["INPUT", "TEXT", "TEXTAREA"].includes(window.document.activeElement?.nodeName || "") &&
         e.key.length === 1 &&
         /\w/i.test(e.key)
       ) {

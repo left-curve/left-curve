@@ -178,7 +178,7 @@ impl TxCmd {
             if let Some(nonce) = self.nonce {
                 signer.with_nonce(nonce)
             } else {
-                signer.query_nonce(&client).await?
+                signer.with_query_nonce(&client).await?
             }
         };
 

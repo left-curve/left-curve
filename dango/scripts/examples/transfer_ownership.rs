@@ -30,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
         CURRENT_OWNER_PRIVATE_KEY,
         CredentialType::Secp256k1,
     )?
-    .query_nonce(&client)
+    .with_query_nonce(&client)
     .await?;
 
     let mut cfg = client.query_config(None).await?;

@@ -74,7 +74,7 @@ export const Carousel: React.FC<CarouselProps> = ({
   };
 
   const handleDragEnd = (
-    event: PointerEvent | MouseEvent | TouchEvent,
+    _: PointerEvent | MouseEvent | TouchEvent,
     info: { offset: { x: number; y: number } },
   ) => {
     const dragOffset = info.offset.x;

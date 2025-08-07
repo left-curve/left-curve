@@ -1,5 +1,4 @@
 import { useAccount, useConnectors, useSigningClient, useSubmitTx } from "@left-curve/store";
-import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -12,11 +11,11 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
   const connectors = useConnectors();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
-  const queryClient = useQueryClient();
   const { hideModal } = useApp();
 
   const { mutateAsync: addKey, isPending } = useSubmitTx({
     mutation: {
+      invalidateKeys: [["user_keys"], ["quests", account?.username]],
       mutationFn: async (connectorId: string) => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("Connector not found");
@@ -32,11 +31,7 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
           },
         });
       },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["user_keys"] });
-        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
-        hideModal();
-      },
+      onSuccess: () => hideModal(),
     },
   });
 

@@ -1,10 +1,7 @@
 use {
-    crate::{
-        INCOMING_ORDERS, LIMIT_ORDERS, LimitOrder, LimitOrderKey, MARKET_ORDERS, MarketOrder,
-        MarketOrderKey,
-    },
+    crate::{INCOMING_ORDERS, LIMIT_ORDERS, LimitOrderKey, MARKET_ORDERS, MarketOrderKey},
     anyhow::{bail, ensure},
-    dango_types::dex::{Direction, OrderCanceled, OrderId, OrderKind},
+    dango_types::dex::{Direction, LimitOrder, MarketOrder, OrderCanceled, OrderId, OrderKind},
     grug::{
         Addr, DecCoin, DecCoins, EventBuilder, Number, Order as IterationOrder, StdResult, Storage,
         TransferBuilder,

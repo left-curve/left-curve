@@ -13,6 +13,7 @@ version       = { workspace = true }
 actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-graphql           = { workspace = true }
+async-trait             = { workspace = true }
 clickhouse              = { workspace = true, features = ["test-util"] }
 dango-genesis           = { workspace = true }
 dango-httpd             = { workspace = true, features = ["metrics"] }
@@ -57,11 +58,14 @@ chrono                      = { workspace = true }
 criterion                   = { workspace = true }
 dango-account-factory       = { workspace = true, features = ["library"] }
 dango-auth                  = { workspace = true }
+dango-bank                  = { workspace = true, features = ["library"] }
+dango-dex                   = { workspace = true, features = ["library"] }
 dango-gateway               = { workspace = true, features = ["library"] }
 dango-httpd                 = { workspace = true, features = ["metrics"] }
 dango-lending               = { workspace = true, features = ["library"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
+dango-taxman                = { workspace = true, features = ["library"] }
 grug-testing                = { workspace = true }
 hex                         = { workspace = true }
 home                        = { workspace = true }

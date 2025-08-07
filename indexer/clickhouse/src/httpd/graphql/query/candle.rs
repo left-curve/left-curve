@@ -1,5 +1,6 @@
 use {
     crate::{
+        cache,
         context::Context,
         entities::{CandleInterval, candle::Candle, candle_query::CandleQueryBuilder},
     },
@@ -47,6 +48,35 @@ impl CandleQuery {
             first,
             None,
             |after, _, first, _| async move {
+                // Can use cache
+                if after.is_none() && first.is_none() {
+                    let candle_cache = app_ctx.candle_cache.read().await;
+
+                    let cache_key = cache::CandleCacheKey::new(
+                        base_denom.clone(),
+                        quote_denom.clone(),
+                        interval,
+                    );
+
+                    if candle_cache.date_interval_available(&cache_key, earlier_than, later_than) {
+                        if let Some(cached_candles) = candle_cache.get_candles(&cache_key) {
+                            let mut connection = Connection::new(false, true);
+
+                            connection
+                                .edges
+                                .extend(cached_candles.iter().rev().map(|candle| {
+                                    Edge::with_additional_fields(
+                                        OpaqueCursor(candle.clone().into()),
+                                        candle.clone(),
+                                        EmptyFields,
+                                    )
+                                }));
+
+                            return Ok::<_, async_graphql::Error>(connection);
+                        }
+                    }
+                }
+
                 let mut query_builder =
                     CandleQueryBuilder::new(interval, base_denom.clone(), quote_denom.clone());
 

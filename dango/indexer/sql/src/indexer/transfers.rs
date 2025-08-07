@@ -79,7 +79,7 @@ pub(crate) async fn save_transfers(
                 .flat_map(|(recipient, coins)| {
                     #[cfg(feature = "tracing")]
                     if coins.is_empty() {
-                        tracing::warn!(
+                        tracing::debug!(
                             "Transfer detected but coins is empty, won't create transfers",
                         );
                     }
@@ -131,11 +131,7 @@ pub(crate) async fn save_transfers(
     tracing::debug!("Injected new transfers");
 
     #[cfg(feature = "metrics")]
-    histogram!(
-        "indexer.dango.hooks.transfers.duration",
-        "block_height" => block_height.to_string()
-    )
-    .record(start.elapsed().as_secs_f64());
+    histogram!("indexer.dango.hooks.transfers.duration").record(start.elapsed().as_secs_f64());
 
     Ok(())
 }

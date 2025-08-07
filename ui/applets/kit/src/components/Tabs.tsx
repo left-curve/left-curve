@@ -61,7 +61,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
       exit={{ opacity: 0 }}
       className={twMerge(styles.base(), classNames?.base)}
     >
-      {tabs.map((e, i) => {
+      {tabs.map((e) => {
         const isKey = typeof e === "string";
         const elemKey = isKey ? e : (e as React.ReactElement).props.title;
         const isActive = elemKey === activeTab;
@@ -69,7 +69,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
         return (
           <motion.button
             className={twMerge(styles.button(), { "flex-1": fullWidth }, classNames?.button)}
-            key={`navLink-${e}`}
+            key={`navLink-${elemKey}`}
             onClick={() => setActiveTab(elemKey)}
           >
             {isKey ? (
