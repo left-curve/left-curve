@@ -275,20 +275,23 @@ fn clear_orders_of_pair(
 
     // Merge orders using the iterator abstraction.
     // For each side of the order book (bids/asks), we have 4 iterators:
-    // 1. resting
-    // 2. incoming
-    // 3. market
-    // 4. passive
-    // We use two layers of `MergedOrders` to merge them into a single iterator:
-    // merged(merged(resting, incoming), merged(market, passive))
+    // 1. limit
+    // 2. market
+    // 3. passive
+    // We use two layers of `MergedOrders` to merge them into a single iterator.
+    // Note that in `MergedOrders::new(a, b, ..)`, `b` is prioritized.
+    // We order them as follows: market > limit > passive.
+    // Another reason we put market orders last, is we need to disassemble the
+    // `MergedOrders` later, so we need market orders to only be nested once,
+    // not twice.
     let mut merged_bids = MergedOrders::new(
-        MergedOrders::new(passive_bids, market_bids, IterationOrder::Descending),
-        limit_bids,
+        MergedOrders::new(passive_bids, limit_bids, IterationOrder::Descending),
+        market_bids,
         IterationOrder::Descending,
     );
     let mut merged_asks = MergedOrders::new(
-        MergedOrders::new(passive_asks, market_asks, IterationOrder::Ascending),
-        limit_asks,
+        MergedOrders::new(passive_asks, limit_asks, IterationOrder::Ascending),
+        market_asks,
         IterationOrder::Ascending,
     );
 
@@ -322,10 +325,13 @@ fn clear_orders_of_pair(
 
     // Any order that isn't visited during `match_limit_orders` is unmatched.
     // They will be handled later in part (5) of this function.
-    // Here we `disassemble`, drop the limit order iterators, so that the
-    // immutable reference on `storage` is released.
-    let (unmatched_bids, _) = merged_bids.disassemble();
-    let (unmatched_asks, _) = merged_asks.disassemble();
+    // Here we `disassemble`, with two purposes:
+    // 1. drop the limit order iterators, so that the immutable reference on
+    //    `storage` is released;
+    // 2. get the unmatched market orders, so we can process their cancelation.
+    // Limit orders are good-until-canceled, so no action is needed for them.
+    let (_, unmatched_market_bids) = merged_bids.disassemble();
+    let (_, unmatched_market_asks) = merged_asks.disassemble();
 
     // ----------------------- 3. Fulfill matched orders -----------------------
 
@@ -515,50 +521,29 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ---------------------- 5. Handled unmatched orders ----------------------
+    // ------------------- 5. Handle unmatched market orders -------------------
 
-    for (price, bid) in unmatched_bids {
+    for (_price, bid) in unmatched_market_bids {
         match bid {
-            // If the limit order doesn't exist in the book, save it. Otherwise do nothing.
-            Order::Limit(order) => {
-                let k = (
-                    (base_denom.clone(), quote_denom.clone()),
-                    Direction::Bid,
-                    price,
-                    order.id,
-                );
-
-                if !LIMIT_ORDERS.has(storage, k.clone()) {
-                    LIMIT_ORDERS.save(storage, k, &order)?;
-                }
-            },
             // Market orders are immediate-or-cancel, so refund the user.
             Order::Market(order) => {
                 let remaining_quote = order.remaining.checked_mul_dec_floor(order.price)?;
                 refunds.insert(order.user, quote_denom.clone(), remaining_quote)?;
             },
-            Order::Passive(_) => {}, // nothing to do
+            _ => {
+                unreachable!("encountered an unmatched bid that isn't a market order: {bid:?}");
+            },
         }
     }
 
-    for (price, ask) in unmatched_asks {
+    for (_price, ask) in unmatched_market_asks {
         match ask {
-            Order::Limit(order) => {
-                let k = (
-                    (base_denom.clone(), quote_denom.clone()),
-                    Direction::Ask,
-                    price,
-                    order.id,
-                );
-
-                if !LIMIT_ORDERS.has(storage, k.clone()) {
-                    LIMIT_ORDERS.save(storage, k, &order)?;
-                }
-            },
             Order::Market(order) => {
                 refunds.insert(order.user, base_denom.clone(), order.remaining)?;
             },
-            Order::Passive(_) => {}, // nothing to do
+            _ => {
+                unreachable!("encountered an unmatched ask that isn't a market order: {ask:?}");
+            },
         }
     }
 
