@@ -267,11 +267,11 @@ fn clear_orders_of_pair(
     // price first.
     let market_bids = market_bids
         .iter()
-        .map(|(price, order)| (*price, Order::Market(order.clone())))
+        .map(|(price, order)| (*price, Order::Market(*order)))
         .rev();
     let market_asks = market_asks
         .iter()
-        .map(|(price, order)| (*price, Order::Market(order.clone())));
+        .map(|(price, order)| (*price, Order::Market(*order)));
 
     // Merge orders using the iterator abstraction.
     // For each side of the order book (bids/asks), we have 4 iterators:
