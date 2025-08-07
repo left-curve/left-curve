@@ -29,16 +29,16 @@ pub struct MatchingOutcome {
 ///   for orders the same price, the oldest one first.
 /// - `ask_iter`: An iterator over the SELL orders in the book that similarly
 ///   follows the price-time priority.
-pub fn match_limit_orders<B, A>(mut bid_iter: B, mut ask_iter: A) -> StdResult<MatchingOutcome>
+pub fn match_limit_orders<B, A>(bid_iter: &mut B, ask_iter: &mut A) -> StdResult<MatchingOutcome>
 where
-    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
-    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    B: Iterator<Item = (Udec128_24, Order)>,
+    A: Iterator<Item = (Udec128_24, Order)>,
 {
-    let mut bid = bid_iter.next().transpose()?;
+    let mut bid = bid_iter.next();
     let mut bids = Vec::new();
     let mut bid_is_new = true;
     let mut bid_volume = Udec128_6::ZERO;
-    let mut ask = ask_iter.next().transpose()?;
+    let mut ask = ask_iter.next();
     let mut asks = Vec::new();
     let mut ask_is_new = true;
     let mut ask_volume = Udec128_6::ZERO;
@@ -70,14 +70,14 @@ where
         }
 
         if bid_volume <= ask_volume {
-            bid = bid_iter.next().transpose()?;
+            bid = bid_iter.next();
             bid_is_new = true;
         } else {
             bid_is_new = false;
         }
 
         if ask_volume <= bid_volume {
-            ask = ask_iter.next().transpose()?;
+            ask = ask_iter.next();
             ask_is_new = true;
         } else {
             ask_is_new = false;

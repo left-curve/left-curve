@@ -1,11 +1,13 @@
 use {
-    crate::{INCOMING_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS},
-    anyhow::ensure,
+    crate::{LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK},
+    anyhow::{anyhow, ensure},
     dango_types::dex::{
         CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, LimitOrder, MarketOrder,
         OrderCreated, OrderKind,
     },
-    grug::{Addr, Coin, Coins, EventBuilder, MultiplyFraction, Storage},
+    grug::{
+        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, Storage, Udec128_24,
+    },
 };
 
 pub(super) fn create_limit_order(
@@ -56,25 +58,22 @@ pub(super) fn create_limit_order(
 
     deposits.insert(deposit)?;
 
-    INCOMING_ORDERS.save(
+    LIMIT_ORDERS.save(
         storage,
-        (user, order_id),
-        &(
-            (
-                (order.base_denom, order.quote_denom),
-                order.direction,
-                *order.price,
-                order_id,
-            ),
-            LimitOrder {
-                user,
-                id: order_id,
-                price: *order.price,
-                amount: *order.amount,
-                remaining: order.amount.checked_into_dec()?,
-                created_at_block_height: current_block_height,
-            },
+        (
+            (order.base_denom, order.quote_denom),
+            order.direction,
+            *order.price,
+            order_id,
         ),
+        &LimitOrder {
+            user,
+            id: order_id,
+            price: *order.price,
+            amount: *order.amount,
+            remaining: order.amount.checked_into_dec()?,
+            created_at_block_height: current_block_height,
+        },
     )?;
 
     Ok(())
@@ -94,14 +93,53 @@ pub(super) fn create_market_order(
         order.quote_denom
     );
 
-    let deposit = match order.direction {
-        Direction::Bid => Coin {
-            denom: order.quote_denom.clone(),
-            amount: *order.amount,
+    // Load the resting order book of the pair.
+    // The best price available in the book, together with the order's maximum
+    // slippage, will be used to determine the order's "limit price"
+    let resting_order_book = RESTING_ORDER_BOOK
+        .load(storage, (&order.base_denom, &order.quote_denom))
+        .map_err(|err| {
+            anyhow!(
+                "can't created market order, because resting order book either doesn't exist or is corrupted. base denom: {}, quote denom: {}, err: {err}",
+                order.base_denom,
+                order.quote_denom
+            )
+        })?;
+
+    let (price, deposit) = match order.direction {
+        Direction::Bid => {
+            let best_ask_price = resting_order_book.best_ask_price.ok_or_else(|| {
+                anyhow!(
+                    "can't create market bid order, because best ask price isn't avaiable. base denom: {}, quote denom: {}",
+                    order.base_denom,
+                    order.quote_denom
+                )
+            })?;
+
+            let one_add_max_slippage = Udec128_24::ONE.saturating_add(order.max_slippage);
+            let price = best_ask_price.saturating_mul(one_add_max_slippage);
+
+            (price, Coin {
+                denom: order.quote_denom.clone(),
+                amount: order.amount.checked_mul_dec_ceil(best_ask_price)?,
+            })
         },
-        Direction::Ask => Coin {
-            denom: order.base_denom.clone(),
-            amount: *order.amount,
+        Direction::Ask => {
+            let best_bid_price = resting_order_book.best_bid_price.ok_or_else(|| {
+                anyhow!(
+                    "can't create market ask order, because best bid price isn't avaiable. base denom: {}, quote denom: {}",
+                    order.base_denom,
+                    order.quote_denom
+                )
+            })?;
+
+            let one_sub_max_slippage = Udec128_24::ONE.saturating_sub(order.max_slippage);
+            let price = best_bid_price.saturating_mul(one_sub_max_slippage);
+
+            (price, Coin {
+                denom: order.base_denom.clone(),
+                amount: *order.amount,
+            })
         },
     };
 
@@ -123,18 +161,22 @@ pub(super) fn create_market_order(
 
     MARKET_ORDERS.save(
         storage,
-        (
-            (order.base_denom, order.quote_denom),
-            order.direction,
-            order_id,
+        (user, order_id),
+        &(
+            (
+                (order.base_denom, order.quote_denom),
+                order.direction,
+                price,
+                order_id,
+            ),
+            MarketOrder {
+                user,
+                id: order_id,
+                price,
+                amount: *order.amount,
+                remaining: order.amount.checked_into_dec()?,
+            },
         ),
-        &MarketOrder {
-            user,
-            id: order_id,
-            amount: *order.amount,
-            remaining: order.amount.checked_into_dec()?,
-            max_slippage: order.max_slippage,
-        },
     )?;
 
     Ok(())
