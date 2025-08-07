@@ -61,7 +61,7 @@ pub fn reply(ctx: SudoCtx, minimum_deposit: Coins, _res: SubMsgResult) -> anyhow
     {
         use grug::ResultExt;
 
-        _res.into_result().should_succeed();
+        _res.should_succeed();
     }
 
     if minimum_deposit.is_non_empty() {

@@ -53,8 +53,8 @@ book:
 
 # --------------------------------- Optimizer ----------------------------------
 
-OPTIMIZER_NAME := "leftcurve/bob"
-OPTIMIZER_VERSION := "0.2.0"
+OPTIMIZER_NAME := "leftcurve/bob-arm64"
+OPTIMIZER_VERSION := "0.1.0"
 
 # Compile and optimize contracts
 optimize:
