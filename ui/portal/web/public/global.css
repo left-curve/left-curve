@@ -5,6 +5,7 @@
 :root {
   --color-surface-primary-rice: #FFFCF6;
   --color-surface-primary-green: #D2D184;
+  --color-surface-primary-red: #FEF1F1;
   --color-surface-secondary-rice: #FFF9F0;
   --color-surface-secondary-blue: #F0F1F7;
   --color-surface-secondary-red: #FEE6E8;
@@ -16,6 +17,7 @@
   --color-surface-disabled-gray: #F5F4F4;
   --color-overlay-rice: #F2E2B8CC;
   --color-border-secondary-rice: #EFDAA4;
+  --color-border-tertiary-blue: #E2E3F2;
   --color-foreground-disabled-gray: #ACA9A7;
   --color-foreground-tertiary: #837D7B;
   --color-foreground-tertiary-rice: #E3BD66;
@@ -63,6 +65,7 @@
 html.dark {
   --color-surface-primary-rice: #2D2C2A;
   --color-surface-primary-green: #7C7A65;
+  --color-surface-primary-red: #564D4C;
   --color-surface-secondary-rice: #363432;
   --color-surface-secondary-blue: #646273;
   --color-surface-secondary-red: #6B5D5D;
@@ -74,6 +77,7 @@ html.dark {
   --color-surface-disabled-gray: #363432;
   --color-overlay-rice: #F2E2B84D;
   --color-border-secondary-rice: #594F3C;
+  --color-border-tertiary-blue: #646273;
   --color-foreground-disabled-gray: #807D78;
   --color-foreground-tertiary: #999590;
   --color-foreground-tertiary-rice: #807660;

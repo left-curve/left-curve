@@ -1,6 +1,14 @@
 import ReactFullpage, { type fullpageApi } from "@fullpage/react-fullpage";
 
-import { createContext, IconChevronDown, useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import {
+  Button,
+  createContext,
+  IconChevronDown,
+  IconDiscord,
+  IconTwitter,
+  useMediaQuery,
+  useTheme,
+} from "@left-curve/applets-kit";
 import { m } from "~/paraglide/messages";
 import { SearchMenu } from "../foundation/SearchMenu";
 import { AppletsSection } from "../overview/AppletsSection";
@@ -45,7 +53,7 @@ const Header: React.FC = () => {
 
   return (
     <div className="section min-h-svh flex items-center justify-center relative w-full">
-      <div className="lg:max-w-3xl min-h-svh mx-auto pb-[15rem] p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
+      <div className="lg:max-w-3xl min-h-[calc(100svh-20svh)] mx-auto pb-[15rem] p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
         <img
           src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
           alt="Dango"
@@ -150,9 +158,67 @@ const SectionGreen: React.FC = () => {
   );
 };
 
+const SectionCommunity: React.FC = () => {
+  const { isSearchBarVisible } = useApp();
+  const { theme } = useTheme();
+  if (isSearchBarVisible) return null;
+
+  return (
+    <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(6.97deg,_#D0CFEB_11.63%,_#F6F6FB_88.19%)] dark:bg-[linear-gradient(6.97deg,_#6E6D77_11.63%,_#373634_88.19%)] p-4 lg:p-0">
+      <div className="max-w-[76rem] min-h-[calc(100svh-20svh)] pb-[4rem] lg:pb-0 relative w-full mx-auto flex flex-col justify-end items-center lg:justify-center overflow-visible">
+        <div className="characters absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 padding-4 w-full h-[50%]">
+          <img
+            src="/images/characters/doggo.svg"
+            className="absolute top-[-30%] left-4 h-[254px] transition-all md:h-[234px] lg:h-[328px] z-20 lg:translate-y-[90%] lg:translate-x-[-20%]"
+            alt="dango-dog"
+          />
+          <img
+            src="/images/characters/birdo.svg"
+            alt="blue-bird"
+            className="hidden md:flex absolute h-[255px] transition-all z-10 top-[5%] left-[10%]"
+          />
+          <img
+            src="/images/characters/friends.svg"
+            className="absolute z-10 top-[-65%] right-0 h-[244px] transition-all md:h-[431px] lg:translate-y-[80%]"
+            alt="rabbits"
+          />
+        </div>
+        <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
+          <h2 className="display-heading-m md:display-heading-2xl">
+            Join the <span className="text-red-bean-400">community</span> of{" "}
+            <span className="text-red-bean-400">Dangbros</span>
+          </h2>
+          <div className="flex gap-4">
+            <Button onClick={() => window.open("https://x.com/dangoXchg", "_blank")}>
+              <IconTwitter className="w-6 h-6" />
+              <span>Twitter</span>
+            </Button>
+            <Button
+              variant="tertiary-red"
+              onClick={() => window.open("https://discord.gg/4uB9UDzYhz", "_blank")}
+            >
+              <IconDiscord className="w-6 h-6" />
+              <span>Discord</span>
+            </Button>
+          </div>
+        </div>
+        <div className="absolute bottom-0 w-full pt-6 pb-10 border-t border-t-border-secondary-blue items-center justify-between hidden lg:flex">
+          <img
+            src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
+            alt="Dango"
+            className="max-w-[10rem] lg:max-w-[13rem]"
+          />
+          <p>© {new Date().getFullYear()} - Dango</p>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 export const Landing = Object.assign(LandingContainer, {
   Header,
   SectionRice,
   SectionRed,
   SectionGreen,
+  SectionCommunity,
 });

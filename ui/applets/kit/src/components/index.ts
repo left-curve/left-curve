@@ -81,3 +81,5 @@ export { IconChevronDownFill } from "./icons/IconChevronDownFill";
 export { IconSun } from "./icons/IconSun";
 export { IconMoon } from "./icons/IconMoon";
 export { IconTheme } from "./icons/IconTheme";
+export { IconTwitter } from "./icons/IconTwitter";
+export { IconDiscord } from "./icons/IconDiscord";

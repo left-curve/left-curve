@@ -14,6 +14,7 @@ export const tailwindConfig: Partial<Config> = {
         surface: {
           "primary-rice": "var(--color-surface-primary-rice)",
           "primary-green": "var(--color-surface-primary-green)",
+          "primary-red": "var(--color-surface-primary-red)",
           "secondary-rice": "var(--color-surface-secondary-rice)",
           "secondary-blue": "var(--color-surface-secondary-blue)",
           "secondary-red": "var(--color-surface-secondary-red)",
@@ -26,6 +27,10 @@ export const tailwindConfig: Partial<Config> = {
         },
         overlay: {
           rice: "var(--color-overlay-rice)",
+        },
+        border: {
+          "secondary-rice": "var(--color-border-secondary-rice)",
+          "secondary-blue": "var(--color-border-secondary-blue)",
         },
         foreground: {
           "primary-blue": "var(--color-foreground-primary-blue)",

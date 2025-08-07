@@ -24,6 +24,7 @@ function OverviewComponent() {
       <Landing.SectionRice />
       <Landing.SectionRed />
       <Landing.SectionGreen />
+      <Landing.SectionCommunity />
     </Landing>
   );
 }
