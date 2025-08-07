@@ -51,6 +51,7 @@ jobs:
         env:
           CONFIG_ENVIRONMENT: ${{ github.ref_name == 'ui/testnet' && 'test' || github.ref_name == 'ui/release' && 'prod' || 'dev' }}
           PUBLIC_WEBRTC_URI: ${{ secrets.PUBLIC_WEBRTC_URI }}
+          PUBLIC_FP: ${{secrets.PUBLIC_FULLPAGE_KEY}}
           PUBLIC_SENTRY_DSN: ${{ secrets.PUBLIC_SENTRY_DSN }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
