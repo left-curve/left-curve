@@ -1,8 +1,6 @@
 use {
     crate::Event,
-    borsh::{BorshDeserialize, BorshSerialize},
     grug_types_base::{Backtraceable, BacktracedError},
-    std::ops::Deref,
 };
 
 /// Result of which the error is a string.
@@ -23,33 +21,7 @@ pub type QueryResult<T> = Result<T, String>;
 /// The result for executing a submessage.
 ///
 /// This is provided to the contract in the `reply` entry point.
-#[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize)]
-pub struct SubMsgResult(Result<Event, String>);
-
-impl SubMsgResult {
-    pub fn ok(event: Event) -> Self {
-        Self(Ok(event))
-    }
-
-    pub fn err<E>(error: &E) -> Self
-    where
-        E: Backtraceable,
-    {
-        Self(Err(error.error()))
-    }
-
-    pub fn into_result(self) -> Result<Event, String> {
-        self.0
-    }
-}
-
-impl Deref for SubMsgResult {
-    type Target = Result<Event, String>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+pub type SubMsgResult = Result<Event, String>;
 
 /// Describes an error of which the error can be stringified, and thus, can be
 /// passed across the FFI boundary.

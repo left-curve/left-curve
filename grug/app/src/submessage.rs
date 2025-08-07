@@ -2,7 +2,7 @@ use {
     crate::{AppError, EventResult, GasTracker, TraceOption, Vm, do_reply, process_msg},
     grug_types::{
         Addr, Backtraceable, BlockInfo, Buffer, EventStatus, ReplyOn, Shared, Storage, SubEvent,
-        SubEventStatus, SubMessage, SubMsgResult,
+        SubEventStatus, SubMessage,
     },
 };
 
@@ -108,7 +108,7 @@ where
                     msg_depth + 1, // important: increase message depth
                     sender,
                     payload,
-                    SubMsgResult::ok(submsg_event.clone()),
+                    Ok(submsg_event.clone()),
                     &submsg.reply_on,
                     trace_opt,
                 );
@@ -131,7 +131,7 @@ where
                     msg_depth + 1, // important: increase message depth
                     sender,
                     payload,
-                    SubMsgResult::err(&err),
+                    Err(err.error()),
                     &submsg.reply_on,
                     trace_opt,
                 );

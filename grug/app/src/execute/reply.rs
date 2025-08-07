@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 #[cfg(feature = "tracing")]
 use dyn_event::dyn_event;
 use {
@@ -104,7 +102,7 @@ where
             code_hash,
             &ctx,
             msg,
-            result.deref(),
+            &result,
             trace_opt,
         ),
         evt => guest_event
