@@ -5,7 +5,7 @@ pub struct Context {
     pub indexer_httpd_context: indexer_httpd::context::Context,
     pub indexer_clickhouse_context: indexer_clickhouse::context::Context,
     pub db: DatabaseConnection,
-    pub pubsub: Arc<dyn PubSub + Send + Sync>,
+    pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
 }
 
 impl Context {

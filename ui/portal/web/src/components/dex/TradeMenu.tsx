@@ -149,7 +149,9 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               variant={action === "sell" ? "primary" : "tertiary"}
               fullWidth
               size="md"
-              isDisabled={amount === "0" || (operation === "limit" && priceAmount === "0")}
+              isDisabled={
+                Decimal(amount).lte(0) || (operation === "limit" && Decimal(priceAmount).lte(0))
+              }
               isLoading={submission.isPending}
               onClick={() => submission.mutateAsync()}
             >

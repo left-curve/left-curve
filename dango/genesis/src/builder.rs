@@ -52,23 +52,15 @@ where
         .map(|(username, user)| (username.clone(), (user.key_hash, user.key)))
         .collect();
 
-    let account_factory = instantiate(
-        &mut msgs,
+    // Derive the account factory contract address.
+    // This is needed for deriving the genesis account addresses.
+    let account_factory = Addr::derive(
+        GENESIS_SENDER,
         account_factory_code_hash,
-        &account_factory::InstantiateMsg {
-            code_hashes: btree_map! {
-                AccountType::Margin => account_margin_code_hash,
-                AccountType::Multi  => account_multi_code_hash,
-                AccountType::Spot   => account_spot_code_hash,
-            },
-            users,
-            minimum_deposit: opt.account.minimum_deposit,
-        },
-        "dango/account_factory",
-        "dango/account_factory",
-    )?;
+        b"dango/account_factory",
+    );
 
-    // Derive the addresses of the genesis accounts that were just created.
+    // Derive the addresses of the genesis accounts.
     let addresses = opt
         .account
         .genesis_users
@@ -85,6 +77,25 @@ where
             Ok((username.clone(), address))
         })
         .collect::<StdResult<BTreeMap<_, _>>>()?;
+
+    let owner = addresses.get(&opt.grug.owner_username).cloned().unwrap();
+
+    let account_factory = instantiate(
+        &mut msgs,
+        account_factory_code_hash,
+        &account_factory::InstantiateMsg {
+            code_hashes: btree_map! {
+                AccountType::Margin => account_margin_code_hash,
+                AccountType::Multi  => account_multi_code_hash,
+                AccountType::Spot   => account_spot_code_hash,
+            },
+            users,
+            minimum_deposit: opt.account.minimum_deposit,
+        },
+        "dango/account_factory",
+        "dango/account_factory",
+        owner,
+    )?;
 
     // Derive the Hyperlane mailbox contract address.
     // This is needed for the hook and recipient contracts.
@@ -103,6 +114,7 @@ where
         },
         "hyperlane/ism/multisig",
         "hyperlane/ism/multisig",
+        owner,
     )?;
 
     // Instantiate Warp contract.
@@ -112,6 +124,7 @@ where
         &warp::InstantiateMsg { mailbox },
         "dango/warp",
         "dango/warp",
+        owner,
     )?;
 
     // Instantiate Hyperlane mailbox. Ensure address is the same as the predicted.
@@ -126,6 +139,7 @@ where
         },
         "hyperlane/mailbox",
         "hyperlane/mailbox",
+        owner,
     )
     .should_succeed_and_equal(mailbox);
 
@@ -139,6 +153,7 @@ where
         },
         "hyperlane/va",
         "hyperlane/va",
+        owner,
     )?;
 
     // Instantiate the DEX contract.
@@ -150,6 +165,7 @@ where
         },
         "dango/dex",
         "dango/dex",
+        owner,
     )?;
 
     // Instantiate the lending pool contract.
@@ -161,6 +177,7 @@ where
         },
         "dango/lending",
         "dango/lending",
+        owner,
     )?;
 
     // Instantiate the gateway contract.
@@ -179,6 +196,7 @@ where
         },
         "dango/gateway",
         "dango/gateway",
+        owner,
     )?;
 
     // Create the `balances` map needed for instantiating bank.
@@ -213,6 +231,7 @@ where
         },
         "dango/bank",
         "dango/bank",
+        owner,
     )?;
 
     // Instantiate the taxman contract.
@@ -224,6 +243,7 @@ where
         },
         "dango/taxman",
         "dango/taxman",
+        owner,
     )?;
 
     // Instantiate the oracle contract.
@@ -236,6 +256,7 @@ where
         },
         "dango/oracle",
         "dango/oracle",
+        owner,
     )?;
 
     // Instantiate the vesting contract.
@@ -248,6 +269,7 @@ where
         },
         "dango/vesting",
         "dango/vesting",
+        owner,
     )?;
 
     let contracts = Contracts {
@@ -264,7 +286,7 @@ where
     };
 
     let config = Config {
-        owner: addresses.get(&opt.grug.owner_username).cloned().unwrap(),
+        owner,
         bank,
         taxman,
         cronjobs: btree_map! {
@@ -319,6 +341,7 @@ fn instantiate<M, S, L>(
     msg: &M,
     salt: S,
     label: L,
+    admin: Addr,
 ) -> anyhow::Result<Addr>
 where
     M: Serialize,
@@ -333,7 +356,7 @@ where
         msg,
         salt,
         Some(label),
-        None,
+        Some(admin),
         Coins::new(),
     )?);
 

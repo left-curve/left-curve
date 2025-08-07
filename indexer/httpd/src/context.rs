@@ -10,7 +10,7 @@ use {
 pub struct Context {
     pub base: BaseContext,
     pub db: DatabaseConnection,
-    pub pubsub: Arc<dyn PubSub + Send + Sync>,
+    pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
     pub indexer_path: IndexerPath,
 }

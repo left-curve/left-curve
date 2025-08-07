@@ -1,4 +1,19 @@
-import type { TableColumn } from "@left-curve/applets-kit";
+import {
+  createContext,
+  twMerge,
+  useInputs,
+  useMediaQuery,
+  usePortalTarget,
+} from "@left-curve/applets-kit";
+import { useEffect, useMemo, useState } from "react";
+import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
+import { useNavigate } from "@tanstack/react-router";
+import { useApp } from "~/hooks/useApp";
+
+import { m } from "~/paraglide/messages";
+import { createPortal } from "react-dom";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
+
 import {
   AddressVisualizer,
   Badge,
@@ -6,20 +21,8 @@ import {
   IconChevronDownFill,
   Table,
   Tabs,
-  createContext,
-  twMerge,
-  useInputs,
-  useMediaQuery,
 } from "@left-curve/applets-kit";
-import type { OrderId, OrdersByUserResponse, PairId } from "@left-curve/dango/types";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
-import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
-import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import type { PropsWithChildren } from "react";
-import { useEffect, useState } from "react";
-import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
 import { ChartIQ } from "../foundation/ChartIQ";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { Modals } from "../modals/RootModal";
@@ -27,6 +30,10 @@ import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
 import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
+
+import type { PropsWithChildren } from "react";
+import type { TableColumn } from "@left-curve/applets-kit";
+import type { OrderId, OrdersByUserResponse, PairId } from "@left-curve/dango/types";
 
 const [ProTradeProvider, useProTrade] = createContext<{
   state: ReturnType<typeof useProTradeState>;
@@ -156,27 +163,30 @@ const ProTradeHeader: React.FC = () => {
 };
 
 const ProTradeOverview: React.FC = () => {
-  const { state } = useProTrade();
-  return <OrderBookOverview state={state} />;
+  return <OrderBookOverview />;
 };
 
 const ProTradeChart: React.FC = () => {
   const { state } = useProTrade();
   const { isLg } = useMediaQuery();
-  const { baseCoin, quoteCoin } = state;
+  const { baseCoin, quoteCoin, orders } = state;
 
-  if (!isLg) return null;
+  const chartComponent = useMemo(
+    () => <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />,
+    [baseCoin, quoteCoin, orders],
+  );
+
+  const mobileContainer = usePortalTarget("#chartiq-container");
 
   return (
-    <div className="shadow-account-card bg-surface-secondary-rice h-full">
-      <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} />
-    </div>
+    <>{isLg || !mobileContainer ? chartComponent : createPortal(chartComponent, mobileContainer)}</>
   );
 };
 
 const ProTradeMenu: React.FC = () => {
   const { isLg } = useMediaQuery();
   const { state, controllers } = useProTrade();
+
   return (
     <>
       <TradeMenu state={state} controllers={controllers} />
@@ -254,16 +264,10 @@ const ProTradeOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={formatNumberOptions}
-          value={formatNumber(
-            Decimal(row.original.remaining)
-              .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
-              .toFixed(),
-            {
-              ...formatNumberOptions,
-              maxSignificantDigits: 10,
-            },
-          )}
+          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          value={Decimal(row.original.remaining)
+            .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
+            .toFixed()}
         />
       ),
     },
@@ -275,16 +279,10 @@ const ProTradeOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={formatNumberOptions}
-          value={formatNumber(
-            Decimal(row.original.amount)
-              .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
-              .toFixed(),
-            {
-              ...formatNumberOptions,
-              maxSignificantDigits: 10,
-            },
-          )}
+          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          value={Decimal(row.original.amount)
+            .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
+            .toFixed()}
         />
       ),
     },

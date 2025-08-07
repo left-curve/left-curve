@@ -97,7 +97,7 @@
   loop_control:
     loop_var: dango_network
 
-- name: Allow unlimited concurrent queries for dango
+- name: Configure dango user settings
   community.clickhouse.clickhouse_client:
     login_host: 127.0.0.1
     login_port: 9000
@@ -105,7 +105,11 @@
     login_password: "{{ clickhouse_password }}"
     execute: >
       ALTER USER dango
-      SETTINGS max_concurrent_queries_for_user = 0
+      SETTINGS
+        max_concurrent_queries_for_user = 0,
+        max_memory_usage = 32000000000,
+        max_memory_usage_for_user = 48000000000,
+        max_threads = 12
 
 - name: Copy app.toml
   vars:

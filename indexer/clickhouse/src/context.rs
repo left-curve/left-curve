@@ -20,8 +20,8 @@ pub struct Context {
     pub clickhouse_database: String,
     #[allow(dead_code)]
     clickhouse_client: Client,
-    pub pubsub: Arc<dyn indexer_sql::pubsub::PubSub + Send + Sync>,
-    pub candle_pubsub: Arc<dyn indexer_sql::pubsub::PubSub + Send + Sync>,
+    pub pubsub: Arc<dyn indexer_sql::pubsub::PubSub<u64> + Send + Sync>,
+    pub candle_pubsub: Arc<dyn indexer_sql::pubsub::PubSub<u64> + Send + Sync>,
     pub candle_cache: Arc<RwLock<CandleCache>>,
 }
 
@@ -34,8 +34,9 @@ impl Context {
             .with_password(&password)
             .with_database(&database);
 
-        let pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
-        let candle_pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let pubsub: Arc<dyn PubSub<u64> + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let candle_pubsub: Arc<dyn PubSub<u64> + Send + Sync> =
+            Arc::new(pubsub::MemoryPubSub::new(100));
 
         Self {
             clickhouse_client,
@@ -59,8 +60,9 @@ impl Context {
             password.len()
         );
 
-        let pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
-        let candle_pubsub: Arc<dyn PubSub + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let pubsub: Arc<dyn PubSub<u64> + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let candle_pubsub: Arc<dyn PubSub<u64> + Send + Sync> =
+            Arc::new(pubsub::MemoryPubSub::new(100));
 
         Self {
             mock: None,

@@ -25,7 +25,6 @@ members = [
   "dango/vesting",
   "dango/warp",
   "grug/app",
-  "grug/bob-the-builder",
   "grug/client",
   "grug/crypto",
   "grug/db/disk",

@@ -59,6 +59,7 @@ impl GenesisCodes for RustVm {
             .with_execute(Box::new(dango_dex::execute))
             .with_cron_execute(Box::new(dango_dex::cron_execute))
             .with_query(Box::new(dango_dex::query))
+            .with_reply(Box::new(dango_dex::reply))
             .build();
 
         let gateway = ContractBuilder::new(Box::new(dango_gateway::instantiate))

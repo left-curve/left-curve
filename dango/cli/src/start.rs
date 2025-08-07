@@ -68,6 +68,7 @@ impl StartCmd {
             NaiveProposalPreparer,
             NullIndexer,
             cfg.grug.query_gas_limit,
+            None, // currently there's no chain upgrade
         );
 
         let sql_indexer = indexer_sql::IndexerBuilder::default()
@@ -330,6 +331,7 @@ impl StartCmd {
             ProposalPreparer::new(),
             indexer,
             grug_cfg.query_gas_limit,
+            None, // currently there's no chain upgrade
         );
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);

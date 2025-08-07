@@ -2,25 +2,49 @@
   hosts: github_runners
   become: true
   vars:
+    reinstall_runner: true
     github_account: left-curve
     runner_org: yes
     access_token: "{{ lookup('env', 'RUNNERS_GITHUB_TOKEN') }}"
+    custom_env: |
+      PATH=/home/{{ runner_user }}/.cargo/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      CARGO_HOME=/home/{{ runner_user }}/.cargo
+      RUSTUP_HOME=/home/{{ runner_user }}/.rustup
   roles:
-    - MonolithProjects.github_actions_runner
+    - role: MonolithProjects.github_actions_runner
+      vars:
+        runner_dir: /opt/actions-runner-1
+        runner_name: "{{ hostname }}-1"
+    - role: MonolithProjects.github_actions_runner
+      vars:
+        runner_dir: /opt/actions-runner-2
+        runner_name: "{{ hostname }}-2"
+        runner_state: absent
+    - role: MonolithProjects.github_actions_runner
+      vars:
+        runner_dir: /opt/actions-runner-3
+        runner_name: "{{ hostname }}-3"
+        runner_state: absent
+    - role: MonolithProjects.github_actions_runner
+      vars:
+        runner_dir: /opt/actions-runner-4
+        runner_name: "{{ hostname }}-4"
+        runner_state: absent
+
   tasks:
-    - name: Set environment variables in GitHub Actions runner systemd service
+    - name: Ensure restart policy in GitHub Actions runner service
       blockinfile:
-        path: "/etc/systemd/system/actions.runner.{{ github_account }}.{{ hostname }}.service"
-        marker: "# {mark} GitHub Runner Env Vars"
-        insertafter: '[Service]'
+        path: "/etc/systemd/system/actions.runner.{{ github_account }}.{{ hostname }}-{{ item }}.service"
+        insertafter: '^\[Service\]'
+        marker: "# {mark} runner service options"
         block: |
-          Environment="PATH=/home/{{ runner_user }}/.cargo/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-          Environment="CARGO_HOME=/home/{{ runner_user }}/.cargo"
-          Environment="RUSTUP_HOME=/home/{{ runner_user }}/.rustup"
+          Restart=always
+          RestartSec=5
       notify:
         - Reload systemd
         - Restart github-actions-runner
       become: yes
+      loop: ["1", "2", "3", "4"]
 
     - name: Ensure Rust env vars are set in .bashrc for the runner user
       blockinfile:

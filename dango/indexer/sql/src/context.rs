@@ -7,7 +7,7 @@ use {
 #[derive(Clone)]
 pub struct Context {
     pub db: DatabaseConnection,
-    pub pubsub: Arc<dyn PubSub + Send + Sync>,
+    pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
 }
 
 impl From<indexer_sql::context::Context> for Context {

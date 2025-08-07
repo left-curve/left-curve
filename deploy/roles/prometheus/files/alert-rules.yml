@@ -20,7 +20,7 @@ groups:
       description: "{{ $labels.instance }} has CPU load above 80% for more than 5 minutes."
 
   - alert: HighMemoryUsage
-    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
     for: 5m
     labels:
       severity: warning

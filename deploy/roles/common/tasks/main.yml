@@ -1,3 +1,10 @@
+- name: Change password for the Ansible‐connected user
+  ansible.builtin.user:
+    name: "{{ ansible_user_id }}"
+    password: "{{ ansible_user_password | password_hash('sha512') }}"
+    update_password: always
+  when: ansible_user_password != ''
+
 - name: Install locales package
   apt:
     name: locales
@@ -64,7 +71,7 @@
   tags: setup
 - ufw: default=deny direction=incoming
   tags: setup
-- name: Allow SSH on non-tailscale when no tailscale0 exists
+- name: Allow SSH on non-tailscale
   ufw:
     rule: allow
     direction: in
@@ -74,14 +81,11 @@
     - ssh
     # mosh
     - '60000:61000'
-  when: "'tailscale0' not in ansible_facts.interfaces"
 - name: Allow any port on tailscale0
   ufw:
     rule: allow
     direction: in
     interface: tailscale0
-    proto: tcp
-  when: "'tailscale0' in ansible_facts.interfaces"
 - ufw:
     rule: allow
     direction: in

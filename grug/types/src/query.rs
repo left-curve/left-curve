@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Bound, Code, Coin, Coins, Config, ContractInfo, Denom, GenericResult,
-        Hash256, Inner, Json, JsonSerExt, StdResult, extend_one_byte,
+        Addr, Binary, BlockInfo, Bound, Code, Coin, Coins, Config, ContractInfo, Denom,
+        GenericResult, Hash256, Inner, Json, JsonSerExt, StdResult, extend_one_byte,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
@@ -46,6 +46,8 @@ pub trait QueryRequest: Sized {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {
+    /// Query the chain's chain ID and last finalized block.
+    Status(QueryStatusRequest),
     /// Query the chain's global configuration.
     Config(QueryConfigRequest),
     /// Query the application-specific configuration.
@@ -100,6 +102,10 @@ impl ScalarType for Query {
 }
 
 impl Query {
+    pub fn status() -> Self {
+        QueryStatusRequest {}.into()
+    }
+
     pub fn config() -> Self {
         QueryConfigRequest {}.into()
     }
@@ -202,6 +208,15 @@ impl Query {
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryStatusRequest {}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryStatusResponse {
+    pub chain_id: String,
+    pub last_finalized_block: BlockInfo,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct QueryConfigRequest {}
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
@@ -300,6 +315,7 @@ macro_rules! impl_into_query {
 }
 
 impl_into_query! {
+    Status     => QueryStatusRequest     => QueryStatusResponse,
     Config     => QueryConfigRequest     => Config,
     AppConfig  => QueryAppConfigRequest  => Json,
     Balance    => QueryBalanceRequest    => Coin,
@@ -321,6 +337,7 @@ impl_into_query! {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryResponse {
+    Status(QueryStatusResponse),
     Config(Config),
     AppConfig(Json),
     Balance(Coin),
@@ -378,6 +395,7 @@ macro_rules! generate_downcast {
 
 impl QueryResponse {
     generate_downcast! {
+        Status     => QueryStatusResponse,
         Config     => Config,
         AppConfig  => Json,
         Balance    => Coin,

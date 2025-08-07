@@ -1,5 +1,8 @@
 - hosts: db
   become: true
   become_user: "{{ deploy_user }}"
+  vars:
+    tailscale_iface: tailscale0
+    tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
   roles:
     - postgres

@@ -15,4 +15,5 @@
     - prometheus
     - loki
     - promtail
+    - node-exporter
     - grafana

@@ -135,8 +135,7 @@ impl grug_app::Indexer for Indexer {
 
             #[cfg(feature = "metrics")]
             histogram!(
-                "indexer.clickhouse.post_indexing.duration",
-                "block_height" => block_height.to_string()
+                "indexer.clickhouse.post_indexing.duration"
             )
             .record(start.elapsed().as_secs_f64());
 

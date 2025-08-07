@@ -61,6 +61,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
     Record<string, { contract: AddressInfo } | { account: AddressInfo }>
   >("app.known_addresses", {
     initialValue: {},
+    sync: true,
   });
 
   const blockExplorer = chain.blockExplorer;

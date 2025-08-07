@@ -262,11 +262,7 @@ pub(crate) async fn save_accounts(
     txn.commit().await?;
 
     #[cfg(feature = "metrics")]
-    histogram!(
-        "indexer.dango.hooks.accounts.duration",
-        "block_height" => block.block.info.height.to_string()
-    )
-    .record(start.elapsed().as_secs_f64());
+    histogram!("indexer.dango.hooks.accounts.duration").record(start.elapsed().as_secs_f64());
 
     Ok(())
 }

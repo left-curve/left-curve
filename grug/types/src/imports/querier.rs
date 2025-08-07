@@ -1,7 +1,7 @@
 use {
     crate::{
         Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, Query,
-        QueryRequest, QueryResponse, StdError, StdResult,
+        QueryRequest, QueryResponse, QueryStatusResponse, StdError, StdResult,
     },
     grug_math::Uint128,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -22,6 +22,10 @@ pub trait Querier {
 /// use `dyn Querier`. This trait is automatically implemented for any type that
 /// implements `Querier`.
 pub trait QuerierExt: Querier {
+    fn query_status(&self) -> StdResult<QueryStatusResponse> {
+        self.query_chain(Query::status()).map(|res| res.as_status())
+    }
+
     fn query_config(&self) -> StdResult<Config> {
         self.query_chain(Query::config()).map(|res| res.as_config())
     }
