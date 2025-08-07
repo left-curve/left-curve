@@ -166,17 +166,17 @@ const SectionCommunity: React.FC = () => {
           <img
             src="/images/characters/doggo.svg"
             alt="dango-dog"
-            className="absolute max-w-full top-[-10%] left-4 h-[254px] transition-all md:h-[234px] lg:h-[328px] z-20 lg:translate-y-[70%] lg:translate-x-[-20%]"
+            className="absolute max-w-full top-[-10%] left-4 h-[254px] transition-all md:h-[234px] lg:h-[328px] z-20 md:translate-y-[70%] lg:translate-y-[50%] lg:top-[calc(50%-18rem)] lg:translate-x-[-20%]"
           />
           <img
             src="/images/characters/birdo.svg"
             alt="blue-bird"
-            className="hidden md:flex absolute h-[255px] transition-all z-10 top-[5%] left-[10%]"
+            className="hidden md:flex absolute h-[255px] transition-all z-10 lg:-translate-y-[50%] lg:top-[calc(50%-5rem)] left-[10%]"
           />
           <img
             src="/images/characters/friends.svg"
             alt="rabbits"
-            className="absolute z-10 top-[-45%] right-0 h-[244px] transition-all md:h-[431px] lg:translate-y-[60%]"
+            className="absolute z-10 top-[-45%] right-0 h-[244px] transition-all md:h-[431px] lg:-translate-y-[50%] lg:top-1/2"
           />
         </div>
         <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
