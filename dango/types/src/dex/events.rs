@@ -35,7 +35,9 @@ pub struct OrderCanceled {
 }
 
 #[grug::derive(Serde)]
-#[grug::event("orders_matched")]
+// TODO: change the event name to just `order_filled`. this would be an API-breaking change,
+// so only do this after testnet-2 has ended.
+#[grug::event("limit_orders_matched")]
 pub struct OrdersMatched {
     pub base_denom: Denom,
     pub quote_denom: Denom,
@@ -45,9 +47,7 @@ pub struct OrdersMatched {
 }
 
 #[grug::derive(Serde)]
-// TODO: change the event name to just `order_filled`. this would be an API-breaking change,
-// so only do this after testnet-2 has ended.
-#[grug::event("limit_order_filled")]
+#[grug::event("order_filled")]
 pub struct OrderFilled {
     pub user: Addr,
     // `None` if the order is from the passive liquidity pool.
