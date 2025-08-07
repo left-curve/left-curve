@@ -167,7 +167,8 @@ where
     .map_err(|msg| AppError::Guest {
         address: ctx.contract,
         name: "bank_query",
-        msg,
+        msg: msg.to_string(),
+        backtrace: msg.backtrace.capture_if_empty(),
     })
 }
 
@@ -283,6 +284,7 @@ where
     .map_err(|msg| AppError::Guest {
         address: ctx.contract,
         name: "query",
-        msg,
+        msg: msg.to_string(),
+        backtrace: msg.backtrace.capture_if_empty(),
     })
 }

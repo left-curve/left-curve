@@ -6,10 +6,10 @@ use {
     },
     elsa::sync::FrozenVec,
     grug_types::{
-        Api, AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, Binary, BorshDeExt,
-        Context, Empty, GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt, MutableCtx,
-        Querier, QuerierWrapper, Response, StdError, Storage, SubMsgResult, SudoCtx, Tx, TxOutcome,
-        make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
+        Api, AuthCtx, AuthResponse, Backtraceable, BankMsg, BankQuery, BankQueryResponse, Binary,
+        BorshDeExt, Context, Empty, GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt,
+        MutableCtx, Querier, QuerierWrapper, Response, StdError, Storage, SubMsgResult, SudoCtx,
+        Tx, TxOutcome, make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
     },
     serde::de::DeserializeOwned,
     std::sync::OnceLock,
@@ -120,19 +120,19 @@ where
     M3: DeserializeOwned + 'static,
     M5: DeserializeOwned + 'static,
     M6: DeserializeOwned + 'static,
-    E1: ToString + 'static,
-    E2: ToString + 'static,
-    E3: ToString + 'static,
-    E4: ToString + 'static,
-    E5: ToString + 'static,
-    E6: ToString + 'static,
-    E7: ToString + 'static,
-    E8: ToString + 'static,
-    E9: ToString + 'static,
-    E10: ToString + 'static,
-    E11: ToString + 'static,
-    E12: ToString + 'static,
-    E13: ToString + 'static,
+    E1: Backtraceable + 'static,
+    E2: Backtraceable + 'static,
+    E3: Backtraceable + 'static,
+    E4: Backtraceable + 'static,
+    E5: Backtraceable + 'static,
+    E6: Backtraceable + 'static,
+    E7: Backtraceable + 'static,
+    E8: Backtraceable + 'static,
+    E9: Backtraceable + 'static,
+    E10: Backtraceable + 'static,
+    E11: Backtraceable + 'static,
+    E12: Backtraceable + 'static,
+    E13: Backtraceable + 'static,
 {
     pub fn with_execute<M2A, E2A>(
         self,
@@ -140,7 +140,7 @@ where
     ) -> ContractBuilder<M1, E1, M2A, M3, M5, M6, E2A, E3, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
     where
         M2A: DeserializeOwned + 'static,
-        E2A: ToString + 'static,
+        E2A: Backtraceable + 'static,
     {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
@@ -165,7 +165,7 @@ where
     ) -> ContractBuilder<M1, E1, M2, M3A, M5, M6, E2, E3A, E4, E5, E6, E7, E8, E9, E10, E11, E12, E13>
     where
         M3A: DeserializeOwned + 'static,
-        E3A: ToString + 'static,
+        E3A: Backtraceable + 'static,
     {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
@@ -189,7 +189,7 @@ where
         receive_fn: ReceiveFn<E4A>,
     ) -> ContractBuilder<M1, E1, M2, M3, M5, M6, E2, E3, E4A, E5, E6, E7, E8, E9, E10, E11, E12, E13>
     where
-        E4A: ToString + 'static,
+        E4A: Backtraceable + 'static,
     {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
@@ -214,7 +214,7 @@ where
     ) -> ContractBuilder<M1, E1, M2, M3, M5A, M6, E2, E3, E4, E5A, E6, E7, E8, E9, E10, E11, E12, E13>
     where
         M5A: DeserializeOwned + 'static,
-        E5A: ToString + 'static,
+        E5A: Backtraceable + 'static,
     {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
@@ -239,7 +239,7 @@ where
     ) -> ContractBuilder<M1, E1, M2, M3, M5, M6A, E2, E3, E4, E5, E6A, E7, E8, E9, E10, E11, E12, E13>
     where
         M6A: DeserializeOwned + 'static,
-        E6A: ToString + 'static,
+        E6A: Backtraceable + 'static,
     {
         ContractBuilder {
             instantiate_fn: self.instantiate_fn,
@@ -461,19 +461,19 @@ where
     M3: DeserializeOwned,
     M5: DeserializeOwned,
     M6: DeserializeOwned,
-    E1: ToString,
-    E2: ToString,
-    E3: ToString,
-    E4: ToString,
-    E5: ToString,
-    E6: ToString,
-    E7: ToString,
-    E8: ToString,
-    E9: ToString,
-    E10: ToString,
-    E11: ToString,
-    E12: ToString,
-    E13: ToString,
+    E1: Backtraceable,
+    E2: Backtraceable,
+    E3: Backtraceable,
+    E4: Backtraceable,
+    E5: Backtraceable,
+    E6: Backtraceable,
+    E7: Backtraceable,
+    E8: Backtraceable,
+    E9: Backtraceable,
+    E10: Backtraceable,
+    E11: Backtraceable,
+    E12: Backtraceable,
+    E13: Backtraceable,
 {
     fn instantiate(
         &self,

@@ -1,8 +1,8 @@
 use {
     crate::{AppError, GasTracker, Vm, process_query},
     grug_types::{
-        BlockInfo, GenericResult, GenericResultExt, Querier, Query, QueryResponse, StdError,
-        StdResult, Storage,
+        Backtraceable, BacktracedError, BlockInfo, Querier, Query, QueryResponse, QueryResult,
+        StdError, StdResult, Storage,
     },
 };
 
@@ -20,18 +20,22 @@ use {
 ///   this generic, otherwise we run into infinite recursive types with the
 ///   hybrid VM. (When using a single VM, this isn't a problem.)
 pub trait QuerierProvider: Send + Sync {
-    fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse>;
+    fn do_query_chain(&self, req: Query, query_depth: usize) -> QueryResult<QueryResponse>;
 }
 
 impl Querier for &dyn QuerierProvider {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
-        self.do_query_chain(req, 0).map_err(StdError::host)
+        self.do_query_chain(req, 0)
+            // reconstruct the error adding a blank backtrace
+            .map_err(|e| StdError::Host(BacktracedError::new_without_bt(e)))
     }
 }
 
 impl Querier for Box<dyn QuerierProvider> {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
-        self.do_query_chain(req, 0).map_err(StdError::host)
+        self.do_query_chain(req, 0)
+            // reconstruct the error adding a blank backtrace
+            .map_err(|e| StdError::Host(BacktracedError::new_without_bt(e)))
     }
 }
 
@@ -79,7 +83,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse> {
+    fn do_query_chain(&self, req: Query, query_depth: usize) -> QueryResult<QueryResponse> {
         process_query(
             self.vm.clone(),
             self.storage.clone(),
@@ -88,6 +92,7 @@ where
             query_depth,
             req,
         )
-        .into_generic_result()
+        // remove the backtrace
+        .map_err(|err| err.error())
     }
 }

@@ -110,10 +110,7 @@ where
         // Make sure the genesis block height is zero. This is necessary to
         // ensure that block height always matches the DB version.
         if block.height != 0 {
-            return Err(AppError::IncorrectBlockHeight {
-                expect: 0,
-                actual: block.height,
-            });
+            return Err(AppError::incorrect_block_height(0, block.height));
         }
 
         // Create gas tracker for genesis.
@@ -240,10 +237,10 @@ where
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
         if block.info.height != last_finalized_block.height + 1 {
-            return Err(AppError::IncorrectBlockHeight {
-                expect: last_finalized_block.height + 1,
-                actual: block.info.height,
-            });
+            return Err(AppError::incorrect_block_height(
+                last_finalized_block.height + 1,
+                block.info.height,
+            ));
         }
 
         // If an upgrade handler exists, and we're at the scheduled block height,
@@ -480,11 +477,7 @@ where
         );
 
         if let Err((_, err)) = events.withhold.as_result() {
-            return Ok(new_check_tx_outcome(
-                gas_tracker,
-                Err(err.to_string()),
-                events,
-            ));
+            return Ok(new_check_tx_outcome(gas_tracker, Err(err.clone()), events));
         }
 
         events.authenticate = do_authenticate(
@@ -499,7 +492,7 @@ where
         .into_commitment_status();
 
         let result = if let Err((_, err)) = events.authenticate.as_result() {
-            Err(err.to_string())
+            Err(err.clone())
         } else {
             Ok(())
         };
@@ -532,7 +525,7 @@ where
         if prove {
             // We can't do Merkle proof for smart queries. Only raw store query
             // can be Merkle proved.
-            return Err(AppError::ProofNotSupported);
+            return Err(AppError::proof_not_supported());
         }
 
         let version = if height == 0 {
@@ -598,12 +591,12 @@ where
 
         // We can't "prove" a gas simulation
         if prove {
-            return Err(AppError::ProofNotSupported);
+            return Err(AppError::proof_not_supported());
         }
 
         // We can't simulate gas at a block height
         if height != 0 && height != block.height {
-            return Err(AppError::PastHeightNotSupported);
+            return Err(AppError::past_height_not_supported());
         }
 
         // Create a `Tx` from the unsigned transaction.
@@ -772,7 +765,7 @@ where
     );
 
     if let Some(err) = events.withhold.maybe_error() {
-        let err = err.to_string();
+        let err = err.clone();
         return new_tx_outcome(gas_tracker, events, Err(err));
     }
 
@@ -803,8 +796,8 @@ where
 
     let request_backrun = match events.authenticate.as_result() {
         Err((_, err)) => {
+            let err = err.clone();
             drop(msg_buffer);
-            let err = err.to_string();
             return process_finalize_fee(
                 vm,
                 fee_buffer,
@@ -849,8 +842,8 @@ where
 
     match events.msgs_and_backrun.maybe_error() {
         Some(err) => {
+            let err = err.clone();
             drop(msg_buffer);
-            let err = err.to_string();
             return process_finalize_fee(
                 vm,
                 fee_buffer,
@@ -986,10 +979,10 @@ where
             new_tx_outcome(gas_tracker, events, result)
         },
         CommitmentStatus::Failed { error, .. } => {
-            let err = error.to_string();
-            let events = events.finalize_fails(evt_finalize, "idk");
+            let error = error.clone();
+            let events = events.finalize_fails(evt_finalize, &error);
             drop(buffer);
-            new_tx_outcome(gas_tracker, events, Err(err))
+            new_tx_outcome(gas_tracker, events, Err(error))
         },
         CommitmentStatus::NotReached | CommitmentStatus::Reverted { .. } => {
             unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`");

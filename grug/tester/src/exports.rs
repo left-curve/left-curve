@@ -1,9 +1,9 @@
 use {
     crate::{
-        ExecuteMsg, InstantiateMsg, QueryMsg, execute_stack_overflow, force_write_on_query,
-        infinite_loop, query_force_write, query_loop, query_recover_secp256k1,
-        query_stack_overflow, query_verify_ed25519, query_verify_ed25519_batch,
-        query_verify_secp256k1, query_verify_secp256r1,
+        ExecuteMsg, InstantiateMsg, QueryMsg, execute_stack_overflow, failing_query,
+        force_write_on_query, infinite_loop, query_backtrace, query_force_write, query_loop,
+        query_recover_secp256k1, query_stack_overflow, query_verify_ed25519,
+        query_verify_ed25519_batch, query_verify_secp256k1, query_verify_secp256r1,
     },
     grug::{ImmutableCtx, Json, JsonSerExt, MutableCtx, Response, StdResult},
 };
@@ -51,5 +51,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             sigs,
             prehash_msgs,
         } => query_verify_ed25519_batch(ctx, pks, sigs, prehash_msgs)?.to_json_value(),
+        QueryMsg::Backtrace { query } => query_backtrace(ctx, query)?.to_json_value(),
+        QueryMsg::FailingQuery { msg } => failing_query(msg)?.to_json_value(),
     }
 }

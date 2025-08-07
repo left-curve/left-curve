@@ -148,10 +148,7 @@ impl Db for DiskDb {
         let version = match version {
             Some(version) => {
                 if version > latest_version {
-                    return Err(DbError::VersionTooNew {
-                        version,
-                        latest_version,
-                    });
+                    return Err(DbError::version_too_new(version, latest_version));
                 }
                 version
             },
@@ -163,10 +160,7 @@ impl Db for DiskDb {
         // return error.
         if let Some(oldest_version) = self.oldest_version() {
             if version < oldest_version {
-                return Err(DbError::VersionTooOld {
-                    version,
-                    oldest_version,
-                });
+                return Err(DbError::version_too_old(version, oldest_version));
             }
         }
 
@@ -209,7 +203,7 @@ impl Db for DiskDb {
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
         if self.inner.pending_data.read()?.is_some() {
-            return Err(DbError::PendingDataAlreadySet);
+            return Err(DbError::pending_data_already_set());
         }
 
         let (old_version, new_version) = match self.latest_version() {
@@ -244,7 +238,7 @@ impl Db for DiskDb {
             .pending_data
             .write()?
             .take()
-            .ok_or(DbError::PendingDataNotSet)?;
+            .ok_or(DbError::pending_data_not_set())?;
         let mut batch = WriteBatch::default();
         let ts = U64Timestamp::from(pending.version);
 

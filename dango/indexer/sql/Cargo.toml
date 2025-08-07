@@ -30,6 +30,7 @@ dango-indexer-sql-migration = { workspace = true }
 dango-types                 = { workspace = true, features = ["sea-orm"] }
 grug                        = { workspace = true }
 grug-app                    = { workspace = true }
+grug-macros                 = { workspace = true }
 grug-math                   = { workspace = true }
 grug-types                  = { workspace = true, features = ["chrono"] }
 indexer-disk-saver          = { workspace = true }

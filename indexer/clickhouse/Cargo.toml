@@ -30,6 +30,7 @@ futures        = { workspace = true }
 grug           = { workspace = true }
 grug-app       = { workspace = true }
 grug-httpd     = { workspace = true }
+grug-macros    = { workspace = true }
 grug-types     = { workspace = true, features = ["chrono"] }
 indexer-hooked = { workspace = true }
 indexer-httpd  = { workspace = true, optional = true }

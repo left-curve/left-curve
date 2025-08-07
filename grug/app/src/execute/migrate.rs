@@ -77,7 +77,7 @@ where
 
                 // Ensure the sender is the admin of the contract.
                 if Some(sender) != info.admin {
-                    return Err(AppError::Unauthorized);
+                    return Err(AppError::unauthorized());
                 }
 
                 info.code_hash = msg.new_code_hash;

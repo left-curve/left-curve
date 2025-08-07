@@ -4,10 +4,10 @@ use {
     async_trait::async_trait,
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
-        Addr, Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient,
-        BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt, JsonSerExt, NonEmpty,
-        Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
-        UnsignedTx,
+        Addr, BacktracedError, Binary, Block, BlockClient, BlockOutcome, BorshDeExt,
+        BroadcastClient, BroadcastTxOutcome, GenericResult, Hash256, Inner, Json, JsonDeExt,
+        JsonSerExt, NonEmpty, Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome,
+        Tx, TxOutcome, UnsignedTx,
     },
     serde::Serialize,
     std::{fmt::Display, str::FromStr},
@@ -177,7 +177,7 @@ impl SearchTxClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {
-        let response = self
+        let mut response = self
             .post_graphql(search_tx::Variables {
                 hash: hash.to_string(),
             })
@@ -185,7 +185,11 @@ impl SearchTxClient for HttpClient {
             .transactions
             .nodes;
 
-        let res = response.first().ok_or(anyhow!("no tx found"))?;
+        let res = response.pop().ok_or(anyhow!("no tx found"))?;
+
+        if !response.is_empty() {
+            bail!("multiple txs found for hash: {hash}")
+        }
 
         let msgs = res
             .messages
@@ -212,7 +216,14 @@ impl SearchTxClient for HttpClient {
                 result: if res.has_succeeded {
                     GenericResult::Ok(())
                 } else {
-                    GenericResult::Err(res.error_message.clone().unwrap_or_default())
+                    GenericResult::Err(
+                        res.error_message
+                            .map(|e| e.deserialize_json())
+                            .transpose()?
+                            .unwrap_or_else(|| {
+                                BacktracedError::new_without_bt("error not found!".to_string())
+                            }),
+                    )
                 },
                 events: res
                     .nested_events
