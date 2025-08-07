@@ -1,12 +1,13 @@
 import ReactFullpage, { type fullpageApi } from "@fullpage/react-fullpage";
 
 import { createContext, IconChevronDown, useMediaQuery, useTheme } from "@left-curve/applets-kit";
-import type { PropsWithChildren } from "react";
 import { m } from "~/paraglide/messages";
 import { SearchMenu } from "../foundation/SearchMenu";
 import { AppletsSection } from "../overview/AppletsSection";
 import { useApp } from "~/hooks/useApp";
 import { decodeBase64, decodeUtf8 } from "@left-curve/dango/encoding";
+
+import type { PropsWithChildren } from "react";
 
 type LandingProps = {
   fullpageApi: fullpageApi;
@@ -17,9 +18,11 @@ const [LandingProvider, useLanding] = createContext<LandingProps>({
 });
 
 const LandingContainer: React.FC<PropsWithChildren> = ({ children }) => {
+  const { setQuestBannerVisibility } = useApp();
   return (
     <div className="w-full mx-auto flex flex-col gap-6 pt-4 lg:pt-0 pb-16 flex-1">
       <ReactFullpage
+        beforeLeave={(_, destination) => setQuestBannerVisibility(destination.isFirst)}
         licenseKey={decodeUtf8(decodeBase64(import.meta.env.PUBLIC_FP || "RkFMTEJBQ0tfS0VZCg=="))}
         scrollingSpeed={1000}
         credits={{ enabled: false }}

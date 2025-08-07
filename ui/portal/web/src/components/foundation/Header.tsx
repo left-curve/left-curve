@@ -30,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     setSidebarVisibility,
     setNotificationMenuVisibility,
     isNotificationMenuVisible,
+    isQuestBannerVisible,
     isSidebarVisible,
   } = useApp();
   const { location } = useRouterState();
@@ -49,7 +50,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",
-        { "lg:fixed h-fit": location.pathname === "/" },
+        { "lg:fixed h-fit": location.pathname === "/" && !isQuestBannerVisible },
       )}
     >
       <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
