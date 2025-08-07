@@ -51,9 +51,10 @@ where
                 };
 
                 match ordering {
-                    // In case of equal price, we arbitrarily pick `a`.
-                    // TODO: is there a more sensible approach?
-                    Ordering::Less | Ordering::Equal => self.a.next(),
+                    // In case of equal price, pick `b`.
+                    // When calling `MergedOrders::new`, the caller should ensure
+                    // to put the prioritized iterator as `b`.
+                    Ordering::Less => self.a.next(),
                     _ => self.b.next(),
                 }
             },
