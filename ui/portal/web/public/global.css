@@ -42,6 +42,7 @@
   --color-tertiary-rice: #F3E5BF;
   --color-tertiary-green: #E5E4B1;
   --color-tertiary-blue: #E2E3F2;
+  --color-tertiary-red: #ED4561;
   --color-status-fail: #E71818;
   --color-status-success: #25B12A;
 
@@ -99,6 +100,7 @@ html.dark {
   --color-tertiary-rice: #474237;
   --color-tertiary-green: #3F3B35;
   --color-tertiary-blue: #646273;
+  --color-tertiary-red: #FCCFD4;
   --color-status-fail: #FF6B6B;
   --color-status-success: #66C86A;
 

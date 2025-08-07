@@ -74,11 +74,13 @@ const SectionRice: React.FC = () => {
   if (isSearchBarVisible) return null;
 
   return (
-    <section className="section w-full min-h-svh flex items-center justify-center bg-white bg-[linear-gradient(212.63deg,_rgba(255,_229,_190,_0.4)_19.52%,_#FFDEAE_94.1%)] p-4 lg:p-0">
+    <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(212.63deg,_rgba(255,_229,_190,_0.4)_19.52%,_#FFDEAE_94.1%)] dark:bg-[linear-gradient(212.63deg,_#42403D_19.52%,_#807668_94.1%)] p-4 lg:p-0">
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center">
         <div className="flex flex-col gap-2 max-w-[40rem]">
-          <h1 className="display-heading-l md:display-heading-2xl text-rice-600">Trade</h1>
-          <p className="diatype-m-regular md:h1-medium text-rice-600">
+          <h1 className="display-heading-l md:display-heading-2xl text-rice-600 dark:text-secondary-rice">
+            Trade
+          </h1>
+          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-secondary-rice">
             crypto assets, real world assets, and derivatives and Dango’s blazingly fast exchange.
             Enjoy deep liquidity, fast execution, and fair prices.
           </p>
@@ -98,11 +100,13 @@ const SectionRed: React.FC = () => {
   if (isSearchBarVisible) return null;
 
   return (
-    <section className="section w-full min-h-svh flex items-center justify-center bg-white bg-[linear-gradient(212.63deg,_rgba(255,_221,_223,_0.4)_19.52%,_#FFD0D3_94.1%)] p-4 lg:p-0">
+    <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(212.63deg,_rgba(255,_221,_223,_0.4)_19.52%,_#FFD0D3_94.1%)] dark:bg-[linear-gradient(212.63deg,_#383634_19.52%,_#6A6361_94.1%)] p-4 lg:p-0">
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center">
         <div className="flex flex-col gap-2 max-w-[40rem]">
-          <h1 className="display-heading-l md:display-heading-2xl text-red-500">Leverage up</h1>
-          <p className="diatype-m-regular md:h1-medium text-red-500">
+          <h1 className="display-heading-l md:display-heading-2xl text-tertiary-red">
+            Leverage up
+          </h1>
+          <p className="diatype-m-regular md:h1-medium text-tertiary-red">
             with Dango’s unified trading account with low cost and high capital efficiency. Spot,
             perps, vaults; one account, under a unified margin system.
           </p>
@@ -122,11 +126,13 @@ const SectionGreen: React.FC = () => {
   if (isSearchBarVisible) return null;
 
   return (
-    <section className="section w-full min-h-svh flex items-center justify-center bg-white bg-[linear-gradient(212.63deg,_rgba(239,_240,_173,_0.4)_19.52%,_#EFF0AD_94.1%)] p-4 lg:p-0">
+    <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(212.63deg,_rgba(239,_240,_173,_0.4)_19.52%,_#EFF0AD_94.1%)] dark:bg-[linear-gradient(212.63deg,_#373634_19.52%,_#666654_94.1%)] p-4 lg:p-0">
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center">
         <div className="flex flex-col gap-2 max-w-[40rem]">
-          <h1 className="display-heading-l md:display-heading-2xl text-green-bean-800">Earn</h1>
-          <p className="diatype-m-regular md:h1-medium text-green-bean-800">
+          <h1 className="display-heading-l md:display-heading-2xl text-green-bean-800 dark:text-primary-green">
+            Earn
+          </h1>
+          <p className="diatype-m-regular md:h1-medium text-green-bean-800 dark:text-primary-green">
             passive yields on your idle assets, by participating in Dango’s passive market making
             vaults. Make your money work for you!
           </p>
