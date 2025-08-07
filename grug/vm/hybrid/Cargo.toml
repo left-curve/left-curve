@@ -9,10 +9,24 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+# Implement `grug_testing::TestVm` trait for `HybridVm`, so that it can be used in
+# the test suite.
+testing = ["dep:grug-testing"]
+
 [dependencies]
 grug-app     = { workspace = true }
 grug-macros  = { workspace = true }
+grug-testing = { workspace = true, optional = true }
 grug-types   = { workspace = true }
 grug-vm-rust = { workspace = true }
 grug-vm-wasm = { workspace = true }
 thiserror    = { workspace = true }
+
+[dev-dependencies]
+grug-db-memory = { workspace = true }
+grug-math      = { workspace = true }
+grug-tester    = { workspace = true, features = ["library"] }
+grug-testing   = { workspace = true }
+grug-vm-hybrid = { workspace = true, features = ["testing"] }
+tracing        = { workspace = true }

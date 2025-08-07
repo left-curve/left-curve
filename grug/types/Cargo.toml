@@ -25,32 +25,32 @@ sea-orm = ["dep:sea-orm"]
 tendermint = ["dep:tendermint", "tendermint-rpc"]
 
 [dependencies]
-async-graphql   = { workspace = true, optional = true }
-backtrace       = { workspace = true }
-bnum            = { workspace = true, features = ["borsh"] }
-borsh           = { workspace = true, features = ["de_strict_order", "derive"] }
-chrono          = { workspace = true, optional = true }
-data-encoding   = { workspace = true }
-digest          = { workspace = true }
-dyn-clone       = { workspace = true }
-grug-macros     = { workspace = true }
-grug-math       = { workspace = true }
-grug-types-base = { workspace = true }
-hex-literal     = { workspace = true }
-paste           = { workspace = true }
-prost           = { workspace = true }
-ripemd          = { workspace = true }
-sea-orm         = { workspace = true, optional = true }
-serde           = { workspace = true, features = ["derive"] }
-serde_json      = { workspace = true }
-serde_with      = { workspace = true }
-sha2            = { workspace = true }
-sha3            = { workspace = true }
-strum           = { workspace = true }
-strum_macros    = { workspace = true }
-tendermint      = { workspace = true, optional = true }
-tendermint-rpc  = { workspace = true, optional = true }
-thiserror       = { workspace = true }
+async-graphql  = { workspace = true, optional = true }
+backtrace      = { workspace = true }
+bnum           = { workspace = true, features = ["borsh"] }
+borsh          = { workspace = true, features = ["de_strict_order", "derive"] }
+chrono         = { workspace = true, optional = true }
+data-encoding  = { workspace = true }
+digest         = { workspace = true }
+dyn-clone      = { workspace = true }
+grug-backtrace = { workspace = true }
+grug-macros    = { workspace = true }
+grug-math      = { workspace = true }
+hex-literal    = { workspace = true }
+paste          = { workspace = true }
+prost          = { workspace = true }
+ripemd         = { workspace = true }
+sea-orm        = { workspace = true, optional = true }
+serde          = { workspace = true, features = ["derive"] }
+serde_json     = { workspace = true }
+serde_with     = { workspace = true }
+sha2           = { workspace = true }
+sha3           = { workspace = true }
+strum          = { workspace = true }
+strum_macros   = { workspace = true }
+tendermint     = { workspace = true, optional = true }
+tendermint-rpc = { workspace = true, optional = true }
+thiserror      = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 async-trait = { workspace = true }

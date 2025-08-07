@@ -4,7 +4,7 @@ use {
         Hash256, HashExt, Message, NonEmpty, QueryClient, Signer, StdError, Tx, TxOutcome,
     },
     async_trait::async_trait,
-    grug_types_base::BacktracedError,
+    grug_backtrace::BacktracedError,
     serde::Serialize,
 };
 

@@ -9,7 +9,7 @@ use {
         Json, Label, ReplyOn, Timestamp, TxEvents,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types_base::BacktracedError,
+    grug_backtrace::BacktracedError,
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
     strum_macros::{Display, EnumDiscriminants},

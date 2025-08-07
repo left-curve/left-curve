@@ -11,8 +11,8 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
-        Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
+        Addr, Addressable, Backtraceable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config,
+        Denom, Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
         Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, QueryStatusResponse, Signer,
         StdError, StdResult, Tx, TxOutcome, UnsignedTx,
     },
@@ -638,7 +638,7 @@ where
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.app
             .do_query_app(req, 0, false)
-            .map_err(|err| StdError::host(err.to_string()))
+            .map_err(|err| StdError::Host(err.into_generic_backtraced_error()))
     }
 }
 

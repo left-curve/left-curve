@@ -5,7 +5,7 @@ use {
     std::{any::type_name, array::TryFromSliceError, convert::Infallible},
 };
 
-#[grug_macros::backtrace(grug_types_base)]
+#[grug_macros::backtrace(grug_backtrace)]
 #[derive(Clone)]
 pub enum VerificationError {
     #[error("data is of incorrect length")]
@@ -31,7 +31,7 @@ impl VerificationError {
     }
 }
 
-#[grug_macros::backtrace(grug_types_base)]
+#[grug_macros::backtrace(grug_backtrace)]
 #[derive(Clone)]
 pub enum StdError {
     #[error(transparent)]

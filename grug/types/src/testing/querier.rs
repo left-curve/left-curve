@@ -5,7 +5,7 @@ use {
         Querier, Query, QueryResponse, QueryStatusResponse, StdError, StdResult, Storage,
     },
     grug_math::{NumberConst, Uint128},
-    grug_types_base::BacktracedError,
+    grug_backtrace::BacktracedError,
     serde::Serialize,
     std::collections::BTreeMap,
 };

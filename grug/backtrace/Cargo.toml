@@ -4,7 +4,7 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "grug-types-base"
+name          = "grug-backtrace"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
@@ -14,6 +14,4 @@ anyhow      = { workspace = true }
 borsh       = { workspace = true }
 grug-macros = { workspace = true }
 serde       = { workspace = true }
-
-[dev-dependencies]
-thiserror = { workspace = true }
+thiserror   = { workspace = true }

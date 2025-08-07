@@ -3,7 +3,7 @@ use {
         Addr, CheckedContractEvent, Coins, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types_base::{Backtraceable, BacktracedError},
+    grug_backtrace::{Backtraceable, BacktracedError},
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,

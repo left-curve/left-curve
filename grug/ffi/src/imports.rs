@@ -1,8 +1,8 @@
 use {
     crate::Region,
     grug_types::{
-        Addr, Api, BorshDeExt, BorshSerExt, GenericResult, Order, Querier, Query, QueryResponse,
-        Record, StdError, StdResult, Storage, VerificationError, encode_sections,
+        Addr, Api, BacktracedError, BorshDeExt, BorshSerExt, Order, Querier, Query, QueryResponse,
+        QueryResult, Record, StdError, StdResult, Storage, VerificationError, encode_sections,
     },
 };
 
@@ -451,9 +451,9 @@ impl Querier for ExternalQuerier {
 
         let res_ptr = unsafe { query_chain(req_ptr as usize) };
         let res_bytes = unsafe { Region::consume(res_ptr as *mut Region) };
-        let res: GenericResult<QueryResponse> = res_bytes.deserialize_borsh()?;
+        let res: QueryResult<QueryResponse> = res_bytes.deserialize_borsh()?;
 
-        res.map_err(StdError::Host)
+        res.map_err(|err| StdError::Host(BacktracedError::new_without_bt(err)))
     }
 }
 

@@ -1,4 +1,4 @@
-use grug_types_base::BacktracedError;
+use grug_backtrace::BacktracedError;
 
 #[cfg(any(feature = "tendermint", feature = "async-graphql"))]
 use crate::serializers::JsonDeExt;
@@ -383,6 +383,6 @@ fn into_generic_result(code: tendermint::abci::Code, log: String) -> GenericResu
     if code == tendermint::abci::Code::Ok {
         Ok(())
     } else {
-        Err(grug_types_base::BacktracedError::new(log))
+        Err(grug_backtrace::BacktracedError::new(log))
     }
 }

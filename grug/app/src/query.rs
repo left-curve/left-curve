@@ -168,7 +168,7 @@ where
         address: ctx.contract,
         name: "bank_query",
         msg: msg.to_string(),
-        backtrace: msg.backtrace,
+        backtrace: msg.backtrace.capture_if_empty(),
     })
 }
 
@@ -285,6 +285,6 @@ where
         address: ctx.contract,
         name: "query",
         msg: msg.to_string(),
-        backtrace: msg.backtrace,
+        backtrace: msg.backtrace.capture_if_empty(),
     })
 }

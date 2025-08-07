@@ -43,9 +43,9 @@ mod test {
     use {
         super::Item,
         borsh::{BorshDeserialize, BorshSerialize},
+        grug_backtrace::BacktracedError,
         grug_math::{MathError, Number, NumberConst, Uint128},
         grug_types::{MockStorage, StdError, StdResult},
-        grug_types_base::BacktracedError,
     };
 
     #[derive(BorshDeserialize, BorshSerialize, PartialEq, Debug)]

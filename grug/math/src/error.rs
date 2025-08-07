@@ -1,6 +1,6 @@
-use {grug_types_base::BT, std::any::type_name};
+use {grug_backtrace::BT, std::any::type_name};
 
-#[grug_macros::backtrace(grug_types_base)]
+#[grug_macros::backtrace(grug_backtrace)]
 #[derive(Clone)]
 pub enum MathError {
     #[error("failed to parse string `{input}` into {ty}: {reason}")]

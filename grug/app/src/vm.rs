@@ -168,7 +168,7 @@ where
                 address: ctx.contract,
                 name,
                 msg: msg.error,
-                backtrace: msg.backtrace
+                backtrace: msg.backtrace.capture_if_empty()
             })
         },
         evt
@@ -226,7 +226,7 @@ where
                 address: ctx.contract,
                 name,
                 msg: msg.error,
-                backtrace: msg.backtrace
+                backtrace: msg.backtrace.capture_if_empty()
             })
         },
         evt
@@ -282,7 +282,7 @@ where
                 address: ctx.contract,
                 name,
                 msg: msg.error,
-                backtrace: msg.backtrace
+                backtrace: msg.backtrace.capture_if_empty()
             })
         },
         evt
@@ -345,7 +345,7 @@ where
                 address: ctx.contract,
                 name,
                 msg: msg.error,
-                backtrace: msg.backtrace
+                backtrace: msg.backtrace.capture_if_empty()
             })
         },
         evt

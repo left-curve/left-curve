@@ -4797,10 +4797,10 @@ dependencies = [
  "borsh 1.5.7",
  "data-encoding",
  "dyn-event",
+ "grug-backtrace",
  "grug-macros",
  "grug-storage",
  "grug-types",
- "grug-types-base",
  "http 1.3.1",
  "ics23",
  "prost",
@@ -4809,6 +4809,17 @@ dependencies = [
  "tower",
  "tower-abci",
  "tracing",
+]
+
+[[package]]
+name = "grug-backtrace"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh 1.5.7",
+ "grug-macros",
+ "serde",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -4965,8 +4976,8 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh 1.5.7",
+ "grug-backtrace",
  "grug-macros",
- "grug-types-base",
  "paste",
  "proptest",
  "serde",
@@ -5019,9 +5030,9 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh 1.5.7",
+ "grug-backtrace",
  "grug-math",
  "grug-types",
- "grug-types-base",
  "prost",
  "serde",
  "test-case",
@@ -5077,10 +5088,10 @@ dependencies = [
  "data-encoding",
  "digest 0.10.7",
  "dyn-clone",
+ "grug-backtrace",
  "grug-crypto",
  "grug-macros",
  "grug-math",
- "grug-types-base",
  "hex-literal",
  "paste",
  "prost",
@@ -5100,26 +5111,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-types-base"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "borsh 1.5.7",
- "grug-macros",
- "serde",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "grug-vm-hybrid"
 version = "0.0.0"
 dependencies = [
  "grug-app",
+ "grug-db-memory",
  "grug-macros",
+ "grug-math",
+ "grug-tester",
+ "grug-testing",
  "grug-types",
+ "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
  "thiserror 2.0.12",
+ "tracing",
 ]
 
 [[package]]

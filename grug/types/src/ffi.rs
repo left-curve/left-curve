@@ -1,6 +1,6 @@
 use {
     crate::Event,
-    grug_types_base::{Backtraceable, BacktracedError},
+    grug_backtrace::{Backtraceable, BacktracedError},
 };
 
 /// Result of which the error is a string.

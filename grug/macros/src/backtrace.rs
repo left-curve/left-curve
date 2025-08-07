@@ -14,7 +14,7 @@ struct InputArgs {
 impl Parse for InputArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let crate_name = if input.is_empty() {
-            syn::parse_quote!(grug_types::__private::grug_types_base)
+            syn::parse_quote!(grug_types::__private::grug_backtrace)
         } else {
             input.parse()?
         };
@@ -181,7 +181,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     }
 
     quote! {
-        #[derive(Debug, thiserror::Error)]
+        #[derive(Debug, ::thiserror::Error)]
         #input
         #(#impl_from)*
         impl #crate_path::Backtraceable for #input_ident {

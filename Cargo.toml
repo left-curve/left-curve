@@ -25,6 +25,7 @@ members = [
   "dango/vesting",
   "dango/warp",
   "grug/app",
+  "grug/backtrace",
   "grug/client",
   "grug/crypto",
   "grug/db/disk",
@@ -43,7 +44,6 @@ members = [
   "grug/tester",
   "grug/testing",
   "grug/types",
-  "grug/types-base",
   "grug/vm/rust",
   "grug/vm/wasm",
   "hyperlane/isms/multisig",
@@ -219,6 +219,7 @@ dango-warp                  = { path = "dango/warp" }
 grug                        = { path = "grug/std" }
 grug-app                    = { path = "grug/app" }
 grug-auth                   = { path = "grug/auth" }
+grug-backtrace              = { path = "grug/backtrace" }
 grug-client                 = { path = "grug/client" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
@@ -236,7 +237,6 @@ grug-storage                = { path = "grug/storage" }
 grug-tester                 = { path = "grug/tester" }
 grug-testing                = { path = "grug/testing" }
 grug-types                  = { path = "grug/types" }
-grug-types-base             = { path = "grug/types-base" }
 grug-vm-hybrid              = { path = "grug/vm/hybrid" }
 grug-vm-rust                = { path = "grug/vm/rust" }
 grug-vm-wasm                = { path = "grug/vm/wasm" }
