@@ -149,7 +149,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: 1.88
           components: clippy
 
       # - name: Create psql database
