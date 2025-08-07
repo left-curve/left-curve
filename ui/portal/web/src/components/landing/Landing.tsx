@@ -70,8 +70,8 @@ const Header: React.FC = () => {
 };
 
 const SectionRice: React.FC = () => {
-  const { isSidebarVisible } = useApp();
-  if (isSidebarVisible) return null;
+  const { isSearchBarVisible } = useApp();
+  if (isSearchBarVisible) return null;
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center bg-white bg-[linear-gradient(212.63deg,_rgba(255,_229,_190,_0.4)_19.52%,_#FFDEAE_94.1%)] p-4 lg:p-0">
@@ -94,8 +94,8 @@ const SectionRice: React.FC = () => {
 };
 
 const SectionRed: React.FC = () => {
-  const { isSidebarVisible } = useApp();
-  if (isSidebarVisible) return null;
+  const { isSearchBarVisible } = useApp();
+  if (isSearchBarVisible) return null;
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center bg-white bg-[linear-gradient(212.63deg,_rgba(255,_221,_223,_0.4)_19.52%,_#FFD0D3_94.1%)] p-4 lg:p-0">
@@ -118,8 +118,8 @@ const SectionRed: React.FC = () => {
 };
 
 const SectionGreen: React.FC = () => {
-  const { isSidebarVisible } = useApp();
-  if (isSidebarVisible) return null;
+  const { isSearchBarVisible } = useApp();
+  if (isSearchBarVisible) return null;
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center bg-white bg-[linear-gradient(212.63deg,_rgba(239,_240,_173,_0.4)_19.52%,_#EFF0AD_94.1%)] p-4 lg:p-0">
