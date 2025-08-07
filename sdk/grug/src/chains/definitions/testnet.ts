@@ -11,6 +11,6 @@ export const testnet = /*#__PURE__*/ defineChain({
     contractPage: "/contract/${address}",
   },
   urls: {
-    indexer: "https://testnet.dango.exchange/graphql",
+    indexer: "https://graphql.dango.exchange/graphql",
   },
 });
