@@ -61,7 +61,6 @@ const Header: React.FC = () => {
         />
         {isLg && (
           <div className="relative w-full h-11">
-            {" "}
             <SearchMenu />
           </div>
         )}
@@ -89,11 +88,10 @@ const SectionRice: React.FC = () => {
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center">
         <div className="flex flex-col gap-2 max-w-[40rem]">
           <h1 className="display-heading-l md:display-heading-2xl text-rice-600 dark:text-secondary-rice">
-            Trade
+            {m["welcome.trade"]()}
           </h1>
           <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-secondary-rice">
-            crypto assets, real world assets, and derivatives and Dango’s blazingly fast exchange.
-            Enjoy deep liquidity, fast execution, and fair prices.
+            {m["welcome.tradeDescription"]()}
           </p>
         </div>
         <img
@@ -115,11 +113,10 @@ const SectionRed: React.FC = () => {
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center">
         <div className="flex flex-col gap-2 max-w-[40rem]">
           <h1 className="display-heading-l md:display-heading-2xl text-tertiary-red">
-            Leverage up
+            {m["welcome.leverageUp"]()}
           </h1>
           <p className="diatype-m-regular md:h1-medium text-tertiary-red">
-            with Dango’s unified trading account with low cost and high capital efficiency. Spot,
-            perps, vaults; one account, under a unified margin system.
+            {m["welcome.leverageUpDescription"]()}
           </p>
         </div>
         <img
@@ -141,11 +138,10 @@ const SectionGreen: React.FC = () => {
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center">
         <div className="flex flex-col gap-2 max-w-[40rem]">
           <h1 className="display-heading-l md:display-heading-2xl text-green-bean-800 dark:text-foreground-primary-green">
-            Earn
+            {m["welcome.earn"]()}
           </h1>
           <p className="diatype-m-regular md:h1-medium text-green-bean-800 dark:text-foreground-primary-green">
-            passive yields on your idle assets, by participating in Dango’s passive market making
-            vaults. Make your money work for you!
+            {m["welcome.earnDescription"]()}
           </p>
         </div>
         <img
@@ -185,8 +181,9 @@ const SectionCommunity: React.FC = () => {
         </div>
         <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
           <h2 className="display-heading-m md:display-heading-2xl">
-            Join the <span className="text-red-bean-400">community</span> of{" "}
-            <span className="text-red-bean-400">Dangbros</span>
+            {m["welcome.join"]()}
+            <span className="text-red-bean-400">{m["welcome.community"]()}</span>{" "}
+            {m["welcome.of"]()} <span className="text-red-bean-400">{m["welcome.dangbros"]()}</span>
           </h2>
           <div className="flex gap-4">
             <Button onClick={() => window.open("https://x.com/dangoXchg", "_blank")}>
