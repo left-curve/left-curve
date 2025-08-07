@@ -181,7 +181,6 @@ jobs:
 
       - name: Run tests
         run: |
-          cargo clean
           cargo test --all-features
         env:
           RUST_BACKTRACE: 1
