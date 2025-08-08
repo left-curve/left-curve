@@ -9,7 +9,10 @@ use {
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
     futures_util::stream::{StreamExt, once},
-    std::sync::atomic::{AtomicU64, Ordering},
+    std::sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 #[derive(Default)]
