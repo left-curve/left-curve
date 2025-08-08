@@ -12,7 +12,6 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { TradeButtons } from "../dex/TradeButtons";
 import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
 import { Hamburger } from "./Hamburguer";
@@ -30,7 +29,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     setSidebarVisibility,
     setNotificationMenuVisibility,
     isNotificationMenuVisible,
-    isQuestBannerVisible,
     isSidebarVisible,
   } = useApp();
   const { location } = useRouterState();
@@ -50,9 +48,10 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",
-        { "lg:fixed h-fit": location.pathname === "/" && !isQuestBannerVisible },
+        { "lg:fixed h-fit": location.pathname === "/" },
       )}
     >
+      {isLg ? <div id="quest-banner" /> : null}
       <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
