@@ -37,6 +37,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         try {
           // Check chain is up
           const response = await fetch(window.dango.urls.upUrl);
+          if (!response.ok) throw new Error("request failed");
           const { is_running } = await response.json();
           if (!is_running) navigate({ to: "/maintenance" });
         } catch (_) {
