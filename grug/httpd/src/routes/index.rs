@@ -12,10 +12,11 @@ pub async fn index() -> impl Responder {
 }
 
 #[derive(serde::Serialize)]
-struct UpResponse<'a> {
-    block: BlockInfo,
-    is_running: bool,
-    git_commit: &'a str,
+pub struct UpResponse<'a> {
+    pub block: BlockInfo,
+    pub is_running: bool,
+    pub git_commit: &'a str,
+    pub indexed_block_height: Option<u64>,
 }
 
 #[get("/up")]
@@ -34,5 +35,6 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         block,
         is_running,
         git_commit: GIT_COMMIT,
+        indexed_block_height: None,
     }))
 }
