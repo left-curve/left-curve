@@ -1,5 +1,5 @@
 #[cfg(feature = "metrics")]
-use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
+use grug_httpd::metrics::GaugeGuard;
 
 use {
     crate::{
