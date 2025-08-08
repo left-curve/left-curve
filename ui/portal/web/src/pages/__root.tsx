@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 
-import { twMerge, useTheme } from "@left-curve/applets-kit";
+import { Spinner, twMerge, useTheme } from "@left-curve/applets-kit";
 import { createPortal } from "react-dom";
 
 import type { RouterContext } from "~/app.router";
@@ -33,16 +33,21 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     const [isReady, setIsReady] = useState(false);
     useEffect(() => {
       if (location.pathname === "/maintenance") navigate({ to: "/" });
-      // Check chain is up
-      fetch(window.dango.urls.upUrl)
-        .then(({ ok }) => {
-          if (!ok) navigate({ to: "/maintenance" });
-        })
-        .catch(() => navigate({ to: "/maintenance" }))
-        .finally(() => setIsReady(true));
+      (async () => {
+        try {
+          // Check chain is up
+          const response = await fetch(window.dango.urls.upUrl);
+          const { is_running } = await response.json();
+          if (!is_running) navigate({ to: "/maintenance" });
+        } catch (_) {
+          navigate({ to: "/maintenance" });
+        } finally {
+          setIsReady(true);
+        }
+      })();
     }, []);
 
-    if (!isReady) return null;
+    if (!isReady) return <Spinner />;
 
     return (
       <>
