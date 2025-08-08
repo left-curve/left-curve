@@ -118,6 +118,9 @@ impl CandleCache {
         // NOTE: Could potentially be optimized by using a single query to fetch all candles for
         // all pairs.
 
+        // NOTE: we could have skipped block, we shouldn't just fetch the last candle, but the ones matching
+        // last_cached_block_height..current_block_height or timestamp related
+
         let fetch_tasks = pairs
             .iter()
             .flat_map(|pair| {
@@ -161,7 +164,7 @@ impl CandleCache {
                     );
                 },
                 Ok((key, Some(fetched_candle))) => {
-                    if fetched_candle.block_height != block_height {
+                    if fetched_candle.block_height < block_height {
                         #[cfg(feature = "tracing")]
                         tracing::warn!(
                             block_height,
@@ -169,7 +172,7 @@ impl CandleCache {
                             base_denom = %key.base_denom,
                             quote_denom = %key.quote_denom,
                             interval = %key.interval,
-                            "fetched candle doesn't match block_height",
+                            "fetched candle is older than requested",
                         );
                     } else {
                         self.add_candle(key.clone(), fetched_candle.clone());
