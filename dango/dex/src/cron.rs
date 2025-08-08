@@ -90,7 +90,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut fee_payments = TransferBuilder::<DecCoins<6>>::new();
 
     // Collect all market orders received during this block.
-    let market_orders = MARKET_ORDERS
+    let mut market_orders = MARKET_ORDERS
         .values(ctx.storage, None, None, IterationOrder::Ascending)
         .try_fold(BTreeMap::new(), |mut acc, res| {
             let ((pair, direction, price, _), order) = res?;
@@ -118,7 +118,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         .collect::<StdResult<Vec<_>>>()?
     {
         let pair = (base_denom.clone(), quote_denom.clone());
-        let (market_bids, market_asks) = &market_orders[&pair];
+        let (market_bids, market_asks) = market_orders.remove(&pair).unwrap_or_default();
 
         clear_orders_of_pair(
             ctx.storage,
@@ -189,8 +189,8 @@ fn clear_orders_of_pair(
     taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
-    market_bids: &MarketOrders,
-    market_asks: &MarketOrders,
+    market_bids: MarketOrders,
+    market_asks: MarketOrders,
     events: &mut EventBuilder,
     refunds: &mut TransferBuilder<DecCoins<6>>,
     fees: &mut DecCoins<6>,
