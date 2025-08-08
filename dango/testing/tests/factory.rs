@@ -546,6 +546,22 @@ fn update_key() {
             },
         )
         .should_succeed_and_equal(btree_map! { key_hash => pk });
+
+    // It shouldn't be able to add the same key more than once.
+    suite
+        .execute(
+            &mut user,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateKey {
+                key: Op::Insert(pk.clone()),
+                key_hash,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "key is already associated with username `{}`",
+            user.username
+        ));
 }
 
 /// A malicious block builder detects a register user transaction, could try to,
