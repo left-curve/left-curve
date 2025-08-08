@@ -171,6 +171,7 @@ services:
       CLICKHOUSE_DB: grug_dev
       CLICKHOUSE_USER: default
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     ulimits:
       nofile:
         soft: 262144
