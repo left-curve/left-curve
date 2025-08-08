@@ -16,6 +16,7 @@ import { useApp } from "~/hooks/useApp";
 import { decodeBase64, decodeUtf8 } from "@left-curve/dango/encoding";
 
 import type { PropsWithChildren } from "react";
+import { format } from "date-fns";
 
 type LandingProps = {
   fullpageApi: fullpageApi;
@@ -197,7 +198,7 @@ const SectionCommunity: React.FC = () => {
             alt="Dango"
             className="max-w-[10rem] lg:max-w-[13rem]"
           />
-          <p>© {new Date().getFullYear()} - Dango</p>
+          <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
         </div>
       </div>
     </section>
