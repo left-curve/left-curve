@@ -169,7 +169,7 @@ const SectionCommunity: React.FC = () => {
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(6.97deg,_#D0CFEB_11.63%,_#F6F6FB_88.19%)] dark:bg-[linear-gradient(6.97deg,_#6E6D77_11.63%,_#373634_88.19%)]">
-      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 gap-24 pb-16 lg:pb-4 min-h-[calc(100svh-5svh)] lg:justify-center">
+      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 gap-24 pb-16 lg:pb-4 lg:min-h-[calc(100svh-5svh)] lg:justify-center">
         <div className="w-full flex flex-col lg:flex-row items-center lg:justify-between gap-4 lg:flex-1">
           <img
             src="/images/characters/friends.svg"
