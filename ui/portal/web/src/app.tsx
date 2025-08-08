@@ -4,7 +4,7 @@ import { RootModal } from "./components/modals/RootModal";
 import { createToaster } from "@left-curve/applets-kit";
 import { DangoStoreProvider } from "@left-curve/store";
 import { captureException } from "@sentry/react";
-import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
 import { AppProvider } from "./app.provider";
@@ -26,25 +26,39 @@ import "@left-curve/ui-config/fonts/Exposure/italic/700.css";
 
 const [Toaster, toast] = createToaster((props) => <Toast {...props} />);
 
+const channel = new BroadcastChannel("dango.queries");
+
+channel.onmessage = ({ data: event }) => {
+  if (event.type === "invalidate") {
+    for (const key of event.keys) {
+      queryClient.invalidateQueries({ queryKey: key });
+    }
+  }
+};
+
 const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSettled(_data, _error, _variables, _context, mutation) {
+      if (!mutation.meta?.invalidateKeys) return;
+      channel.postMessage({ type: "invalidate", keys: mutation.meta.invalidateKeys });
+    },
+    onError: (error: unknown) => {
+      if (!error) return;
+      if (typeof error === "object" && ("code" in error || !(error instanceof Error))) return;
+      if (typeof error === "string" && error.includes("reject")) return;
+
+      const errorMessage = error instanceof Error ? error.message : error;
+      captureException(errorMessage);
+    },
+  }),
   queryCache: new QueryCache({
-    onError: (error, query) => {
+    onError: (_error, query) => {
       if (query.meta?.errorToast) {
         toast.error(query.meta.errorToast);
       }
     },
   }),
   defaultOptions: {
-    mutations: {
-      onError: (error: unknown) => {
-        if (!error) return;
-        if (typeof error === "object" && ("code" in error || !(error instanceof Error))) return;
-        if (typeof error === "string" && error.includes("reject")) return;
-
-        const errorMessage = error instanceof Error ? error.message : error;
-        captureException(errorMessage);
-      },
-    },
     queries: {
       refetchOnWindowFocus: false,
       retry: 0,

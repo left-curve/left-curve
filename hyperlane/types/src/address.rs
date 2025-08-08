@@ -66,7 +66,7 @@ impl PrimaryKey for Addr32 {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(&self.0)]
     }
 

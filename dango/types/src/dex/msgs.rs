@@ -106,10 +106,10 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    /// Create new, or modify the parametes of existing, trading pairs.
-    ///
-    /// Can only be called by the chain owner.
-    BatchUpdatePairs(Vec<PairUpdate>),
+    /// Messages only the chain owner can call.
+    Owner(OwnerMsg),
+    /// Messages only the contract itself can call.
+    Callback(CallbackMsg),
     /// Create or cancel multiple limit orders in one batch.
     BatchUpdateOrders {
         creates_market: Vec<CreateMarketOrderRequest>,
@@ -153,14 +153,34 @@ pub enum ExecuteMsg {
         route: SwapRoute,
         output: NonZero<Coin>,
     },
+}
+
+#[grug::derive(Serde)]
+pub enum OwnerMsg {
+    /// pause or unpause trading.
+    SetPaused(bool),
+    /// Create new, or modify the parameters of existing, trading pairs.
+    BatchUpdatePairs(Vec<PairUpdate>),
     /// Forcibly cancel all orders (limit, market, incoming) and refund the users.
-    ///
-    /// Can only be called by the chain owner. Used to recover from critical bugs.
     ForceCancelOrders {},
+}
+
+#[grug::derive(Serde)]
+pub enum CallbackMsg {
+    /// perform the batch auction; called during `cron_execute`
+    Auction {},
+}
+
+#[grug::derive(Serde)]
+pub enum ReplyMsg {
+    AfterAuction {},
 }
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Returns whether tracing is paused.
+    #[returns(bool)]
+    Paused {},
     /// Query the parameters of a single trading pair.
     #[returns(PairParams)]
     Pair {

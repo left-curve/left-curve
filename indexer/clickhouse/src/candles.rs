@@ -11,8 +11,8 @@ use {
         dex::{OrderFilled, PairId},
     },
     grug::{
-        CommitmentStatus, EventName, EventStatus, EvtCron, JsonDeExt, Number, NumberConst,
-        Udec128_6,
+        CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
+        FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten, Number, NumberConst, Udec128_6,
     },
     std::{collections::HashMap, str::FromStr, time::Duration},
     strum::IntoEnumIterator,
@@ -31,7 +31,8 @@ impl Indexer {
 
         let block_outcome = ctx
             .get::<grug_types::BlockOutcome>()
-            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?;
+            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?
+            .clone();
 
         let dex = querier.as_ref().query_dex()?;
 
@@ -41,12 +42,12 @@ impl Indexer {
 
         // DEX order execution happens exclusively in the end-block cronjob, so
         // we loop through the block's cron outcomes.
-        for outcome in &block_outcome.cron_outcomes {
+        for outcome in block_outcome.cron_outcomes {
             // If the event wasn't successful, skip it.
             let CommitmentStatus::Committed(EventStatus::Ok(EvtCron {
                 guest_event: EventStatus::Ok(event),
                 ..
-            })) = &outcome.cron_event
+            })) = outcome.cron_event
             else {
                 continue;
             };
@@ -59,10 +60,27 @@ impl Indexer {
             // Loop through the DEX events in the reverse order. Meaning, for each
             // trading pair, its closing price is determined by the last executed
             // order in this block.
-            for event in event.contract_events.iter().rev() {
+            for event in event
+                .naive_flatten(FlatCommitmentStatus::Committed, FlatEventStatus::Ok)
+                .into_iter()
+                .rev()
+            {
+                let FlatEventInfo {
+                    event: FlatEvent::ContractEvent(event),
+                    commitment_status: FlatCommitmentStatus::Committed,
+                    event_status: FlatEventStatus::Ok,
+                    ..
+                } = event
+                else {
+                    continue;
+                };
+
                 // We look for the "order filled" event, regardless whether it's
                 // a limit order or a market order.
                 if event.ty == OrderFilled::EVENT_NAME {
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!("indexer.clickhouse.order_filled_events.total").increment(1);
+
                     // Deserialize the event.
                     let order_filled = event.data.clone().deserialize_json::<OrderFilled>()?;
 
@@ -98,7 +116,6 @@ impl Indexer {
                             pair_price.volume_base = Udec128_6::MAX;
                         },
                     }
-
                     // If the volume overflows, set it to the maximum value.
                     match pair_price
                         .volume_quote
@@ -110,6 +127,10 @@ impl Indexer {
                             #[cfg(feature = "tracing")]
                             tracing::error!("Overflow in volume_quote: {pair_price:#?}");
                             pair_price.volume_quote = Udec128_6::MAX;
+
+                            #[cfg(feature = "metrics")]
+                            metrics::counter!("indexer.clickhouse.volume_overflow.total")
+                                .increment(1);
                         },
                     }
 
@@ -135,6 +156,10 @@ impl Indexer {
                 }
             }
         }
+
+        #[cfg(feature = "metrics")]
+        metrics::counter!("indexer.clickhouse.pair_prices.processed.total")
+            .increment(pair_prices.len() as u64);
 
         #[cfg(feature = "tracing")]
         tracing::debug!("Saving {} pair prices", pair_prices.len());
@@ -195,6 +220,9 @@ impl Indexer {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
             })?;
+
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.clickhouse.synthetic_prices.total").increment(1);
         }
 
         inserter.commit().await.inspect_err(|_err| {
@@ -231,6 +259,9 @@ impl Indexer {
                         block_height = block.info.height,
                         "Materialized view for {interval} is not up to date, waiting for it to be updated",
                     );
+
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!("indexer.clickhouse.mv_wait_cycles.total").increment(1);
 
                     sleep(Duration::from_millis(10)).await;
                 }

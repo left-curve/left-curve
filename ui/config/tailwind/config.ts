@@ -14,6 +14,7 @@ export const tailwindConfig: Partial<Config> = {
         surface: {
           "primary-rice": "var(--color-surface-primary-rice)",
           "primary-green": "var(--color-surface-primary-green)",
+          "primary-red": "var(--color-surface-primary-red)",
           "secondary-rice": "var(--color-surface-secondary-rice)",
           "secondary-blue": "var(--color-surface-secondary-blue)",
           "secondary-red": "var(--color-surface-secondary-red)",
@@ -26,6 +27,10 @@ export const tailwindConfig: Partial<Config> = {
         },
         overlay: {
           rice: "var(--color-overlay-rice)",
+        },
+        border: {
+          "secondary-rice": "var(--color-border-secondary-rice)",
+          "secondary-blue": "var(--color-border-secondary-blue)",
         },
         foreground: {
           "primary-blue": "var(--color-foreground-primary-blue)",
@@ -59,6 +64,7 @@ export const tailwindConfig: Partial<Config> = {
           "500": "var(--color-tertiary-500)",
           green: "var(--color-tertiary-green)",
           blue: "var(--color-tertiary-blue)",
+          red: "var(--color-tertiary-red)",
         },
         quaternary: {
           rice: "var(--color-surface-quaternary-rice)",
@@ -232,6 +238,7 @@ export const tailwindConfig: Partial<Config> = {
         "spinner-ease-spin": "spinner-spin 0.8s ease infinite",
         "spinner-linear-spin": "spinner-spin 0.8s linear infinite",
         pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        levitate: "levitate 2s ease-in-out infinite",
       },
       keyframes: {
         "spinner-spin": {
@@ -254,6 +261,20 @@ export const tailwindConfig: Partial<Config> = {
         },
         pulse: {
           "50%": { opacity: "0.5" },
+        },
+        levitate: {
+          "0%": {
+            opacity: "1",
+            transform: "translateY(0px)",
+          },
+          "50%": {
+            opacity: "0.4",
+            transform: "translateY(-10px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateY(0px)",
+          },
         },
       },
     },
@@ -499,48 +520,56 @@ export const tailwindConfig: Partial<Config> = {
           fontWeight: "400",
           fontSize: "16px",
           lineHeight: "22.4px",
+          fontStyle: "italic",
           fontFamily: theme("fontFamily.exposure"),
         },
         ".display-heading-3xs": {
           fontWeight: "400",
           fontSize: "18px",
           lineHeight: "25.2px",
+          fontStyle: "italic",
           fontFamily: theme("fontFamily.exposure"),
         },
         ".display-heading-2xs": {
           fontWeight: "400",
           fontSize: "20px",
           lineHeight: "28px",
+          fontStyle: "italic",
           fontFamily: theme("fontFamily.exposure"),
         },
         ".display-heading-xs": {
           fontWeight: "400",
           fontSize: "24px",
           lineHeight: "33.6px",
+          fontStyle: "italic",
           fontFamily: theme("fontFamily.exposure"),
         },
         ".display-heading-m": {
           fontWeight: "400",
           fontSize: "30px",
           lineHeight: "42px",
+          fontStyle: "italic",
           fontFamily: theme("fontFamily.exposure"),
         },
         ".display-heading-l": {
           fontWeight: "400",
           fontSize: "36px",
           lineHeight: "43.2px",
+          fontStyle: "italic",
           fontFamily: theme("fontFamily.exposure"),
         },
         ".display-heading-xl": {
           fontWeight: "400",
           fontSize: "40px",
           lineHeight: "48px",
+          fontStyle: "italic",
           fontFamily: theme("fontFamily.exposure"),
         },
         ".display-heading-2xl": {
           fontWeight: "400",
           fontSize: "60px",
           lineHeight: "72px",
+          fontStyle: "italic",
           fontFamily: theme("fontFamily.exposure"),
           letterSpacing: "-2%",
         },

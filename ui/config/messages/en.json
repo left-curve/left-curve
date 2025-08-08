@@ -319,7 +319,18 @@
   },
   "welcome": {
     "title": "Welcome to Dango",
-    "description": "We’re delighted to have you with us and look forward to seeing what you do next."
+    "description": "We’re delighted to have you with us and look forward to seeing what you do next.",
+    "scroll": "Scroll to learn more",
+    "trade": "Trade",
+    "tradeDescription": "crypto assets, real world assets, and derivatives and Dango’s blazingly fast exchange. Enjoy deep liquidity, fast execution, and fair prices.",
+    "leverageUp": "Leverage up",
+    "leverageUpDescription": "with Dango’s unified trading account with low cost and high capital efficiency. Spot, perps, vaults; one account, under a unified margin system.",
+    "earn": "Earn",
+    "earnDescription": "passive yields on your idle assets, by participating in Dango’s passive market making vaults. Make your money work for you!",
+    "join": "Join the ",
+    "community": "community",
+    "of": "of",
+    "dangbros": "Dangbros"
   },
   "signup": {
     "mobileModal": {
@@ -515,7 +526,7 @@
       "title": "Galxe Quest",
       "quest": {
         "connectEthereumWallet": "Connect your Ethereum wallet",
-        "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more transactions on Ethereum mainnet",
+        "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more outgoing transaction on Ethereum mainnet",
         "completeLimitOrder": "Complete a limit order",
         "completeMarketOrder": "Complete a market order",
         "swapAtLeastInPairs": "Trade in 3 different token pairs ({number} remaining)",

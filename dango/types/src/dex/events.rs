@@ -82,3 +82,19 @@ pub struct Swapped {
     pub input: Coin,
     pub output: Coin,
 }
+
+/// An event indicating that the contract has been paused, either manually by
+/// the chain owner, or automatically triggered due to an error in `cron_execute`.
+/// Under this state, orders can't be created or canceled, and the end-of-block
+/// auction is skipped.
+#[grug::derive(Serde)]
+#[grug::event("paused")]
+pub struct Paused {
+    /// `None` if paused by the chain owner manually.
+    /// `Some` with the error message if triggered by an error.
+    pub error: Option<String>,
+}
+
+#[grug::derive(Serde)]
+#[grug::event("unpaused")]
+pub struct Unpaused {}

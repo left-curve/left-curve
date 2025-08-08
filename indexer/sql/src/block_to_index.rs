@@ -1,10 +1,12 @@
 #[cfg(feature = "metrics")]
-use metrics::counter;
+use {metrics::counter, std::time::Instant};
+
 use {
     crate::{active_model::Models, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Block, BlockOutcome},
     indexer_disk_saver::persistence::DiskPersistence,
+    itertools::Itertools,
     sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
     serde::{Deserialize, Serialize},
     std::path::PathBuf,
@@ -19,6 +21,13 @@ pub struct BlockToIndex {
     #[borsh(skip)]
     filename: PathBuf,
 }
+
+/// Maximum number of items to insert in a single `insert_many` operation.
+/// This to avoid the following psql error:
+/// PgConnection::run(): too many arguments for query
+/// See discussion here:
+/// https://www.postgresql.org/message-id/13394.1533697144%40sss.pgh.pa.us
+pub const MAX_ROWS_INSERT: usize = 2048;
 
 impl BlockToIndex {
     pub fn new(filename: PathBuf, block: Block, block_outcome: BlockOutcome) -> Self {
@@ -35,6 +44,9 @@ impl BlockToIndex {
         db: DatabaseConnection,
         #[allow(unused_variables)] indexer_id: u64,
     ) -> error::Result<()> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
         #[cfg(feature = "tracing")]
         tracing::info!(
             block_height = self.block.info.height,
@@ -70,6 +82,9 @@ impl BlockToIndex {
             .inspect_err(|_e| {
                 #[cfg(feature = "tracing")]
                 tracing::error!(err = %_e, "Failed to insert block");
+
+                #[cfg(feature = "metrics")]
+                counter!("indexer.database.errors.total").increment(1);
             })?;
 
         #[cfg(feature = "metrics")]
@@ -84,40 +99,79 @@ impl BlockToIndex {
             #[cfg(feature = "tracing")]
             let transactions_len = models.transactions.len();
 
-            entity::transactions::Entity::insert_many(models.transactions)
+            for transactions in models
+                .transactions
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::transactions::Entity::insert_many(transactions)
                 .exec_without_returning(&db)
                 .await.inspect_err(|_e| {
                     #[cfg(feature = "tracing")]
                     tracing::error!(err = %_e, transactions_len=transactions_len, "Failed to insert transactions");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
                 })?;
+            }
         }
 
         if !models.messages.is_empty() {
             #[cfg(feature = "tracing")]
             let messages_len = models.messages.len();
 
-            entity::messages::Entity::insert_many(models.messages)
+            for messages in models
+                .messages
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::messages::Entity::insert_many(messages)
                 .exec_without_returning(&db)
                 .await.inspect_err(|_e| {
                     #[cfg(feature = "tracing")]
                     tracing::error!(err = %_e, messages_len=messages_len, "Failed to insert messages");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
                 })?;
+            }
         }
 
         if !models.events.is_empty() {
             #[cfg(feature = "tracing")]
             let events_len = models.events.len();
 
-            entity::events::Entity::insert_many(models.events)
+            for events in models
+                .events
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::events::Entity::insert_many(events)
                 .exec_without_returning(&db)
                 .await
                 .inspect_err(|_e| {
                     #[cfg(feature = "tracing")]
                     tracing::error!(err = %_e, events_len=events_len, "Failed to insert events");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
                 })?;
+            }
         }
 
         db.commit().await?;
+
+        #[cfg(feature = "metrics")]
+        metrics::histogram!("indexer.block_save.duration").record(start.elapsed().as_secs_f64());
 
         Ok(())
     }

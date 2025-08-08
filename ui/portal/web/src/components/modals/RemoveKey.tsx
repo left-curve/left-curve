@@ -1,5 +1,4 @@
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
-import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
 
 import { useApp } from "~/hooks/useApp";
@@ -16,11 +15,11 @@ interface Props {
 export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
-  const queryClient = useQueryClient();
   const { hideModal } = useApp();
 
   const { mutateAsync: removeKey, isPending } = useSubmitTx({
     mutation: {
+      invalidateKeys: [["user_keys"]],
       mutationFn: async () => {
         if (!account || !signingClient) throw new Error("We couldn't process the request");
 
@@ -30,10 +29,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
           action: "delete",
         });
       },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["user_keys"] });
-        hideModal();
-      },
+      onSuccess: () => hideModal(),
     },
   });
 

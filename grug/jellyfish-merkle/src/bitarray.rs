@@ -127,7 +127,7 @@ impl BitArray {
 
     /// Iterate the bits in the index range. `min` is inclusive, `max` exclusive.
     /// If min >= max, an empty iterator is returned.
-    pub fn range(&self, min: Option<usize>, max: Option<usize>, order: Order) -> BitIterator {
+    pub fn range(&self, min: Option<usize>, max: Option<usize>, order: Order) -> BitIterator<'_> {
         let min = min.unwrap_or(0);
         let max = max.unwrap_or(self.num_bits);
         BitIterator::new(&self.bytes, min, max, order)
@@ -171,7 +171,7 @@ impl<'a> PrimaryKey for &'a BitArray {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let num_bytes = self.num_bits.div_ceil(8);
         vec![
             RawKey::Fixed16((self.num_bits as u16).to_be_bytes()),

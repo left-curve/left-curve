@@ -2315,15 +2315,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bob"
-version = "0.0.0"
-dependencies = [
- "glob",
- "serde",
- "toml 0.8.22",
-]
-
-[[package]]
 name = "borsh"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3467,6 +3458,7 @@ version = "0.0.0"
 dependencies = [
  "aes-gcm",
  "anyhow",
+ "async-trait",
  "bip32",
  "dango-account-factory",
  "dango-auth",
@@ -3698,12 +3690,15 @@ dependencies = [
  "assert-json-diff",
  "assertor",
  "async-graphql",
+ "async-trait",
  "bip32",
  "chrono",
  "clickhouse",
  "criterion",
  "dango-account-factory",
  "dango-auth",
+ "dango-bank",
+ "dango-dex",
  "dango-gateway",
  "dango-genesis",
  "dango-httpd",
@@ -3712,6 +3707,7 @@ dependencies = [
  "dango-mock-httpd",
  "dango-oracle",
  "dango-proposal-preparer",
+ "dango-taxman",
  "dango-types",
  "digest 0.10.7",
  "grug",
@@ -3761,6 +3757,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-graphql",
+ "async-trait",
  "grug",
  "hyperlane-types",
  "paste",

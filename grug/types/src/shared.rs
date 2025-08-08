@@ -22,13 +22,13 @@ impl<S> Shared<S> {
         }
     }
 
-    pub fn read_access(&self) -> RwLockReadGuard<S> {
+    pub fn read_access(&self) -> RwLockReadGuard<'_, S> {
         self.inner
             .read()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
-    pub fn write_access(&self) -> RwLockWriteGuard<S> {
+    pub fn write_access(&self) -> RwLockWriteGuard<'_, S> {
         self.inner
             .write()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))

@@ -11,6 +11,18 @@
       - clickhouse_password | length > 0
     fail_msg: "CLICKHOUSE_PASSWORD must be set and non-empty, aborting deployment."
 
+- name: Configure kernel parameters for memory optimization
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { key: 'vm.swappiness', value: '1' }
+    - { key: 'vm.vfs_cache_pressure', value: '50' }
+  become: true
+  become_user: root
+
 - name: Copy config files
   become: true
   become_user: root

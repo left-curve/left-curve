@@ -1,4 +1,4 @@
-use {grug_types::StdError, std::path::PathBuf};
+use grug_types::StdError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -13,7 +13,4 @@ pub enum Error {
 
     #[error(transparent)]
     Lzma(#[from] lzma_rs::error::Error),
-
-    #[error("file already exists: {0}")]
-    AlreadyExists(PathBuf),
 }

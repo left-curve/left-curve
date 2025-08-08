@@ -1,4 +1,4 @@
-import { Button, twMerge } from "@left-curve/applets-kit";
+import { Button, twMerge, useMediaQuery } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
 import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useAccount } from "@left-curve/store";
@@ -32,6 +32,7 @@ export const QuestBanner: React.FC = () => {
   const { account, isConnected } = useAccount();
   const { isQuestBannerVisible, setQuestBannerVisibility, settings } = useApp();
   const { formatNumberOptions } = settings;
+  const { isLg } = useMediaQuery();
 
   const { data: quests, isLoading } = useQuery({
     queryKey: ["quests", account?.username],
@@ -40,6 +41,7 @@ export const QuestBanner: React.FC = () => {
       fetch(`${window.dango.urls.questUrl}/${account?.username}`).then((res) => res.json()),
   });
 
+  if (location.pathname === "/" && !isLg) return null;
   if (!isQuestBannerVisible || isLoading || !quests) return null;
 
   const isTxCountCompleted = quests.tx_count >= 10;

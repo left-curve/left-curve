@@ -139,18 +139,14 @@ where
             // to refund the amount that was not filled.
             match market_order_direction {
                 Direction::Bid => {
-                    filling_outcome.refund_quote.checked_add_assign(
-                        market_order.remaining.checked_sub(
-                            market_order_amount_to_match_in_base.checked_mul(*price)?,
-                        )?,
-                    )?;
+                    filling_outcome.refund_quote = market_order
+                        .remaining
+                        .checked_sub(market_order_amount_to_match_in_base.checked_mul(*price)?)?;
                 },
                 Direction::Ask => {
-                    filling_outcome.refund_base.checked_add_assign(
-                        market_order
-                            .remaining
-                            .checked_sub(market_order_amount_to_match_in_base)?,
-                    )?;
+                    filling_outcome.refund_base = market_order
+                        .remaining
+                        .checked_sub(market_order_amount_to_match_in_base)?;
                 },
             }
 

@@ -29,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
         CURRENT_OWNER,
         CURRENT_OWNER_PRIVATE_KEY,
     )?
-    .query_nonce(&client)
+    .with_query_nonce(&client)
     .await?;
 
     let mut cfg = client.query_config(None).await?;
