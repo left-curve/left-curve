@@ -92,7 +92,10 @@ const SectionRice: React.FC = () => {
             {m["welcome.trade"]()}
           </h1>
           <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-secondary-rice">
-            {m["welcome.tradeDescription"]()}
+            {m["welcome.tradeText"]()}
+          </p>
+          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-secondary-rice">
+            {m["welcome.tradeText2"]()}
           </p>
         </div>
         <img
@@ -117,7 +120,10 @@ const SectionRed: React.FC = () => {
             {m["welcome.leverageUp"]()}
           </h1>
           <p className="diatype-m-regular md:h1-medium text-tertiary-red">
-            {m["welcome.leverageUpDescription"]()}
+            {m["welcome.leverageUpText"]()}
+          </p>
+          <p className="diatype-m-regular md:h1-medium text-tertiary-red">
+            {m["welcome.leverageUpText2"]()}
           </p>
         </div>
         <img
@@ -142,7 +148,7 @@ const SectionGreen: React.FC = () => {
             {m["welcome.earn"]()}
           </h1>
           <p className="diatype-m-regular md:h1-medium text-green-bean-800 dark:text-foreground-primary-green">
-            {m["welcome.earnDescription"]()}
+            {m["welcome.earnText"]()}
           </p>
         </div>
         <img
