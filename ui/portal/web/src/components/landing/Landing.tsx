@@ -157,35 +157,47 @@ const SectionGreen: React.FC = () => {
 const SectionCommunity: React.FC = () => {
   const { isSearchBarVisible } = useApp();
   const { theme } = useTheme();
+
   if (isSearchBarVisible) return null;
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(6.97deg,_#D0CFEB_11.63%,_#F6F6FB_88.19%)] dark:bg-[linear-gradient(6.97deg,_#6E6D77_11.63%,_#373634_88.19%)]">
-      <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center lg:justify-between p-4 gap-4 pb-16 lg:pb-0">
-        <img
-          src="/images/characters/friends.svg"
-          alt="rabbits"
-          className="w-full transition-all max-w-[317px] md:max-w-[556px] "
-        />
-        <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
-          <h2 className="display-heading-m md:display-heading-2xl">
-            {m["welcome.join"]()}
-            <span className="text-red-bean-400">{m["welcome.community"]()}</span>{" "}
-            {m["welcome.of"]()} <span className="text-red-bean-400">{m["welcome.dangbros"]()}</span>
-          </h2>
-          <div className="flex gap-4">
-            <Button onClick={() => window.open("https://x.com/dangoXchg", "_blank")}>
-              <IconTwitter className="w-6 h-6" />
-              <span>Twitter</span>
-            </Button>
-            <Button
-              variant="tertiary-red"
-              onClick={() => window.open("https://discord.gg/4uB9UDzYhz", "_blank")}
-            >
-              <IconDiscord className="w-6 h-6" />
-              <span>Discord</span>
-            </Button>
+      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 gap-24 pb-16 lg:pb-4">
+        <div className="w-full flex flex-col lg:flex-row items-center lg:justify-between gap-4">
+          <img
+            src="/images/characters/friends.svg"
+            alt="rabbits"
+            className="w-full transition-all max-w-[317px] md:max-w-[556px] "
+          />
+          <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
+            <h2 className="display-heading-m md:display-heading-2xl">
+              {m["welcome.join"]()}
+              <span className="text-red-bean-400">{m["welcome.community"]()}</span>{" "}
+              {m["welcome.of"]()}{" "}
+              <span className="text-red-bean-400">{m["welcome.dangbros"]()}</span>
+            </h2>
+            <div className="flex gap-4">
+              <Button onClick={() => window.open("https://x.com/dangoXchg", "_blank")}>
+                <IconTwitter className="w-6 h-6" />
+                <span>Twitter</span>
+              </Button>
+              <Button
+                variant="tertiary-red"
+                onClick={() => window.open("https://discord.gg/4uB9UDzYhz", "_blank")}
+              >
+                <IconDiscord className="w-6 h-6" />
+                <span>Discord</span>
+              </Button>
+            </div>
           </div>
+        </div>
+        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between hidden lg:flex pt-6 pb-10">
+          <img
+            src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
+            alt="Dango"
+            className="max-w-[10rem] lg:max-w-[13rem]"
+          />
+          <p>© {new Date().getFullYear()} - Dango</p>
         </div>
       </div>
     </section>
