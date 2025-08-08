@@ -346,6 +346,15 @@ fn update_key(ctx: MutableCtx, key_hash: Hash256, key: Op<Key>) -> anyhow::Resul
 
     match key {
         Op::Insert(key) => {
+            // Ensure the key isn't already associated with the username.
+            ensure!(
+                !KEYS
+                    .prefix(&username)
+                    .values(ctx.storage, None, None, Order::Ascending)
+                    .any(|v| v.is_ok_and(|k| k == key)),
+                "key is already associated with username `{username}`"
+            );
+
             KEYS.save(ctx.storage, (&username, key_hash), &key)?;
             USERNAMES_BY_KEY.insert(ctx.storage, (key_hash, &username))?;
         },
