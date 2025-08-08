@@ -169,12 +169,12 @@ const SectionCommunity: React.FC = () => {
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(6.97deg,_#D0CFEB_11.63%,_#F6F6FB_88.19%)] dark:bg-[linear-gradient(6.97deg,_#6E6D77_11.63%,_#373634_88.19%)]">
-      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 gap-24 pb-16 lg:pb-4 lg:min-h-[calc(100svh-5svh)] lg:justify-center">
+      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 pb-16 lg:pb-4 lg:min-h-[calc(100svh-76px)] lg:justify-center">
         <div className="w-full flex flex-col lg:flex-row items-center lg:justify-between gap-4 lg:flex-1">
           <img
             src="/images/characters/friends.svg"
             alt="rabbits"
-            className="w-full transition-all max-w-[317px] md:max-w-[435px] 2xl:max-w-[535px]"
+            className="w-full transition-all max-w-[317px] md:max-w-[435px] lg:max-h-[535px]"
           />
           <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
             <h2 className="display-heading-m md:display-heading-2xl">
@@ -184,21 +184,25 @@ const SectionCommunity: React.FC = () => {
               <span className="text-red-bean-400">{m["welcome.dangbros"]()}</span>
             </h2>
             <div className="flex gap-4">
-              <Button onClick={() => window.open("https://x.com/dangoXchg", "_blank")}>
+              <Button
+                className="gap-0"
+                onClick={() => window.open("https://x.com/dangoXchg", "_blank")}
+              >
                 <IconTwitter className="w-6 h-6" />
                 <span>Twitter</span>
               </Button>
               <Button
+                className="gap-0"
                 variant="tertiary-red"
                 onClick={() => window.open("https://discord.gg/4uB9UDzYhz", "_blank")}
               >
                 <IconDiscord className="w-6 h-6" />
-                <span>Discord</span>
+                <span className="pl-2">Discord</span>
               </Button>
             </div>
           </div>
         </div>
-        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between hidden lg:flex pt-6 pb-10 lg:mt-auto ">
+        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between hidden lg:flex pt-6 pb-6">
           <img
             src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
             alt="Dango"
