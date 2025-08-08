@@ -68,7 +68,7 @@ const Header: React.FC = () => {
         <AppletsSection />
       </div>
       <div
-        className="absolute bottom-[12svh] lg:bottom-[10rem] left-1/2 -translate-x-1/2 cursor-pointer diatype-m-medium"
+        className="absolute bottom-[12svh] lg:bottom-[3rem] left-1/2 -translate-x-1/2 cursor-pointer diatype-m-medium"
         onClick={() => fullpageApi.moveSectionDown()}
       >
         <div className="animate-levitate flex items-center justify-center flex-col">
@@ -169,8 +169,8 @@ const SectionCommunity: React.FC = () => {
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(6.97deg,_#D0CFEB_11.63%,_#F6F6FB_88.19%)] dark:bg-[linear-gradient(6.97deg,_#6E6D77_11.63%,_#373634_88.19%)]">
-      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 gap-24 pb-16 lg:pb-4">
-        <div className="w-full flex flex-col lg:flex-row items-center lg:justify-between gap-4">
+      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 gap-24 pb-16 lg:pb-4 min-h-[calc(100svh-5svh)] lg:justify-center">
+        <div className="w-full flex flex-col lg:flex-row items-center lg:justify-between gap-4 lg:flex-1">
           <img
             src="/images/characters/friends.svg"
             alt="rabbits"
@@ -198,7 +198,7 @@ const SectionCommunity: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between hidden lg:flex pt-6 pb-10">
+        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between hidden lg:flex pt-6 pb-10 lg:mt-auto ">
           <img
             src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
             alt="Dango"
