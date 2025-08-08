@@ -174,7 +174,7 @@ const SectionCommunity: React.FC = () => {
           <img
             src="/images/characters/friends.svg"
             alt="rabbits"
-            className="w-full transition-all max-w-[317px] md:max-w-[556px] "
+            className="w-full transition-all max-w-[317px] md:max-w-[435px] 2xl:max-w-[535px]"
           />
           <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
             <h2 className="display-heading-m md:display-heading-2xl">
