@@ -583,7 +583,7 @@ fn clear_orders_of_pair(
 
 /// Merges three iterators over limit, market, ans passive orders into one iterator.
 /// It achieves this by nesting two `MergedOrders` iterators.
-pub fn nested_merged_orders<A, B, C>(
+fn nested_merged_orders<A, B, C>(
     limit: A,
     market: B,
     passive: C,
