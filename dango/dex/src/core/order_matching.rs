@@ -29,7 +29,7 @@ pub struct MatchingOutcome {
 ///   for orders the same price, the oldest one first.
 /// - `ask_iter`: An iterator over the SELL orders in the book that similarly
 ///   follows the price-time priority.
-pub fn match_limit_orders<B, A>(bid_iter: &mut B, ask_iter: &mut A) -> StdResult<MatchingOutcome>
+pub fn match_orders<B, A>(bid_iter: &mut B, ask_iter: &mut A) -> StdResult<MatchingOutcome>
 where
     B: Iterator<Item = (Udec128_24, Order)>,
     A: Iterator<Item = (Udec128_24, Order)>,

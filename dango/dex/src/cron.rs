@@ -4,7 +4,7 @@ use {
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, fill_orders,
-            match_limit_orders,
+            match_orders,
         },
     },
     dango_account_factory::AccountQuerier,
@@ -303,7 +303,7 @@ fn clear_orders_of_pair(
         volume,
         bids,
         asks,
-    } = match_limit_orders(&mut merged_bids, &mut merged_asks)?;
+    } = match_orders(&mut merged_bids, &mut merged_asks)?;
 
     #[cfg(feature = "tracing")]
     {
