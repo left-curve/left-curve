@@ -127,7 +127,7 @@ pub(super) fn create_market_order(
         Direction::Ask => {
             let best_bid_price = resting_order_book.best_bid_price.ok_or_else(|| {
                 anyhow!(
-                    "can't create market ask order, because best bid price isn't avaiable. base denom: {}, quote denom: {}",
+                    "can't create market ask order, because best bid price isn't available. base denom: {}, quote denom: {}",
                     order.base_denom,
                     order.quote_denom
                 )
