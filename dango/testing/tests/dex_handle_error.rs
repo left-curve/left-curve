@@ -1,15 +1,17 @@
 use {
-    dango_dex::INCOMING_ORDERS,
     dango_genesis::Contracts,
     dango_testing::setup_test_naive,
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction, LimitOrder, OrderId, QueryPausedRequest},
+        dex::{
+            self, CreateLimitOrderRequest, Direction, OrderId, OrdersByPairResponse,
+            QueryOrdersByPairRequest, QueryPausedRequest,
+        },
     },
     grug::{
         Addr, Addressable, ContractBuilder, ContractWrapper, Empty, HashExt, Message, NonEmpty,
-        NonZero, QuerierExt, Response, ResultExt, Signer, StdResult, StorageQuerier, SudoCtx,
-        Udec128_6, Udec128_24, Uint128, coins,
+        NonZero, QuerierExt, Response, ResultExt, Signer, StdResult, SudoCtx, Udec128_6,
+        Udec128_24, Uint128, btree_map, coins,
     },
     test_case::test_case,
 };
@@ -156,47 +158,30 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
         .query_wasm_smart(contracts.dex, QueryPausedRequest {})
         .should_succeed_and_equal(true);
 
-    // Ensure the two limit orders still exist the DEX as "incoming orders".
+    // Ensure the two limit orders still exist the DEX as limit orders.
+    // While they may have been matched in `cron_execute`, the state changes
+    // should have been reverted due to errors in bank or taxman.
     suite
-        .query_wasm_path(
-            contracts.dex,
-            &INCOMING_ORDERS.path((accounts.owner.address(), OrderId::new(!1))),
-        )
-        .should_succeed_and_equal((
-            (
-                (dango::DENOM.clone(), usdc::DENOM.clone()),
-                Direction::Bid,
-                Udec128_24::new(100),
-                OrderId::new(!1),
-            ),
-            LimitOrder {
+        .query_wasm_smart(contracts.dex, QueryOrdersByPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map! {
+            OrderId::new(!1) => OrdersByPairResponse {
                 user: accounts.owner.address(),
-                id: OrderId::new(!1),
+                direction: Direction::Bid,
                 price: Udec128_24::new(100),
                 amount: Uint128::new(3),
                 remaining: Udec128_6::new(3),
-                created_at_block_height: 1,
             },
-        ));
-    suite
-        .query_wasm_path(
-            contracts.dex,
-            &INCOMING_ORDERS.path((accounts.owner.address(), OrderId::new(2))),
-        )
-        .should_succeed_and_equal((
-            (
-                (dango::DENOM.clone(), usdc::DENOM.clone()),
-                Direction::Ask,
-                Udec128_24::new(100),
-                OrderId::new(2),
-            ),
-            LimitOrder {
+            OrderId::new(2) => OrdersByPairResponse {
                 user: accounts.owner.address(),
-                id: OrderId::new(2),
+                direction: Direction::Ask,
                 price: Udec128_24::new(100),
                 amount: Uint128::new(3),
                 remaining: Udec128_6::new(3),
-                created_at_block_height: 1,
             },
-        ));
+        });
 }

@@ -454,9 +454,10 @@ fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 mod tests {
     use {
         super::*,
+        crate::RESTING_ORDER_BOOK,
         dango_types::{
             constants::{dango, usdc},
-            dex::{Direction, PairParams, PassiveLiquidity},
+            dex::{Direction, PairParams, PassiveLiquidity, RestingOrderBookState},
         },
         grug::{Addr, Bounded, MockContext, NumberConst, Udec128, Udec128_24},
         std::str::FromStr,
@@ -466,6 +467,7 @@ mod tests {
     /// Ensure that if a user creates orders with more-than-sufficient funds, the
     /// extra funds are properly refunded.
     #[test_case(
+        None,
         ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![],
             creates_limit: vec![CreateLimitOrderRequest {
@@ -482,6 +484,7 @@ mod tests {
         "overfunded limit bid: send 300, require 200"
     )]
     #[test_case(
+        None,
         ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![],
             creates_limit: vec![CreateLimitOrderRequest {
@@ -498,12 +501,17 @@ mod tests {
         "overfunded limit ask: send 300, require 100"
     )]
     #[test_case(
+        Some(RestingOrderBookState {
+            best_bid_price: Some(Udec128_24::new(100)),
+            best_ask_price: Some(Udec128_24::new(100)),
+            mid_price: Some(Udec128_24::new(100)),
+        }),
         ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![CreateMarketOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
                 direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
+                amount: NonZero::new_unchecked(Uint128::new(1)),
                 max_slippage: Udec128::ZERO,
             }],
             creates_limit: vec![],
@@ -514,6 +522,11 @@ mod tests {
         "overfunded market bid: send 300, require 100"
     )]
     #[test_case(
+        Some(RestingOrderBookState {
+            best_bid_price: Some(Udec128_24::new(100)),
+            best_ask_price: Some(Udec128_24::new(100)),
+            mid_price: Some(Udec128_24::new(100)),
+        }),
         ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![CreateMarketOrderRequest {
                 base_denom: dango::DENOM.clone(),
@@ -530,13 +543,18 @@ mod tests {
         "overfunded market ask: send 300, require 100"
     )]
     #[test_case(
+        Some(RestingOrderBookState {
+            best_bid_price: Some(Udec128_24::new(100)),
+            best_ask_price: Some(Udec128_24::new(100)),
+            mid_price: Some(Udec128_24::new(100)),
+        }),
         ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    amount: NonZero::new_unchecked(Uint128::new(1)),
                     max_slippage: Udec128::ZERO,
                 },
                 CreateMarketOrderRequest {
@@ -575,7 +593,12 @@ mod tests {
         };
         "overfunded both in one tx; send 600 usdc + 600 dango, require 300 usdc + 200 dango"
     )]
-    fn overfunded_order_refund_works(msg: ExecuteMsg, funds: Coins, expected_refunds: Coins) {
+    fn overfunded_order_refund_works(
+        resting_order_book_state: Option<RestingOrderBookState>,
+        msg: ExecuteMsg,
+        funds: Coins,
+        expected_refunds: Coins,
+    ) {
         let sender = Addr::mock(1);
         let mut ctx = MockContext::new().with_sender(sender).with_funds(funds);
 
@@ -598,6 +621,19 @@ mod tests {
                 },
             )
             .unwrap();
+
+        // If a resting order book state is provided, set it up.
+        // This is needed if the test case involves market orders. If limit orders
+        // only then not needed.
+        if let Some(resting_order_book_state) = resting_order_book_state {
+            RESTING_ORDER_BOOK
+                .save(
+                    &mut ctx.storage,
+                    (&dango::DENOM, &usdc::DENOM),
+                    &resting_order_book_state,
+                )
+                .unwrap();
+        }
 
         // The response should contain exactly 1 message, which is the refund.
         let res = execute(ctx.as_mutable(), msg).unwrap();

@@ -20,6 +20,8 @@ pub struct FillingOutcome {
     pub fee_base: Udec128_6,
     /// Fee charged in quote asset.
     pub fee_quote: Udec128_6,
+    /// The price at which the order was filled.
+    pub clearing_price: Udec128_24,
 }
 
 /// Clear the orders given a clearing price and volume.
@@ -107,6 +109,7 @@ fn fill_bids(
             refund_quote,
             fee_base,
             fee_quote,
+            clearing_price,
         });
 
         if volume.is_zero() {
@@ -169,6 +172,7 @@ fn fill_asks(
             refund_quote,
             fee_base,
             fee_quote,
+            clearing_price,
         });
 
         if volume.is_zero() {

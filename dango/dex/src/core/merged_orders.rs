@@ -1,78 +1,67 @@
 use {
-    dango_types::dex::{LimitOrder, Order, PassiveOrder},
+    dango_types::dex::Order,
     grug::{Order as IterationOrder, StdResult, Udec128_24},
     std::{cmp::Ordering, iter::Peekable},
 };
 
 pub struct MergedOrders<A, B>
 where
-    A: Iterator<Item = StdResult<(Udec128_24, LimitOrder)>>,
-    B: Iterator<Item = (Udec128_24, PassiveOrder)>,
+    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
-    /// Iterator that returns real orders in the form of `(price, limit_order)`.
-    real: Peekable<A>,
-    /// Iterator that returns passive orders in the form of `(price, amount)`.
-    passive: Peekable<B>,
+    a: Peekable<A>,
+    b: Peekable<B>,
     /// Iterating from the lowest price to highest, or the other way around.
     iteration_order: IterationOrder,
 }
 
 impl<A, B> MergedOrders<A, B>
 where
-    A: Iterator<Item = StdResult<(Udec128_24, LimitOrder)>>,
-    B: Iterator<Item = (Udec128_24, PassiveOrder)>,
+    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
-    pub fn new(real: A, passive: B, iteration_order: IterationOrder) -> Self {
+    pub fn new(a: A, b: B, iteration_order: IterationOrder) -> Self {
         Self {
-            real: real.peekable(),
-            passive: passive.peekable(),
+            a: a.peekable(),
+            b: b.peekable(),
             iteration_order,
         }
     }
 
-    fn next_real(&mut self) -> Option<StdResult<(Udec128_24, Order)>> {
-        self.real.next().map(|res| {
-            let (price, limit_order) = res?;
-            let order = Order::Limit(limit_order);
-            Ok((price, order))
-        })
-    }
-
-    fn next_passive(&mut self) -> Option<StdResult<(Udec128_24, Order)>> {
-        self.passive.next().map(|(price, passive_order)| {
-            let order = Order::Passive(passive_order);
-            Ok((price, order))
-        })
+    pub fn disassemble(self) -> (Peekable<A>, Peekable<B>) {
+        (self.a, self.b)
     }
 }
 
 impl<A, B> Iterator for MergedOrders<A, B>
 where
-    A: Iterator<Item = StdResult<(Udec128_24, LimitOrder)>>,
-    B: Iterator<Item = (Udec128_24, PassiveOrder)>,
+    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
     type Item = StdResult<(Udec128_24, Order)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match (self.real.peek(), self.passive.peek()) {
-            (Some(Ok((real_price, _))), Some((passive_price, _))) => {
+        match (self.a.peek(), self.b.peek()) {
+            (Some(Ok((a_price, _))), Some(Ok((b_price, _)))) => {
                 // Compare only the price since passive orders don't have an order ID.
-                let ordering_raw = real_price.cmp(passive_price);
+                let ordering_raw = a_price.cmp(b_price);
                 let ordering = match self.iteration_order {
                     IterationOrder::Ascending => ordering_raw,
                     IterationOrder::Descending => ordering_raw.reverse(),
                 };
 
                 match ordering {
-                    Ordering::Less => self.next_real(),
-                    // In case of equal price we give the passive liquidity priority.
-                    _ => self.next_passive(),
+                    // In case of equal price, pick `b`.
+                    // When calling `MergedOrders::new`, the caller should ensure
+                    // to put the prioritized iterator as `b`.
+                    Ordering::Less => self.a.next(),
+                    _ => self.b.next(),
                 }
             },
-            (Some(Ok(_)), None) => self.next_real(),
-            (None, Some(_)) => self.next_passive(),
+            (Some(Ok(_)), None) => self.a.next(),
+            (None, Some(Ok(_))) => self.b.next(),
             (None, None) => None,
-            (Some(Err(e)), _) => Some(Err(e.clone())),
+            (Some(Err(err)), _) | (_, Some(Err(err))) => Some(Err(err.clone())),
         }
     }
 }
