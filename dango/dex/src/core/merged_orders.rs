@@ -1,13 +1,13 @@
 use {
     dango_types::dex::Order,
-    grug::{Order as IterationOrder, Udec128_24},
+    grug::{Order as IterationOrder, StdResult, Udec128_24},
     std::{cmp::Ordering, iter::Peekable},
 };
 
 pub struct MergedOrders<A, B>
 where
-    A: Iterator<Item = (Udec128_24, Order)>,
-    B: Iterator<Item = (Udec128_24, Order)>,
+    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
     a: Peekable<A>,
     b: Peekable<B>,
@@ -17,8 +17,8 @@ where
 
 impl<A, B> MergedOrders<A, B>
 where
-    A: Iterator<Item = (Udec128_24, Order)>,
-    B: Iterator<Item = (Udec128_24, Order)>,
+    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
     pub fn new(a: A, b: B, iteration_order: IterationOrder) -> Self {
         Self {
@@ -35,14 +35,14 @@ where
 
 impl<A, B> Iterator for MergedOrders<A, B>
 where
-    A: Iterator<Item = (Udec128_24, Order)>,
-    B: Iterator<Item = (Udec128_24, Order)>,
+    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
-    type Item = (Udec128_24, Order);
+    type Item = StdResult<(Udec128_24, Order)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match (self.a.peek(), self.b.peek()) {
-            (Some((a_price, _)), Some((b_price, _))) => {
+            (Some(Ok((a_price, _))), Some(Ok((b_price, _)))) => {
                 // Compare only the price since passive orders don't have an order ID.
                 let ordering_raw = a_price.cmp(b_price);
                 let ordering = match self.iteration_order {
@@ -58,9 +58,10 @@ where
                     _ => self.b.next(),
                 }
             },
-            (Some(_), None) => self.a.next(),
-            (None, Some(_)) => self.b.next(),
+            (Some(Ok(_)), None) => self.a.next(),
+            (None, Some(Ok(_))) => self.b.next(),
             (None, None) => None,
+            (Some(Err(err)), _) | (_, Some(Err(err))) => Some(Err(err.clone())),
         }
     }
 }

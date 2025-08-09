@@ -13,8 +13,9 @@ use {
         DangoQuerier,
         account_factory::Username,
         dex::{
-            CallbackMsg, Direction, ExecuteMsg, MarketOrder, Order, OrderFilled, OrderTrait,
-            OrdersMatched, Paused, Price, ReplyMsg, RestingOrderBookState,
+            CallbackMsg, Direction, ExecuteMsg, LimitOrder, MarketOrder, Order, OrderFilled,
+            OrderId, OrderTrait, OrdersMatched, PassiveOrder, Paused, Price, ReplyMsg,
+            RestingOrderBookState,
         },
         taxman::{self, FeeType},
     },
@@ -22,6 +23,7 @@ use {
         Addr, Api, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
         MutableCtx, Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult,
         Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
+        Udec128_24,
     },
     std::{
         collections::{BTreeMap, HashMap, hash_map::Entry},
@@ -198,16 +200,7 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Udec128_6>,
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
-    #[cfg(feature = "tracing")]
-    {
-        tracing::info!(
-            base_denom = base_denom.to_string(),
-            quote_denom = quote_denom.to_string(),
-            "Processing pair"
-        );
-    }
-
-    // --------------------------- 1. Prepare orders ---------------------------
+    // ------------------------- 1. Prepare iterators --------------------------
 
     // Create iterators over the limit orders.
     //
@@ -216,23 +209,11 @@ fn clear_orders_of_pair(
     let limit_bids = LIMIT_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Descending)
-        .map(|res| {
-            let ((price, _), limit_order) = res.unwrap_or_else(|err| {
-                panic!("failed to load resting bid order! base denom: {base_denom}, quote denom: {quote_denom}, error: {err}"); // TODO: is there a better way to handle this?
-            });
-            (price, Order::Limit(limit_order))
-        });
+        .range(storage, None, None, IterationOrder::Descending);
     let limit_asks = LIMIT_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let ((price, _), limit_order) = res.unwrap_or_else(|err| {
-                panic!("failed to load resting ask order! base denom: {base_denom}, quote denom: {quote_denom}, error: {err}");
-            });
-            (price, Order::Limit(limit_order))
-        });
+        .range(storage, None, None, IterationOrder::Ascending);
 
     // Create iterators over passive orders.
     //
@@ -259,41 +240,35 @@ fn clear_orders_of_pair(
         None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
     };
 
-    let passive_bids = passive_bids.map(|(price, order)| (price, Order::Passive(order)));
-    let passive_asks = passive_asks.map(|(price, order)| (price, Order::Passive(order)));
-
-    // Create iterators over market orders.
-    // Note: for bids, reverse the iteration order, so we go from the best (highest)
-    // price first.
-    let market_bids = market_bids
-        .iter()
-        .map(|(price, order)| (*price, Order::Market(*order)))
-        .rev();
-    let market_asks = market_asks
-        .iter()
-        .map(|(price, order)| (*price, Order::Market(*order)));
-
     // Merge orders using the iterator abstraction.
-    // For each side of the order book (bids/asks), we have 4 iterators:
-    // 1. limit
-    // 2. market
-    // 3. passive
-    // We use two layers of `MergedOrders` to merge them into a single iterator.
-    // Note that in `MergedOrders::new(a, b, ..)`, `b` is prioritized.
-    // We order them as follows: market > limit > passive.
-    // Another reason we put market orders last, is we need to disassemble the
-    // `MergedOrders` later, so we need market orders to only be nested once,
-    // not twice.
-    let mut merged_bids = MergedOrders::new(
-        MergedOrders::new(passive_bids, limit_bids, IterationOrder::Descending),
-        market_bids,
+    //
+    // Notes:
+    // 1. Iterate from the best to worst price. Meaning, for bids, from the
+    //    highest to the lowest (descending); for asks, from the lowest to the
+    //    highest (ascending).
+    // 2. The market order vectors are ordered ascendingly, so for bids we need
+    //    to reverse it.
+    let mut merged_bids = nested_merged_orders(
+        limit_bids,
+        market_bids.into_iter().rev(),
+        passive_bids,
         IterationOrder::Descending,
     );
-    let mut merged_asks = MergedOrders::new(
-        MergedOrders::new(passive_asks, limit_asks, IterationOrder::Ascending),
-        market_asks,
+    let mut merged_asks = nested_merged_orders(
+        limit_asks,
+        market_asks.into_iter(),
+        passive_asks,
         IterationOrder::Ascending,
     );
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            "Processing pair"
+        );
+    }
 
     // ---------------------------- 2. Match orders ----------------------------
 
@@ -304,6 +279,16 @@ fn clear_orders_of_pair(
         bids,
         asks,
     } = match_orders(&mut merged_bids, &mut merged_asks)?;
+
+    // Any order that isn't visited during `match_limit_orders` is unmatched.
+    // They will be handled later in part (5) of this function.
+    // Here we `disassemble`, with two purposes:
+    // 1. drop the limit order iterators, so that the immutable reference on
+    //    `storage` is released;
+    // 2. get the unmatched market orders, so we can process their cancelation.
+    // Limit orders are good-until-canceled, so no action is needed for them.
+    let (_, unmatched_market_bids) = merged_bids.disassemble();
+    let (_, unmatched_market_asks) = merged_asks.disassemble();
 
     #[cfg(feature = "tracing")]
     {
@@ -322,16 +307,6 @@ fn clear_orders_of_pair(
             "Matched limit orders"
         );
     }
-
-    // Any order that isn't visited during `match_limit_orders` is unmatched.
-    // They will be handled later in part (5) of this function.
-    // Here we `disassemble`, with two purposes:
-    // 1. drop the limit order iterators, so that the immutable reference on
-    //    `storage` is released;
-    // 2. get the unmatched market orders, so we can process their cancelation.
-    // Limit orders are good-until-canceled, so no action is needed for them.
-    let (_, unmatched_market_bids) = merged_bids.disassemble();
-    let (_, unmatched_market_asks) = merged_asks.disassemble();
 
     // ----------------------- 3. Fulfill matched orders -----------------------
 
@@ -392,7 +367,40 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ------------------------ 4. Handle filled orders ------------------------
+    // ------------------- 4. Handle unmatched market orders -------------------
+
+    for res in unmatched_market_bids {
+        let (_price, bid) = res?;
+        match bid {
+            // Market orders are immediate-or-cancel, so refund the user.
+            Order::Market(order) => {
+                let remaining_quote = order.remaining.checked_mul_dec_floor(order.price)?;
+                refunds.insert(order.user, quote_denom.clone(), remaining_quote)?;
+            },
+            _ => unreachable!("encountered an unmatched bid that isn't a market order: {bid:?}"),
+        }
+    }
+
+    for res in unmatched_market_asks {
+        let (_price, ask) = res?;
+        match ask {
+            Order::Market(order) => {
+                refunds.insert(order.user, base_denom.clone(), order.remaining)?;
+            },
+            _ => unreachable!("encountered an unmatched ask that isn't a market order: {ask:?}"),
+        }
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            "Handled unmatched orders"
+        );
+    }
+
+    // ------------------------ 5. Handle filled orders ------------------------
 
     // Track the inflows and outflows of the dex.
     let mut inflows = DecCoins::new();
@@ -523,41 +531,6 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ------------------- 5. Handle unmatched market orders -------------------
-
-    for (_price, bid) in unmatched_market_bids {
-        match bid {
-            // Market orders are immediate-or-cancel, so refund the user.
-            Order::Market(order) => {
-                let remaining_quote = order.remaining.checked_mul_dec_floor(order.price)?;
-                refunds.insert(order.user, quote_denom.clone(), remaining_quote)?;
-            },
-            _ => {
-                unreachable!("encountered an unmatched bid that isn't a market order: {bid:?}");
-            },
-        }
-    }
-
-    for (_price, ask) in unmatched_market_asks {
-        match ask {
-            Order::Market(order) => {
-                refunds.insert(order.user, base_denom.clone(), order.remaining)?;
-            },
-            _ => {
-                unreachable!("encountered an unmatched ask that isn't a market order: {ask:?}");
-            },
-        }
-    }
-
-    #[cfg(feature = "tracing")]
-    {
-        tracing::info!(
-            base_denom = base_denom.to_string(),
-            quote_denom = quote_denom.to_string(),
-            "Handled unmatched orders"
-        );
-    }
-
     // ----------------- 6. Save the resting order book state ------------------
 
     // Find the best bid and ask prices available.
@@ -595,7 +568,54 @@ fn clear_orders_of_pair(
         },
     )?;
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            ?best_bid_price,
+            ?best_ask_price,
+            ?mid_price,
+            "Saved resting order book state"
+        )
+    }
+
     Ok(())
+}
+
+/// Merges three iterators over limit, market, ans passive orders into one iterator.
+/// It achieves this by nesting two `MergedOrders` iterators.
+pub fn nested_merged_orders<A, B, C>(
+    limit: A,
+    market: B,
+    passive: C,
+    iteration_order: IterationOrder,
+) -> MergedOrders<
+    MergedOrders<
+        impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
+        impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    >,
+    impl Iterator<Item = StdResult<(Udec128_24, Order)>>, /* TODO: simplify this return type once trait alias is stablized: https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html */
+>
+where
+    A: Iterator<Item = StdResult<((Udec128_24, OrderId), LimitOrder)>>,
+    B: Iterator<Item = (Udec128_24, MarketOrder)>,
+    C: Iterator<Item = (Udec128_24, PassiveOrder)>,
+{
+    let limit = limit.map(|res| res.map(|((price, _), order)| (price, Order::Limit(order))));
+    let market = market.map(|(price, order)| Ok((price, Order::Market(order))));
+    let passive = passive.map(|(price, order)| Ok((price, Order::Passive(order))));
+
+    // The ordering of the three iterators matters! For two reasons:
+    // 1. In `MergedOrders::new(a, b, ..)`, `b` is prioritized.
+    //    We order them as follows: market > limit > passive.
+    // 2. We need to disassemble the `MergedOrders` later and retrieve the market
+    //    order iterators. Note that `Peekable<T>` can't be disassembled to take
+    //    out the inner `T`. So we need to make sure the market order iterator
+    //    is only nested once, not twice.
+    MergedOrders::new(
+        MergedOrders::new(passive, limit, iteration_order),
+        market,
+        iteration_order,
+    )
 }
 
 /// Handle the `FillingOutcome` of a user order.
