@@ -2,6 +2,22 @@ use {crate::PythId, hex_literal::hex};
 
 pub const PYTH_URL: &str = "https://hermes.pyth.network";
 
+pub const PYTH_IDS_ALL: [PythId; 13] = [
+    ATOM_USD_ID,
+    BCH_USD_ID,
+    BNB_USD_ID,
+    BTC_USD_ID,
+    DOGE_USD_ID,
+    ETH_USD_ID,
+    LTC_USD_ID,
+    SHIB_USD_ID,
+    SOL_USD_ID,
+    SUI_USD_ID,
+    USDC_USD_ID,
+    WBTC_USD_ID,
+    XRP_USD_ID,
+];
+
 pub const ATOM_USD_ID: PythId = PythId::from_inner(hex!(
     "b00b60f88b03a6a625a8d1c048c3f66653edf217439983d037e7222c4e612819"
 ));
