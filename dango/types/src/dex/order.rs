@@ -103,8 +103,7 @@ pub struct MarketOrder {
     /// The "limit price" of this market order, calculated by the previous block's
     /// best available price and the order's maximum slippage.
     pub price: Udec128_24,
-    /// For BUY orders, the amount of quote asset; for SELL orders, that of the
-    /// base asset.
+    /// The order's total size, measured in the _base asset_.
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the unit as the
     /// `amount` field.
