@@ -600,15 +600,18 @@ where
     B: Iterator<Item = (Udec128_24, MarketOrder)>,
     C: Iterator<Item = (Udec128_24, PassiveOrder)>,
 {
+    // Make the three iterators return the same item type, so they can be merged.
     let limit = limit.map(|res| res.map(|((price, _), order)| (price, Order::Limit(order))));
     let market = market.map(|(price, order)| Ok((price, Order::Market(order))));
     let passive = passive.map(|(price, order)| Ok((price, Order::Passive(order))));
 
+    // Merge the three iterators.
+    //
     // The ordering of the three iterators matters! For two reasons:
     // 1. In `MergedOrders::new(a, b, ..)`, `b` is prioritized.
-    //    We order them as follows: market > limit > passive.
+    //    We use the following priority: market > limit > passive.
     // 2. We need to disassemble the `MergedOrders` later and retrieve the market
-    //    order iterators. Note that `Peekable<T>` can't be disassembled to take
+    //    order iterator. Note that `Peekable<T>` can't be disassembled to take
     //    out the inner `T`. So we need to make sure the market order iterator
     //    is only nested once, not twice.
     MergedOrders::new(
