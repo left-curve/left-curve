@@ -100,7 +100,7 @@ pub(super) fn create_market_order(
         .load(storage, (&order.base_denom, &order.quote_denom))
         .map_err(|err| {
             anyhow!(
-                "can't created market order, because resting order book either doesn't exist or is corrupted. base denom: {}, quote denom: {}, err: {err}",
+                "can't create market order, because resting order book either doesn't exist or is corrupted. base denom: {}, quote denom: {}, err: {err}",
                 order.base_denom,
                 order.quote_denom
             )
