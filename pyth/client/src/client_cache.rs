@@ -21,7 +21,7 @@ use {
 };
 
 /// Define the number of samples for each PythId to store in file.
-const CACHE_SAMPLES: usize = 15;
+const CACHE_SAMPLES: usize = 50;
 
 #[derive(Debug, Clone)]
 pub struct PythClientCache {
