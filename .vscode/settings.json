@@ -49,7 +49,10 @@
     ".env*": "dotenv"
   },
   "github.copilot.enable": {
-    "*": true,
+    "*": false,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false,
     "dotenv": false
   },
   "markdown.extension.toc.updateOnSave": false,
