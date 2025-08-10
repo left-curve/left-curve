@@ -54,18 +54,20 @@ const Header: React.FC = () => {
 
   return (
     <div className="section min-h-svh flex items-center justify-center relative w-full">
-      <div className="lg:max-w-3xl min-h-[calc(100svh-5svh)] mx-auto pb-[22svh] p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
+      <div className="min-h-[calc(100svh-5svh)] mx-auto pb-[22svh] p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
         <img
           src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
           alt="Dango"
           className="max-w-[10rem] lg:max-w-[13rem]"
         />
         {isLg && (
-          <div className="relative w-full h-11 z-40">
+          <div className="relative w-full h-11 z-40 max-w-[37.5rem]">
             <SearchMenu />
           </div>
         )}
-        <AppletsSection />
+        <div className="flex w-full max-w-[76rem]">
+          <AppletsSection />
+        </div>
       </div>
       <div
         className="absolute bottom-[12svh] lg:bottom-[3rem] left-1/2 -translate-x-1/2 cursor-pointer diatype-m-medium"
