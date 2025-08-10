@@ -18,6 +18,7 @@ use {
     },
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
+    tracing::{info, warn},
 };
 
 /// Define the number of samples for each PythId to store in file.
@@ -64,6 +65,11 @@ impl PythClientCache {
                 }
 
                 // If the file does not exists, retrieve the data from the source.
+                warn!(
+                    "Cache file not found for {}, retrieving data from source.",
+                    id.to_string()
+                );
+
                 let rt = Runtime::new().unwrap();
                 let values = rt.block_on(async {
                     let mut client = PythClient::new(base_url.clone()).unwrap();
@@ -142,6 +148,8 @@ impl PythClientTrait for PythClientCache {
                     .collect::<Vec<_>>();
 
                 index += 1;
+
+                info!("Returning vaas index {}", index);
 
                 yield vaas;
 

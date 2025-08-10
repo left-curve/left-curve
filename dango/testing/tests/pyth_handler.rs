@@ -2,15 +2,21 @@ use {
     dango_proposal_preparer::PythHandler,
     dango_testing::setup_test,
     dango_types::oracle::{InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
-    grug::{Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map},
+    grug::{
+        Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map,
+        setup_tracing_subscriber,
+    },
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::constants::PYTH_URL,
     std::{thread::sleep, time::Duration},
+    tracing::Level,
 };
 
 #[test]
 fn handler() {
     let (mut suite, mut accounts, codes, contracts, _) = setup_test(Default::default());
+
+    setup_tracing_subscriber(Level::INFO);
 
     // Ensure there are all cache file for the PythIds in oracle and retrieve them if not presents.
     // This is needed since the PythPPHandler create a thread to get the data from Pyth and if the
