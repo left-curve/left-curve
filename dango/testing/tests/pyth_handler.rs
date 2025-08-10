@@ -72,7 +72,7 @@ fn handler() {
     handler.update_stream(querier, oracle).unwrap();
 
     // Give some times to get the data ready.
-    sleep(Duration::from_millis(500));
+    sleep(Duration::from_millis(3000));
 
     // Assert the streaming is working.
     for _ in 0..3 {
