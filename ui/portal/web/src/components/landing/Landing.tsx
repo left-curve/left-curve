@@ -61,11 +61,11 @@ const Header: React.FC = () => {
           className="max-w-[10rem] lg:max-w-[13rem]"
         />
         {isLg && (
-          <div className="relative w-full h-11 z-40 max-w-[37.5rem]">
+          <div className="relative w-full h-11 z-40 max-w-[40rem]">
             <SearchMenu />
           </div>
         )}
-        <div className="flex w-full max-w-[76rem]">
+        <div className="flex w-full max-w-[76rem] lg:w-fit lg:mx-auto">
           <AppletsSection />
         </div>
       </div>
