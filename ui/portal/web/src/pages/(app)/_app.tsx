@@ -16,6 +16,7 @@ export const Route = createFileRoute("/(app)/_app")({
     }, []);
 
     const { theme } = useTheme();
+    const { isLg } = useMediaQuery();
 
     return (
       <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-surface-primary-rice text-secondary-700">
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/(app)/_app")({
           alt="bg-image"
           className={twMerge(
             "drag-none select-none h-[15vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0",
+            { hidden: location.pathname === "/" && !isLg },
           )}
         />
         <Header isScrolled={false} />
@@ -65,6 +67,7 @@ function LayoutApp() {
         alt="bg-image"
         className={twMerge(
           "pointer-events-none drag-none select-none h-[20vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0 object-cover object-bottom",
+          { hidden: location.pathname === "/" && !isLg },
         )}
       />
       <WelcomeModal />
