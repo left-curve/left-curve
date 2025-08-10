@@ -139,7 +139,7 @@
     "4": {
       "id": "create-account",
       "img": "/images/emojis/simple/wizard.svg",
-      "title": "Subaccount creation",
+      "title": "Open Subaccount",
       "description": "Create subaccounts.",
       "path": "/account/create",
       "keywords": "account,create,register"
@@ -333,7 +333,9 @@
     "join": "Join the ",
     "community": "community",
     "of": "of",
-    "dangbros": "Dangbros"
+    "dangbros": "Dangbros",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfUse": "Terms of Use"
   },
   "signup": {
     "mobileModal": {

@@ -54,18 +54,20 @@ const Header: React.FC = () => {
 
   return (
     <div className="section min-h-svh flex items-center justify-center relative w-full">
-      <div className="lg:max-w-3xl min-h-[calc(100svh-5svh)] mx-auto pb-[22svh] p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
+      <div className="min-h-[calc(100svh-5svh)] mx-auto pb-[22svh] p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
         <img
           src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
           alt="Dango"
           className="max-w-[10rem] lg:max-w-[13rem]"
         />
         {isLg && (
-          <div className="relative w-full h-11 z-40">
+          <div className="relative w-full h-11 z-40 max-w-[40rem]">
             <SearchMenu />
           </div>
         )}
-        <AppletsSection />
+        <div className="flex w-full max-w-[76rem] lg:w-fit lg:mx-auto">
+          <AppletsSection />
+        </div>
       </div>
       <div
         className="absolute bottom-[12svh] lg:bottom-[3rem] left-1/2 -translate-x-1/2 cursor-pointer diatype-m-medium"
@@ -163,14 +165,13 @@ const SectionGreen: React.FC = () => {
 
 const SectionCommunity: React.FC = () => {
   const { isSearchBarVisible } = useApp();
-  const { theme } = useTheme();
 
   if (isSearchBarVisible) return null;
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center lg:justify-end bg-surface-primary-rice bg-[linear-gradient(6.97deg,_#D0CFEB_11.63%,_#F6F6FB_88.19%)] dark:bg-[linear-gradient(6.97deg,_#6E6D77_11.63%,_#373634_88.19%)]">
-      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 pb-16 lg:pb-0 lg:min-h-[calc(100svh)] lg:justify-center pt-[76px]">
-        <div className="w-full flex flex-col lg:flex-row items-center lg:justify-between gap-4 lg:flex-1">
+      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 pb-[10svh] lg:pb-0 min-h-[calc(100svh)] lg:justify-center pt-[76px]">
+        <div className="w-full flex flex-col lg:flex-row items-center lg:justify-between gap-4 flex-1">
           <img
             src="/images/characters/friends.svg"
             alt="rabbits"
@@ -201,13 +202,25 @@ const SectionCommunity: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between hidden lg:flex pt-6 pb-6">
-          <img
-            src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
-            alt="Dango"
-            className="max-w-[10rem] lg:max-w-[13rem]"
-          />
+        <div className="w-full border-t border-t-border-tertiary-blue items-start lg:items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row">
           <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
+          <div className="flex gap-4">
+            <a
+              href="/documents/Dango%20-%20Terms%20of%20use.pdf"
+              download="Dango - Terms of use.pdf"
+              className="hover:underline visited:text-red-bean-400"
+            >
+              {m["welcome.termsOfUse"]()}
+            </a>
+
+            <a
+              href="/documents/Dango%20-%20Privacy%20Policy.pdf"
+              download="Dango - Privacy Policy.pdf"
+              className="hover:underline visited:text-red-bean-400"
+            >
+              {m["welcome.privacyPolicy"]()}
+            </a>
+          </div>
         </div>
       </div>
     </section>
