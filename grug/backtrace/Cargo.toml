@@ -4,21 +4,14 @@ categories    = { workspace = true }
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "grug-vm-rust"
+name          = "grug-backtrace"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-elsa        = { workspace = true }
-grug-app    = { workspace = true }
-grug-crypto = { workspace = true }
+anyhow      = { workspace = true }
+borsh       = { workspace = true, features = ["derive"] }
 grug-macros = { workspace = true }
-grug-types  = { workspace = true }
-serde       = { workspace = true }
+serde       = { workspace = true, features = ["derive"] }
 thiserror   = { workspace = true }
-
-[dev-dependencies]
-grug-math    = { workspace = true }
-grug-testing = { workspace = true }
-test-case    = { workspace = true }

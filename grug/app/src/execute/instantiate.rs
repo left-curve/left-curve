@@ -79,13 +79,13 @@ where
 
             // Make sure the user has the permission to instantiate contracts
             if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
-                return Err(AppError::Unauthorized);
+                return Err(AppError::unauthorized());
             }
 
             // Save the contract info
             CONTRACTS.may_update(&mut storage, address, |maybe_contract| {
                 if maybe_contract.is_some() {
-                    return Err(AppError::AccountExists { address });
+                    return Err(AppError::account_exists(address));
                 }
 
                 Ok(ContractInfo {

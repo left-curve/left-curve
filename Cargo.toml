@@ -25,6 +25,7 @@ members = [
   "dango/vesting",
   "dango/warp",
   "grug/app",
+  "grug/backtrace",
   "grug/client",
   "grug/crypto",
   "grug/db/disk",
@@ -101,6 +102,7 @@ async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
 axum                        = "0.8"
+backtrace                   = "0.3"
 base64                      = "0.22"
 bigdecimal                  = "0.4"
 bip32                       = "0.5"
@@ -217,6 +219,7 @@ dango-warp                  = { path = "dango/warp" }
 grug                        = { path = "grug/std" }
 grug-app                    = { path = "grug/app" }
 grug-auth                   = { path = "grug/auth" }
+grug-backtrace              = { path = "grug/backtrace" }
 grug-client                 = { path = "grug/client" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }

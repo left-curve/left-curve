@@ -1,31 +1,40 @@
-use thiserror::Error;
+use grug::Backtraceable;
 
-#[derive(Debug, Error)]
+#[grug_macros::backtrace]
 pub enum IndexerError {
     #[error(transparent)]
-    Io(#[from] std::io::Error),
+    #[backtrace(new)]
+    Io(std::io::Error),
 
     #[error(transparent)]
-    StdError(#[from] grug::StdError),
+    StdError(grug::StdError),
 
     #[error(transparent)]
-    ClickhouseError(#[from] clickhouse::error::Error),
+    #[backtrace(new)]
+    ClickhouseError(clickhouse::error::Error),
 
     #[error("missing block or block outcome")]
     MissingBlockOrBlockOutcome,
 
     #[error(transparent)]
-    GrugMathError(#[from] grug::MathError),
+    GrugMathError(grug::MathError),
 }
 
 impl From<IndexerError> for grug_app::IndexerError {
     fn from(error: IndexerError) -> Self {
         match error {
-            IndexerError::ClickhouseError(error) => {
-                grug_app::IndexerError::Database(error.to_string())
+            IndexerError::ClickhouseError(error) => grug_app::IndexerError::Database {
+                error: error.to_string(),
+                backtrace: error.backtrace(),
             },
-            IndexerError::Io(error) => grug_app::IndexerError::Io(error.to_string()),
-            err => grug_app::IndexerError::Hook(err.to_string()),
+            IndexerError::Io(error) => grug_app::IndexerError::Io {
+                error: error.to_string(),
+                backtrace: error.backtrace(),
+            },
+            err => grug_app::IndexerError::Hook {
+                error: err.to_string(),
+                backtrace: err.backtrace(),
+            },
         }
     }
 }

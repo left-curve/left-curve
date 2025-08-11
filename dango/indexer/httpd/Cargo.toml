@@ -11,11 +11,11 @@ version       = { workspace = true }
 
 [features]
 metrics = [
-    "dep:actix-web-metrics",
-    "dep:metrics",
-    "indexer-clickhouse/metrics",
-    "indexer-httpd/metrics",
-    "indexer-sql/metrics",
+  "dep:actix-web-metrics",
+  "dep:metrics",
+  "indexer-clickhouse/metrics",
+  "indexer-httpd/metrics",
+  "indexer-sql/metrics",
 ]
 tracing = []
 

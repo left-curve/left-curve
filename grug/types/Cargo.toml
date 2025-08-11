@@ -26,12 +26,15 @@ tendermint = ["dep:tendermint", "tendermint-rpc"]
 
 [dependencies]
 async-graphql  = { workspace = true, optional = true }
+backtrace      = { workspace = true }
 bnum           = { workspace = true, features = ["borsh"] }
 borsh          = { workspace = true, features = ["de_strict_order", "derive"] }
 chrono         = { workspace = true, optional = true }
 data-encoding  = { workspace = true }
 digest         = { workspace = true }
 dyn-clone      = { workspace = true }
+grug-backtrace = { workspace = true }
+grug-macros    = { workspace = true }
 grug-math      = { workspace = true }
 hex-literal    = { workspace = true }
 paste          = { workspace = true }

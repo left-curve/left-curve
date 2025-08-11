@@ -29,7 +29,7 @@ pub fn process(input: TokenStream) -> TokenStream {
         panic!("query message must be an enum")
     };
 
-    let mut generated_structs = Vec::new();
+    let mut generated_structs: Vec<proc_macro2::TokenStream> = Vec::new();
     let mut impl_into_msg = Vec::new();
     let mut impl_query_request = Vec::new();
 

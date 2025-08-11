@@ -51,9 +51,10 @@ pub use {
     address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
     changeset::*, code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, dec_coin::*,
     denom::*, empty::*, encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*,
-    hash::*, hashers::*, imports::*, inner::*, jellyfish_merkle::*, json::*, length_bounded::*,
-    lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*, serializers::*,
-    shared::*, signer::*, status::*, time::*, transfer::*, tx::*, unique_vec::*, utils::*,
+    grug_backtrace::*, hash::*, hashers::*, imports::*, inner::*, jellyfish_merkle::*, json::*,
+    length_bounded::*, lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*,
+    serializers::*, shared::*, signer::*, status::*, time::*, transfer::*, tx::*, unique_vec::*,
+    utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------
@@ -71,5 +72,5 @@ pub use {client::*, testing::*};
 // Dependencies used by the procedural macros.
 #[doc(hidden)]
 pub mod __private {
-    pub use {::borsh, ::hex_literal, ::serde, ::serde_json, ::serde_with};
+    pub use {::borsh, ::grug_backtrace, ::hex_literal, ::serde, ::serde_json, ::serde_with};
 }

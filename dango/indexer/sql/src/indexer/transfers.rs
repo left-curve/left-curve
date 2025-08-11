@@ -49,7 +49,7 @@ pub(crate) async fn save_transfers(
                         "Wrong event type looking at transfers: {flat_transfer_event:?}"
                     );
 
-                    Err(Error::WrongEventType)
+                    Err(Error::wrong_event_type())
                 }
             })
             .collect::<Vec<_>>();
