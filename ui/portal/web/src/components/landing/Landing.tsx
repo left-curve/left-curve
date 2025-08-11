@@ -58,7 +58,7 @@ const Header: React.FC = () => {
         <img
           src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
           alt="Dango"
-          className="max-w-[10rem] lg:max-w-[13rem]"
+          className="max-w-[10rem] lg:max-w-[13rem] hidden md:block"
         />
         {isLg && (
           <div className="relative w-full h-11 z-40 max-w-[43.125rem]">
