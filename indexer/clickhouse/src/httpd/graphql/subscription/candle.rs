@@ -68,8 +68,7 @@ impl CandleSubscription {
                 cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
             let candle_cache = app_ctx.candle_cache.clone();
 
-            let current_received = received_block_height.load(Ordering::Acquire);
-            received_block_height.store(block_height, Ordering::Release);
+            let current_received = received_block_height.fetch_max(block_height, Ordering::Release);
 
             async move {
                 if block_height < current_received {

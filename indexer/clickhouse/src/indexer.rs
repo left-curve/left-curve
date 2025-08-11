@@ -204,9 +204,10 @@ pub fn init_metrics() {
     );
 
     describe_gauge!(
-        "indexer.clickhouse.pair_prices.cache.size.candles",
+        "indexer.clickhouse.pair_prices.cache.size.pair_prices",
         "Total number of pair_prices in cache"
     );
+
     describe_counter!(
         "indexer.clickhouse.order_filled_events.total",
         "Total order filled events processed"

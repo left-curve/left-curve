@@ -338,7 +338,7 @@ impl CandleCache {
 
             // Total individual pair_prices stored
             let total_pair_prices: usize = self.pair_prices.values().map(HashMap::len).sum();
-            gauge!("indexer.clickhouse.pair_prices.cache.size.candles")
+            gauge!("indexer.clickhouse.pair_prices.cache.size.pair_prices")
                 .set(total_pair_prices as f64);
         }
     }
