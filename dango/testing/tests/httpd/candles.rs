@@ -350,10 +350,13 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
 
-    println!("Cache : {old_cache:#?}");
-    println!("Cache from clickhouse: {cache:#?}");
+    println!("Cache : {:#?}", old_cache.pair_prices);
+    println!("Cache from clickhouse: {:#?}", cache.pair_prices);
+    assert!(cache.pair_prices == old_cache.pair_prices);
 
-    assert!(cache == *old_cache);
+    println!("Cache : {:#?}", old_cache.candles);
+    println!("Cache from clickhouse: {:#?}", cache.candles);
+    assert!(cache.candles == old_cache.candles);
 
     let mut suite_guard = suite.lock().await;
     suite_guard
@@ -496,10 +499,13 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
 
-    println!("Cache : {old_cache:#?}");
-    println!("Cache from clickhouse: {cache:#?}");
+    println!("Cache : {:#?}", old_cache.pair_prices);
+    println!("Cache from clickhouse: {:#?}", cache.pair_prices);
+    assert!(cache.pair_prices == old_cache.pair_prices);
 
-    assert!(cache == *old_cache);
+    println!("Cache : {:#?}", old_cache.candles);
+    println!("Cache from clickhouse: {:#?}", cache.candles);
+    assert!(cache.candles == old_cache.candles);
 
     let mut suite_guard = suite.lock().await;
     suite_guard
