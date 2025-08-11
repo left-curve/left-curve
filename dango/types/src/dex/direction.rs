@@ -31,7 +31,7 @@ impl PrimaryKey for Direction {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         match self {
             Direction::Bid => vec![RawKey::Fixed8([0])],
             Direction::Ask => vec![RawKey::Fixed8([1])],

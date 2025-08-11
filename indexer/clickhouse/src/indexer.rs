@@ -197,4 +197,29 @@ pub fn init_metrics() {
         "indexer.clickhouse.candles.cache.size.candles",
         "Total number of candles in cache"
     );
+
+    describe_counter!(
+        "indexer.clickhouse.order_filled_events.total",
+        "Total order filled events processed"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.pair_prices.processed.total",
+        "Total pair prices processed"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.synthetic_prices.total",
+        "Total synthetic pair prices injected"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.volume_overflow.total",
+        "Total volume calculation overflows"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.mv_wait_cycles.total",
+        "Total materialized view wait cycles"
+    );
 }

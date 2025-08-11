@@ -82,7 +82,7 @@ impl Coins {
     }
 
     /// Iterate over the coins as immutable references.
-    pub fn iter(&self) -> CoinsIter {
+    pub fn iter(&self) -> CoinsIter<'_> {
         self.into_iter()
     }
 
@@ -99,7 +99,7 @@ impl Coins {
 
     /// If the `Coins` is exactly one coin, return a reference to this coin;
     /// otherwise throw error.
-    pub fn as_one_coin(&self) -> StdResult<CoinRef> {
+    pub fn as_one_coin(&self) -> StdResult<CoinRef<'_>> {
         if self.0.len() != 1 {
             return Err(StdError::invalid_payment(1, self.len()));
         }
@@ -111,7 +111,7 @@ impl Coins {
 
     /// If the `Coins` is exactly one coin, and is of the given denom, return a
     /// reference to this coin; otherwise throw error.
-    pub fn as_one_coin_of_denom(&self, denom: &Denom) -> StdResult<CoinRef> {
+    pub fn as_one_coin_of_denom(&self, denom: &Denom) -> StdResult<CoinRef<'_>> {
         let coin = self.as_one_coin()?;
 
         if coin.denom != denom {
@@ -147,7 +147,7 @@ impl Coins {
 
     /// If the `Coins` is exactly two coins, return these two coins as a tuple,
     /// sorted by denom; otherwise throw error.
-    pub fn as_two_coins(&self) -> StdResult<(CoinRef, CoinRef)> {
+    pub fn as_two_coins(&self) -> StdResult<(CoinRef<'_>, CoinRef<'_>)> {
         if self.0.len() != 2 {
             return Err(StdError::invalid_payment(2, self.len()));
         }

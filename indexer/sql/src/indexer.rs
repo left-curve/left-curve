@@ -346,6 +346,9 @@ impl Indexer {
                 "`index_previous_unindexed_blocks` started"
             );
 
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.previous_blocks.processed.total").increment(1);
+
             self.handle.block_on(async {
                 block_to_index
                     .save(self.context.db.clone(), self.id)
@@ -546,8 +549,14 @@ impl IndexerTrait for Indexer {
                     "Can't save to db in `post_indexing`"
                 );
 
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.errors.save.total").increment(1);
+
                 return Ok(());
             }
+
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.blocks.processed.total").increment(1);
 
             if !keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
@@ -560,6 +569,9 @@ impl IndexerTrait for Indexer {
 
                     return Ok(());
                 }
+
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.blocks.deleted.total").increment(1);
             } else {
                 // compress takes CPU, so we do it in a spawned blocking task
                 if let Err(_err) = tokio::task::spawn_blocking(move || {
@@ -577,6 +589,9 @@ impl IndexerTrait for Indexer {
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %_err, "`spawn_blocking` error compressing block file");
                 }
+
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.blocks.compressed.total").increment(1);
             }
 
             if let Err(_err) = Self::remove_or_fail(blocks, &block_height) {
@@ -600,8 +615,14 @@ impl IndexerTrait for Indexer {
                     "Can't publish block minted in `post_indexing`"
                 );
 
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.errors.pubsub.total").increment(1);
+
                 return Ok(());
             }
+
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.pubsub.published.total").increment(1);
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height, indexer_id = id, "`post_indexing` finished");

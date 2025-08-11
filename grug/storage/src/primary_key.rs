@@ -75,7 +75,7 @@ pub trait PrimaryKey {
     type Output;
 
     /// Convert the key into one or more _raw keys_.
-    fn raw_keys(&self) -> Vec<RawKey>;
+    fn raw_keys(&self) -> Vec<RawKey<'_>>;
 
     /// Serialize the raw keys into bytes.
     ///
@@ -109,7 +109,7 @@ impl PrimaryKey for () {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![]
     }
 
@@ -132,7 +132,7 @@ impl PrimaryKey for &[u8] {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self)]
     }
 
@@ -148,7 +148,7 @@ impl PrimaryKey for Vec<u8> {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self)]
     }
 
@@ -164,7 +164,7 @@ impl PrimaryKey for &str {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self.as_bytes())]
     }
 
@@ -181,7 +181,7 @@ impl PrimaryKey for String {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self.as_bytes())]
     }
 
@@ -201,7 +201,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self.as_ref())]
     }
 
@@ -218,7 +218,7 @@ impl PrimaryKey for Part {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self.as_bytes())]
     }
 
@@ -236,7 +236,7 @@ impl PrimaryKey for Denom {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Owned(self.to_string().into_bytes())]
     }
 
@@ -254,7 +254,7 @@ impl PrimaryKey for Duration {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Fixed128(self.into_nanos().to_be_bytes())]
     }
 
@@ -271,7 +271,7 @@ impl PrimaryKey for CodeStatus {
 
     const KEY_ELEMS: u8 = 2;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         match self {
             CodeStatus::Orphaned { since } => {
                 vec![
@@ -316,7 +316,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         (*self).raw_keys()
     }
 
@@ -336,7 +336,7 @@ where
 
     const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let mut keys = self.0.raw_keys();
         keys.extend(self.1.raw_keys());
         keys
@@ -374,7 +374,7 @@ where
 
     const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let mut keys = self.0.raw_keys();
         keys.extend(self.1.raw_keys());
         keys.extend(self.2.raw_keys());
@@ -406,7 +406,7 @@ where
 
     const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS + D::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let mut keys = self.0.raw_keys();
         keys.extend(self.1.raw_keys());
         keys.extend(self.2.raw_keys());
@@ -438,7 +438,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         self.inner().raw_keys()
     }
 
@@ -458,7 +458,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         self.inner().raw_keys()
     }
 
@@ -529,7 +529,7 @@ macro_rules! impl_unsigned_integer_key {
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> Vec<RawKey> {
+            fn raw_keys(&self) -> Vec<RawKey<'_>> {
                 vec![RawKey::$variant(self.to_be_bytes())]
             }
 
@@ -575,7 +575,7 @@ macro_rules! impl_signed_integer_key {
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> Vec<RawKey> {
+            fn raw_keys(&self) -> Vec<RawKey<'_>> {
                 let bytes = ((*self as $u) ^ (<$s>::MIN as $u)).to_be_bytes();
                 vec![RawKey::$variant(bytes)]
             }
@@ -620,7 +620,7 @@ macro_rules! impl_bnum_signed_integer_key {
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> Vec<RawKey> {
+            fn raw_keys(&self) -> Vec<RawKey<'_>> {
                 let bytes = (<$u>::cast_from(self.clone()) ^ <$u>::cast_from(Self::MIN)).to_be_bytes();
                 vec![RawKey::$variant(bytes)]
             }
@@ -666,7 +666,7 @@ where
 
     const KEY_ELEMS: u8 = T::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         self.inner().raw_keys()
     }
 
@@ -685,7 +685,7 @@ where
 
     const KEY_ELEMS: u8 = T::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         self.inner().raw_keys()
     }
 

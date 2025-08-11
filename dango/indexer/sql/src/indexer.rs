@@ -8,6 +8,7 @@ use {
 };
 #[cfg(feature = "metrics")]
 use {
+    metrics::counter,
     metrics::{describe_histogram, histogram},
     std::time::Instant,
 };
@@ -101,9 +102,21 @@ impl grug_app::Indexer for Indexer {
                 transfers::save_transfers(&context, block_height).await?;
 
                 // Save accounts
-                accounts::save_accounts(&context, &block_to_index, &*querier).await?;
+                accounts::save_accounts(&context, &block_to_index, &*querier)
+                    .await
+                    .inspect_err(|_| {
+                        #[cfg(feature = "metrics")]
+                        counter!("indexer.dango.hooks.accounts.errors.total").increment(1);
+                    })?;
 
-                context.pubsub.publish(block_height).await?;
+                context
+                    .pubsub
+                    .publish(block_height)
+                    .await
+                    .inspect_err(|_| {
+                        #[cfg(feature = "metrics")]
+                        counter!("indexer.dango.hooks.pubsub.errors.total").increment(1);
+                    })?;
 
                 Ok::<(), grug_app::IndexerError>(())
             }

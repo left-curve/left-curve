@@ -339,7 +339,7 @@ const ProTradeOrders: React.FC = () => {
           color="line-red"
           layoutId="tabs-open-order"
           selectedTab={activeTab}
-          keys={["open order", "trade history"]}
+          keys={["open order"]}
           onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
         />

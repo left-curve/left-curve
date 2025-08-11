@@ -622,7 +622,7 @@ where
     }
 
     /// Return a `QuerierWrapper` object.
-    pub fn querier(&self) -> QuerierWrapper {
+    pub fn querier(&self) -> QuerierWrapper<'_> {
         QuerierWrapper::new(self)
     }
 }
@@ -670,7 +670,7 @@ where
         <Self as QuerierExt>::query_balances(self, address, None, Some(u32::MAX))
     }
 
-    pub fn balances(&mut self) -> BalanceTracker<DB, VM, PP, ID> {
+    pub fn balances(&mut self) -> BalanceTracker<'_, DB, VM, PP, ID> {
         BalanceTracker { suite: self }
     }
 }

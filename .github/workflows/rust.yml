@@ -149,7 +149,7 @@ jobs:
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
+          toolchain: 1.88
           components: clippy
 
       # - name: Create psql database
@@ -180,7 +180,8 @@ jobs:
           fi
 
       - name: Run tests
-        run: cargo test --all-features
+        run: |
+          cargo test --all-features
         env:
           RUST_BACKTRACE: 1
 
