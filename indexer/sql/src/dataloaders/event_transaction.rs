@@ -38,13 +38,11 @@ impl Loader<entity::events::Model> for EventTransactionDataLoader {
         Ok(keys
             .iter()
             .filter_map(|key| {
-                key.transaction_id
-                    .map(|id| {
-                        transactions_by_transaction_ids
-                            .get(&id)
-                            .map(|t| (key.clone(), t.clone()))
-                    })
-                    .flatten()
+                key.transaction_id.and_then(|id| {
+                    transactions_by_transaction_ids
+                        .get(&id)
+                        .map(|t| (key.clone(), t.clone()))
+                })
             })
             .collect())
     }
