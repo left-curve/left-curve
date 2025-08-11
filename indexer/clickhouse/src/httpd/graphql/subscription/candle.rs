@@ -57,7 +57,7 @@ impl CandleSubscription {
                     .read()
                     .await
                     .get_last_candle(&cache_key)
-                    .map(|candle| vec![candle.clone()]))
+                    .cloned())
             }
         })
         .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
@@ -68,39 +68,55 @@ impl CandleSubscription {
                 cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
             let candle_cache = app_ctx.candle_cache.clone();
 
-            let received_height = received_block_height.clone();
+            let current_received = received_block_height.load(Ordering::Acquire);
+            received_block_height.store(block_height, Ordering::Release);
 
             async move {
-                let current_received = received_height.load(Ordering::Acquire);
                 if block_height < current_received {
                     #[cfg(feature = "tracing")]
-                    tracing::info!(
+                    tracing::warn!(
                         current_received,
                         block_height,
-                        "Skip candle, same block_height, shouldn't happen..."
+                        "Skip candle, pubsub block_height is lower than already received, shouldn't happen..."
                     );
                     return Ok(None);
                 }
 
-                let candle = candle_cache
+                let last_candle = candle_cache
                     .read()
                     .await
                     .get_last_candle(&cache_key)
-                    .map(|candle| vec![candle.clone()]);
+                    .cloned();
 
-                received_height.store(block_height, Ordering::Release);
+                let Some(candle) = last_candle else {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        current_received,
+                        block_height,
+                        "No current candle, shouldn't happen..."
+                    );
+                    return Ok(None);
+                };
 
-                Ok(candle)
+                if candle.block_height < block_height {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        current_received,
+                        block_height,
+                        %candle.block_height,
+                        "Skip candle, it has older block_height than pubsub received, shouldn't happen..."
+                    );
+                    return Ok(None);
+                }
+
+
+                Ok(Some(candle))
             }
         }))
-        .filter_map(|candles: Result<Option<Vec<Candle>>>| async move {
-            match candles {
-                Ok(Some(candles)) => {
-                    if candles.is_empty() {
-                        None
-                    } else {
-                        Some(candles)
-                    }
+        .filter_map(|candle: Result<Option<Candle>>| async move {
+            match candle {
+                Ok(Some(candle)) => {
+                    Some(vec![candle])
                 },
                 Ok(None) => None,
                 Err(_err) => {
