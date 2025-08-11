@@ -43,7 +43,7 @@ fn create_cache() {
 
         let mut cache_file = DiskPersistence::new(filename, true);
 
-        assert!(cache_file.exists(), "Cache file for {} not found", id);
+        assert!(cache_file.exists(), "Cache file for {id} not found");
 
         // Load the cache file to ensure it was created correctly.
         let data = cache_file.load::<Vec<Vec<Binary>>>().unwrap();

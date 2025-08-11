@@ -121,8 +121,5 @@ fn check_handler_works(handler: &PythHandler<PythClientCache>, data_wanted: usiz
         sleep(Duration::from_millis(500));
     }
 
-    panic!(
-        "Expected to receive at least {} data, but received only {}",
-        data_wanted, received_data
-    );
+    panic!("Expected to receive at least {data_wanted} data, but received only {received_data}");
 }
