@@ -96,6 +96,7 @@ export type {
   Binary,
   JsonValue,
   Encoder,
+  DateTime,
 } from "./encoding.js";
 
 export type {

@@ -7,6 +7,7 @@ import {
   useSimpleSwapState,
   useSubmitTx,
 } from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
 import { useApp } from "~/hooks/useApp";
 
 import {
@@ -48,6 +49,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParamete
   const { toast, settings, showModal } = useApp();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
+  const queryClient = useQueryClient();
   const { refetch: refreshBalances } = useBalances({ address: account?.address });
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
@@ -77,11 +79,11 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParamete
 
         showModal(Modals.ConfirmSwap, {
           input: {
-            coin: coins[input.denom],
+            coin: coins.byDenom[input.denom],
             amount: input.amount,
           },
           output: {
-            coin: coins[output.denom],
+            coin: coins.byDenom[output.denom],
             amount: output.amount,
           },
           fee: formatNumber(fee, { ...formatNumberOptions, currency: "usd" }),
@@ -104,6 +106,7 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParamete
         controllers.reset();
         simulation.reset();
         refreshBalances();
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
     },
   });
@@ -168,7 +171,9 @@ const SimpleSwapForm: React.FC = () => {
   const baseAmount = inputs.base?.value || "0";
   const quoteAmount = inputs.quote?.value || "0";
 
-  const coinPairs = Object.values(coins).filter((c) => Object.keys(pairs.data).includes(c.denom));
+  const coinPairs = Object.values(coins.byDenom).filter((c) =>
+    Object.keys(pairs.data).includes(c.denom),
+  );
 
   useEffect(() => {
     if ((baseAmount === "0" && quoteAmount === "0") || !activeInput || !pair) return;
@@ -316,11 +321,11 @@ const SimpleSwapForm: React.FC = () => {
         startContent={
           coinPairs.length ? (
             <CoinSelector
-              coins={Object.values(coins).filter(
+              coins={Object.values(coins.byDenom).filter(
                 (c) => Object.keys(pairs.data).includes(c.denom) && c.denom !== "dango",
               )}
               value={quote.denom}
-              onChange={(v) => changeQuote(coins[v].symbol)}
+              onChange={(v) => changeQuote(coins.byDenom[v].symbol)}
             />
           ) : (
             <Skeleton className="w-36 h-11" />
@@ -376,8 +381,8 @@ const SimpleSwapDetails: React.FC = () => {
 
   const { input, output } = data;
 
-  const inputCoin = coins[input.denom];
-  const outputCoin = coins[output.denom];
+  const inputCoin = coins.byDenom[input.denom];
+  const outputCoin = coins.byDenom[output.denom];
 
   const inputAmount = formatUnits(input.amount, inputCoin.decimals);
 

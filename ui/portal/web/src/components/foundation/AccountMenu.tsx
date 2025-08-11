@@ -318,8 +318,8 @@ const OrdersTab: React.FC<{ orders: WithId<OrdersByUserResponse>[] }> = ({ order
   const ordersGoupedByPair = useMemo(() => {
     return orders.reduce(
       (acc, order) => {
-        const base = coins[order.baseDenom];
-        const quote = coins[order.quoteDenom];
+        const base = coins.byDenom[order.baseDenom];
+        const quote = coins.byDenom[order.quoteDenom];
         const pairId = `${base.symbol}-${quote.symbol}`;
         if (!acc[pairId]) acc[pairId] = [];
         acc[pairId].push(order);
@@ -457,7 +457,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
   );
   const { baseDenom, quoteDenom } = orders[0];
 
-  const base = coins[baseDenom];
+  const base = coins.byDenom[baseDenom];
 
   return (
     <motion.div
@@ -472,7 +472,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ pairId, orders }) => {
       >
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">
-            <PairAssets assets={[base, coins[quoteDenom]]} />
+            <PairAssets assets={[base, coins.byDenom[quoteDenom]]} />
           </div>
           <div className="flex flex-col">
             <p className="text-primary-900 diatype-m-bold">{pairId}</p>

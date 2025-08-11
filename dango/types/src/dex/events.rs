@@ -1,14 +1,7 @@
 use {
-    crate::dex::{Direction, OrderId},
-    grug::{Addr, Coin, Denom, Udec128_6, Udec128_24, Uint128},
+    crate::dex::{Direction, OrderId, OrderKind, PairId},
+    grug::{Addr, Coin, DecCoin, Denom, Udec128_6, Udec128_24, Uint128},
 };
-
-#[grug::derive(Serde)]
-pub enum OrderKind {
-    Limit,
-    Market,
-    Passive,
-}
 
 #[grug::derive(Serde)]
 #[grug::event("order_created")]
@@ -37,8 +30,8 @@ pub struct OrderCanceled {
     ///
     /// This can be either denominated in the base or the quote asset, depending
     /// on order type.
-    pub remaining: Uint128,
-    pub refund: Coin,
+    pub remaining: Udec128_6,
+    pub refund: DecCoin<6>,
 }
 
 #[grug::derive(Serde)]
@@ -73,6 +66,15 @@ pub struct OrderFilled {
     pub cleared: bool,
 }
 
+impl From<&OrderFilled> for PairId {
+    fn from(order: &OrderFilled) -> Self {
+        PairId {
+            base_denom: order.base_denom.to_owned(),
+            quote_denom: order.quote_denom.to_owned(),
+        }
+    }
+}
+
 #[grug::derive(Serde)]
 #[grug::event("swapped")]
 pub struct Swapped {
@@ -80,3 +82,19 @@ pub struct Swapped {
     pub input: Coin,
     pub output: Coin,
 }
+
+/// An event indicating that the contract has been paused, either manually by
+/// the chain owner, or automatically triggered due to an error in `cron_execute`.
+/// Under this state, orders can't be created or canceled, and the end-of-block
+/// auction is skipped.
+#[grug::derive(Serde)]
+#[grug::event("paused")]
+pub struct Paused {
+    /// `None` if paused by the chain owner manually.
+    /// `Some` with the error message if triggered by an error.
+    pub error: Option<String>,
+}
+
+#[grug::derive(Serde)]
+#[grug::event("unpaused")]
+pub struct Unpaused {}

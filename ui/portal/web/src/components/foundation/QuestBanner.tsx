@@ -1,7 +1,11 @@
-import { Button, twMerge } from "@left-curve/applets-kit";
+import { Button, twMerge, useMediaQuery, usePortalTarget } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
+import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useAccount } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
@@ -28,49 +32,87 @@ const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text
 
 export const QuestBanner: React.FC = () => {
   const { account, isConnected } = useAccount();
-  const { isQuestBannerVisible, setQuestBannerVisibility } = useApp();
+  const { isQuestBannerVisible, setQuestBannerVisibility, settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const { isLg } = useMediaQuery();
 
-  const { data: quests } = useQuery({
-    queryKey: ["quests", account],
+  const { data: quests, isLoading } = useQuery({
+    queryKey: ["quests", account?.username],
     enabled: isConnected && isQuestBannerVisible,
     queryFn: () =>
-      fetch(`https://devnet.dango.exchange/quests/check_username/${account?.username}`).then(
-        (res) => res.json(),
-      ),
-    initialData: () => ({
-      eth_address: null,
-      quest_account: false,
-      quest_transfer: false,
-    }),
+      fetch(`${window.dango.urls.questUrl}/${account?.username}`).then((res) => res.json()),
   });
 
-  const { eth_address, quest_account, quest_transfer } = quests;
+  if (location.pathname === "/" && !isLg) return null;
+  if (!isQuestBannerVisible || isLoading || !quests) return null;
 
-  if (!isQuestBannerVisible) return null;
+  const isTxCountCompleted = quests.tx_count >= 10;
+  const isLimitOrdersCompleted = quests.limit_orders;
+  const isMarketOrdersCompleted = quests.market_orders;
+  const isTradingPairsCompleted = quests.trading_pairs === 0;
+  const isTradingVolumesCompleted = Number(quests.trading_volumes) === 0;
+
+  const areQuestsCompleted =
+    quests.eth_address &&
+    isTxCountCompleted &&
+    isLimitOrdersCompleted &&
+    isMarketOrdersCompleted &&
+    isTradingPairsCompleted &&
+    isTradingVolumesCompleted;
 
   return (
-    <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col lg:flex-row lg:items-center justify-between relative">
+    <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col 2xl:flex-row 2xl:items-center justify-between relative">
       <a
         className="exposure-l-italic min-w-fit"
-        href="https://app.galxe.com/quest/dango/GCpYut1Qnq"
+        href="https://app.galxe.com/quest/dango/GCMTJtfErm"
         target="_blank"
         rel="noreferrer"
       >
         {m["quests.galxeQuest.title"]()}
       </a>
       <div className="flex flex-col lg:flex-row w-full justify-between gap-2">
-        <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6">
+        <div className="flex flex-col lg:flex-row gap-3 px-0 lg:px-4 lg:gap-6 lg:flex-wrap">
           <Quest
-            text={`${m["quests.galxeQuest.quest"]({ quest: 0 })} ${eth_address ? `(${quests.eth_address})` : ""}`}
-            completed={!!eth_address}
+            text={`${m["quests.galxeQuest.quest.connectEthereumWallet"]()} ${quests.eth_address ? `(${quests.eth_address})` : ""}`}
+            completed={!!quests.eth_address}
           />
-          <Quest text={m["quests.galxeQuest.quest"]({ quest: 1 })} completed={quest_account} />
-          <Quest text={m["quests.galxeQuest.quest"]({ quest: 2 })} completed={quest_transfer} />
+          <Quest
+            text={m["quests.galxeQuest.quest.swapAtLeastForUSD"]({
+              number: formatNumber(
+                formatUnits(
+                  Decimal(1000000000000)
+                    .minus(quests?.trading_volumes || 0)
+                    .toFixed(0, 0),
+                  6,
+                ),
+                { ...formatNumberOptions, currency: "USD" },
+              ),
+            })}
+            completed={isTradingVolumesCompleted}
+          />
+          <Quest
+            text={m["quests.galxeQuest.quest.swapAtLeastInPairs"]({
+              number: quests?.trading_pairs,
+            })}
+            completed={isTradingPairsCompleted}
+          />
+          <Quest
+            text={m["quests.galxeQuest.quest.completeMarketOrder"]()}
+            completed={isMarketOrdersCompleted}
+          />
+          <Quest
+            text={m["quests.galxeQuest.quest.completeLimitOrder"]()}
+            completed={isLimitOrdersCompleted}
+          />
+          <Quest
+            text={m["quests.galxeQuest.quest.completeTxsInEthereum"]()}
+            completed={isTxCountCompleted}
+          />
         </div>
-        {eth_address?.length && quest_account && quest_transfer ? (
+        {areQuestsCompleted ? (
           <Button
             as="a"
-            href="https://app.galxe.com/quest/dango/GCpYut1Qnq"
+            href="https://app.galxe.com/quest/dango/GCMTJtfErm"
             target="_blank"
             rel="noreferrer"
           >
@@ -84,4 +126,21 @@ export const QuestBanner: React.FC = () => {
       </div>
     </div>
   );
+};
+
+export const QuestBannerRender: React.FC = () => {
+  const { isLg } = useMediaQuery();
+  const [targetContainer, setTargetContainer] = useState("#quest-banner");
+
+  const container = usePortalTarget(targetContainer);
+
+  useEffect(() => {
+    if (isLg) {
+      setTargetContainer("#quest-banner");
+    } else {
+      setTargetContainer("#quest-banner-mobile");
+    }
+  }, [isLg]);
+
+  return container ? createPortal(<QuestBanner />, container!) : null;
 };

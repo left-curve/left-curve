@@ -7,6 +7,8 @@ use {
     tokio_stream::Stream,
 };
 
+/// NOTE: beware, this is doing one psql connection per subscriber.
+/// Not ideal for high load, use `Postgres` instead.
 #[derive(Clone)]
 pub struct PostgresPubSub {
     pool: sqlx::PgPool,
@@ -19,8 +21,8 @@ impl PostgresPubSub {
 }
 
 #[async_trait]
-impl PubSub for PostgresPubSub {
-    async fn subscribe_block_minted(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
+impl PubSub<u64> for PostgresPubSub {
+    async fn subscribe(&self) -> Result<Pin<Box<dyn Stream<Item = u64> + Send + '_>>> {
         let mut listener = PgListener::connect_with(&self.pool).await?;
 
         listener.listen("blocks").await?;
@@ -51,7 +53,7 @@ impl PubSub for PostgresPubSub {
         Ok(Box::pin(stream))
     }
 
-    async fn publish_block_minted(&self, block_height: u64) -> Result<usize> {
+    async fn publish(&self, block_height: u64) -> Result<usize> {
         sqlx::query("select pg_notify('blocks', json_build_object('block_height', $1)::text)")
             .bind(block_height as i64)
             .execute(&self.pool)

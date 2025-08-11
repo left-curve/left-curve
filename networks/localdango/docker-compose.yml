@@ -14,13 +14,13 @@ services:
       - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
     volumes:
       - db_data:/var/lib/postgresql/data
-      # For when we'll need an init script ran at initialization
-      # - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./configs/psql/init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
       - POSTGRES_DB=grug_dev
     tty: true
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres"]
       interval: 2s
@@ -34,6 +34,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      clickhouse:
+        condition: service_healthy
     ports:
       - 127.0.0.1:${DANGO_PORT:-8080}:8080
     volumes:
@@ -46,6 +48,7 @@ services:
       - DB_USER=postgres
       - DB_NAME=grug_dev
       - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres@db:5432/grug_dev}
+      - INDEXER__CLICKHOUSE__URL=${INDEXER__CLICKHOUSE__URL:-http://clickhouse:8123}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
@@ -134,6 +137,7 @@ services:
 
   node-exporter:
     image: prom/node-exporter:latest
+    profiles: ["analytics"]
     labels:
       <<: *common-labels
     container_name: node-exporter
@@ -152,13 +156,12 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
-    profiles: ["clickhouse"]
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8123:8123" # HTTP interface
-      - "127.0.0.1:9000:9000" # Native TCP interface
-      - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
-      - "127.0.0.1:9004:9004" # MySQL compatibility interface
+      - "127.0.0.1:${CLICKHOUSE_PORT:-8123}:8123" # HTTP interface
+      # - "127.0.0.1:9000:9000" # Native TCP interface
+      # - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
+      # - "127.0.0.1:9004:9004" # MySQL compatibility interface
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
@@ -168,23 +171,16 @@ services:
       CLICKHOUSE_DB: grug_dev
       CLICKHOUSE_USER: default
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
     healthcheck:
-      test:
-        [
-          "CMD",
-          "wget",
-          "--no-verbose",
-          "--tries=1",
-          "--spider",
-          "http://localhost:8123/ping",
-        ]
-      interval: 10s
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 5s
       timeout: 5s
-      retries: 3
+      retries: 10
 
   loki:
     image: grafana/loki:latest

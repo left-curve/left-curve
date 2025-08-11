@@ -1,32 +1,39 @@
-import type { TableColumn } from "@left-curve/applets-kit";
+import {
+  createContext,
+  twMerge,
+  useInputs,
+  useMediaQuery,
+  usePortalTarget,
+} from "@left-curve/applets-kit";
+import { useEffect, useMemo, useState } from "react";
+import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
+import { useNavigate } from "@tanstack/react-router";
+import { useApp } from "~/hooks/useApp";
+
+import { m } from "~/paraglide/messages";
+import { createPortal } from "react-dom";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
+
 import {
   AddressVisualizer,
   Badge,
   Cell,
-  createContext,
   IconChevronDownFill,
-  IconEmptyStar,
   Table,
   Tabs,
-  twMerge,
-  useInputs,
-  useMediaQuery,
 } from "@left-curve/applets-kit";
-import type { OrderId, OrdersByUserResponse, PairId } from "@left-curve/dango/types";
-import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
-import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import type { PropsWithChildren } from "react";
-import { useEffect, useState } from "react";
-import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
 import { ChartIQ } from "../foundation/ChartIQ";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { Modals } from "../modals/RootModal";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
+import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
+
+import type { PropsWithChildren } from "react";
+import type { TableColumn } from "@left-curve/applets-kit";
+import type { OrderId, OrdersByUserResponse, PairId } from "@left-curve/dango/types";
 
 const [ProTradeProvider, useProTrade] = createContext<{
   state: ReturnType<typeof useProTradeState>;
@@ -40,6 +47,8 @@ type ProTradeProps = {
   onChangeAction: (action: "buy" | "sell") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
+  orderType: "limit" | "market";
+  onChangeOrderType: (orderType: "limit" | "market") => void;
 };
 
 const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
@@ -47,16 +56,22 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   onChangeAction,
   pairId,
   onChangePairId,
+  orderType,
+  onChangeOrderType,
   children,
 }) => {
   const controllers = useInputs();
+
   const state = useProTradeState({
     controllers,
     pairId,
     onChangePairId,
     action,
     onChangeAction,
+    orderType,
+    onChangeOrderType,
   });
+
   return <ProTradeProvider value={{ state, controllers }}>{children}</ProTradeProvider>;
 };
 
@@ -97,7 +112,7 @@ const ProTradeHeader: React.FC = () => {
               })}
             />
           </div>
-          <IconEmptyStar className="w-5 h-5 text-tertiary-500" />
+          {/*   <IconEmptyStar className="w-5 h-5 text-tertiary-500" /> */}
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -147,21 +162,37 @@ const ProTradeHeader: React.FC = () => {
   );
 };
 
-const ProTradeChart: React.FC = () => {
-  const { isLg } = useMediaQuery();
+const ProTradeOverview: React.FC = () => {
+  return <OrderBookOverview />;
+};
 
-  if (!isLg) return null;
+const ProTradeChart: React.FC = () => {
+  const { state } = useProTrade();
+  const { isLg } = useMediaQuery();
+  const { baseCoin, quoteCoin, orders } = state;
+
+  const chartComponent = useMemo(
+    () => <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />,
+    [baseCoin, quoteCoin, orders],
+  );
+
+  const mobileContainer = usePortalTarget("#chartiq-container");
 
   return (
-    <div className="shadow-card-shadow bg-surface-secondary-rice h-full">
-      <ChartIQ />
-    </div>
+    <>{isLg || !mobileContainer ? chartComponent : createPortal(chartComponent, mobileContainer)}</>
   );
 };
 
 const ProTradeMenu: React.FC = () => {
+  const { isLg } = useMediaQuery();
   const { state, controllers } = useProTrade();
-  return <TradeMenu state={state} controllers={controllers} />;
+
+  return (
+    <>
+      <TradeMenu state={state} controllers={controllers} />
+      {!isLg ? <TradeButtons state={state} /> : null}
+    </>
+  );
 };
 
 const ProTradeOrders: React.FC = () => {
@@ -196,7 +227,7 @@ const ProTradeOrders: React.FC = () => {
 
     {
       header: m["dex.protrade.spot.ordersTable.type"](),
-      cell: ({ row }) => <Cell.Text text="Limit" />,
+      cell: (_) => <Cell.Text text="Limit" />,
     },
     {
       header: m["dex.protrade.spot.ordersTable.pair"](),
@@ -233,8 +264,10 @@ const ProTradeOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={formatNumberOptions}
-          value={formatUnits(row.original.remaining, coins[row.original.baseDenom].decimals)}
+          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          value={Decimal(row.original.remaining)
+            .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
+            .toFixed()}
         />
       ),
     },
@@ -246,8 +279,10 @@ const ProTradeOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={formatNumberOptions}
-          value={formatUnits(row.original.amount, coins[row.original.baseDenom].decimals)}
+          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          value={Decimal(row.original.amount)
+            .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
+            .toFixed()}
         />
       ),
     },
@@ -259,11 +294,12 @@ const ProTradeOrders: React.FC = () => {
             Decimal(row.original.price)
               .times(
                 Decimal(10).pow(
-                  coins[row.original.baseDenom].decimals - coins[row.original.quoteDenom].decimals,
+                  coins.byDenom[row.original.baseDenom].decimals -
+                    coins.byDenom[row.original.quoteDenom].decimals,
                 ),
               )
               .toFixed(),
-            formatNumberOptions,
+            { ...formatNumberOptions, maxSignificantDigits: 10 },
           )}
         />
       ),
@@ -273,7 +309,9 @@ const ProTradeOrders: React.FC = () => {
       header: () => (
         <Cell.Action
           isDisabled={!orders.data.length}
-          action={() => showModal(Modals.ProTradeCloseAll)}
+          action={() =>
+            showModal(Modals.ProTradeCloseAll, { ordersId: orders.data.map((o) => o.id) })
+          }
           label={m["common.cancelAll"]()}
           classNames={{
             cell: "items-end diatype-xs-regular",
@@ -295,13 +333,13 @@ const ProTradeOrders: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-card-shadow pb-20 lg:pb-5 z-10">
+    <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
           layoutId="tabs-open-order"
           selectedTab={activeTab}
-          keys={["open order", "trade history"]}
+          keys={["open order"]}
           onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
         />
@@ -331,7 +369,11 @@ const ProTradeOrders: React.FC = () => {
               ) : null
             }
           />
-        ) : null}
+        ) : (
+          <div className="min-h-[88.8px] w-full backdrop-blur-[8px] flex items-center justify-center exposure-l-italic text-primary-rice">
+            {m["dex.protrade.underDevelopment"]()}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -341,6 +383,6 @@ export const ProTrade = Object.assign(ProTradeContainer, {
   Header: ProTradeHeader,
   Chart: ProTradeChart,
   Orders: ProTradeOrders,
-  OrderBook: OrderBookOverview,
+  OrderBook: ProTradeOverview,
   TradeMenu: ProTradeMenu,
 });

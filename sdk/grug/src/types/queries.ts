@@ -1,5 +1,5 @@
 import type { Address } from "./address.js";
-import type { BlockInfo, ContractInfo } from "./app.js";
+import type { ContractInfo } from "./app.js";
 import type { Code } from "./code.js";
 import type { Coin, Coins, Denom } from "./coins.js";
 import type { Base64, Hex, Json, JsonValue } from "./encoding.js";

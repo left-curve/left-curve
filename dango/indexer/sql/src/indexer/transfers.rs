@@ -1,14 +1,15 @@
 use {
     crate::{entity, error::Error},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
-    indexer_sql::entity as main_entity,
+    indexer_sql::{block_to_index::MAX_ROWS_INSERT, entity as main_entity},
+    itertools::Itertools,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait},
     std::collections::HashMap,
     uuid::Uuid,
 };
 #[cfg(feature = "metrics")]
 use {
-    metrics::{describe_histogram, histogram},
+    metrics::{counter, describe_histogram, histogram},
     std::time::Instant,
 };
 
@@ -53,6 +54,9 @@ pub(crate) async fn save_transfers(
             })
             .collect::<Vec<_>>();
 
+    #[cfg(feature = "metrics")]
+    counter!("indexer.dango.hooks.transfer_events.total").increment(transfer_events.len() as u64);
+
     let transactions_by_id = main_entity::transactions::Entity::find()
         .filter(main_entity::transactions::Column::BlockHeight.eq(block_height as i64))
         .all(&txn)
@@ -79,7 +83,7 @@ pub(crate) async fn save_transfers(
                 .flat_map(|(recipient, coins)| {
                     #[cfg(feature = "tracing")]
                     if coins.is_empty() {
-                        tracing::warn!(
+                        tracing::debug!(
                             "Transfer detected but coins is empty, won't create transfers",
                         );
                     }
@@ -112,6 +116,9 @@ pub(crate) async fn save_transfers(
         })
         .collect();
 
+    #[cfg(feature = "metrics")]
+    metrics::counter!("indexer.dango.hooks.transfers.total").increment(new_transfers.len() as u64);
+
     #[cfg(feature = "tracing")]
     tracing::debug!(
         new_transfers_count = new_transfers.len(),
@@ -120,9 +127,18 @@ pub(crate) async fn save_transfers(
 
     if !new_transfers.is_empty() {
         // 3. insert the transfers into the database
-        entity::transfers::Entity::insert_many(new_transfers)
-            .exec_without_returning(&txn)
-            .await?;
+
+        for transfers in new_transfers
+            .into_iter()
+            .chunks(MAX_ROWS_INSERT)
+            .into_iter()
+            .map(|c| c.collect())
+            .collect::<Vec<Vec<_>>>()
+        {
+            entity::transfers::Entity::insert_many(transfers)
+                .exec_without_returning(&txn)
+                .await?;
+        }
     }
 
     txn.commit().await?;
@@ -131,19 +147,32 @@ pub(crate) async fn save_transfers(
     tracing::debug!("Injected new transfers");
 
     #[cfg(feature = "metrics")]
-    histogram!(
-        "indexer.dango.hooks.transfers.duration",
-        "block_height" => block_height.to_string()
-    )
-    .record(start.elapsed().as_secs_f64());
+    histogram!("indexer.dango.hooks.transfers.duration").record(start.elapsed().as_secs_f64());
 
     Ok(())
 }
 
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
+    use metrics::describe_counter;
+
     describe_histogram!(
         "indexer.dango.hooks.transfers.duration",
         "Transfer hook duration in seconds"
+    );
+
+    describe_counter!(
+        "indexer.dango.hooks.transfer_events.total",
+        "Total transfer events processed"
+    );
+
+    describe_counter!(
+        "indexer.dango.hooks.transfers.total",
+        "Total transfers created"
+    );
+
+    describe_counter!(
+        "indexer.dango.hooks.transfers.errors.total",
+        "Total transfer hook errors"
     );
 }

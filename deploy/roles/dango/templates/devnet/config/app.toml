@@ -5,7 +5,7 @@
 log_level = "info"
 
 # Logging format: text|json.
-log_format = "text"
+log_format = "json"
 
 ################################################################################
 ###                            Grug Configuration                            ###
@@ -38,6 +38,17 @@ keep_blocks = true
 url = "postgres://postgres@db:5432/grug_dev"
 
 max_connections = 10
+
+[indexer.clickhouse]
+
+# URL to the Clickhouse database to be used by the indexer.
+url = "http://clickhouse:8123"
+
+user = "dango"
+
+password = ""
+
+database = "dango_prod"
 
 [httpd]
 

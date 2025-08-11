@@ -47,7 +47,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
 
   const {
     operation,
-    setOperation,
     action,
     changeSizeCoin,
     sizeCoin,
@@ -79,7 +78,11 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             {m["dex.protrade.spot.availableToTrade"]()}
           </p>
           <p className="diatype-xs-medium text-secondary-700">
-            {formatNumber(availableCoin.amount, { ...formatNumberOptions })} {availableCoin.symbol}
+            {formatNumber(availableCoin.amount, {
+              ...formatNumberOptions,
+              maxSignificantDigits: 10,
+            })}{" "}
+            {availableCoin.symbol}
           </p>
         </div>
         {operation === "limit" ? (
@@ -98,6 +101,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           label="Size"
           {...register("size", {
             strategy: "onChange",
+            mask: numberMask,
             validate: (v) => {
               if (Number(v) > Number(maxSizeAmount))
                 return m["errors.validations.insufficientFunds"]();
@@ -131,7 +135,10 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           inputEndContent="%"
           value={rangeValue}
           onChange={(v) => {
-            setValue("size", Decimal(maxSizeAmount).mul(Decimal(v).div(100)).toString());
+            const newValue = Math.min(100, v);
+            const size = Decimal(maxSizeAmount).mul(Decimal(newValue).div(100));
+            const length = size.toFixed().split(".")[1]?.length || 0;
+            setValue("size", size.toFixed(length < 19 ? length : 18));
           }}
         />
       </div>
@@ -142,7 +149,9 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               variant={action === "sell" ? "primary" : "tertiary"}
               fullWidth
               size="md"
-              isDisabled={amount === "0" || (operation === "limit" && priceAmount === "0")}
+              isDisabled={
+                Decimal(amount).lte(0) || (operation === "limit" && Decimal(priceAmount).lte(0))
+              }
               isLoading={submission.isPending}
               onClick={() => submission.mutateAsync()}
             >

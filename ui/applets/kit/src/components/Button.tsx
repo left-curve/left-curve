@@ -11,6 +11,7 @@ const SpinnerColor = {
   primary: "white",
   secondary: "white",
   tertiary: "white",
+  "tertiary-red": "white",
   utility: "white",
   current: "current",
 } as const;
@@ -79,6 +80,8 @@ const buttonVariants = tv(
           "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         tertiary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+        "tertiary-red":
+          "rounded-full [box-shadow:0px_-1px_3px_-2px_#00000012_inset,_0px_2px_3px_-1px_#FFFFFF12_inset_0px_1px_1px_-0.5px_#0000000A] transition-all duration-300 flex items-center justify-center w-fit",
         utility: " shadow-btn-shadow-gradient transition-all duration-300 w-fit",
         link: "rounded-xl transition-all duration-300 w-fit mx-1",
       },
@@ -127,6 +130,11 @@ const buttonVariants = tv(
           "bg-button-green hover:bg-green-bean-500 text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
+        variant: "tertiary-red",
+        class:
+          "bg-surface-primary-red hover:bg-surface-secondary-red text-tertiary-red focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+      },
+      {
         variant: "link",
         class:
           "bg-transparent hover:text-blue-600 text-secondary-blue focus:bg-primary-blue focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
@@ -149,6 +157,11 @@ const buttonVariants = tv(
       },
       {
         variant: "tertiary",
+        isDisabled: true,
+        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
+      },
+      {
+        variant: "tertiary-red",
         isDisabled: true,
         class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
       },

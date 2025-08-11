@@ -12,7 +12,6 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
-import { TradeButtons } from "../dex/TradeButtons";
 import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
 import { Hamburger } from "./Hamburguer";
@@ -40,22 +39,25 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
   const isProSwap = location.pathname.includes("trade");
 
+  const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
+
   return (
     <header
       className={twMerge(
-        "fixed lg:sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full transition-all",
+        "fixed bottom-0 lg:top-0 left-0 right-0 bg-transparent z-50 transition-all w-[calc(100vw-11px)]",
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",
-        { "lg:bg-surface-primary-rice lg:shadow-account-card": isProSwap },
+        location.pathname === "/" ? "lg:fixed h-fit " : "lg:sticky flex flex-col items-center",
       )}
     >
-      <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
+      {isLg ? <div id="quest-banner" /> : null}
+      <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
             src="/favicon.svg"
             alt="dango logo"
-            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-btn-shadow-gradient"
+            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card"
           />
         </Link>
         <div
@@ -66,7 +68,10 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             },
           )}
         >
-          {isProSwap && !isLg ? <TradeButtons /> : <SearchMenu />}
+          {!hideSearchBar ? <SearchMenu /> : null}
+          {isProSwap && !isLg ? (
+            <div id="trade-buttons" className="flex gap-2 items-center justify-center w-full" />
+          ) : null}
           <Hamburger />
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">

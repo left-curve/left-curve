@@ -9,7 +9,7 @@ export function useCountdown(parameters: UseCountdownParameters) {
   const { date, showLeadingZeros } = parameters;
   const calculateTimeLeft = () => {
     if (!date) return { days: "-", hours: "-", minutes: "-", seconds: "-" };
-    const difference = +new Date(date) - +new Date();
+    const difference = +new Date(date) - Date.now();
     if (difference <= 0) {
       return showLeadingZeros
         ? { days: "00", hours: "00", minutes: "00", seconds: "00" }

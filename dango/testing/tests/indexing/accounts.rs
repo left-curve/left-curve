@@ -2,7 +2,7 @@ use {
     assertor::*,
     dango_indexer_sql::entity,
     dango_testing::{
-        HyperlaneTestSuite, add_account_with_existing_user, create_user_and_account,
+        HyperlaneTestSuite, TestOption, add_account_with_existing_user, create_user_and_account,
         setup_test_with_indexer,
     },
     grug::Inner,
@@ -13,8 +13,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_account_creations() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -61,8 +61,8 @@ async fn index_account_creations() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_previous_blocks() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let user = create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
@@ -91,8 +91,8 @@ async fn index_previous_blocks() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_single_user_multiple_spot_accounts() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =

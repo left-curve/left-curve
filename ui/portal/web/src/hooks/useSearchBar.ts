@@ -1,5 +1,5 @@
 import { isValidAddress } from "@left-curve/dango";
-import { camelToTitleCase, wait } from "@left-curve/dango/utils";
+import { wait } from "@left-curve/dango/utils";
 import { useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import fuzzysort from "fuzzysort";
@@ -54,8 +54,12 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
   const queryClient = useQueryClient();
   const client = usePublicClient();
 
+  const allNotFavApplets = useMemo(() => {
+    return Object.values(APPLETS).filter((applet) => !favApplets[applet.id]);
+  }, [favApplets]);
+
   const { data, ...query } = useQuery({
-    queryKey: ["searchBar", searchText],
+    queryKey: ["searchBar", searchText, favApplets],
     queryFn: async ({ signal }) => {
       if (!searchText.length) {
         setSearchResult(noResult);
@@ -126,5 +130,5 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
     },
   });
 
-  return { searchText, setSearchText, searchResult, ...query };
+  return { searchText, setSearchText, searchResult, allNotFavApplets, ...query };
 }

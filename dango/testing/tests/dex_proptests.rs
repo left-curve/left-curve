@@ -239,7 +239,7 @@ impl DexAction {
                             quote_denom: quote_denom.clone(),
                             direction: *direction,
                             amount: NonZero::new(*amount)?,
-                            price: *price,
+                            price: NonZero::new(*price)?,
                         }],
                         cancels: None,
                     },
@@ -781,7 +781,7 @@ fn test_dex_actions(
         .execute(
             &mut accounts.owner,
             contracts.dex,
-            &dex::ExecuteMsg::BatchUpdatePairs(
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(
                 pair_ids()
                     .iter()
                     .map(|pair| PairUpdate {
@@ -801,7 +801,7 @@ fn test_dex_actions(
                         },
                     })
                     .collect(),
-            ),
+            )),
             Coins::default(),
         )
         .should_succeed();

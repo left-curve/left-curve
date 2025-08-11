@@ -4,7 +4,8 @@ use {
         UploadOutcome,
     },
     grug_app::{
-        App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm,
+        App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer,
+        UpgradeHandler, Vm,
     },
     grug_crypto::sha2_256,
     grug_db_memory::MemDb,
@@ -12,8 +13,8 @@ use {
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
         Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
-        Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, Signer, StdError, StdResult, Tx,
-        TxOutcome, UnsignedTx,
+        Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, QueryStatusResponse, Signer,
+        StdError, StdResult, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
@@ -84,6 +85,7 @@ where
             vm,
             NaiveProposalPreparer,
             NullIndexer,
+            None,
             chain_id,
             block_time,
             default_gas_limit,
@@ -113,6 +115,7 @@ where
             RustVm::new(),
             pp,
             NullIndexer,
+            None,
             chain_id,
             block_time,
             default_gas_limit,
@@ -136,6 +139,7 @@ where
         vm: VM,
         pp: PP,
         mut id: ID,
+        upgrade_handler: Option<UpgradeHandler<VM>>,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
@@ -166,7 +170,7 @@ where
 
         // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, id, u64::MAX);
+        let app = App::new(db, vm, pp, id, u64::MAX, upgrade_handler);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {
@@ -618,7 +622,7 @@ where
     }
 
     /// Return a `QuerierWrapper` object.
-    pub fn querier(&self) -> QuerierWrapper {
+    pub fn querier(&self) -> QuerierWrapper<'_> {
         QuerierWrapper::new(self)
     }
 }
@@ -647,6 +651,10 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
     Self: Querier,
 {
+    pub fn query_status(&self) -> StdResult<QueryStatusResponse> {
+        <Self as QuerierExt>::query_status(self)
+    }
+
     pub fn query_balance<D>(&self, address: &dyn Addressable, denom: D) -> StdResult<Uint128>
     where
         D: TryInto<Denom>,
@@ -662,7 +670,7 @@ where
         <Self as QuerierExt>::query_balances(self, address, None, Some(u32::MAX))
     }
 
-    pub fn balances(&mut self) -> BalanceTracker<DB, VM, PP, ID> {
+    pub fn balances(&mut self) -> BalanceTracker<'_, DB, VM, PP, ID> {
         BalanceTracker { suite: self }
     }
 }

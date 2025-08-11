@@ -13,6 +13,8 @@ version       = { workspace = true }
 actix-web               = { workspace = true }
 anyhow                  = { workspace = true }
 async-graphql           = { workspace = true }
+async-trait             = { workspace = true }
+clickhouse              = { workspace = true, features = ["test-util"] }
 dango-genesis           = { workspace = true }
 dango-httpd             = { workspace = true, features = ["metrics"] }
 dango-indexer-sql       = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
@@ -25,12 +27,14 @@ grug-client             = { workspace = true }
 grug-crypto             = { workspace = true }
 grug-db-disk-lite       = { workspace = true }
 grug-db-memory          = { workspace = true }
+grug-types              = { workspace = true, features = ["async-graphql"] }
 grug-vm-hybrid          = { workspace = true }
 grug-vm-rust            = { workspace = true }
 grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
 hyperlane-testing       = { workspace = true }
 hyperlane-types         = { workspace = true }
+indexer-clickhouse      = { workspace = true, features = ["async-graphql", "metrics", "testing", "tracing"] }
 indexer-hooked          = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd           = { workspace = true, features = ["metrics"] }
 indexer-sql             = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
@@ -54,11 +58,14 @@ chrono                      = { workspace = true }
 criterion                   = { workspace = true }
 dango-account-factory       = { workspace = true, features = ["library"] }
 dango-auth                  = { workspace = true }
+dango-bank                  = { workspace = true, features = ["library"] }
+dango-dex                   = { workspace = true, features = ["library"] }
 dango-gateway               = { workspace = true, features = ["library"] }
 dango-httpd                 = { workspace = true, features = ["metrics"] }
 dango-lending               = { workspace = true, features = ["library"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
+dango-taxman                = { workspace = true, features = ["library"] }
 grug-testing                = { workspace = true }
 hex                         = { workspace = true }
 home                        = { workspace = true }

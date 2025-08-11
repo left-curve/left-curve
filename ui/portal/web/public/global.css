@@ -5,6 +5,7 @@
 :root {
   --color-surface-primary-rice: #FFFCF6;
   --color-surface-primary-green: #D2D184;
+  --color-surface-primary-red: #FEF1F1;
   --color-surface-secondary-rice: #FFF9F0;
   --color-surface-secondary-blue: #F0F1F7;
   --color-surface-secondary-red: #FEE6E8;
@@ -15,6 +16,8 @@
   --color-surface-quaternary-rice-hover: #EFDAA4;
   --color-surface-disabled-gray: #F5F4F4;
   --color-overlay-rice: #F2E2B8CC;
+  --color-border-secondary-rice: #EFDAA4;
+  --color-border-tertiary-blue: #E2E3F2;
   --color-foreground-disabled-gray: #ACA9A7;
   --color-foreground-tertiary: #837D7B;
   --color-foreground-tertiary-rice: #E3BD66;
@@ -23,6 +26,7 @@
   --color-foreground-primary-blue: #595763;
   --color-foreground-primary-red: #9A183D;
   --color-foreground-primary-green: #606427;
+  --color-foreground-primary-rice: #9C4D21;
   --color-button-green: #BDBF5C;
   --color-primary-red: #FEF1F1;
   --color-primary-blue: #F7F8FB;
@@ -40,12 +44,15 @@
   --color-tertiary-rice: #F3E5BF;
   --color-tertiary-green: #E5E4B1;
   --color-tertiary-blue: #E2E3F2;
+  --color-tertiary-red: #ED4561;
   --color-status-fail: #E71818;
   --color-status-success: #25B12A;
 
   --shadow-card: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5);
   --shadow-btn-shadow-gradient: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
   --shadow-btn-secondary-shadow-gradient: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
+
+  --chartiq-filter: brightness(0) saturate(72%) invert(35%) sepia(25%) saturate(1469%) hue-rotate(332deg) brightness(78%) contrast(89%);
 
   --color-bg-card-blue: linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%);
   --color-bg-card-rice: linear-gradient(98.89deg, #fff5e6 18.66%, #fce5c4 46.73%, #fff5e6 86%);
@@ -58,6 +65,7 @@
 html.dark {
   --color-surface-primary-rice: #2D2C2A;
   --color-surface-primary-green: #7C7A65;
+  --color-surface-primary-red: #564D4C;
   --color-surface-secondary-rice: #363432;
   --color-surface-secondary-blue: #646273;
   --color-surface-secondary-red: #6B5D5D;
@@ -68,6 +76,8 @@ html.dark {
   --color-surface-quaternary-rice-hover: #6A5D42;
   --color-surface-disabled-gray: #363432;
   --color-overlay-rice: #F2E2B84D;
+  --color-border-secondary-rice: #594F3C;
+  --color-border-tertiary-blue: #646273;
   --color-foreground-disabled-gray: #807D78;
   --color-foreground-tertiary: #999590;
   --color-foreground-tertiary-rice: #807660;
@@ -76,6 +86,7 @@ html.dark {
   --color-foreground-primary-blue: #F7F8FB;
   --color-foreground-primary-red: #FEF1F1;
   --color-foreground-primary-green: #DCDBAB;
+  --color-foreground-primary-rice: #E3BD66;
   --color-button-green: #D2D184;
   --color-primary-red: #423C3B;
   --color-primary-blue: #595763;
@@ -93,12 +104,15 @@ html.dark {
   --color-tertiary-rice: #474237;
   --color-tertiary-green: #3F3B35;
   --color-tertiary-blue: #646273;
+  --color-tertiary-red: #FCCFD4;
   --color-status-fail: #FF6B6B;
   --color-status-success: #66C86A;
 
   --shadow-card: 0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);
   --shadow-btn-shadow-gradient: 0px 0px 8px -2px #FFFFFF7A inset, 0px 3px 6px -2px #FFFFFFA3 inset, 0px 4px 6px 0px #0000000A, 0px 4px 6px 0px #0000000A;
   --shadow-btn-secondary-shadow-gradient: 0px -1px 3px -2px #00000012 inset, 0px 2px 3px -1px #FFFFFF12 inset, 0px 1px 1px -0.5px #0000000A;
+
+  --chartiq-filter: brightness(0) saturate(1710%) invert(35%) sepia(20%) saturate(1000%) hue-rotate(360deg) brightness(235%) contrast(89%);
 
   --color-bg-card-blue: linear-gradient(98.89deg, #373634 18.66%, #6E6D77 46.73%, #373634 86%);
   --color-bg-card-rice: linear-gradient(98.89deg, #383633 18.66%, #615A51 46.73%, #383633 86%);
@@ -113,6 +127,7 @@ body {
   overflow-y: scroll;
   min-height: 100svh;
   scrollbar-gutter: stable;
+  background: var(--color-surface-primary-rice);
 }
 
 #root {
@@ -133,11 +148,18 @@ body {
 
 
 @layer utilities {
+
   @media (min-height: 1000px) and (min-width: 1280px) {
     div.custom-width {
       width: calc(720px + (100vh - 1000px) * 0.8);
     }
   }
+
+  input:is(:-webkit-autofill, :autofill) {
+    /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
+    -webkit-text-fill-color: theme('colors.secondary.700') !important;
+  }
+
 
   .qr-container {
     display: flex;
@@ -148,6 +170,7 @@ body {
 
   .max-h-available {
     max-height: 100vh;
+    /* biome-ignore lint/suspicious/noDuplicateProperties: Adding browser-specific properties */
     max-height: -moz-available;
     max-height: -webkit-fill-available;
     max-height: -webkit-stretch;
@@ -160,43 +183,118 @@ body {
 }
 
 .react-json-view .variable-value div {
-  /* biome-ignore lint/correctness/noUnknownFunction: <explanation> */
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
   color: theme("colors.white.100") !important;
 }
 
+.fp-overflow {
+width: 100%;
+}
+
 /* ChartIQ */
+cq-drawing-palette cq-separator {
+  opacity: .4;
+  border-color: var(--color-secondary-700);
+}
+
+cq-drawing-palette .tool-group .drawing-tools-group cq-separator {
+  margin: 5px 4px;
+}
+
+cq-drawing-palette cq-scroll {
+  scrollbar-width: none;
+  scrollbar-color: initial;
+}
+
+cq-drawing-palette cq-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+cq-drawing-palette cq-scroll:hover {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-secondary-gray) var(--color-surface-primary-rice);
+}
+
+
 .ciq-day .ciq-nav,
 .ciq-day .chartContainer,
-.ciq-day cq-chart-title {
-  color: #6E6865 !important;
-  background: rgb(255 249 240) !important;
+.ciq-day cq-chart-title,
+.ciq-night .ciq-nav,
+.ciq-night .chartContainer,
+.ciq-night cq-chart-title {
+  color: var(--color-tertiary-500) !important;
+  background: var(--color-surface-secondary-rice) !important;
   border: none;
 }
 
-.ciq-day cq-menu .menu-clickable:not(cq-help) {
-  color: #6E6865;
+cq-palette-dock [orientation="vertical"] {
+  border-right: var(--color-secondary-gray) 1px solid;
+}
+
+cq-separator {
+  border-color: var(--color-secondary-gray);
+}
+
+.palette-container {
+  background: var(--color-surface-secondary-rice);
+  border: none;
+}
+
+.ciq-day cq-menu .menu-clickable:not(cq-help),
+.ciq-night cq-menu .menu-clickable:not(cq-help) {
+  color: var(--color-tertiary-500);
 }
 
 .stx-subholder {
   border: none;
 }
 
+.ciq-chart {
+  box-shadow: none;
+}
+
+cq-drawing-palette .tool-group .drawing-tools-group {
+  margin: 0;
+}
+
 .ciq-day .ciq-chart:first-of-type,
 .ciq-day cq-dropdown .content,
+.ciq-night .ciq-chart:first-of-type,
+.ciq-night cq-dropdown .content,
 cq-drawing-palette .ciq-tool:before,
 cq-drawing-palette .ciq-mini-widget:before {
-  background: rgb(255 249 240);
+  background: var(--color-surface-secondary-rice);
+}
+
+.ciq-night cq-drawing-palette .ciq-tool:before,
+.ciq-night cq-drawing-palette .ciq-mini-widget:before,
+.ciq-night .ciq-select:hover,
+.ciq-day cq-drawing-palette .ciq-tool:before,
+.ciq-day cq-drawing-palette .ciq-mini-widget:before,
+.ciq-day .ciq-select:hover {
+  background: var(--color-surface-tertiary-rice);
+  border: transparent;
+  color: var(--color-primary-900);
 }
 
 cq-heading {
-  color: rgb(46 37 33);
+  @apply exposure-xs-italic;
+  text-transform: capitalize;
+  color: var(--color-secondary-700);
 }
 
 cq-dropdown .content>.item.ciq-active .ciq-switch,
 cq-dropdown .content>.item.ciq-active:hover .ciq-switch,
 .ciq-active .ciq-radio span:after,
-.ciq-radio.ciq-active span:after {
-  background: rgb(249 112 102);
+.ciq-radio.ciq-active span:after,
+.ciq-active>.ciq-switch,
+.ciq-switch:checked,
+.ciq-active>.ciq-switch:hover,
+html:not([ciq-last-interaction="touch"]) .ciq-context-menu div.ciq-switch-item.ciq-active:hover .ciq-switch,
+.ciq-context-menu div.ciq-switch-item.ciq-active .ciq-switch {
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
+  background: theme("colors.red-bean.500");
 }
 
 .ciq-active .ciq-radio span:after,
@@ -213,29 +311,47 @@ cq-drawing-palette.grid .mini-widget-group .ciq-mini-widget[cq-view="grid"] .ico
 cq-drawing-palette .ciq-mini-widget.active .icon,
 cq-drawing-palette .ciq-mini-widget .active .icon,
 cq-drawing-palette .ciq-mini-widget:active .icon,
-cq-drawing-palette .ciq-mini-widget .active+.icon {
-  filter: brightness(0) saturate(100%) invert(35%) sepia(25%) saturate(1655%) hue-rotate(339deg) brightness(91%) contrast(89%);
-}
-
+cq-drawing-palette .ciq-mini-widget .active+.icon,
 cq-drawing-palette .ciq-tool.active .icon,
 cq-drawing-palette .ciq-tool:active .icon {
-  filter: brightness(0) saturate(100%) invert(35%) sepia(25%) saturate(1655%) hue-rotate(339deg) brightness(91%) contrast(89%);
+  filter: var(--chartiq-filter);
 }
 
 cq-drawing-palette .ciq-tool label,
 cq-drawing-palette .ciq-tool span[label],
 cq-drawing-palette .ciq-mini-widget label,
-cq-drawing-palette .ciq-mini-widget span[label] {
-  background: var(--color-primary-rice);
+cq-drawing-palette .ciq-mini-widget span[label],
+[cq-tooltip],
+*>[cq-tooltip] {
+  background: var(--color-surface-quaternary-rice);
+  color: var(--color-foreground-primary-rice);
+  border-radius: 8px;
+  border: 1px solid var(--color-border-secondary-rice) !important;
+  @apply diatype-xs-medium;
+  font-size: 10px;
 }
 
+:host(cq-dropdown.ciq-night) .item.separator-item hr,
+.ciq-night cq-dropdown .item.separator-item hr,
+:host(cq-dropdown.ciq-day) .item.separator-item hr,
+.ciq-day cq-dropdown .item.separator-item hr,
+cq-dialog.ciq-night hr,
+cq-dialog.ciq-day hr {
+  border-bottom-color: var(--color-border-secondary-rice);
+}
 
 cq-dropdown .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)):hover>*,
 cq-drawing-palette,
 cq-menu.nav-dropdown:before,
 .ciq-nav cq-toggle:before,
-cq-views .item:hover {
-  background: rgb(255 243 225) !important
+cq-views .item:hover,
+cq-study-legend.shaded .item:hover,
+html:not([ciq-last-interaction="touch"]) cq-studies .item:hover {
+  background: var(--color-surface-tertiary-rice) !important
+}
+
+cq-drawing-palette {
+  outline: none;
 }
 
 :host(cq-toggle.active),
@@ -245,27 +361,22 @@ cq-toggle.active {
 
 .stx_current_hr_up,
 .stx_candle_up {
-  background-color: #27AE60;
+  background-color: var(--color-status-success);
 }
 
 .stx_current_hr_down,
 .stx_candle_down {
-  background-color: #EB5757;
+  background-color: var(--color-status-fail);
 }
 
 .cq-down,
 .stx_candle_down {
-  color: #EB5757;
+  color: var(--color-status-fail);
 }
 
 .cq-up,
 .stx_candle_up {
-  color: #27AE60;
-}
-
-[cq-tooltip],
-*>[cq-tooltip] {
-  background: var(--color-primary-rice);
+  color: var(--color-status-success);
 }
 
 .ciq-chart-area,
@@ -278,5 +389,174 @@ cq-side-panel {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  /* transform: translate(-50%, -50%); */
+  @apply diatype-xs-medium;
+  color: var(--color-primary-900);
+}
+
+html:not([ciq-last-interaction="touch"]) .ciq-night .ciq-context-menu div:hover {
+  background: var(--color-surface-tertiary-rice);
+
+}
+
+cq-dialog.ciq-night[cq-drawing-context],
+cq-dialog.ciq-night[cq-study-context],
+cq-dialog.ciq-night[cq-yaxis-context],
+cq-dialog.ciq-day[cq-drawing-context],
+cq-dialog.ciq-day[cq-study-context],
+cq-dialog.ciq-day[cq-yaxis-context] {
+  box-shadow: var(--shadow-card);
+}
+
+
+:host(cq-dropdown.ciq-night) .content,
+.ciq-night cq-dropdown .content,
+cq-dropdown.ciq-night .content,
+:host(cq-dropdown.ciq-day) .content,
+.ciq-day cq-dropdown .content,
+cq-dropdown.ciq-day .content {
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+  box-shadow: theme("boxShadow.account-card");
+  @apply diatype-xs-medium;
+}
+
+html:not([ciq-last-interaction="touch"]) cq-palette-dock .ciq-select:hover {
+  color: var(--color-secondary-700);
+}
+
+.ciq-select {
+  background: var(--color-surface-secondary-rice);
+  border-radius: 8px;
+  border: 1px solid var(--color-surface-tertiary-rice) !important;
+}
+
+cq-menu .ciq-screen-reader {
+  @apply diatype-xs-medium;
+}
+
+.chartContainer {
+  @apply diatype-xs-medium;
+  font-size: 10px;
+}
+
+cq-dialog.ciq-night,
+cq-dialog.ciq-day {
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+  box-shadow: theme("boxShadow.account-card");
+  margin-top: 0;
+  background: var(--color-surface-primary-rice);
+  color: var(--color-primary-900);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+
+cq-chart-title cq-symbol {
+  @apply h3-heavy;
+}
+
+cq-dialog.ciq-night input:hover,
+cq-dialog.ciq-day input:hover {
+  background: var(--color-surface-tertiary-rice);
+}
+
+.ciq-night .ciq-btn,
+.ciq-night .ciq-btn-negative,
+.ciq-night .annotationCancel,
+.ciq-night .annotationSave,
+.ciq-day .ciq-btn,
+.ciq-day .ciq-btn-negative,
+.ciq-day .annotationCancel,
+.ciq-day .annotationSave,
+cq-study-legend .item.ciq-btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  max-width: fit-content;
+  height: 25px;
+  min-width: 100px;
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+  box-shadow: theme("boxShadow.btn-shadow-gradient");
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind colors */
+  background: theme("colors.red-bean.400");
+  color: var(--color-surface-primary-rice);
+  border-image-source: linear-gradient(180deg, rgba(0, 0, 0, 0.04) 8%, rgba(0, 0, 0, 0.07) 100%);
+  border-radius: 14px;
+  text-transform: capitalize;
+  padding: 6px 8px;
+  @apply exposure-xs-italic;
+}
+
+cq-study-legend.shaded [section-dynamic] {
+  background: var(--color-surface-secondary-rice);
+}
+
+.ciq-dialog-cntrls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+cq-clickable {
+  margin: 8px auto 0;
+}
+
+.ciq-night .ciq-btn:hover,
+.ciq-night .ciq-btn-negative:hover,
+.ciq-night .annotationCancel:hover,
+.ciq-night .annotationSave:hover,
+.ciq-day .ciq-btn:hover,
+.ciq-day .ciq-btn-negative:hover,
+.ciq-day .annotationCancel:hover,
+.ciq-day .annotationSave:hover,
+cq-study-legend.shaded cq-clickable.clickable-item.item.ciq-btn:hover {
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind colors */
+  background: theme("colors.red-bean.600") !important;
+  color: var(--color-surface-primary-rice) !important;
+  /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
+  box-shadow: theme("boxShadow.btn-shadow-gradient");
+  border-image-source: linear-gradient(180deg, rgba(0, 0, 0, 0.04) 8%, rgba(0, 0, 0, 0.07) 100%);
+}
+
+
+cq-heading.dropdown input {
+  border: 0px solid transparent;
+  padding-left: 8px;
+  outline: none;
+  overflow: hidden;
+  background-color: var(--color-surface-primary-rice);
+  border-radius: 10px;
+  transition: all 0.5s;
+  @apply diatype-xs-medium;
+  font-style: normal;
+}
+
+cq-study-legend.shaded cq-clickable.clickable-item.item.ciq-btn {
+  display: flex;
+  margin: 6px auto 0;
+}
+
+cq-dropdown[config="studies"] .content {
+  padding-top: 16px;
+}
+
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 99999px;
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: 99999px;
+  background: var(--color-secondary-gray);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-secondary-gray);
 }

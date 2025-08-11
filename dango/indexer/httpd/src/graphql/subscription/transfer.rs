@@ -8,6 +8,8 @@ use {
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
     std::ops::RangeInclusive,
 };
+#[cfg(feature = "metrics")]
+use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
 
 #[derive(Default)]
 pub struct TransferSubscription;
@@ -97,28 +99,30 @@ impl TransferSubscription {
         let a = address.clone();
         let u = username.clone();
 
-        Ok(
-            once(async move { Self::get_transfers(app_ctx, block_range, a, u).await })
-                .chain(
-                    app_ctx
-                        .pubsub
-                        .subscribe_block_minted()
-                        .await?
-                        .then(move |block_height| {
-                            let a = address.clone();
-                            let u = username.clone();
-                            async move {
-                                Self::get_transfers(
-                                    app_ctx,
-                                    block_height as i64..=block_height as i64,
-                                    a,
-                                    u,
-                                )
-                                .await
-                            }
-                        }),
-                )
-                .filter_map(|transfers| async move { transfers }),
-        )
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "transfers",
+            "subscription",
+        ));
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move { Self::get_transfers(app_ctx, block_range, a, u).await }
+        })
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            let a = address.clone();
+            let u = username.clone();
+
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move {
+                Self::get_transfers(app_ctx, block_height as i64..=block_height as i64, a, u).await
+            }
+        }))
+        .filter_map(|transfers| async move { transfers }))
     }
 }

@@ -10,6 +10,8 @@ use {
     },
     std::ops::RangeInclusive,
 };
+#[cfg(feature = "metrics")]
+use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
 
 #[derive(Default)]
 pub struct AccountSubscription;
@@ -71,32 +73,35 @@ impl AccountSubscription {
 
         let u = username.clone();
 
-        Ok(
-            once(async { Self::get_accounts(app_ctx, block_range, u).await })
-                .chain(
-                    app_ctx
-                        .pubsub
-                        .subscribe_block_minted()
-                        .await?
-                        .then(move |block_height| {
-                            let u = username.clone();
-                            async move {
-                                Self::get_accounts(
-                                    app_ctx,
-                                    block_height as i64..=block_height as i64,
-                                    u,
-                                )
-                                .await
-                            }
-                        }),
-                )
-                .filter_map(|maybe_accounts| async move {
-                    if maybe_accounts.is_empty() {
-                        None
-                    } else {
-                        Some(maybe_accounts)
-                    }
-                }),
-        )
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "accounts",
+            "subscription",
+        ));
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async { Self::get_accounts(app_ctx, block_range, u).await }
+        })
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            let u = username.clone();
+
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move {
+                Self::get_accounts(app_ctx, block_height as i64..=block_height as i64, u).await
+            }
+        }))
+        .filter_map(|maybe_accounts| async move {
+            if maybe_accounts.is_empty() {
+                None
+            } else {
+                Some(maybe_accounts)
+            }
+        }))
     }
 }

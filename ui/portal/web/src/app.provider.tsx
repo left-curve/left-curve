@@ -1,7 +1,7 @@
+import { useTheme } from "@left-curve/applets-kit";
 import { useAccount, useAppConfig, useConfig, useSessionKey, useStorage } from "@left-curve/store";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 import { useNotifications } from "./hooks/useNotifications";
-import { useTheme } from "@left-curve/applets-kit";
 
 import * as Sentry from "@sentry/react";
 import { router } from "./app.router";
@@ -51,12 +51,11 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
   const [isQuestBannerVisible, setQuestBannerVisibility] = useState(true);
 
-  // Initialize theme
-  const theme = useTheme();
+  useTheme();
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.2,
+    version: 1.3,
     initialValue: {
       showWelcome: true,
       isFirstVisit: true,
@@ -67,6 +66,13 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
         maxFractionDigits: 4,
         minFractionDigits: 0,
         notation: "standard",
+      },
+    },
+    sync: true,
+    migrations: {
+      1.2: (state: AppState["settings"]) => {
+        state.showWelcome = true;
+        return state;
       },
     },
   });
@@ -144,7 +150,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
         setSearchBarVisibility,
         isTradeBarVisible,
         setTradeBarVisibility,
-        isQuestBannerVisible: false,
+        isQuestBannerVisible,
         setQuestBannerVisibility,
         showModal,
         hideModal,

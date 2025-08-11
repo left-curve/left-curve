@@ -1,5 +1,7 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "./useConfig.js";
+import { useBalances } from "./useBalances.js";
+import { useAccount } from "./useAccount.js";
 
 import type {
   DefaultError,
@@ -24,6 +26,7 @@ export type UseSubmitTxParameters<
     abort?: string;
   };
   mutation: Omit<UseMutationOptions<TData, TError, TVariables, TContext>, "mutationFn"> & {
+    invalidateKeys?: unknown[][];
     mutationFn: (
       variables: TVariables,
       options: { signal: AbortSignal; abort: () => void },
@@ -49,12 +52,27 @@ export function useSubmitTx<
 ): UseSubmitTxReturnType<TData, TError, TVariables, TContext> {
   const { subscriptions } = useConfig();
   const { mutation, submission = {}, toast = {} } = parameters;
+  const { account } = useAccount();
+  // biome-ignore lint/correctness/useHookAtTopLevel: it needs to be at the top level for React Query to work correctly.
+  const qClient = queryClient ?? useQueryClient();
+  const { refetch: refreshBalances } = useBalances({ address: account?.address });
 
-  const { mutationFn } = mutation;
+  const { mutationFn, invalidateKeys, meta = {} } = mutation;
 
   return useMutation<TData, TError, TVariables, TContext>(
     {
       ...mutation,
+      meta: {
+        invalidateKeys,
+        ...meta,
+      },
+      onSuccess: (...params) => {
+        refreshBalances();
+        mutation.onSuccess?.(...params);
+        for (const key of invalidateKeys || []) {
+          qClient.invalidateQueries({ queryKey: key });
+        }
+      },
       mutationFn: async (variables: TVariables) => {
         const controller = new AbortController();
         subscriptions.emit("submitTx", { isSubmitting: true });

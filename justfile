@@ -40,7 +40,7 @@ fmt:
 
 # Build schema
 build-graphql-schema:
-  cargo run -p indexer-httpd build_graphql_schema -- \
+  cargo run -p dango-httpd build_graphql_schema -- \
     ./indexer/client/src/schemas/schema.graphql
 
 # Update wasm artifacts used in tests
@@ -53,17 +53,8 @@ book:
 
 # --------------------------------- Optimizer ----------------------------------
 
-OPTIMIZER_NAME := "leftcurve/optimizer"
-OPTIMIZER_VERSION := "0.1.1"
-
-# Build and publish optimizer Docker image
-docker-build-optimizer:
-  docker buildx build \
-    --push \
-    --platform linux/amd64,linux/arm64 \
-    --tag {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}} \
-    --target optimizer \
-    docker/optimizer
+OPTIMIZER_NAME := "leftcurve/bob"
+OPTIMIZER_VERSION := "0.2.0"
 
 # Compile and optimize contracts
 optimize:

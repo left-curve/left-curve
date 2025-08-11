@@ -18,13 +18,13 @@ members = [
   "dango/mocks/httpd",
   "dango/oracle",
   "dango/proposal-preparer",
+  "dango/scripts",
   "dango/taxman",
   "dango/testing",
   "dango/types",
   "dango/vesting",
   "dango/warp",
   "grug/app",
-  "grug/bob-the-builder",
   "grug/client",
   "grug/crypto",
   "grug/db/disk",
@@ -49,6 +49,7 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
+  "indexer/clickhouse",
   "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
@@ -101,6 +102,7 @@ async-trait                 = "0"
 awc                         = "3"
 axum                        = "0.8"
 base64                      = "0.22"
+bigdecimal                  = "0.4"
 bip32                       = "0.5"
 blake2                      = "0.10"
 blake3                      = "1"
@@ -109,6 +111,7 @@ borsh                       = "1"
 byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
+clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs" } # TODO: use crates.io once the latest version is published
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
@@ -136,6 +139,7 @@ k256                        = "0.13"
 lzma-rs                     = "0.3"
 metrics                     = "0.24"
 metrics-exporter-prometheus = "0.17"
+num-format                  = "0.4"
 num_cpus                    = "1"
 p256                        = "0.13"
 paste                       = "1"
@@ -204,6 +208,7 @@ dango-lending               = { path = "dango/lending" }
 dango-mock-httpd            = { path = "dango/mocks/httpd" }
 dango-oracle                = { path = "dango/oracle" }
 dango-proposal-preparer     = { path = "dango/proposal-preparer" }
+dango-scripts               = { path = "dango/scripts" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
 dango-types                 = { path = "dango/types" }
@@ -237,6 +242,7 @@ hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
+indexer-clickhouse          = { path = "indexer/clickhouse" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }

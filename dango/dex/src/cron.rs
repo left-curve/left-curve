@@ -1,21 +1,27 @@
 use {
     crate::{
-        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS,
-        MatchingOutcome, MergedOrders, Order, OrderTrait, PAIRS, PassiveLiquidityPool, RESERVES,
-        VOLUMES, VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders, match_limit_orders,
+        INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED,
+        RESERVES, VOLUMES, VOLUMES_BY_USER,
+        core::{
+            FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, Prependable,
+            fill_orders, match_and_fill_market_orders, match_limit_orders,
+        },
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        dex::{Direction, LimitOrdersMatched, OrderFilled},
+        dex::{
+            CallbackMsg, Direction, ExecuteMsg, LimitOrdersMatched, Order, OrderFilled, OrderTrait,
+            Paused, ReplyMsg,
+        },
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
-        Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
-        Udec128, Udec128_6,
+        Addr, Api, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MutableCtx,
+        Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult, Storage,
+        SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6, Udec128_24,
     },
     std::{
         collections::{BTreeSet, HashMap, hash_map::Entry},
@@ -31,6 +37,43 @@ const HALF: Udec128 = Udec128::new_percent(50);
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    // Skip the auction if trading is paused.
+    if PAUSED.load(ctx.storage)? {
+        return Ok(Response::new());
+    }
+
+    // Use submessage "reply on error" to catch errors that may happen during
+    // the auction.
+    Ok(Response::new().add_submessage(SubMessage::reply_on_error(
+        Message::execute(
+            ctx.contract,
+            &ExecuteMsg::Callback(CallbackMsg::Auction {}),
+            Coins::new(),
+        )?,
+        &ReplyMsg::AfterAuction {},
+    )?))
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
+    match msg {
+        ReplyMsg::AfterAuction {} => {
+            let error = res.unwrap_err(); // safe to unwrap because we only request reply on error
+
+            #[cfg(feature = "library")]
+            {
+                tracing::error!(error, "!!! AUCTION FAILED !!!");
+            }
+
+            // Pause trading in case of a failure.
+            PAUSED.save(ctx.storage, &true)?;
+
+            Response::new().add_event(Paused { error: Some(error) })
+        },
+    }
+}
+
+pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     let app_cfg = ctx.querier.query_dango_config()?;
 
     let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier)
@@ -149,6 +192,15 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Udec128_6>,
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            "Processing pair"
+        );
+    }
+
     // --------------------------- 1. Prepare orders ---------------------------
 
     // Load the market orders for this pair.
@@ -157,13 +209,13 @@ fn clear_orders_of_pair(
         .append(Direction::Bid)
         .drain(storage, None, None)?
         .into_iter()
-        .peekable();
+        .prependable();
     let mut market_asks = MARKET_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .drain(storage, None, None)?
         .into_iter()
-        .peekable();
+        .prependable();
 
     // Create iterators over user orders.
     //
@@ -213,31 +265,62 @@ fn clear_orders_of_pair(
 
     // Merge the orders from users and from the passive pool.
     let mut merged_bid_iter =
-        MergedOrders::new(bid_iter, passive_bid_iter, IterationOrder::Descending).peekable();
+        MergedOrders::new(bid_iter, passive_bid_iter, IterationOrder::Descending).prependable();
     let mut merged_ask_iter =
-        MergedOrders::new(ask_iter, passive_ask_iter, IterationOrder::Ascending).peekable();
+        MergedOrders::new(ask_iter, passive_ask_iter, IterationOrder::Ascending).prependable();
 
     // -------------------- 2. Match and fill market orders --------------------
 
     // Run the market order matching algorithm.
     // 1. Match market BUY orders against resting SELL limit orders.
     // 2. Match market SELL orders against resting BUY limit orders.
-    let market_bid_filling_outcomes = match_and_fill_market_orders(
-        &mut market_bids,
-        &mut merged_ask_iter,
-        Direction::Bid,
-        maker_fee_rate,
-        taker_fee_rate,
-        current_block_height,
-    )?;
-    let market_ask_filling_outcomes = match_and_fill_market_orders(
-        &mut market_asks,
-        &mut merged_bid_iter,
-        Direction::Ask,
-        maker_fee_rate,
-        taker_fee_rate,
-        current_block_height,
-    )?;
+    let (market_bid_filling_outcomes, left_over_market_bid, left_over_limit_ask) =
+        match_and_fill_market_orders(
+            &mut market_bids,
+            &mut merged_ask_iter,
+            Direction::Bid,
+            maker_fee_rate,
+            taker_fee_rate,
+            current_block_height,
+        )?;
+    let (market_ask_filling_outcomes, left_over_market_ask, left_over_limit_bid) =
+        match_and_fill_market_orders(
+            &mut market_asks,
+            &mut merged_bid_iter,
+            Direction::Ask,
+            maker_fee_rate,
+            taker_fee_rate,
+            current_block_height,
+        )?;
+
+    // Prepend the left over market orders to the market order iterators, so
+    // their refunds are processed properly later.
+    if let Some(bid) = left_over_market_bid {
+        market_bids.prepend(bid)?;
+    }
+    if let Some(ask) = left_over_market_ask {
+        market_asks.prepend(ask)?;
+    }
+
+    // Prepend the left over limit orders to the merged limit iterators, so they
+    // are included in the following limit order matching.
+    if let Some(bid) = left_over_limit_bid {
+        merged_bid_iter.prepend(Ok(bid))?;
+    }
+    if let Some(ask) = left_over_limit_ask {
+        merged_ask_iter.prepend(Ok(ask))?;
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            num_bid_filling_outcomes = market_bid_filling_outcomes.len(),
+            num_ask_filling_outcomes = market_ask_filling_outcomes.len(),
+            "Processed market orders"
+        );
+    }
 
     // ------------------------- 3. Match limit orders -------------------------
 
@@ -248,6 +331,24 @@ fn clear_orders_of_pair(
         bids,
         asks,
     } = match_limit_orders(merged_bid_iter, merged_ask_iter)?;
+
+    #[cfg(feature = "tracing")]
+    {
+        let range_str = match range {
+            Some((lower_price, upper_price)) => format!("{lower_price}-{upper_price}"),
+            None => "None".to_string(),
+        };
+
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            range = range_str,
+            volume = volume.to_string(),
+            num_matched_bids = bids.len(),
+            num_matched_asks = asks.len(),
+            "Matched limit orders"
+        );
+    }
 
     // ------------------------- 4. Fill limit orders --------------------------
 
@@ -283,6 +384,16 @@ fn clear_orders_of_pair(
     } else {
         vec![]
     };
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            num_limit_order_filling_outcomes = limit_order_filling_outcomes.len(),
+            "Filled limit orders"
+        );
+    }
 
     // ----------------------- 5. Update contract state ------------------------
 
@@ -376,7 +487,10 @@ fn clear_orders_of_pair(
             (dex_addr, None)
         };
 
-        let clearing_price = filled_quote.checked_div(filled_base)?.convert_precision()?;
+        // Compute the clearing price.
+
+        let clearing_price = Udec128_24::checked_from_ratio(filled_quote.0, filled_base.0)?;
+
         let cleared = order.remaining().is_zero();
 
         // Emit event for filled orders to be used by the frontend.
@@ -425,6 +539,15 @@ fn clear_orders_of_pair(
 
             Ok::<_, StdError>(reserve)
         })?;
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            "Updated contract state"
+        );
     }
 
     Ok(())

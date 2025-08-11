@@ -1,5 +1,5 @@
 import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
-import { useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { useSearchBar } from "~/hooks/useSearchBar";
@@ -19,13 +19,16 @@ import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { SearchItem } from "./SearchItem";
 
+import type { AppletMetadata } from "@left-curve/applets-kit";
 import type React from "react";
 import type { SearchBarResult } from "~/hooks/useSearchBar";
 
 const SearchMenu: React.FC = () => {
   const { isLg } = useMediaQuery();
+  const location = useLocation();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
-  const { searchText, setSearchText, isLoading, searchResult, isRefetching } = useSearchBar();
+  const { searchText, setSearchText, isLoading, searchResult, allNotFavApplets, isRefetching } =
+    useSearchBar();
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -49,7 +52,7 @@ const SearchMenu: React.FC = () => {
         setSearchText("");
         inputRef.current?.blur();
       } else if (
-        !["INPUT", "TEXT"].includes(window.document.activeElement?.nodeName || "") &&
+        !["INPUT", "TEXT", "TEXTAREA"].includes(window.document.activeElement?.nodeName || "") &&
         e.key.length === 1 &&
         /\w/i.test(e.key)
       ) {
@@ -80,10 +83,11 @@ const SearchMenu: React.FC = () => {
       <ResizerContainer layoutId="search-menu">
         <div
           className={twMerge(
-            "flex-col bg-surface-secondary-rice rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative lg:top-[-22px] flex-1 lg:shadow-account-card transition-all duration-300",
+            "flex-col bg-surface-secondary-rice rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative flex-1 lg:shadow-account-card transition-all duration-300",
             !isLg && isSearchBarVisible
               ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-surface-primary-rice p-4 gap-4"
               : "",
+            isLg && location.pathname === "/" ? "lg:top-0":"lg:top-[-22px]"
           )}
         >
           <div className="w-full gap-[10px] lg:gap-0 flex items-center">
@@ -144,6 +148,8 @@ const SearchMenu: React.FC = () => {
             isVisible={isSearchBarVisible}
             hideMenu={hideMenu}
             searchResult={searchResult}
+            isSearching={!!searchText}
+            allApplets={allNotFavApplets}
             isLoading={isLoading || isRefetching}
           />
         </div>
@@ -154,12 +160,21 @@ const SearchMenu: React.FC = () => {
 
 type SearchMenuBodyProps = {
   isVisible: boolean;
+  isSearching: boolean;
   hideMenu: () => void;
+  allApplets: AppletMetadata[];
   searchResult: SearchBarResult;
   isLoading: boolean;
 };
 
-const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult, isLoading }) => {
+const Body: React.FC<SearchMenuBodyProps> = ({
+  isVisible,
+  hideMenu,
+  searchResult,
+  isLoading,
+  isSearching,
+  allApplets,
+}) => {
   const navigate = useNavigate();
   const { applets, block, txs, account, contract } = searchResult;
 
@@ -201,8 +216,22 @@ const Body: React.FC<SearchMenuBodyProps> = ({ isVisible, hideMenu, searchResult
                 )}
               </Command.Empty>
               {applets.length ? (
-                <Command.Group heading="Applets">
+                <Command.Group heading={isSearching ? "Applets" : "Favorite Applets"}>
                   {applets.map((applet) => (
+                    <Command.Item
+                      key={applet.title}
+                      value={applet.title}
+                      className="group"
+                      onSelect={() => [navigate({ to: applet.path }), hideMenu()]}
+                    >
+                      <SearchItem.Applet key={applet.title} {...applet} />
+                    </Command.Item>
+                  ))}
+                </Command.Group>
+              ) : null}
+              {!isSearching && allApplets.length ? (
+                <Command.Group heading="Applets">
+                  {allApplets.map((applet) => (
                     <Command.Item
                       key={applet.title}
                       value={applet.title}

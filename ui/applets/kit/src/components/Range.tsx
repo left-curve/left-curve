@@ -274,11 +274,10 @@ export const Range: React.FC<RangeProps> = ({
             }
             onChange={(e) => {
               const rawValue = e.target.value;
-              if (rawValue !== "") {
-                const numValue = Number.parseFloat(rawValue);
-                if (!Number.isNaN(numValue)) {
-                  setValue(numValue);
-                }
+              const value = rawValue === "" ? "0" : rawValue;
+              const numValue = Number.parseFloat(value);
+              if (!Number.isNaN(numValue)) {
+                setValue(numValue);
               }
             }}
             classNames={{ base: twMerge("max-w-[5rem]", classNames?.input) }}

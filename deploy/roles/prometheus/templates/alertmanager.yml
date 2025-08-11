@@ -1,0 +1,22 @@
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alertmanager@{{ hostname }}.local'
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: discord_webhook
+
+receivers:
+- name: 'discord_webhook'
+  webhook_configs:
+  - url: 'http://alertmanager-discord:9094'
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']

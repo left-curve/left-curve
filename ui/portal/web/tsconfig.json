@@ -6,7 +6,8 @@
       "~/paraglide/*": ["./.paraglide/*"],
       "~/constants": ["./constants.config.ts"],
       "~/mock": ["./mockData.ts"],
-      "~/store": ["./store.config.dev.ts"]
+      "~/store": ["./store.config.ts"],
+      "~/chartiq": ["./.chartiq.config.ts"]
     },
     "noEmit": true
   },

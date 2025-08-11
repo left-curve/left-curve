@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use grug_httpd::metrics::GaugeGuard;
 use {
     super::MAX_PAST_BLOCKS,
     async_graphql::{futures_util::stream::Stream, *},
@@ -9,7 +11,14 @@ use {
         ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
         RelationTrait, prelude::Expr, sea_query::extension::postgres::PgExpr,
     },
-    std::{collections::VecDeque, ops::RangeInclusive, str::FromStr},
+    std::{
+        collections::VecDeque,
+        ops::RangeInclusive,
+        sync::{
+            Arc,
+            atomic::{AtomicU64, Ordering},
+        },
+    , str::FromStr},
 };
 
 #[derive(Clone, InputObject)]
@@ -59,81 +68,83 @@ fn precompute_query(
         .order_by_asc(entity::events::Column::BlockHeight)
         .order_by_asc(entity::events::Column::EventIdx);
 
-    if let Some(filters) = filters_opt {
-        // 1) Build an OR across all filters
-        let mut or_filter_expr: Option<sea_orm::sea_query::SimpleExpr> = None;
+    let Some(filters) = filters_opt else {
+        return query;
+    };
 
-        for filter in filters {
-            // 2) For each filter, build an inner AND expression
-            let mut filter_expr: Option<sea_orm::sea_query::SimpleExpr> = None;
+    // 1) Build an OR across all filters
+    let mut or_filter_expr: Option<sea_orm::sea_query::SimpleExpr> = None;
 
-            // ---- type filter, if present ----
-            if let Some(r#type) = filter.r#type.clone() {
-                let expr = Expr::col(entity::events::Column::Type).eq(r#type);
-                filter_expr = Some(match filter_expr {
-                    Some(prev) => prev.and(expr),
-                    None => expr,
-                });
-            }
+    for filter in filters {
+        // 2) For each filter, build an inner AND expression
+        let mut filter_expr: Option<sea_orm::sea_query::SimpleExpr> = None;
 
-            // ---- data filter, if present ----
-            if let Some(data_checks) = filter.data.clone() {
-                for check in data_checks {
-                    // derive all values to match
-                    let to_match: Vec<serde_json::Value> = match check.value {
-                        ParsedCheckValue::Equal(v) => vec![v.clone()],
-                        ParsedCheckValue::Contains(vs) => vs.clone(),
-                    };
+        // ---- type filter, if present ----
+        if let Some(r#type) = filter.r#type.clone() {
+            let expr = Expr::col(entity::events::Column::Type).eq(r#type);
+            filter_expr = Some(match filter_expr {
+                Some(prev) => prev.and(expr),
+                None => expr,
+            });
+        }
 
-                    // OR across all to_match values for this check
-                    let mut check_expr: Option<sea_orm::sea_query::SimpleExpr> = None;
+        // ---- data filter, if present ----
+        if let Some(data_checks) = filter.data.clone() {
+            for check in data_checks {
+                // derive all values to match
+                let to_match: Vec<serde_json::Value> = match check.value {
+                    ParsedCheckValue::Equal(v) => vec![v.clone()],
+                    ParsedCheckValue::Contains(vs) => vs.clone(),
+                };
 
-                    for val in to_match {
-                        // build nested JSON { path[0]: { path[1]: ... val } }
-                        let mut json_obj = serde_json::Map::new();
-                        for (i, key) in check.path.iter().rev().enumerate() {
-                            if i == 0 {
-                                json_obj.insert(key.clone(), val.clone());
-                            } else {
-                                let mut tmp = serde_json::Map::new();
-                                tmp.insert(key.clone(), serde_json::Value::Object(json_obj));
-                                json_obj = tmp;
-                            }
+                // OR across all to_match values for this check
+                let mut check_expr: Option<sea_orm::sea_query::SimpleExpr> = None;
+
+                for val in to_match {
+                    // build nested JSON { path[0]: { path[1]: ... val } }
+                    let mut json_obj = serde_json::Map::new();
+                    for (i, key) in check.path.iter().rev().enumerate() {
+                        if i == 0 {
+                            json_obj.insert(key.clone(), val.clone());
+                        } else {
+                            let mut tmp = serde_json::Map::new();
+                            tmp.insert(key.clone(), serde_json::Value::Object(json_obj));
+                            json_obj = tmp;
                         }
-
-                        // the JSONB containment expression
-                        let expr = Expr::col(entity::events::Column::Data)
-                            .contains(serde_json::Value::Object(json_obj));
-
-                        check_expr = Some(match check_expr {
-                            Some(prev) => prev.or(expr),
-                            None => expr,
-                        });
                     }
 
-                    // combine this check’s result into filter_expr (with AND)
-                    if let Some(ce) = check_expr {
-                        filter_expr = Some(match filter_expr {
-                            Some(prev) => prev.and(ce),
-                            None => ce,
-                        });
-                    }
+                    // the JSONB containment expression
+                    let expr = Expr::col(entity::events::Column::Data)
+                        .contains(serde_json::Value::Object(json_obj));
+
+                    check_expr = Some(match check_expr {
+                        Some(prev) => prev.or(expr),
+                        None => expr,
+                    });
+                }
+
+                // combine this check’s result into filter_expr (with AND)
+                if let Some(ce) = check_expr {
+                    filter_expr = Some(match filter_expr {
+                        Some(prev) => prev.and(ce),
+                        None => ce,
+                    });
                 }
             }
-
-            // 3) Now combine each `filter_expr` into the `or_filter_expr` (with OR)
-            if let Some(fe) = filter_expr {
-                or_filter_expr = Some(match or_filter_expr {
-                    Some(prev) => prev.or(fe),
-                    None => fe,
-                });
-            }
         }
 
-        // 4) Finally apply the combined OR filter
-        if let Some(final_expr) = or_filter_expr {
-            query = query.filter(final_expr);
+        // 3) Now combine each `filter_expr` into the `or_filter_expr` (with OR)
+        if let Some(fe) = filter_expr {
+            or_filter_expr = Some(match or_filter_expr {
+                Some(prev) => prev.or(fe),
+                None => fe,
+            });
         }
+    }
+
+    // 4) Finally apply the combined OR filter
+    if let Some(final_expr) = or_filter_expr {
+        query = query.filter(final_expr);
     }
 
     query
@@ -235,6 +246,8 @@ impl EventSubscription {
             .map(|block| block.block_height)
             .unwrap_or_default();
 
+        let received_block_height = Arc::new(AtomicU64::new(latest_block_height as u64));
+
         let block_range = match since_block_height {
             Some(block_height) => block_height as i64..=latest_block_height,
             None => latest_block_height..=latest_block_height,
@@ -250,33 +263,135 @@ impl EventSubscription {
 
         let once_query = query.clone();
 
-        Ok(
-            once(async move { Self::get_events(&app_ctx.db, block_range, once_query).await })
-                .chain(
-                    app_ctx
-                        .pubsub
-                        .subscribe_block_minted()
-                        .await?
-                        .then(move |block_height| {
-                            let query = query.clone();
-                            async move {
-                                Self::get_events(
-                                    &app_ctx.db,
-                                    block_height as i64..=block_height as i64,
-                                    query,
-                                )
-                                .await
-                            }
-                        }),
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "events",
+            "subscription",
+        ));
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move { Self::get_events(&app_ctx.db, block_range, once_query).await }
+        })
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            let query = query.clone();
+
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            let received_height = received_block_height.clone();
+
+            async move {
+                let current_received = received_height.load(Ordering::Acquire);
+
+                if block_height < current_received {
+                    return vec![];
+                }
+
+                let events = Self::get_events(
+                    &app_ctx.db,
+                    (current_received + 1) as i64..=block_height as i64,
+                    query,
                 )
-                .filter_map(|events| async move {
-                    if events.is_empty() {
-                        None
-                    } else {
-                        Some(events)
-                    }
-                }),
-        )
+                .await;
+
+                received_height.store(block_height, Ordering::Release);
+
+                events
+            }
+        }))
+        .filter_map(|events| async move {
+            if events.is_empty() {
+                None
+            } else {
+                Some(events)
+            }
+        }))
+    }
+
+    async fn event_by_addresses<'a>(
+        &self,
+        ctx: &Context<'a>,
+        addresses: Vec<String>,
+        // This is used to get the older events in case of disconnection
+        since_block_height: Option<u64>,
+    ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+
+        for address in &addresses {
+            Addr::from_str(address)?;
+        }
+
+        let latest_block_height = entity::blocks::Entity::find()
+            .order_by_desc(entity::blocks::Column::BlockHeight)
+            .one(&app_ctx.db)
+            .await?
+            .map(|block| block.block_height)
+            .unwrap_or_default();
+
+        let block_range = match since_block_height {
+            Some(block_height) => block_height as i64..=latest_block_height,
+            None => latest_block_height..=latest_block_height,
+        };
+
+        if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
+            return Err(async_graphql::Error::new("`since_block_height` is too old"));
+        }
+
+        let query = precompute_query_by_addresses(addresses);
+
+        let once_query = query.clone();
+
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "events",
+            "subscription",
+        ));
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move { Self::get_events(&app_ctx.db, block_range, once_query).await }
+        })
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            let query = query.clone();
+
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            let received_height = received_block_height.clone();
+
+            async move {
+                let current_received = received_height.load(Ordering::Acquire);
+
+                if block_height < current_received {
+                    return vec![];
+                }
+
+                let events = Self::get_events(
+                    &app_ctx.db,
+                    (current_received + 1) as i64..=block_height as i64,
+                    query,
+                )
+                .await;
+
+                received_height.store(block_height, Ordering::Release);
+
+                events
+            }
+        }))
+        .filter_map(|events| async move {
+            if events.is_empty() {
+                None
+            } else {
+                Some(events)
+            }
+        }))
     }
 
     async fn event_by_addresses<'a>(

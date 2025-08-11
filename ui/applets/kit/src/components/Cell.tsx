@@ -38,22 +38,25 @@ type CellAssetProps = Prettify<
 >;
 
 const Asset: React.FC<CellAssetProps> = ({ asset, noImage, denom }) => {
-  const { coins } = useConfig();
+  const { getCoinInfo } = useConfig();
 
-  const coin = asset || coins[denom as keyof typeof coins];
+  const coin = asset || getCoinInfo(denom as string);
 
   if (!coin) return <div className="flex h-full items-center diatype-sm-medium ">-</div>;
 
   return (
     <div className="flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto">
-      {!noImage && (
-        <img
-          src={coin.logoURI}
-          alt={coin.symbol}
-          className="w-6 h-6 rounded-full object-cover"
-          loading="lazy"
-        />
-      )}
+      {!noImage &&
+        (coin.type === "lp" ? (
+          <PairAssets assets={[coin.base, coin.quote]} />
+        ) : (
+          <img
+            src={coin.logoURI}
+            alt={coin.symbol}
+            className="w-7 h-7 select-none drag-none"
+            loading="lazy"
+          />
+        ))}
       <p className="min-w-fit">{coin.symbol}</p>
     </div>
   );
@@ -310,8 +313,8 @@ type CellPairNameProps = {
 const PairName: React.FC<CellPairNameProps> = ({ pairId, type, className }) => {
   const { coins } = useConfig();
   const { baseDenom, quoteDenom } = pairId;
-  const baseCoin = coins[baseDenom];
-  const quoteCoin = coins[quoteDenom];
+  const baseCoin = coins.byDenom[baseDenom];
+  const quoteCoin = coins.byDenom[quoteDenom];
 
   return (
     <div

@@ -5,7 +5,7 @@
 log_level = "info"
 
 # Logging format: text|json.
-log_format = "text"
+log_format = "json"
 
 ################################################################################
 ###                            Grug Configuration                            ###
@@ -30,6 +30,17 @@ enabled = true
 
 # Whether to store block respnonses.
 keep_blocks = true
+
+[indexer.clickhouse]
+
+# URL to the Clickhouse database to be used by the indexer.
+url = "http://clickhouse:8123"
+
+user = "dango"
+
+password = ""
+
+database = "dango_prod"
 
 [indexer.database]
 

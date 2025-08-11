@@ -26,14 +26,14 @@ type SearchTokenHeaderProps = {
 
 const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId, isOpen }) => {
   const { coins } = useConfig();
-  const baseCoin = coins[pairId.baseDenom];
-  const quoteCoin = coins[pairId.quoteDenom];
+  const baseCoin = coins.byDenom[pairId.baseDenom];
+  const quoteCoin = coins.byDenom[pairId.quoteDenom];
 
   return (
     <div className="flex gap-2 items-center">
       <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="h-6 w-6 drag-none select-none" />
       <p className="diatype-lg-heavy text-secondary-700 min-w-fit">
-        {`${baseCoin.symbol}-${quoteCoin.symbol}`} LP
+        {`${baseCoin.symbol}-${quoteCoin.symbol}`}
       </p>
       <IconChevronDownFill
         className={twMerge(
@@ -79,7 +79,7 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
       <SearchTokenTable>
         <SearchTokenTable.Spot
           classNames={{ cell: "py-2" }}
-          data={Object.values(config?.pairs || {})}
+          data={Object.values(config?.pairs || {}).filter((c) => !c.baseDenom.includes("dango"))}
           searchText={searchText.toUpperCase()}
           onChangePairId={onChangePairId}
           pairId={pairId}

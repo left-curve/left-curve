@@ -37,6 +37,16 @@ pub struct TestOption {
     /// returns a list of incoming bridge transfers to be appended to the
     /// genesis state.
     pub bridge_ops: fn(&TestAccounts) -> Vec<BridgeOp>,
+    pub mocked_clickhouse: bool,
+}
+
+impl TestOption {
+    pub fn with_mocked_clickhouse(self) -> Self {
+        Self {
+            mocked_clickhouse: true,
+            ..Self::default()
+        }
+    }
 }
 
 impl Default for TestOption {
@@ -133,7 +143,9 @@ pub fn setup_test_naive_with_custom_genesis(
 ///
 /// Used for running tests that require an indexer.
 /// Synchronous wrapper for setup_test_with_indexer_async
-pub async fn setup_test_with_indexer() -> (
+pub async fn setup_test_with_indexer(
+    options: TestOption,
+) -> (
     TestSuiteWithIndexer,
     TestAccounts,
     Codes<ContractWrapper>,
@@ -141,6 +153,7 @@ pub async fn setup_test_with_indexer() -> (
     MockValidatorSets,
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
+    indexer_clickhouse::context::Context,
 ) {
     let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
@@ -154,6 +167,8 @@ pub async fn setup_test_with_indexer() -> (
     // Create a shared runtime handler that uses the same tokio runtime
     let shared_runtime_handle =
         indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
+    let shared_runtime_handle2 =
+        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
 
     let mut hooked_indexer = HookedIndexer::new();
 
@@ -165,12 +180,34 @@ pub async fn setup_test_with_indexer() -> (
         .expect("Failed to create separate context for dango indexer in test setup")
         .into();
 
-    let dango_indexer = dango_indexer_sql::indexer::Indexer {
-        runtime_handle: shared_runtime_handle,
-        context: dango_context.clone(),
-    };
+    let dango_indexer =
+        dango_indexer_sql::indexer::Indexer::new(shared_runtime_handle, dango_context.clone());
+
+    let mut clickhouse_context = indexer_clickhouse::context::Context::new(
+        format!(
+            "http://{}:{}",
+            std::env::var("CLICKHOUSE_HOST").unwrap_or("localhost".to_string()),
+            std::env::var("CLICKHOUSE_PORT").unwrap_or("8123".to_string())
+        ),
+        std::env::var("CLICKHOUSE_DATABASE").unwrap_or("grug_dev".to_string()),
+        std::env::var("CLICKHOUSE_USER").unwrap_or("default".to_string()),
+        std::env::var("CLICKHOUSE_PASSWORD").unwrap_or("".to_string()),
+    );
+
+    if !options.mocked_clickhouse {
+        clickhouse_context = clickhouse_context.with_test_database().await.unwrap();
+    } else {
+        clickhouse_context = clickhouse_context.with_mock();
+    }
+
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
+
+    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(
+        shared_runtime_handle2,
+        clickhouse_context.clone(),
+    );
+    hooked_indexer.add_indexer(clickhouse_indexer).unwrap();
 
     let db = MemDb::new();
     let vm = RustVm::new();
@@ -181,9 +218,11 @@ pub async fn setup_test_with_indexer() -> (
         ProposalPreparer::new_with_cache(),
         hooked_indexer,
         RustVm::genesis_codes(),
-        TestOption::default(),
+        options,
         GenesisOption::preset_test(),
     );
+
+    clickhouse_context.start_candle_cache().await.unwrap();
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
@@ -194,8 +233,11 @@ pub async fn setup_test_with_indexer() -> (
         indexer_path,
     );
 
-    let dango_httpd_context =
-        dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
+    let dango_httpd_context = dango_httpd::context::Context::new(
+        indexer_httpd_context.clone(),
+        clickhouse_context.clone(),
+        dango_context,
+    );
 
     (
         suite,
@@ -205,6 +247,7 @@ pub async fn setup_test_with_indexer() -> (
         validator_sets,
         indexer_httpd_context,
         dango_httpd_context,
+        clickhouse_context,
     )
 }
 
@@ -365,6 +408,7 @@ where
         vm,
         pp,
         indexer,
+        None, // TODO: support customizing upgrade handler in tests
         test_opt.chain_id,
         test_opt.block_time,
         test_opt.default_gas_limit,

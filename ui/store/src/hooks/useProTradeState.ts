@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount } from "./useAccount.js";
 import { useBalances } from "./useBalances.js";
@@ -17,6 +17,8 @@ import type { AnyCoin, WithAmount } from "../types/coin.js";
 export type UseProTradeStateParameters = {
   action: "buy" | "sell";
   onChangeAction: (action: "buy" | "sell") => void;
+  orderType: "limit" | "market";
+  onChangeOrderType: (order_type: "limit" | "market") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
   controllers: {
@@ -27,17 +29,27 @@ export type UseProTradeStateParameters = {
 };
 
 export function useProTradeState(parameters: UseProTradeStateParameters) {
-  const { controllers, pairId, onChangePairId, onChangeAction, action } = parameters;
+  const {
+    controllers,
+    pairId,
+    onChangePairId,
+    onChangeAction,
+    action: initialAction,
+    orderType,
+    onChangeOrderType,
+  } = parameters;
   const { inputs, setValue } = controllers;
   const { account } = useAccount();
   const { coins } = useConfig();
+  const queryClient = useQueryClient();
   const publicClient = usePublicClient();
   const { data: signingClient } = useSigningClient();
 
-  const { convertAmount, getPrice } = usePrices();
+  const { convertAmount, getPrice, isFetched } = usePrices();
 
-  const [sizeCoin, setSizeCoin] = useState(coins[pairId.quoteDenom]);
-  const [operation, setOperation] = useState<"market" | "limit">("market");
+  const [sizeCoin, setSizeCoin] = useState(coins.byDenom[pairId.quoteDenom]);
+  const [operation, setOperation] = useState(orderType);
+  const [action, setAction] = useState(initialAction);
 
   const { data: balances = {}, refetch: updateBalance } = useBalances({
     address: account?.address,
@@ -45,32 +57,38 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const changePairId = useCallback((pairId: PairId) => {
     onChangePairId(pairId);
-    setSizeCoin(coins[pairId.quoteDenom]);
-    setValue("size", "0");
+    setSizeCoin(coins.byDenom[pairId.quoteDenom]);
+    setValue("size", "");
   }, []);
 
   const changeAction = useCallback((action: "buy" | "sell") => {
-    onChangeAction(action);
-    setValue("size", "0");
+    setAction(action);
+    setValue("size", "");
   }, []);
 
   const changeSizeCoin = useCallback((denom: string) => {
-    setSizeCoin(coins[denom]);
-    setValue("size", "0");
+    setSizeCoin(coins.byDenom[denom]);
+    setValue("size", "");
   }, []);
 
   const baseCoin: WithAmount<AnyCoin> = useMemo(
     () =>
-      Object.assign({}, coins[pairId.baseDenom], {
-        amount: formatUnits(balances[pairId.baseDenom] || "0", coins[pairId.baseDenom].decimals),
+      Object.assign({}, coins.byDenom[pairId.baseDenom], {
+        amount: formatUnits(
+          balances[pairId.baseDenom] || "0",
+          coins.byDenom[pairId.baseDenom].decimals,
+        ),
       }),
     [balances, coins, pairId],
   );
 
   const quoteCoin: WithAmount<AnyCoin> = useMemo(
     () =>
-      Object.assign({}, coins[pairId.quoteDenom], {
-        amount: formatUnits(balances[pairId.quoteDenom] || "0", coins[pairId.quoteDenom].decimals),
+      Object.assign({}, coins.byDenom[pairId.quoteDenom], {
+        amount: formatUnits(
+          balances[pairId.quoteDenom] || "0",
+          coins.byDenom[pairId.quoteDenom].decimals,
+        ),
       }),
     [balances, coins, pairId],
   );
@@ -138,7 +156,15 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
-  }, []);
+  }, [isFetched, pairId]);
+
+  useEffect(() => {
+    onChangeOrderType(operation);
+  }, [operation]);
+
+  useEffect(() => {
+    onChangeAction(action);
+  }, [action]);
 
   const submission = useSubmitTx({
     mutation: {
@@ -202,10 +228,12 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
           ...order,
           funds: { [availableCoin.denom]: amount },
         });
-
-        await orders.refetch();
-        await updateBalance();
+      },
+      onSuccess: () => {
+        orders.refetch();
+        updateBalance();
         controllers.reset();
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
     },
   });

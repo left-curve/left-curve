@@ -1,0 +1,67 @@
+groups:
+- name: instance-alerts
+  rules:
+  - alert: InstanceDown
+    expr: up == 0
+    for: 2m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Instance {{ $labels.instance }} down"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 2 minutes."
+
+  - alert: HighCpuLoad
+    expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU load on instance {{ $labels.instance }}"
+      description: "{{ $labels.instance }} has CPU load above 80% for more than 5 minutes."
+
+  - alert: HighMemoryUsage
+    expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 95
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on instance {{ $labels.instance }}"
+      description: "{{ $labels.instance }} has memory usage above 85% for more than 5 minutes."
+
+  - alert: DiskSpaceLow
+    expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes{fstype!="tmpfs"})) * 100 > 90
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Disk space low on instance {{ $labels.instance }}"
+      description: "{{ $labels.instance }} has less than 10% disk space available on {{ $labels.mountpoint }}."
+
+- name: application-alerts
+  rules:
+  - alert: DangoServiceDown
+    expr: up{job="dango"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Dango service is down on {{ $labels.instance }}"
+      description: "Dango service has been down for more than 1 minute."
+
+  - alert: CometBFTServiceDown
+    expr: up{job="cometbft"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "CometBFT service is down on {{ $labels.instance }}"
+      description: "CometBFT service has been down for more than 1 minute."
+
+  - alert: HighErrorRate
+    expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High error rate detected"
+      description: "Error rate is above 10% for more than 5 minutes."

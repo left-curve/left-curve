@@ -1,22 +1,52 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { paraglideRspackPlugin } from "@inlang/paraglide-js";
+
 import { defineConfig } from "@rsbuild/core";
 import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
+
+import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
+
+import { devnet, local, testnet } from "@left-curve/dango";
+
+import type { Chain } from "@left-curve/dango/types";
+import type { Rspack } from "@rsbuild/core";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { publicVars } = loadEnv();
 
-const storePath = {
-  local: path.resolve(__dirname, "./store.config.local.ts"),
-  dev: path.resolve(__dirname, "./store.config.dev.ts"),
-  test: path.resolve(__dirname, "./store.config.testnet.ts"),
-  prod: path.resolve(__dirname, "./store.config.prod.ts"),
-};
+const environment = process.env.CONFIG_ENVIRONMENT || "local";
+
+const chain = {
+  local: local,
+  dev: devnet,
+  test: testnet,
+}[environment] as Chain;
+
+const urls =
+  environment === "local"
+    ? {
+        faucetUrl: "http://localhost:8082/mint",
+        questUrl: "http://localhost:8081/check_username",
+        upUrl: "http://localhost:8080/up",
+      }
+    : {
+        faucetUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/faucet")}/mint`,
+        questUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/quests")}/check_username`,
+        upUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/up")}`,
+      };
+
+const envConfig = `window.dango = ${JSON.stringify(
+  {
+    chain,
+    urls,
+  },
+  null,
+  2,
+)};`;
 
 export default defineConfig({
   resolve: {
@@ -26,7 +56,8 @@ export default defineConfig({
       "~/paraglide": path.resolve(__dirname, "./.paraglide"),
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
-      "~/store": storePath[(process.env.CONFIG_ENVIRONMENT || "local") as keyof typeof storePath],
+      "~/store": path.resolve(__dirname, "./store.config.ts"),
+      "~/chartiq": path.resolve(__dirname, "./chartiq.config.ts"),
       "~": path.resolve(__dirname, "./src"),
     },
   },
@@ -64,9 +95,10 @@ export default defineConfig({
   },
   plugins: [pluginReact()],
   tools: {
-    rspack: {
-      devtool: "source-map",
-      plugins: [
+    rspack: (config, { rspack }) => {
+      config.plugins ??= [];
+
+      config.plugins.push(
         sentryWebpackPlugin({
           org: process.env.SENTRY_ORG,
           project: process.env.SENTRY_PROJECT,
@@ -89,7 +121,25 @@ export default defineConfig({
           routesDirectory: "./src/pages",
           generatedRouteTree: "./src/app.pages.ts",
         }),
-      ],
+        {
+          apply(compiler: Rspack.Compiler) {
+            compiler.hooks.thisCompilation.tap("GenerateConfigPlugin", (compilation) => {
+              compilation.hooks.processAssets.tap(
+                {
+                  name: "GenerateConfigPlugin",
+                  stage: rspack.Compilation.PROCESS_ASSETS_STAGE_ADDITIONAL,
+                },
+                (assets) => {
+                  assets["static/js/config.js"] = new rspack.sources.RawSource(envConfig);
+                },
+              );
+            });
+          },
+        },
+      );
+
+      config.devtool = "source-map";
+      return config;
     },
   },
 });

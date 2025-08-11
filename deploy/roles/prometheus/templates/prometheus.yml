@@ -1,0 +1,96 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 1m
+
+rule_files:
+  - "alert-rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+remote_write:
+  - url: http://victoriametrics:8428/api/v1/write
+    queue_config:
+      max_samples_per_send: 10000
+      batch_send_deadline: 5s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:{{ grafana_port | default(3000) }}']
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+        - 'ovh1:9100'
+        - 'ovh2:9100'
+        - 'node-exporter:9100' # self
+        - 'ovh4:9100'
+        - 'ovh5:9100'
+        - 'ovh6:9100'
+        - 'ovh7:9100'
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: 'node-exporter:9100'
+      target_label: instance
+      replacement: 'ovh3:9100'
+
+  - job_name: 'promtail'
+    static_configs:
+      - targets: ['ovh1:9080']
+      - targets: ['ovh2:9080']
+      - targets: ['promtail:9080']
+      - targets: ['ovh4:9080']
+      - targets: ['ovh5:9080']
+      - targets: ['ovh6:9080']
+      - targets: ['ovh7:9080']
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: 'promtail:9080'
+      target_label: instance
+      replacement: 'ovh3:9080'
+
+  - job_name: 'clickhouse'
+    static_configs:
+      - targets: ['ovh1:9126']
+      - targets: ['ovh2:9126']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['ovh1:9187']
+      - targets: ['ovh2:9187']
+
+  - job_name: 'dango'
+    static_configs:
+      - targets: ['ovh1:9191'] # ovh1
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'devnet'
+      - targets: ['ovh2:9191'] # ovh2
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'testnet'
+
+  - job_name: 'cometbft'
+    static_configs:
+      - targets: ['ovh1:26660'] # ovh1
+        labels:
+          environment: 'production'
+          network: 'devnet'
+      - targets: ['ovh2:26660'] # ovh2
+        labels:
+          environment: 'production'
+          network: 'testnet'

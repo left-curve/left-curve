@@ -68,6 +68,7 @@ impl StartCmd {
             NaiveProposalPreparer,
             NullIndexer,
             cfg.grug.query_gas_limit,
+            None, // currently there's no chain upgrade
         );
 
         let sql_indexer = indexer_sql::IndexerBuilder::default()
@@ -92,6 +93,7 @@ impl StartCmd {
                 // Indexer, HTTP server, and metrics server all enabled
                 let (hooked_indexer, _, dango_httpd_context) = self
                     .setup_indexer_stack(
+                        &cfg,
                         sql_indexer,
                         indexer_context,
                         indexer_path,
@@ -110,6 +112,7 @@ impl StartCmd {
                 // Indexer and HTTP server enabled, metrics disabled
                 let (hooked_indexer, _, dango_httpd_context) = self
                     .setup_indexer_stack(
+                        &cfg,
                         sql_indexer,
                         indexer_context,
                         indexer_path,
@@ -127,6 +130,7 @@ impl StartCmd {
                 // Indexer and metrics enabled, HTTP server disabled
                 let (hooked_indexer, ..) = self
                     .setup_indexer_stack(
+                        &cfg,
                         sql_indexer,
                         indexer_context,
                         indexer_path,
@@ -144,6 +148,7 @@ impl StartCmd {
                 // Only indexer enabled
                 let (hooked_indexer, ..) = self
                     .setup_indexer_stack(
+                        &cfg,
                         sql_indexer,
                         indexer_context,
                         indexer_path,
@@ -185,7 +190,8 @@ impl StartCmd {
     /// Setup the hooked indexer with both SQL and Dango indexers, and prepare contexts for HTTP servers
     async fn setup_indexer_stack(
         &self,
-        sql_indexer: indexer_sql::NonBlockingIndexer,
+        cfg: &Config,
+        sql_indexer: indexer_sql::Indexer,
         indexer_context: indexer_sql::context::Context,
         indexer_path: IndexerPath,
         app: Arc<App<DiskDbLite, HybridVm, NaiveProposalPreparer, NullIndexer>>,
@@ -205,15 +211,26 @@ impl StartCmd {
             .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {}", e))?
             .into();
 
-        let dango_indexer = dango_indexer_sql::indexer::Indexer {
-            runtime_handle: indexer_sql::indexer::RuntimeHandler::from_handle(
-                sql_indexer.handle.handle().clone(),
-            ),
-            context: dango_context.clone(),
-        };
+        let dango_indexer = dango_indexer_sql::indexer::Indexer::new(
+            indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
+            dango_context.clone(),
+        );
+
+        let clickhouse_context = indexer_clickhouse::context::Context::new(
+            cfg.indexer.clickhouse.url.clone(),
+            cfg.indexer.clickhouse.database.clone(),
+            cfg.indexer.clickhouse.user.clone(),
+            cfg.indexer.clickhouse.password.clone(),
+        );
+
+        let clickhouse_indexer = indexer_clickhouse::Indexer::new(
+            indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
+            clickhouse_context.clone(),
+        );
 
         hooked_indexer.add_indexer(sql_indexer)?;
         hooked_indexer.add_indexer(dango_indexer)?;
+        hooked_indexer.add_indexer(clickhouse_indexer)?;
 
         let indexer_httpd_context = indexer_httpd::context::Context::new(
             indexer_context,
@@ -222,8 +239,13 @@ impl StartCmd {
             indexer_path,
         );
 
-        let dango_httpd_context =
-            dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
+        let dango_httpd_context = dango_httpd::context::Context::new(
+            indexer_httpd_context.clone(),
+            clickhouse_context.clone(),
+            dango_context,
+        );
+
+        hooked_indexer.start(&app.db.state_storage(None)?)?;
 
         Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }
@@ -261,6 +283,11 @@ impl StartCmd {
             cfg.port
         );
 
+        dango_httpd_context
+            .indexer_clickhouse_context
+            .start_candle_cache()
+            .await?;
+
         dango_httpd::server::run_server(
             &cfg.ip,
             cfg.port,
@@ -293,21 +320,18 @@ impl StartCmd {
         tendermint_cfg: TendermintConfig,
         db: DiskDbLite,
         vm: HybridVm,
-        mut indexer: ID,
+        indexer: ID,
     ) -> anyhow::Result<()>
     where
         ID: Indexer + Send + 'static,
     {
-        indexer
-            .start(&db.state_storage(None)?)
-            .expect("Can't start indexer");
-
         let app = App::new(
             db,
             vm,
             ProposalPreparer::new(),
             indexer,
             grug_cfg.query_gas_limit,
+            None, // currently there's no chain upgrade
         );
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);

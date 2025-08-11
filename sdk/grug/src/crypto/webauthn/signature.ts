@@ -67,7 +67,7 @@ export async function requestWebAuthnSignature(
         clientDataJSON: new Uint8Array(response.clientDataJSON),
       },
     };
-  } catch (error) {
+  } catch (_error) {
     throw new Error("credential request failed.");
   }
 }

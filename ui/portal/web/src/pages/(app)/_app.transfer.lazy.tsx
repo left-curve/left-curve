@@ -68,7 +68,7 @@ function TransferApplet() {
 
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
 
-  const selectedCoin = coins[selectedDenom];
+  const selectedCoin = coins.byDenom[selectedDenom];
 
   const humanAmount = formatUnits(balances[selectedDenom] || 0, selectedCoin.decimals);
 
@@ -124,7 +124,7 @@ function TransferApplet() {
       onSuccess: () => {
         reset();
         refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
+        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
     },
   });
@@ -177,7 +177,7 @@ function TransferApplet() {
                   startText="right"
                   startContent={
                     <CoinSelector
-                      coins={Object.values(coins)}
+                      coins={Object.values(coins.byDenom)}
                       value={selectedDenom}
                       isDisabled={isPending}
                       onChange={(k) => [setSelectedDenom(k)]}

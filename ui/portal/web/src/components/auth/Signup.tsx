@@ -40,7 +40,6 @@ import { AuthOptions } from "./AuthOptions";
 import { AccountType } from "@left-curve/dango/types";
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
-import { FAUCET_URI } from "~/store";
 
 import type { Address, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";
@@ -66,7 +65,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                 <img
                   src="./favicon.svg"
                   alt="dango-logo"
-                  className="h-12 rounded-full shadow-btn-shadow-gradient"
+                  className="h-12 rounded-full shadow-account-card"
                 />
                 {activeStep !== 2 ? (
                   <div className="flex flex-col gap-3 items-center justify-center text-center w-full">
@@ -306,7 +305,7 @@ const Username: React.FC = () => {
         });
         if (!("standard" in credential)) throw new Error("error: signed with wrong credential");
 
-        const response = await fetch(`${FAUCET_URI}/${address}`);
+        const response = await fetch(`${window.dango.urls.faucetUrl}/${address}`);
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         await registerUser(client, {

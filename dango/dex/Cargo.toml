@@ -9,13 +9,11 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [features]
 # If enabled, Wasm exports won't be created. This allows this contract to be
 # imported into other contracts as a library.
 library = []
+tracing = ["dep:tracing"]
 
 [dependencies]
 anyhow                = { workspace = true }
@@ -23,6 +21,7 @@ dango-account-factory = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }
 dango-types           = { workspace = true }
 grug                  = { workspace = true }
+tracing               = { workspace = true, optional = true }
 
 [dev-dependencies]
 test-case = { workspace = true }

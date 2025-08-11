@@ -1,11 +1,13 @@
 use {
     async_graphql::{
-        Response, ServerResult, Value,
+        Request, Response, ServerResult, Value,
         extensions::{
-            Extension, ExtensionContext, ExtensionFactory, NextExecute, NextResolve, ResolveInfo,
+            Extension, ExtensionContext, ExtensionFactory, NextExecute, NextPrepareRequest,
+            NextResolve, ResolveInfo,
         },
+        parser::types::{DocumentOperations, OperationType},
     },
-    metrics::{counter, describe_counter, describe_histogram, histogram},
+    metrics::{counter, describe_counter, describe_gauge, describe_histogram, histogram},
     std::{sync::Arc, time::Instant},
 };
 
@@ -17,8 +19,41 @@ impl ExtensionFactory for MetricsExtension {
     }
 }
 
+fn pick_operation_type(ops: &DocumentOperations, op_name: Option<&str>) -> Option<OperationType> {
+    match ops {
+        DocumentOperations::Single(def) => Some(def.node.ty), // only one
+        DocumentOperations::Multiple(map) if !map.is_empty() => {
+            if let Some(name) = op_name {
+                if let Some(def) = map.get(name) {
+                    return Some(def.node.ty);
+                }
+            }
+            map.values().next().map(|def| def.node.ty)
+        },
+        _ => None,
+    }
+}
+
 #[async_trait::async_trait]
 impl Extension for MetricsExtension {
+    async fn prepare_request(
+        &self,
+        ctx: &ExtensionContext<'_>,
+        mut request: Request,
+        next: NextPrepareRequest<'_>,
+    ) -> ServerResult<Request> {
+        // clone the Option<String> so we don’t borrow `request` immutably
+        let op_name_owned = request.operation_name.clone();
+
+        if let Ok(doc) = request.parsed_query() {
+            if let Some(op_type) = pick_operation_type(&doc.operations, op_name_owned.as_deref()) {
+                request = request.data(op_type);
+            }
+        }
+
+        next.run(ctx, request).await
+    }
+
     /// Called at the beginning of query execution
     async fn execute(
         &self,
@@ -46,16 +81,25 @@ impl Extension for MetricsExtension {
 
         let operation = operation_name.unwrap_or("anonymous");
 
+        let op_type_str = match ctx.data::<OperationType>() {
+            Ok(OperationType::Query) => "query",
+            Ok(OperationType::Mutation) => "mutation",
+            Ok(OperationType::Subscription) => "subscription",
+            Err(_) => "unknown",
+        };
+
         // Record metrics
         counter!(
             "graphql.requests.total",
-            "operation_name" => operation.to_string()
+            "operation_name" => operation.to_string(),
+            "operation_type" => op_type_str
         )
         .increment(1);
 
         histogram!(
             "graphql.request.duration",
-            "operation_name" => operation.to_string()
+            "operation_name" => operation.to_string(),
+            "operation_type" => op_type_str
         )
         .record(duration);
 
@@ -64,7 +108,8 @@ impl Extension for MetricsExtension {
             counter!(
                 "graphql.requests.errors",
                 "operation_name" => operation.to_string(),
-                "error_count" => res.errors.len().to_string()
+                "error_count" => res.errors.len().to_string(),
+                "operation_type" => op_type_str
             )
             .increment(1);
         }
@@ -131,5 +176,9 @@ pub fn init_graphql_metrics() {
     describe_histogram!(
         "graphql.field.duration",
         "GraphQL field resolution duration in seconds"
+    );
+    describe_gauge!(
+        "graphql.subscriptions.active",
+        "Number of active GraphQL subscriptions"
     );
 }
