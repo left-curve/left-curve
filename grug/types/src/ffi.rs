@@ -1,5 +1,3 @@
-use std::fmt::Debug;
-
 use crate::Event;
 
 /// Result of which the error is a string.
@@ -28,9 +26,9 @@ pub trait GenericResultExt<T> {
 
 impl<T, E> GenericResultExt<T> for Result<T, E>
 where
-    E: Debug,
+    E: ToString,
 {
     fn into_generic_result(self) -> GenericResult<T> {
-        self.map_err(|e| format!("{e:?}"))
+        self.map_err(|e| e.to_string())
     }
 }
