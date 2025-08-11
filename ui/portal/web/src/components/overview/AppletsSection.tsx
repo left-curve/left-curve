@@ -10,10 +10,10 @@ export function AppletsSection() {
   const { setSearchBarVisibility } = useApp();
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,_minmax(80px,_1fr))] md:flex md:flex-wrap gap-4 md:gap-[2.625rem] w-full md:min-h-fit md:justify-center">
+    <div className="grid grid-cols-[repeat(auto-fill,_minmax(80px,_1fr))] md:flex md:flex-wrap gap-4 md:gap-2 w-full md:min-h-fit md:justify-center">
       {Object.values(favApplets).map((applet) => (
         <div
-          className="w-[80px] h-auto flex items-start justify-center"
+          className="w-[7.25rem] h-auto flex items-start justify-center"
           key={`applets.section.${applet.title}}`}
         >
           <div className="flex flex-col items-center gap-2">
