@@ -1,7 +1,7 @@
 use {
     crate::{
         context::Context,
-        entities::pair_price::PairPrice,
+        entities::{candle_query::MAX_ITEMS, pair_price::PairPrice},
         error::{IndexerError, Result},
         indexer::Indexer,
     },
@@ -231,6 +231,7 @@ impl Indexer {
             last_prices.extend(pair_prices);
             let mut candle_cache = context.candle_cache.write().await;
             candle_cache.add_pair_prices(block.info.height, last_prices);
+            candle_cache.compact_keep_n(MAX_ITEMS);
             drop(candle_cache);
         }
 
@@ -242,42 +243,6 @@ impl Indexer {
             #[cfg(feature = "tracing")]
             tracing::error!("Failed to end inserter for pair prices: {_err}");
         })?;
-
-        // // NOTE: we need to check if the materialized view is up to date before we keep going
-        // // since the notifications are sent based on the materialized view
-        // for (_, pair_price) in pair_prices.into_iter() {
-        //     for interval in CandleInterval::iter() {
-        //         loop {
-        //             let max_block_height = CandleQueryBuilder::new(
-        //                 interval,
-        //                 pair_price.base_denom.clone(),
-        //                 pair_price.quote_denom.clone(),
-        //             )
-        //             .get_max_block_height(clickhouse_client)
-        //             .await?;
-
-        //             if max_block_height >= block.info.height {
-        //                 break;
-        //             }
-
-        //             #[cfg(feature = "tracing")]
-        //             tracing::debug!(
-        //                 base_denom = pair_price.base_denom,
-        //                 quote_denom = pair_price.quote_denom,
-        //                 mv_block_height = max_block_height,
-        //                 block_height = block.info.height,
-        //                 "Materialized view for {interval} is not up to date, waiting for it to be updated",
-        //             );
-
-        //             #[cfg(feature = "metrics")]
-        //             metrics::counter!("indexer.clickhouse.mv_wait_cycles.total").increment(1);
-
-        //             sleep(Duration::from_millis(10)).await;
-        //         }
-        //     }
-        // }
-
-        PairPrice::cleanup_old_synthetic_data(clickhouse_client, block.info.height).await?;
 
         Ok(())
     }

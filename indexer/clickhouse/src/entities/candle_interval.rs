@@ -42,19 +42,19 @@ impl CandleInterval {
     pub fn interval_start(&self, ts: DateTime<Utc>) -> DateTime<Utc> {
         match self {
             CandleInterval::OneWeek => {
-                // Week starts on Monday
-                let days_since_monday = match ts.weekday() {
-                    Weekday::Mon => 0,
-                    Weekday::Tue => 1,
-                    Weekday::Wed => 2,
-                    Weekday::Thu => 3,
-                    Weekday::Fri => 4,
-                    Weekday::Sat => 5,
-                    Weekday::Sun => 6,
+                // Week starts on Sunday for Clickhouse and I must align the timestamp accordingly
+                let days_since_sunday = match ts.weekday() {
+                    Weekday::Sun => 0,
+                    Weekday::Mon => 1,
+                    Weekday::Tue => 2,
+                    Weekday::Wed => 3,
+                    Weekday::Thu => 4,
+                    Weekday::Fri => 5,
+                    Weekday::Sat => 6,
                 };
 
                 let start_of_day = ts.date_naive().and_hms_opt(0, 0, 0).unwrap();
-                let monday = start_of_day - Duration::days(days_since_monday);
+                let monday = start_of_day - Duration::days(days_since_sunday);
                 Utc.from_utc_datetime(&monday)
             },
             _ => {

@@ -1,5 +1,8 @@
+use std::time::Duration;
+
 #[cfg(feature = "metrics")]
 use metrics::{counter, gauge, histogram};
+use tokio::time::sleep;
 
 use {
     crate::{
@@ -39,10 +42,10 @@ impl CandleCacheKey {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct CandleCache {
-    candles: HashMap<CandleCacheKey, Vec<Candle>>,
-    pair_prices: HashMap<u64, HashMap<PairId, PairPrice>>,
+    pub candles: HashMap<CandleCacheKey, Vec<Candle>>,
+    pub pair_prices: HashMap<u64, HashMap<PairId, PairPrice>>,
 }
 
 impl CandleCache {
@@ -187,6 +190,29 @@ impl CandleCache {
         pairs: &[PairId],
         clickhouse_client: &clickhouse::Client,
     ) -> Result<()> {
+        let last_prices = PairPrice::latest_prices(clickhouse_client, MAX_ITEMS)
+            .await?
+            .into_iter()
+            .map(|price| Ok(((&price).try_into()?, price)))
+            .filter_map(Result::ok)
+            .fold(
+                HashMap::<u64, HashMap<PairId, PairPrice>>::new(),
+                |mut acc, (pair_id, price)| {
+                    acc.entry(price.block_height)
+                        .or_default()
+                        .insert(pair_id, price);
+                    acc
+                },
+            );
+
+        let Some(highest_block_height) = last_prices.keys().copied().max() else {
+            #[cfg(feature = "tracing")]
+            tracing::warn!("No last prices found, skipping candle preload");
+            return Ok(());
+        };
+
+        self.pair_prices.extend(last_prices);
+
         // Create all fetch tasks
         let fetch_tasks = pairs
             .iter()
@@ -199,15 +225,36 @@ impl CandleCache {
                     );
 
                     async move {
-                        let query_builder = CandleQueryBuilder::new(
-                            key.interval,
-                            key.base_denom.clone(),
-                            key.quote_denom.clone(),
-                        )
-                        .with_limit(MAX_ITEMS);
+                        let mut candles;
+                        loop {
+                            let query_builder = CandleQueryBuilder::new(
+                                key.interval,
+                                key.base_denom.clone(),
+                                key.quote_denom.clone(),
+                            )
+                            .with_limit(MAX_ITEMS);
 
-                        let mut candles = query_builder.fetch_all(clickhouse_client).await?.candles;
-                        candles.reverse(); // Most recent first -> most recent last
+                            candles = query_builder.fetch_all(clickhouse_client).await?.candles;
+
+                            if let Some(candle) = candles.first() {
+                                if candle.block_height < highest_block_height {
+                                    #[cfg(feature = "tracing")]
+                                    tracing::warn!(
+                                        %candle.block_height,
+                                        %highest_block_height,
+                                        "Candle is older than latest price");
+
+                                    // `candle` are built async in clickhouse, and this means they're not synced yet
+                                    sleep(Duration::from_millis(100)).await;
+
+                                    continue;
+                                }
+                            }
+
+                            candles.reverse(); // Most recent first -> most recent last
+
+                            break;
+                        }
 
                         Ok::<_, crate::error::IndexerError>((key, candles))
                     }
@@ -230,23 +277,6 @@ impl CandleCache {
                 },
             }
         }
-
-        let last_prices = PairPrice::last_prices(clickhouse_client)
-            .await?
-            .into_iter()
-            .map(|price| Ok(((&price).try_into()?, price)))
-            .filter_map(Result::ok)
-            .fold(
-                HashMap::<u64, HashMap<PairId, PairPrice>>::new(),
-                |mut acc, (pair_id, price)| {
-                    acc.entry(price.block_height)
-                        .or_default()
-                        .insert(pair_id, price);
-                    acc
-                },
-            );
-
-        self.pair_prices.extend(last_prices);
 
         self.update_metrics();
 
