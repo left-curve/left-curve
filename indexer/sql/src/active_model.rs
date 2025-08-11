@@ -4,8 +4,8 @@ use {
         Addr, Block, BlockOutcome, CommitmentStatus, EventId, Extractable, FlatCategory,
         FlatEventInfo, FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
     },
-    sea_orm::{Set, prelude::*, sqlx::types::chrono::NaiveDateTime},
-    std::collections::{HashMap, HashSet},
+    sea_orm::{Set, TryIntoModel, prelude::*, sqlx::types::chrono::NaiveDateTime},
+    std::{collections::HashMap, sync::Arc},
 };
 
 #[derive(Debug, Default)]
@@ -14,7 +14,7 @@ pub struct Models {
     pub transactions: Vec<entity::transactions::ActiveModel>,
     pub messages: Vec<entity::messages::ActiveModel>,
     pub events: Vec<entity::events::ActiveModel>,
-    pub event_addresses: Vec<entity::event_addresses::ActiveModel>,
+    pub addresses_to_save: HashMap<Addr, Vec<Arc<entity::events::Model>>>,
 }
 
 impl Models {
@@ -25,7 +25,8 @@ impl Models {
 
         let mut transactions = vec![];
         let mut messages = vec![];
-        let mut events = FlatEventsModels::default();
+        let mut events = vec![];
+        let mut addresses_to_save: HashMap<Addr, Vec<Arc<entity::events::Model>>> = HashMap::new();
 
         // 1. Storing cron events
         {
@@ -34,6 +35,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
+                    &mut addresses_to_save,
                     &mut event_id,
                     cron_outcome.cron_event.clone(),
                     None,
@@ -80,6 +82,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
+                    &mut addresses_to_save,
                     &mut event_id,
                     tx_outcome.events.withhold.clone(),
                     Some(transaction_id),
@@ -91,6 +94,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
+                    &mut addresses_to_save,
                     &mut event_id,
                     tx_outcome.events.authenticate.clone(),
                     Some(transaction_id),
@@ -140,6 +144,7 @@ impl Models {
                 {
                     let active_models = flatten_events(
                         block,
+                        &mut addresses_to_save,
                         &mut event_id,
                         tx_outcome.events.msgs_and_backrun.clone(),
                         Some(transaction_id),
@@ -151,6 +156,7 @@ impl Models {
 
                     let active_models = flatten_events(
                         block,
+                        &mut addresses_to_save,
                         &mut event_id,
                         tx_outcome.events.finalize.clone(),
                         Some(transaction_id),
@@ -174,22 +180,23 @@ impl Models {
 
         Ok(Self {
             block,
-            events: events.events,
-            event_addresses: events.event_addresses,
+            events,
             transactions,
             messages,
+            addresses_to_save,
         })
     }
 }
 
 fn flatten_events<T>(
     block: &Block,
+    addresses_to_save: &mut HashMap<Addr, Vec<Arc<entity::events::Model>>>,
     next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
     transaction_id: Option<uuid::Uuid>,
     message_ids: &[uuid::Uuid],
     created_at: NaiveDateTime,
-) -> Result<FlatEventsModels>
+) -> Result<Vec<entity::events::ActiveModel>>
 where
     T: FlattenStatus,
 {
@@ -197,7 +204,6 @@ where
     next_id.increment_idx(&flatten_events);
 
     let mut active_models = vec![];
-    let mut active_event_addresses = vec![];
     // Store previous events ids to link current event to optional parent uuid
     let mut events_ids = HashMap::new();
 
@@ -232,31 +238,19 @@ where
             created_at,
         )?;
 
-        active_models.push(db_event);
+        active_models.push(db_event.clone());
 
-        let models =
-            build_event_address_active_model(db_event_id, block.info.height as i64, addresses);
+        let db_event = Arc::new(db_event.try_into_model()?);
 
-        active_event_addresses.extend(models);
+        for addr in &addresses {
+            addresses_to_save
+                .entry(*addr)
+                .or_default()
+                .push(db_event.clone());
+        }
     }
 
-    Ok(FlatEventsModels {
-        events: active_models,
-        event_addresses: active_event_addresses,
-    })
-}
-
-#[derive(Default)]
-struct FlatEventsModels {
-    pub events: Vec<entity::events::ActiveModel>,
-    pub event_addresses: Vec<entity::event_addresses::ActiveModel>,
-}
-
-impl FlatEventsModels {
-    pub fn extend(&mut self, other: Self) {
-        self.events.extend(other.events);
-        self.event_addresses.extend(other.event_addresses);
-    }
+    Ok(active_models)
 }
 
 fn build_event_active_model(
@@ -309,20 +303,4 @@ fn build_event_active_model(
         event_idx: Set(index_event.id.event_index as i32),
         block_height: Set(block.info.height.try_into()?),
     })
-}
-
-fn build_event_address_active_model(
-    event_id: uuid::Uuid,
-    block_height: i64,
-    addresses: HashSet<Addr>,
-) -> Vec<entity::event_addresses::ActiveModel> {
-    addresses
-        .into_iter()
-        .map(|address| entity::event_addresses::ActiveModel {
-            id: Set(uuid::Uuid::new_v4()),
-            event_id: Set(event_id),
-            address: Set(address.to_string()),
-            block_height: Set(block_height),
-        })
-        .collect()
 }

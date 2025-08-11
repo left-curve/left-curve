@@ -112,7 +112,7 @@ export function graphql(
         query: `
         subscription {
           eventByAddresses(
-            addresses: ["0x63707b5f3fa0c9af30c84077fd3cb78d8e64411f"]
+            addresses: ["0x0c8072e72a8c485399fbbe0f883449e9007dc706"]
           ) {
             data
             type

@@ -4,15 +4,17 @@ use {
     super::MAX_PAST_BLOCKS,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
+    grug_types::Addr,
     indexer_sql::entity,
     itertools::Itertools,
     sea_orm::{
-        ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect,
-        RelationTrait, prelude::Expr, sea_query::extension::postgres::PgExpr,
+        ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, prelude::Expr,
+        sea_query::extension::postgres::PgExpr,
     },
     std::{
         collections::VecDeque,
         ops::RangeInclusive,
+        str::FromStr,
         sync::{
             Arc,
             atomic::{AtomicU64, Ordering},
@@ -195,20 +197,6 @@ fn parse_filter(filter: Vec<Filter>) -> Result<Vec<ParsedFilter>, async_graphql:
         .collect::<Result<Vec<_>, async_graphql::Error>>()
 }
 
-fn precompute_query_by_addresses(
-    addresses: Vec<String>,
-) -> sea_orm::Select<entity::events::Entity> {
-    entity::events::Entity::find()
-        .distinct_on(vec![entity::events::Column::Id])
-        .order_by_asc(entity::events::Column::Id)
-        .order_by_asc(entity::events::Column::BlockHeight)
-        .join(
-            sea_orm::JoinType::Join,
-            entity::events::Relation::EventAddresses.def(),
-        )
-        .filter(entity::event_addresses::Column::Address.is_in(addresses))
-}
-
 impl EventSubscription {
     async fn _events<'a>(
         &self,
@@ -237,8 +225,6 @@ impl EventSubscription {
             return Err(async_graphql::Error::new("`since_block_height` is too old"));
         }
 
-        let once_query = query.clone();
-
         #[cfg(feature = "metrics")]
         let gauge_guard = Arc::new(GaugeGuard::new(
             "graphql.subscriptions.active",
@@ -249,8 +235,9 @@ impl EventSubscription {
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
+            let _query = query.clone();
 
-            async move { Self::get_events(&app_ctx.db, block_range, once_query).await }
+            async move { Self::query_events(&app_ctx.db, block_range, _query).await }
         })
         .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
             let query = query.clone();
@@ -267,7 +254,7 @@ impl EventSubscription {
                     return vec![];
                 }
 
-                let events = Self::get_events(
+                let events = Self::query_events(
                     &app_ctx.db,
                     (current_received + 1) as i64..=block_height as i64,
                     query,
@@ -288,7 +275,87 @@ impl EventSubscription {
         }))
     }
 
-    async fn get_events(
+    async fn _events_by_addresses<'a>(
+        &self,
+        ctx: &Context<'a>,
+        addresses: Vec<Addr>,
+        since_block_height: Option<u64>,
+    ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+
+        let latest_block_height = entity::blocks::Entity::find()
+            .order_by_desc(entity::blocks::Column::BlockHeight)
+            .one(&app_ctx.db)
+            .await?
+            .map(|block| block.block_height)
+            .unwrap_or_default() as u64;
+
+        let received_block_height = Arc::new(AtomicU64::new(latest_block_height));
+
+        let block_range: RangeInclusive<u64> = match since_block_height {
+            Some(block_height) => block_height..=latest_block_height,
+            None => latest_block_height..=latest_block_height,
+        };
+
+        if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
+            return Err(async_graphql::Error::new("`since_block_height` is too old"));
+        }
+
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "events",
+            "subscription",
+        ));
+
+        let addresses = Arc::new(addresses);
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+            let _addresses = addresses.clone();
+
+            async move {
+                app_ctx
+                    .event_cache
+                    .read_events(block_range, &_addresses)
+                    .await
+            }
+        })
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            let received_height = received_block_height.clone();
+            let _addresses = addresses.clone();
+
+            async move {
+                let current_received = received_height.load(Ordering::Acquire);
+
+                if block_height < current_received {
+                    return vec![];
+                }
+
+                let events = app_ctx
+                    .event_cache
+                    .read_events((current_received + 1)..=block_height, &_addresses)
+                    .await;
+
+                received_height.store(block_height, Ordering::Release);
+
+                events
+            }
+        }))
+        .filter_map(|events| async move {
+            if events.is_empty() {
+                None
+            } else {
+                Some(events)
+            }
+        }))
+    }
+
+    async fn query_events(
         db: &DatabaseConnection,
         block_range: RangeInclusive<i64>,
         query: sea_orm::Select<entity::events::Entity>,
@@ -327,409 +394,12 @@ impl EventSubscription {
         // This is used to get the older events in case of disconnection
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
-        let query = precompute_query_by_addresses(addresses);
+        let addresses = addresses
+            .into_iter()
+            .map(|a| Addr::from_str(&a))
+            .collect::<Result<Vec<_>, _>>()?;
 
-        self._events(ctx, since_block_height, query).await
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use {
-        super::*,
-        chrono::NaiveDateTime,
-        grug_types::{Addr, Extractable},
-        sea_orm::ActiveValue::Set,
-        serde_json::json,
-        uuid::Uuid,
-    };
-
-    mod db_utils {
-        use {
-            indexer_sql_migration::MigratorTrait,
-            pg_embed::{
-                pg_enums::PgAuthMethod,
-                pg_fetch::PgFetchSettings,
-                postgres::{PgEmbed, PgSettings},
-            },
-            sea_orm::{Database, DatabaseConnection},
-            std::{net::TcpListener, ops::Deref},
-        };
-
-        pub async fn migrate_db<M: MigratorTrait>(
-            db_connection: &DatabaseConnection,
-        ) -> anyhow::Result<()> {
-            println!("🔄 Starting migration with URL: {db_connection:?}");
-            M::up(db_connection, None).await?;
-            println!("✅ Migration completed!");
-            Ok(())
-        }
-
-        pub async fn create_db() -> anyhow::Result<PgInstance> {
-            let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind");
-            let port = listener.local_addr().unwrap().port();
-            drop(listener);
-
-            let mut pg = PgEmbed::new(
-                PgSettings {
-                    database_dir: format!("./pg_data_{port}").into(),
-                    port,
-                    user: "postgres".into(),
-                    password: "postgres".into(),
-                    persistent: false,
-                    timeout: None,
-                    migration_dir: None,
-                    auth_method: PgAuthMethod::Plain,
-                },
-                PgFetchSettings {
-                    version: pg_embed::pg_fetch::PG_V15,
-                    ..Default::default()
-                },
-            )
-            .await?;
-
-            pg.setup().await?;
-
-            pg.start_db().await?;
-
-            let db_name = format!("test_db_{port}");
-
-            pg.create_database(&db_name).await?;
-
-            let uri = pg.full_db_uri(&db_name);
-
-            Ok(PgInstance {
-                connection: Database::connect(&uri).await?,
-                _pg: pg,
-            })
-        }
-
-        pub struct PgInstance {
-            connection: DatabaseConnection,
-            _pg: PgEmbed,
-        }
-
-        impl PgInstance {
-            pub fn db_connection(&self) -> &DatabaseConnection {
-                &self.connection
-            }
-        }
-
-        impl Deref for PgInstance {
-            type Target = DatabaseConnection;
-
-            fn deref(&self) -> &Self::Target {
-                &self.connection
-            }
-        }
-    }
-
-    fn filter<const A: usize>(
-        r#type: Option<&str>,
-        data: [(&[&str], ParsedCheckValue); A],
-    ) -> ParsedFilter {
-        ParsedFilter {
-            r#type: r#type.map(|s| s.to_string()),
-            data: Some(
-                data.iter()
-                    .map(|(path, value)| ParsedFilterData {
-                        path: path.iter().map(|s| s.to_string()).collect(),
-                        value: value.clone(),
-                    })
-                    .collect(),
-            ),
-        }
-    }
-
-    fn filters<const A: usize>(
-        filters: [ParsedFilter; A],
-    ) -> sea_orm::Select<entity::events::Entity> {
-        precompute_query(Some(filters.to_vec()))
-    }
-
-    #[tokio::test]
-    #[ignore = "not working in CI"]
-    async fn events_filter() {
-        let db = db_utils::create_db().await.unwrap();
-
-        db_utils::migrate_db::<indexer_sql_migration::Migrator>(db.db_connection())
+        self._events_by_addresses(ctx, addresses, since_block_height)
             .await
-            .unwrap();
-
-        let entities = [
-            (
-                "contract_event",
-                json!({
-                    "type": "order_filled",
-                    "data": {
-                      "user": "rhaki"
-                    }
-                }),
-            ),
-            (
-                "contract_event",
-                json!({
-                    "type": "order_filled",
-                    "data": {
-                      "user": "larry"
-                    }
-                }),
-            ),
-            (
-                "contract_event",
-                json!({
-                    "type": "order_created",
-                    "data": {
-                      "user": "foo"
-                    }
-                }),
-            ),
-            (
-                "contract_event",
-                json!({
-                    "type": "order_created",
-                    "data": {
-                      "user": "rhaki"
-                    }
-                }),
-            ),
-            (
-                "transfer",
-                json!({
-                    "to": "rhaki",
-                    "coins": {
-                      "usdc": "1000",
-                      "btc": "200"
-                    }
-                }),
-            ),
-        ]
-        .into_iter()
-        .map(|(r#type, data)| entity::events::ActiveModel {
-            id: Set(Uuid::new_v4()),
-            parent_id: Set(None),
-            transaction_id: Set(None),
-            message_id: Set(None),
-            created_at: Set(NaiveDateTime::default()),
-            r#type: Set(r#type.to_string()),
-            method: Set(None),
-            event_status: Set(entity::events::EventStatus::Ok),
-            commitment_status: Set(grug_types::FlatCommitmentStatus::Committed),
-            transaction_type: Set(0),
-            transaction_idx: Set(0),
-            message_idx: Set(None),
-            event_idx: Set(0),
-            data: Set(data),
-            block_height: Set(1),
-        })
-        .collect::<Vec<_>>();
-
-        entity::events::Entity::insert_many(entities)
-            .exec(db.db_connection())
-            .await
-            .unwrap();
-
-        let f = filters([filter(Some("contract_event"), [(
-            &["type"],
-            ParsedCheckValue::Equal(json!("order_filled")),
-        )])]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 2);
-
-        let f = filters([filter(Some("contract_event"), [(
-            &["type"],
-            ParsedCheckValue::Equal(json!("order_created")),
-        )])]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 2);
-
-        let f = filters([filter(Some("contract_event"), [(
-            &["type"],
-            ParsedCheckValue::Equal(json!("order_matched")),
-        )])]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 0);
-
-        let f = filters([filter(Some("contract_event"), [(
-            &["type"],
-            ParsedCheckValue::Contains(vec![json!("order_created"), json!("order_filled")]),
-        )])]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 4);
-
-        let f = filters([filter(Some("contract_event"), [
-            (&["type"], ParsedCheckValue::Equal(json!("order_filled"))),
-            (&["data", "user"], ParsedCheckValue::Equal(json!("rhaki"))),
-        ])]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 1);
-
-        let f = filters([filter(Some("contract_event"), [
-            (&["type"], ParsedCheckValue::Equal(json!("order_filled"))),
-            (&["data", "user"], ParsedCheckValue::Equal(json!("foo"))),
-        ])]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 0);
-
-        let f = filters([filter(Some("contract_event"), [
-            (&["type"], ParsedCheckValue::Equal(json!("order_created"))),
-            (&["data", "user"], ParsedCheckValue::Equal(json!("foo"))),
-        ])]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 1);
-
-        let f = filters([
-            filter(Some("contract_event"), [
-                (&["type"], ParsedCheckValue::Equal(json!("order_created"))),
-                (&["data", "user"], ParsedCheckValue::Equal(json!("foo"))),
-            ]),
-            filter(Some("contract_event"), [
-                (&["type"], ParsedCheckValue::Equal(json!("order_filled"))),
-                (&["data", "user"], ParsedCheckValue::Equal(json!("rhaki"))),
-            ]),
-        ]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 2);
-
-        let f = filters([
-            filter(Some("contract_event"), [
-                (&["type"], ParsedCheckValue::Equal(json!("order_created"))),
-                (&["data", "user"], ParsedCheckValue::Equal(json!("foo"))),
-            ]),
-            filter(Some("transfer"), [(
-                &["coins", "usdc"],
-                ParsedCheckValue::Equal(json!("1000")),
-            )]),
-        ]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 2);
-
-        let f = filters([filter(None, [(
-            &["data", "user"],
-            ParsedCheckValue::Equal(json!("rhaki")),
-        )])]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=1, f).await;
-        assert_eq!(events.len(), 2);
-    }
-
-    #[tokio::test]
-    #[ignore = "not working in CI"]
-    async fn events_filter2() {
-        let db = db_utils::create_db().await.unwrap();
-
-        db_utils::migrate_db::<indexer_sql_migration::Migrator>(db.db_connection())
-            .await
-            .unwrap();
-
-        let (events, event_addresses) = [
-            (
-                "contract_event",
-                json!({
-                    "type": "order_filled",
-                    "data": {
-                      "user": Addr::mock(1)
-                    },
-                    "foo": Addr::mock(3)
-                }),
-            ),
-            (
-                "contract_event",
-                json!({
-                    "type": "order_filled",
-                    "data": {
-                      "user": Addr::mock(2)
-                    }
-                }),
-            ),
-            (
-                "contract_event",
-                json!({
-                    "type": "order_created",
-                    "data": {
-                      "user": Addr::mock(1)
-                    }
-                }),
-            ),
-            (
-                "transfer",
-                json!({
-                    "from": Addr::mock(1),
-                    "to": {
-                      Addr::mock(2): "200",
-                      Addr::mock(3): "200",
-                      Addr::mock(4): "200",
-                    }
-                }),
-            ),
-        ]
-        .into_iter()
-        .enumerate()
-        .fold(
-            (vec![], vec![]),
-            |(mut events, mut event_addresses), (i, (r#type, data))| {
-                let id = Uuid::new_v4();
-                let addresses = grug_types::Json::from_inner(data.clone()).extract_addresses();
-
-                let event = entity::events::ActiveModel {
-                    id: Set(id),
-                    parent_id: Set(None),
-                    transaction_id: Set(None),
-                    message_id: Set(None),
-                    created_at: Set(NaiveDateTime::default()),
-                    r#type: Set(r#type.to_string()),
-                    method: Set(None),
-                    event_status: Set(entity::events::EventStatus::Ok),
-                    commitment_status: Set(grug_types::FlatCommitmentStatus::Committed),
-                    transaction_type: Set(0),
-                    transaction_idx: Set(0),
-                    message_idx: Set(None),
-                    event_idx: Set(0),
-                    data: Set(data),
-                    block_height: Set(i as i64),
-                };
-
-                events.push(event);
-                event_addresses.extend(addresses.into_iter().map(|address| {
-                    entity::event_addresses::ActiveModel {
-                        id: Set(Uuid::new_v4()),
-                        event_id: Set(id),
-                        address: Set(address.to_string()),
-                        block_height: Set(1),
-                    }
-                }));
-
-                (events, event_addresses)
-            },
-        );
-
-        entity::events::Entity::insert_many(events)
-            .exec(db.db_connection())
-            .await
-            .unwrap();
-
-        entity::event_addresses::Entity::insert_many(event_addresses)
-            .exec(db.db_connection())
-            .await
-            .unwrap();
-
-        for (addresses, count) in [
-            (vec![Addr::mock(1)], 3),
-            (vec![Addr::mock(2)], 2),
-            (vec![Addr::mock(3)], 2),
-            (vec![Addr::mock(4)], 1),
-            (vec![Addr::mock(1), Addr::mock(2)], 4),
-        ] {
-            let entities =
-                precompute_query_by_addresses(addresses.iter().map(|a| a.to_string()).collect())
-                    .all(db.db_connection())
-                    .await
-                    .unwrap();
-
-            assert_eq!(entities.len(), count, "{:?}", addresses);
-        }
-
-        let query = precompute_query_by_addresses(vec![Addr::mock(1).to_string()]);
-        let events = EventSubscription::get_events(db.db_connection(), 1..=3, query).await;
-        assert_eq!(events.len(), 2);
     }
 }

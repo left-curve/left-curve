@@ -21,6 +21,6 @@ mod event_cache;
 pub use {
     context::Context,
     error::{IndexerError, Result},
-    event_cache::EventCache,
+    event_cache::{EventCache, EventCacheReader, EventCacheWriter},
     indexer::{Indexer, IndexerBuilder},
 };

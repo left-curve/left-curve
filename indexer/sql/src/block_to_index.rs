@@ -2,7 +2,7 @@
 use {metrics::counter, std::time::Instant};
 
 use {
-    crate::{active_model::Models, entity, error},
+    crate::{active_model::Models, entity, error, event_cache::EventCacheWriter},
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Block, BlockOutcome},
     indexer_disk_saver::persistence::DiskPersistence,
@@ -42,6 +42,7 @@ impl BlockToIndex {
     pub async fn save(
         &self,
         db: DatabaseConnection,
+        event_cache: EventCacheWriter,
         #[allow(unused_variables)] indexer_id: u64,
     ) -> error::Result<()> {
         #[cfg(feature = "metrics")]
@@ -168,22 +169,11 @@ impl BlockToIndex {
             }
         }
 
-        if !models.event_addresses.is_empty() {
-            #[cfg(feature = "tracing")]
-            let events_len = models.event_addresses.len();
-            entity::event_addresses::Entity::insert_many(models.event_addresses)
-                .exec_without_returning(&db)
-                .await
-                .inspect_err(|_e| {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(err = %_e, events_len=events_len, "Failed to insert events");
-
-                    #[cfg(feature = "metrics")]
-                    counter!("indexer.database.errors.total").increment(1);
-                })?;
-        }
-
         db.commit().await?;
+
+        event_cache
+            .save_events(self.block.info.height, models.addresses_to_save)
+            .await;
 
         #[cfg(feature = "metrics")]
         metrics::histogram!("indexer.block_save.duration").record(start.elapsed().as_secs_f64());

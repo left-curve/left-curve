@@ -5,7 +5,6 @@ mod m20220101_000001_create_table;
 mod m20250324_094658_blocks_transactions_count;
 mod m20250529_142838_transactions_sender_index;
 mod m20250717_192805_events_data_index;
-mod m20250729_131810_event_addresses;
 
 pub struct Migrator;
 
@@ -17,7 +16,6 @@ impl MigratorTrait for Migrator {
             Box::new(m20250324_094658_blocks_transactions_count::Migration),
             Box::new(m20250529_142838_transactions_sender_index::Migration),
             Box::new(m20250717_192805_events_data_index::Migration),
-            Box::new(m20250729_131810_event_addresses::Migration),
         ]
     }
 

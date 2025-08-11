@@ -135,19 +135,6 @@ impl Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-    #[sea_orm(
-        belongs_to = "crate::entity::event_addresses::Entity",
-        from = "crate::entity::events::Column::Id",
-        to = "crate::entity::event_addresses::Column::EventId"
-    )]
-    EventAddresses,
-}
-
-impl Related<super::event_addresses::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::EventAddresses.def()
-    }
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
