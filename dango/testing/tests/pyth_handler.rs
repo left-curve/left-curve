@@ -2,21 +2,15 @@ use {
     dango_proposal_preparer::PythHandler,
     dango_testing::setup_test,
     dango_types::oracle::{InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
-    grug::{
-        Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map,
-        setup_tracing_subscriber,
-    },
+    grug::{Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map},
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::constants::PYTH_URL,
     std::{thread::sleep, time::Duration},
-    tracing::Level,
 };
 
 #[test]
 fn handler() {
     let (mut suite, mut accounts, codes, contracts, _) = setup_test(Default::default());
-
-    setup_tracing_subscriber(Level::INFO);
 
     // Ensure there are all cache file for the PythIds in oracle and retrieve them if not presents.
     // This is needed since the PythPPHandler create a thread to get the data from Pyth and if the
@@ -71,14 +65,8 @@ fn handler() {
     // Start the handler with oracle.
     handler.update_stream(querier, oracle).unwrap();
 
-    // Give some times to get the data ready.
-    sleep(Duration::from_millis(3000));
-
-    // Assert the streaming is working.
-    for _ in 0..3 {
-        assert!(!handler.fetch_latest_vaas().is_empty());
-        sleep(Duration::from_millis(500));
-    }
+    // Assert the handler is working.
+    check_handler_works(&handler, 3);
 
     // Update the handler with the empty oracle.
     handler.update_stream(querier, empty_oracle).unwrap();
@@ -98,9 +86,43 @@ fn handler() {
     // Give some times to get the data ready.
     sleep(Duration::from_millis(500));
 
+    // Assert the handler is working.
+    check_handler_works(&handler, 3);
+}
+
+// Check the handler returns data correctly.
+fn check_handler_works(handler: &PythHandler<PythClientCache>, data_wanted: usize) {
     // Assert the streaming is working.
-    for _ in 0..3 {
-        assert!(!handler.fetch_latest_vaas().is_empty());
+    let mut received_data = 0;
+    let mut previous_data = None;
+
+    for _ in 0..data_wanted * 5 {
+        let data = handler.fetch_latest_vaas();
+
+        // Check if we received some data.
+        if !data.is_empty() {
+            received_data += 1;
+
+            if let Some(previous) = previous_data {
+                assert!(data != previous, "Data should change over time");
+            }
+            previous_data = Some(data);
+
+            // Now that we have read the data, the next iteration should be empty
+            // since the handler didn't have time to fetch new data.
+            assert!(handler.fetch_latest_vaas().is_empty());
+
+            // We have met the data wanted, we can stop.
+            if received_data >= data_wanted {
+                return;
+            }
+        }
+
         sleep(Duration::from_millis(500));
     }
+
+    panic!(
+        "Expected to receive at least {} data, but received only {}",
+        data_wanted, received_data
+    );
 }
