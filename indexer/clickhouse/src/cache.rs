@@ -4,6 +4,8 @@ use std::time::Duration;
 use metrics::{counter, gauge, histogram};
 use tokio::time::sleep;
 
+use crate::error::IndexerError;
+
 use {
     crate::{
         entities::{
@@ -226,7 +228,19 @@ impl CandleCache {
 
                     async move {
                         let mut candles;
+                        let start = Instant::now();
+
                         loop {
+                            if start.elapsed() > Duration::from_secs(2) {
+                                #[cfg(feature = "tracing")]
+                                tracing::warn!(
+                                    "Timeout while preloading candles for {}-{}",
+                                    key.base_denom,
+                                    key.quote_denom
+                                );
+                                return Err(IndexerError::CandleTimeout);
+                            }
+
                             let query_builder = CandleQueryBuilder::new(
                                 key.interval,
                                 key.base_denom.clone(),
@@ -244,7 +258,7 @@ impl CandleCache {
                                         %highest_block_height,
                                         "Candle is older than latest price");
 
-                                    // `candle` are built async in clickhouse, and this means they're not synced yet
+                                    // `candle` are built async in clickhouse, and this means they're not synced to the latest block yet
                                     sleep(Duration::from_millis(100)).await;
 
                                     continue;
@@ -256,7 +270,7 @@ impl CandleCache {
                             break;
                         }
 
-                        Ok::<_, crate::error::IndexerError>((key, candles))
+                        Ok::<_, IndexerError>((key, candles))
                     }
                 })
             })
