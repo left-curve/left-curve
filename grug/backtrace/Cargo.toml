@@ -11,7 +11,7 @@ version       = { workspace = true }
 
 [dependencies]
 anyhow      = { workspace = true }
-borsh       = { workspace = true }
+borsh       = { workspace = true, features = ["derive"] }
 grug-macros = { workspace = true }
-serde       = { workspace = true }
+serde       = { workspace = true, features = ["derive"] }
 thiserror   = { workspace = true }

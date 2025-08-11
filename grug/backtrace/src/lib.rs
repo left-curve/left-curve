@@ -11,8 +11,6 @@ use {
     },
 };
 
-pub use ::thiserror;
-
 pub trait Backtraceable {
     fn into_generic_backtraced_error(self) -> BacktracedError<String>;
     fn backtrace(&self) -> BT;
@@ -201,7 +199,6 @@ where
         self.error == other.error
     }
 }
-
 #[cfg(test)]
 mod tests {
 
@@ -215,7 +212,7 @@ mod tests {
         #[error("hi {x}")]
         Named { x: u32 },
         #[error(transparent)]
-        Unamed(InnerError),
+        Unnamed(InnerError),
         #[error("unit")]
         Unit,
     }
