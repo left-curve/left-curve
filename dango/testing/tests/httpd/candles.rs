@@ -350,6 +350,9 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
 
+    println!("Cache : {old_cache:#?}");
+    println!("Cache from clickhouse: {cache:#?}");
+
     assert!(cache == *old_cache);
 
     let mut suite_guard = suite.lock().await;
@@ -492,6 +495,9 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
         .await?;
 
     let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
+
+    println!("Cache : {old_cache:#?}");
+    println!("Cache from clickhouse: {cache:#?}");
 
     assert!(cache == *old_cache);
 
