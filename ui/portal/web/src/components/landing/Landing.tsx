@@ -61,7 +61,7 @@ const Header: React.FC = () => {
           className="max-w-[10rem] lg:max-w-[13rem]"
         />
         {isLg && (
-          <div className="relative w-full h-11 z-40 max-w-[40rem]">
+          <div className="relative w-full h-11 z-40 max-w-[42.5rem]">
             <SearchMenu />
           </div>
         )}
@@ -207,7 +207,7 @@ const SectionCommunity: React.FC = () => {
           <div className="flex gap-4">
             <a
               href="/documents/Dango%20-%20Terms%20of%20use.pdf"
-              download="Dango - Terms of use.pdf"
+              download="Dango - Terms of Use.pdf"
               className="hover:underline visited:text-red-bean-400"
             >
               {m["welcome.termsOfUse"]()}
