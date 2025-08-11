@@ -48,6 +48,7 @@ impl<M> EventCache<M> {
         block_range: RangeInclusive<u64>,
         addresses: &[Addr],
     ) -> Vec<EventModel> {
+        // use Vec<Arc<EventModel>> instead of Vec<EventModel> in order to release the lock as soon as possible
         let events = {
             let inner = self.inner.read().await;
 
@@ -63,7 +64,7 @@ impl<M> EventCache<M> {
                         continue;
                     };
 
-                    events.extend(evt.iter().map(|e| e.clone()));
+                    events.extend(evt.iter().cloned());
                 }
             }
 
