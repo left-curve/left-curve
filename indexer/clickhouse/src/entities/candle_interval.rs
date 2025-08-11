@@ -1,7 +1,7 @@
 #[cfg(feature = "async-graphql")]
 use async_graphql::Enum;
 use {
-    chrono::Duration,
+    chrono::{DateTime, Datelike, Duration, TimeZone, Utc, Weekday},
     serde::{Deserializer, Serialize, Serializer, de},
     strum::EnumIter,
     strum_macros::{Display, EnumString},
@@ -38,6 +38,36 @@ pub enum CandleInterval {
 }
 
 impl CandleInterval {
+    // Helper to align a timestamp to the start of its candle interval (ClickHouse style)
+    pub fn interval_start(&self, ts: DateTime<Utc>) -> DateTime<Utc> {
+        match self {
+            CandleInterval::OneWeek => {
+                // Week starts on Monday
+                let days_since_monday = match ts.weekday() {
+                    Weekday::Mon => 0,
+                    Weekday::Tue => 1,
+                    Weekday::Wed => 2,
+                    Weekday::Thu => 3,
+                    Weekday::Fri => 4,
+                    Weekday::Sat => 5,
+                    Weekday::Sun => 6,
+                };
+
+                let start_of_day = ts.date_naive().and_hms_opt(0, 0, 0).unwrap();
+                let monday = start_of_day - Duration::days(days_since_monday);
+                Utc.from_utc_datetime(&monday)
+            },
+            _ => {
+                let interval_secs = self.duration().num_seconds();
+                assert!(interval_secs > 0, "Interval duration must be > 0");
+
+                let ts_secs = ts.timestamp();
+                let aligned = ts_secs - (ts_secs % interval_secs);
+                DateTime::from_timestamp(aligned, 0).expect("valid aligned timestamp")
+            },
+        }
+    }
+
     pub fn duration(&self) -> Duration {
         match self {
             CandleInterval::OneSecond => Duration::seconds(1),
@@ -95,5 +125,43 @@ impl<'de> de::Deserialize<'de> for CandleInterval {
         let s = String::deserialize(deserializer)?;
         s.parse::<Self>()
             .map_err(|e| de::Error::custom(e.to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        chrono::SecondsFormat,
+        comfy_table::{Table, presets::UTF8_FULL},
+        strum::IntoEnumIterator,
+    };
+
+    #[test]
+    fn all_interval_starts() {
+        let now = Utc::now();
+        let mut table = Table::new();
+        table.load_preset(UTF8_FULL).set_header(vec![
+            "Interval",
+            "Seconds",
+            "Start",
+            "Now",
+            "Offset(s)",
+        ]);
+
+        for interval in CandleInterval::iter() {
+            let start = interval.interval_start(now);
+            let dur = interval.duration().num_seconds();
+            let offset = now.timestamp() - start.timestamp();
+            table.add_row(vec![
+                interval.to_string(),
+                dur.to_string(),
+                start.to_rfc3339_opts(SecondsFormat::Secs, true),
+                now.to_rfc3339_opts(SecondsFormat::Secs, true),
+                offset.to_string(),
+            ]);
+        }
+
+        println!("{table}");
     }
 }

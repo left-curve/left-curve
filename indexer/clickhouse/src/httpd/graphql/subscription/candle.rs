@@ -60,48 +60,39 @@ impl CandleSubscription {
                     .map(|candle| vec![candle.clone()]))
             }
         })
-        .chain(
-            app_ctx
-                .candle_pubsub
-                .subscribe()
-                .await?
-                .then(move |block_height| {
-                    #[cfg(feature = "metrics")]
-                    let _guard = gauge_guard.clone();
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
 
-                    let cache_key = cache::CandleCacheKey::new(
-                        base_denom.clone(),
-                        quote_denom.clone(),
-                        interval,
+            let cache_key =
+                cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
+            let candle_cache = app_ctx.candle_cache.clone();
+
+            let received_height = received_block_height.clone();
+
+            async move {
+                let current_received = received_height.load(Ordering::Acquire);
+                if block_height < current_received {
+                    #[cfg(feature = "tracing")]
+                    tracing::info!(
+                        current_received,
+                        block_height,
+                        "Skip candle, same block_height, shouldn't happen..."
                     );
-                    let candle_cache = app_ctx.candle_cache.clone();
+                    return Ok(None);
+                }
 
-                    let received_height = received_block_height.clone();
+                let candle = candle_cache
+                    .read()
+                    .await
+                    .get_last_candle(&cache_key)
+                    .map(|candle| vec![candle.clone()]);
 
-                    async move {
-                        let current_received = received_height.load(Ordering::Acquire);
-                        if block_height < current_received {
-                            #[cfg(feature = "tracing")]
-                            tracing::info!(
-                                current_received,
-                                block_height,
-                                "Skip candle, same block_height, shouldn't happen..."
-                            );
-                            return Ok(None);
-                        }
+                received_height.store(block_height, Ordering::Release);
 
-                        let candle = candle_cache
-                            .read()
-                            .await
-                            .get_last_candle(&cache_key)
-                            .map(|candle| vec![candle.clone()]);
-
-                        received_height.store(block_height, Ordering::Release);
-
-                        Ok(candle)
-                    }
-                }),
-        )
+                Ok(candle)
+            }
+        }))
         .filter_map(|candles: Result<Option<Vec<Candle>>>| async move {
             match candles {
                 Ok(Some(candles)) => {

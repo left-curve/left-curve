@@ -131,7 +131,7 @@ impl grug_app::Indexer for Indexer {
             #[cfg(feature = "metrics")]
             let start = Instant::now();
 
-            Self::store_candles(&clickhouse_client, querier, &ctx).await?;
+            Self::store_candles(&clickhouse_client, querier, &ctx, &context).await?;
 
             #[cfg(feature = "metrics")]
             histogram!(
@@ -198,6 +198,15 @@ pub fn init_metrics() {
         "Total number of candles in cache"
     );
 
+    describe_gauge!(
+        "indexer.clickhouse.pair_prices.cache.size.entries",
+        "Current number of keys in cache"
+    );
+
+    describe_gauge!(
+        "indexer.clickhouse.pair_prices.cache.size.candles",
+        "Total number of pair_prices in cache"
+    );
     describe_counter!(
         "indexer.clickhouse.order_filled_events.total",
         "Total order filled events processed"
