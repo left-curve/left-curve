@@ -194,7 +194,7 @@ jobs:
           RUST_BACKTRACE: 1
 
       - name: Upload coverage to Qlty
-        uses: qltysh/qlty-action/coverage@v1
+        uses: qltysh/qlty-action/coverage@v2
         with:
           files: target/coverage/lcov.info
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
