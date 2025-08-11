@@ -335,6 +335,11 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
         })
         .await??;
 
+    {
+        let suite_guard = suite.lock().await;
+        suite_guard.app.indexer.wait_for_finish().unwrap();
+    }
+
     // The following ensures than loading clickhouse data to a new cache result in the same
     // loaded data than our current cache
     let mut cache = CandleCache::default();
@@ -352,11 +357,11 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     println!("Cache : {:#?}", old_cache.pair_prices);
     println!("Cache from clickhouse: {:#?}", cache.pair_prices);
-    assert!(cache.pair_prices == old_cache.pair_prices);
+    assert_eq!(cache.pair_prices, old_cache.pair_prices);
 
     println!("Cache : {:#?}", old_cache.candles);
     println!("Cache from clickhouse: {:#?}", cache.candles);
-    assert!(cache.candles == old_cache.candles);
+    assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;
     suite_guard
@@ -484,6 +489,11 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
         })
         .await??;
 
+    {
+        let suite_guard = suite.lock().await;
+        suite_guard.app.indexer.wait_for_finish().unwrap();
+    }
+
     // The following ensures than loading clickhouse data to a new cache result in the same
     // loaded data than our current cache
     let mut cache = CandleCache::default();
@@ -501,11 +511,11 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     println!("Cache : {:#?}", old_cache.pair_prices);
     println!("Cache from clickhouse: {:#?}", cache.pair_prices);
-    assert!(cache.pair_prices == old_cache.pair_prices);
+    assert_eq!(cache.pair_prices, old_cache.pair_prices);
 
     println!("Cache : {:#?}", old_cache.candles);
     println!("Cache from clickhouse: {:#?}", cache.candles);
-    assert!(cache.candles == old_cache.candles);
+    assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;
     suite_guard
