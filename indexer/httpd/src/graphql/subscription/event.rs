@@ -4,7 +4,6 @@ use {
     super::MAX_PAST_BLOCKS,
     async_graphql::{futures_util::stream::Stream, *},
     futures_util::stream::{StreamExt, once},
-    grug_types::Addr,
     indexer_sql::entity,
     itertools::Itertools,
     sea_orm::{
@@ -18,7 +17,7 @@ use {
             Arc,
             atomic::{AtomicU64, Ordering},
         },
-    , str::FromStr},
+    },
 };
 
 #[derive(Clone, InputObject)]
@@ -211,6 +210,84 @@ fn precompute_query_by_addresses(
 }
 
 impl EventSubscription {
+    async fn _events<'a>(
+        &self,
+        ctx: &Context<'a>,
+        // This is used to get the older events in case of disconnection
+        since_block_height: Option<u64>,
+        query: sea_orm::Select<entity::events::Entity>,
+    ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+
+        let latest_block_height = entity::blocks::Entity::find()
+            .order_by_desc(entity::blocks::Column::BlockHeight)
+            .one(&app_ctx.db)
+            .await?
+            .map(|block| block.block_height)
+            .unwrap_or_default();
+
+        let received_block_height = Arc::new(AtomicU64::new(latest_block_height as u64));
+
+        let block_range = match since_block_height {
+            Some(block_height) => block_height as i64..=latest_block_height,
+            None => latest_block_height..=latest_block_height,
+        };
+
+        if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
+            return Err(async_graphql::Error::new("`since_block_height` is too old"));
+        }
+
+        let once_query = query.clone();
+
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "events",
+            "subscription",
+        ));
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move { Self::get_events(&app_ctx.db, block_range, once_query).await }
+        })
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            let query = query.clone();
+
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            let received_height = received_block_height.clone();
+
+            async move {
+                let current_received = received_height.load(Ordering::Acquire);
+
+                if block_height < current_received {
+                    return vec![];
+                }
+
+                let events = Self::get_events(
+                    &app_ctx.db,
+                    (current_received + 1) as i64..=block_height as i64,
+                    query,
+                )
+                .await;
+
+                received_height.store(block_height, Ordering::Release);
+
+                events
+            }
+        }))
+        .filter_map(|events| async move {
+            if events.is_empty() {
+                None
+            } else {
+                Some(events)
+            }
+        }))
+    }
+
     async fn get_events(
         db: &DatabaseConnection,
         block_range: RangeInclusive<i64>,
@@ -237,79 +314,10 @@ impl EventSubscription {
         since_block_height: Option<u64>,
         filter: Option<Vec<Filter>>,
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
-
-        let latest_block_height = entity::blocks::Entity::find()
-            .order_by_desc(entity::blocks::Column::BlockHeight)
-            .one(&app_ctx.db)
-            .await?
-            .map(|block| block.block_height)
-            .unwrap_or_default();
-
-        let received_block_height = Arc::new(AtomicU64::new(latest_block_height as u64));
-
-        let block_range = match since_block_height {
-            Some(block_height) => block_height as i64..=latest_block_height,
-            None => latest_block_height..=latest_block_height,
-        };
-
-        if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
-            return Err(async_graphql::Error::new("`since_block_height` is too old"));
-        }
-
         let filter = filter.map(parse_filter).transpose()?;
-
         let query = precompute_query(filter);
 
-        let once_query = query.clone();
-
-        #[cfg(feature = "metrics")]
-        let gauge_guard = Arc::new(GaugeGuard::new(
-            "graphql.subscriptions.active",
-            "events",
-            "subscription",
-        ));
-
-        Ok(once({
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
-
-            async move { Self::get_events(&app_ctx.db, block_range, once_query).await }
-        })
-        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
-            let query = query.clone();
-
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
-
-            let received_height = received_block_height.clone();
-
-            async move {
-                let current_received = received_height.load(Ordering::Acquire);
-
-                if block_height < current_received {
-                    return vec![];
-                }
-
-                let events = Self::get_events(
-                    &app_ctx.db,
-                    (current_received + 1) as i64..=block_height as i64,
-                    query,
-                )
-                .await;
-
-                received_height.store(block_height, Ordering::Release);
-
-                events
-            }
-        }))
-        .filter_map(|events| async move {
-            if events.is_empty() {
-                None
-            } else {
-                Some(events)
-            }
-        }))
+        self._events(ctx, since_block_height, query).await
     }
 
     async fn event_by_addresses<'a>(
@@ -319,141 +327,9 @@ impl EventSubscription {
         // This is used to get the older events in case of disconnection
         since_block_height: Option<u64>,
     ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
-
-        for address in &addresses {
-            Addr::from_str(address)?;
-        }
-
-        let latest_block_height = entity::blocks::Entity::find()
-            .order_by_desc(entity::blocks::Column::BlockHeight)
-            .one(&app_ctx.db)
-            .await?
-            .map(|block| block.block_height)
-            .unwrap_or_default();
-
-        let block_range = match since_block_height {
-            Some(block_height) => block_height as i64..=latest_block_height,
-            None => latest_block_height..=latest_block_height,
-        };
-
-        if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
-            return Err(async_graphql::Error::new("`since_block_height` is too old"));
-        }
-
         let query = precompute_query_by_addresses(addresses);
 
-        let once_query = query.clone();
-
-        #[cfg(feature = "metrics")]
-        let gauge_guard = Arc::new(GaugeGuard::new(
-            "graphql.subscriptions.active",
-            "events",
-            "subscription",
-        ));
-
-        Ok(once({
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
-
-            async move { Self::get_events(&app_ctx.db, block_range, once_query).await }
-        })
-        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
-            let query = query.clone();
-
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
-
-            let received_height = received_block_height.clone();
-
-            async move {
-                let current_received = received_height.load(Ordering::Acquire);
-
-                if block_height < current_received {
-                    return vec![];
-                }
-
-                let events = Self::get_events(
-                    &app_ctx.db,
-                    (current_received + 1) as i64..=block_height as i64,
-                    query,
-                )
-                .await;
-
-                received_height.store(block_height, Ordering::Release);
-
-                events
-            }
-        }))
-        .filter_map(|events| async move {
-            if events.is_empty() {
-                None
-            } else {
-                Some(events)
-            }
-        }))
-    }
-
-    async fn event_by_addresses<'a>(
-        &self,
-        ctx: &Context<'a>,
-        addresses: Vec<String>,
-        // This is used to get the older events in case of disconnection
-        since_block_height: Option<u64>,
-    ) -> Result<impl Stream<Item = Vec<entity::events::Model>> + 'a> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
-
-        for address in &addresses {
-            Addr::from_str(address)?;
-        }
-
-        let latest_block_height = entity::blocks::Entity::find()
-            .order_by_desc(entity::blocks::Column::BlockHeight)
-            .one(&app_ctx.db)
-            .await?
-            .map(|block| block.block_height)
-            .unwrap_or_default();
-
-        let block_range = match since_block_height {
-            Some(block_height) => block_height as i64..=latest_block_height,
-            None => latest_block_height..=latest_block_height,
-        };
-
-        if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
-            return Err(async_graphql::Error::new("`since_block_height` is too old"));
-        }
-
-        let query = precompute_query_by_addresses(addresses);
-
-        let once_query = query.clone();
-
-        Ok(
-            once(async move { Self::get_events(&app_ctx.db, block_range, once_query).await })
-                .chain(
-                    app_ctx
-                        .pubsub
-                        .subscribe_block_minted()
-                        .await?
-                        .then(move |block_height| {
-                            let query = query.clone();
-                            async move {
-                                Self::get_events(
-                                    &app_ctx.db,
-                                    block_height as i64..=block_height as i64,
-                                    query,
-                                )
-                                .await
-                            }
-                        }),
-                )
-                .filter_map(|events| async move {
-                    if events.is_empty() {
-                        None
-                    } else {
-                        Some(events)
-                    }
-                }),
-        )
+        self._events(ctx, since_block_height, query).await
     }
 }
 

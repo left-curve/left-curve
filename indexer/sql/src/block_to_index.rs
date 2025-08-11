@@ -1,7 +1,6 @@
 #[cfg(feature = "metrics")]
 use {metrics::counter, std::time::Instant};
 
-
 use {
     crate::{active_model::Models, entity, error},
     borsh::{BorshDeserialize, BorshSerialize},
@@ -170,6 +169,8 @@ impl BlockToIndex {
         }
 
         if !models.event_addresses.is_empty() {
+            #[cfg(feature = "tracing")]
+            let events_len = models.event_addresses.len();
             entity::event_addresses::Entity::insert_many(models.event_addresses)
                 .exec_without_returning(&db)
                 .await
@@ -180,13 +181,6 @@ impl BlockToIndex {
                     #[cfg(feature = "metrics")]
                     counter!("indexer.database.errors.total").increment(1);
                 })?;
-            }
-        }
-
-        if !models.event_addresses.is_empty() {
-            entity::event_addresses::Entity::insert_many(models.event_addresses)
-                .exec_without_returning(&db)
-                .await?;
         }
 
         db.commit().await?;
