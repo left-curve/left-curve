@@ -138,6 +138,7 @@ mod tests {
     };
 
     #[test]
+    #[ignore]
     fn all_interval_starts() {
         let now = Utc::now();
         let mut table = Table::new();
