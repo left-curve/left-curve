@@ -65,7 +65,7 @@ const Header: React.FC = () => {
             <SearchMenu />
           </div>
         )}
-        <div className="flex w-full max-w-[76rem] lg:w-fit lg:mx-auto">
+        <div className="flex w-full max-w-[76rem] lg:w-fit lg:mx-auto md:p-4">
           <AppletsSection />
         </div>
       </div>

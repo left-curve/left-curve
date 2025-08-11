@@ -28,7 +28,7 @@ export function AppletsSection() {
         </div>
       ))}
 
-      <div className="flex flex-col items-center gap-2 w-[80px]">
+      <div className="flex flex-col items-center gap-2 w-[7.25rem]">
         <button
           type="button"
           onClick={() => setSearchBarVisibility(true)}
