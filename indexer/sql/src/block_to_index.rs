@@ -172,7 +172,7 @@ impl BlockToIndex {
         db.commit().await?;
 
         event_cache
-            .save_events(self.block.info.height, models.addresses_to_save)
+            .save_events(self.block.info.height, models.events_by_address)
             .await;
 
         #[cfg(feature = "metrics")]

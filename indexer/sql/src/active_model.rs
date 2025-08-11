@@ -14,7 +14,7 @@ pub struct Models {
     pub transactions: Vec<entity::transactions::ActiveModel>,
     pub messages: Vec<entity::messages::ActiveModel>,
     pub events: Vec<entity::events::ActiveModel>,
-    pub addresses_to_save: HashMap<Addr, Vec<Arc<entity::events::Model>>>,
+    pub events_by_address: HashMap<Addr, Vec<Arc<entity::events::Model>>>,
 }
 
 impl Models {
@@ -26,7 +26,7 @@ impl Models {
         let mut transactions = vec![];
         let mut messages = vec![];
         let mut events = vec![];
-        let mut addresses_to_save: HashMap<Addr, Vec<Arc<entity::events::Model>>> = HashMap::new();
+        let mut events_by_address: HashMap<Addr, Vec<Arc<entity::events::Model>>> = HashMap::new();
 
         // 1. Storing cron events
         {
@@ -35,7 +35,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
-                    &mut addresses_to_save,
+                    &mut events_by_address,
                     &mut event_id,
                     cron_outcome.cron_event.clone(),
                     None,
@@ -82,7 +82,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
-                    &mut addresses_to_save,
+                    &mut events_by_address,
                     &mut event_id,
                     tx_outcome.events.withhold.clone(),
                     Some(transaction_id),
@@ -94,7 +94,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
-                    &mut addresses_to_save,
+                    &mut events_by_address,
                     &mut event_id,
                     tx_outcome.events.authenticate.clone(),
                     Some(transaction_id),
@@ -144,7 +144,7 @@ impl Models {
                 {
                     let active_models = flatten_events(
                         block,
-                        &mut addresses_to_save,
+                        &mut events_by_address,
                         &mut event_id,
                         tx_outcome.events.msgs_and_backrun.clone(),
                         Some(transaction_id),
@@ -156,7 +156,7 @@ impl Models {
 
                     let active_models = flatten_events(
                         block,
-                        &mut addresses_to_save,
+                        &mut events_by_address,
                         &mut event_id,
                         tx_outcome.events.finalize.clone(),
                         Some(transaction_id),
@@ -183,14 +183,14 @@ impl Models {
             events,
             transactions,
             messages,
-            addresses_to_save,
+            events_by_address,
         })
     }
 }
 
 fn flatten_events<T>(
     block: &Block,
-    addresses_to_save: &mut HashMap<Addr, Vec<Arc<entity::events::Model>>>,
+    events_by_address: &mut HashMap<Addr, Vec<Arc<entity::events::Model>>>,
     next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
     transaction_id: Option<uuid::Uuid>,
@@ -242,9 +242,9 @@ where
 
         let db_event = Arc::new(db_event.try_into_model()?);
 
-        for addr in &addresses {
-            addresses_to_save
-                .entry(*addr)
+        for addr in addresses {
+            events_by_address
+                .entry(addr)
                 .or_default()
                 .push(db_event.clone());
         }
