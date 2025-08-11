@@ -185,6 +185,14 @@ jobs:
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov
 
+      # Prior to introducing coverage, we were running tests here like this:
+      # - name: Run tests
+      #   run: |
+      #     cargo test --all-features
+      #   env:
+      #     RUST_BACKTRACE: 1
+      #
+      # Leaving here since coverage takes more time than tests and we might want to revert at some point.
       - name: Run tests and collect coverage
         run: |
           mkdir -p target/coverage
