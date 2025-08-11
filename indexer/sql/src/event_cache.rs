@@ -48,25 +48,29 @@ impl<M> EventCache<M> {
         block_range: RangeInclusive<u64>,
         addresses: &[Addr],
     ) -> Vec<EventModel> {
-        let inner = self.inner.read().await;
+        let events = {
+            let inner = self.inner.read().await;
 
-        let mut events = vec![];
+            let mut events = vec![];
 
-        for block in block_range {
-            let Some(block_events) = inner.blocks.get(&block) else {
-                continue;
-            };
-
-            for addr in addresses {
-                let Some(evt) = block_events.get(addr) else {
+            for block in block_range {
+                let Some(block_events) = inner.blocks.get(&block) else {
                     continue;
                 };
 
-                events.extend(evt.iter().map(|e| e.deref().clone()));
-            }
-        }
+                for addr in addresses {
+                    let Some(evt) = block_events.get(addr) else {
+                        continue;
+                    };
 
-        events
+                    events.extend(evt.iter().map(|e| e.clone()));
+                }
+            }
+
+            events
+        };
+
+        events.into_iter().map(|e| e.deref().clone()).collect()
     }
 }
 
