@@ -60,6 +60,8 @@ function LayoutApp() {
 
   const { theme } = useTheme();
 
+  const isHomePage = location.pathname === "/";
+
   return (
     <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-surface-primary-rice text-secondary-700">
       <img
@@ -67,7 +69,7 @@ function LayoutApp() {
         alt="bg-image"
         className={twMerge(
           "pointer-events-none drag-none select-none h-[20vh] lg:h-[20vh] w-full fixed lg:absolute bottom-0 lg:top-0 left-0 z-40 lg:z-0 rotate-180 lg:rotate-0 object-cover object-bottom",
-          { hidden: location.pathname === "/" && !isLg },
+          { hidden: isHomePage && !isLg },
         )}
       />
       <WelcomeModal />
