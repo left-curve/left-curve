@@ -187,27 +187,31 @@ const SectionCommunity: React.FC = () => {
             </h2>
             <div className="flex gap-4">
               <Button
+                as="a"
+                href="https://x.com/dangoXchg"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="gap-0"
-                onClick={() => window.open("https://x.com/dangoXchg", "_blank")}
               >
                 <IconTwitter className="w-6 h-6" />
                 <span>Twitter</span>
               </Button>
               <Button
+                as="a"
+                href="https://discord.gg/4uB9UDzYhz"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="gap-0"
-                onClick={() => window.open("https://discord.gg/4uB9UDzYhz", "_blank")}
               >
                 <IconDiscord className="w-5 h-5" />
                 <span className="pl-[6px]">Discord</span>
               </Button>
               <Button
+                as="a"
+                href="https://mirror.xyz/0x8E4AA2B6F137D2eD6Ba3E3Bb8E64240D46035DE6"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="gap-0"
-                onClick={() =>
-                  window.open(
-                    "https://mirror.xyz/0x8E4AA2B6F137D2eD6Ba3E3Bb8E64240D46035DE6",
-                    "_blank",
-                  )
-                }
               >
                 <IconMirror className="w-5 h-5" />
                 <span className="pl-[6px]">Mirror</span>
