@@ -1,3 +1,17 @@
+//! To use various methods in the RustCrypto project, such as:
+//!
+//! - `signature::DigestVerifier::verify_digest` and
+//! - `ecdsa::SigningKey::sign_digest_recoverable`,
+//!
+//! the input digest must implement the `digest::Digest` trait. However, this
+//! trait isn't implemented for fixed-size arrays such as `[u8; 32]` or `[u8; 64]`.
+//! This makes the methods extra tricky to use.
+//!
+//! Here we define a wrapper struct that implements the required traits.
+//!
+//! Adapted from:
+//! [cosmwasm-crypto](https://github.com/CosmWasm/cosmwasm/blob/main/packages/crypto/src/identity_digest.rs)
+
 use {
     digest::{
         FixedOutput, HashMarker, Output, OutputSizeUser, Update,
@@ -7,19 +21,6 @@ use {
     std::ops::Deref,
 };
 
-/// To use various methods in the RustCrypto project, such as:
-///
-/// - `signature::DigestVerifier::verify_digest` and
-/// - `ecdsa::SigningKey::sign_digest_recoverable`,
-///
-/// the input digest must implement the `digest::Digest` trait. However, this
-/// trait isn't implemented for fixed-size arrays such as `[u8; 32]` or `[u8; 64]`.
-/// This makes the methods extra tricky to use.
-///
-/// Here we define a wrapper struct that implements the required traits.
-///
-/// Adapted from:
-/// <https://github.com/CosmWasm/cosmwasm/blob/main/packages/crypto/src/identity_digest.rs>
 macro_rules! identity {
     ($name:ident, $array_len:ty, $len:literal, $doc:literal) => {
         #[derive(Default, Clone)]
