@@ -243,8 +243,6 @@ where
 
         #[cfg(feature = "metrics")]
         {
-            init_metrics();
-
             histogram!("indexer.events.extract_addresses.duration.seconds")
                 .record(start.elapsed().as_secs_f64());
 

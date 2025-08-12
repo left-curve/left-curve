@@ -1,4 +1,7 @@
-use metrics::{describe_counter, describe_histogram};
+use {
+    crate::active_model,
+    metrics::{describe_counter, describe_histogram},
+};
 
 pub fn init_indexer_metrics() {
     describe_counter!("indexer.blocks.total", "Total indexed blocks");
@@ -29,4 +32,6 @@ pub fn init_indexer_metrics() {
         "indexer.block_save.duration",
         "Block save duration in seconds"
     );
+
+    active_model::init_metrics();
 }
