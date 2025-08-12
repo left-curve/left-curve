@@ -108,6 +108,8 @@ pub struct MarketOrder {
     /// Portion of the order that remains unfilled, measured in the unit as the
     /// `amount` field.
     pub remaining: Udec128_6,
+    /// The block height at which the order was submitted.
+    pub created_at_block_height: u64,
 }
 
 #[grug::derive(Borsh, Serde)]
@@ -249,7 +251,7 @@ impl OrderTrait for MarketOrder {
     }
 
     fn created_at_block_height(&self) -> Option<u64> {
-        None
+        Some(self.created_at_block_height)
     }
 
     fn remaining(&self) -> &Udec128_6 {

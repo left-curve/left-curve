@@ -81,6 +81,7 @@ pub(super) fn create_limit_order(
 
 pub(super) fn create_market_order(
     storage: &mut dyn Storage,
+    current_block_height: u64,
     user: Addr,
     order: CreateMarketOrderRequest,
     events: &mut EventBuilder,
@@ -143,7 +144,13 @@ pub(super) fn create_market_order(
         },
     };
 
-    let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+    let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+
+    // For BUY orders, invert the order ID. This is necessary for enforcing
+    // price-time priority. See the docs on `OrderId` for details.
+    if order.direction == Direction::Bid {
+        order_id = !order_id;
+    }
 
     events.push(OrderCreated {
         user,
@@ -175,6 +182,7 @@ pub(super) fn create_market_order(
                 price,
                 amount: *order.amount,
                 remaining: order.amount.checked_into_dec()?,
+                created_at_block_height: current_block_height,
             },
         ),
     )?;
