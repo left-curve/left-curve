@@ -1,6 +1,6 @@
 use {
     grug_app::AppError,
-    grug_crypto::{Identity256, Identity512, sha2_256, sha2_512},
+    grug_crypto::{sha2_256, sha2_512},
     grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_tester::{
@@ -13,6 +13,7 @@ use {
         ResultExt, VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
+    identity::{Identity256, Identity512},
     rand::rngs::OsRng,
     serde::{Serialize, de::DeserializeOwned},
     std::{fmt::Debug, fs, str::FromStr, sync::LazyLock, vec},
