@@ -1,5 +1,3 @@
-#[cfg(feature = "async-graphql")]
-use crate::httpd::graphql::update_candle_cache;
 #[cfg(feature = "testing")]
 use clickhouse::test;
 use {
@@ -20,8 +18,7 @@ pub struct Context {
     pub clickhouse_database: String,
     #[allow(dead_code)]
     clickhouse_client: Client,
-    pub pubsub: Arc<dyn indexer_sql::pubsub::PubSub<u64> + Send + Sync>,
-    pub candle_pubsub: Arc<dyn indexer_sql::pubsub::PubSub<u64> + Send + Sync>,
+    pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub candle_cache: Arc<RwLock<CandleCache>>,
 }
 
@@ -35,13 +32,10 @@ impl Context {
             .with_database(&database);
 
         let pubsub: Arc<dyn PubSub<u64> + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
-        let candle_pubsub: Arc<dyn PubSub<u64> + Send + Sync> =
-            Arc::new(pubsub::MemoryPubSub::new(100));
 
         Self {
             clickhouse_client,
             pubsub,
-            candle_pubsub,
             candle_cache: Default::default(),
         }
     }
@@ -61,15 +55,12 @@ impl Context {
         );
 
         let pubsub: Arc<dyn PubSub<u64> + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
-        let candle_pubsub: Arc<dyn PubSub<u64> + Send + Sync> =
-            Arc::new(pubsub::MemoryPubSub::new(100));
 
         Self {
             mock: None,
             clickhouse_database: database,
             clickhouse_client,
             pubsub,
-            candle_pubsub,
             candle_cache: Default::default(),
         }
     }
@@ -86,13 +77,6 @@ impl Context {
 
     #[cfg(feature = "async-graphql")]
     pub async fn start_candle_cache(&self) -> crate::error::Result<()> {
-        let self_clone = self.clone();
-
-        tokio::spawn(async move {
-            // Update the candle cache automatically
-            update_candle_cache(self_clone).await;
-        });
-
         self.preload_candle_cache().await
     }
 
@@ -105,7 +89,6 @@ impl Context {
             mock: Some(Arc::new(mock)),
             clickhouse_database: self.clickhouse_database.clone(),
             pubsub: self.pubsub.clone(),
-            candle_pubsub: self.candle_pubsub.clone(),
             candle_cache: Default::default(),
         }
     }
@@ -130,7 +113,6 @@ impl Context {
             clickhouse_database: test_database,
             clickhouse_client,
             pubsub: self.pubsub,
-            candle_pubsub: self.candle_pubsub.clone(),
             candle_cache: Default::default(),
         })
     }

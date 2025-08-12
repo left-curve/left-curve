@@ -68,31 +68,26 @@ impl PairPrice {
 }
 
 impl PairPrice {
-    pub async fn last_prices(clickhouse_client: &clickhouse::Client) -> Result<Vec<PairPrice>> {
+    pub async fn latest_prices(
+        clickhouse_client: &clickhouse::Client,
+        size: usize,
+    ) -> Result<Vec<PairPrice>> {
         let query = r#"
-          SELECT
-            quote_denom,
-            base_denom,
-            open_price,
-            highest_price,
-            lowest_price,
-            close_price,
-            volume_base,
-            volume_quote,
-            created_at,
-            block_height
-          FROM (
-              SELECT *,
-                  row_number() OVER (
-                      PARTITION BY quote_denom, base_denom
-                      ORDER BY block_height DESC
-                  ) AS rn
-              FROM pair_prices
-          )
-          WHERE rn = 1
-        "#;
+    SELECT *
+    FROM pair_prices
+    WHERE block_height IN (
+      SELECT DISTINCT block_height
+      FROM pair_prices
+      ORDER BY block_height DESC
+      LIMIT ?
+    )
+    ORDER BY block_height ASC"#;
 
-        Ok(clickhouse_client.query(query).fetch_all().await?)
+        Ok(clickhouse_client
+            .query(query)
+            .bind(size)
+            .fetch_all()
+            .await?)
     }
 
     pub async fn all_pairs(clickhouse_client: &clickhouse::Client) -> Result<Vec<PairId>> {
