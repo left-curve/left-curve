@@ -35,6 +35,15 @@
     - config.xml
     - users.xml
 
+- name: Copy backup script
+  become: true
+  become_user: root
+  template:
+    src: "make_clickhouse_backup.sh"
+    dest: "{{ ansible_env.HOME }}"
+    mode: '0755'
+    owner: '{{ deploy_user }}'
+
 - name: Deploy clickhouse container
   docker_container:
     name: "{{ container_name }}"
