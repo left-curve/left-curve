@@ -24,7 +24,6 @@ digest                  = { workspace = true }
 grug                    = { workspace = true }
 grug-app                = { workspace = true }
 grug-client             = { workspace = true }
-grug-crypto             = { workspace = true }
 grug-db-disk-lite       = { workspace = true }
 grug-db-memory          = { workspace = true }
 grug-types              = { workspace = true, features = ["async-graphql"] }
@@ -34,6 +33,7 @@ grug-vm-wasm            = { workspace = true }
 hex-literal             = { workspace = true }
 hyperlane-testing       = { workspace = true }
 hyperlane-types         = { workspace = true }
+identity                = { workspace = true }
 indexer-clickhouse      = { workspace = true, features = ["async-graphql", "metrics", "testing", "tracing"] }
 indexer-hooked          = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd           = { workspace = true, features = ["metrics"] }

@@ -415,11 +415,11 @@ mod tests {
             db_scan, db_write, debug, read_from_memory, write_to_memory,
         },
         grug_app::{APP_CONFIG, GAS_COSTS, GasTracker, QuerierProviderImpl, StorageProvider},
-        grug_crypto::{Identity256, Identity512},
         grug_types::{
             Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult, Hash256, MockStorage, Order,
             Query, QueryResponse, ResultExt, Shared, Storage, Timestamp, encode_sections, json,
         },
+        identity::{Identity256, Identity512},
         rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
         test_case::test_case,

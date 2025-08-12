@@ -1,10 +1,10 @@
 use {
-    grug_crypto::Identity256,
     grug_mock_account::{Credential, PublicKey, SignDoc},
     grug_types::{
         Addr, Addressable, ByteArray, GENESIS_SENDER, Hash256, Json, JsonSerExt, Message, NonEmpty,
         SignData, Signer, StdResult, Tx, UnsignedTx,
     },
+    identity::Identity256,
     k256::ecdsa::{Signature, SigningKey, signature::DigestSigner},
     rand::rngs::OsRng,
     std::{
