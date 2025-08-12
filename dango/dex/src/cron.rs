@@ -536,16 +536,18 @@ fn clear_orders_of_pair(
     // Find the best bid and ask prices available.
     let best_bid_price = LIMIT_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Bid)
         .keys(storage, None, None, IterationOrder::Descending)
         .next()
         .transpose()?
-        .map(|(_direction, price, _order_id)| price);
+        .map(|(price, _order_id)| price);
     let best_ask_price = LIMIT_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Ask)
         .keys(storage, None, None, IterationOrder::Ascending)
         .next()
         .transpose()?
-        .map(|(_direction, price, _order_id)| price);
+        .map(|(price, _order_id)| price);
 
     // Determine the mid price:
     // - if both best bid and ask prices exist, then take the average of them;
