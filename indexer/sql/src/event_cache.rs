@@ -55,7 +55,7 @@ impl<M> EventCache<M> {
             let mut events = vec![];
 
             for block in inner.ring.range(block_range) {
-                let Some(block_events) = inner.blocks.get(&block) else {
+                let Some(block_events) = inner.blocks.get(block) else {
                     continue;
                 };
 
