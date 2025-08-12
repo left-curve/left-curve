@@ -7,7 +7,7 @@
 //! trait isn't implemented for fixed-size arrays such as `[u8; 32]` or `[u8; 64]`.
 //! This makes the methods extra tricky to use.
 //!
-//! Here we define a wrapper struct that implements the required traits.
+//! Here we define wrapper structs that implement the required traits.
 //!
 //! Adapted from:
 //! [cosmwasm-crypto](https://github.com/CosmWasm/cosmwasm/blob/main/packages/crypto/src/identity_digest.rs)
