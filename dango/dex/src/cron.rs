@@ -710,6 +710,8 @@ fn refund_unmatched_order(
         },
     }
 
+    // TODO: emit order canceled event
+
     Ok(())
 }
 
