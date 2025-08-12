@@ -297,6 +297,9 @@ impl CandleCache {
                                     tracing::warn!(
                                         %candle.block_height,
                                         %highest_block_height,
+                                        base_denom = key.base_denom,
+                                        quote_denom = key.quote_denom,
+                                        %key.interval,
                                         "Candle is older than latest price");
 
                                     // `candle` are built async in clickhouse, and this means they're
