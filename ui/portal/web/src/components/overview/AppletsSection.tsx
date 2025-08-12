@@ -13,7 +13,7 @@ export function AppletsSection() {
     <div className="grid grid-cols-[repeat(auto-fill,_minmax(80px,_1fr))] md:flex md:flex-wrap gap-4 md:gap-4 w-full md:min-h-fit md:justify-start">
       {Object.values(favApplets).map((applet) => (
         <div
-          className="md:w-[5.5rem] h-auto flex items-start justify-center"
+          className="md:w-[5.5rem] h-auto flex items-start justify-center [&:nth-child(6n)]:md:justify-end [&:nth-child(6n+1)]:md:justify-start"
           key={`applets.section.${applet.title}}`}
         >
           <div className="flex flex-col items-center gap-2">
