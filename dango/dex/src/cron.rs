@@ -647,8 +647,8 @@ where
         }
     }
 
-    if let Some((price, order)) = other_unmatched_orders.next().transpose()? {
-        if let Order::Limit(_) = order {
+    for res in other_unmatched_orders {
+        if let Ok((price, Order::Limit(_))) = res {
             return Ok(Some(price));
         }
     }
