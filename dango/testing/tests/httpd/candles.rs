@@ -293,6 +293,13 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                         .await?;
 
                 let expected_json = serde_json::json!([{
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "interval": "ONE_MINUTE",
+                    "close": "27.5",
+                    "high": "27.5",
+                    "low": "27.5",
+                    "open": "27.5",
                     "volumeBase": "50",
                     "volumeQuote": "1375",
                     "blockHeight": 4,
@@ -326,6 +333,14 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     }
 
                     let expected_json = serde_json::json!([{
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "interval": "ONE_MINUTE",
+                        "close": "27.5",
+                        "high": "27.5",
+                        "low": "27.5",
+                        "open": "27.5",
+                        "blockHeight": 6,
                         "volumeBase": "75",
                         "volumeQuote": "2062.5",
                     }]);
@@ -361,12 +376,12 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
 
-    println!("Cache : {:#?}", old_cache.pair_prices);
-    println!("Cache from clickhouse: {:#?}", cache.pair_prices);
+    // println!("Cache : {:#?}", old_cache.pair_prices);
+    // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
     assert_eq!(cache.pair_prices, old_cache.pair_prices);
 
-    println!("Cache : {:#?}", old_cache.candles);
-    println!("Cache from clickhouse: {:#?}", cache.candles);
+    // println!("Cache : {:#?}", old_cache.candles);
+    // println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;
@@ -469,9 +484,16 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                         .await?;
 
                 let expected_json = serde_json::json!([{
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "blockHeight": 2,
+                    "close": "27.5",
+                    "high": "27.5",
+                    "interval": "ONE_MINUTE",
+                    "low": "27.5",
+                    "open": "27.5",
                     "volumeBase": "25",
                     "volumeQuote": "687.5",
-                    "blockHeight": 2,
                 }]);
 
                 assert_json_include!(actual: response.data, expected: expected_json);
@@ -484,9 +506,16 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                         .await?;
 
                 let expected_json = serde_json::json!([{
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "blockHeight": 3,
+                    "close": "27.5",
+                    "high": "27.5",
+                    "interval": "ONE_MINUTE",
+                    "low": "27.5",
+                    "open": "27.5",
                     "volumeBase": "25",
                     "volumeQuote": "687.5",
-                    "blockHeight": 3,
                 }]);
 
                 assert_json_include!(actual: response.data, expected: expected_json);
