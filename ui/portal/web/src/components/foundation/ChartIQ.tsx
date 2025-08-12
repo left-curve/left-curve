@@ -1,7 +1,6 @@
 // @ts-nocheck
 
 import "@left-curve/chartiq/js/standard";
-import "@left-curve/chartiq/js/advanced";
 import "@left-curve/chartiq/js/componentUI";
 import "@left-curve/chartiq/js/addOns";
 
