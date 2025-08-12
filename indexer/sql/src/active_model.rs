@@ -10,6 +10,8 @@ use {
         sync::Arc,
     },
 };
+#[cfg(feature = "metrics")]
+use {metrics::describe_histogram, metrics::histogram, std::time::Instant};
 
 #[derive(Debug, Default)]
 pub struct Models {
@@ -233,8 +235,21 @@ where
         // If later we find that most events contain more than 10 addresses and
         // the reallocation has a noticeable performance impact, we can increase
         // the initial capacity.
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
         let mut addresses = HashSet::with_capacity(10);
         event.event.extract_addresses(&mut addresses);
+
+        #[cfg(feature = "metrics")]
+        {
+            init_metrics();
+
+            histogram!("indexer.events.extract_addresses.duration.seconds")
+                .record(start.elapsed().as_secs_f64());
+
+            histogram!("indexer.events.extract_addresses.count").record(addresses.len() as f64);
+        }
 
         events_ids.insert(event.id.event_index, db_event_id);
 
@@ -313,4 +328,17 @@ fn build_event_active_model(
         event_idx: Set(index_event.id.event_index as i32),
         block_height: Set(block.info.height.try_into()?),
     })
+}
+
+#[cfg(feature = "metrics")]
+pub fn init_metrics() {
+    describe_histogram!(
+        "indexer.events.extract_addresses.count",
+        "Number of addresses found in an event"
+    );
+
+    describe_histogram!(
+        "indexer.events.extract_addresses.duration.seconds",
+        "Time consumed extracting addresses from an event"
+    )
 }
