@@ -253,18 +253,13 @@ fn clear_orders_of_pair(
     //    to reverse it.
     let mut merged_bids = nested_merged_orders(
         limit_bids,
-        market_bids
-            .into_iter()
-            .rev()
-            .map(|((price, _), order)| (price, order)),
+        market_bids.into_iter().rev(),
         passive_bids,
         IterationOrder::Descending,
     );
     let mut merged_asks = nested_merged_orders(
         limit_asks,
-        market_asks
-            .into_iter()
-            .map(|((price, _), order)| (price, order)),
+        market_asks.into_iter(),
         passive_asks,
         IterationOrder::Ascending,
     );
@@ -605,12 +600,12 @@ fn nested_merged_orders<A, B, C>(
 >
 where
     A: Iterator<Item = StdResult<((Udec128_24, OrderId), LimitOrder)>>,
-    B: Iterator<Item = (Udec128_24, MarketOrder)>,
+    B: Iterator<Item = ((Udec128_24, OrderId), MarketOrder)>,
     C: Iterator<Item = (Udec128_24, PassiveOrder)>,
 {
     // Make the three iterators return the same item type, so they can be merged.
     let limit = limit.map(|res| res.map(|((price, _), order)| (price, Order::Limit(order))));
-    let market = market.map(|(price, order)| Ok((price, Order::Market(order))));
+    let market = market.map(|((price, _), order)| Ok((price, Order::Market(order))));
     let passive = passive.map(|(price, order)| Ok((price, Order::Passive(order))));
 
     // Merge the three iterators.
