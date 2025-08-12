@@ -12,6 +12,7 @@
 **/.env
 **/*.vars
 .envrc
+.envrc-old
 
 # Workers
 **/.wrangler

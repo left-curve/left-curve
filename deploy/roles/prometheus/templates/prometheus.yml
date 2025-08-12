@@ -50,14 +50,14 @@ scrape_configs:
     static_configs:
       - targets: ['ovh1:9080']
       - targets: ['ovh2:9080']
-      - targets: ['node-exporter:9080']
+      - targets: ['promtail:9080']
       - targets: ['ovh4:9080']
       - targets: ['ovh5:9080']
       - targets: ['ovh6:9080']
       - targets: ['ovh7:9080']
     relabel_configs:
     - source_labels: [__address__]
-      regex: 'node-exporter:9080'
+      regex: 'promtail:9080'
       target_label: instance
       replacement: 'ovh3:9080'
 

@@ -1,5 +1,4 @@
 use {
-    crate::eth_utils,
     grug::HexByteArray,
     hex_literal::hex,
     hyperlane_types::{Addr32, addr32, mailbox::Domain},

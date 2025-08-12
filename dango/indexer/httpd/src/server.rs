@@ -4,6 +4,7 @@ use {
         HttpResponse,
         web::{self, ServiceConfig},
     },
+    grug_httpd::routes::index::index,
     indexer_httpd::routes,
 };
 
@@ -15,7 +16,7 @@ where
     G: Clone + 'static,
 {
     Box::new(move |cfg: &mut ServiceConfig| {
-        cfg.service(routes::index::index)
+        cfg.service(index)
             .service(routes::index::up)
             .service(routes::index::sentry_raise)
             .service(routes::api::services::api_services())
