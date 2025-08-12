@@ -202,9 +202,9 @@ const SectionCommunity: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="w-full border-t border-t-border-tertiary-blue items-start lg:items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row">
+        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row gap-1">
           <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
-          <div className="flex gap-4">
+          <div className="flex gap-4 text-tertiary-500 diatype-m-medium">
             <a
               href="/documents/Dango%20-%20Terms%20of%20use.pdf"
               download="Dango - Terms of Use.pdf"
