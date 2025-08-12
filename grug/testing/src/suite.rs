@@ -7,7 +7,6 @@ use {
         App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer,
         UpgradeHandler, Vm,
     },
-    grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
@@ -410,7 +409,7 @@ where
         B: Into<Binary>,
     {
         let code = code.into();
-        let code_hash = Hash256::from_inner(sha2_256(&code));
+        let code_hash = code.hash256();
 
         let outcome = self.send_message_with_gas(signer, gas_limit, Message::upload(code));
 
@@ -531,7 +530,7 @@ where
         StdError: From<C::Error>,
     {
         let code = code.into();
-        let code_hash = Hash256::from_inner(sha2_256(&code));
+        let code_hash = code.hash256();
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
@@ -622,7 +621,7 @@ where
     }
 
     /// Return a `QuerierWrapper` object.
-    pub fn querier(&self) -> QuerierWrapper {
+    pub fn querier(&self) -> QuerierWrapper<'_> {
         QuerierWrapper::new(self)
     }
 }
@@ -670,7 +669,7 @@ where
         <Self as QuerierExt>::query_balances(self, address, None, Some(u32::MAX))
     }
 
-    pub fn balances(&mut self) -> BalanceTracker<DB, VM, PP, ID> {
+    pub fn balances(&mut self) -> BalanceTracker<'_, DB, VM, PP, ID> {
         BalanceTracker { suite: self }
     }
 }

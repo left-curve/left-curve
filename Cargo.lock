@@ -3465,7 +3465,7 @@ dependencies = [
  "dango-auth",
  "dango-types",
  "grug",
- "grug-crypto",
+ "identity",
  "k256",
  "pbkdf2",
  "rand 0.8.5",
@@ -3711,10 +3711,10 @@ dependencies = [
  "dango-taxman",
  "dango-types",
  "digest 0.10.7",
+ "eth-utils",
  "grug",
  "grug-app",
  "grug-client",
- "grug-crypto",
  "grug-db-disk-lite",
  "grug-db-memory",
  "grug-testing",
@@ -3727,6 +3727,7 @@ dependencies = [
  "home",
  "hyperlane-testing",
  "hyperlane-types",
+ "identity",
  "indexer-clickhouse",
  "indexer-client",
  "indexer-disk-saver",
@@ -4224,6 +4225,15 @@ dependencies = [
  "cfg-if",
  "home",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "eth-utils"
+version = "0.0.0"
+dependencies = [
+ "identity",
+ "k256",
+ "sha3",
 ]
 
 [[package]]
@@ -4832,6 +4842,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "hex-literal",
+ "identity",
  "k256",
  "p256",
  "rand 0.8.5",
@@ -5034,7 +5045,6 @@ dependencies = [
  "async-trait",
  "borsh 1.5.7",
  "grug-app",
- "grug-crypto",
  "grug-db-memory",
  "grug-math",
  "grug-mock-account",
@@ -5043,6 +5053,7 @@ dependencies = [
  "grug-storage",
  "grug-types",
  "grug-vm-rust",
+ "identity",
  "k256",
  "prost",
  "rand 0.8.5",
@@ -5131,6 +5142,7 @@ dependencies = [
  "grug-testing",
  "grug-types",
  "grug-vm-wasm",
+ "identity",
  "k256",
  "p256",
  "rand 0.8.5",
@@ -5601,9 +5613,9 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug",
- "grug-crypto",
  "hex-literal",
  "hyperlane-types",
+ "identity",
  "k256",
  "rand 0.8.5",
  "test-case",
@@ -5622,10 +5634,11 @@ dependencies = [
 name = "hyperlane-testing"
 version = "0.0.0"
 dependencies = [
+ "eth-utils",
  "grug",
- "grug-crypto",
  "hex-literal",
  "hyperlane-types",
+ "identity",
  "k256",
 ]
 
@@ -5785,6 +5798,13 @@ name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
+
+[[package]]
+name = "identity"
+version = "0.0.0"
+dependencies = [
+ "digest 0.10.7",
+]
 
 [[package]]
 name = "idna"

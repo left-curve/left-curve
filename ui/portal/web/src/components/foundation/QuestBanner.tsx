@@ -1,8 +1,10 @@
-import { Button, twMerge } from "@left-curve/applets-kit";
+import { Button, twMerge, useMediaQuery, usePortalTarget } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
 import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useAccount } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { useApp } from "~/hooks/useApp";
 
@@ -32,6 +34,7 @@ export const QuestBanner: React.FC = () => {
   const { account, isConnected } = useAccount();
   const { isQuestBannerVisible, setQuestBannerVisibility, settings } = useApp();
   const { formatNumberOptions } = settings;
+  const { isLg } = useMediaQuery();
 
   const { data: quests, isLoading } = useQuery({
     queryKey: ["quests", account?.username],
@@ -40,6 +43,7 @@ export const QuestBanner: React.FC = () => {
       fetch(`${window.dango.urls.questUrl}/${account?.username}`).then((res) => res.json()),
   });
 
+  if (location.pathname === "/" && !isLg) return null;
   if (!isQuestBannerVisible || isLoading || !quests) return null;
 
   const isTxCountCompleted = quests.tx_count >= 10;
@@ -122,4 +126,21 @@ export const QuestBanner: React.FC = () => {
       </div>
     </div>
   );
+};
+
+export const QuestBannerRender: React.FC = () => {
+  const { isLg } = useMediaQuery();
+  const [targetContainer, setTargetContainer] = useState("#quest-banner");
+
+  const container = usePortalTarget(targetContainer);
+
+  useEffect(() => {
+    if (isLg) {
+      setTargetContainer("#quest-banner");
+    } else {
+      setTargetContainer("#quest-banner-mobile");
+    }
+  }, [isLg]);
+
+  return container ? createPortal(<QuestBanner />, container!) : null;
 };

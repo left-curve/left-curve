@@ -21,7 +21,7 @@ use {
 };
 
 /// Define the number of samples for each PythId to store in file.
-const CACHE_SAMPLES: usize = 15;
+pub const PYTH_CACHE_SAMPLES: usize = 50;
 
 #[derive(Debug, Clone)]
 pub struct PythClientCache {
@@ -63,7 +63,6 @@ impl PythClientCache {
                     return cache_file.load::<Vec<Vec<Binary>>>().unwrap();
                 }
 
-                // If the file does not exists, retrieve the data from the source.
                 let rt = Runtime::new().unwrap();
                 let values = rt.block_on(async {
                     let mut client = PythClient::new(base_url.clone()).unwrap();
@@ -75,7 +74,7 @@ impl PythClientCache {
 
                     // Retrieve CACHE_SAMPLES values to be able to return newer values each time.
                     let mut values = vec![];
-                    while values.len() < CACHE_SAMPLES {
+                    while values.len() < PYTH_CACHE_SAMPLES {
                         if let Some(vaas) = stream.next().await {
                             values.push(vaas);
                         }
@@ -93,7 +92,7 @@ impl PythClientCache {
         stored_vaas
     }
 
-    fn cache_filename<I>(id: &I) -> PathBuf
+    pub fn cache_filename<I>(id: &I) -> PathBuf
     where
         I: AsRef<Path>,
     {

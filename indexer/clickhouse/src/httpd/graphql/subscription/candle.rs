@@ -1,5 +1,5 @@
 #[cfg(feature = "metrics")]
-use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
+use grug_httpd::metrics::GaugeGuard;
 
 use {
     crate::{
@@ -9,6 +9,10 @@ use {
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
     futures_util::stream::{StreamExt, once},
+    std::sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 #[derive(Default)]
@@ -42,6 +46,8 @@ impl CandleSubscription {
             "subscription",
         ));
 
+        let received_block_height = Arc::new(AtomicU64::new(0));
+
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
@@ -51,8 +57,7 @@ impl CandleSubscription {
                     .read()
                     .await
                     .get_last_candle(&cache_key)
-                    .map(|candle| vec![candle.clone()])
-                    .unwrap_or_default())
+                    .map(|candle| vec![candle.clone()]))
             }
         })
         .chain(
@@ -60,7 +65,7 @@ impl CandleSubscription {
                 .candle_pubsub
                 .subscribe()
                 .await?
-                .then(move |_block_height| {
+                .then(move |block_height| {
                     #[cfg(feature = "metrics")]
                     let _guard = gauge_guard.clone();
 
@@ -71,25 +76,42 @@ impl CandleSubscription {
                     );
                     let candle_cache = app_ctx.candle_cache.clone();
 
+                    let received_height = received_block_height.clone();
+
                     async move {
-                        Ok(candle_cache
+                        let current_received = received_height.load(Ordering::Acquire);
+                        if block_height < current_received {
+                            #[cfg(feature = "tracing")]
+                            tracing::info!(
+                                current_received,
+                                block_height,
+                                "Skip candle, same block_height, shouldn't happen..."
+                            );
+                            return Ok(None);
+                        }
+
+                        let candle = candle_cache
                             .read()
                             .await
                             .get_last_candle(&cache_key)
-                            .map(|candle| vec![candle.clone()])
-                            .unwrap_or_default())
+                            .map(|candle| vec![candle.clone()]);
+
+                        received_height.store(block_height, Ordering::Release);
+
+                        Ok(candle)
                     }
                 }),
         )
-        .filter_map(|candles: Result<Vec<Candle>>| async move {
+        .filter_map(|candles: Result<Option<Vec<Candle>>>| async move {
             match candles {
-                Ok(candles) => {
+                Ok(Some(candles)) => {
                     if candles.is_empty() {
                         None
                     } else {
                         Some(candles)
                     }
                 },
+                Ok(None) => None,
                 Err(_err) => {
                     #[cfg(feature = "tracing")]
                     tracing::error!("Error getting candles: {_err:?}");

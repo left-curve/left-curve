@@ -34,9 +34,9 @@ const urls =
         upUrl: "http://localhost:8080/up",
       }
     : {
-        faucetUrl: `${chain.urls.indexer.replace("graphql", "faucet")}/mint`,
-        questUrl: `${chain.urls.indexer.replace("graphql", "quests")}/check_username`,
-        upUrl: `${chain.urls.indexer.replace("graphql", "up")}`,
+        faucetUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/faucet")}/mint`,
+        questUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/quests")}/check_username`,
+        upUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/up")}`,
       };
 
 const envConfig = `window.dango = ${JSON.stringify(

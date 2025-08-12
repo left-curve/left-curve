@@ -38,6 +38,7 @@ grug-mock-bank = { workspace = true, features = ["library"] }
 grug-tester    = { workspace = true, features = ["library"] }
 grug-testing   = { workspace = true }
 grug-vm-wasm   = { workspace = true, features = ["testing"] }
+identity       = { workspace = true }
 k256           = { workspace = true }
 p256           = { workspace = true }
 rand           = { workspace = true }
