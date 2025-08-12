@@ -204,12 +204,12 @@ const SectionCommunity: React.FC = () => {
         </div>
         <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row gap-1">
           <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
-          <div className="flex gap-10 lg:gap-4 text-tertiary-500 diatype-m-medium">
+          <div className="flex gap-10 lg:gap-4 diatype-m-medium">
             <a
               href="/documents/Dango%20-%20Terms%20of%20use.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline visited:text-red-bean-400"
+              className="hover:underline text-tertiary-500"
             >
               {m["welcome.termsOfUse"]()}
             </a>
@@ -218,7 +218,7 @@ const SectionCommunity: React.FC = () => {
               href="/documents/Dango%20-%20Privacy%20Policy.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline visited:text-red-bean-400"
+              className="hover:underline text-tertiary-500"
             >
               {m["welcome.privacyPolicy"]()}
             </a>
