@@ -207,7 +207,8 @@ const SectionCommunity: React.FC = () => {
           <div className="flex gap-4 text-tertiary-500 diatype-m-medium">
             <a
               href="/documents/Dango%20-%20Terms%20of%20use.pdf"
-              download="Dango - Terms of Use.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hover:underline visited:text-red-bean-400"
             >
               {m["welcome.termsOfUse"]()}
@@ -215,7 +216,8 @@ const SectionCommunity: React.FC = () => {
 
             <a
               href="/documents/Dango%20-%20Privacy%20Policy.pdf"
-              download="Dango - Privacy Policy.pdf"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hover:underline visited:text-red-bean-400"
             >
               {m["welcome.privacyPolicy"]()}
