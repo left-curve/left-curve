@@ -57,59 +57,65 @@ impl CandleSubscription {
                     .read()
                     .await
                     .get_last_candle(&cache_key)
-                    .map(|candle| vec![candle.clone()]))
+                    .cloned())
             }
         })
-        .chain(
-            app_ctx
-                .candle_pubsub
-                .subscribe()
-                .await?
-                .then(move |block_height| {
-                    #[cfg(feature = "metrics")]
-                    let _guard = gauge_guard.clone();
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
 
-                    let cache_key = cache::CandleCacheKey::new(
-                        base_denom.clone(),
-                        quote_denom.clone(),
-                        interval,
+            let cache_key =
+                cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
+            let candle_cache = app_ctx.candle_cache.clone();
+
+            let current_received = received_block_height.fetch_max(block_height, Ordering::Release);
+
+            async move {
+                if block_height < current_received {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        current_received,
+                        block_height,
+                        "Skip candle, pubsub block_height is lower than already received, shouldn't happen..."
                     );
-                    let candle_cache = app_ctx.candle_cache.clone();
+                    return Ok(None);
+                }
 
-                    let received_height = received_block_height.clone();
+                let last_candle = candle_cache
+                    .read()
+                    .await
+                    .get_last_candle(&cache_key)
+                    .cloned();
 
-                    async move {
-                        let current_received = received_height.load(Ordering::Acquire);
-                        if block_height < current_received {
-                            #[cfg(feature = "tracing")]
-                            tracing::info!(
-                                current_received,
-                                block_height,
-                                "Skip candle, same block_height, shouldn't happen..."
-                            );
-                            return Ok(None);
-                        }
+                let Some(candle) = last_candle else {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        current_received,
+                        block_height,
+                        "No current candle, shouldn't happen..."
+                    );
+                    return Ok(None);
+                };
 
-                        let candle = candle_cache
-                            .read()
-                            .await
-                            .get_last_candle(&cache_key)
-                            .map(|candle| vec![candle.clone()]);
+                if candle.block_height < block_height {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(
+                        current_received,
+                        block_height,
+                        %candle.block_height,
+                        "Skip candle, it has older block_height than pubsub received, shouldn't happen..."
+                    );
+                    return Ok(None);
+                }
 
-                        received_height.store(block_height, Ordering::Release);
 
-                        Ok(candle)
-                    }
-                }),
-        )
-        .filter_map(|candles: Result<Option<Vec<Candle>>>| async move {
-            match candles {
-                Ok(Some(candles)) => {
-                    if candles.is_empty() {
-                        None
-                    } else {
-                        Some(candles)
-                    }
+                Ok(Some(candle))
+            }
+        }))
+        .filter_map(|candle: Result<Option<Candle>>| async move {
+            match candle {
+                Ok(Some(candle)) => {
+                    Some(vec![candle])
                 },
                 Ok(None) => None,
                 Err(_err) => {

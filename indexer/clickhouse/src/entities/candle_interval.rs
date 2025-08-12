@@ -1,7 +1,7 @@
 #[cfg(feature = "async-graphql")]
 use async_graphql::Enum;
 use {
-    chrono::Duration,
+    chrono::{DateTime, Datelike, Duration, TimeZone, Utc, Weekday},
     serde::{Deserializer, Serialize, Serializer, de},
     strum::EnumIter,
     strum_macros::{Display, EnumString},
@@ -38,6 +38,36 @@ pub enum CandleInterval {
 }
 
 impl CandleInterval {
+    // Helper to align a timestamp to the start of its candle interval (ClickHouse style)
+    pub fn interval_start(&self, ts: DateTime<Utc>) -> DateTime<Utc> {
+        match self {
+            CandleInterval::OneWeek => {
+                // Week starts on Sunday for Clickhouse and I must align the timestamp accordingly
+                let days_since_sunday = match ts.weekday() {
+                    Weekday::Sun => 0,
+                    Weekday::Mon => 1,
+                    Weekday::Tue => 2,
+                    Weekday::Wed => 3,
+                    Weekday::Thu => 4,
+                    Weekday::Fri => 5,
+                    Weekday::Sat => 6,
+                };
+
+                let start_of_day = ts.date_naive().and_hms_opt(0, 0, 0).unwrap();
+                let monday = start_of_day - Duration::days(days_since_sunday);
+                Utc.from_utc_datetime(&monday)
+            },
+            _ => {
+                let interval_secs = self.duration().num_seconds();
+                assert!(interval_secs > 0, "Interval duration must be > 0");
+
+                let ts_secs = ts.timestamp();
+                let aligned = ts_secs - (ts_secs % interval_secs);
+                DateTime::from_timestamp(aligned, 0).expect("valid aligned timestamp")
+            },
+        }
+    }
+
     pub fn duration(&self) -> Duration {
         match self {
             CandleInterval::OneSecond => Duration::seconds(1),
