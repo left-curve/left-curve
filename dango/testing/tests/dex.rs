@@ -5920,7 +5920,7 @@ fn refund_left_over_market_bid() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Set maker and taker fee rates to 0 for simplicity
-    // TODO: make this configurable in `TestOptions.`
+    // TODO: make this configurable in `TestOptions`
     let mut app_config: AppConfig = suite.query_app_config().unwrap();
     app_config.maker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
     app_config.taker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
