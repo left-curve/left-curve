@@ -103,7 +103,7 @@ fn fill_bids(
         // For market orders, refund the remaining (unfilled) amount, as market
         // orders are immediate-or-cancel.
         if let Order::Market(market_order) = order {
-            let remaining_in_quote = market_order.remaining.checked_mul(clearing_price)?;
+            let remaining_in_quote = market_order.remaining.checked_mul(market_order.price)?;
             refund_quote.checked_add_assign(remaining_in_quote)?;
         }
 
