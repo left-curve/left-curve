@@ -283,6 +283,8 @@ fn clear_orders_of_pair(
         asks,
         unmatched_bid,
         unmatched_ask,
+        last_partial_matched_bid,
+        last_partial_matched_ask,
     } = match_orders(&mut merged_bids, &mut merged_asks)?;
 
     // Any order that isn't visited during `match_limit_orders` is unmatched.
@@ -292,8 +294,8 @@ fn clear_orders_of_pair(
     //    `storage` is released;
     // 2. get the unmatched market orders, so we can process their cancelation.
     // Limit orders are good-until-canceled, so no action is needed for them.
-    let (_, unmatched_market_bids) = merged_bids.disassemble();
-    let (_, unmatched_market_asks) = merged_asks.disassemble();
+    let (mut unmatched_limit_bids, unmatched_market_bids) = merged_bids.disassemble();
+    let (mut unmatched_limit_asks, unmatched_market_asks) = merged_asks.disassemble();
 
     #[cfg(feature = "tracing")]
     {
@@ -401,7 +403,57 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ------------------------ 5. Handle filled orders ------------------------
+    // ----------------- 5. Save the resting order book state ------------------
+
+    // Find the best bid and ask prices that remains after the auction.
+    let best_bid_price = find_best_remaining_price(
+        last_partial_matched_bid,
+        unmatched_bid,
+        &mut unmatched_limit_bids,
+    )?;
+    let best_ask_price = find_best_remaining_price(
+        last_partial_matched_ask,
+        unmatched_ask,
+        &mut unmatched_limit_asks,
+    )?;
+
+    // Drop the limit order iterators. This frees the immutable reference on `storage`.
+    // All writes to the storage can only happen after this point.
+    drop(unmatched_limit_bids);
+    drop(unmatched_limit_asks);
+
+    // Determine the mid price:
+    // - if both best bid and ask prices exist, then take the average of them;
+    // - if only one of them exists, then use that price;
+    // - if none of them exists, then `None`.
+    let mid_price = match (best_bid_price, best_ask_price) {
+        (Some(bid), Some(ask)) => Some(bid.checked_add(ask)?.checked_mul(HALF)?),
+        (Some(bid), None) => Some(bid),
+        (None, Some(ask)) => Some(ask),
+        (None, None) => None,
+    };
+
+    RESTING_ORDER_BOOK.save(
+        storage,
+        (&base_denom, &quote_denom),
+        &RestingOrderBookState {
+            best_bid_price,
+            best_ask_price,
+            mid_price,
+        },
+    )?;
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            ?best_bid_price,
+            ?best_ask_price,
+            ?mid_price,
+            "Saved resting order book state"
+        )
+    }
+
+    // ------------------------ 6. Handle filled orders ------------------------
 
     // Track the inflows and outflows of the dex.
     let mut inflows = DecCoins::new();
@@ -532,56 +584,6 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ----------------- 6. Save the resting order book state ------------------
-
-    // Find the best bid and ask prices available.
-    // TODO: this doesn't consider passive pool liquidity
-    let best_bid_price = LIMIT_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Bid)
-        .keys(storage, None, None, IterationOrder::Descending)
-        .next()
-        .transpose()?
-        .map(|(price, _order_id)| price);
-    let best_ask_price = LIMIT_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Ask)
-        .keys(storage, None, None, IterationOrder::Ascending)
-        .next()
-        .transpose()?
-        .map(|(price, _order_id)| price);
-
-    // Determine the mid price:
-    // - if both best bid and ask prices exist, then take the average of them;
-    // - if only one of them exists, then use that price;
-    // - if none of them exists, then `None`.
-    let mid_price = match (best_bid_price, best_ask_price) {
-        (Some(bid), Some(ask)) => Some(bid.checked_add(ask)?.checked_mul(HALF)?),
-        (Some(bid), None) => Some(bid),
-        (None, Some(ask)) => Some(ask),
-        (None, None) => None,
-    };
-
-    RESTING_ORDER_BOOK.save(
-        storage,
-        (&base_denom, &quote_denom),
-        &RestingOrderBookState {
-            best_bid_price,
-            best_ask_price,
-            mid_price,
-        },
-    )?;
-
-    #[cfg(feature = "tracing")]
-    {
-        tracing::info!(
-            ?best_bid_price,
-            ?best_ask_price,
-            ?mid_price,
-            "Saved resting order book state"
-        )
-    }
-
     Ok(())
 }
 
@@ -623,6 +625,35 @@ where
         market,
         iteration_order,
     )
+}
+
+fn find_best_remaining_price<I>(
+    last_partial_matched_order: Option<(Udec128_24, Order)>,
+    first_unmatched_order: Option<(Udec128_24, Order)>,
+    other_unmatched_orders: &mut I,
+) -> StdResult<Option<Udec128_24>>
+where
+    I: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+{
+    if let Some((price, order)) = last_partial_matched_order {
+        if let Order::Limit(_) = order {
+            return Ok(Some(price));
+        }
+    }
+
+    if let Some((price, order)) = first_unmatched_order {
+        if let Order::Limit(_) = order {
+            return Ok(Some(price));
+        }
+    }
+
+    if let Some((price, order)) = other_unmatched_orders.next().transpose()? {
+        if let Order::Limit(_) = order {
+            return Ok(Some(price));
+        }
+    }
+
+    Ok(None)
 }
 
 /// Handle the `FillingOutcome` of a user order.
@@ -685,6 +716,12 @@ fn fill_passive_order(
     Ok(())
 }
 
+/// Find the best price available on one side of the order book after the auction:
+/// - if the last order that was matched was only partially matched, and it's
+///   a limit order, then it's the best; otherwise,
+/// - if there's a left over bid, and it's a limit order, then it's the best;
+///   otherwise,
+/// - the first unmatched limit order is the best.
 fn refund_unmatched_order(
     base_denom: &Denom,
     quote_denom: &Denom,
