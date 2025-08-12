@@ -5,6 +5,7 @@ import {
   createContext,
   IconChevronDown,
   IconDiscord,
+  IconMirror,
   IconTwitter,
   useMediaQuery,
   useTheme,
@@ -196,8 +197,20 @@ const SectionCommunity: React.FC = () => {
                 className="gap-0"
                 onClick={() => window.open("https://discord.gg/4uB9UDzYhz", "_blank")}
               >
-                <IconDiscord className="w-6 h-6" />
+                <IconDiscord className="w-5 h-5" />
                 <span className="pl-[6px]">Discord</span>
+              </Button>
+              <Button
+                className="gap-0"
+                onClick={() =>
+                  window.open(
+                    "https://mirror.xyz/0x8E4AA2B6F137D2eD6Ba3E3Bb8E64240D46035DE6",
+                    "_blank",
+                  )
+                }
+              >
+                <IconMirror className="w-5 h-5" />
+                <span className="pl-[6px]">Mirror</span>
               </Button>
             </div>
           </div>
