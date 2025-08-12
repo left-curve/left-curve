@@ -30,7 +30,7 @@ pub struct Keystore {
 /// providing a handy API to work with.
 #[derive(Debug, Clone)]
 pub struct SigningKey {
-    inner: k256::ecdsa::SigningKey,
+    pub(crate) inner: k256::ecdsa::SigningKey,
 }
 
 impl SigningKey {

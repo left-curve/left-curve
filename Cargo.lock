@@ -3464,6 +3464,7 @@ dependencies = [
  "dango-account-factory",
  "dango-auth",
  "dango-types",
+ "eth-utils",
  "grug",
  "identity",
  "k256",

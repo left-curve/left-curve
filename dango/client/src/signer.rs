@@ -20,7 +20,6 @@ use {
         MaybeDefined, Message, NonEmpty, QueryClient, QueryClientExt, SignData, Signer, StdError,
         StdResult, Tx, Undefined, UnsignedTx, json,
     },
-    grug_crypto::keccak256,
     std::str::FromStr,
 };
 
@@ -84,9 +83,7 @@ impl SingleSigner<Undefined<u32>> {
                 sk.public_key().hash256(),
             ),
             CredentialType::Ethereum => {
-                let addr =
-                    Addr::from_inner(keccak256(&sk.extended_public_key()[1..])[12..].try_into()?);
-
+                let addr = Addr::from_inner(eth_utils::derive_address(sk.inner.verifying_key()));
                 (Key::Ethereum(addr), addr.hash256())
             },
         };

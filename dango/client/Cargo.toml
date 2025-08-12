@@ -17,6 +17,7 @@ async-trait = { workspace = true }
 bip32       = { workspace = true }
 dango-auth  = { workspace = true }
 dango-types = { workspace = true }
+eth-utils   = { workspace = true }
 grug        = { workspace = true }
 identity    = { workspace = true }
 k256        = { workspace = true }
