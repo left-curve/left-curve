@@ -33,6 +33,9 @@ use {
 
 const HALF: Udec128 = Udec128::new_percent(50);
 
+// Note: the map key is prefixed with the price, so that the orders are sorted
+// by price; the order ID is suffixed because there can be multiple orders of
+// the same price.
 type MarketOrders = BTreeMap<(Price, OrderId), MarketOrder>;
 
 /// Match and fill orders using the uniform price auction strategy.
