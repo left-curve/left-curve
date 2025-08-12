@@ -2,7 +2,7 @@ use {
     crate::entity::events::Model as EventModel,
     grug_types::Addr,
     std::{
-        collections::{HashMap, VecDeque},
+        collections::{BTreeSet, HashMap},
         marker::PhantomData,
         ops::{Deref, RangeInclusive},
         sync::Arc,
@@ -21,7 +21,7 @@ pub struct Reader;
 
 struct InnerEventCache {
     window: usize,
-    ring: VecDeque<u64>,
+    ring: BTreeSet<u64>,
     blocks: HashMap<u64, HashMap<Addr, Vec<Arc<EventModel>>>>,
 }
 
@@ -37,7 +37,7 @@ impl<M> EventCache<M> {
             p: PhantomData,
             inner: Arc::new(RwLock::new(InnerEventCache {
                 window: block_window,
-                ring: VecDeque::new(),
+                ring: BTreeSet::new(),
                 blocks: HashMap::new(),
             })),
         }
@@ -53,6 +53,17 @@ impl<M> EventCache<M> {
             let inner = self.inner.read().await;
 
             let mut events = vec![];
+
+            let (Some(lower_bound), Some(upper_bound)) = (inner.ring.first(), inner.ring.last())
+            else {
+                return vec![];
+            };
+
+            let block_range = {
+                let range_low = block_range.start().max(lower_bound);
+                let range_high = block_range.end().min(upper_bound);
+                *range_low..=*range_high
+            };
 
             for block in block_range {
                 let Some(block_events) = inner.blocks.get(&block) else {
@@ -78,10 +89,14 @@ impl<M> EventCache<M> {
 impl EventCacheWriter {
     pub async fn save_events(&self, block: u64, map: HashMap<Addr, Vec<Arc<EventModel>>>) {
         let mut inner = self.inner.write().await;
+
+        // If the block is already in the ring it get overwritten
+        // This should never happen
+
         inner.blocks.insert(block, map);
-        inner.ring.push_back(block);
+        inner.ring.insert(block);
         if inner.ring.len() > inner.window {
-            let Some(to_remove) = inner.ring.pop_front() else {
+            let Some(to_remove) = inner.ring.pop_first() else {
                 return;
             };
             inner.blocks.remove(&to_remove);
