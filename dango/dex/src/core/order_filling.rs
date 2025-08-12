@@ -100,13 +100,11 @@ fn fill_bids(
         let refund_base = filled_base.checked_sub(fee_base)?;
         let mut refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
 
-        // For market orders, refund the remaining deposit amount as unfilled or partially filled market orders are cancelled after the block is committed.
-        match order {
-            Order::Market(market_order) => {
-                let remaining_quote = market_order.remaining.checked_mul(clearing_price)?;
-                refund_quote = refund_quote.checked_add(remaining_quote)?;
-            },
-            _ => {},
+        // For market orders, refund the remaining (unfilled) amount, as market
+        // orders are immediate-or-cancel.
+        if let Order::Market(market_order) = order {
+            let remaining_in_quote = market_order.remaining.checked_mul(clearing_price)?;
+            refund_quote.checked_add_assign(remaining_in_quote)?;
         }
 
         outcome.push(FillingOutcome {
@@ -172,12 +170,10 @@ fn fill_asks(
         let mut refund_base = Udec128_6::ZERO;
         let refund_quote = filled_quote.checked_sub(fee_quote)?;
 
-        // For market orders, refund the remaining deposit amount as unfilled or partially filled market orders are cancelled after the block is committed.
-        match order {
-            Order::Market(market_order) => {
-                refund_base = refund_base.checked_add(market_order.remaining)?;
-            },
-            _ => {},
+        // For market orders, refund the remaining (unfilled) amount, as market
+        // orders are immediate-or-cancel.
+        if let Order::Market(market_order) = order {
+            refund_base.checked_add_assign(market_order.remaining)?;
         }
 
         outcome.push(FillingOutcome {
