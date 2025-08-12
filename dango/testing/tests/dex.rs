@@ -5983,7 +5983,8 @@ fn refund_left_over_market_bid() {
     // Block 2: submit two orders:
     // - user 2 submits the limit order that will be matched;
     // - user 3 submits the market order that will be left over.
-    // Make sure the limit order is submitted first, meaning it's more
+    // The limit order has slightly better price, so it has priority order the
+    // market order.
     suite
         .make_block(vec![
             accounts
@@ -6144,7 +6145,8 @@ fn refund_left_over_market_ask() {
     // Block 2: submit two orders:
     // - user 2 submits the limit order that will be matched;
     // - user 3 submits the market order that will be left over.
-    // Make sure the limit order is submitted first, meaning it's more
+    // The limit order has slightly better price, so it has priority order the
+    // market order.
     suite
         .make_block(vec![
             accounts
