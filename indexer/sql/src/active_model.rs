@@ -231,7 +231,7 @@ where
         // With an initial capacity of 10, we only need to 1 heap allocation for
         // the entire event.
         // If later we find that most events contain more than 10 addresses and
-        // the reallocation has a noticable performance impact, we can increase
+        // the reallocation has a noticeable performance impact, we can increase
         // the initial capacity.
         let mut addresses = HashSet::with_capacity(10);
         event.event.extract_addresses(&mut addresses);
