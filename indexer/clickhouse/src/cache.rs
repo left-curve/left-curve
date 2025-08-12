@@ -57,6 +57,8 @@ impl CandleCache {
 
     pub fn add_pair_prices(&mut self, block_height: u64, pair_prices: HashMap<PairId, PairPrice>) {
         if pair_prices.is_empty() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!("Received empty pair_prices",);
             return;
         }
 
@@ -82,6 +84,16 @@ impl CandleCache {
                     block_height: pair_price.block_height,
                 };
 
+                #[cfg(feature = "tracing")]
+                tracing::debug!(
+                    block_height = candle.block_height,
+                    base_denom = candle.base_denom,
+                    quote_denom = candle.quote_denom,
+                    volume_base = %candle.volume_base,
+                    volume_quote = %candle.volume_quote,
+                    "Calling add_candle()",
+                );
+
                 self.add_candle(key, candle);
             }
         }
@@ -97,6 +109,14 @@ impl CandleCache {
 
         // no existing candles, we can just push it
         let Some(last_candle) = candles.last_mut() else {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                block_height = candle.block_height,
+                base_denom = candle.base_denom,
+                quote_denom = candle.quote_denom,
+                "Adding candle, cache is empty",
+            );
+
             candles.push(candle);
             return;
         };
@@ -118,6 +138,18 @@ impl CandleCache {
         // Check if last candle has same time_start, if so replace it and update
         // max/min/open/close values. Candles are coming in order.
         if last_candle.time_start == candle.time_start {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                block_height = candle.block_height,
+                base_denom = candle.base_denom,
+                quote_denom = candle.quote_denom,
+                %last_candle.volume_base,
+                %last_candle.volume_quote,
+                %candle.volume_base,
+                %candle.volume_quote,
+                "Modifying last candle, timestamp is equal",
+            );
+
             // Keep the original open price from the interval start
             candle.open = last_candle.open;
             candle.high = last_candle.high.max(candle.high);
@@ -127,6 +159,15 @@ impl CandleCache {
 
             *last_candle = candle;
         } else {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                block_height = candle.block_height,
+                base_denom = candle.base_denom,
+                quote_denom = candle.quote_denom,
+                %candle.volume_base,
+                %candle.volume_quote,
+                "Pushing candle, timestamp is not equal",
+            );
             candles.push(candle);
         }
     }

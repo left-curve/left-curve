@@ -11,6 +11,7 @@ use {
     grug::{
         Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
         Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
+        setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
@@ -23,6 +24,7 @@ use {
         sync::{Mutex, mpsc},
         time::sleep,
     },
+    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -214,6 +216,8 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::DEBUG);
+
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -290,7 +294,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                 let expected_json = serde_json::json!([{
                     "volumeBase": "50",
-                    "volumeQuote": "1375"
+                    "volumeQuote": "1375",
+                    "blockHeight": 4,
                 }]);
 
                 assert_json_include!(actual: response.data, expected: expected_json);
@@ -307,6 +312,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                     framed = f;
 
+                    // This prevents a flaky test but I shouldn't need this.
                     if response
                         .data
                         .first()
@@ -321,7 +327,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                     let expected_json = serde_json::json!([{
                         "volumeBase": "75",
-                        "volumeQuote": "2062.5"
+                        "volumeQuote": "2062.5",
                     }]);
 
                     assert_json_include!(actual: response.data, expected: expected_json);
@@ -375,6 +381,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::DEBUG);
+
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
