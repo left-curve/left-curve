@@ -1,7 +1,7 @@
 use {
     crate::{
         account_factory::Username,
-        dex::{Direction, OrderId, PairParams, PairUpdate, PassiveOrder},
+        dex::{Direction, OrderId, PairParams, PairUpdate, PassiveOrder, RestingOrderBookState},
     },
     grug::{
         Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6, Udec128_24,
@@ -205,6 +205,18 @@ pub enum QueryMsg {
         start_after: Option<PairId>,
         limit: Option<u32>,
     },
+    /// Query the resting order book state of a pair.
+    #[returns(RestingOrderBookState)]
+    RestingOrderBookState {
+        base_denom: Denom,
+        quote_denom: Denom,
+    },
+    /// Enumerate the resting order book state of all pairs.
+    #[returns(Vec<RestingOrderBookStatesResponse>)]
+    RestingOrderBookStates {
+        start_after: Option<PairId>,
+        limit: Option<u32>,
+    },
     /// Query a single active order by ID.
     #[returns(OrderResponse)]
     Order { order_id: OrderId },
@@ -297,6 +309,13 @@ pub struct PairId {
 pub struct ReservesResponse {
     pub pair: PairId,
     pub reserve: CoinPair,
+}
+
+/// Response type of the `QueryMsg::RestingOrderBookState` query.
+#[grug::derive(Serde)]
+pub struct RestingOrderBookStatesResponse {
+    pub pair: PairId,
+    pub state: RestingOrderBookState,
 }
 
 /// Response type of the `QueryMsg::Order` and `Orders` queries.

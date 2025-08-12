@@ -1,6 +1,7 @@
 use {
     crate::{
-        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, VOLUMES, VOLUMES_BY_USER,
+        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK, VOLUMES,
+        VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
     },
     dango_oracle::OracleQuerier,
@@ -9,7 +10,8 @@ use {
         account_factory::Username,
         dex::{
             Direction, OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId,
-            PairParams, PairUpdate, PassiveOrder, QueryMsg, ReservesResponse, SwapRoute,
+            PairParams, PairUpdate, PassiveOrder, QueryMsg, ReservesResponse,
+            RestingOrderBookState, RestingOrderBookStatesResponse, SwapRoute,
         },
     },
     grug::{
@@ -47,6 +49,17 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Reserves { start_after, limit } => {
             let res = query_reserves(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::RestingOrderBookState {
+            base_denom,
+            quote_denom,
+        } => {
+            let res = query_resting_order_book_state(ctx, base_denom, quote_denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::RestingOrderBookStates { start_after, limit } => {
+            let res = query_resting_order_book_states(ctx, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::Order { order_id } => {
@@ -177,6 +190,40 @@ fn query_reserves(
                     quote_denom,
                 },
                 reserve,
+            })
+        })
+        .collect()
+}
+
+fn query_resting_order_book_state(
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+) -> StdResult<RestingOrderBookState> {
+    RESTING_ORDER_BOOK.load(ctx.storage, (&base_denom, &quote_denom))
+}
+
+fn query_resting_order_book_states(
+    ctx: ImmutableCtx,
+    start_after: Option<PairId>,
+    limit: Option<u32>,
+) -> StdResult<Vec<RestingOrderBookStatesResponse>> {
+    let start = start_after
+        .as_ref()
+        .map(|pair| Bound::Exclusive((&pair.base_denom, &pair.quote_denom)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    RESTING_ORDER_BOOK
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let ((base_denom, quote_denom), state) = res?;
+            Ok(RestingOrderBookStatesResponse {
+                pair: PairId {
+                    base_denom,
+                    quote_denom,
+                },
+                state,
             })
         })
         .collect()
