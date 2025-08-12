@@ -61,6 +61,7 @@ members = [
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",
+  "utils/identity",
   "utils/temp-rocksdb",
 ]
 resolver = "2"
@@ -134,6 +135,7 @@ hex-literal                 = "0.4" # requires rust edition 2024 in order to upg
 home                        = "0.5"
 http                        = "1"
 ics23                       = "0.12"
+identity                    = { path = "utils/identity" }
 itertools                   = "0.14"
 k256                        = "0.13"
 lzma-rs                     = "0.3"

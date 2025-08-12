@@ -1,17 +1,14 @@
 [package]
 authors       = { workspace = true }
 categories    = { workspace = true }
+description   = "A wrapper over fixed-size arrays that implements the `digest::Digest` trait"
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "hyperlane-testing"
+name          = "identity"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-grug            = { workspace = true }
-hex-literal     = { workspace = true }
-hyperlane-types = { workspace = true }
-identity        = { workspace = true }
-k256            = { workspace = true }
+digest = { workspace = true }

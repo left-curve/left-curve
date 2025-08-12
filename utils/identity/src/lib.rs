@@ -1,5 +1,4 @@
 use {
-    crate::{CryptoError, CryptoResult},
     digest::{
         FixedOutput, HashMarker, Output, OutputSizeUser, Update,
         consts::{U32, U64},
@@ -8,38 +7,16 @@ use {
     std::ops::Deref,
 };
 
-/// Try cast a slice to a fixed length array. Error if the size is incorrect.
-pub fn to_sized<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
-    data.try_into().map_err(|_| CryptoError::IncorrectLength {
-        expect: S,
-        actual: data.len(),
-    })
-}
-
-/// Truncate a slice to a fixed length array.
-/// Panic if the size is less than the fixed length.
-pub fn truncate<const S: usize>(data: &[u8]) -> [u8; S] {
-    debug_assert!(
-        data.len() >= S,
-        "can't truncate a slice of length {} to a longer length {}",
-        data.len(),
-        S
-    );
-
-    data[..S].try_into().unwrap()
-}
-
-/// To utilize the `signature::DigestVerifier::verify_digest` method, the digest
-/// must implement the `digest::Digest` trait, which in turn requires the
-/// following traits:
+/// To use various methods in the RustCrypto project, such as:
 ///
-/// - Default
-/// - OutputSizeUser
-/// - Update
-/// - FixedOutput
-/// - HashMarker
+/// - `signature::DigestVerifier::verify_digest` and
+/// - `ecdsa::SigningKey::sign_digest_recoverable`,
 ///
-/// Here we define a container struct that implements the required traits.
+/// the input digest must implement the `digest::Digest` trait. However, this
+/// trait isn't implemented for fixed-size arrays such as `[u8; 32]` or `[u8; 64]`.
+/// This makes the methods extra tricky to use.
+///
+/// Here we define a wrapper struct that implements the required traits.
 ///
 /// Adapted from:
 /// <https://github.com/CosmWasm/cosmwasm/blob/main/packages/crypto/src/identity_digest.rs>

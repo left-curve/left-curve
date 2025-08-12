@@ -2,7 +2,7 @@
 
 use {
     grug::{Hash256, HashExt, Inner},
-    grug_crypto::Identity256,
+    identity::Identity256,
 };
 
 /// An Ethereum address.
