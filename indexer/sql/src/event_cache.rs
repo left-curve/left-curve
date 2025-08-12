@@ -54,18 +54,7 @@ impl<M> EventCache<M> {
 
             let mut events = vec![];
 
-            let (Some(lower_bound), Some(upper_bound)) = (inner.ring.first(), inner.ring.last())
-            else {
-                return vec![];
-            };
-
-            let block_range = {
-                let range_low = block_range.start().max(lower_bound);
-                let range_high = block_range.end().min(upper_bound);
-                *range_low..=*range_high
-            };
-
-            for block in block_range {
+            for block in inner.ring.range(block_range) {
                 let Some(block_events) = inner.blocks.get(&block) else {
                     continue;
                 };
@@ -75,7 +64,7 @@ impl<M> EventCache<M> {
                         continue;
                     };
 
-                    events.extend(evt.clone());
+                    events.extend_from_slice(evt);
                 }
             }
 
