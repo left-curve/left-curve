@@ -98,7 +98,16 @@ fn fill_bids(
         // For quote, in case the order is filled at a price better than the
         // limit price, refund the unused deposit.
         let refund_base = filled_base.checked_sub(fee_base)?;
-        let refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
+        let mut refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
+
+        // For market orders, refund the remaining deposit amount as unfilled or partially filled market orders are cancelled after the block is committed.
+        match order {
+            Order::Market(market_order) => {
+                let remaining_quote = market_order.remaining.checked_mul(clearing_price)?;
+                refund_quote = refund_quote.checked_add(remaining_quote)?;
+            },
+            _ => {},
+        }
 
         outcome.push(FillingOutcome {
             order_direction: Direction::Bid,
@@ -160,8 +169,16 @@ fn fill_asks(
         // Determine the refund amounts.
         // For base, since limit orders are good-till-canceled, no need to refund.
         // For quote, it's the filled amount minus the fee.
-        let refund_base = Udec128_6::ZERO;
+        let mut refund_base = Udec128_6::ZERO;
         let refund_quote = filled_quote.checked_sub(fee_quote)?;
+
+        // For market orders, refund the remaining deposit amount as unfilled or partially filled market orders are cancelled after the block is committed.
+        match order {
+            Order::Market(market_order) => {
+                refund_base = refund_base.checked_add(market_order.remaining)?;
+            },
+            _ => {},
+        }
 
         outcome.push(FillingOutcome {
             order_direction: Direction::Ask,
