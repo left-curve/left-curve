@@ -54,18 +54,18 @@ const Header: React.FC = () => {
 
   return (
     <div className="section min-h-svh flex items-center justify-center relative w-full">
-      <div className="min-h-[calc(100svh-5svh)] mx-auto pb-[22svh] p-4 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
+      <div className="min-h-[calc(100svh-5svh)] mx-auto pb-[22svh] p-4 md:p-0 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
         <img
           src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
           alt="Dango"
           className="max-w-[10rem] lg:max-w-[13rem]"
         />
         {isLg && (
-          <div className="relative w-full h-11 z-40 max-w-[43.125rem]">
+          <div className="relative w-full h-11 z-40 max-w-[38rem]">
             <SearchMenu />
           </div>
         )}
-        <div className="flex w-full max-w-[76rem] lg:w-fit lg:mx-auto">
+        <div className="flex w-full max-w-[38rem]">
           <AppletsSection />
         </div>
       </div>
@@ -202,21 +202,23 @@ const SectionCommunity: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="w-full border-t border-t-border-tertiary-blue items-start lg:items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row">
+        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row gap-1">
           <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
-          <div className="flex gap-4">
+          <div className="flex gap-10 lg:gap-4 diatype-m-medium">
             <a
               href="/documents/Dango%20-%20Terms%20of%20use.pdf"
-              download="Dango - Terms of Use.pdf"
-              className="hover:underline visited:text-red-bean-400"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline text-tertiary-500"
             >
               {m["welcome.termsOfUse"]()}
             </a>
 
             <a
               href="/documents/Dango%20-%20Privacy%20Policy.pdf"
-              download="Dango - Privacy Policy.pdf"
-              className="hover:underline visited:text-red-bean-400"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline text-tertiary-500"
             >
               {m["welcome.privacyPolicy"]()}
             </a>
