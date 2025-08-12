@@ -165,6 +165,7 @@ fn batch_update_orders(
     for order in creates_market {
         order_creation::create_market_order(
             ctx.storage,
+            ctx.block.height,
             ctx.sender,
             order,
             &mut events,

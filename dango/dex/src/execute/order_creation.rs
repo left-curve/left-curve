@@ -81,6 +81,7 @@ pub(super) fn create_limit_order(
 
 pub(super) fn create_market_order(
     storage: &mut dyn Storage,
+    current_block_height: u64,
     user: Addr,
     order: CreateMarketOrderRequest,
     events: &mut EventBuilder,
@@ -175,6 +176,7 @@ pub(super) fn create_market_order(
                 price,
                 amount: *order.amount,
                 remaining: order.amount.checked_into_dec()?,
+                created_at_block_height: current_block_height,
             },
         ),
     )?;
