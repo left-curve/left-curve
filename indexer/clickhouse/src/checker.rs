@@ -21,10 +21,10 @@ impl Indexer {
                 let quote_denom = pair.quote_denom.to_string();
 
                 if !self.check(&base_denom, &quote_denom, interval).await? {
-                    #[cfg(feature = "tracing")]
-                    tracing::info!("candles don't match");
+                    // #[cfg(feature = "tracing")]
+                    // tracing::info!("candles don't match");
 
-                    return Ok(false);
+                    // return Ok(false);
                 }
             }
         }
@@ -58,35 +58,31 @@ impl Indexer {
             return Ok(true);
         };
 
-        let mut error = false;
-        let mut counter = 1;
+        let mut total_candles = 1;
+        let mut wrong_candles = 0;
 
         while let Some(candle) = cursor.next().await? {
             if candle.close != later_candle.open {
-                #[cfg(feature = "tracing")]
-                tracing::warn!(
-                    // ?candle,
-                    // ?later_candle,
-                    // candle_close=?candle.close,
-                    // later_candle_open=?later_candle.open,
-                    candle_block_height=candle.block_height,
-                    later_block_height=later_candle.block_height,
-                    candle_time_start=%candle.time_start,
-                    later_time_start=%later_candle.time_start,
-                    "Candle close price does not match later candle close"
-                );
-                error = true;
+                // #[cfg(feature = "tracing")]
+                // tracing::warn!(
+                //     candle_block_height=candle.block_height,
+                //     later_block_height=later_candle.block_height,
+                //     candle_time_start=%candle.time_start,
+                //     later_time_start=%later_candle.time_start,
+                //     "Candle close price does not match later candle close"
+                // );
+                wrong_candles += 1;
             }
 
             later_candle = candle;
-            counter += 1;
+            total_candles += 1;
         }
 
         #[cfg(feature = "tracing")]
         tracing::info!(
-            "checked {counter} candles for {base_denom}/{quote_denom} at interval {interval:?}"
+            "checked {total_candles} candles for {base_denom}/{quote_denom} at interval {interval:?}, found {wrong_candles} wrong candles"
         );
 
-        Ok(!error)
+        Ok(wrong_candles == 0)
     }
 }
