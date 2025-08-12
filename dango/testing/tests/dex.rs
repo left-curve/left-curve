@@ -10,6 +10,7 @@ use {
             self, CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction,
             OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
             QueryOrdersByPairRequest, QueryOrdersRequest, QueryReserveRequest,
+            QueryRestingOrderBookStateRequest, RestingOrderBookState,
         },
         gateway::Remote,
         oracle::{self, PrecisionlessPrice, PriceSource},
@@ -5742,6 +5743,7 @@ fn market_orders_are_sorted_by_price_ascending() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Set maker and taker fee rates to 0 for simplicity
+    // TODO: make this configurable in `TestOptions.`
     let mut app_config: AppConfig = suite.query_app_config().unwrap();
     app_config.maker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
     app_config.taker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
@@ -5903,4 +5905,150 @@ fn market_orders_are_sorted_by_price_ascending() {
             dango::DENOM.clone() => BalanceChange::Increased(1000000),
         });
     }
+}
+
+/// During the `match_orders` function call, there may be an order that's popped
+/// out of the iterator but didn't find a match. Considering the following case:
+/// - id 1, limit ask, price 100, amount 1
+/// - id 2, limit bid, price 100, amount 1
+/// - id 3, market bid, price 100, amount 1
+/// Since order 2 is more senior than order 3, it will be matched against 1.
+/// Market order 3 will be popped out of the iterator, but not finding a match.
+/// In this case, we need to handle the cancelation and refund of this order.
+#[test]
+fn refund_left_over_market_bid() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Set maker and taker fee rates to 0 for simplicity
+    // TODO: make this configurable in `TestOptions.`
+    let mut app_config: AppConfig = suite.query_app_config().unwrap();
+    app_config.maker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    app_config.taker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    suite
+        .configure(
+            &mut accounts.owner, // Must be the chain owner
+            None,                // No chain config update
+            Some(app_config),    // App config update
+        )
+        .should_succeed();
+
+    // Block 1. We make it such that a mid price of 100 is recorded.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Ask,
+                        amount: NonZero::new_unchecked(Uint128::new(2)),
+                        price: NonZero::new_unchecked(Udec128_24::new(100)),
+                    },
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(1)),
+                        price: NonZero::new_unchecked(Udec128_24::new(100)),
+                    },
+                ],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 2,
+                usdc::DENOM.clone() => 100,
+            },
+        )
+        .should_succeed();
+
+    // Query the mid price to make sure it's accurate.
+    suite
+        .query_wasm_smart(contracts.dex, QueryRestingOrderBookStateRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Udec128_24::new(100)),
+            mid_price: Some(Udec128_24::new(100)),
+        });
+
+    suite.balances().record(&accounts.user3);
+
+    // Submit two orders:
+    // - user 2 submits the limit order that will be matched;
+    // - user 3 submits the market order that will be left over.
+    suite
+        .make_block(vec![
+            accounts
+                .user2
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![],
+                                creates_limit: vec![CreateLimitOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Bid,
+                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    price: NonZero::new_unchecked(Udec128_24::new(100)),
+                                }],
+                                cancels: None,
+                            },
+                            coins! {
+                                usdc::DENOM.clone() => 100,
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+            accounts
+                .user3
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![CreateMarketOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Bid,
+                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    max_slippage: Udec128::ZERO,
+                                }],
+                                creates_limit: vec![],
+                                cancels: None,
+                            },
+                            coins! {
+                                usdc::DENOM.clone() => 100,
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+        ])
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    // Make sure user 3 has received the refund, or in other words, his balance
+    // should be unchanged.
+    suite.balances().should_change(&accounts.user3, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
 }
