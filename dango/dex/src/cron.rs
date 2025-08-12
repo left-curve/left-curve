@@ -537,6 +537,7 @@ fn clear_orders_of_pair(
     // ----------------- 6. Save the resting order book state ------------------
 
     // Find the best bid and ask prices available.
+    // TODO: this doesn't consider passive pool liquidity
     let best_bid_price = LIMIT_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
