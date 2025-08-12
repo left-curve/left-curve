@@ -11,8 +11,10 @@ use {
     grug::{
         Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
         Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
+        setup_tracing_subscriber,
     },
     grug_app::Indexer,
+    indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
@@ -22,6 +24,7 @@ use {
         sync::{Mutex, mpsc},
         time::sleep,
     },
+    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -213,6 +216,8 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::DEBUG);
+
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -272,6 +277,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     });
 
     let create_candle_tx_clone = create_candle_tx.clone();
+    let context = dango_httpd_context.clone();
+
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
@@ -287,7 +294,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                 let expected_json = serde_json::json!([{
                     "volumeBase": "50",
-                    "volumeQuote": "1375"
+                    "volumeQuote": "1375",
+                    "blockHeight": 4,
                 }]);
 
                 assert_json_include!(actual: response.data, expected: expected_json);
@@ -304,6 +312,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                     framed = f;
 
+                    // This prevents a flaky test but I shouldn't need this.
                     if response
                         .data
                         .first()
@@ -318,7 +327,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                     let expected_json = serde_json::json!([{
                         "volumeBase": "75",
-                        "volumeQuote": "2062.5"
+                        "volumeQuote": "2062.5",
                     }]);
 
                     assert_json_include!(actual: response.data, expected: expected_json);
@@ -332,7 +341,33 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
         })
         .await??;
 
-    tracing::info!("finished local set");
+    {
+        let suite_guard = suite.lock().await;
+        suite_guard.app.indexer.wait_for_finish().unwrap();
+    }
+
+    // The following ensures than loading clickhouse data to a new cache result in the same
+    // loaded data than our current cache
+    let mut cache = CandleCache::default();
+    let pairs =
+        PairPrice::all_pairs(context.indexer_clickhouse_context.clickhouse_client()).await?;
+
+    cache
+        .preload_pairs(
+            &pairs,
+            context.indexer_clickhouse_context.clickhouse_client(),
+        )
+        .await?;
+
+    let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
+
+    println!("Cache : {:#?}", old_cache.pair_prices);
+    println!("Cache from clickhouse: {:#?}", cache.pair_prices);
+    assert_eq!(cache.pair_prices, old_cache.pair_prices);
+
+    println!("Cache : {:#?}", old_cache.candles);
+    println!("Cache from clickhouse: {:#?}", cache.candles);
+    assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;
     suite_guard
@@ -346,6 +381,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::DEBUG);
+
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -416,6 +453,8 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
     });
 
     let crate_block_tx_clone = crate_block_tx.clone();
+    let context = dango_httpd_context.clone();
+
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
@@ -458,7 +497,33 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
         })
         .await??;
 
-    tracing::info!("finished local set");
+    {
+        let suite_guard = suite.lock().await;
+        suite_guard.app.indexer.wait_for_finish().unwrap();
+    }
+
+    // The following ensures than loading clickhouse data to a new cache result in the same
+    // loaded data than our current cache
+    let mut cache = CandleCache::default();
+    let pairs =
+        PairPrice::all_pairs(context.indexer_clickhouse_context.clickhouse_client()).await?;
+
+    cache
+        .preload_pairs(
+            &pairs,
+            context.indexer_clickhouse_context.clickhouse_client(),
+        )
+        .await?;
+
+    let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
+
+    println!("Cache : {:#?}", old_cache.pair_prices);
+    println!("Cache from clickhouse: {:#?}", cache.pair_prices);
+    assert_eq!(cache.pair_prices, old_cache.pair_prices);
+
+    println!("Cache : {:#?}", old_cache.candles);
+    println!("Cache from clickhouse: {:#?}", cache.candles);
+    assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;
     suite_guard

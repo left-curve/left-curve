@@ -1,6 +1,7 @@
 use {
-    crate::{CryptoResult, Identity512, to_sized},
+    crate::{CryptoResult, utils::to_sized},
     ed25519_dalek::{DigestVerifier, Signature, VerifyingKey},
+    identity::Identity512,
 };
 
 const ED25519_DIGEST_LEN: usize = 64;

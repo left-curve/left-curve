@@ -1,6 +1,7 @@
 use {
     crate::{
-        entities::{CandleInterval, candle_query::CandleQueryBuilder, pair_price::PairPrice},
+        context::Context,
+        entities::{candle_query::MAX_ITEMS, pair_price::PairPrice},
         error::{IndexerError, Result},
         indexer::Indexer,
     },
@@ -14,9 +15,7 @@ use {
         CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
         FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten, Number, NumberConst, Udec128_6,
     },
-    std::{collections::HashMap, str::FromStr, time::Duration},
-    strum::IntoEnumIterator,
-    tokio::time::sleep,
+    std::{collections::HashMap, str::FromStr},
 };
 
 impl Indexer {
@@ -24,6 +23,7 @@ impl Indexer {
         clickhouse_client: &Client,
         querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
         ctx: &grug_app::IndexerContext,
+        context: &Context,
     ) -> Result<()> {
         let block = ctx
             .get::<grug_types::Block>()
@@ -39,6 +39,7 @@ impl Indexer {
         // Clearing price is denominated as the units of quote asset per 1 unit
         // of the base asset.
         let mut pair_prices = HashMap::<PairId, PairPrice>::new();
+        let two = Udec128_6::from_str("2.0")?;
 
         // DEX order execution happens exclusively in the end-block cronjob, so
         // we loop through the block's cron outcomes.
@@ -106,8 +107,11 @@ impl Indexer {
                         block_height: block.info.height,
                     });
 
+                    // divide by 2 (because for each buy there's a sell, so it's double counted)
+                    let volume_base = order_filled.filled_base.checked_div(two)?;
+
                     // If the volume overflows, set it to the maximum value.
-                    match pair_price.volume_base.checked_add(order_filled.filled_base) {
+                    match pair_price.volume_base.checked_add(volume_base) {
                         Ok(volume) => pair_price.volume_base = volume,
                         Err(_) => {
                             // TODO: add sentry error reporting
@@ -116,11 +120,12 @@ impl Indexer {
                             pair_price.volume_base = Udec128_6::MAX;
                         },
                     }
+
+                    // divide by 2 (because for each buy there's a sell, so it's double counted)
+                    let volume_quote = order_filled.filled_quote.checked_div(two)?;
+
                     // If the volume overflows, set it to the maximum value.
-                    match pair_price
-                        .volume_quote
-                        .checked_add(order_filled.filled_quote)
-                    {
+                    match pair_price.volume_quote.checked_add(volume_quote) {
                         Ok(volume) => pair_price.volume_quote = volume,
                         Err(_) => {
                             // TODO: add sentry error reporting
@@ -164,33 +169,28 @@ impl Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!("Saving {} pair prices", pair_prices.len());
 
-        let last_prices = PairPrice::last_prices(clickhouse_client)
-            .await?
-            .into_iter()
-            .map(|price| Ok(((&price).try_into()?, price)))
-            .filter_map(Result::ok)
-            .collect::<HashMap<PairId, PairPrice>>();
+        // To reinject previous prices and trigger the clickhouse materialized views
+        let mut last_prices = {
+            let candle_cache = context.candle_cache.read().await;
+
+            candle_cache
+                .pair_price_for_block(block.info.height - 1)
+                .cloned()
+                .unwrap_or_default()
+        };
 
         // Use Row binary inserter with the official clickhouse serde helpers
         let mut inserter = clickhouse_client
             .inserter::<PairPrice>("pair_prices")?
             .with_max_rows(pair_prices.len() as u64);
 
-        for (_, mut pair_price) in pair_prices.clone().into_iter() {
-            // divide by 2 (because for each buy there's a sell, so it's double counted)
-            pair_price.volume_base = pair_price
-                .volume_base
-                .checked_div(Udec128_6::from_str("2.0")?)?;
-            pair_price.volume_quote = pair_price
-                .volume_quote
-                .checked_div(Udec128_6::from_str("2.0")?)?;
-
+        for (_, pair_price) in pair_prices.clone().iter_mut() {
             // open price is the closing price of the previous pair price
-            if let Some(last_price) = last_prices.get(&(&pair_price).try_into()?) {
+            if let Some(last_price) = last_prices.get(&(&*pair_price).try_into()?) {
                 pair_price.open_price = last_price.close_price;
             }
 
-            inserter.write(&pair_price).inspect_err(|_err| {
+            inserter.write(pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
             })?;
@@ -202,27 +202,39 @@ impl Indexer {
         // We set the open price, lowest price, and highest price to previous
         // closing price, and the volume to zero.
         // The created_at and block_height are set to the current block.
-        for (_, mut pair_price) in last_prices.into_iter() {
-            if pair_prices.contains_key(&(&pair_price).try_into()?) {
+        for (_, pair_price) in last_prices.iter_mut() {
+            if pair_prices.contains_key(&(&*pair_price).try_into()?) {
                 // If the pair price already exists, skip it.
                 continue;
             }
 
             pair_price.volume_base = Udec128_6::ZERO;
             pair_price.volume_quote = Udec128_6::ZERO;
+
             pair_price.created_at = block.info.timestamp.to_utc_date_time();
             pair_price.block_height = block.info.height;
+
             pair_price.open_price = pair_price.close_price;
             pair_price.lowest_price = pair_price.close_price;
             pair_price.highest_price = pair_price.close_price;
 
-            inserter.write(&pair_price).inspect_err(|_err| {
+            inserter.write(pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
             })?;
 
             #[cfg(feature = "metrics")]
             metrics::counter!("indexer.clickhouse.synthetic_prices.total").increment(1);
+        }
+
+        // Do this after looping in the `pair_prices` for `inserter`
+        // so `open_price` is set correctly
+        {
+            last_prices.extend(pair_prices);
+            let mut candle_cache = context.candle_cache.write().await;
+            candle_cache.add_pair_prices(block.info.height, last_prices);
+            candle_cache.compact_keep_n(MAX_ITEMS);
+            drop(candle_cache);
         }
 
         inserter.commit().await.inspect_err(|_err| {
@@ -233,42 +245,6 @@ impl Indexer {
             #[cfg(feature = "tracing")]
             tracing::error!("Failed to end inserter for pair prices: {_err}");
         })?;
-
-        // NOTE: we need to check if the materialized view is up to date before we keep going
-        // since the notifications are sent based on the materialized view
-        for (_, pair_price) in pair_prices.into_iter() {
-            for interval in CandleInterval::iter() {
-                loop {
-                    let max_block_height = CandleQueryBuilder::new(
-                        interval,
-                        pair_price.base_denom.clone(),
-                        pair_price.quote_denom.clone(),
-                    )
-                    .get_max_block_height(clickhouse_client)
-                    .await?;
-
-                    if max_block_height >= block.info.height {
-                        break;
-                    }
-
-                    #[cfg(feature = "tracing")]
-                    tracing::debug!(
-                        base_denom = pair_price.base_denom,
-                        quote_denom = pair_price.quote_denom,
-                        mv_block_height = max_block_height,
-                        block_height = block.info.height,
-                        "Materialized view for {interval} is not up to date, waiting for it to be updated",
-                    );
-
-                    #[cfg(feature = "metrics")]
-                    metrics::counter!("indexer.clickhouse.mv_wait_cycles.total").increment(1);
-
-                    sleep(Duration::from_millis(10)).await;
-                }
-            }
-        }
-
-        PairPrice::cleanup_old_synthetic_data(clickhouse_client, block.info.height).await?;
 
         Ok(())
     }

@@ -30,6 +30,10 @@ test-dango:
 test-indexer:
   RUST_BACKTRACE=1 cargo test --all-features -p indexer-testing -- --nocapture
 
+# Check whether the code compiles
+check:
+  cargo check --bins --tests --benches --examples --all-features --all-targets
+
 # Perform linting
 lint:
   cargo clippy --bins --tests --benches --examples --all-features --all-targets

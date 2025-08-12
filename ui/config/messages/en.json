@@ -139,7 +139,7 @@
     "4": {
       "id": "create-account",
       "img": "/images/emojis/simple/wizard.svg",
-      "title": "Subaccount creation",
+      "title": "Open Subaccount",
       "description": "Create subaccounts.",
       "path": "/account/create",
       "keywords": "account,create,register"
@@ -322,15 +322,20 @@
     "description": "We’re delighted to have you with us and look forward to seeing what you do next.",
     "scroll": "Scroll to learn more",
     "trade": "Trade",
-    "tradeDescription": "crypto assets, real world assets, and derivatives and Dango’s blazingly fast exchange. Enjoy deep liquidity, fast execution, and fair prices.",
+    "tradeText": "crypto assets, real world assets, and derivatives and Dango’s blazingly fast exchange.",
+    "tradeText2": "Enjoy deep liquidity, fast execution, and fair prices.",
     "leverageUp": "Leverage up",
-    "leverageUpDescription": "with Dango’s unified trading account with low cost and high capital efficiency. Spot, perps, vaults; one account, under a unified margin system.",
+    "leverageUpText": "with Dango’s unified trading account with low cost and high capital efficiency.",
+    "leverageUpText2": "Spot, perps, vaults; one account, under a unified margin system.",
     "earn": "Earn",
-    "earnDescription": "passive yields on your idle assets, by participating in Dango’s passive market making vaults. Make your money work for you!",
+    "earnText": "passive yields on your idle assets, by participating in Dango’s passive market making vaults.",
+    "earnText2": "Make your money work for you!",
     "join": "Join the ",
     "community": "community",
     "of": "of",
-    "dangbros": "Dangbros"
+    "dangbros": "Dangbros",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfUse": "Terms of Use"
   },
   "signup": {
     "mobileModal": {
