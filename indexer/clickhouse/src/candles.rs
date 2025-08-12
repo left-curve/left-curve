@@ -210,8 +210,10 @@ impl Indexer {
 
             pair_price.volume_base = Udec128_6::ZERO;
             pair_price.volume_quote = Udec128_6::ZERO;
+
             pair_price.created_at = block.info.timestamp.to_utc_date_time();
             pair_price.block_height = block.info.height;
+
             pair_price.open_price = pair_price.close_price;
             pair_price.lowest_price = pair_price.close_price;
             pair_price.highest_price = pair_price.close_price;

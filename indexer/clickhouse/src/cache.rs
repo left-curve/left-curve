@@ -209,7 +209,7 @@ impl CandleCache {
 
         let Some(highest_block_height) = last_prices.keys().copied().max() else {
             #[cfg(feature = "tracing")]
-            tracing::warn!("No last prices found, skipping candle preload");
+            tracing::warn!("No last prices found, skipping candle preload since it's all empty.");
             return Ok(());
         };
 
@@ -258,7 +258,10 @@ impl CandleCache {
                                         %highest_block_height,
                                         "Candle is older than latest price");
 
-                                    // `candle` are built async in clickhouse, and this means they're not synced to the latest block yet
+                                    // `candle` are built async in clickhouse, and this means they're
+                                    // not synced to the latest block yet.
+                                    // This won't happen in production, `preload_pairs` is called at start
+                                    // but during tests, it can happen.
                                     sleep(Duration::from_millis(100)).await;
 
                                     continue;
