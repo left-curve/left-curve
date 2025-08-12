@@ -98,14 +98,14 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut market_orders = MARKET_ORDERS
         .values(ctx.storage, None, None, IterationOrder::Ascending)
         .try_fold(BTreeMap::new(), |mut acc, res| {
-            let ((pair, direction, price, _), order) = res?;
+            let ((pair, direction, price, order_id), order) = res?;
             let (bids, asks): &mut (MarketOrders, MarketOrders) = acc.entry(pair).or_default();
             match direction {
                 Direction::Bid => {
-                    bids.insert((price, order.id), order);
+                    bids.insert((price, order_id), order);
                 },
                 Direction::Ask => {
-                    asks.insert((price, order.id), order);
+                    asks.insert((price, order_id), order);
                 },
             }
 
@@ -539,16 +539,18 @@ fn clear_orders_of_pair(
     // Find the best bid and ask prices available.
     let best_bid_price = LIMIT_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Bid)
         .keys(storage, None, None, IterationOrder::Descending)
         .next()
         .transpose()?
-        .map(|(_direction, price, _order_id)| price);
+        .map(|(price, _order_id)| price);
     let best_ask_price = LIMIT_ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Ask)
         .keys(storage, None, None, IterationOrder::Ascending)
         .next()
         .transpose()?
-        .map(|(_direction, price, _order_id)| price);
+        .map(|(price, _order_id)| price);
 
     // Determine the mid price:
     // - if both best bid and ask prices exist, then take the average of them;

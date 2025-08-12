@@ -5736,3 +5736,171 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
         usdc::DENOM.clone() => BalanceChange::Decreased(1000000),
     });
 }
+
+#[test]
+fn market_orders_are_sorted_by_price_ascending() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Set maker and taker fee rates to 0 for simplicity
+    let mut app_config: AppConfig = suite.query_app_config().unwrap();
+    app_config.maker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    app_config.taker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    suite
+        .configure(
+            &mut accounts.owner, // Must be the chain owner
+            None,                // No chain config update
+            Some(app_config),    // App config update
+        )
+        .should_succeed();
+
+    // Register oracle price source for USDC and DANGO. Needed for volume tracking in cron_execute
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // No matter which user places the orders they outcome should be the same.
+    for i in 0..2 {
+        let (first_user, second_user) = if i == 0 {
+            (&mut accounts.user2, &mut accounts.user3)
+        } else {
+            (&mut accounts.user3, &mut accounts.user2)
+        };
+
+        suite
+            .balances()
+            .record_many([&*first_user, &*second_user, &accounts.user1]);
+
+        // Place limit ASK with user 1. This is the first order in the order book. Since
+        // no matching orders exist this order will be the only order in the resting order book
+        // at the end of the block.
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates_market: vec![],
+                    creates_limit: vec![CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Ask,
+                        amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                        price: NonZero::new_unchecked(Udec128_24::new(1)),
+                    }],
+                    cancels: None,
+                },
+                coins! {
+                    dango::DENOM.clone() => 1000000,
+                },
+            )
+            .should_succeed();
+
+        // Submit two market orders from different users in the same block. First user
+        // places a market order with 0% slippage and second user places a market order
+        // with 5% slippage.
+        let txs = vec![
+            first_user
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![CreateMarketOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Bid,
+                                    amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                                    max_slippage: Udec128::ZERO,
+                                }],
+                                creates_limit: vec![],
+                                cancels: None,
+                            },
+                            coins! {
+                                usdc::DENOM.clone() => 1000000,
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+            second_user
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![CreateMarketOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Bid,
+                                    amount: NonZero::new_unchecked(Uint128::new(1050000)),
+                                    max_slippage: Udec128::new_percent(5),
+                                }],
+                                creates_limit: vec![],
+                                cancels: None,
+                            },
+                            coins! {
+                                usdc::DENOM.clone() => 1050000,
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+        ];
+
+        // Make a block with the order submissions. Ensure all transactions were
+        // successful.
+        suite
+            .make_block(txs)
+            .block_outcome
+            .tx_outcomes
+            .into_iter()
+            .for_each(|outcome| {
+                outcome.should_succeed();
+            });
+
+        // Assert that the second_user gets fully matched and the first_user gets no match
+        // since the second_user's order is at a higher price and fully consumes the limit order.
+        suite.balances().should_change(&accounts.user1, btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(1000000),
+            usdc::DENOM.clone() => BalanceChange::Increased(1000000),
+        });
+        suite.balances().should_change(first_user, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged, // no match and deposit is refunded
+            dango::DENOM.clone() => BalanceChange::Unchanged, // no match
+        });
+        suite.balances().should_change(second_user, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Decreased(1000000), // Cleared at resting book price of 1.0 consumes 1000000 USDC and refunds 50000 USDC
+            dango::DENOM.clone() => BalanceChange::Increased(1000000),
+        });
+    }
+}
