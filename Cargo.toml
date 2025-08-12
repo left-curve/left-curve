@@ -61,6 +61,7 @@ members = [
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",
+  "utils/eth",
   "utils/identity",
   "utils/temp-rocksdb",
 ]
@@ -126,6 +127,7 @@ dyn-clone                   = "1"
 dyn-event                   = { path = "utils/dyn-event" }
 ed25519-dalek               = "2"
 elsa                        = "1"
+eth-utils                   = { path = "utils/eth" }
 futures                     = "0.3"
 futures-util                = "0.3"
 glob                        = "0.3"

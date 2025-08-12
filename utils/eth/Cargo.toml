@@ -1,18 +1,16 @@
 [package]
 authors       = { workspace = true }
 categories    = { workspace = true }
+description   = "Utility functions related to Ethereum types"
 documentation = { workspace = true }
 edition       = { workspace = true }
 license       = { workspace = true }
-name          = "hyperlane-testing"
+name          = "eth-utils"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-eth-utils       = { workspace = true }
-grug            = { workspace = true }
-hex-literal     = { workspace = true }
-hyperlane-types = { workspace = true }
-identity        = { workspace = true }
-k256            = { workspace = true }
+identity = { workspace = true }
+k256     = { workspace = true }
+sha3     = { workspace = true }

@@ -3710,6 +3710,7 @@ dependencies = [
  "dango-taxman",
  "dango-types",
  "digest 0.10.7",
+ "eth-utils",
  "grug",
  "grug-app",
  "grug-client",
@@ -4223,6 +4224,15 @@ dependencies = [
  "cfg-if",
  "home",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "eth-utils"
+version = "0.0.0"
+dependencies = [
+ "identity",
+ "k256",
+ "sha3",
 ]
 
 [[package]]
@@ -5623,6 +5633,7 @@ dependencies = [
 name = "hyperlane-testing"
 version = "0.0.0"
 dependencies = [
+ "eth-utils",
  "grug",
  "hex-literal",
  "hyperlane-types",
