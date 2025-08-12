@@ -29,7 +29,7 @@ impl Models {
         let mut transactions = vec![];
         let mut messages = vec![];
         let mut events = vec![];
-        let mut events_by_address: HashMap<Addr, Vec<Arc<entity::events::Model>>> = HashMap::new();
+        let mut events_by_address = HashMap::new();
 
         // 1. Storing cron events
         {

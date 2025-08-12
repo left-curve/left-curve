@@ -64,7 +64,7 @@ impl<M> EventCache<M> {
                         continue;
                     };
 
-                    events.extend(evt.iter().cloned());
+                    events.extend(evt.clone());
                 }
             }
 

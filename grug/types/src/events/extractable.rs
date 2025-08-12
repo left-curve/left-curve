@@ -156,7 +156,7 @@ mod tests {
 
         let mut addresses = HashSet::new();
         json.extract_addresses(&mut addresses);
-        assert_eq!(addresses.len(), 13);
+        assert_eq!(addresses, (1..=13).map(Addr::mock).collect());
     }
 
     #[test]
@@ -168,7 +168,7 @@ mod tests {
 
         let mut addresses = HashSet::new();
         json.extract_addresses(&mut addresses);
-        assert_eq!(addresses.len(), 2);
+        assert_eq!(addresses, (1..=2).map(Addr::mock).collect());
     }
 
     #[test]
@@ -177,7 +177,7 @@ mod tests {
 
         let mut addresses = HashSet::new();
         json.extract_addresses(&mut addresses);
-        assert_eq!(addresses.len(), 2);
+        assert_eq!(addresses, (2..=3).map(Addr::mock).collect());
 
         let json = json!([{}, {
             "a": Addr::mock(1).to_string(),
@@ -186,7 +186,7 @@ mod tests {
 
         let mut addresses = HashSet::new();
         json.extract_addresses(&mut addresses);
-        assert_eq!(addresses.len(), 2);
+        assert_eq!(addresses, (1..=2).map(Addr::mock).collect());
 
         let json = json!([{
             "a": null,
@@ -198,6 +198,54 @@ mod tests {
 
         let mut addresses = HashSet::new();
         json.extract_addresses(&mut addresses);
-        assert_eq!(addresses.len(), 2);
+        assert_eq!(addresses, (1..=2).map(Addr::mock).collect());
+    }
+
+    #[test]
+    fn invalid_address() {
+        let json = json!({
+            "invalid_char": "0x000000000000000000000000u000000000000000" ,
+            "invalid_length": "0x00000000000000000000000000000000000000000" ,
+            "valid": "0x0000000000000000000000000000000000000001"
+        });
+
+        let mut addresses = HashSet::new();
+        json.extract_addresses(&mut addresses);
+        assert_eq!(addresses, [Addr::mock(1)].into());
+    }
+
+    #[test]
+    fn nested_json() {
+        let json = json!({
+            "a" :{
+                Addr::mock(1): [
+                    {
+                        "aa": {
+                            "aaa": Addr::mock(2).to_string()
+                        }
+                    },
+                    {
+                        "ab": [
+                            [
+                                [
+                                    Addr::mock(3).to_string(),
+                                    Addr::mock(4).to_string(),
+                                ],
+                                Addr::mock(5).to_string()
+                            ],
+                            {
+                                "abc" :{
+                                    "abaca": Addr::mock(6).to_string()
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        });
+
+        let mut addresses = HashSet::new();
+        json.extract_addresses(&mut addresses);
+        assert_eq!(addresses, (1..=6).map(Addr::mock).collect());
     }
 }
