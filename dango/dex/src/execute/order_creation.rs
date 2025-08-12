@@ -144,7 +144,13 @@ pub(super) fn create_market_order(
         },
     };
 
-    let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+    let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+
+    // For BUY orders, invert the order ID. This is necessary for enforcing
+    // price-time priority. See the docs on `OrderId` for details.
+    if order.direction == Direction::Bid {
+        order_id = !order_id;
+    }
 
     events.push(OrderCreated {
         user,
