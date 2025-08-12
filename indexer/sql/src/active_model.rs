@@ -5,7 +5,10 @@ use {
         FlatEventInfo, FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
     },
     sea_orm::{Set, TryIntoModel, prelude::*, sqlx::types::chrono::NaiveDateTime},
-    std::{collections::HashMap, sync::Arc},
+    std::{
+        collections::{HashMap, HashSet},
+        sync::Arc,
+    },
 };
 
 #[derive(Debug, Default)]
@@ -224,7 +227,14 @@ where
             None => None,
         };
 
-        let addresses = event.event.extract_addresses();
+        // For now, we assume most events contains less than 10 addresses.
+        // With an initial capacity of 10, we only need to 1 heap allocation for
+        // the entire event.
+        // If later we find that most events contain more than 10 addresses and
+        // the reallocation has a noticable performance impact, we can increase
+        // the initial capacity.
+        let mut addresses = HashSet::with_capacity(10);
+        event.event.extract_addresses(&mut addresses);
 
         events_ids.insert(event.id.event_index, db_event_id);
 
