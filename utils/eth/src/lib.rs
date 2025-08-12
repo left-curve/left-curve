@@ -1,8 +1,6 @@
-//! Utilities related to Ethereum.
-
 use {
-    grug::{Hash256, HashExt, Inner},
     identity::Identity256,
+    sha3::{Digest, Keccak256},
 };
 
 /// An Ethereum address.
@@ -20,16 +18,16 @@ pub type Signature = [u8; 65];
 /// Derive an Ethereum address from a Secp256k1 public key.
 pub fn derive_address(vk: &k256::ecdsa::VerifyingKey) -> Address {
     let vk_raw = vk.to_encoded_point(false);
-    let vk_hash = (&vk_raw.as_bytes()[1..]).keccak256();
+    let vk_hash = keccak256(&vk_raw.as_bytes()[1..]);
     let address = &vk_hash[12..];
     address.try_into().unwrap()
 }
 
 /// Sign the given _hashed_ message with the given private key, and pack the
 /// signature into the format expected by Ethereum.
-pub fn sign(msg_hash: Hash256, sk: &k256::ecdsa::SigningKey) -> Signature {
+pub fn sign_digest(msg_hash: [u8; 32], sk: &k256::ecdsa::SigningKey) -> Signature {
     let (signature, recovery_id) = sk
-        .sign_digest_recoverable(Identity256::from(msg_hash.into_inner()))
+        .sign_digest_recoverable(Identity256::from(msg_hash))
         .unwrap();
     pack_signature(signature, recovery_id)
 }
@@ -45,3 +43,12 @@ pub fn pack_signature(
     packed[64] = recovery_id.to_byte() + 27;
     packed
 }
+
+#[inline]
+fn keccak256(data: &[u8]) -> [u8; 32] {
+    let mut hasher = Keccak256::new();
+    hasher.update(data);
+    hasher.finalize().into()
+}
+
+// TODO: add tests

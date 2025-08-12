@@ -66,6 +66,7 @@ dango-lending               = { workspace = true, features = ["library"] }
 dango-mock-httpd            = { workspace = true }
 dango-oracle                = { workspace = true, features = ["library"] }
 dango-taxman                = { workspace = true, features = ["library"] }
+eth-utils                   = { workspace = true }
 grug-testing                = { workspace = true }
 hex                         = { workspace = true }
 home                        = { workspace = true }

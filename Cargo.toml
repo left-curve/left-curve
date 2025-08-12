@@ -61,6 +61,7 @@ members = [
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",
+  "utils/eth",
   "utils/identity",
   "utils/temp-rocksdb",
 ]
@@ -126,6 +127,7 @@ dyn-clone                   = "1"
 dyn-event                   = { path = "utils/dyn-event" }
 ed25519-dalek               = "2"
 elsa                        = "1"
+eth-utils                   = { path = "utils/eth" }
 futures                     = "0.3"
 futures-util                = "0.3"
 glob                        = "0.3"
@@ -137,13 +139,13 @@ http                        = "1"
 ics23                       = "0.12"
 identity                    = { path = "utils/identity" }
 itertools                   = "0.14"
-k256                        = "0.13"
+k256                        = { version = "0.13", default-features = false, features = ["ecdsa"] }
 lzma-rs                     = "0.3"
 metrics                     = "0.24"
 metrics-exporter-prometheus = "0.17"
 num-format                  = "0.4"
 num_cpus                    = "1"
-p256                        = "0.13"
+p256                        = { version = "0.13", default-features = false, features = ["ecdsa"] }
 paste                       = "1"
 pbkdf2                      = "0.12"
 proc-macro2                 = "1"
