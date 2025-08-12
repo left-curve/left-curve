@@ -33,7 +33,10 @@ use {
 
 const HALF: Udec128 = Udec128::new_percent(50);
 
-type MarketOrders = Vec<(Price, MarketOrder)>;
+// Note: the map key is prefixed with the price, so that the orders are sorted
+// by price; the order ID is suffixed because there can be multiple orders of
+// the same price.
+type MarketOrders = BTreeMap<(Price, OrderId), MarketOrder>;
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -99,10 +102,10 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             let (bids, asks): &mut (MarketOrders, MarketOrders) = acc.entry(pair).or_default();
             match direction {
                 Direction::Bid => {
-                    bids.push((price, order));
+                    bids.insert((price, order.id), order);
                 },
                 Direction::Ask => {
-                    asks.push((price, order));
+                    asks.insert((price, order.id), order);
                 },
             }
 
@@ -597,12 +600,12 @@ fn nested_merged_orders<A, B, C>(
 >
 where
     A: Iterator<Item = StdResult<((Udec128_24, OrderId), LimitOrder)>>,
-    B: Iterator<Item = (Udec128_24, MarketOrder)>,
+    B: Iterator<Item = ((Udec128_24, OrderId), MarketOrder)>,
     C: Iterator<Item = (Udec128_24, PassiveOrder)>,
 {
     // Make the three iterators return the same item type, so they can be merged.
     let limit = limit.map(|res| res.map(|((price, _), order)| (price, Order::Limit(order))));
-    let market = market.map(|(price, order)| Ok((price, Order::Market(order))));
+    let market = market.map(|((price, _), order)| Ok((price, Order::Market(order))));
     let passive = passive.map(|(price, order)| Ok((price, Order::Passive(order))));
 
     // Merge the three iterators.
