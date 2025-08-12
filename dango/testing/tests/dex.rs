@@ -5866,7 +5866,7 @@ fn market_orders_are_sorted_by_price_ascending() {
                                 cancels: None,
                             },
                             coins! {
-                                usdc::DENOM.clone() => 1050000,
+                                usdc::DENOM.clone() => 1102500, // amount * (best_ask_price * (1 + max_slippage)) = 1050000 * (1 * (1 + 0.05))
                             },
                         )
                         .unwrap(),

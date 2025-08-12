@@ -122,7 +122,7 @@ pub(super) fn create_market_order(
 
             (price, Coin {
                 denom: order.quote_denom.clone(),
-                amount: order.amount.checked_mul_dec_ceil(best_ask_price)?,
+                amount: order.amount.checked_mul_dec_ceil(price)?,
             })
         },
         Direction::Ask => {
