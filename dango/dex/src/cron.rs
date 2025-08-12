@@ -33,7 +33,7 @@ use {
 
 const HALF: Udec128 = Udec128::new_percent(50);
 
-type MarketOrders = Vec<(Price, MarketOrder)>;
+type MarketOrders = BTreeMap<(Price, OrderId), MarketOrder>;
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -99,10 +99,10 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             let (bids, asks): &mut (MarketOrders, MarketOrders) = acc.entry(pair).or_default();
             match direction {
                 Direction::Bid => {
-                    bids.push((price, order));
+                    bids.insert((price, order.id), order);
                 },
                 Direction::Ask => {
-                    asks.push((price, order));
+                    asks.insert((price, order.id), order);
                 },
             }
 
@@ -250,13 +250,18 @@ fn clear_orders_of_pair(
     //    to reverse it.
     let mut merged_bids = nested_merged_orders(
         limit_bids,
-        market_bids.into_iter().rev(),
+        market_bids
+            .into_iter()
+            .rev()
+            .map(|((price, _), order)| (price, order)),
         passive_bids,
         IterationOrder::Descending,
     );
     let mut merged_asks = nested_merged_orders(
         limit_asks,
-        market_asks.into_iter(),
+        market_asks
+            .into_iter()
+            .map(|((price, _), order)| (price, order)),
         passive_asks,
         IterationOrder::Ascending,
     );
