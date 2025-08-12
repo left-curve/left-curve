@@ -163,8 +163,8 @@ services:
       # - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
       # - "127.0.0.1:9004:9004" # MySQL compatibility interface
     volumes:
-      - clickhouse_data:/var/lib/clickhouse
-      - clickhouse_logs:/var/log/clickhouse-server
+      - ./data/clickhouse:/var/lib/clickhouse
+      - ./logs/clickhouse:/var/log/clickhouse-server
       - ./configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro
       - ./configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro
     environment:
@@ -219,5 +219,3 @@ volumes:
   dango_data:
   dango_indexer:
   cometbft_data:
-  clickhouse_data:
-  clickhouse_logs:

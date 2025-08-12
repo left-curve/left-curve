@@ -89,4 +89,17 @@
 
     <!-- Format schemas -->
     <format_schema_path>/var/lib/clickhouse/format_schemas/</format_schema_path>
+
+  <storage_configuration>
+    <disks>
+      <backups>
+        <type>local</type>
+        <path>/var/log/clickhouse-server/backups/</path>
+      </backups>
+    </disks>
+  </storage_configuration>
+  <backups>
+    <allowed_disk>backups</allowed_disk>
+    <allowed_path>/var/log/clickhouse-server/backups/</allowed_path>
+  </backups>
 </clickhouse>
