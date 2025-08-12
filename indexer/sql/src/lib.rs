@@ -16,8 +16,11 @@ pub mod pubsub;
 pub mod scalars;
 pub mod serde_iso8601;
 
+mod event_cache;
+
 pub use {
     context::Context,
     error::{IndexerError, Result},
+    event_cache::{EventCache, EventCacheReader, EventCacheWriter},
     indexer::{Indexer, IndexerBuilder},
 };
