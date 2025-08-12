@@ -16,7 +16,9 @@ pub struct IndexerCmd {
 #[derive(Subcommand)]
 enum SubCmd {
     /// View a block and results
-    Block { height: u64 },
+    Block {
+        height: u64,
+    },
     /// View a range of blocks and results
     Blocks {
         /// Start height (inclusive)
@@ -35,6 +37,7 @@ enum SubCmd {
     },
     /// Start the metrics HTTP server
     MetricsHttpd,
+    CheckCandles,
 }
 
 impl IndexerCmd {
@@ -139,6 +142,34 @@ impl IndexerCmd {
                     metrics_handler,
                 )
                 .await?;
+            },
+            SubCmd::CheckCandles => {
+                let cfg: Config = parse_config(app_dir.config_file())?;
+
+                let sql_indexer = indexer_sql::IndexerBuilder::default()
+                    .with_keep_blocks(cfg.indexer.keep_blocks)
+                    .with_database_url(&cfg.indexer.database.url)
+                    .with_database_max_connections(cfg.indexer.database.max_connections)
+                    .with_dir(app_dir.indexer_dir())
+                    .with_sqlx_pubsub()
+                    .build()
+                    .map_err(|err| anyhow::anyhow!("failed to build indexer: {err:?}"))?;
+
+                let clickhouse_context = indexer_clickhouse::context::Context::new(
+                    cfg.indexer.clickhouse.url.clone(),
+                    cfg.indexer.clickhouse.database.clone(),
+                    cfg.indexer.clickhouse.user.clone(),
+                    cfg.indexer.clickhouse.password.clone(),
+                );
+
+                let clickhouse_indexer = indexer_clickhouse::Indexer::new(
+                    indexer_sql::indexer::RuntimeHandler::from_handle(
+                        sql_indexer.handle.handle().clone(),
+                    ),
+                    clickhouse_context.clone(),
+                );
+
+                clickhouse_indexer.check_all().await?;
             },
         }
 
