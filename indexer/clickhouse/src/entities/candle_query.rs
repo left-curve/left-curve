@@ -25,7 +25,7 @@ pub struct CandleQueryBuilder {
     earlier_than: Option<DateTime<Utc>>,
     later_than: Option<DateTime<Utc>>,
     after: Option<DateTime<Utc>>,
-    limit: usize,
+    limit: Option<usize>,
 }
 
 impl CandleQueryBuilder {
@@ -37,7 +37,7 @@ impl CandleQueryBuilder {
             earlier_than: None,
             later_than: None,
             after: None,
-            limit: MAX_ITEMS,
+            limit: Some(MAX_ITEMS),
         }
     }
 
@@ -47,7 +47,12 @@ impl CandleQueryBuilder {
     }
 
     pub fn with_limit(mut self, limit: usize) -> Self {
-        self.limit = std::cmp::min(limit, MAX_ITEMS);
+        self.limit = Some(std::cmp::min(limit, MAX_ITEMS));
+        self
+    }
+
+    pub fn without_limit(mut self) -> Self {
+        self.limit = None;
         self
     }
 
@@ -80,7 +85,7 @@ impl CandleQueryBuilder {
 
         let mut rows: Vec<Candle> = cursor_query.fetch_all().await?;
 
-        let has_next_page = rows.len() > self.limit - 1;
+        let has_next_page = rows.len() > self.limit.unwrap_or_default() - 1;
         if has_next_page {
             rows.pop();
         }
@@ -197,7 +202,9 @@ impl CandleQueryBuilder {
 
         query.push_str(" GROUP BY quote_denom, base_denom, time_start");
         query.push_str(" ORDER BY time_start DESC");
-        query.push_str(&format!(" LIMIT {}", self.limit + 1));
+        if let Some(limit) = self.limit {
+            query.push_str(&format!(" LIMIT {}", limit + 1));
+        }
 
         (query, params, has_previous_page)
     }

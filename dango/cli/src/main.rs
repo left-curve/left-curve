@@ -114,7 +114,10 @@ async fn main() -> anyhow::Result<()> {
 
         tracing::info!("Sentry initialized");
     } else {
-        tracing_subscriber::registry().with(env_filter).init();
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(fmt_layer)
+            .init();
     }
 
     match cli.command {
