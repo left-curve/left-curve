@@ -281,6 +281,8 @@ fn clear_orders_of_pair(
         volume,
         bids,
         asks,
+        unmatched_bid,
+        unmatched_ask,
     } = match_orders(&mut merged_bids, &mut merged_asks)?;
 
     // Any order that isn't visited during `match_limit_orders` is unmatched.
@@ -372,26 +374,22 @@ fn clear_orders_of_pair(
 
     // ------------------- 4. Handle unmatched market orders -------------------
 
+    if let Some((_price, order)) = unmatched_bid {
+        refund_unmatched_order(&base_denom, &quote_denom, Direction::Bid, order, refunds)?;
+    }
+
     for res in unmatched_market_bids {
-        let (_price, bid) = res?;
-        match bid {
-            // Market orders are immediate-or-cancel, so refund the user.
-            Order::Market(order) => {
-                let remaining_quote = order.remaining.checked_mul_dec_floor(order.price)?;
-                refunds.insert(order.user, quote_denom.clone(), remaining_quote)?;
-            },
-            _ => unreachable!("encountered an unmatched bid that isn't a market order: {bid:?}"),
-        }
+        let (_price, order) = res?;
+        refund_unmatched_order(&base_denom, &quote_denom, Direction::Bid, order, refunds)?;
+    }
+
+    if let Some((_price, order)) = unmatched_ask {
+        refund_unmatched_order(&base_denom, &quote_denom, Direction::Ask, order, refunds)?;
     }
 
     for res in unmatched_market_asks {
-        let (_price, ask) = res?;
-        match ask {
-            Order::Market(order) => {
-                refunds.insert(order.user, base_denom.clone(), order.remaining)?;
-            },
-            _ => unreachable!("encountered an unmatched ask that isn't a market order: {ask:?}"),
-        }
+        let (_price, order) = res?;
+        refund_unmatched_order(&base_denom, &quote_denom, Direction::Ask, order, refunds)?;
     }
 
     #[cfg(feature = "tracing")]
@@ -683,6 +681,36 @@ fn fill_passive_order(
             outflows.insert((base_denom.clone(), filled_base))?;
         },
     }
+
+    Ok(())
+}
+
+fn refund_unmatched_order(
+    base_denom: &Denom,
+    quote_denom: &Denom,
+    direction: Direction,
+    order: Order,
+    refunds: &mut TransferBuilder<DecCoins<6>>,
+) -> StdResult<()> {
+    let Order::Market(order) = order else {
+        // Market orders are immediate-or-cancel, so unmatched market orders are
+        // to be canceled and the user refunded.
+        // Unmatched limit and passive orders remain in the order book, so nothing
+        // to do.
+        return Ok(());
+    };
+
+    match direction {
+        Direction::Bid => {
+            let remaining_in_quote = order.remaining.checked_mul_dec_floor(order.price)?;
+            refunds.insert(order.user, quote_denom.clone(), remaining_in_quote)?;
+        },
+        Direction::Ask => {
+            refunds.insert(order.user, base_denom.clone(), order.remaining)?;
+        },
+    }
+
+    // TODO: emit order canceled event
 
     Ok(())
 }

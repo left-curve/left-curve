@@ -16,6 +16,10 @@ pub struct MatchingOutcome {
     pub bids: Vec<(Udec128_24, Order)>,
     /// The SELL orders that have found a match.
     pub asks: Vec<(Udec128_24, Order)>,
+    /// If a bid was popped out of the iterator but wasn't matched, it's returned here.
+    pub unmatched_bid: Option<(Udec128_24, Order)>,
+    /// If an ask was popped out of the iterator but wasn't matched, it's returned here.
+    pub unmatched_ask: Option<(Udec128_24, Order)>,
 }
 
 /// Given the standing BUY and SELL orders in the book, find range of prices
@@ -89,5 +93,7 @@ where
         volume: bid_volume.min(ask_volume),
         bids,
         asks,
+        unmatched_bid: bid,
+        unmatched_ask: ask,
     })
 }
