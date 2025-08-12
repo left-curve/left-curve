@@ -1,3 +1,4 @@
+use clickhouse::query::RowCursor;
 #[cfg(feature = "tracing")]
 use itertools::Itertools;
 
@@ -89,6 +90,26 @@ impl CandleQueryBuilder {
             has_next_page,
             has_previous_page,
         })
+    }
+
+    pub fn fetch(
+        &self,
+        clickhouse_client: &clickhouse::Client,
+    ) -> Result<RowCursor<Candle>, crate::error::IndexerError> {
+        let (query, params, _) = self.query_string();
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!(
+            params = params.iter().map(|p| p.to_string()).join(", "),
+            "Fetching candles: {query}"
+        );
+
+        let mut cursor_query = clickhouse_client.query(&query);
+        for param in params {
+            cursor_query = cursor_query.bind(param);
+        }
+
+        Ok(cursor_query.fetch::<Candle>()?)
     }
 
     pub async fn fetch_one(

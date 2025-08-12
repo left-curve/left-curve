@@ -60,7 +60,7 @@ impl CandleSubscription {
                     .cloned())
             }
         })
-        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+        .chain(app_ctx.pubsub.subscribe().await?.then(move |current_block_height| {
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
@@ -68,15 +68,15 @@ impl CandleSubscription {
                 cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
             let candle_cache = app_ctx.candle_cache.clone();
 
-            let current_received = received_block_height.fetch_max(block_height, Ordering::Release);
+            let previous_block_height = received_block_height.fetch_max(current_block_height, Ordering::Release);
 
             async move {
-                if block_height < current_received {
+                if current_block_height < previous_block_height {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
-                        current_received,
-                        block_height,
-                        "Skip candle, pubsub block_height is lower than already received, shouldn't happen..."
+                        previous_block_height,
+                        current_block_height,
+                        "Skip candle, pubsub block_height is lower than previous"
                     );
                     return Ok(None);
                 }
@@ -90,21 +90,39 @@ impl CandleSubscription {
                 let Some(candle) = last_candle else {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
-                        current_received,
-                        block_height,
-                        "No current candle, shouldn't happen..."
+                        previous_block_height,
+                        current_block_height,
+                        "No current candle, expected if chain started"
                     );
                     return Ok(None);
                 };
 
-                if candle.block_height < block_height {
+                if candle.block_height < current_block_height {
+                    let candle_cache = candle_cache
+                        .read()
+                        .await;
+                    let candle_cache_block_heights = candle_cache
+                        .candles
+                        .get(&cache_key)
+                        .map(|candles| candles.iter().map(|c| c.block_height).collect::<Vec<_>>())
+                        .unwrap_or_default();
+                    drop(candle_cache);
+
+                    let _cache_max_block_height = candle_cache_block_heights.iter().max();
+                    let _cache_min_block_height = candle_cache_block_heights.iter().min();
+                    let _cache_len = candle_cache_block_heights.len();
+
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
-                        current_received,
-                        block_height,
+                        previous_block_height,
+                        current_block_height,
                         %candle.block_height,
-                        "Skip candle, it has older block_height than pubsub received, shouldn't happen..."
+                        cache_max_block_height=?_cache_max_block_height,
+                        cache_min_block_height=?_cache_min_block_height,
+                        cache_len=?_cache_len,
+                        "Skip candle, it has older block_height than received pubsub block_height"
                     );
+
                     return Ok(None);
                 }
 

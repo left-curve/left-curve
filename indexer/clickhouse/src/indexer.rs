@@ -10,7 +10,7 @@ use {
 };
 
 pub struct Indexer {
-    context: Context,
+    pub context: Context,
     pub runtime_handler: RuntimeHandler,
     indexing: bool,
 }
