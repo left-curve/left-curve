@@ -5910,9 +5910,9 @@ fn market_orders_are_sorted_by_price_ascending() {
 /// During the `match_orders` function call, there may be an order that's popped
 /// out of the iterator but didn't find a match. Considering the following case:
 /// - id 1, limit ask, price 100, amount 1
-/// - id 2, limit bid, price 100, amount 1
+/// - id 2, limit bid, price 101, amount 1
 /// - id 3, market bid, price 100, amount 1
-/// Since order 2 is more senior than order 3, it will be matched against 1.
+/// Since order 2 has the better price, it will be matched against 1.
 /// Market order 3 will be popped out of the iterator, but not finding a match.
 /// In this case, we need to handle the cancelation and refund of this order.
 #[test]
@@ -5932,7 +5932,7 @@ fn refund_left_over_market_bid() {
         )
         .should_succeed();
 
-    // Block 1. We make it such that a mid price of 100 is recorded.
+    // Block 1: we make it such that a mid price of 100 is recorded.
     suite
         .execute(
             &mut accounts.user1,
@@ -5976,11 +5976,14 @@ fn refund_left_over_market_bid() {
             mid_price: Some(Udec128_24::new(100)),
         });
 
-    suite.balances().record(&accounts.user3);
+    suite
+        .balances()
+        .record_many([&accounts.user1, &accounts.user2, &accounts.user3]);
 
-    // Submit two orders:
+    // Block 2: submit two orders:
     // - user 2 submits the limit order that will be matched;
     // - user 3 submits the market order that will be left over.
+    // Make sure the limit order is submitted first, meaning it's more
     suite
         .make_block(vec![
             accounts
@@ -5996,12 +5999,12 @@ fn refund_left_over_market_bid() {
                                     quote_denom: usdc::DENOM.clone(),
                                     direction: Direction::Bid,
                                     amount: NonZero::new_unchecked(Uint128::new(1)),
-                                    price: NonZero::new_unchecked(Udec128_24::new(100)),
+                                    price: NonZero::new_unchecked(Udec128_24::new(101)),
                                 }],
                                 cancels: None,
                             },
                             coins! {
-                                usdc::DENOM.clone() => 100,
+                                usdc::DENOM.clone() => 101,
                             },
                         )
                         .unwrap(),
@@ -6028,7 +6031,7 @@ fn refund_left_over_market_bid() {
                                 cancels: None,
                             },
                             coins! {
-                                usdc::DENOM.clone() => 100,
+                                usdc::DENOM.clone() => 101,
                             },
                         )
                         .unwrap(),
@@ -6045,8 +6048,20 @@ fn refund_left_over_market_bid() {
             outcome.should_succeed();
         });
 
-    // Make sure user 3 has received the refund, or in other words, his balance
-    // should be unchanged.
+    // Check user 1 and user 2 balances.
+    // The order should match with range 100-101. Since previous block's mid
+    // price was 100, which is within the range, so the orders settle at 100.
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Increased(100),
+    });
+    suite.balances().should_change(&accounts.user2, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Increased(1),
+        usdc::DENOM.clone() => BalanceChange::Decreased(100),
+    });
+
+    // THE IMPORTANT PART: make sure user 3 has received the refund; or in other
+    // words, his balance should be unchanged.
     suite.balances().should_change(&accounts.user3, btree_map! {
         dango::DENOM.clone() => BalanceChange::Unchanged,
         usdc::DENOM.clone() => BalanceChange::Unchanged,
