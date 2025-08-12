@@ -2387,7 +2387,7 @@ packages:
       tslib: '2'
 
   '@left-curve/chartiq@9.8.0':
-    resolution: {integrity: sha512-upHGcJ4cMbx7RUvX0nlXiq9vUUHdNUreos7bxE2ksL1NuW39mG33iYOMWFr404xYTMBJwzWNvaIGWVsBrJCrLg==, tarball: https://npm.pkg.github.com/download/@left-curve/chartiq/9.8.0/0e01e19dcfd0cb44a07222be2ca9eb2e2a5af0af}
+    resolution: {integrity: sha512-O4oEzo15IPkj1gHkriMHzZKF6w6eFs/RmsprsLjMJDP4RIi7q7cwhL+na3Ub4v3P/Eq1oxVPTkbnLiDqZQoqIQ==, tarball: https://npm.pkg.github.com/download/@left-curve/chartiq/9.8.0/f33329b0f33f78a92fb489a21bccdd2ca477f651}
 
   '@lix-js/sdk@0.4.1':
     resolution: {integrity: sha512-8v9gkLuEa/VXLkDwuXLr+wjZY1D7dPXVhez97jJULYoKurLVuhh2SH/Sv4jF43biV0wee44PGADrFPuU00lnsQ==}
