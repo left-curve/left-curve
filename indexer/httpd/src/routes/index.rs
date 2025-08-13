@@ -2,32 +2,25 @@ use {
     crate::context::Context,
     actix_web::{Error, HttpResponse, Responder, error::ErrorInternalServerError, get, web},
     async_graphql::futures_util::TryFutureExt,
+    chrono::{Duration, Utc},
+    grug_httpd::routes::index::UpResponse,
     grug_types::GIT_COMMIT,
     indexer_sql::entity,
     sea_orm::{EntityTrait, Order, QueryOrder},
 };
 
-#[get("/")]
-pub async fn index() -> impl Responder {
-    "OK"
-}
-
-#[derive(serde::Serialize, Default)]
-struct UpResponse<'a> {
-    block_height: u64,
-    indexed_block_height: Option<u64>,
-    git_commit: &'a str,
-}
-
 #[get("/up")]
 pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
-    // This ensures than grug is working
-    let block_height = app_ctx
-        .grug_app()
+    // This ensures that grug is working
+    let block = app_ctx
+        .base
+        .grug_app
         .last_finalized_block()
         .map_err(ErrorInternalServerError)
-        .await?
-        .height;
+        .await?;
+
+    let is_running =
+        block.timestamp.to_naive_date_time() >= (Utc::now().naive_utc() - Duration::seconds(30));
 
     // This ensures than the database is up
     let indexed_block_height = entity::blocks::Entity::find()
@@ -38,7 +31,8 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         .map(|b| b.block_height as u64);
 
     Ok(HttpResponse::Ok().json(UpResponse {
-        block_height,
+        block,
+        is_running,
         indexed_block_height,
         git_commit: GIT_COMMIT,
     }))

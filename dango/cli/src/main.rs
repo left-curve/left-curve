@@ -8,7 +8,6 @@ mod query;
 mod start;
 #[cfg(feature = "testing")]
 mod test;
-mod tracing_filter;
 mod tx;
 
 #[cfg(feature = "testing")]
@@ -16,7 +15,7 @@ use crate::test::TestCmd;
 use {
     crate::{
         db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
-        query::QueryCmd, start::StartCmd, tracing_filter::SuppressingLevelFilter, tx::TxCmd,
+        query::QueryCmd, start::StartCmd, tx::TxCmd,
     },
     clap::Parser,
     config::Config,
@@ -77,9 +76,6 @@ async fn main() -> anyhow::Result<()> {
     // Parse the config file.
     let cfg: Config = parse_config(app_dir.config_file())?;
 
-    // Set up custom tracing filter.
-    let filter = SuppressingLevelFilter::from_inner(cfg.log_level.parse()?);
-
     // Create the base environment filter
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| cfg.log_level.clone().into()); // Default to `cfg.log_level` if `RUST_LOG` not set.
@@ -112,7 +108,7 @@ async fn main() -> anyhow::Result<()> {
 
         tracing_subscriber::registry()
             .with(env_filter)
-            .with(fmt_layer.with_filter(filter))
+            .with(fmt_layer)
             .with(sentry_layer())
             .init();
 
@@ -120,7 +116,7 @@ async fn main() -> anyhow::Result<()> {
     } else {
         tracing_subscriber::registry()
             .with(env_filter)
-            .with(fmt_layer.with_filter(filter))
+            .with(fmt_layer)
             .init();
     }
 

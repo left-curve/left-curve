@@ -1,12 +1,17 @@
 use {
     crate::{entity, error::Result},
     grug_types::{
-        Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
-        Inner, JsonSerExt, flatten_commitment_status,
+        Addr, Block, BlockOutcome, CommitmentStatus, EventId, Extractable, FlatCategory,
+        FlatEventInfo, FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
     },
-    sea_orm::{Set, prelude::*, sqlx::types::chrono::NaiveDateTime},
-    std::collections::HashMap,
+    sea_orm::{Set, TryIntoModel, prelude::*, sqlx::types::chrono::NaiveDateTime},
+    std::{
+        collections::{HashMap, HashSet},
+        sync::Arc,
+    },
 };
+#[cfg(feature = "metrics")]
+use {metrics::describe_histogram, metrics::histogram, std::time::Instant};
 
 #[derive(Debug, Default)]
 pub struct Models {
@@ -14,6 +19,7 @@ pub struct Models {
     pub transactions: Vec<entity::transactions::ActiveModel>,
     pub messages: Vec<entity::messages::ActiveModel>,
     pub events: Vec<entity::events::ActiveModel>,
+    pub events_by_address: HashMap<Addr, Vec<Arc<entity::events::Model>>>,
 }
 
 impl Models {
@@ -25,6 +31,7 @@ impl Models {
         let mut transactions = vec![];
         let mut messages = vec![];
         let mut events = vec![];
+        let mut events_by_address = HashMap::new();
 
         // 1. Storing cron events
         {
@@ -33,6 +40,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
+                    &mut events_by_address,
                     &mut event_id,
                     cron_outcome.cron_event.clone(),
                     None,
@@ -79,6 +87,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
+                    &mut events_by_address,
                     &mut event_id,
                     tx_outcome.events.withhold.clone(),
                     Some(transaction_id),
@@ -90,6 +99,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
+                    &mut events_by_address,
                     &mut event_id,
                     tx_outcome.events.authenticate.clone(),
                     Some(transaction_id),
@@ -139,6 +149,7 @@ impl Models {
                 {
                     let active_models = flatten_events(
                         block,
+                        &mut events_by_address,
                         &mut event_id,
                         tx_outcome.events.msgs_and_backrun.clone(),
                         Some(transaction_id),
@@ -150,6 +161,7 @@ impl Models {
 
                     let active_models = flatten_events(
                         block,
+                        &mut events_by_address,
                         &mut event_id,
                         tx_outcome.events.finalize.clone(),
                         Some(transaction_id),
@@ -176,12 +188,14 @@ impl Models {
             events,
             transactions,
             messages,
+            events_by_address,
         })
     }
 }
 
 fn flatten_events<T>(
     block: &Block,
+    events_by_address: &mut HashMap<Addr, Vec<Arc<entity::events::Model>>>,
     next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
     transaction_id: Option<uuid::Uuid>,
@@ -215,6 +229,26 @@ where
             None => None,
         };
 
+        // For now, we assume most events contains less than 10 addresses.
+        // With an initial capacity of 10, we only need to 1 heap allocation for
+        // the entire event.
+        // If later we find that most events contain more than 10 addresses and
+        // the reallocation has a noticeable performance impact, we can increase
+        // the initial capacity.
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        let mut addresses = HashSet::with_capacity(10);
+        event.event.extract_addresses(&mut addresses);
+
+        #[cfg(feature = "metrics")]
+        {
+            histogram!("indexer.events.extract_addresses.duration.seconds")
+                .record(start.elapsed().as_secs_f64());
+
+            histogram!("indexer.events.extract_addresses.count").record(addresses.len() as f64);
+        }
+
         events_ids.insert(event.id.event_index, db_event_id);
 
         let db_event = build_event_active_model(
@@ -227,7 +261,16 @@ where
             created_at,
         )?;
 
-        active_models.push(db_event);
+        active_models.push(db_event.clone());
+
+        let db_event = Arc::new(db_event.try_into_model()?);
+
+        for addr in addresses {
+            events_by_address
+                .entry(addr)
+                .or_default()
+                .push(db_event.clone());
+        }
     }
 
     Ok(active_models)
@@ -283,4 +326,17 @@ fn build_event_active_model(
         event_idx: Set(index_event.id.event_index as i32),
         block_height: Set(block.info.height.try_into()?),
     })
+}
+
+#[cfg(feature = "metrics")]
+pub fn init_metrics() {
+    describe_histogram!(
+        "indexer.events.extract_addresses.count",
+        "Number of addresses found in an event"
+    );
+
+    describe_histogram!(
+        "indexer.events.extract_addresses.duration.seconds",
+        "Time consumed extracting addresses from an event"
+    )
 }

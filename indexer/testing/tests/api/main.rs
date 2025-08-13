@@ -1,7 +1,9 @@
 use {
+    assert_json_diff::assert_json_include,
     assertor::*,
     grug_types::{Block, BlockOutcome},
     indexer_testing::{block::create_block, build_app_service, call_api},
+    serde_json::json,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -17,13 +19,13 @@ async fn up_returns_200() -> anyhow::Result<()> {
 
                 let up_response = call_api::<serde_json::Value>(app, "/up").await?;
 
-                assert_that!(
-                    up_response
-                        .get("block_height")
-                        .and_then(|bh| bh.as_u64())
-                        .unwrap_or_default()
-                )
-                .is_equal_to(1);
+                let expected = json!({
+                    "block": { "height": 1 },
+                    "is_running": true,
+                    "indexed_block_height": 1
+                });
+
+                assert_json_include!(actual: up_response, expected: expected);
 
                 Ok::<(), anyhow::Error>(())
             })
