@@ -9,7 +9,7 @@ import type {
 } from "#types/index.js";
 
 export type EventsByAddressesSubscriptionParameters = SubscriptionCallbacks<{
-  eventsByAddresses: IndexedEvent[];
+  eventByAddresses: IndexedEvent[];
 }> & {
   addresses: Address[];
   sinceBlockHeight?: number;
