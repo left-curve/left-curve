@@ -32,7 +32,7 @@ const LandingContainer: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="w-full mx-auto flex flex-col gap-6 pt-0 pb-16 flex-1">
       <ReactFullpage
-        beforeLeave={(_, destination) => setQuestBannerVisibility(destination.isFirst)}
+        beforeLeave={(_, _destination) => setQuestBannerVisibility(false)}
         licenseKey={decodeUtf8(decodeBase64(import.meta.env.PUBLIC_FP || "RkFMTEJBQ0tfS0VZCg=="))}
         scrollingSpeed={1000}
         credits={{ enabled: false }}
