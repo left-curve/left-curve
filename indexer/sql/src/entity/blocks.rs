@@ -1,7 +1,8 @@
 #[cfg(feature = "async-graphql")]
 use {
     crate::dataloaders::{
-        block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
+        block_crons_outcomes::BlockCronsOutcomesDataLoader, block_events::BlockEventsDataLoader,
+        block_transactions::BlockTransactionsDataLoader,
     },
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
     grug_types::Timestamp,
@@ -49,6 +50,11 @@ impl Model {
     /// Transactions order isn't guaranteed, check `transactionIdx`
     async fn transactions(&self, ctx: &Context<'_>) -> Result<Vec<super::transactions::Model>> {
         let loader = ctx.data_unchecked::<DataLoader<BlockTransactionsDataLoader>>();
+        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
+    }
+
+    async fn crons_outcomes(&self, ctx: &Context<'_>) -> Result<Vec<String>> {
+        let loader = ctx.data_unchecked::<DataLoader<BlockCronsOutcomesDataLoader>>();
         Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
     }
 
