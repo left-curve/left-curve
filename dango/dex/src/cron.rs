@@ -972,10 +972,10 @@ mod tests {
                 .unwrap();
         }
 
-        // Run cronjob.
+        // Run the auction.
         auction(ctx.as_mutable()).unwrap();
 
-        // Return the resting order book state after the auction.
+        // Return the resting order book state after the auction to check for accuracy.
         RESTING_ORDER_BOOK
             .load(&ctx.storage, (&dango::DENOM, &usdc::DENOM))
             .unwrap()
