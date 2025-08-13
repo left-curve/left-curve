@@ -84,9 +84,9 @@ const eventsByAddressesSubscriptionExecutor: SubscriptionExecutor<"eventsByAddre
 }) => {
   return client.eventsByAddressesSubscription({
     ...params,
-    next: ({ eventsByAddresses }) => {
+    next: ({ eventByAddresses }) => {
       const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(eventsByAddresses));
+      currentListeners.forEach((listener) => listener(eventByAddresses));
     },
   });
 };
