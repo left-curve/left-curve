@@ -39,10 +39,19 @@ import {
   type QueryAppSubscriptionReturnType,
 } from "./subscriptions/queryApp.js";
 
+import {
+  eventsByAddressesSubscription,
+  type EventsByAddressesSubscriptionParameters,
+  type EventsByAddressesSubscriptionReturnType,
+} from "./subscriptions/eventsByAddresses.js";
+
 export type IndexerActions = {
   accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
   blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
   candlesSubscription: (args: CandlesSubscriptionParameters) => CandlesSubscriptionReturnType;
+  eventsByAddressesSubscription: (
+    args: EventsByAddressesSubscriptionParameters,
+  ) => EventsByAddressesSubscriptionReturnType;
   searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
   tradesSubscription: (args: TradesSubscriptionParameters) => TradesSubscriptionReturnType;
   transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
@@ -57,6 +66,7 @@ export function indexerActions<transport extends Transport = Transport>(
     blockSubscription: (args) => blockSubscription(client, args),
     accountSubscription: (args) => accountSubscription(client, args),
     candlesSubscription: (args) => candlesSubscription(client, args),
+    eventsByAddressesSubscription: (args) => eventsByAddressesSubscription(client, args),
     searchTxs: (args) => searchTxs(client, args),
     tradesSubscription: (args) => tradesSubscription(client, args),
     transferSubscription: (args) => transferSubscription(client, args),
