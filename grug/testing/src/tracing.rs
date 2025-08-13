@@ -1,6 +1,4 @@
-use std::sync::Once;
-
-use tracing_subscriber::fmt::format::FmtSpan;
+use {std::sync::Once, tracing_subscriber::fmt::format::FmtSpan};
 
 // The tracing subscriber can only be set once. We ensure this by using `Once`.
 static TRACING: Once = Once::new();
