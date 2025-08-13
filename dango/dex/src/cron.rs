@@ -380,8 +380,8 @@ fn clear_orders_of_pair(
             &quote_denom,
             Direction::Bid,
             order,
-            refunds,
             events,
+            refunds,
         )?;
     }
 
@@ -392,8 +392,8 @@ fn clear_orders_of_pair(
             &quote_denom,
             Direction::Bid,
             order,
-            refunds,
             events,
+            refunds,
         )?;
     }
 
@@ -403,8 +403,8 @@ fn clear_orders_of_pair(
             &quote_denom,
             Direction::Ask,
             order,
-            refunds,
             events,
+            refunds,
         )?;
     }
 
@@ -415,8 +415,8 @@ fn clear_orders_of_pair(
             &quote_denom,
             Direction::Ask,
             order,
-            refunds,
             events,
+            refunds,
         )?;
     }
 
@@ -722,8 +722,8 @@ fn refund_unmatched_market_order(
     quote_denom: &Denom,
     direction: Direction,
     order: Order,
-    refunds: &mut TransferBuilder<DecCoins<6>>,
     events: &mut EventBuilder,
+    refunds: &mut TransferBuilder<DecCoins<6>>,
 ) -> StdResult<()> {
     let Order::Market(order) = order else {
         // Market orders are immediate-or-cancel, so unmatched market orders are
@@ -733,28 +733,23 @@ fn refund_unmatched_market_order(
         return Ok(());
     };
 
-    let refund = match direction {
+    let (refund_denom, refund_amount) = match direction {
         Direction::Bid => {
             let remaining_in_quote = order.remaining.checked_mul_dec_floor(order.price)?;
-            refunds.insert(order.user, quote_denom.clone(), remaining_in_quote)?;
-            (quote_denom.clone(), remaining_in_quote).into()
+            (quote_denom.clone(), remaining_in_quote)
         },
-        Direction::Ask => {
-            refunds.insert(order.user, base_denom.clone(), order.remaining)?;
-            (base_denom.clone(), order.remaining).into()
-        },
+        Direction::Ask => (base_denom.clone(), order.remaining),
     };
 
-    // Emit order canceled event
     events.push(OrderCanceled {
         user: order.user,
         id: order.id,
         kind: order.kind(),
         remaining: order.remaining,
-        refund,
+        refund: (refund_denom.clone(), refund_amount).into(),
     })?;
 
-    Ok(())
+    refunds.insert(order.user, refund_denom, refund_amount)
 }
 
 /// Updates trading volumes for both user addresses and usernames
