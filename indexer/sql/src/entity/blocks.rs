@@ -1,15 +1,17 @@
+use {
+    crate::block_to_index::BlockToIndex,
+    sea_orm::{QueryOrder, entity::prelude::*},
+    serde::{Deserialize, Serialize},
+};
 #[cfg(feature = "async-graphql")]
 use {
     crate::dataloaders::{
-        block_crons_outcomes::BlockCronsOutcomesDataLoader, block_events::BlockEventsDataLoader,
-        block_transactions::BlockTransactionsDataLoader,
+        block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
     },
+    crate::indexer_path::IndexerPath,
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
+    grug_types::JsonSerExt,
     grug_types::Timestamp,
-};
-use {
-    sea_orm::{QueryOrder, entity::prelude::*},
-    serde::{Deserialize, Serialize},
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, DeriveEntityModel, Default, Hash)]
@@ -54,8 +56,15 @@ impl Model {
     }
 
     async fn crons_outcomes(&self, ctx: &Context<'_>) -> Result<Vec<String>> {
-        let loader = ctx.data_unchecked::<DataLoader<BlockCronsOutcomesDataLoader>>();
-        Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
+        Ok(BlockToIndex::load_from_disk(
+            ctx.data_unchecked::<IndexerPath>()
+                .block_path(self.block_height as u64),
+        )?
+        .block_outcome
+        .cron_outcomes
+        .iter()
+        .map(JsonSerExt::to_json_string)
+        .collect::<Result<Vec<_>, _>>()?)
     }
 
     async fn flatten_events(&self, ctx: &Context<'_>) -> Result<Vec<super::events::Model>> {

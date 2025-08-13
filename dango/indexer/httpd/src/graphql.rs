@@ -4,8 +4,7 @@ use {
     async_graphql::{Schema, dataloader::DataLoader, extensions},
     indexer_httpd::graphql::{mutation::Mutation, telemetry::SentryExtension},
     indexer_sql::dataloaders::{
-        block_crons_outcomes::BlockCronsOutcomesDataLoader, block_events::BlockEventsDataLoader,
-        block_transactions::BlockTransactionsDataLoader,
+        block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
         event_transaction::EventTransactionDataLoader,
         transaction_events::TransactionEventsDataLoader,
         transaction_grug::FileTransactionDataLoader,
@@ -69,15 +68,10 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
         tokio::spawn,
     );
 
-    let block_crons_outcomes_loader = DataLoader::new(
-        BlockCronsOutcomesDataLoader {
-            indexer: dango_httpd_context
-                .indexer_httpd_context
-                .indexer_path
-                .clone(),
-        },
-        tokio::spawn,
-    );
+    let indexer_path = dango_httpd_context
+        .indexer_httpd_context
+        .indexer_path
+        .clone();
 
     #[allow(unused_mut)]
     let mut schema_builder = Schema::build(
@@ -106,7 +100,7 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
         .data(transaction_events_loader)
         .data(file_transaction_loader)
         .data(event_transaction_loader)
-        .data(block_crons_outcomes_loader)
+        .data(indexer_path)
         .limit_complexity(300)
         .limit_depth(20)
         .finish()

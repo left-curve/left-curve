@@ -1,5 +1,3 @@
-use indexer_sql::dataloaders::block_crons_outcomes::BlockCronsOutcomesDataLoader;
-
 #[cfg(feature = "metrics")]
 use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
 use {
@@ -74,15 +72,14 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         tokio::spawn,
     );
 
-    let block_crons_outcomes_loader = DataLoader::new(
-        BlockCronsOutcomesDataLoader {
-            indexer: app_ctx.indexer_path.clone(),
-        },
-        tokio::spawn,
-    );
+    let indexer_path = app_ctx.indexer_path.clone();
 
     #[allow(unused_mut)]
-    let mut schema_builder = Schema::build(
+    let mut schema_builder: async_graphql::SchemaBuilder<
+        query::Query,
+        mutation::Mutation,
+        subscription::Subscription,
+    > = Schema::build(
         query::Query::default(),
         mutation::Mutation::default(),
         subscription::Subscription::default(),
@@ -106,7 +103,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         .data(transaction_events_loader)
         .data(file_transaction_loader)
         .data(event_transaction_loader)
-        .data(block_crons_outcomes_loader)
+        .data(indexer_path)
         .limit_complexity(300)
         .limit_depth(20)
         .finish()
