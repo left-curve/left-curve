@@ -5561,7 +5561,7 @@ fn market_order_clearing(
         eth::DENOM.clone() => BalanceChange::Decreased(9999),
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
-    ; "limit bid matched with market ask market size limiting factor market order gets refunded"
+    ; "limit bid matched with market ask market size limiting factor market order does not get refunded"
 )]
 #[test_case(
     CreateLimitOrderRequest {
