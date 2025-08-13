@@ -1,16 +1,17 @@
 import type {
+  Address,
   Chain,
   Client,
-  IndexedTransferEvent,
+  IndexedEvent,
   Signer,
   SubscriptionCallbacks,
   Transport,
 } from "#types/index.js";
 
 export type EventsByAddressesSubscriptionParameters = SubscriptionCallbacks<{
-  transfers: IndexedTransferEvent[];
+  eventsByAddresses: IndexedEvent[];
 }> & {
-  addresses: string[];
+  addresses: Address[];
   sinceBlockHeight?: number;
 };
 
