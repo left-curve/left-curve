@@ -93,7 +93,15 @@ where
         volume: bid_volume.min(ask_volume),
         bids,
         asks,
-        unmatched_bid: bid,
-        unmatched_ask: ask,
+        unmatched_bid: if bid_is_new {
+            bid
+        } else {
+            None
+        },
+        unmatched_ask: if ask_is_new {
+            ask
+        } else {
+            None
+        },
     })
 }
