@@ -148,6 +148,21 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
       },
     });
 
+    const addresses = accounts?.map(({ address }) => address) || [];
+    const unsubscribeEvents = subscriptions.subscribe("eventsByAddresses", {
+      params: { addresses },
+      listener: (events) => {
+        for (const event of events) {
+          const { type, data, blockHeight, createdAt, transaction } = event;
+          console.log(event);
+
+          if (type === "order_filled" || type === "order_filled" || type === "order_canceled") {
+            console.log(data, transaction);
+          }
+        }
+      },
+    });
+
     const unsubscribeTransfer = subscriptions.subscribe("transfer", {
       params: { username },
       listener: ({ transfers }) => {
@@ -179,6 +194,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     });
 
     return () => {
+      unsubscribeEvents();
       unsubscribeTransfer();
       unsubscribeAccount();
     };
