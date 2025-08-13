@@ -49,7 +49,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
-  const [isQuestBannerVisible, setQuestBannerVisibility] = useState(true);
+  const [isQuestBannerVisible, setQuestBannerVisibility] = useState(false);
 
   useTheme();
 
