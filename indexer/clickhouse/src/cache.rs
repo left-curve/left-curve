@@ -108,7 +108,7 @@ impl CandleCache {
         let candles = self.candles.entry(key).or_default();
 
         // no existing candles, we can just push it
-        let Some(last_candle) = candles.last_mut() else {
+        if candles.is_empty() {
             #[cfg(feature = "tracing")]
             tracing::info!(
                 %candle.block_height,
@@ -121,63 +121,54 @@ impl CandleCache {
             return;
         };
 
-        // received candle is older, we can ignore it
-        if last_candle.block_height >= candle.block_height {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                %candle.block_height,
-                %last_candle.block_height,
-                %candle.base_denom,
-                %candle.quote_denom,
-                "Ignoring candle",
-            );
+        // NOTE: Candles don't necessarily come in order, because the indexing
+        // is done async per block. We could receive block 5 before block 4.
+        let existing_candle = candles
+            .iter_mut()
+            .rev()
+            .take_while(|existing_candle| existing_candle.time_start >= candle.time_start)
+            .find(|existing_candle| existing_candle.time_start == candle.time_start);
 
-            return;
-        }
-
-        // Check if last candle has same time_start, if so replace it and update
-        // max/min/open/close values. Candles are coming in order.
-        // NOTE: candles could be not coming in order
-        if last_candle.time_start == candle.time_start {
+        let Some(existing_candle) = existing_candle else {
             #[cfg(feature = "tracing")]
             tracing::info!(
                 %candle.block_height,
                 %candle.base_denom,
                 %candle.quote_denom,
-                %last_candle.volume_base,
-                %last_candle.volume_quote,
-                %last_candle.block_height,
-                %candle.volume_base,
-                %candle.volume_quote,
-                "Modifying last candle, timestamp is equal",
-            );
-
-            if candle.block_height > last_candle.block_height {
-                candle.open = last_candle.open;
-            } else {
-                candle.close = last_candle.close;
-            }
-            candle.high = last_candle.high.max(candle.high);
-            candle.low = last_candle.low.min(candle.low);
-            candle.volume_base += last_candle.volume_base;
-            candle.volume_quote += last_candle.volume_quote;
-            candle.block_height = last_candle.block_height.max(candle.block_height);
-
-            *last_candle = candle;
-        } else {
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                %candle.block_height,
-                %candle.base_denom,
-                %candle.quote_denom,
-                %candle.volume_base,
-                %candle.volume_quote,
-                %candle.time_start,
-                %last_candle.time_start,
-                "Pushing candle, timestamp is not equal",
+                "Pushing candle, no existing candle found",
             );
             candles.push(candle);
+            return;
+        };
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            %candle.block_height,
+            %candle.base_denom,
+            %candle.quote_denom,
+            %existing_candle.volume_base,
+            %existing_candle.volume_quote,
+            %existing_candle.block_height,
+            %candle.volume_base,
+            %candle.volume_quote,
+            "Modifying existing candle",
+        );
+
+        if candle.block_height > existing_candle.block_height {
+            candle.open = existing_candle.open;
+        } else {
+            candle.close = existing_candle.close;
         }
+
+        candle.high = existing_candle.high.max(candle.high);
+        candle.low = existing_candle.low.min(candle.low);
+
+        candle.volume_base += existing_candle.volume_base;
+        candle.volume_quote += existing_candle.volume_quote;
+
+        candle.block_height = existing_candle.block_height.max(candle.block_height);
+
+        *existing_candle = candle;
     }
 
     /// Does the cache have all candles for the given dates?
