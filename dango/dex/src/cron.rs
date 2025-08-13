@@ -827,3 +827,140 @@ fn update_trading_volumes(
 
     Ok(())
 }
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_types::{
+            constants::{dango, usdc},
+            dex::{PairParams, PassiveLiquidity},
+        },
+        grug::{Bounded, MockContext, Uint128},
+        std::str::FromStr,
+        test_case::test_case,
+    };
+
+    const MOCK_USER: Addr = Addr::mock(123);
+    const MOCK_BLOCK_HEIGHT: u64 = 888;
+
+    #[test_case(
+        RestingOrderBookState::default(),
+        vec![],
+        vec![]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: None,
+            mid_price: None,
+        };
+        "no orders"
+    )]
+    #[test_case(
+        RestingOrderBookState::default(),
+        vec![],
+        vec![(Direction::Bid, Price::new(50), Uint128::new(1))]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(50)),
+            best_ask_price: None,
+            mid_price: None,
+        };
+        "one limit bid left over"
+    )]
+    fn properly_determine_resting_order_book_state(
+        previous_book_state: RestingOrderBookState,
+        market_orders: Vec<(Direction, Price, Uint128)>, // direction, price, amount
+        limit_orders: Vec<(Direction, Price, Uint128)>,  // direction, price, amount
+    ) -> RestingOrderBookState {
+        let mut ctx = MockContext::new().with_block_height(MOCK_BLOCK_HEIGHT);
+        let market_order_count = market_orders.len();
+
+        // Save paused state as false.
+        PAUSED.save(&mut ctx.storage, &false).unwrap();
+
+        // Save pair config.
+        PAIRS
+            .save(
+                &mut ctx.storage,
+                (&dango::DENOM, &usdc::DENOM),
+                &PairParams {
+                    lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                    pool_type: PassiveLiquidity::Geometric {
+                        order_spacing: Udec128::ZERO,
+                        ratio: Bounded::new_unchecked(Udec128::ONE),
+                    },
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                },
+            )
+            .unwrap();
+
+        // Save resting order book state from the previous auction.
+        RESTING_ORDER_BOOK
+            .save(
+                &mut ctx.storage,
+                (&dango::DENOM, &usdc::DENOM),
+                &previous_book_state,
+            )
+            .unwrap();
+
+        // Save the market orders.
+        for (index, (direction, price, amount)) in market_orders.into_iter().enumerate() {
+            let id = OrderId::new(index as _);
+            MARKET_ORDERS
+                .save(
+                    &mut ctx.storage,
+                    (MOCK_USER, id),
+                    &(
+                        (
+                            (dango::DENOM.clone(), usdc::DENOM.clone()),
+                            direction,
+                            price,
+                            id,
+                        ),
+                        MarketOrder {
+                            user: MOCK_USER.clone(),
+                            id,
+                            price,
+                            amount,
+                            remaining: amount.checked_into_dec().unwrap(),
+                            created_at_block_height: MOCK_BLOCK_HEIGHT,
+                        },
+                    ),
+                )
+                .unwrap();
+        }
+
+        // Save the limit orders.
+        for (index, (direction, price, amount)) in limit_orders.into_iter().enumerate() {
+            let id = OrderId::new((market_order_count + index) as _);
+            LIMIT_ORDERS
+                .save(
+                    &mut ctx.storage,
+                    (
+                        (dango::DENOM.clone(), usdc::DENOM.clone()),
+                        direction,
+                        price,
+                        id,
+                    ),
+                    &LimitOrder {
+                        user: MOCK_USER.clone(),
+                        id,
+                        price,
+                        amount,
+                        remaining: amount.checked_into_dec().unwrap(),
+                        created_at_block_height: MOCK_BLOCK_HEIGHT,
+                    },
+                )
+                .unwrap();
+        }
+
+        // Run cronjob.
+        cron_execute(ctx.as_sudo()).unwrap();
+
+        // Return the resting order book state after the auction.
+        RESTING_ORDER_BOOK
+            .load(&ctx.storage, (&dango::DENOM, &usdc::DENOM))
+            .unwrap()
+    }
+}
