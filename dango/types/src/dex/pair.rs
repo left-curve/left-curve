@@ -1,6 +1,6 @@
 use grug::{
-    Bounded, Denom, Udec128, Udec128_24, Uint128, ZeroExclusiveOneExclusive,
-    ZeroExclusiveOneInclusive, ZeroInclusiveOneExclusive,
+    Bounded, Denom, Udec128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+    ZeroInclusiveOneExclusive,
 };
 
 /// Parameters of a trading pair.
