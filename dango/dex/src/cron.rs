@@ -13,8 +13,8 @@ use {
         DangoQuerier,
         account_factory::Username,
         dex::{
-            CallbackMsg, Direction, ExecuteMsg, LimitOrder, MarketOrder, Order, OrderFilled,
-            OrderId, OrderTrait, OrdersMatched, PassiveOrder, Paused, Price, ReplyMsg,
+            CallbackMsg, Direction, ExecuteMsg, LimitOrder, MarketOrder, Order, OrderCanceled,
+            OrderFilled, OrderId, OrderTrait, OrdersMatched, PassiveOrder, Paused, Price, ReplyMsg,
             RestingOrderBookState,
         },
         taxman::{self, FeeType},
@@ -281,10 +281,10 @@ fn clear_orders_of_pair(
         volume,
         bids,
         asks,
-        unmatched_bid,
-        unmatched_ask,
         last_partial_matched_bid,
         last_partial_matched_ask,
+        unmatched_bid,
+        unmatched_ask,
     } = match_orders(&mut merged_bids, &mut merged_asks)?;
 
     // Any order that isn't visited during `match_limit_orders` is unmatched.
@@ -377,21 +377,49 @@ fn clear_orders_of_pair(
     // ------------------- 4. Handle unmatched market orders -------------------
 
     if let Some((_price, order)) = unmatched_bid {
-        refund_unmatched_order(&base_denom, &quote_denom, Direction::Bid, order, refunds)?;
+        refund_unmatched_market_order(
+            &base_denom,
+            &quote_denom,
+            Direction::Bid,
+            order,
+            events,
+            refunds,
+        )?;
     }
 
     for res in unmatched_market_bids {
         let (_price, order) = res?;
-        refund_unmatched_order(&base_denom, &quote_denom, Direction::Bid, order, refunds)?;
+        refund_unmatched_market_order(
+            &base_denom,
+            &quote_denom,
+            Direction::Bid,
+            order,
+            events,
+            refunds,
+        )?;
     }
 
     if let Some((_price, order)) = unmatched_ask {
-        refund_unmatched_order(&base_denom, &quote_denom, Direction::Ask, order, refunds)?;
+        refund_unmatched_market_order(
+            &base_denom,
+            &quote_denom,
+            Direction::Ask,
+            order,
+            events,
+            refunds,
+        )?;
     }
 
     for res in unmatched_market_asks {
         let (_price, order) = res?;
-        refund_unmatched_order(&base_denom, &quote_denom, Direction::Ask, order, refunds)?;
+        refund_unmatched_market_order(
+            &base_denom,
+            &quote_denom,
+            Direction::Ask,
+            order,
+            events,
+            refunds,
+        )?;
     }
 
     #[cfg(feature = "tracing")]
@@ -722,11 +750,16 @@ fn fill_passive_order(
     Ok(())
 }
 
-fn refund_unmatched_order(
+/// Add a refund to the `refunds` transfer builder and emit an order canceled event
+/// for an unmatched market order.
+///
+/// If the order is not a market order, then this function is a no-op.
+fn refund_unmatched_market_order(
     base_denom: &Denom,
     quote_denom: &Denom,
     direction: Direction,
     order: Order,
+    events: &mut EventBuilder,
     refunds: &mut TransferBuilder<DecCoins<6>>,
 ) -> StdResult<()> {
     let Order::Market(order) = order else {
@@ -737,19 +770,23 @@ fn refund_unmatched_order(
         return Ok(());
     };
 
-    match direction {
+    let (refund_denom, refund_amount) = match direction {
         Direction::Bid => {
             let remaining_in_quote = order.remaining.checked_mul_dec_floor(order.price)?;
-            refunds.insert(order.user, quote_denom.clone(), remaining_in_quote)?;
+            (quote_denom.clone(), remaining_in_quote)
         },
-        Direction::Ask => {
-            refunds.insert(order.user, base_denom.clone(), order.remaining)?;
-        },
-    }
+        Direction::Ask => (base_denom.clone(), order.remaining),
+    };
 
-    // TODO: emit order canceled event
+    events.push(OrderCanceled {
+        user: order.user,
+        id: order.id,
+        kind: order.kind(),
+        remaining: order.remaining,
+        refund: (refund_denom.clone(), refund_amount).into(),
+    })?;
 
-    Ok(())
+    refunds.insert(order.user, refund_denom, refund_amount)
 }
 
 /// Updates trading volumes for both user addresses and usernames

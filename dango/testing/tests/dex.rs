@@ -5505,37 +5505,6 @@ fn market_order_clearing(
     CreateLimitOrderRequest {
         base_denom: eth::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(9307)),
-        price: NonZero::new_unchecked(Udec128_24::new(1000000)),
-    },
-    coins! {
-        eth::DENOM.clone() => 9307,
-    },
-    CreateMarketOrderRequest {
-        base_denom: eth::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(500000)),
-        max_slippage: Udec128::new_percent(8),
-    },
-    coins! {
-        usdc::DENOM.clone() => 500000,
-    },
-    btree_map! {
-        eth::DENOM.clone() => BalanceChange::Decreased(9307),
-        usdc::DENOM.clone() => BalanceChange::Increased(498750),
-    },
-    btree_map! {
-        eth::DENOM.clone() => BalanceChange::Unchanged,
-        usdc::DENOM.clone() => BalanceChange::Decreased(500000),
-    }
-    ; "limit ask matched with market bid market size limiting factor market order gets refunded"
-)]
-#[test_case(
-    CreateLimitOrderRequest {
-        base_denom: eth::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(500000)),
         price: NonZero::new_unchecked(Udec128_24::new_bps(1)),
@@ -5561,7 +5530,7 @@ fn market_order_clearing(
         eth::DENOM.clone() => BalanceChange::Decreased(9999),
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
-    ; "limit bid matched with market ask market size limiting factor market order gets refunded"
+    ; "limit bid matched with market ask market size limiting factor market order does not get refunded"
 )]
 #[test_case(
     CreateLimitOrderRequest {
@@ -6229,4 +6198,86 @@ fn refund_left_over_market_ask() {
         dango::DENOM.clone() => BalanceChange::Unchanged,
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     });
+}
+
+#[test]
+fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let txs = vec![
+        accounts
+            .user1
+            .sign_transaction(
+                NonEmpty::new_unchecked(vec![
+                    Message::execute(
+                        contracts.dex,
+                        &dex::ExecuteMsg::BatchUpdateOrders {
+                            creates_market: vec![],
+                            creates_limit: vec![CreateLimitOrderRequest {
+                                base_denom: dango::DENOM.clone(),
+                                quote_denom: usdc::DENOM.clone(),
+                                direction: Direction::Ask,
+                                amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                                price: NonZero::new_unchecked(Udec128_24::new(100)),
+                            }],
+                            cancels: None,
+                        },
+                        coins! {
+                            dango::DENOM.clone() => 1000000,
+                        },
+                    )
+                    .unwrap(),
+                ]),
+                &suite.chain_id,
+                100_000,
+            )
+            .unwrap(),
+        accounts
+            .user2
+            .sign_transaction(
+                NonEmpty::new_unchecked(vec![
+                    Message::execute(
+                        contracts.dex,
+                        &dex::ExecuteMsg::BatchUpdateOrders {
+                            creates_market: vec![],
+                            creates_limit: vec![CreateLimitOrderRequest {
+                                base_denom: dango::DENOM.clone(),
+                                quote_denom: usdc::DENOM.clone(),
+                                direction: Direction::Bid,
+                                amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                                price: NonZero::new_unchecked(Udec128_24::new(99)),
+                            }],
+                            cancels: None,
+                        },
+                        coins! {
+                            usdc::DENOM.clone() => 1000000 * 99,
+                        },
+                    )
+                    .unwrap(),
+                ]),
+                &suite.chain_id,
+                100_000,
+            )
+            .unwrap(),
+    ];
+
+    suite
+        .make_block(txs)
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    suite
+        .query_wasm_smart(contracts.dex, QueryRestingOrderBookStateRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(RestingOrderBookState {
+            best_bid_price: Some(Udec128_24::new(99)),
+            best_ask_price: Some(Udec128_24::new(100)),
+            mid_price: Some(Udec128_24::new_permille(99500)),
+        });
 }

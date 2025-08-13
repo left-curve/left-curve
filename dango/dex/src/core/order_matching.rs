@@ -17,12 +17,6 @@ pub struct MatchingOutcome {
     pub bids: Vec<(Udec128_24, Order)>,
     /// The SELL orders that have found a match.
     pub asks: Vec<(Udec128_24, Order)>,
-    /// If a bid was popped out of the iterator but wasn't matched, it's
-    /// returned here.
-    pub unmatched_bid: Option<(Udec128_24, Order)>,
-    /// If an ask was popped out of the iterator but wasn't matched, it's
-    /// returned here.
-    pub unmatched_ask: Option<(Udec128_24, Order)>,
     /// If the last bid that found a match was only partially matched, it's
     /// returned here.
     ///
@@ -33,6 +27,12 @@ pub struct MatchingOutcome {
     /// If the last ask that found a match was only partially matched, it's
     /// returned here.
     pub last_partial_matched_ask: Option<(Udec128_24, Order)>,
+    /// If a bid was popped out of the iterator but wasn't matched, it's
+    /// returned here.
+    pub unmatched_bid: Option<(Udec128_24, Order)>,
+    /// If an ask was popped out of the iterator but wasn't matched, it's
+    /// returned here.
+    pub unmatched_ask: Option<(Udec128_24, Order)>,
 }
 
 /// Given the standing BUY and SELL orders in the book, find range of prices
@@ -124,9 +124,9 @@ where
         volume,
         bids,
         asks,
-        unmatched_bid: bid,
-        unmatched_ask: ask,
         last_partial_matched_bid,
         last_partial_matched_ask,
+        unmatched_bid: bid.take_if(|_| bid_is_new),
+        unmatched_ask: ask.take_if(|_| ask_is_new),
     })
 }
