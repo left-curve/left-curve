@@ -156,6 +156,7 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
+    user: "${UID:-1000}:${GID:-1000}"
     restart: unless-stopped
     ports:
       - "127.0.0.1:${CLICKHOUSE_PORT:-8123}:8123" # HTTP interface
