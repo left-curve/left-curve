@@ -68,5 +68,6 @@ ui/config/project.inlang/*
 # Network data
 networks/**/configs/cometbft/config/addrbook.json
 networks/**/configs/cometbft/config/write-file-atomic-*
+networks/**/configs/backups
 networks/**/data
 networks/**/logs
