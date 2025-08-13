@@ -120,6 +120,7 @@ impl CandleSubscription {
                         cache_max_block_height=?_cache_max_block_height,
                         cache_min_block_height=?_cache_min_block_height,
                         cache_len=?_cache_len,
+                        interval = ?interval,
                         "Skip candle, it has older block_height than received pubsub block_height"
                     );
 
