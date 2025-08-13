@@ -58,7 +58,7 @@ impl Indexer {
             return Ok(true);
         };
 
-        let mut total_candles = 1;
+        let mut _total_candles = 1;
         let mut wrong_candles = 0;
 
         while let Some(candle) = cursor.next().await? {
@@ -75,12 +75,12 @@ impl Indexer {
             }
 
             later_candle = candle;
-            total_candles += 1;
+            _total_candles += 1;
         }
 
         #[cfg(feature = "tracing")]
         tracing::info!(
-            "checked {total_candles} candles for {base_denom}/{quote_denom} at interval {interval:?}, found {wrong_candles} wrong candles"
+            "checked {_total_candles} candles for {base_denom}/{quote_denom} at interval {interval:?}, found {wrong_candles} wrong candles"
         );
 
         Ok(wrong_candles == 0)
