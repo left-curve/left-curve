@@ -5861,14 +5861,14 @@ fn market_orders_are_sorted_by_price_ascending() {
                                     base_denom: dango::DENOM.clone(),
                                     quote_denom: usdc::DENOM.clone(),
                                     direction: Direction::Bid,
-                                    amount: NonZero::new_unchecked(Uint128::new(1050000)),
+                                    amount: NonZero::new_unchecked(Uint128::new(1000000)), // amount in base asset
                                     max_slippage: Udec128::new_percent(5),
                                 }],
                                 creates_limit: vec![],
                                 cancels: None,
                             },
                             coins! {
-                                usdc::DENOM.clone() => 1102500, // amount * (best_ask_price * (1 + max_slippage)) = 1050000 * (1 * (1 + 0.05))
+                                usdc::DENOM.clone() => 1050000, // amount * (best_ask_price * (1 + max_slippage)) = 1000000 * (1 * (1 + 0.05))
                             },
                         )
                         .unwrap(),
