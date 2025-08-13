@@ -218,6 +218,8 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::DEBUG);
 
+    let _span = tracing::info_span!("graphql_subscribe_to_candles").entered();
+
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
