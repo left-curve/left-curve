@@ -24,8 +24,8 @@ impl Loader<entity::blocks::Model> for BlockCronsOutcomesDataLoader {
         });
 
         keys.iter()
-            .map(|graphql_tx| {
-                let indexed_block = cache.get_or_fetch(&(graphql_tx.block_height as u64), None)?;
+            .map(|block| {
+                let indexed_block = cache.get_or_fetch(&(block.block_height as u64), None)?;
 
                 let crons_outcomes = indexed_block
                     .block_outcome
@@ -34,7 +34,7 @@ impl Loader<entity::blocks::Model> for BlockCronsOutcomesDataLoader {
                     .map(|cron| cron.to_json_string())
                     .collect::<Result<Vec<String>, _>>()?;
 
-                Ok((graphql_tx.clone(), crons_outcomes))
+                Ok((block.clone(), crons_outcomes))
             })
             .collect::<Result<_, _>>()
             .map_err(Arc::new)
