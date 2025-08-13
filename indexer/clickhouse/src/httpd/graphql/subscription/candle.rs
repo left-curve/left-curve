@@ -106,11 +106,16 @@ impl CandleSubscription {
                         .get(&cache_key)
                         .map(|candles| candles.iter().map(|c| c.block_height).collect::<Vec<_>>())
                         .unwrap_or_default();
+                    let pair_prices_block_heights = candle_cache.pair_prices.keys().cloned().collect::<Vec<_>>();
+
                     drop(candle_cache);
 
                     let _cache_max_block_height = candle_cache_block_heights.iter().max();
                     let _cache_min_block_height = candle_cache_block_heights.iter().min();
                     let _cache_len = candle_cache_block_heights.len();
+
+                    let _pair_prices_min_block_height = pair_prices_block_heights.iter().min();
+                    let _pair_prices_max_block_height = pair_prices_block_heights.iter().max();
 
                     #[cfg(feature = "tracing")]
                     tracing::warn!(
@@ -120,6 +125,8 @@ impl CandleSubscription {
                         cache_max_block_height=?_cache_max_block_height,
                         cache_min_block_height=?_cache_min_block_height,
                         cache_len=?_cache_len,
+                        pair_prices_min_block_height=?_pair_prices_min_block_height,
+                        pair_prices_max_block_height=?_pair_prices_max_block_height,
                         interval = ?interval,
                         "Skip candle, it has older block_height than received pubsub block_height"
                     );
