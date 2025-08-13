@@ -22,13 +22,16 @@ export const OrderBookOverview: React.FC = () => {
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
+      className={twMerge(
+        "z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]",
+        { hidden: isLg },
+      )}
     >
       <Tabs
         color="line-red"
         layoutId="tabs-order-history"
         selectedTab={activeTab}
-        keys={isLg ? ["order book", "trades"] : ["graph", "order book", "trades"]}
+        keys={isLg ? [] : ["graph"]}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}

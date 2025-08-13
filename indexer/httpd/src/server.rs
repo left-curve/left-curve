@@ -7,6 +7,7 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
+    grug_httpd::routes::index::index,
     sentry_actix::Sentry,
     std::fmt::Display,
 };
@@ -143,7 +144,7 @@ where
     G: Clone + 'static,
 {
     Box::new(move |cfg: &mut ServiceConfig| {
-        cfg.service(routes::index::index)
+        cfg.service(index)
             .service(routes::index::up)
             .service(routes::api::services::api_services())
             .service(routes::graphql::graphql_route())

@@ -107,12 +107,12 @@ const NetworkSection: React.FC = () => {
         </div>
 
         <div className="flex flex-col  rounded-md justify-center gap-1 w-fit md:gap-0 pl-8">
-          <div className="flex md:items-center flex-col md:flex-row diatype-sm-regular">
+          {/*  <div className="flex md:items-center flex-col md:flex-row diatype-sm-regular">
             <p className="md:min-w-[10rem] text-tertiary-500">
               {m["settings.session.network.chainId"]()}
             </p>
             <p className="break-all whitespace-normal">{chain.id}</p>
-          </div>
+          </div> */}
 
           <div className="flex md:items-center flex-col md:flex-row diatype-sm-regular">
             <p className="md:min-w-[10rem] text-tertiary-500">
@@ -141,7 +141,7 @@ const NetworkSection: React.FC = () => {
               {m["settings.session.network.endpoint"]()}
             </p>
             <p className="break-all whitespace-normal">
-              {chain.urls.indexer.replace("/graphql", "")}
+              {chain.urls.indexer.replace(/\/graphql$/, "")}
             </p>
           </div>
         </div>

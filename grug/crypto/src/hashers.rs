@@ -1,5 +1,5 @@
 use {
-    crate::truncate,
+    crate::utils::truncate,
     blake2::{Blake2b512, Blake2s256},
     digest::Digest,
     sha2::{Sha256, Sha512},

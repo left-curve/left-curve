@@ -1,9 +1,6 @@
 use {
-    crate::{
-        constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
-        eth_utils,
-    },
-    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Shared, hash_map},
+    crate::constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
+    grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared, hash_map},
     hyperlane_types::{
         Addr32, IncrementalMerkleTree,
         constants::{arbitrum, base, ethereum, optimism, solana},
@@ -103,7 +100,7 @@ impl MockValidatorSet {
             .validators
             .iter()
             .map(|sk| {
-                let signature = eth_utils::sign(multisig_hash, sk);
+                let signature = eth_utils::sign_digest(multisig_hash.into_inner(), sk);
                 HexByteArray::from_inner(signature)
             })
             .collect();

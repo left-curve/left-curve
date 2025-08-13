@@ -5,6 +5,7 @@
 :root {
   --color-surface-primary-rice: #FFFCF6;
   --color-surface-primary-green: #D2D184;
+  --color-surface-primary-red: #FEF1F1;
   --color-surface-secondary-rice: #FFF9F0;
   --color-surface-secondary-blue: #F0F1F7;
   --color-surface-secondary-red: #FEE6E8;
@@ -16,6 +17,7 @@
   --color-surface-disabled-gray: #F5F4F4;
   --color-overlay-rice: #F2E2B8CC;
   --color-border-secondary-rice: #EFDAA4;
+  --color-border-tertiary-blue: #E2E3F2;
   --color-foreground-disabled-gray: #ACA9A7;
   --color-foreground-tertiary: #837D7B;
   --color-foreground-tertiary-rice: #E3BD66;
@@ -42,6 +44,7 @@
   --color-tertiary-rice: #F3E5BF;
   --color-tertiary-green: #E5E4B1;
   --color-tertiary-blue: #E2E3F2;
+  --color-tertiary-red: #ED4561;
   --color-status-fail: #E71818;
   --color-status-success: #25B12A;
 
@@ -62,6 +65,7 @@
 html.dark {
   --color-surface-primary-rice: #2D2C2A;
   --color-surface-primary-green: #7C7A65;
+  --color-surface-primary-red: #564D4C;
   --color-surface-secondary-rice: #363432;
   --color-surface-secondary-blue: #646273;
   --color-surface-secondary-red: #6B5D5D;
@@ -73,6 +77,7 @@ html.dark {
   --color-surface-disabled-gray: #363432;
   --color-overlay-rice: #F2E2B84D;
   --color-border-secondary-rice: #594F3C;
+  --color-border-tertiary-blue: #646273;
   --color-foreground-disabled-gray: #807D78;
   --color-foreground-tertiary: #999590;
   --color-foreground-tertiary-rice: #807660;
@@ -99,6 +104,7 @@ html.dark {
   --color-tertiary-rice: #474237;
   --color-tertiary-green: #3F3B35;
   --color-tertiary-blue: #646273;
+  --color-tertiary-red: #FCCFD4;
   --color-status-fail: #FF6B6B;
   --color-status-success: #66C86A;
 
@@ -164,6 +170,7 @@ body {
 
   .max-h-available {
     max-height: 100vh;
+    /* biome-ignore lint/suspicious/noDuplicateProperties: Adding browser-specific properties */
     max-height: -moz-available;
     max-height: -webkit-fill-available;
     max-height: -webkit-stretch;
@@ -180,6 +187,10 @@ body {
   color: theme("colors.white.100") !important;
 }
 
+.fp-overflow {
+width: 100%;
+}
+
 /* ChartIQ */
 cq-drawing-palette cq-separator {
   opacity: .4;
@@ -193,6 +204,8 @@ cq-drawing-palette .tool-group .drawing-tools-group cq-separator {
 cq-drawing-palette cq-scroll {
   scrollbar-width: none;
   scrollbar-color: initial;
+  max-width: 65px;
+  margin: 0 auto;
 }
 
 cq-drawing-palette cq-scroll::-webkit-scrollbar {

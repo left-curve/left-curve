@@ -61,6 +61,9 @@ run-dev-db:
 check-dev-db:
   docker compose run --rm db pg_isready -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}}
 
+restore-clickhouse filename:
+  docker compose exec clickhouse clickhouse-client --query "RESTORE DATABASE testnet_dango_production FROM File('/var/log/clickhouse-server/backups/{{filename}}')"
+
 # Create the development database
 create-dev-db:
   docker compose run --rm db createdb -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}} {{DB_NAME}}
