@@ -58,9 +58,16 @@ impl CandleCache {
     pub fn add_pair_prices(&mut self, block_height: u64, pair_prices: HashMap<PairId, PairPrice>) {
         if pair_prices.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::debug!("Received empty pair_prices",);
+            tracing::info!(block_height, "Received empty pair_prices");
             return;
         }
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            block_height,
+            pair_prices_len = pair_prices.len(),
+            "Adding pair_prices"
+        );
 
         for pair_price in pair_prices.values() {
             for candle_interval in CandleInterval::iter() {
@@ -85,12 +92,12 @@ impl CandleCache {
                 };
 
                 #[cfg(feature = "tracing")]
-                tracing::debug!(
-                    block_height = candle.block_height,
-                    base_denom = candle.base_denom,
-                    quote_denom = candle.quote_denom,
-                    volume_base = %candle.volume_base,
-                    volume_quote = %candle.volume_quote,
+                tracing::info!(
+                    %candle.block_height,
+                    %candle.base_denom,
+                    %candle.quote_denom,
+                    %candle.volume_base,
+                    %candle.volume_quote,
                     "Calling add_candle()",
                 );
 
@@ -110,10 +117,10 @@ impl CandleCache {
         // no existing candles, we can just push it
         let Some(last_candle) = candles.last_mut() else {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                block_height = candle.block_height,
-                base_denom = candle.base_denom,
-                quote_denom = candle.quote_denom,
+            tracing::info!(
+                %candle.block_height,
+                %candle.base_denom,
+                %candle.quote_denom,
                 "Adding candle, cache is empty",
             );
 
@@ -125,10 +132,10 @@ impl CandleCache {
         if last_candle.block_height >= candle.block_height {
             #[cfg(feature = "tracing")]
             tracing::warn!(
-                block_height = candle.block_height,
-                last_block_height = last_candle.block_height,
-                base_denom = candle.base_denom,
-                quote_denom = candle.quote_denom,
+                %candle.block_height,
+                %last_candle.block_height,
+                %candle.base_denom,
+                %candle.quote_denom,
                 "Ignoring candle",
             );
 
@@ -137,21 +144,26 @@ impl CandleCache {
 
         // Check if last candle has same time_start, if so replace it and update
         // max/min/open/close values. Candles are coming in order.
+        // NOTE: candles could be not coming in order
         if last_candle.time_start == candle.time_start {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                block_height = candle.block_height,
-                base_denom = candle.base_denom,
-                quote_denom = candle.quote_denom,
+            tracing::info!(
+                %candle.block_height,
+                %candle.base_denom,
+                %candle.quote_denom,
                 %last_candle.volume_base,
                 %last_candle.volume_quote,
+                %last_candle.block_height,
                 %candle.volume_base,
                 %candle.volume_quote,
                 "Modifying last candle, timestamp is equal",
             );
 
-            // Keep the original open price from the interval start
-            candle.open = last_candle.open;
+            if candle.block_height > last_candle.block_height {
+                candle.open = last_candle.open;
+            } else {
+                candle.close = last_candle.close;
+            }
             candle.high = last_candle.high.max(candle.high);
             candle.low = last_candle.low.min(candle.low);
             candle.volume_base += last_candle.volume_base;
@@ -161,12 +173,14 @@ impl CandleCache {
             *last_candle = candle;
         } else {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                block_height = candle.block_height,
-                base_denom = candle.base_denom,
-                quote_denom = candle.quote_denom,
+            tracing::info!(
+                %candle.block_height,
+                %candle.base_denom,
+                %candle.quote_denom,
                 %candle.volume_base,
                 %candle.volume_quote,
+                %candle.time_start,
+                %last_candle.time_start,
                 "Pushing candle, timestamp is not equal",
             );
             candles.push(candle);
