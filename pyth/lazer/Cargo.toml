@@ -1,0 +1,23 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "pyth-lazer"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+# anyhow        = { workspace = true }
+# byteorder     = { workspace = true }
+# data-encoding = { workspace = true }
+# grug          = { workspace = true }
+# hex-literal   = { workspace = true }
+grug-testing        = { workspace = true }
+pyth-lazer-client   = { workspace = true }
+pyth-lazer-protocol = { workspace = true }
+tokio               = { workspace = true }
+tracing             = { workspace = true }
+url                 = { workspace = true }

@@ -152,6 +152,8 @@ proc-macro2                 = "1"
 prometheus                  = "0.13"
 proptest                    = "1"
 prost                       = "0.13"
+pyth-lazer-client           = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-lazer-client" }
+pyth-lazer-protocol         = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-lazer-protocol" }
 pyth-sdk                    = "0.8"
 pythnet-sdk                 = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                       = "1"
