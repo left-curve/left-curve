@@ -83,6 +83,12 @@ export type {
 } from "./safe.js";
 
 export type {
+  IndexedEvent,
+  EventStatus,
+  CommitmentStatus,
+} from "./event.js";
+
+export type {
   SigningSession,
   SigningSessionInfo,
   SessionResponse,
