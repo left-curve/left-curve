@@ -1,8 +1,6 @@
 #[cfg(feature = "metrics")]
 use grug_httpd::metrics::GaugeGuard;
 
-use crate::entities::pair_price;
-
 use {
     crate::{
         cache,
