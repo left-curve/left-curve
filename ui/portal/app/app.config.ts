@@ -21,7 +21,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: bundleId,
-    associatedDomains: ["webcredentials:dango.zone"],
+    associatedDomains: ["webcredentials:dango.exchange"],
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
     },
@@ -35,9 +35,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   web: {
     bundler: "metro",
+    output: "static",
     favicon: "./assets/favicon.png",
   },
   plugins: [
+    ["expo-router", { root: "./src/screens" }],
     [
       "expo-camera",
       {
