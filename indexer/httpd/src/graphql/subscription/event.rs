@@ -316,6 +316,12 @@ impl EventSubscription {
             let _addresses = addresses.clone();
 
             async move {
+                if block_range.end() < block_range.start() {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(block_range = ?block_range, "`block_range` is descending on `once`, returning an empty vector");
+                    return vec![];
+                }
+
                 app_ctx
                     .event_cache
                     .read_events(block_range, &_addresses)

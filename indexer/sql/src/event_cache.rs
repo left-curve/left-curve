@@ -48,6 +48,16 @@ impl<M> EventCache<M> {
         block_range: RangeInclusive<u64>,
         addresses: &[Addr],
     ) -> Vec<EventModel> {
+        // set the range ascending
+        if block_range.start() > block_range.end() {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                range = ?block_range,
+                "`block_range` is descending on `read_events`, returning an empty vector"
+            );
+            return vec![];
+        };
+
         // use Vec<Arc<EventModel>> instead of Vec<EventModel> in order to release the lock as soon as possible
         let events = {
             let inner = self.inner.read().await;
