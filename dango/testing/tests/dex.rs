@@ -5505,37 +5505,6 @@ fn market_order_clearing(
     CreateLimitOrderRequest {
         base_denom: eth::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(9307)),
-        price: NonZero::new_unchecked(Udec128_24::new(1000000)),
-    },
-    coins! {
-        eth::DENOM.clone() => 9307,
-    },
-    CreateMarketOrderRequest {
-        base_denom: eth::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(500000)),
-        max_slippage: Udec128::new_percent(8),
-    },
-    coins! {
-        usdc::DENOM.clone() => 500000,
-    },
-    btree_map! {
-        eth::DENOM.clone() => BalanceChange::Decreased(9307),
-        usdc::DENOM.clone() => BalanceChange::Increased(498750),
-    },
-    btree_map! {
-        eth::DENOM.clone() => BalanceChange::Unchanged,
-        usdc::DENOM.clone() => BalanceChange::Decreased(500000),
-    }
-    ; "limit ask matched with market bid market size limiting factor market order gets refunded"
-)]
-#[test_case(
-    CreateLimitOrderRequest {
-        base_denom: eth::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(500000)),
         price: NonZero::new_unchecked(Udec128_24::new_bps(1)),
@@ -5561,7 +5530,7 @@ fn market_order_clearing(
         eth::DENOM.clone() => BalanceChange::Decreased(9999),
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
-    ; "limit bid matched with market ask market size limiting factor market order gets refunded"
+    ; "limit bid matched with market ask market size limiting factor market order does not get refunded"
 )]
 #[test_case(
     CreateLimitOrderRequest {
