@@ -835,14 +835,16 @@ mod tests {
     use {
         super::*,
         dango_types::{
+            config::{AppAddresses, AppConfig},
             constants::{dango, usdc},
             dex::{PairParams, PassiveLiquidity},
         },
-        grug::{Bounded, MockContext, Uint128},
+        grug::{Bounded, MockContext, MockQuerier, Uint128},
         std::str::FromStr,
         test_case::test_case,
     };
 
+    const MOCK_DEX: Addr = Addr::mock(0);
     const MOCK_USER: Addr = Addr::mock(123);
     const MOCK_BLOCK_HEIGHT: u64 = 888;
 
@@ -864,7 +866,7 @@ mod tests {
         => RestingOrderBookState {
             best_bid_price: Some(Price::new(50)),
             best_ask_price: None,
-            mid_price: None,
+            mid_price: Some(Price::new(50)),
         };
         "one limit bid left over"
     )]
@@ -873,7 +875,22 @@ mod tests {
         market_orders: Vec<(Direction, Price, Uint128)>, // direction, price, amount
         limit_orders: Vec<(Direction, Price, Uint128)>,  // direction, price, amount
     ) -> RestingOrderBookState {
-        let mut ctx = MockContext::new().with_block_height(MOCK_BLOCK_HEIGHT);
+        let querier = MockQuerier::new()
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    dex: MOCK_DEX,
+                    ..Default::default()
+                },
+                maker_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // set fee rates to zero for simplicity
+                taker_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                ..Default::default()
+            })
+            .unwrap();
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_block_height(MOCK_BLOCK_HEIGHT)
+            .with_sender(MOCK_DEX)
+            .with_funds(Coins::new());
         let market_order_count = market_orders.len();
 
         // Save paused state as false.
@@ -956,7 +973,7 @@ mod tests {
         }
 
         // Run cronjob.
-        cron_execute(ctx.as_sudo()).unwrap();
+        auction(ctx.as_mutable()).unwrap();
 
         // Return the resting order book state after the auction.
         RESTING_ORDER_BOOK
