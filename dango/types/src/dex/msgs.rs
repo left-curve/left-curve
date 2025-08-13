@@ -63,8 +63,7 @@ pub struct CreateMarketOrderRequest {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    /// For BUY orders, the amount of quote asset; for SELL orders, that of the
-    /// base asset.
+    /// Amount is specified in the base asset for both BUY and SELL orders.
     pub amount: NonZero<Uint128>,
     /// The maximum slippage percentage.
     ///
