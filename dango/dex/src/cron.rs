@@ -655,6 +655,12 @@ where
     )
 }
 
+/// Find the best price available on one side of the order book after the auction:
+/// - if the last order that was matched was only partially matched, and it's
+///   a limit order, then it's the best; otherwise,
+/// - if there's a left over bid, and it's a limit order, then it's the best;
+///   otherwise,
+/// - the first unmatched limit order is the best.
 fn find_best_remaining_price<I>(
     last_partial_matched_order: Option<(Udec128_24, Order)>,
     first_unmatched_order: Option<(Udec128_24, Order)>,
@@ -718,12 +724,6 @@ fn fill_user_order(
     refunds.insert(user, quote_denom.clone(), refund_quote)
 }
 
-/// Find the best price available on one side of the order book after the auction:
-/// - if the last order that was matched was only partially matched, and it's
-///   a limit order, then it's the best; otherwise,
-/// - if there's a left over bid, and it's a limit order, then it's the best;
-///   otherwise,
-/// - the first unmatched limit order is the best.
 fn fill_passive_order(
     base_denom: &Denom,
     quote_denom: &Denom,
