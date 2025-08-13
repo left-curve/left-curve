@@ -17,21 +17,17 @@ pub struct MatchingOutcome {
     pub bids: Vec<(Udec128_24, Order)>,
     /// The SELL orders that have found a match.
     pub asks: Vec<(Udec128_24, Order)>,
-    /// If the last bid that found a match was only partially matched, it's
-    /// returned here.
+    /// If the last bid that found a match was only partially matched, it's returned here.
     ///
     /// Since this order is only partially matched, it will remain in the book,
     /// and becomes the best available bid at the beginning of the next block.
     /// It is used to determine the resting order book state.
     pub last_partial_matched_bid: Option<(Udec128_24, Order)>,
-    /// If the last ask that found a match was only partially matched, it's
-    /// returned here.
+    /// If the last ask that found a match was only partially matched, it's returned here.
     pub last_partial_matched_ask: Option<(Udec128_24, Order)>,
-    /// If a bid was popped out of the iterator but wasn't matched, it's
-    /// returned here.
+    /// If a bid was popped out of the iterator but wasn't matched, it's returned here.
     pub unmatched_bid: Option<(Udec128_24, Order)>,
-    /// If an ask was popped out of the iterator but wasn't matched, it's
-    /// returned here.
+    /// If an ask was popped out of the iterator but wasn't matched, it's returned here.
     pub unmatched_ask: Option<(Udec128_24, Order)>,
 }
 
