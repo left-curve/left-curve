@@ -636,19 +636,19 @@ where
     I: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
     if let Some((price, order)) = last_partial_matched_order {
-        if let Order::Limit(_) = order {
+        if let Order::Limit(_) | Order::Passive(_) = order {
             return Ok(Some(price));
         }
     }
 
     if let Some((price, order)) = first_unmatched_order {
-        if let Order::Limit(_) = order {
+        if let Order::Limit(_) | Order::Passive(_) = order {
             return Ok(Some(price));
         }
     }
 
     for res in other_unmatched_orders {
-        if let Ok((price, Order::Limit(_))) = res {
+        if let Ok((price, Order::Limit(_) | Order::Passive(_))) = res {
             return Ok(Some(price));
         }
     }
