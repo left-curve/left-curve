@@ -19,6 +19,12 @@ pub enum IndexerError {
 
     #[error("candle timeout")]
     CandleTimeout,
+
+    #[error(transparent)]
+    ChronoParseError(#[from] chrono::ParseError),
+
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
 }
 
 impl From<IndexerError> for grug_app::IndexerError {
