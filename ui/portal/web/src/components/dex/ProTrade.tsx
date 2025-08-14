@@ -1,11 +1,12 @@
 import {
   createContext,
+  Spinner,
   twMerge,
   useInputs,
   useMediaQuery,
   usePortalTarget,
 } from "@left-curve/applets-kit";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useApp } from "~/hooks/useApp";
@@ -23,7 +24,6 @@ import {
   Tabs,
 } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChartIQ } from "../foundation/ChartIQ";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { Modals } from "../modals/RootModal";
 import { OrderBookOverview } from "./OrderBookOverview";
@@ -166,21 +166,26 @@ const ProTradeOverview: React.FC = () => {
   return <OrderBookOverview />;
 };
 
+const ChartIQ = lazy(() =>
+  import("../foundation/ChartIQ").then(({ ChartIQ }) => ({ default: ChartIQ })),
+);
+
 const ProTradeChart: React.FC = () => {
   const { state } = useProTrade();
   const { isLg } = useMediaQuery();
   const { baseCoin, quoteCoin, orders } = state;
 
-  const chartComponent = useMemo(
-    () => <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />,
-    [baseCoin, quoteCoin, orders],
-  );
-
   const mobileContainer = usePortalTarget("#chartiq-container");
 
-  return (
-    <>{isLg || !mobileContainer ? chartComponent : createPortal(chartComponent, mobileContainer)}</>
+  const Chart = (
+    <Suspense fallback={<Spinner color="pink" />}>
+      <div className="flex w-full h-full" id="chartiq">
+        <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />
+      </div>
+    </Suspense>
   );
+
+  return <>{isLg || !mobileContainer ? Chart : createPortal(Chart, mobileContainer)}</>;
 };
 
 const ProTradeMenu: React.FC = () => {
