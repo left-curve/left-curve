@@ -223,7 +223,7 @@ const SectionCommunity: React.FC = () => {
           <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
           <div className="flex gap-10 lg:gap-4 diatype-m-medium">
             <a
-              href="/documents/Dango%20-%20Terms%20of%20use.pdf"
+              href="/documents/Dango%20-%20Terms%20of%20Use.pdf"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:underline text-tertiary-500"
