@@ -95,8 +95,10 @@ const QueryMsg: React.FC = () => {
           />
         </div>
         {queryResponse ? (
-          <div className="min-h-[60vh] lg:min-h-full p-4 bg-surface-primary-rice shadow-account-card  rounded-md  flex-1 w-full lg:w-auto overflow-auto">
-            <JsonVisualizer json={JSON.stringify(queryResponse)} collapsed={1} />
+          <div className="min-h-[60vh] lg:min-h-full p-4 bg-surface-tertiary-rice shadow-account-card  rounded-xl  flex-1 w-full lg:w-auto overflow-auto">
+            <div className="overflow-hidden rounded-lg p-2 bg-[#453d39] h-[61vh] overflow-y-scroll scrollbar-none">
+              <JsonVisualizer json={JSON.stringify(queryResponse)} collapsed={1} />
+            </div>
           </div>
         ) : null}
       </ResizerContainer>
@@ -138,7 +140,7 @@ const ExecuteMsg: React.FC = () => {
         layoutId="query-visualizer"
         className="flex flex-col lg:flex-row gap-4 w-full"
       >
-        <div className="relative flex lg:h-[60vh] w-full flex-col overflow-hidden rounded-xl py-6 md:flex-1 bg-surface-playground pr-4 shadow-account-card">
+        <div className="relative flex min-h-[60vh] w-full flex-col overflow-hidden rounded-xl py-6 md:flex-1 bg-surface-playground pr-4 shadow-account-card">
           <Editor
             onMount={(_, monaco) => {
               monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
