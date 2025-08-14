@@ -4,8 +4,8 @@ use {
         dex::{Direction, OrderId, PairParams, PairUpdate, PassiveOrder, RestingOrderBookState},
     },
     grug::{
-        Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6, Udec128_24,
-        Uint128, UniqueVec,
+        Addr, Bounded, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6,
+        Udec128_24, Uint128, UniqueVec, ZeroInclusiveOneExclusive,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -89,7 +89,7 @@ pub struct CreateMarketOrderRequest {
     /// enough liquidity in the resting order book to fully fill the market
     /// order under its max slippage, it's filled as much as possible, with the
     /// unfilled portion is canceled.
-    pub max_slippage: Udec128,
+    pub max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
 }
 
 #[grug::derive(Serde)]
