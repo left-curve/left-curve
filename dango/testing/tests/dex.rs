@@ -5736,3 +5736,6 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
         usdc::DENOM.clone() => BalanceChange::Decreased(1000000),
     });
 }
+
+#[test]
+fn mock_test() {}
