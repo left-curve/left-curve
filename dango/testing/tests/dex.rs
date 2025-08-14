@@ -71,7 +71,7 @@ fn cannot_submit_order_with_zero_amount() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::ZERO), // incorrect!
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 }],
                 creates_limit: vec![],
                 cancels: None,
@@ -3697,7 +3697,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3749,7 +3749,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3801,7 +3801,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3850,7 +3850,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3899,7 +3899,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3948,7 +3948,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3997,7 +3997,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4048,7 +4048,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4099,7 +4099,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4150,7 +4150,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4201,7 +4201,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4264,7 +4264,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::new_percent(5),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(5)),
                 },
             ],
             coins! {
@@ -4333,7 +4333,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::new_percent(50),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(50)),
                 },
             ],
             coins! {
@@ -4388,7 +4388,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
             coins! {
@@ -4402,7 +4402,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(30_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
             coins! {
@@ -4458,7 +4458,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
             coins! {
@@ -4472,7 +4472,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(30_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
             coins! {
@@ -4528,7 +4528,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4577,7 +4577,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4626,7 +4626,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4675,7 +4675,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4724,7 +4724,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4774,7 +4774,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4824,14 +4824,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4880,14 +4880,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4936,7 +4936,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4950,14 +4950,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5010,7 +5010,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5024,14 +5024,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5084,7 +5084,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5098,14 +5098,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5158,7 +5158,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5172,14 +5172,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5383,7 +5383,7 @@ fn market_order_clearing(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Ask,
         amount: NonZero::new_unchecked(Uint128::new(9999)),
-        max_slippage: Udec128::new_percent(8),
+        max_slippage: Bounded::new_unchecked(Udec128::new_percent(8)),
     },
     coins! {
         eth::DENOM.clone() => 9999,
@@ -5414,7 +5414,7 @@ fn market_order_clearing(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Ask,
         amount: NonZero::new_unchecked(Uint128::new(500000)),
-        max_slippage: Udec128::new_percent(8),
+        max_slippage: Bounded::new_unchecked(Udec128::new_percent(8)),
     },
     coins! {
         eth::DENOM.clone() => 500000,
@@ -5671,7 +5671,7 @@ fn market_orders_are_sorted_by_price_ascending() {
                                     quote_denom: usdc::DENOM.clone(),
                                     direction: Direction::Bid,
                                     amount: NonZero::new_unchecked(Uint128::new(1000000)),
-                                    max_slippage: Udec128::ZERO,
+                                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                                 }],
                                 creates_limit: vec![],
                                 cancels: None,
@@ -5697,7 +5697,7 @@ fn market_orders_are_sorted_by_price_ascending() {
                                     quote_denom: usdc::DENOM.clone(),
                                     direction: Direction::Bid,
                                     amount: NonZero::new_unchecked(Uint128::new(1050000)),
-                                    max_slippage: Udec128::new_percent(5),
+                                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(5)),
                                 }],
                                 creates_limit: vec![],
                                 cancels: None,
@@ -5861,7 +5861,7 @@ fn refund_left_over_market_bid() {
                                     quote_denom: usdc::DENOM.clone(),
                                     direction: Direction::Bid,
                                     amount: NonZero::new_unchecked(Uint128::new(1)),
-                                    max_slippage: Udec128::ZERO,
+                                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                                 }],
                                 creates_limit: vec![],
                                 cancels: None,
@@ -6023,7 +6023,7 @@ fn refund_left_over_market_ask() {
                                     quote_denom: usdc::DENOM.clone(),
                                     direction: Direction::Ask,
                                     amount: NonZero::new_unchecked(Uint128::new(1)),
-                                    max_slippage: Udec128::ZERO,
+                                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                                 }],
                                 creates_limit: vec![],
                                 cancels: None,
