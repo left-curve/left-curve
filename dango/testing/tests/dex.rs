@@ -3720,7 +3720,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     },
     btree_map! {
         OrderId::new(1) => (Direction::Ask, Udec128::new(1), Uint128::new(100_000_000), Uint128::new(100_000_000), 0),
-    };
+    }
+    => panics "can't create market ask order, because best bid price isn't available";
     "One limit ask, one market ask, no match"
 )]
 #[test_case(
@@ -3771,7 +3772,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     },
     btree_map! {
         OrderId::new(!1) => (Direction::Bid, Udec128::new(1), Uint128::new(100_000_000), Uint128::new(100_000_000), 0),
-    };
+    }
+    => panics "can't create market bid order, because best ask price isn't available";
     "One limit bid, one market bid, no match"
 )]
 #[test_case(
@@ -3945,7 +3947,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(200_000_000)),
+                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Udec128::ZERO,
                 },
             ],
@@ -4045,7 +4047,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(200_000_000)),
+                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Udec128::ZERO,
                 },
             ],
