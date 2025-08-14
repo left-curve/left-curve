@@ -56,10 +56,11 @@ impl Model {
     }
 
     async fn crons_outcomes(&self, ctx: &Context<'_>) -> Result<Vec<String>> {
-        Ok(BlockToIndex::load_from_disk(
+        Ok(BlockToIndex::load_from_disk_async(
             ctx.data_unchecked::<IndexerPath>()
                 .block_path(self.block_height as u64),
-        )?
+        )
+        .await?
         .block_outcome
         .cron_outcomes
         .iter()

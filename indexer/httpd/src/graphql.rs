@@ -75,11 +75,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     let indexer_path = app_ctx.indexer_path.clone();
 
     #[allow(unused_mut)]
-    let mut schema_builder: async_graphql::SchemaBuilder<
-        query::Query,
-        mutation::Mutation,
-        subscription::Subscription,
-    > = Schema::build(
+    let mut schema_builder = Schema::build(
         query::Query::default(),
         mutation::Mutation::default(),
         subscription::Subscription::default(),
