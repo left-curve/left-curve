@@ -298,12 +298,12 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     "baseDenom": "dango",
                     "quoteDenom": "bridge/usdc",
                     "interval": "ONE_MINUTE",
-                    "close": "27.5",
+                    "close": "25",
                     "high": "27.5",
-                    "low": "27.5",
+                    "low": "25",
                     "open": "27.5",
                     "volumeBase": "50",
-                    "volumeQuote": "1375",
+                    "volumeQuote": "1312.5",
                     "blockHeight": 4,
                 }]);
 
@@ -338,13 +338,13 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "interval": "ONE_MINUTE",
-                        "close": "27.5",
+                        "close": "25",
                         "high": "27.5",
-                        "low": "27.5",
+                        "low": "25",
                         "open": "27.5",
                         "blockHeight": 6,
                         "volumeBase": "75",
-                        "volumeQuote": "2062.5",
+                        "volumeQuote": "1937.5",
                     }]);
 
                     assert_json_include!(actual: response.data, expected: expected_json);
