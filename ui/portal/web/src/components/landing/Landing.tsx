@@ -32,7 +32,7 @@ const LandingContainer: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="w-full mx-auto flex flex-col gap-6 pt-0 pb-16 flex-1">
       <ReactFullpage
-        beforeLeave={(_, destination) => setQuestBannerVisibility(destination.isFirst)}
+        beforeLeave={(_, _destination) => setQuestBannerVisibility(false)}
         licenseKey={decodeUtf8(decodeBase64(import.meta.env.PUBLIC_FP || "RkFMTEJBQ0tfS0VZCg=="))}
         scrollingSpeed={1000}
         credits={{ enabled: false }}
@@ -223,7 +223,7 @@ const SectionCommunity: React.FC = () => {
           <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
           <div className="flex gap-10 lg:gap-4 diatype-m-medium">
             <a
-              href="/documents/Dango%20-%20Terms%20of%20use.pdf"
+              href="/documents/Dango%20-%20Terms%20of%20Use.pdf"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:underline text-tertiary-500"

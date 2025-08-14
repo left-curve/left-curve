@@ -94,12 +94,12 @@
     <disks>
       <backups>
         <type>local</type>
-        <path>/var/log/clickhouse-server/backups/</path>
+        <path>/backups/</path>
       </backups>
     </disks>
   </storage_configuration>
   <backups>
     <allowed_disk>backups</allowed_disk>
-    <allowed_path>/var/log/clickhouse-server/backups/</allowed_path>
+    <allowed_path>/backups/</allowed_path>
   </backups>
 </clickhouse>

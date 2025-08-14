@@ -184,9 +184,9 @@ impl Indexer {
             .inserter::<PairPrice>("pair_prices")?
             .with_max_rows(pair_prices.len() as u64);
 
-        for (_, pair_price) in pair_prices.clone().iter_mut() {
+        for (pair_id, pair_price) in pair_prices.iter_mut() {
             // open price is the closing price of the previous pair price
-            if let Some(last_price) = last_prices.get(&(&*pair_price).try_into()?) {
+            if let Some(last_price) = last_prices.get(pair_id) {
                 pair_price.open_price = last_price.close_price;
             }
 
@@ -202,25 +202,25 @@ impl Indexer {
         // We set the open price, lowest price, and highest price to previous
         // closing price, and the volume to zero.
         // The created_at and block_height are set to the current block.
-        for (_, pair_price) in last_prices.iter_mut() {
-            if pair_prices.contains_key(&(&*pair_price).try_into()?) {
+        for (pair_id, last_price) in last_prices.iter_mut() {
+            if pair_prices.contains_key(pair_id) {
                 // If the pair price already exists, skip it.
                 continue;
             }
 
-            pair_price.volume_base = Udec128_6::ZERO;
-            pair_price.volume_quote = Udec128_6::ZERO;
+            last_price.volume_base = Udec128_6::ZERO;
+            last_price.volume_quote = Udec128_6::ZERO;
 
-            pair_price.created_at = block.info.timestamp.to_utc_date_time();
-            pair_price.block_height = block.info.height;
+            last_price.created_at = block.info.timestamp.to_utc_date_time();
+            last_price.block_height = block.info.height;
 
-            pair_price.open_price = pair_price.close_price;
-            pair_price.lowest_price = pair_price.close_price;
-            pair_price.highest_price = pair_price.close_price;
+            last_price.open_price = last_price.close_price;
+            last_price.lowest_price = last_price.close_price;
+            last_price.highest_price = last_price.close_price;
 
-            inserter.write(pair_price).inspect_err(|_err| {
+            inserter.write(last_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
-                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
+                tracing::error!("Failed to write pair price: {last_price:#?}: {_err}");
             })?;
 
             #[cfg(feature = "metrics")]

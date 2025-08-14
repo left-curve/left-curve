@@ -108,6 +108,8 @@ impl CandleSubscription {
                         .unwrap_or_default();
                     let pair_prices_block_heights = candle_cache.pair_prices.keys().cloned().collect::<Vec<_>>();
 
+                    let _pair_price_current_block_exists = candle_cache.pair_price_for_block(current_block_height).is_some();
+
                     drop(candle_cache);
 
                     let _cache_max_block_height = candle_cache_block_heights.iter().max();
@@ -127,6 +129,7 @@ impl CandleSubscription {
                         cache_len=?_cache_len,
                         pair_prices_min_block_height=?_pair_prices_min_block_height,
                         pair_prices_max_block_height=?_pair_prices_max_block_height,
+                        pair_price_current_block_exists=_pair_price_current_block_exists,
                         interval = ?interval,
                         "Skip candle, it has older block_height than received pubsub block_height"
                     );
