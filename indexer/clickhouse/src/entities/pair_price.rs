@@ -189,7 +189,7 @@ mod test {
             block_height: 1000000,
         };
 
-        let serialized = serde_json::to_string(&pair_price).unwrap();
+        let serialized = serde_json::to_string_pretty(&pair_price).unwrap();
         let mut deserialized: PairPrice = serde_json::from_str(&serialized).unwrap();
 
         // On the CI I saw nanoseconds (9), on my computer it's milliseconds (6)..

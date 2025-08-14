@@ -600,6 +600,7 @@ type Subscription {
 	transactions(sinceBlockHeight: Int): [Transaction!]!
 	messages(sinceBlockHeight: Int): [Message!]!
 	events(sinceBlockHeight: Int, filter: [Filter!]): [Event!]!
+	eventByAddresses(addresses: [String!]!, sinceBlockHeight: Int): [Event!]!
 	"""
 	Get candles for a given base and quote denom, interval
 	"""

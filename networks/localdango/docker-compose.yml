@@ -183,6 +183,7 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
+      - ./configs/clickhouse/backups:/backups
       - ./configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro
       - ./configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro
     environment:

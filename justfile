@@ -55,6 +55,11 @@ testdata:
 book:
   mdbook build --open
 
+# ---------------------------------- Frontend ----------------------------------
+run-website:
+  pnpm i
+  pnpm dev:portal-web
+
 # --------------------------------- Optimizer ----------------------------------
 
 OPTIMIZER_NAME := "leftcurve/bob"
@@ -79,3 +84,13 @@ docker-build-builder-images:
 
   # Push the manifest
   docker manifest push ghcr.io/left-curve/left-curve/native-builder:latest
+
+# ------------------------------- Debug --------------------------------
+
+check-candles:
+  INDEXER__CLICKHOUSE__URL="http://localhost:8123" \
+    INDEXER__DATABASE__URL=postgres://postgres@localhost:5432/grug_dev \
+    INDEXER__CLICKHOUSE__DATABASE=testnet_dango_production \
+    INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD} \
+    RUST_LOG=info \
+    cargo run -p dango-cli indexer --home networks/localdango/configs/dango/ check-candles

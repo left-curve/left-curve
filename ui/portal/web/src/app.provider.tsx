@@ -49,7 +49,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
-  const [isQuestBannerVisible, setQuestBannerVisibility] = useState(true);
+  const [isQuestBannerVisible, setQuestBannerVisibility] = useState(false);
 
   useTheme();
 
@@ -95,7 +95,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const showModal = useCallback((modal: string, props = {}) => setModal({ modal, props }), []);
 
   // Track user errors
-  const { username, connector, account } = useAccount();
+  const { username, connector, account, isConnected } = useAccount();
   useEffect(() => {
     if (!username) Sentry.setUser(null);
     else {
@@ -121,7 +121,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
     const intervalId = setInterval(() => {
       if (
         (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
-        account &&
+        isConnected &&
         settings.useSessionKey &&
         connector &&
         connector.type !== "session"
@@ -134,7 +134,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
     return () => {
       clearInterval(intervalId);
     };
-  }, [session, modal, settings.useSessionKey, connector]);
+  }, [session, modal, settings.useSessionKey, connector, isConnected]);
 
   return (
     <AppContext.Provider

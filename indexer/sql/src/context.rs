@@ -1,5 +1,8 @@
 use {
-    crate::pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
+    crate::{
+        event_cache::EventCacheWriter,
+        pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
+    },
     indexer_sql_migration::{Migrator, MigratorTrait},
     sea_orm::{
         ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
@@ -12,6 +15,7 @@ use {
 pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
+    pub event_cache: EventCacheWriter,
 }
 
 impl Context {
@@ -38,6 +42,7 @@ impl Context {
         Ok(Context {
             db: self.db.clone(),
             pubsub: new_pubsub,
+            event_cache: self.event_cache.clone(),
         })
     }
 

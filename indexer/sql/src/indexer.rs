@@ -1,6 +1,6 @@
 use {
     crate::{
-        Context, bail,
+        Context, EventCache, bail,
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
@@ -33,6 +33,7 @@ pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>> {
     indexer_path: P,
     keep_blocks: bool,
     pubsub: PubSubType,
+    event_cache_window: usize,
 }
 
 impl Default for IndexerBuilder {
@@ -44,6 +45,7 @@ impl Default for IndexerBuilder {
             indexer_path: Undefined::default(),
             keep_blocks: false,
             pubsub: PubSubType::Memory,
+            event_cache_window: 100,
         }
     }
 }
@@ -57,6 +59,7 @@ impl IndexerBuilder<Defined<String>> {
             db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 }
@@ -73,6 +76,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 
@@ -90,6 +94,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 
@@ -101,6 +106,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 }
@@ -114,6 +120,7 @@ impl<DB, P> IndexerBuilder<DB, P> {
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             pubsub: PubSubType::Postgres,
+            event_cache_window: self.event_cache_window,
         }
     }
 }
@@ -134,6 +141,19 @@ where
             indexer_path: self.indexer_path,
             keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
+        }
+    }
+
+    pub fn with_event_cache_window(self, event_cache_window: usize) -> Self {
+        Self {
+            handle: self.handle,
+            db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
+            indexer_path: self.indexer_path,
+            keep_blocks: self.keep_blocks,
+            pubsub: self.pubsub,
+            event_cache_window,
         }
     }
 
@@ -149,6 +169,7 @@ where
             db: db.clone(),
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
+            event_cache: EventCache::new(self.event_cache_window),
         };
 
         match self.pubsub {
@@ -192,6 +213,7 @@ where
             db: db.clone(),
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
+            event_cache: EventCache::new(self.event_cache_window),
         };
 
         match self.pubsub {
@@ -351,7 +373,11 @@ impl Indexer {
 
             self.handle.block_on(async {
                 block_to_index
-                    .save(self.context.db.clone(), self.id)
+                    .save(
+                        self.context.db.clone(),
+                        self.context.event_cache.clone(),
+                        self.id,
+                    )
                     .await?;
 
                 Ok::<(), error::IndexerError>(())
@@ -537,10 +563,11 @@ impl IndexerTrait for Indexer {
                 "`post_indexing` async work started"
             );
 
-            let block_height = block_to_index.block.info.height;
-
             #[allow(clippy::map_identity)]
-            if let Err(_err) = block_to_index.save(context.db.clone(), id).await {
+            if let Err(_err) = block_to_index
+                .save(context.db.clone(), context.event_cache.clone(), id)
+                .await
+            {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
                     err = %_err,

@@ -1,5 +1,6 @@
 pub mod cache;
 pub mod candles;
+pub mod checker;
 pub mod context;
 pub mod entities;
 pub mod error;
