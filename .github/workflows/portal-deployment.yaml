@@ -167,3 +167,16 @@ jobs:
 
             docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:latest
           fi
+
+      - name: Frontend Docker Deploy Summary
+        run: |
+          echo "# 🎨 Frontend Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
+          echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "| ---- | ------ |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit:** | \`${{ env.GIT_COMMIT }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status:** | ✅ Frontend manifest pushed! |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image URL:** | [ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}](https://github.com/left-curve/left-curve/pkgs/container/dango-frontend) |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "| **Latest tag:** | [ghcr.io/left-curve/left-curve/dango-frontend:latest](https://github.com/left-curve/left-curve/pkgs/container/dango-frontend) |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "| **Architectures:** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
