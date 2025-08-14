@@ -1,10 +1,6 @@
-use {
-    crate::block_to_index::BlockToIndex,
-    sea_orm::{QueryOrder, entity::prelude::*},
-    serde::{Deserialize, Serialize},
-};
 #[cfg(feature = "async-graphql")]
 use {
+    crate::block_to_index::BlockToIndex,
     crate::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
     },
@@ -12,6 +8,10 @@ use {
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
     grug_types::JsonSerExt,
     grug_types::Timestamp,
+};
+use {
+    sea_orm::{QueryOrder, entity::prelude::*},
+    serde::{Deserialize, Serialize},
 };
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, DeriveEntityModel, Default, Hash)]
