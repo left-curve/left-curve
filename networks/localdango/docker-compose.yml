@@ -56,6 +56,27 @@ services:
       timeout: 5s
       retries: 3
 
+  frontend:
+    image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
+    profiles: ["frontend"]
+    labels:
+      <<: *common-labels
+    depends_on:
+      dango:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${DANGO_FRONTEND_PORT:-5080}:80"
+    environments:
+      - INDEXER_URL=http://dango:8080/graphql
+      - FAUCET_URL=https://faucet:8082/mint
+      - QUEST_URL=https://quest:8081/check_username
+      - UP_URL=https://dango:8080/up
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
     labels:
@@ -81,7 +102,26 @@ services:
       exec cometbft start
       "
 
-  faucet-bot:
+  # Need to create the database
+  quest:
+    image: ghcr.io/left-curve/bots/quest-2:latest
+    depends_on:
+      - db
+      - cometbft
+    restart: always
+    environment:
+      httpd_url: "http://cometbft:26657"
+      rest_url: "0.0.0.0:8081"
+      db_url: postgres://myuser:mypassword@db:5432/mydb
+      initial_loops: 9
+      max_loops: 3
+      trading_volume_threshold: 1000000000000
+      trading_pairs_threshold: 3
+      eth_txs_threshold: 10
+      eth_txs_cache_ttl: 30s
+      eth_rpc_url: "${ETH_RPC_URL}"
+
+  faucet:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
     profiles: ["faucet"]
     labels:

@@ -42,5 +42,7 @@ LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
 COPY --from=builder /app/ui/portal/web/build /usr/share/nginx/html
 COPY docker/dango-frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/dango-frontend/20-config.sh /docker-entrypoint.d/20-config.sh
+RUN chmod +x /docker-entrypoint.d/20-config.sh
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
