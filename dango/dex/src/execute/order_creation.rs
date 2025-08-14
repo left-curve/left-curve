@@ -117,7 +117,7 @@ pub(super) fn create_market_order(
                 )
             })?;
 
-            let one_add_max_slippage = Udec128_24::ONE.saturating_add(order.max_slippage);
+            let one_add_max_slippage = Udec128_24::ONE.saturating_add(*order.max_slippage);
             let price = best_ask_price.saturating_mul(one_add_max_slippage);
 
             (price, Coin {
@@ -134,7 +134,7 @@ pub(super) fn create_market_order(
                 )
             })?;
 
-            let one_sub_max_slippage = Udec128_24::ONE.saturating_sub(order.max_slippage);
+            let one_sub_max_slippage = Udec128_24::ONE.saturating_sub(*order.max_slippage);
             let price = best_bid_price.saturating_mul(one_sub_max_slippage);
 
             (price, Coin {
