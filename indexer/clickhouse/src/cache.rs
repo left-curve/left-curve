@@ -59,7 +59,7 @@ impl CandleCache {
         }
 
         #[cfg(feature = "tracing")]
-        tracing::info!(block_height, ?pair_prices, "Adding pair_prices");
+        tracing::debug!(block_height, ?pair_prices, "Adding pair_prices");
 
         for pair_price in pair_prices.values() {
             for candle_interval in CandleInterval::iter() {
@@ -84,7 +84,7 @@ impl CandleCache {
                 };
 
                 #[cfg(feature = "tracing")]
-                tracing::info!(
+                tracing::debug!(
                     %candle.block_height,
                     %candle.base_denom,
                     %candle.quote_denom,
@@ -110,7 +110,7 @@ impl CandleCache {
         // no existing candles, we can just push it
         if candles.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!(
+            tracing::debug!(
                 %candle.block_height,
                 %candle.base_denom,
                 %candle.quote_denom,
@@ -131,7 +131,7 @@ impl CandleCache {
 
         let Some(existing_candle) = existing_candle else {
             #[cfg(feature = "tracing")]
-            tracing::info!(
+            tracing::debug!(
                 %candle.block_height,
                 %candle.base_denom,
                 %candle.quote_denom,
@@ -142,7 +142,7 @@ impl CandleCache {
         };
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
+        tracing::debug!(
             %candle.block_height,
             %candle.base_denom,
             %candle.quote_denom,
