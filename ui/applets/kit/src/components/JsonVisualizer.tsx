@@ -17,22 +17,22 @@ export const JsonVisualizer: React.FC<JsonVisualizerProps> = ({ json, collapsed 
       collapsed={collapsed}
       indentWidth={1}
       theme={{
-        base00: "#453d39",
-        base01: "#fffcf6",
-        base02: "#453d39",
-        base03: "#fffcf6",
-        base04: "#fffcf6",
-        base05: "#fffcf6",
-        base06: "#fffcf6",
-        base07: "#fff3e1", // Keys
-        base08: "#fffcf6",
-        base09: "#fffcf6", // Values
-        base0A: "#fffcf6",
-        base0B: "#fffcf6",
-        base0C: "#fffcf6",
-        base0D: "#d4882c", // Arrow Open
-        base0E: "#d4882c", // Arrow Close
-        base0F: "#fffcf6",
+        base00: "transparent",
+        base01: "var(--color-primary-900)",
+        base02: "transparent",
+        base03: "var(--color-primary-900)",
+        base04: "var(--color-primary-900)",
+        base05: "var(--color-primary-900)",
+        base06: "var(--color-primary-900)",
+        base07: "var(--color-primary-900)", // Keys
+        base08: "var(--color-primary-900)",
+        base09: "var(--color-primary-900)", // Values
+        base0A: "var(--color-primary-900)",
+        base0B: "var(--color-primary-900)",
+        base0C: "var(--color-primary-900)",
+        base0D: "var(--color-foreground-primary-rice)", // Arrow Open
+        base0E: "var(--color-foreground-primary-rice)", // Arrow Close
+        base0F: "var(--color-primary-900)",
       }}
     />
   );

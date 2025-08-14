@@ -743,7 +743,9 @@
     "title": "Devtools",
     "description": "This is a tool for developers to test and debug Dango.",
     "msgBuilder": {
-      "trigger": "Execute Message"
+      "execute": "Execute",
+      "query": "Query",
+      "simulate": "Simulate"
     }
   }
 }

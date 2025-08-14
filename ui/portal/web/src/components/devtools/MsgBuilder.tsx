@@ -1,19 +1,120 @@
-import { Button, twMerge, useTheme } from "@left-curve/applets-kit";
-import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
-import Editor from "@monaco-editor/react";
-import { useState } from "react";
+import {
+  Button,
+  createContext,
+  JsonVisualizer,
+  ResizerContainer,
+  Tabs,
+  useTheme,
+} from "@left-curve/applets-kit";
+import { useAccount, usePublicClient, useSigningClient, useSubmitTx } from "@left-curve/store";
+import { Editor } from "@monaco-editor/react";
+import { useMutation } from "@tanstack/react-query";
+
+import { useState, type PropsWithChildren } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 
-export const MsgBuilder: React.FC = () => {
-  const [msg, setMsg] = useState<string>("");
-  const { toast } = useApp();
+type MsgBuilderProps = {
+  currentTab: "execute" | "query";
+};
 
-  const { data: signingClient } = useSigningClient();
-  const { isConnected, account } = useAccount();
+const [MsgBuilderProvider, useMsgBuilder] = createContext<MsgBuilderProps>({
+  name: "MsgBuilderContext",
+});
+
+const MsgBuilderContainer: React.FC<PropsWithChildren> = ({ children }) => {
+  const [currentTab, setCurrentTab] = useState<"execute" | "query">("query");
+  return (
+    <MsgBuilderProvider value={{ currentTab }}>
+      <div className="w-full mx-auto flex flex-col gap-6 md:max-w-[76rem] p-4">
+        <div className="flex relative">
+          <Tabs
+            color="green"
+            layoutId="tabs-msg-builder"
+            selectedTab={currentTab}
+            keys={["query", "execute"]}
+            onTabChange={(tab) => setCurrentTab(tab as "execute" | "query")}
+          />
+        </div>
+        <ResizerContainer layoutId="msg-builder">{children}</ResizerContainer>
+      </div>
+    </MsgBuilderProvider>
+  );
+};
+
+const QueryMsg: React.FC = () => {
+  const { currentTab } = useMsgBuilder();
+
+  const client = usePublicClient();
+  const [queryMsg, setQueryMsg] = useState<string>("");
   const { theme } = useTheme();
 
-  const { isPending, mutateAsync: execute } = useSubmitTx({
+  const {
+    isPending: queryIsPending,
+    mutateAsync: query,
+    data: queryResponse,
+  } = useMutation({
+    mutationFn: () =>
+      client.queryWasmSmart(JSON.parse(queryMsg)).catch((e: any) => {
+        return { error: e.details };
+      }),
+  });
+  if (currentTab !== "query") return null;
+
+  return (
+    <div className="flex flex-col gap-4 w-full">
+      <ResizerContainer
+        layoutId="query-visualizer"
+        className="flex flex-col lg:flex-row gap-4 w-full"
+      >
+        <div className="relative flex min-h-[60vh] flex-col overflow-hidden rounded-xl py-6 bg-surface-playground pr-4 shadow-account-card flex-1 w-full lg:w-auto">
+          <Editor
+            onMount={(_, monaco) => {
+              monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                validate: true,
+                schemas: [executeSchema],
+              });
+            }}
+            language="json"
+            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+            width="100%"
+            value={queryMsg}
+            onChange={(v) => setQueryMsg(v ?? "")}
+            options={{
+              automaticLayout: true,
+              scrollbar: {
+                verticalScrollbarSize: 0,
+              },
+              minimap: {
+                enabled: false,
+              },
+              formatOnPaste: true,
+              formatOnType: true,
+            }}
+          />
+        </div>
+        {queryResponse ? (
+          <div className="min-h-full p-4 bg-surface-primary-rice shadow-account-card  rounded-md  flex-1 w-full lg:w-auto overflow-auto">
+            <JsonVisualizer json={JSON.stringify(queryResponse)} collapsed={1} />
+          </div>
+        ) : null}
+      </ResizerContainer>
+      <Button isLoading={queryIsPending} onClick={() => query()} className="w-full md:w-auto">
+        {m["devtools.msgBuilder.query"]()}
+      </Button>
+    </div>
+  );
+};
+
+const ExecuteMsg: React.FC = () => {
+  const { currentTab } = useMsgBuilder();
+  const { toast } = useApp();
+  const { data: signingClient } = useSigningClient();
+  const { isConnected, account } = useAccount();
+  const [executeMsg, setExecuteMsg] = useState<string>("");
+  const { theme } = useTheme();
+
+  const { isPending: executeIsPending, mutateAsync: execute } = useSubmitTx({
     toast: {
       success: () => toast.success({ description: "Message executed successfully" }),
       error: (error) => toast.error({ description: `Error executing message: ${error.message}` }),
@@ -23,60 +124,63 @@ export const MsgBuilder: React.FC = () => {
         if (!signingClient || !account) {
           throw new Error("Signing client or account address is not available");
         }
-        
-        await signingClient.execute({ sender: account.address, execute: JSON.parse(msg) });
+
+        await signingClient.execute({ sender: account.address, execute: JSON.parse(executeMsg) });
       },
     },
   });
+  if (currentTab !== "execute") return null;
 
   return (
-    <div className="w-full md:max-w-[80vw] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-[80svh]">
-      <div
-        className={twMerge(
-          "relative flex h-[60vh] w-full flex-col overflow-hidden rounded-md py-6  shadow-sm md:flex-1",
-          theme === "dark" ? "bg-[#1e1e1e]" : "bg-white",
-        )}
+    <div className="flex flex-col gap-4 w-full">
+      <ResizerContainer
+        layoutId="query-visualizer"
+        className="flex flex-col lg:flex-row gap-4 w-full"
       >
-        <Editor
-          onMount={(_, monaco) => {
-            monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-              validate: true,
-              schemas: [executeSchema],
-            });
-          }}
-          language="json"
-          theme={theme === "dark" ? "vs-dark" : "vs-light"}
-          width="100%"
-          height="60vh"
-          value={msg}
-          onChange={(v) => setMsg(v ?? "")}
-          options={{
-            automaticLayout: true,
-            scrollbar: {
-              verticalScrollbarSize: 0,
-            },
-            minimap: {
-              enabled: false,
-            },
-            formatOnPaste: true,
-            formatOnType: true,
-          }}
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <Button
-          isLoading={isPending}
-          isDisabled={!isConnected}
-          onClick={() => execute()}
-          className="w-full md:w-auto"
-        >
-          {m["devtools.msgBuilder.trigger"]()}
-        </Button>
-      </div>
+        <div className="relative flex lg:h-[60vh] w-full flex-col overflow-hidden rounded-xl py-6 md:flex-1 bg-surface-playground pr-4 shadow-account-card">
+          <Editor
+            onMount={(_, monaco) => {
+              monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                validate: true,
+                schemas: [executeSchema],
+              });
+            }}
+            language="json"
+            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+            width="100%"
+            height="60vh"
+            value={executeMsg}
+            onChange={(v) => setExecuteMsg(v ?? "")}
+            options={{
+              automaticLayout: true,
+              scrollbar: {
+                verticalScrollbarSize: 0,
+              },
+              minimap: {
+                enabled: false,
+              },
+              formatOnPaste: true,
+              formatOnType: true,
+            }}
+          />
+        </div>
+      </ResizerContainer>
+      <Button
+        isLoading={executeIsPending}
+        isDisabled={!isConnected}
+        onClick={() => execute()}
+        className="w-full"
+      >
+        {m["devtools.msgBuilder.execute"]()}
+      </Button>
     </div>
   );
 };
+
+export const MsgBuilder = Object.assign(MsgBuilderContainer, {
+  QueryMsg,
+  ExecuteMsg,
+});
 
 const executeSchema = {
   uri: "",
