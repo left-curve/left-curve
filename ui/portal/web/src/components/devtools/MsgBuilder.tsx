@@ -78,6 +78,7 @@ const QueryMsg: React.FC = () => {
             language="json"
             theme={theme === "dark" ? "vs-dark" : "vs-light"}
             width="100%"
+            height="60vh"
             value={queryMsg}
             onChange={(v) => setQueryMsg(v ?? "")}
             options={{
@@ -94,7 +95,7 @@ const QueryMsg: React.FC = () => {
           />
         </div>
         {queryResponse ? (
-          <div className="min-h-full p-4 bg-surface-primary-rice shadow-account-card  rounded-md  flex-1 w-full lg:w-auto overflow-auto">
+          <div className="min-h-[60vh] lg:min-h-full p-4 bg-surface-primary-rice shadow-account-card  rounded-md  flex-1 w-full lg:w-auto overflow-auto">
             <JsonVisualizer json={JSON.stringify(queryResponse)} collapsed={1} />
           </div>
         ) : null}
