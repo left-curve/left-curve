@@ -483,7 +483,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       packages: read
-    needs: [push-manifest]
+    needs: [backend-push-manifest]
     runs-on: [self-hosted]
     env:
       DANGO_DB_PASSWORD: ${{ secrets.DANGO_DB_PASSWORD }}
