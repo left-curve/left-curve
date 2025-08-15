@@ -4,6 +4,7 @@ use {
         home_directory::HomeDirectory,
         prompt::{confirm, print_json_pretty, read_password},
     },
+    anyhow::anyhow,
     clap::{Parser, Subcommand},
     colored::Colorize,
     config_parser::parse_config,
@@ -128,7 +129,7 @@ impl TxCmd {
             },
             SubCmd::Transfer { to, coins } => {
                 let coins = Coins::from_str(&coins)?;
-                Message::transfer(to, coins)?
+                Message::transfer(to, coins)?.ok_or_else(|| anyhow!("can't transfer zero coins"))?
             },
             SubCmd::Upload { path } => {
                 let mut file = File::open(path)?;

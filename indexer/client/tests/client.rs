@@ -13,10 +13,13 @@ async fn broadcast() -> anyhow::Result<()> {
     let (client, mut accounts) = setup_client_test().await?;
 
     let tx = accounts.user1.sign_transaction(
-        NonEmpty::new_unchecked(vec![Message::transfer(
-            accounts.user2.address.into_inner(),
-            Coins::one(usdc::DENOM.clone(), 100)?,
-        )?]),
+        NonEmpty::new_unchecked(vec![
+            Message::transfer(
+                accounts.user2.address.into_inner(),
+                Coins::one(usdc::DENOM.clone(), 100)?,
+            )?
+            .unwrap(), // safe to unwrap because we know the coins is non-empty
+        ]),
         MOCK_CHAIN_ID,
         1000000,
     )?;

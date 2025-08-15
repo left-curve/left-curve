@@ -376,7 +376,8 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
                     grug_types::Message::transfer(
                         to,
                         Coins::one(Denom::from_str("ugrug")?, 2_000)?,
-                    )?,
+                    )?
+                    .unwrap(), // safe to unwrap because we know the coins is non-empty
                     grug_types::GasOption::Predefined { gas_limit: 2000 },
                     &chain_id,
                 )

@@ -343,6 +343,11 @@ where
     }
 
     /// Make a transfer of tokens.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the transfer is empty, or if the coins are invalid (e.g.
+    /// contains duplicate denoms or empty amounts).
     pub fn transfer<C>(&mut self, signer: &mut dyn Signer, to: Addr, coins: C) -> TxOutcome
     where
         C: TryInto<Coins>,
@@ -352,6 +357,11 @@ where
     }
 
     /// Make a transfer of tokens under the given gas limit.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the transfer is empty, or if the coins are invalid (e.g.
+    /// contains duplicate denoms or empty amounts).
     pub fn transfer_with_gas<C>(
         &mut self,
         signer: &mut dyn Signer,
@@ -363,10 +373,16 @@ where
         C: TryInto<Coins>,
         StdError: From<C::Error>,
     {
-        self.send_message_with_gas(signer, gas_limit, Message::transfer(to, coins).unwrap())
+        let msg = Message::transfer(to, coins).unwrap().unwrap();
+        self.send_message_with_gas(signer, gas_limit, msg)
     }
 
     /// Make a batched transfer of tokens to multiple recipients.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the transfer is empty, or if the coins are invalid (e.g.
+    /// contains duplicate denoms or empty amounts).
     pub fn batch_transfer(
         &mut self,
         signer: &mut dyn Signer,
@@ -377,17 +393,19 @@ where
 
     /// Make a batched transfer of tokens to multiple recipients, under the
     /// given gas limit.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if the transfer is empty, or if the coins are invalid (e.g.
+    /// contains duplicate denoms or empty amounts).
     pub fn batch_transfer_with_gas(
         &mut self,
         signer: &mut dyn Signer,
         gas_limit: u64,
         transfers: BTreeMap<Addr, Coins>,
     ) -> TxOutcome {
-        self.send_message_with_gas(
-            signer,
-            gas_limit,
-            Message::batch_transfer(transfers).unwrap(),
-        )
+        let msg = Message::batch_transfer(transfers).unwrap().unwrap();
+        self.send_message_with_gas(signer, gas_limit, msg)
     }
 
     /// Upload a code. Return the code's hash.

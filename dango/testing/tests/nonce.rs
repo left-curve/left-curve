@@ -15,6 +15,7 @@ fn prepare_tx_with_nonce(accounts: &TestAccounts, nonce: u32, expiry: Option<Dur
             accounts.user1.address(),
             Coins::one(dango::DENOM.clone(), 123).unwrap(),
         )
+        .unwrap()
         .unwrap(),
     ]);
 
