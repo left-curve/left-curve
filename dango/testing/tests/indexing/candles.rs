@@ -288,11 +288,11 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             .collect::<Vec<_>>()
     )
     .is_equal_to(vec![
-        &Udec128_6::from_str("687.5").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
+        &Udec128_6::from_str("625").unwrap(),
+        &Udec128_6::from_str("1250").unwrap(),
+        &Udec128_6::from_str("1250").unwrap(),
+        &Udec128_6::from_str("1250").unwrap(),
+        &Udec128_6::from_str("1250").unwrap(),
         &Udec128_6::from_str("687.5").unwrap(),
     ]);
 
@@ -312,11 +312,20 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
         &Udec128_6::from_str("25").unwrap(),
     ]);
 
-    for candle in candle_1s.candles.into_iter() {
-        assert_that!(candle.open).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(candle.high).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(candle.low).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(candle.close).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+    assert_that!(candle_1s.candles[5].open)
+        .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+    assert_that!(candle_1s.candles[5].high)
+        .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+    assert_that!(candle_1s.candles[5].low)
+        .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+    assert_that!(candle_1s.candles[5].close)
+        .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+
+    for candle in candle_1s.candles.into_iter().rev().skip(1) {
+        assert_that!(candle.open).is_equal_to::<Udec128_24>(Udec128_24::from_str("25").unwrap());
+        assert_that!(candle.high).is_equal_to::<Udec128_24>(Udec128_24::from_str("25").unwrap());
+        assert_that!(candle.low).is_equal_to::<Udec128_24>(Udec128_24::from_str("25").unwrap());
+        assert_that!(candle.close).is_equal_to::<Udec128_24>(Udec128_24::from_str("25").unwrap());
     }
 
     Ok(())
