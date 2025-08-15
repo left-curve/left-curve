@@ -230,7 +230,7 @@ jobs:
           # - [self-hosted, macOS]
     name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
-    needs: [test]
+    needs: [backend-test]
     permissions:
       packages: write
     steps:
