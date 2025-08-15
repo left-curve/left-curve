@@ -34,7 +34,7 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_NPM }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Library dependencies
         run: pnpm turbo "build" "-F=./ui/store/**"
