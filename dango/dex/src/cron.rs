@@ -719,20 +719,16 @@ fn find_best_remaining_price<I>(
 where
     I: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
-    if let Some((price, order)) = last_partial_matched_order {
-        if let Order::Limit(_) | Order::Passive(_) = order {
-            return Ok(Some(price));
-        }
+    if let Some((price, Order::Limit(_) | Order::Passive(_))) = last_partial_matched_order {
+        return Ok(Some(price));
     }
 
-    if let Some((price, order)) = first_unmatched_order {
-        if let Order::Limit(_) | Order::Passive(_) = order {
-            return Ok(Some(price));
-        }
+    if let Some((price, Order::Limit(_) | Order::Passive(_))) = first_unmatched_order {
+        return Ok(Some(price));
     }
 
     for res in other_unmatched_orders {
-        if let Ok((price, Order::Limit(_) | Order::Passive(_))) = res {
+        if let (price, Order::Limit(_) | Order::Passive(_)) = res? {
             return Ok(Some(price));
         }
     }
@@ -1168,7 +1164,7 @@ mod tests {
                             id,
                         ),
                         MarketOrder {
-                            user: MOCK_USER.clone(),
+                            user: MOCK_USER,
                             id,
                             price,
                             amount,
@@ -1193,7 +1189,7 @@ mod tests {
                         id,
                     ),
                     &LimitOrder {
-                        user: MOCK_USER.clone(),
+                        user: MOCK_USER,
                         id,
                         price,
                         amount,

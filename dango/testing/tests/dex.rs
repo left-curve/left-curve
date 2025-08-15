@@ -5744,9 +5744,11 @@ fn market_orders_are_sorted_by_price_ascending() {
 
 /// During the `match_orders` function call, there may be an order that's popped
 /// out of the iterator but didn't find a match. Considering the following case:
+///
 /// - id 1, limit ask, price 100, amount 1
 /// - id 2, limit bid, price 101, amount 1
 /// - id 3, market bid, price 100, amount 1
+///
 /// Since order 2 has the better price, it will be matched against 1.
 /// Market order 3 will be popped out of the iterator, but not finding a match.
 /// In this case, we need to handle the cancelation and refund of this order.
