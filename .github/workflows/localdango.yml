@@ -16,6 +16,9 @@ jobs:
     outputs:
       should-run: ${{ steps.check.outputs.should-run }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
       - name: Check both workflows completed successfully
         id: check
         run: |
