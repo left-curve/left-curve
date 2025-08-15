@@ -188,6 +188,14 @@ impl Indexer {
             // open price is the closing price of the previous pair price
             if let Some(last_price) = last_prices.get(pair_id) {
                 pair_price.open_price = last_price.close_price;
+
+                if last_price.close_price > pair_price.highest_price {
+                    pair_price.highest_price = last_price.close_price;
+                }
+
+                if last_price.close_price < pair_price.lowest_price {
+                    pair_price.lowest_price = last_price.close_price;
+                }
             }
 
             inserter.write(pair_price).inspect_err(|_err| {
