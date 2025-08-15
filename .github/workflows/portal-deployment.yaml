@@ -86,6 +86,7 @@ jobs:
         include:
           - arch: amd64
             runner: [self-hosted]
+          # NOTE: building arm on `self-hosted` is very very slow
           - arch: arm64
             runner: ubuntu-24.04-arm
     name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
