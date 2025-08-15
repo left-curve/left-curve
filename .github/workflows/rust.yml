@@ -13,6 +13,8 @@ on:
     branches:
       - "main"
       - "develop"
+      - "ui/testnet"
+      - "ui/release"
     paths:
       - ".github/workflows/rust.yml"
       - "deploy/**"
@@ -25,6 +27,10 @@ on:
       - "Cargo.lock"
       - "clippy.toml"
       - "rustfmt.toml"
+      - "sdk/**"
+      - "ui/store/**"
+      - "ui/portal/**"
+      - "ui/applets/**"
   pull_request:
     branches:
       - "*"
@@ -40,6 +46,10 @@ on:
       - "Cargo.lock"
       - "clippy.toml"
       - "rustfmt.toml"
+      - "sdk/**"
+      - "ui/store/**"
+      - "ui/portal/**"
+      - "ui/applets/**"
 
 jobs:
   format:
@@ -75,7 +85,7 @@ jobs:
         run: rustup run nightly cargo fmt --check --all
 
   check-no-features:
-    needs: [test]
+    needs: [backend-test]
     name: Check compiling without features
     runs-on: self-hosted
     steps:
@@ -94,7 +104,7 @@ jobs:
             cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
           done
 
-  test:
+  backend-test:
     needs: [format]
     name: Lint + Test (+ Coverage)
     runs-on: self-hosted
@@ -377,6 +387,7 @@ jobs:
           echo "| **Architectures:** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
 
   frontend-build:
+    needs: [backend-test]
     permissions:
       packages: write
     timeout-minutes: 30
