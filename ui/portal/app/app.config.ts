@@ -13,6 +13,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: "./assets/icon.png",
   userInterfaceStyle: "dark",
   newArchEnabled: true,
+  scheme: "dango",
   splash: {
     image: "./assets/splash-icon.png",
     resizeMode: "contain",

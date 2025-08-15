@@ -1,7 +1,7 @@
 {
   "name": "@left-curve/portal-app",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
     "eas-build-post-install": "cd ../../../ && pnpm build:kit",
     "build:android": "eas build -p android -e development",
@@ -28,7 +28,6 @@
     "expo-splash-screen": "~0.29.24",
     "expo-status-bar": "~2.0.1",
     "expo-symbols": "~0.2.2",
-    "expo-system-ui": "~4.0.9",
     "expo-web-browser": "~14.0.2",
     "react-native": "0.76.9",
     "react-native-gesture-handler": "~2.20.2",
@@ -42,7 +41,7 @@
     "@babel/core": "^7.25.2",
     "@types/react": "catalog:",
     "expo-dev-client": "~5.0.10",
-    "expo-system-ui": "^4.0.7"
+    "expo-system-ui": "~4.0.9"
   },
   "private": true
 }
