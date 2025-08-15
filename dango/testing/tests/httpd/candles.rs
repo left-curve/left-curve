@@ -298,12 +298,12 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     "baseDenom": "dango",
                     "quoteDenom": "bridge/usdc",
                     "interval": "ONE_MINUTE",
-                    "close": "27.5",
+                    "close": "25",
                     "high": "27.5",
-                    "low": "27.5",
+                    "low": "25",
                     "open": "27.5",
                     "volumeBase": "50",
-                    "volumeQuote": "1375",
+                    "volumeQuote": "1312.5",
                     "blockHeight": 4,
                 }]);
 
@@ -321,7 +321,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                     framed = f;
 
-                    // This prevents a flaky test but I shouldn't need this.
+                    // This because blocks aren't indexed in order
                     if response
                         .data
                         .first()
@@ -338,13 +338,13 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "interval": "ONE_MINUTE",
-                        "close": "27.5",
+                        "close": "25",
                         "high": "27.5",
-                        "low": "27.5",
+                        "low": "25",
                         "open": "27.5",
                         "blockHeight": 6,
                         "volumeBase": "75",
-                        "volumeQuote": "2062.5",
+                        "volumeQuote": "1937.5",
                     }]);
 
                     assert_json_include!(actual: response.data, expected: expected_json);
@@ -502,25 +502,46 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
                 crate_block_tx_clone.send(2).await.unwrap();
 
-                // 2nd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let mut framed = framed;
 
-                let expected_json = serde_json::json!([{
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "blockHeight": 3,
-                    "close": "27.5",
-                    "high": "27.5",
-                    "interval": "ONE_MINUTE",
-                    "low": "27.5",
-                    "open": "27.5",
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                }]);
+                loop {
+                    // 2nd response
+                    let (f, response) =
+                        parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
+                            .await?;
 
-                assert_json_include!(actual: response.data, expected: expected_json);
+                    framed = f;
+
+                    // This because blocks aren't indexed in order
+                    if response
+                        .data
+                        .first()
+                        .unwrap()
+                        .get("blockHeight")
+                        .and_then(|v| v.as_u64())
+                        .unwrap()
+                        < 3
+                    {
+                        continue;
+                    }
+
+                    let expected_json = serde_json::json!([{
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "blockHeight": 3,
+                        "close": "27.5",
+                        "high": "27.5",
+                        "interval": "ONE_MINUTE",
+                        "low": "27.5",
+                        "open": "27.5",
+                        "volumeBase": "25",
+                        "volumeQuote": "687.5",
+                    }]);
+
+                    assert_json_include!(actual: response.data, expected: expected_json);
+
+                    break;
+                }
 
                 Ok::<(), anyhow::Error>(())
             })

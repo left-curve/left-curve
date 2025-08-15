@@ -612,6 +612,56 @@ fn clear_orders_of_pair(
         );
     }
 
+    // ----------------- 6. Save the resting order book state ------------------
+
+    // Find the best bid and ask prices available.
+    // TODO: this doesn't consider passive pool liquidity
+    let best_bid_price = LIMIT_ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Bid)
+        .keys(storage, None, None, IterationOrder::Descending)
+        .next()
+        .transpose()?
+        .map(|(price, _order_id)| price);
+    let best_ask_price = LIMIT_ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Ask)
+        .keys(storage, None, None, IterationOrder::Ascending)
+        .next()
+        .transpose()?
+        .map(|(price, _order_id)| price);
+
+    // Determine the mid price:
+    // - if both best bid and ask prices exist, then take the average of them;
+    // - if only one of them exists, then use that price;
+    // - if none of them exists, then `None`.
+    let mid_price = match (best_bid_price, best_ask_price) {
+        (Some(bid), Some(ask)) => Some(bid.checked_add(ask)?.checked_mul(HALF)?),
+        (Some(bid), None) => Some(bid),
+        (None, Some(ask)) => Some(ask),
+        (None, None) => None,
+    };
+
+    RESTING_ORDER_BOOK.save(
+        storage,
+        (&base_denom, &quote_denom),
+        &RestingOrderBookState {
+            best_bid_price,
+            best_ask_price,
+            mid_price,
+        },
+    )?;
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            ?best_bid_price,
+            ?best_ask_price,
+            ?mid_price,
+            "Saved resting order book state"
+        )
+    }
+
     Ok(())
 }
 

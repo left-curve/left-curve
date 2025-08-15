@@ -41,6 +41,7 @@ target/
 **/tsconfig.tsbuildinfo
 **/build
 !ui/portal/app/.eas/build/
+!ui/portal/web/**/*.pdf
 **/.turbo
 
 # SDK

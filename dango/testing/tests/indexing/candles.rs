@@ -9,9 +9,9 @@ use {
         oracle::{self, PriceSource},
     },
     grug::{
-        BlockInfo, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero, Number,
-        NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24,
-        Uint128, btree_map, coins,
+        BlockInfo, Bounded, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero,
+        Number, NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_6,
+        Udec128_24, Uint128, btree_map, coins,
     },
     grug_app::Indexer,
     indexer_clickhouse::entities::{
@@ -382,7 +382,7 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000)), // price 100_000 * size 1
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 }],
                 creates_limit: vec![
                     CreateLimitOrderRequest {
@@ -462,7 +462,7 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(99_999)), // price 99_999 * size 1
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 }],
                 creates_limit: vec![
                     CreateLimitOrderRequest {
@@ -533,7 +533,7 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(1)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 }],
                 creates_limit: vec![
                     CreateLimitOrderRequest {

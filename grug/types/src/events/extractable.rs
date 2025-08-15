@@ -41,24 +41,28 @@ impl Extractable for FlatEvtInstantiate {
         if let Some(admin) = self.admin {
             addresses.insert(admin);
         }
+        self.instantiate_msg.extract_addresses(addresses);
     }
 }
 
 impl Extractable for FlatEvtExecute {
     fn extract_addresses(&self, addresses: &mut HashSet<Addr>) {
         addresses.extend([self.contract, self.sender]);
+        self.execute_msg.extract_addresses(addresses);
     }
 }
 
 impl Extractable for FlatEvtMigrate {
     fn extract_addresses(&self, addresses: &mut HashSet<Addr>) {
         addresses.extend([self.sender, self.contract]);
+        self.migrate_msg.extract_addresses(addresses);
     }
 }
 
 impl Extractable for CheckedContractEvent {
     fn extract_addresses(&self, addresses: &mut HashSet<Addr>) {
         addresses.insert(self.contract);
+        self.data.extract_addresses(addresses);
     }
 }
 

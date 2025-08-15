@@ -1,10 +1,5 @@
-use std::time::Duration;
-
 #[cfg(feature = "metrics")]
 use metrics::{counter, gauge, histogram};
-use tokio::time::sleep;
-
-use crate::error::IndexerError;
 
 use {
     crate::{
@@ -14,7 +9,7 @@ use {
             candle_query::{CandleQueryBuilder, MAX_ITEMS},
             pair_price::PairPrice,
         },
-        error::Result,
+        error::{IndexerError, Result},
     },
     chrono::{DateTime, Utc},
     dango_types::dex::PairId,
@@ -22,9 +17,10 @@ use {
     itertools::Itertools,
     std::{
         collections::{HashMap, HashSet},
-        time::Instant,
+        time::{Duration, Instant},
     },
     strum::IntoEnumIterator,
+    tokio::time::sleep,
 };
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -58,16 +54,12 @@ impl CandleCache {
     pub fn add_pair_prices(&mut self, block_height: u64, pair_prices: HashMap<PairId, PairPrice>) {
         if pair_prices.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!(block_height, "Received empty pair_prices");
+            tracing::debug!(block_height, "Received empty pair_prices");
             return;
         }
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
-            block_height,
-            pair_prices_len = pair_prices.len(),
-            "Adding pair_prices"
-        );
+        tracing::debug!(block_height, ?pair_prices, "Adding pair_prices");
 
         for pair_price in pair_prices.values() {
             for candle_interval in CandleInterval::iter() {
@@ -92,12 +84,13 @@ impl CandleCache {
                 };
 
                 #[cfg(feature = "tracing")]
-                tracing::info!(
+                tracing::debug!(
                     %candle.block_height,
                     %candle.base_denom,
                     %candle.quote_denom,
                     %candle.volume_base,
                     %candle.volume_quote,
+                    %candle_interval,
                     "Calling add_candle()",
                 );
 
@@ -115,9 +108,9 @@ impl CandleCache {
         let candles = self.candles.entry(key).or_default();
 
         // no existing candles, we can just push it
-        let Some(last_candle) = candles.last_mut() else {
+        if candles.is_empty() {
             #[cfg(feature = "tracing")]
-            tracing::info!(
+            tracing::debug!(
                 %candle.block_height,
                 %candle.base_denom,
                 %candle.quote_denom,
@@ -128,63 +121,54 @@ impl CandleCache {
             return;
         };
 
-        // received candle is older, we can ignore it
-        if last_candle.block_height >= candle.block_height {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                %candle.block_height,
-                %last_candle.block_height,
-                %candle.base_denom,
-                %candle.quote_denom,
-                "Ignoring candle",
-            );
+        // NOTE: Candles don't necessarily come in order, because the indexing
+        // is done async per block. We could receive block 5 before block 4.
+        let existing_candle = candles
+            .iter_mut()
+            .rev()
+            .take_while(|existing_candle| existing_candle.time_start >= candle.time_start)
+            .find(|existing_candle| existing_candle.time_start == candle.time_start);
 
-            return;
-        }
-
-        // Check if last candle has same time_start, if so replace it and update
-        // max/min/open/close values. Candles are coming in order.
-        // NOTE: candles could be not coming in order
-        if last_candle.time_start == candle.time_start {
+        let Some(existing_candle) = existing_candle else {
             #[cfg(feature = "tracing")]
-            tracing::info!(
+            tracing::debug!(
                 %candle.block_height,
                 %candle.base_denom,
                 %candle.quote_denom,
-                %last_candle.volume_base,
-                %last_candle.volume_quote,
-                %last_candle.block_height,
-                %candle.volume_base,
-                %candle.volume_quote,
-                "Modifying last candle, timestamp is equal",
-            );
-
-            if candle.block_height > last_candle.block_height {
-                candle.open = last_candle.open;
-            } else {
-                candle.close = last_candle.close;
-            }
-            candle.high = last_candle.high.max(candle.high);
-            candle.low = last_candle.low.min(candle.low);
-            candle.volume_base += last_candle.volume_base;
-            candle.volume_quote += last_candle.volume_quote;
-            candle.block_height = last_candle.block_height.max(candle.block_height);
-
-            *last_candle = candle;
-        } else {
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                %candle.block_height,
-                %candle.base_denom,
-                %candle.quote_denom,
-                %candle.volume_base,
-                %candle.volume_quote,
-                %candle.time_start,
-                %last_candle.time_start,
-                "Pushing candle, timestamp is not equal",
+                "Pushing candle, no existing candle found",
             );
             candles.push(candle);
+            return;
+        };
+
+        #[cfg(feature = "tracing")]
+        tracing::debug!(
+            %candle.block_height,
+            %candle.base_denom,
+            %candle.quote_denom,
+            %existing_candle.volume_base,
+            %existing_candle.volume_quote,
+            %existing_candle.block_height,
+            %candle.volume_base,
+            %candle.volume_quote,
+            "Modifying existing candle",
+        );
+
+        if candle.block_height > existing_candle.block_height {
+            candle.open = existing_candle.open;
+        } else {
+            candle.close = existing_candle.close;
         }
+
+        candle.high = existing_candle.high.max(candle.high);
+        candle.low = existing_candle.low.min(candle.low);
+
+        candle.volume_base += existing_candle.volume_base;
+        candle.volume_quote += existing_candle.volume_quote;
+
+        candle.block_height = existing_candle.block_height.max(candle.block_height);
+
+        *existing_candle = candle;
     }
 
     /// Does the cache have all candles for the given dates?
@@ -312,8 +296,8 @@ impl CandleCache {
                                     tracing::warn!(
                                         %candle.block_height,
                                         %highest_block_height,
-                                        base_denom = key.base_denom,
-                                        quote_denom = key.quote_denom,
+                                        %key.base_denom,
+                                        %key.quote_denom,
                                         %key.interval,
                                         "Candle is older than latest price");
 
@@ -403,5 +387,163 @@ impl CandleCache {
             gauge!("indexer.clickhouse.pair_prices.cache.size.pair_prices")
                 .set(total_pair_prices as f64);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        chrono::NaiveDateTime,
+        grug::{Denom, Udec128_6, Udec128_24},
+        std::{collections::VecDeque, str::FromStr},
+    };
+
+    #[tokio::test]
+    async fn create_candles() -> Result<()> {
+        let mut candle_cache = CandleCache::default();
+
+        for pair_price in parsed_pair_prices()? {
+            let block_height = pair_price.block_height;
+
+            let hashmap_pair_price = HashMap::from([(
+                PairId {
+                    base_denom: Denom::from_str(&pair_price.base_denom)?,
+                    quote_denom: Denom::from_str(&pair_price.quote_denom)?,
+                },
+                pair_price,
+            )]);
+
+            candle_cache.add_pair_prices(block_height, hashmap_pair_price);
+        }
+
+        let cache_key = CandleCacheKey::new(
+            "bridge/btc".to_string(),
+            "bridge/usdc".to_string(),
+            CandleInterval::OneSecond,
+        );
+
+        let mut candles: VecDeque<Candle> = candle_cache
+            .get_candles(&cache_key)
+            .expect("No candles found")
+            .clone()
+            .into();
+
+        let mut previous_candle = candles.pop_front().expect("No previous candle found");
+
+        while let Some(candle) = candles.pop_front() {
+            assert!(
+                candle.time_start > previous_candle.time_start,
+                "Candle time_start is not greater than previous candle"
+            );
+            assert!(
+                candle.block_height >= previous_candle.block_height,
+                "Candle block_height is not greater than or equal to previous candle"
+            );
+
+            assert_eq!(
+                previous_candle.close, candle.open,
+                "Candle close price does not match next candle open price"
+            );
+
+            previous_candle = candle;
+        }
+
+        Ok(())
+    }
+
+    fn parsed_pair_prices() -> Result<Vec<PairPrice>> {
+        let quote_denom = "bridge/usdc";
+        let base_denom = "bridge/btc";
+
+        Ok(vec![
+            pair_price(
+                quote_denom,
+                base_denom,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                0,
+                0,
+                "2025-08-13 17:36:00.038565",
+                1277884,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                0,
+                0,
+                "2025-08-13 17:36:01.086616",
+                1277885,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                1217208030172232059779705322,
+                1216963512618701957116501833,
+                1216963512618701957116501833,
+                1216963512618701957116501833,
+                345160391948092,
+                420047603001999188,
+                "2025-08-13 17:36:02.134583",
+                1277886,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                1216963512618701957116501833,
+                1216961816562295438187182730,
+                1216961816562295438187182730,
+                1216961816562295438187182730,
+                108404821869154,
+                131924528945998920,
+                "2025-08-13 17:36:03.182534",
+                1277887,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                1216961816562295438187182730,
+                1216961816562295438187182730,
+                1216961816562295438187182730,
+                1216961816562295438187182730,
+                0,
+                0,
+                "2025-08-13 17:36:04.230527",
+                1277888,
+            )?,
+        ])
+    }
+
+    fn pair_price(
+        quote_denom: &str,
+        base_denom: &str,
+        open_price: u128,
+        highest_price: u128,
+        lowest_price: u128,
+        close_price: u128,
+        volume_base: u128,
+        volume_quote: u128,
+        created_at: &str,
+        block_height: u64,
+    ) -> Result<PairPrice> {
+        Ok(PairPrice {
+            quote_denom: quote_denom.to_string(),
+            base_denom: base_denom.to_string(),
+            open_price: Udec128_24::raw(grug::Int::new(open_price)),
+            highest_price: Udec128_24::raw(grug::Int::new(highest_price)),
+            lowest_price: Udec128_24::raw(grug::Int::new(lowest_price)),
+            close_price: Udec128_24::raw(grug::Int::new(close_price)),
+            volume_base: Udec128_6::raw(grug::Int::new(volume_base)),
+            volume_quote: Udec128_6::raw(grug::Int::new(volume_quote)),
+            created_at: NaiveDateTime::parse_from_str(created_at, "%Y-%m-%d %H:%M:%S%.f")?
+                .and_utc(),
+            block_height,
+        })
     }
 }

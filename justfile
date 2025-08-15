@@ -55,6 +55,11 @@ testdata:
 book:
   mdbook build --open
 
+# ---------------------------------- Frontend ----------------------------------
+run-website:
+  pnpm i
+  pnpm dev:portal-web
+
 # --------------------------------- Optimizer ----------------------------------
 
 OPTIMIZER_NAME := "leftcurve/bob"
