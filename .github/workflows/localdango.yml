@@ -59,6 +59,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Debug workflow_run event
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "workflow_run.head_sha: ${{ github.event.workflow_run.head_sha }}"
+          echo "workflow_run.head_branch: ${{ github.event.workflow_run.head_branch }}"
+          echo "Current GIT_COMMIT: ${{ env.GIT_COMMIT }}"
+          echo "github.sha: ${{ github.sha }}"
       - name: Ensure localdango works
         env:
           DANGO_TAG: ${{ env.GIT_COMMIT }}
