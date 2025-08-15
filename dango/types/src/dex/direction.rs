@@ -6,6 +6,7 @@ use {
 /// The direction of a trade: buy or sell.
 #[grug::derive(Serde, Borsh)]
 #[derive(Copy)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
 pub enum Direction {
     /// Give away the quote asset, get the base asset; a.k.a. a BUY order.
     Bid,
