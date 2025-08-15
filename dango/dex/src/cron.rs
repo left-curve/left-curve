@@ -875,18 +875,21 @@ mod tests {
             config::{AppAddresses, AppConfig},
             constants::{dango, usdc},
             dex::{PairParams, PassiveLiquidity},
+            oracle::PriceSource,
         },
-        grug::{Bounded, MockContext, MockQuerier, Uint128},
+        grug::{Bounded, MockContext, MockQuerier, Timestamp, Uint128},
         std::str::FromStr,
         test_case::test_case,
     };
 
-    const MOCK_DEX: Addr = Addr::mock(0);
     const MOCK_USER: Addr = Addr::mock(123);
+    const MOCK_DEX: Addr = Addr::mock(0);
+    const MOCK_ORACLE: Addr = Addr::mock(1);
+    const MOCK_ACCOUNT_FACTORY: Addr = Addr::mock(2);
     const MOCK_BLOCK_HEIGHT: u64 = 888;
+    const MOCK_BLOCK_TIMESTAMP: Timestamp = Timestamp::from_seconds(1_000_000);
 
     #[test_case(
-        RestingOrderBookState::default(),
         vec![],
         vec![]
         => RestingOrderBookState {
@@ -896,26 +899,177 @@ mod tests {
         };
         "no orders"
     )]
+    // The ask partially consumes the bid.
+    // The bid remains the best price in the book.
     #[test_case(
-        RestingOrderBookState::default(),
         vec![],
-        vec![(Direction::Bid, Price::new(50), Uint128::new(1))]
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(2)),
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+        ]
         => RestingOrderBookState {
             best_bid_price: Some(Price::new(50)),
             best_ask_price: None,
             mid_price: Some(Price::new(50)),
         };
-        "one limit bid left over"
+        "limit bid partially matched"
+    )]
+    // Same as the previous test, but the best bid that got partially matched is
+    // a market order.
+    // Market orders are immediate-or-cancel, so the best price falls back to
+    // the next best limit or passive bid, which is 49.
+    #[test_case(
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(2)),
+        ],
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(49), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(49)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(49)),
+        };
+        "market bid partially matched, limit bid other unmatched"
+    )]
+    // The bid and ask at 50 consumes each other exactly.
+    // The bid at 49 becomes the best price remaining in the book.
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(49), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(49)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(49)),
+        };
+        "limit bid first unmatched"
+    )]
+    // Same as the previous test, but the order at 49 is a market order.
+    // The best price falls back to the limit bid at 49.
+    #[test_case(
+        vec![
+            (Direction::Bid, Price::new(49), Uint128::new(1)),
+        ],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(48), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(48)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(48)),
+        };
+        "market bid first unmatched, limit bid other unmatched"
+    )]
+    // The following test cases are the same as above, except for mirrored to
+    // the ask side of the book.
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(50), Uint128::new(2)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(50)),
+            mid_price: Some(Price::new(50)),
+        };
+        "limit ask partially matched"
+    )]
+    #[test_case(
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(2)),
+        ],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(51), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(51)),
+            mid_price: Some(Price::new(51)),
+        };
+        "market ask partially matched, limit ask other unmatched"
+    )]
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(51), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(51)),
+            mid_price: Some(Price::new(51)),
+        };
+        "limit ask first unmatched"
+    )]
+    #[test_case(
+        vec![
+            (Direction::Ask, Price::new(51), Uint128::new(1)),
+        ],
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(52), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(52)),
+            mid_price: Some(Price::new(52)),
+        };
+        "market ask first unmatched, limit ask other unmatched"
     )]
     fn properly_determine_resting_order_book_state(
-        previous_book_state: RestingOrderBookState,
         market_orders: Vec<(Direction, Price, Uint128)>, // direction, price, amount
         limit_orders: Vec<(Direction, Price, Uint128)>,  // direction, price, amount
     ) -> RestingOrderBookState {
         let querier = MockQuerier::new()
+            .with_raw_contract_storage(MOCK_ACCOUNT_FACTORY, |_storage| {
+                // The `update_trading_volumes` function queries the username
+                // associated with the user address.
+                // Since trading volume is irrelevant for this test, we simply
+                // do nothing, so that no username is found and the volume updating
+                // logic is simply skipped.
+            })
+            .with_raw_contract_storage(MOCK_ORACLE, |storage| {
+                // Set the prices for dango and USDC.
+                // Used by the `update_trading_volumes` function.
+                dango_oracle::PRICE_SOURCES
+                    .save(
+                        storage,
+                        &dango::DENOM,
+                        &PriceSource::Fixed {
+                            humanized_price: Udec128::new(50),
+                            precision: 0,
+                            timestamp: MOCK_BLOCK_TIMESTAMP,
+                        },
+                    )
+                    .unwrap();
+                dango_oracle::PRICE_SOURCES
+                    .save(
+                        storage,
+                        &usdc::DENOM,
+                        &PriceSource::Fixed {
+                            humanized_price: Udec128::new(1),
+                            precision: 6,
+                            timestamp: MOCK_BLOCK_TIMESTAMP,
+                        },
+                    )
+                    .unwrap();
+            })
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
+                    account_factory: MOCK_ACCOUNT_FACTORY,
                     dex: MOCK_DEX,
+                    oracle: MOCK_ORACLE,
                     ..Default::default()
                 },
                 maker_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // set fee rates to zero for simplicity
@@ -946,15 +1100,6 @@ mod tests {
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
                 },
-            )
-            .unwrap();
-
-        // Save resting order book state from the previous auction.
-        RESTING_ORDER_BOOK
-            .save(
-                &mut ctx.storage,
-                (&dango::DENOM, &usdc::DENOM),
-                &previous_book_state,
             )
             .unwrap();
 
