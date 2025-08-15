@@ -188,7 +188,7 @@ const SectionCommunity: React.FC = () => {
             <div className="flex gap-4">
               <Button
                 as="a"
-                href="https://x.com/dangoXchg"
+                href="https://x.com/dango"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="gap-0"
