@@ -1,0 +1,11 @@
+{
+  "address": "{{ COMETBFT_VALIDATOR_ADDRESS }}",
+  "pub_key": {
+    "type": "tendermint/PubKeyEd25519",
+    "value": "{{ COMETBFT_VALIDATOR_PUB_KEY }}"
+  },
+  "priv_key": {
+    "type": "tendermint/PrivKeyEd25519",
+    "value": "{{ COMETBFT_VALIDATOR_PRIVATE_KEY }}"
+  }
+}
