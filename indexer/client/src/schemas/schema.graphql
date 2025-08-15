@@ -80,6 +80,7 @@ type Block {
 	Transactions order isn't guaranteed, check `transactionIdx`
 	"""
 	transactions: [Transaction!]!
+	cronsOutcomes: [String!]!
 	flattenEvents: [Event!]!
 }
 

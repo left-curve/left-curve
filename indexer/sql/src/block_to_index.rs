@@ -212,6 +212,10 @@ impl BlockToIndex {
         Ok(block_to_index)
     }
 
+    pub async fn load_from_disk_async(file_path: PathBuf) -> error::Result<Self> {
+        tokio::task::spawn_blocking(move || Self::load_from_disk(file_path)).await?
+    }
+
     pub fn exists(file_path: PathBuf) -> bool {
         DiskPersistence::new(file_path, false).exists()
     }
