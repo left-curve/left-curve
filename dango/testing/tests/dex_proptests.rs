@@ -290,7 +290,7 @@ impl DexAction {
                             quote_denom: quote_denom.clone(),
                             direction: *direction,
                             amount: NonZero::new(*amount).unwrap(),
-                            max_slippage: Udec128::MAX,
+                            max_slippage: Bounded::new_unchecked(Udec128::MAX),
                         }],
                         creates_limit: vec![],
                         cancels: None,

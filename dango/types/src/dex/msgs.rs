@@ -1,11 +1,11 @@
 use {
     crate::{
         account_factory::Username,
-        dex::{Direction, OrderId, PairParams, PairUpdate, PassiveOrder},
+        dex::{Direction, OrderId, PairParams, PairUpdate, PassiveOrder, RestingOrderBookState},
     },
     grug::{
-        Addr, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6, Udec128_24,
-        Uint128, UniqueVec,
+        Addr, Bounded, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6,
+        Udec128_24, Uint128, UniqueVec, ZeroInclusiveOneExclusive,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -63,8 +63,7 @@ pub struct CreateMarketOrderRequest {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    /// For BUY orders, the amount of quote asset; for SELL orders, that of the
-    /// base asset.
+    /// Amount is specified in the base asset for both BUY and SELL orders.
     pub amount: NonZero<Uint128>,
     /// The maximum slippage percentage.
     ///
@@ -90,7 +89,7 @@ pub struct CreateMarketOrderRequest {
     /// enough liquidity in the resting order book to fully fill the market
     /// order under its max slippage, it's filled as much as possible, with the
     /// unfilled portion is canceled.
-    pub max_slippage: Udec128,
+    pub max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
 }
 
 #[grug::derive(Serde)]
@@ -205,6 +204,18 @@ pub enum QueryMsg {
         start_after: Option<PairId>,
         limit: Option<u32>,
     },
+    /// Query the resting order book state of a pair.
+    #[returns(RestingOrderBookState)]
+    RestingOrderBookState {
+        base_denom: Denom,
+        quote_denom: Denom,
+    },
+    /// Enumerate the resting order book state of all pairs.
+    #[returns(Vec<RestingOrderBookStatesResponse>)]
+    RestingOrderBookStates {
+        start_after: Option<PairId>,
+        limit: Option<u32>,
+    },
     /// Query a single active order by ID.
     #[returns(OrderResponse)]
     Order { order_id: OrderId },
@@ -297,6 +308,13 @@ pub struct PairId {
 pub struct ReservesResponse {
     pub pair: PairId,
     pub reserve: CoinPair,
+}
+
+/// Response type of the `QueryMsg::RestingOrderBookState` query.
+#[grug::derive(Serde)]
+pub struct RestingOrderBookStatesResponse {
+    pub pair: PairId,
+    pub state: RestingOrderBookState,
 }
 
 /// Response type of the `QueryMsg::Order` and `Orders` queries.
