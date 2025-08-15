@@ -1,5 +1,4 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-
 import { MsgBuilder } from "~/components/devtools/MsgBuilder";
 
 export const Route = createLazyFileRoute("/(app)/_app/devtool")({
@@ -7,5 +6,10 @@ export const Route = createLazyFileRoute("/(app)/_app/devtool")({
 });
 
 function DevtoolApplet() {
-  return <MsgBuilder />;
+  return (
+    <MsgBuilder>
+      <MsgBuilder.QueryMsg />
+      <MsgBuilder.ExecuteMsg />
+    </MsgBuilder>
+  );
 }

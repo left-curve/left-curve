@@ -15,6 +15,7 @@
   --color-surface-quaternary-rice: #F3E5BF;
   --color-surface-quaternary-rice-hover: #EFDAA4;
   --color-surface-disabled-gray: #F5F4F4;
+  --color-surface-playground: #FFF;
   --color-overlay-rice: #F2E2B8CC;
   --color-border-secondary-rice: #EFDAA4;
   --color-border-tertiary-blue: #E2E3F2;
@@ -75,6 +76,7 @@ html.dark {
   --color-surface-quaternary-rice: #594F3C;
   --color-surface-quaternary-rice-hover: #6A5D42;
   --color-surface-disabled-gray: #363432;
+  --color-surface-playground: #1e1e1e;
   --color-overlay-rice: #F2E2B84D;
   --color-border-secondary-rice: #594F3C;
   --color-border-tertiary-blue: #646273;
