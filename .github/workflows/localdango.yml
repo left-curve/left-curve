@@ -1,0 +1,79 @@
+name: Localdango
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+env:
+  GIT_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+on:
+  workflow_run:
+    workflows: ["Rust", "Portal Deployment"]
+    types: [completed]
+
+jobs:
+  check-prerequisites:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - name: Check both workflows completed successfully
+        id: check
+        run: |
+          echo "Checking workflow statuses..."
+
+          # Get latest runs for both workflows on this commit
+          RUST_STATUS=$(gh run list --workflow="Rust" --commit="${{ github.event.workflow_run.head_sha }}" --limit=1 --json conclusion --jq '.[0].conclusion')
+          PORTAL_STATUS=$(gh run list --workflow="Portal Deployment" --commit="${{ github.event.workflow_run.head_sha }}" --limit=1 --json conclusion --jq '.[0].conclusion')
+
+          echo "Rust workflow: $RUST_STATUS"
+          echo "Portal Deployment workflow: $PORTAL_STATUS"
+
+          if [[ "$RUST_STATUS" == "success" && "$PORTAL_STATUS" == "success" ]]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            echo "Both workflows completed successfully!"
+          else
+            echo "should-run=false" >> $GITHUB_OUTPUT
+            echo "Waiting for both workflows to complete successfully..."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  localdango:
+    timeout-minutes: 5
+    name: Testing localdango
+    runs-on: [self-hosted]
+    needs: [check-prerequisites]
+    if: needs.check-prerequisites.outputs.should-run == 'true'
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Ensure localdango works
+        env:
+          DANGO_TAG: ${{ env.GIT_COMMIT }}
+          POSTGRES_PORT: 0
+          CLICKHOUSE_PORT: 0
+          DANGO_PORT: 0
+          COMETBFT_PORT: 0
+          COMETBFT_TAG: v0.38.17
+        run: |
+          cd networks/localdango
+          docker compose down -v
+          docker compose up -d --wait || {
+            echo "Services failed to become healthy"
+            docker compose ps
+            docker compose logs
+            exit 1
+          }
+      - name: Cleanup
+        if: always()
+        run: |
+          cd networks/localdango
+          docker compose down -v || true
