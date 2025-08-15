@@ -83,12 +83,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, arm64]
-        runner:
-          [self-hosted]
-          # when needing to try on all runner types
-          # - [self-hosted, Linux]
-          # - [self-hosted, macOS]
+        include:
+          - arch: amd64
+            runner: [self-hosted]
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
     env:
