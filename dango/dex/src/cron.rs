@@ -281,6 +281,8 @@ fn clear_orders_of_pair(
         volume,
         bids,
         asks,
+        last_partial_matched_bid,
+        last_partial_matched_ask,
         unmatched_bid,
         unmatched_ask,
     } = match_orders(&mut merged_bids, &mut merged_asks)?;
@@ -292,8 +294,8 @@ fn clear_orders_of_pair(
     //    `storage` is released;
     // 2. get the unmatched market orders, so we can process their cancelation.
     // Limit orders are good-until-canceled, so no action is needed for them.
-    let (_, unmatched_market_bids) = merged_bids.disassemble();
-    let (_, unmatched_market_asks) = merged_asks.disassemble();
+    let (mut unmatched_limit_bids, unmatched_market_bids) = merged_bids.disassemble();
+    let (mut unmatched_limit_asks, unmatched_market_asks) = merged_asks.disassemble();
 
     #[cfg(feature = "tracing")]
     {
@@ -429,7 +431,57 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ------------------------ 5. Handle filled orders ------------------------
+    // ----------------- 5. Save the resting order book state ------------------
+
+    // Find the best bid and ask prices that remains after the auction.
+    let best_bid_price = find_best_remaining_price(
+        last_partial_matched_bid,
+        unmatched_bid,
+        &mut unmatched_limit_bids,
+    )?;
+    let best_ask_price = find_best_remaining_price(
+        last_partial_matched_ask,
+        unmatched_ask,
+        &mut unmatched_limit_asks,
+    )?;
+
+    // Drop the limit order iterators. This frees the immutable reference on `storage`.
+    // All writes to the storage can only happen after this point.
+    drop(unmatched_limit_bids);
+    drop(unmatched_limit_asks);
+
+    // Determine the mid price:
+    // - if both best bid and ask prices exist, then take the average of them;
+    // - if only one of them exists, then use that price;
+    // - if none of them exists, then `None`.
+    let mid_price = match (best_bid_price, best_ask_price) {
+        (Some(bid), Some(ask)) => Some(bid.checked_add(ask)?.checked_mul(HALF)?),
+        (Some(bid), None) => Some(bid),
+        (None, Some(ask)) => Some(ask),
+        (None, None) => None,
+    };
+
+    RESTING_ORDER_BOOK.save(
+        storage,
+        (&base_denom, &quote_denom),
+        &RestingOrderBookState {
+            best_bid_price,
+            best_ask_price,
+            mid_price,
+        },
+    )?;
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            ?best_bid_price,
+            ?best_ask_price,
+            ?mid_price,
+            "Saved resting order book state"
+        )
+    }
+
+    // ------------------------ 6. Handle filled orders ------------------------
 
     // Track the inflows and outflows of the dex.
     let mut inflows = DecCoins::new();
@@ -653,6 +705,41 @@ where
     )
 }
 
+/// Find the best price available on one side of the order book after the auction:
+/// - if the last order that was matched was only partially matched, and it's
+///   a limit order, then it's the best; otherwise,
+/// - if there's a left over bid, and it's a limit order, then it's the best;
+///   otherwise,
+/// - the first unmatched limit order is the best.
+fn find_best_remaining_price<I>(
+    last_partial_matched_order: Option<(Udec128_24, Order)>,
+    first_unmatched_order: Option<(Udec128_24, Order)>,
+    other_unmatched_orders: &mut I,
+) -> StdResult<Option<Udec128_24>>
+where
+    I: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+{
+    if let Some((price, order)) = last_partial_matched_order {
+        if let Order::Limit(_) | Order::Passive(_) = order {
+            return Ok(Some(price));
+        }
+    }
+
+    if let Some((price, order)) = first_unmatched_order {
+        if let Order::Limit(_) | Order::Passive(_) = order {
+            return Ok(Some(price));
+        }
+    }
+
+    for res in other_unmatched_orders {
+        if let Ok((price, Order::Limit(_) | Order::Passive(_))) = res {
+            return Ok(Some(price));
+        }
+    }
+
+    Ok(None)
+}
+
 /// Handle the `FillingOutcome` of a user order.
 ///
 /// ## Returns
@@ -826,4 +913,303 @@ fn update_trading_volumes(
     }
 
     Ok(())
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_types::{
+            config::{AppAddresses, AppConfig},
+            constants::{dango, usdc},
+            dex::{PairParams, PassiveLiquidity},
+            oracle::PriceSource,
+        },
+        grug::{Bounded, MockContext, MockQuerier, Timestamp, Uint128},
+        std::str::FromStr,
+        test_case::test_case,
+    };
+
+    const MOCK_USER: Addr = Addr::mock(123);
+    const MOCK_DEX: Addr = Addr::mock(0);
+    const MOCK_ORACLE: Addr = Addr::mock(1);
+    const MOCK_ACCOUNT_FACTORY: Addr = Addr::mock(2);
+    const MOCK_BLOCK_HEIGHT: u64 = 888;
+    const MOCK_BLOCK_TIMESTAMP: Timestamp = Timestamp::from_seconds(1_000_000);
+
+    #[test_case(
+        vec![],
+        vec![]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: None,
+            mid_price: None,
+        };
+        "no orders"
+    )]
+    // The ask partially consumes the bid.
+    // The bid remains the best price in the book.
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(2)),
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(50)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(50)),
+        };
+        "limit bid partially matched"
+    )]
+    // Same as the previous test, but the best bid that got partially matched is
+    // a market order.
+    // Market orders are immediate-or-cancel, so the best price falls back to
+    // the next best limit or passive bid, which is 49.
+    #[test_case(
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(2)),
+        ],
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(49), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(49)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(49)),
+        };
+        "market bid partially matched, limit bid other unmatched"
+    )]
+    // The bid and ask at 50 consumes each other exactly.
+    // The bid at 49 becomes the best price remaining in the book.
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(49), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(49)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(49)),
+        };
+        "limit bid first unmatched"
+    )]
+    // Same as the previous test, but the order at 49 is a market order.
+    // The best price falls back to the limit bid at 49.
+    #[test_case(
+        vec![
+            (Direction::Bid, Price::new(49), Uint128::new(1)),
+        ],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(48), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(48)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(48)),
+        };
+        "market bid first unmatched, limit bid other unmatched"
+    )]
+    // The following test cases are the same as above, except for mirrored to
+    // the ask side of the book.
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(50), Uint128::new(2)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(50)),
+            mid_price: Some(Price::new(50)),
+        };
+        "limit ask partially matched"
+    )]
+    #[test_case(
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(2)),
+        ],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(51), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(51)),
+            mid_price: Some(Price::new(51)),
+        };
+        "market ask partially matched, limit ask other unmatched"
+    )]
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(51), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(51)),
+            mid_price: Some(Price::new(51)),
+        };
+        "limit ask first unmatched"
+    )]
+    #[test_case(
+        vec![
+            (Direction::Ask, Price::new(51), Uint128::new(1)),
+        ],
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(52), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(52)),
+            mid_price: Some(Price::new(52)),
+        };
+        "market ask first unmatched, limit ask other unmatched"
+    )]
+    fn properly_determine_resting_order_book_state(
+        market_orders: Vec<(Direction, Price, Uint128)>, // direction, price, amount
+        limit_orders: Vec<(Direction, Price, Uint128)>,  // direction, price, amount
+    ) -> RestingOrderBookState {
+        let querier = MockQuerier::new()
+            .with_raw_contract_storage(MOCK_ACCOUNT_FACTORY, |_storage| {
+                // The `update_trading_volumes` function queries the username
+                // associated with the user address.
+                // Since trading volume is irrelevant for this test, we simply
+                // do nothing, so that no username is found and the volume updating
+                // logic is simply skipped.
+            })
+            .with_raw_contract_storage(MOCK_ORACLE, |storage| {
+                // Set the prices for dango and USDC.
+                // Used by the `update_trading_volumes` function.
+                dango_oracle::PRICE_SOURCES
+                    .save(
+                        storage,
+                        &dango::DENOM,
+                        &PriceSource::Fixed {
+                            humanized_price: Udec128::new(50),
+                            precision: 0,
+                            timestamp: MOCK_BLOCK_TIMESTAMP,
+                        },
+                    )
+                    .unwrap();
+                dango_oracle::PRICE_SOURCES
+                    .save(
+                        storage,
+                        &usdc::DENOM,
+                        &PriceSource::Fixed {
+                            humanized_price: Udec128::new(1),
+                            precision: 6,
+                            timestamp: MOCK_BLOCK_TIMESTAMP,
+                        },
+                    )
+                    .unwrap();
+            })
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: MOCK_ACCOUNT_FACTORY,
+                    dex: MOCK_DEX,
+                    oracle: MOCK_ORACLE,
+                    ..Default::default()
+                },
+                maker_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // set fee rates to zero for simplicity
+                taker_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                ..Default::default()
+            })
+            .unwrap();
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_block_height(MOCK_BLOCK_HEIGHT)
+            .with_sender(MOCK_DEX)
+            .with_funds(Coins::new());
+        let market_order_count = market_orders.len();
+
+        // Save paused state as false.
+        PAUSED.save(&mut ctx.storage, &false).unwrap();
+
+        // Save pair config.
+        PAIRS
+            .save(
+                &mut ctx.storage,
+                (&dango::DENOM, &usdc::DENOM),
+                &PairParams {
+                    lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                    pool_type: PassiveLiquidity::Geometric {
+                        order_spacing: Udec128::ZERO,
+                        ratio: Bounded::new_unchecked(Udec128::ONE),
+                    },
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                },
+            )
+            .unwrap();
+
+        // Save the market orders.
+        for (index, (direction, price, amount)) in market_orders.into_iter().enumerate() {
+            let id = OrderId::new(index as _);
+            MARKET_ORDERS
+                .save(
+                    &mut ctx.storage,
+                    (MOCK_USER, id),
+                    &(
+                        (
+                            (dango::DENOM.clone(), usdc::DENOM.clone()),
+                            direction,
+                            price,
+                            id,
+                        ),
+                        MarketOrder {
+                            user: MOCK_USER.clone(),
+                            id,
+                            price,
+                            amount,
+                            remaining: amount.checked_into_dec().unwrap(),
+                            created_at_block_height: MOCK_BLOCK_HEIGHT,
+                        },
+                    ),
+                )
+                .unwrap();
+        }
+
+        // Save the limit orders.
+        for (index, (direction, price, amount)) in limit_orders.into_iter().enumerate() {
+            let id = OrderId::new((market_order_count + index) as _);
+            LIMIT_ORDERS
+                .save(
+                    &mut ctx.storage,
+                    (
+                        (dango::DENOM.clone(), usdc::DENOM.clone()),
+                        direction,
+                        price,
+                        id,
+                    ),
+                    &LimitOrder {
+                        user: MOCK_USER.clone(),
+                        id,
+                        price,
+                        amount,
+                        remaining: amount.checked_into_dec().unwrap(),
+                        created_at_block_height: MOCK_BLOCK_HEIGHT,
+                    },
+                )
+                .unwrap();
+        }
+
+        // Run the auction.
+        auction(ctx.as_mutable()).unwrap();
+
+        // Return the resting order book state after the auction to check for accuracy.
+        RESTING_ORDER_BOOK
+            .load(&ctx.storage, (&dango::DENOM, &usdc::DENOM))
+            .unwrap()
+    }
 }
