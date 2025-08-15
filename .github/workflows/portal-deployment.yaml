@@ -44,7 +44,7 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_NPM }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Portal
         run: pnpm build:portal-web

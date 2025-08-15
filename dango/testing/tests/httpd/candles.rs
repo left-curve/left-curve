@@ -11,7 +11,6 @@ use {
     grug::{
         Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
         Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
-        setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
@@ -24,7 +23,6 @@ use {
         sync::{Mutex, mpsc},
         time::sleep,
     },
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -216,8 +214,6 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::DEBUG);
-
     let _span = tracing::info_span!("graphql_subscribe_to_candles").entered();
 
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
@@ -398,8 +394,6 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::DEBUG);
-
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -569,12 +563,12 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
 
-    println!("Cache : {:#?}", old_cache.pair_prices);
-    println!("Cache from clickhouse: {:#?}", cache.pair_prices);
+    // println!("Cache : {:#?}", old_cache.pair_prices);
+    // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
     assert_eq!(cache.pair_prices, old_cache.pair_prices);
 
-    println!("Cache : {:#?}", old_cache.candles);
-    println!("Cache from clickhouse: {:#?}", cache.candles);
+    // println!("Cache : {:#?}", old_cache.candles);
+    // println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;

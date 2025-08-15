@@ -96,8 +96,6 @@ fn do_nothing(_ctx: SudoCtx, _msg: Empty) -> StdResult<Response> {
     "intentional error in taxman fee payment"
 )]
 fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
-    // grug::setup_tracing_subscriber(tracing::Level::INFO); // uncomment to see tracing logs
-
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let (contract_to_migrate, bugged_code) = f(&contracts);
