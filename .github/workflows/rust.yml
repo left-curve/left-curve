@@ -106,7 +106,7 @@ jobs:
 
   backend-test:
     needs: [format]
-    name: Lint + Test (+ Coverage)
+    name: Lint + Test
     runs-on: self-hosted
     timeout-minutes: 20
     permissions:
