@@ -213,9 +213,9 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
             .naive_utc(),
     );
 
-    assert_that!(candle_1m.candles[0].open).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].high).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].low).is_equal_to(pair_prices[0].clone().close_price);
+    assert_that!(candle_1m.candles[0].open).is_equal_to(pair_prices[0].clone().open_price);
+    assert_that!(candle_1m.candles[0].high).is_equal_to(pair_prices[0].clone().highest_price);
+    assert_that!(candle_1m.candles[0].low).is_equal_to(pair_prices[0].clone().lowest_price);
     assert_that!(candle_1m.candles[0].close).is_equal_to(pair_prices[0].clone().close_price);
     assert_that!(candle_1m.candles[0].volume_base).is_equal_to(
         pair_prices[0]
