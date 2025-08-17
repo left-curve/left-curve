@@ -27,10 +27,10 @@ on:
       - "Cargo.lock"
       - "clippy.toml"
       - "rustfmt.toml"
-      - "sdk/**"
-      - "ui/store/**"
-      - "ui/portal/**"
-      - "ui/applets/**"
+      # - "sdk/**"
+      # - "ui/store/**"
+      # - "ui/portal/**"
+      # - "ui/applets/**"
   pull_request:
     branches:
       - "*"
@@ -46,10 +46,10 @@ on:
       - "Cargo.lock"
       - "clippy.toml"
       - "rustfmt.toml"
-      - "sdk/**"
-      - "ui/store/**"
-      - "ui/portal/**"
-      - "ui/applets/**"
+      # - "sdk/**"
+      # - "ui/store/**"
+      # - "ui/portal/**"
+      # - "ui/applets/**"
 
 jobs:
   format:
