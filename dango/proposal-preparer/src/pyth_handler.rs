@@ -1,8 +1,8 @@
 use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
-    grug::{Addr, Binary, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
+    grug::{Addr, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_types::PythId,
+    pyth_types::{PriceUpdate, PythId},
     reqwest::IntoUrl,
     std::{
         fmt::Debug,
@@ -21,14 +21,14 @@ use {
 /// keep all code related to Pyth for PP in a single structure.
 pub struct PythHandler<P> {
     client: P,
-    shared_vaas: Shared<Vec<Binary>>,
+    shared_vaas: Shared<PriceUpdate>,
     current_ids: Vec<PythId>,
     stoppable_thread: Option<(Arc<AtomicBool>, thread::JoinHandle<()>)>,
 }
 
 impl PythHandler<PythClient> {
     pub fn new<U: IntoUrl>(base_url: U) -> PythHandler<PythClient> {
-        let shared_vaas = Shared::new(vec![]);
+        let shared_vaas = Shared::new(PriceUpdate::Empty);
 
         Self {
             client: PythClient::new(base_url).unwrap(),
@@ -44,7 +44,7 @@ impl PythHandler<PythClientCache> {
     where
         U: IntoUrl,
     {
-        let shared_vaas = Shared::new(vec![]);
+        let shared_vaas = Shared::new(PriceUpdate::Empty);
 
         Self {
             client: PythClientCache::new(base_url).unwrap(),
@@ -59,10 +59,10 @@ impl<P> PythHandler<P>
 where
     P: PythClientTrait,
 {
-    pub fn fetch_latest_vaas(&self) -> Vec<Binary> {
+    pub fn fetch_latest_price_update(&self) -> PriceUpdate {
         // Retrieve the VAAs from the shared memory and consume them in order to
         // avoid pushing the same VAAs again.
-        self.shared_vaas.replace(vec![])
+        self.shared_vaas.replace(PriceUpdate::Empty)
     }
 
     pub fn close_stream(&mut self) {

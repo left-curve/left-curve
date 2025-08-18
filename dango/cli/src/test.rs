@@ -1,5 +1,6 @@
 use {
     clap::{Parser, Subcommand},
+    grug::Inner,
     grug_types::{JsonSerExt, MockApi, NonEmpty},
     pyth_client::{PythClient, PythClientTrait},
     pyth_types::{
@@ -39,7 +40,7 @@ impl TestCmd {
 
                     // Decode the price feeds.
                     let mut feeds = Vec::with_capacity(2);
-                    for raw in data {
+                    for raw in data.try_into_core().unwrap().into_inner() {
                         let vaa = PythVaa::new(&MockApi, raw.as_ref())?;
                         // For the purpose of this test, it isn't necessary to verify the Wormhole VAAs.
                         feeds.extend(vaa.unverified());

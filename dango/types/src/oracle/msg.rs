@@ -1,7 +1,7 @@
 use {
     crate::oracle::{PrecisionedPrice, PriceSource},
-    grug::{Binary, Denom, NonEmpty},
-    pyth_types::{GuardianSet, GuardianSetIndex},
+    grug::Denom,
+    pyth_types::{GuardianSet, GuardianSetIndex, PriceUpdate},
     std::collections::BTreeMap,
 };
 
@@ -16,7 +16,7 @@ pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
     RegisterPriceSources(BTreeMap<Denom, PriceSource>),
     /// Submit price data from Pyth Network.
-    FeedPrices(NonEmpty<Vec<Binary>>),
+    FeedPrices(PriceUpdate),
 }
 
 #[grug::derive(Serde, QueryRequest)]

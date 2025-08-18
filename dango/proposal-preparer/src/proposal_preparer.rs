@@ -4,7 +4,7 @@ use {
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_types::constants::PYTH_URL,
+    pyth_types::{PriceUpdate, constants::PYTH_URL},
     std::{fmt::Debug, sync::Mutex},
     tracing::error,
 };
@@ -86,11 +86,11 @@ where
             error!("Failed to update Pyth stream: {:?}", err);
         }
 
-        // Retrieve the VAAs.
-        let vaas = pyth_handler.fetch_latest_vaas();
+        // Retrieve the PriceUpdate.
+        let price_update = pyth_handler.fetch_latest_price_update();
 
-        // Return if there are no VAAs to feed.
-        if vaas.is_empty() {
+        // Return if there are no new prices to feed.
+        if price_update.is_empty() {
             return Ok(txs);
         }
 
@@ -100,7 +100,7 @@ where
             gas_limit: GAS_LIMIT,
             msgs: NonEmpty::new_unchecked(vec![Message::execute(
                 cfg.addresses.oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new(vaas)?),
+                &ExecuteMsg::FeedPrices(price_update),
                 Coins::new(),
             )?]),
             data: Json::null(),

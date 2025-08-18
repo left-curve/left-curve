@@ -2,8 +2,8 @@ use {
     crate::{PythClientTrait, error},
     async_stream::stream,
     async_trait::async_trait,
-    grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
-    pyth_types::LatestVaaResponse,
+    grug::{Inner, JsonDeExt, Lengthy, NonEmpty},
+    pyth_types::{LatestVaaResponse, PriceUpdate},
     reqwest::{Client, IntoUrl, Url},
     reqwest_eventsource::{Event, EventSource, retry::ExponentialBackoff},
     std::{
@@ -149,7 +149,7 @@ impl PythClientTrait for PythClient {
     async fn stream<I>(
         &mut self,
         ids: NonEmpty<I>,
-    ) -> Result<Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
+    ) -> Result<Pin<Box<dyn tokio_stream::Stream<Item = PriceUpdate> + Send>>, Self::Error>
     where
         I: IntoIterator + Lengthy + Send + Clone,
         I::Item: ToString,
@@ -209,7 +209,11 @@ impl PythClientTrait for PythClient {
                                 Ok(Event::Message(message)) => {
                                     match message.data.deserialize_json::<LatestVaaResponse>() {
                                         Ok(vaas) => {
-                                            yield vaas.binary.data;
+                                            if vaas.binary.data.is_empty() {
+                                                continue;
+                                            }
+
+                                            yield PriceUpdate::Core(NonEmpty::new(vaas.binary.data).unwrap());
                                         },
                                         Err(err) => {
                                             error!(
@@ -235,19 +239,21 @@ impl PythClientTrait for PythClient {
         Ok(Box::pin(stream))
     }
 
-    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<Vec<Binary>, Self::Error>
+    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
     where
         I: IntoIterator + Clone + Lengthy,
         I::Item: ToString,
     {
-        Ok(reqwest::blocking::Client::new()
+        let vaas = reqwest::blocking::Client::new()
             .get(self.base_url.join("v2/updates/price/latest")?)
             .query(&PythClient::create_request_params(ids.clone()))
             .send()?
             .error_for_status()?
             .json::<LatestVaaResponse>()?
             .binary
-            .data)
+            .data;
+
+        Ok(PriceUpdate::Core(NonEmpty::new(vaas)?))
     }
 
     fn close(&mut self) {

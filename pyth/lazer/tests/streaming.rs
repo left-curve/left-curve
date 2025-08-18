@@ -3,16 +3,18 @@ use {
     pyth_lazer_client::{client::PythLazerClientBuilder, ws_connection::AnyResponse},
     pyth_lazer_protocol::{
         router::{
-            Channel, DeliveryFormat, FixedRate, Format, JsonBinaryEncoding, PriceFeedId,
-            PriceFeedProperty, SubscriptionParams, SubscriptionParamsRepr,
+            Channel, DeliveryFormat, Format, JsonBinaryEncoding, PriceFeedId, PriceFeedProperty,
+            SubscriptionParams, SubscriptionParamsRepr,
         },
-        subscription::{SubscribeRequest, SubscriptionId},
+        subscription::{Response, SubscribeRequest, SubscriptionId},
     },
-    std::str::FromStr,
+    std::{str::FromStr, time::Duration},
+    tokio::time::sleep,
     tracing::{Level, info},
     url::Url,
 };
 
+#[ignore = "work in progress"]
 #[tokio::test]
 async fn test() {
     setup_tracing_subscriber(Level::INFO);
@@ -34,10 +36,10 @@ async fn test() {
             price_feed_ids: vec![PriceFeedId(1), PriceFeedId(2)],
             properties: vec![PriceFeedProperty::Price],
             formats: vec![Format::LeEcdsa],
-            delivery_format: DeliveryFormat::Json,
+            delivery_format: DeliveryFormat::Binary,
             json_binary_encoding: JsonBinaryEncoding::Base64,
             parsed: false,
-            channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+            channel: Channel::RealTime,
             ignore_invalid_feed_ids: true,
         })
         .unwrap(),
@@ -46,15 +48,62 @@ async fn test() {
     client.subscribe(subscribe_request).await.unwrap();
     info!("Subscription request sent, waiting for responses...");
 
-    while let Some(response) = receiver.recv().await {
+    // When I process the data, I need to clear old data.
+
+    while let Some(mut response) = receiver.recv().await {
+        // Drain all the channel.
+        let mut count = 0;
+        loop {
+            match receiver.try_recv() {
+                Ok(resp) => {
+                    response = resp;
+                    count += 1;
+                },
+                Err(_) => break,
+            }
+        }
+        info!("Received {} responses in this batch", count);
+
         match &response {
-            AnyResponse::Json(resp) => {
-                info!("Received response: {:#?}", resp);
+            AnyResponse::Json(resp) => match resp {
+                Response::StreamUpdated(data) => {
+                    let payload = data.payload.clone();
+
+                    // if let Some(data_ecdsa) = payload.le_ecdsa {
+                    //     info!("Received ECDSA data raw: {:#?}", data_ecdsa.data);
+
+                    //     let data = Binary::from_str(&data_ecdsa.data)
+                    //         .unwrap()
+                    //         .deserialize_json::<ParsedPayload>();
+
+                    //     info!("Received ECDSA data: {:#?}", data);
+                    // }
+
+                    if let Some(parsed) = payload.parsed {
+                        info!("Received parsed data: {:#?}", parsed);
+                    };
+                },
+                _ => {
+                    info!("Received non-stream update response: {:#?}", resp);
+                },
             },
-            AnyResponse::Binary(update) => {
-                info!("Received binary update: {:#?}", update);
+            AnyResponse::Binary(_) => {
+                info!("Received binary update");
+                sleep(Duration::from_millis(20)).await;
+                // for msg in &update.messages {
+                // match msg {
+                //     Message::LeEcdsa(lecdsa_msg) => {
+                //         let binary = Binary::from_inner(lecdsa_msg.payload.clone());
+                //         let decoded = binary.deserialize_json::<JsonUpdate>().unwrap();
+                //         info!("Decoded ECDSA message: {:#?}", decoded);
+                //     },
+                //     _ => {
+                //         info!("Received non-ECDSA message: {:#?}", msg);
+                //     },
+                // }
+                // }
             },
         }
-        info!("{:#?}", response);
+        // info!("{:#?}", response);
     }
 }

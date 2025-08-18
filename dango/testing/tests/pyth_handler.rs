@@ -72,18 +72,18 @@ fn handler() {
     handler.update_stream(querier, empty_oracle).unwrap();
 
     // Remove possible data.
-    handler.fetch_latest_vaas();
+    handler.fetch_latest_price_update();
 
     // Assert the streaming is closed.
     for _ in 0..3 {
-        assert!(handler.fetch_latest_vaas().is_empty());
+        assert!(handler.fetch_latest_price_update().is_empty());
         sleep(Duration::from_millis(500));
     }
 
     // Update the handler with oracle.
     handler.update_stream(querier, oracle).unwrap();
 
-    // Give some times to get the data ready.
+    // Give some time to get the data ready.
     sleep(Duration::from_millis(500));
 
     // Assert the handler is working.
@@ -97,7 +97,7 @@ fn check_handler_works(handler: &PythHandler<PythClientCache>, data_wanted: usiz
     let mut previous_data = None;
 
     for _ in 0..data_wanted * 5 {
-        let data = handler.fetch_latest_vaas();
+        let data = handler.fetch_latest_price_update();
 
         // Check if we received some data.
         if !data.is_empty() {
@@ -110,7 +110,7 @@ fn check_handler_works(handler: &PythHandler<PythClientCache>, data_wanted: usiz
 
             // Now that we have read the data, the next iteration should be empty
             // since the handler didn't have time to fetch new data.
-            assert!(handler.fetch_latest_vaas().is_empty());
+            assert!(handler.fetch_latest_price_update().is_empty());
 
             // We have met the data wanted, we can stop.
             if received_data >= data_wanted {

@@ -10,7 +10,7 @@ use {
     },
     common_function::{test_latest_vaas, test_stream},
     futures::stream::{self, Stream},
-    grug::{JsonSerExt, NonEmpty},
+    grug::{Inner, JsonSerExt, NonEmpty},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::{
         LatestVaaBinaryResponse, LatestVaaResponse,
@@ -117,8 +117,11 @@ async fn sse_handler(
         let latest_vaas = pyth_client_cache
             .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
             .unwrap();
+
         let data = LatestVaaResponse {
-            binary: LatestVaaBinaryResponse { data: latest_vaas },
+            binary: LatestVaaBinaryResponse {
+                data: latest_vaas.try_into_core().unwrap().into_inner(),
+            },
         };
 
         match data.to_json_value() {

@@ -3,10 +3,10 @@ use {
     anyhow::{bail, ensure},
     dango_types::oracle::{ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource},
     grug::{
-        AuthCtx, AuthMode, AuthResponse, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute,
-        MutableCtx, QuerierExt, Response, Tx,
+        AuthCtx, AuthMode, AuthResponse, Denom, Inner, JsonDeExt, Message, MsgExecute, MutableCtx,
+        QuerierExt, Response, Tx,
     },
-    pyth_types::{PythId, PythVaa},
+    pyth_types::{PriceUpdate, PythId, PythVaa},
     std::{cmp::Ordering, collections::BTreeMap},
 };
 
@@ -66,7 +66,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterPriceSources(price_sources) => {
             register_price_sources(ctx, price_sources)
         },
-        ExecuteMsg::FeedPrices(vaas) => feed_prices(ctx, vaas.into_inner()),
+        ExecuteMsg::FeedPrices(price_update) => feed_prices(ctx, price_update),
     }
 }
 
@@ -87,48 +87,53 @@ fn register_price_sources(
     Ok(Response::new())
 }
 
-fn feed_prices(ctx: MutableCtx, vaas: Vec<Binary>) -> anyhow::Result<Response> {
-    for vaa in vaas {
-        // Deserialize the Pyth VAA from binary.
-        let vaa = PythVaa::new(ctx.api, vaa.into_inner())?;
-        let new_sequence = vaa.wormhole_vaa.sequence;
+fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Response> {
+    match price_update {
+        PriceUpdate::Core(vaas) => {
+            for vaa in vaas.into_inner() {
+                // Deserialize the Pyth VAA from binary.
+                let vaa = PythVaa::new(ctx.api, vaa.into_inner())?;
+                let new_sequence = vaa.wormhole_vaa.sequence;
 
-        // Verify the VAA, and store the prices.
-        for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
-            let id = PythId::from_inner(feed.id.to_bytes());
-            let new_price = PrecisionlessPrice::try_from(feed)?;
+                // Verify the VAA, and store the prices.
+                for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
+                    let id = PythId::from_inner(feed.id.to_bytes());
+                    let new_price = PrecisionlessPrice::try_from(feed)?;
 
-            // Save the price if there isn't already a price saved, or if the
-            // new price is more recent than the existing one.
-            //
-            // Note: the CosmWasm implementation of Pyth contract uses the
-            // price feed's `publish_time` to determine which price is newer:
-            // https://github.com/pyth-network/pyth-crosschain/blob/df1ca64/target_chains/cosmwasm/contracts/pyth/src/contract.rs#L588-L589
-            //
-            // However, this doesn't work in practice: whereas Pyth Core prices
-            // are updated every 400 ms, `publish_time` only comes in whole
-            // seconds. As such, it's possible for two prices to have the same
-            // `publish_time`, in which case it's impossible to tell which price
-            // is newer.
-            //
-            // To deal with this, we addtionally compare the price feed's
-            // Wormhole VAA sequence. In case `publish_time` are the same, the
-            // price with the bigger sequence is accepted.
-            PRICES.may_update(ctx.storage, id, |current_record| -> anyhow::Result<_> {
-                match current_record {
-                    Some((current_price, current_sequence)) => {
-                        match current_price.timestamp.cmp(&new_price.timestamp) {
-                            Ordering::Less => Ok((new_price, new_sequence)),
-                            Ordering::Equal if current_sequence < new_sequence => {
-                                Ok((new_price, new_sequence))
+                    // Save the price if there isn't already a price saved, or if the
+                    // new price is more recent than the existing one.
+                    //
+                    // Note: the CosmWasm implementation of Pyth contract uses the
+                    // price feed's `publish_time` to determine which price is newer:
+                    // https://github.com/pyth-network/pyth-crosschain/blob/df1ca64/target_chains/cosmwasm/contracts/pyth/src/contract.rs#L588-L589
+                    //
+                    // However, this doesn't work in practice: whereas Pyth Core prices
+                    // are updated every 400 ms, `publish_time` only comes in whole
+                    // seconds. As such, it's possible for two prices to have the same
+                    // `publish_time`, in which case it's impossible to tell which price
+                    // is newer.
+                    //
+                    // To deal with this, we addtionally compare the price feed's
+                    // Wormhole VAA sequence. In case `publish_time` are the same, the
+                    // price with the bigger sequence is accepted.
+                    PRICES.may_update(ctx.storage, id, |current_record| -> anyhow::Result<_> {
+                        match current_record {
+                            Some((current_price, current_sequence)) => {
+                                match current_price.timestamp.cmp(&new_price.timestamp) {
+                                    Ordering::Less => Ok((new_price, new_sequence)),
+                                    Ordering::Equal if current_sequence < new_sequence => {
+                                        Ok((new_price, new_sequence))
+                                    },
+                                    _ => Ok((current_price, current_sequence)),
+                                }
                             },
-                            _ => Ok((current_price, current_sequence)),
+                            None => Ok((new_price, new_sequence)),
                         }
-                    },
-                    None => Ok((new_price, new_sequence)),
+                    })?;
                 }
-            })?;
-        }
+            }
+        },
+        _ => bail!("Not implemented: Lazer price updates are not supported yet"),
     }
 
     Ok(Response::new())

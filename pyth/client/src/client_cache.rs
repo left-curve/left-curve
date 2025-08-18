@@ -4,10 +4,11 @@ use {
     async_trait::async_trait,
     grug::{Binary, Inner, Lengthy, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
+    pyth_types::PriceUpdate,
     reqwest::{IntoUrl, Url},
     std::{
         collections::HashMap,
-        env,
+        env, panic,
         path::{Path, PathBuf},
         sync::{
             Arc,
@@ -18,6 +19,7 @@ use {
     },
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
+    tracing::warn,
 };
 
 /// Define the number of samples for each PythId to store in file.
@@ -44,7 +46,7 @@ impl PythClientCache {
     pub fn load_or_retrieve_data<I>(
         base_url: &Url,
         ids: NonEmpty<I>,
-    ) -> HashMap<PathBuf, Vec<Vec<Binary>>>
+    ) -> HashMap<PathBuf, Vec<NonEmpty<Vec<Binary>>>>
     where
         I: IntoIterator + Lengthy + Clone,
         I::Item: ToString,
@@ -60,7 +62,7 @@ impl PythClientCache {
                 let mut cache_file = DiskPersistence::new(filename, true);
 
                 if cache_file.exists() {
-                    return cache_file.load::<Vec<Vec<Binary>>>().unwrap();
+                    return cache_file.load::<Vec<NonEmpty<Vec<Binary>>>>().unwrap();
                 }
 
                 let rt = Runtime::new().unwrap();
@@ -75,8 +77,16 @@ impl PythClientCache {
                     // Retrieve CACHE_SAMPLES values to be able to return newer values each time.
                     let mut values = vec![];
                     while values.len() < PYTH_CACHE_SAMPLES {
-                        if let Some(vaas) = stream.next().await {
-                            values.push(vaas);
+                        if let Some(price_update) = stream.next().await {
+                            if let PriceUpdate::Core(vaas) = price_update {
+                                if vaas.is_empty() {
+                                    warn!("Empty VAA received, skipping");
+                                    continue;
+                                }
+                                values.push(vaas);
+                            } else {
+                                panic!("Received non-core PriceUpdate: {:?}", price_update);
+                            }
                         }
                     }
 
@@ -116,7 +126,7 @@ impl PythClientTrait for PythClientCache {
     async fn stream<I>(
         &mut self,
         ids: NonEmpty<I>,
-    ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
+    ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = PriceUpdate> + Send>>, Self::Error>
     where
         I: IntoIterator + Lengthy + Send + Clone,
         I::Item: ToString,
@@ -136,13 +146,17 @@ impl PythClientTrait for PythClientCache {
 
                 let vaas = stored_vaas
                     .iter_mut()
-                    .filter_map(|(_, v)| v.get(index).cloned())
+                    .filter_map(|(_, v)| v.get(index).cloned()).map(|v| v.into_inner())
                     .flatten()
                     .collect::<Vec<_>>();
 
                 index += 1;
 
-                yield vaas;
+                if vaas.is_empty() {
+                    warn!("No new VAA data available, waiting for next update");
+                }else{
+                    yield PriceUpdate::Core(NonEmpty::new(vaas).unwrap());
+                }
 
                 sleep(Duration::from_millis(500));
             }
@@ -151,7 +165,7 @@ impl PythClientTrait for PythClientCache {
         Ok(Box::pin(stream))
     }
 
-    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<Vec<Binary>, Self::Error>
+    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
     where
         I: IntoIterator + Clone + Lengthy,
         I::Item: ToString,
@@ -163,12 +177,13 @@ impl PythClientTrait for PythClientCache {
         let result = stored_vaas
             .into_iter()
             .filter_map(|(_, v)| v.get(index).cloned())
+            .map(|v| v.into_inner())
             .flatten()
             .collect::<Vec<_>>();
 
         self.vaas_index.fetch_add(1, Ordering::SeqCst);
 
-        Ok(result)
+        Ok(PriceUpdate::Core(NonEmpty::new(result)?))
     }
 
     fn close(&mut self) {

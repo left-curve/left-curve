@@ -12,7 +12,7 @@ use {
     grug_app::NaiveProposalPreparer,
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
-        PythId, PythVaa,
+        PriceUpdate, PythId, PythVaa,
         constants::{
             ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL, SOL_USD_ID,
             USDC_USD_ID, XRP_USD_ID,
@@ -58,9 +58,9 @@ fn oracle() {
             .execute(
                 &mut accounts.owner,
                 oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                &ExecuteMsg::FeedPrices(PriceUpdate::Core(NonEmpty::new_unchecked(vec![
                     Binary::from_str(VAA_2).unwrap(),
-                ])),
+                ]))),
                 Coins::default(),
             )
             .should_succeed();
@@ -92,9 +92,9 @@ fn oracle() {
             .execute(
                 &mut accounts.owner,
                 oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                &ExecuteMsg::FeedPrices(PriceUpdate::Core(NonEmpty::new_unchecked(vec![
                     Binary::from_str(VAA_1).unwrap(),
-                ])),
+                ]))),
                 Coins::default(),
             )
             .should_succeed();
@@ -124,9 +124,9 @@ fn oracle() {
             .execute(
                 &mut accounts.owner,
                 oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                &ExecuteMsg::FeedPrices(PriceUpdate::Core(NonEmpty::new_unchecked(vec![
                     Binary::from_str(VAA_2).unwrap(),
-                ])),
+                ]))),
                 Coins::default(),
             )
             .should_succeed();
@@ -176,7 +176,11 @@ fn multiple_vaas() {
         .collect::<BTreeMap<_, Option<(PrecisionlessPrice, u64)>>>();
 
     for _ in 0..5 {
-        let vaas_raw = pyth_client.get_latest_vaas(ids.clone()).unwrap();
+        let price_update = pyth_client.get_latest_vaas(ids.clone()).unwrap();
+
+        let PriceUpdate::Core(vaas_raw) = price_update else {
+            panic!("Expected Core price update, got: {:?}", price_update);
+        };
 
         let vaas = vaas_raw
             .iter()
@@ -221,7 +225,7 @@ fn multiple_vaas() {
             .execute(
                 &mut accounts.owner,
                 oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vaas_raw)),
+                &ExecuteMsg::FeedPrices(PriceUpdate::Core(vaas_raw)),
                 Coins::default(),
             )
             .should_succeed();
@@ -279,7 +283,9 @@ fn sequence() {
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![old_vaa.clone()])),
+            &ExecuteMsg::FeedPrices(PriceUpdate::Core(NonEmpty::new_unchecked(vec![
+                old_vaa.clone(),
+            ]))),
             Coins::default(),
         )
         .should_succeed();
@@ -298,7 +304,7 @@ fn sequence() {
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![new_vaa])),
+            &ExecuteMsg::FeedPrices(PriceUpdate::Core(NonEmpty::new_unchecked(vec![new_vaa]))),
             Coins::default(),
         )
         .should_succeed();
@@ -317,7 +323,9 @@ fn sequence() {
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![old_vaa.clone()])),
+            &ExecuteMsg::FeedPrices(PriceUpdate::Core(NonEmpty::new_unchecked(vec![
+                old_vaa.clone(),
+            ]))),
             Coins::default(),
         )
         .should_succeed();

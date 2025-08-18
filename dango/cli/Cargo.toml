@@ -29,6 +29,7 @@ dango-types                 = { workspace = true }
 data-encoding               = { workspace = true }
 dialoguer                   = { workspace = true }
 futures                     = { workspace = true }
+grug                        = { workspace = true }
 grug-app                    = { workspace = true, features = ["abci", "tracing"] }
 grug-client                 = { workspace = true }
 grug-db-disk-lite           = { workspace = true }

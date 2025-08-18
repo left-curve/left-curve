@@ -104,10 +104,10 @@ where
 
     for _ in 0..5 {
         // Retrieve the latest vaas.
-        let vaas = pyth_client.get_latest_vaas(ids.clone()).unwrap();
+        let price_update = pyth_client.get_latest_vaas(ids.clone()).unwrap();
 
         // Update the values with new ones.
-        vaas_checker.update_values(vaas);
+        vaas_checker.update_values(price_update.try_into_core().unwrap().into_inner());
 
         sleep(Duration::from_millis(400));
     }
@@ -129,9 +129,14 @@ where
     let mut not_none_vaas = 0;
 
     while not_none_vaas < 5 {
-        if let Some(vaas) = stream.next().await {
+        if let Some(price_update) = stream.next().await {
+            if price_update.is_empty() {
+                continue; // Skip empty updates.
+            }
+
             not_none_vaas += 1;
-            vaas_checker.update_values(vaas);
+
+            vaas_checker.update_values(price_update.try_into_core().unwrap().into_inner());
         }
     }
 
@@ -156,9 +161,12 @@ where
     let mut not_none_vaas = 0;
 
     while not_none_vaas < 5 {
-        if let Some(vaas) = stream.next().await {
+        if let Some(price_update) = stream.next().await {
+            if price_update.is_empty() {
+                continue; // Skip empty updates.
+            }
             not_none_vaas += 1;
-            vaas_checker.update_values(vaas);
+            vaas_checker.update_values(price_update.try_into_core().unwrap().into_inner());
         }
     }
 

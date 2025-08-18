@@ -23,6 +23,7 @@ use {
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
+    pyth_types::PriceUpdate,
     std::{
         cmp::min,
         fmt::Display,
@@ -98,9 +99,9 @@ fn feed_oracle_price(
         .execute(
             &mut accounts.owner,
             contracts.oracle,
-            &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+            &oracle::ExecuteMsg::FeedPrices(PriceUpdate::Core(NonEmpty::new_unchecked(vec![
                 Binary::from_str(vaa).unwrap(),
-            ])),
+            ]))),
             Coins::default(),
         )
         .should_succeed();

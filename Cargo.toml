@@ -58,6 +58,7 @@ members = [
   "indexer/sql-migration",
   "indexer/testing",
   "pyth/client",
+  "pyth/lazer",
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",

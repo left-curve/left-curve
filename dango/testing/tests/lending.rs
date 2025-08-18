@@ -23,6 +23,7 @@ use {
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,
+    pyth_types::PriceUpdate,
     std::str::FromStr,
 };
 
@@ -62,9 +63,9 @@ fn feed_oracle_usdc_price(
             .execute(
                 &mut accounts.owner,
                 contracts.oracle,
-                &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+                &oracle::ExecuteMsg::FeedPrices(PriceUpdate::Core(NonEmpty::new_unchecked(vec![
                     Binary::from_str(USDC_VAA).unwrap(),
-                ])),
+                ]))),
                 Coins::default(),
             )
             .should_succeed();
