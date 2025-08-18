@@ -208,7 +208,7 @@ impl Preset for AccountOption {
                 user1::USERNAME.clone() => GenesisUser {
                     key: Key::Secp256k1(user1::PUBLIC_KEY.into()),
                     key_hash: user1::PUBLIC_KEY.hash256(),
-                    dango_balance: Uint128::new(100_000_000_000_000),
+                    dango_balance: Uint128::new(1_000_000_000_000_000_000),
                 },
                 user2::USERNAME.clone() => GenesisUser {
                     key: Key::Secp256k1(user2::PUBLIC_KEY.into()),
