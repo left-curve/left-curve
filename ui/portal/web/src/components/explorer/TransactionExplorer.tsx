@@ -173,7 +173,7 @@ const Messages: React.FC = () => {
               defaultExpanded
             >
               <div className="p-4 bg-gray-700 shadow-account-card  rounded-md text-white-100">
-                <JsonVisualizer json={JSON.stringify(message)} collapsed={1} />
+                <JsonVisualizer json={message} collapsed={1} />
               </div>
             </AccordionItem>
           );
@@ -182,7 +182,7 @@ const Messages: React.FC = () => {
       <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
         <p className="h4-bold text-primary-900">{m["explorer.txs.events"]()}</p>
         <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
-          <JsonVisualizer json={nestedEvents} collapsed={1} />
+          <JsonVisualizer string={nestedEvents} collapsed={1} />
         </div>
       </div>
     </div>

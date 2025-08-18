@@ -3,7 +3,14 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import { Skeleton, TextCopy, twMerge, useCountdown, useWatchEffect } from "@left-curve/applets-kit";
+import {
+  JsonVisualizer,
+  Skeleton,
+  TextCopy,
+  twMerge,
+  useCountdown,
+  useWatchEffect,
+} from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 import { TransactionsTable } from "./TransactionsTable";
 
@@ -219,6 +226,26 @@ const FutureBlock: React.FC = () => {
   );
 };
 
+const BlockCronsOutcomes: React.FC = () => {
+  const { data } = useBlockExplorer();
+
+  if (!data?.searchBlock) return null;
+
+  const cronOutcomes = JSON.parse(data.searchBlock.cronsOutcomes);
+
+  return (
+    <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
+      <p className="h4-bold text-primary-900">{m["explorer.block.cronsOutcomes"]()}</p>
+      <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
+        <JsonVisualizer
+          json={Array.isArray(cronOutcomes) ? cronOutcomes : [cronOutcomes]}
+          collapsed={0}
+        />
+      </div>
+    </div>
+  );
+};
+
 const BlockDetails: React.FC = () => {
   const { data } = useBlockExplorer();
 
@@ -310,5 +337,6 @@ export const BlockExplorer = Object.assign(BlockContainer, {
   FutureBlock: FutureBlock,
   NotFound: BlockNotFound,
   Details: BlockDetails,
+  CronsOutcomes: BlockCronsOutcomes,
   TxTable: BlockTable,
 });
