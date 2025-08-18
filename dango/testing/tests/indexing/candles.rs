@@ -221,14 +221,14 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
         pair_prices[0]
             .clone()
             .volume_base
-            .checked_mul(Udec128_6::from_str("10.0").unwrap())
+            .checked_mul(Udec128_6::TEN)
             .unwrap(),
     );
     assert_that!(candle_1m.candles[0].volume_quote).is_equal_to(
         pair_prices[0]
             .clone()
             .volume_quote
-            .checked_mul(Udec128_6::from_str("10.0").unwrap())
+            .checked_mul(Udec128_6::TEN)
             .unwrap(),
     );
 
