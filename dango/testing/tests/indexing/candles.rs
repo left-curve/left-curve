@@ -729,6 +729,19 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// The auction over the orders in `orders_to_submit` should find maximum volume
+/// in the range 25--30. Since no previous mid price exists, it takes the mid
+/// point of the range, which is 27.5.
+///
+/// After the order has been filled, the remaining best bid is 20, best ask
+/// is 25, so mid price is 22.5.
+///
+/// Summary:
+/// - If this function is run a single time, the clearing price is 27.5.
+/// - If it is run more than one times, any subsequent calls with have clearing
+///   price of 25, because the previous auction's mid price (22.5) is smaller
+///   than the lower bound of the range (25--30), so the lower bound (25) is
+///   chosen.
 async fn create_pair_prices(
     suite: &mut TestSuiteWithIndexer,
     accounts: &mut TestAccounts,
