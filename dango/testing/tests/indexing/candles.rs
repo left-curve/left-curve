@@ -11,7 +11,7 @@ use {
         oracle::{self, PriceSource},
     },
     grug::{
-        BlockInfo, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero, Number,
+        BlockInfo, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero,
         NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24,
         Uint128, btree_map, coins,
     },
@@ -183,6 +183,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 
     for _ in 0..10 {
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await; // FIXME: avoid having to do this
     }
 
     suite.app.indexer.wait_for_finish()?;
@@ -215,23 +216,24 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
             .naive_utc(),
     );
 
-    assert_that!(candle_1m.candles[0].open).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].high).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].low).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].close).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].volume_base).is_equal_to(
-        pair_prices[0]
-            .clone()
-            .volume_base
-            .checked_mul(Udec128_6::TEN)
-            .unwrap(),
-    );
+    assert_that!(candle_1m.candles[0].open).is_equal_to(pair_prices.last().unwrap().open_price);
+
+    assert_that!(candle_1m.candles[0].high)
+        .is_equal_to(pair_prices.iter().map(|p| p.highest_price).max().unwrap());
+
+    assert_that!(candle_1m.candles[0].low)
+        .is_equal_to(pair_prices.iter().map(|p| p.lowest_price).min().unwrap());
+
+    assert_that!(candle_1m.candles[0].close).is_equal_to(pair_prices.first().unwrap().close_price);
+
+    assert_that!(candle_1m.candles[0].volume_base)
+        .is_equal_to(pair_prices.iter().map(|p| p.volume_base).sum::<Udec128_6>());
+
     assert_that!(candle_1m.candles[0].volume_quote).is_equal_to(
-        pair_prices[0]
-            .clone()
-            .volume_quote
-            .checked_mul(Udec128_6::TEN)
-            .unwrap(),
+        pair_prices
+            .iter()
+            .map(|p| p.volume_quote)
+            .sum::<Udec128_6>(),
     );
 
     Ok(())
@@ -244,6 +246,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
 
     for _ in 0..10 {
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await; // FIXME: avoid having to do this
     }
 
     suite.app.indexer.wait_for_finish()?;
