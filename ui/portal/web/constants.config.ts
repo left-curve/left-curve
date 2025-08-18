@@ -22,7 +22,8 @@ export const APPLETS = Array.from(
   },
 ).filter((a) => {
   if (!a) return false;
-  if (a.id === "earn" && import.meta.env.CONFIG_ENVIRONMENT === "test") return false;
+  if ((a.id === "earn" || a.id === "devtool") && import.meta.env.CONFIG_ENVIRONMENT === "test")
+    return false;
   return true;
 }) as AppletMetadata[];
 

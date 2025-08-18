@@ -50,7 +50,7 @@ function TransferApplet() {
   const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
-  const setAction = (v: string) => navigate({ search: { action: v }, replace: false });
+  const setAction = (v: string) => navigate({ search: { action: v }, replace: true });
   const [selectedDenom, setSelectedDenom] = useState("bridge/usdc");
   const { register, setValue, reset, handleSubmit, inputs } = useInputs({
     strategy: "onSubmit",

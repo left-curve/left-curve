@@ -24,7 +24,7 @@ function ProTradeApplet() {
     navigate({
       to: "/trade/$pairSymbols",
       params: { pairSymbols: `${baseSymbol}-${quoteSymbol}` },
-      replace: false,
+      replace: true,
     });
   };
 
@@ -32,7 +32,7 @@ function ProTradeApplet() {
     navigate({
       to: "/trade/$pairSymbols",
       params: { pairSymbols },
-      replace: false,
+      replace: true,
       search: { order_type, action },
     });
   };
@@ -41,7 +41,7 @@ function ProTradeApplet() {
     navigate({
       to: "/trade/$pairSymbols",
       params: { pairSymbols },
-      replace: false,
+      replace: true,
       search: { order_type, action },
     });
   };
