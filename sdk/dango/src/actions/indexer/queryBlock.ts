@@ -20,6 +20,7 @@ export async function queryBlock<transport extends Transport>(
         hash
         blockHeight
         appHash
+        cronsOutcomes
         transactions {
           hash
           sender
