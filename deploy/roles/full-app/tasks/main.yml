@@ -1,0 +1,123 @@
+- name: Create deployment directory
+  file:
+    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/{{ item }}"
+    state: directory
+  loop: [clickhouse, dango, cometbft]
+
+- name: Copy config files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "{{ dango_network}}/config/dango/app.toml", dest: "dango/app.toml" }
+        - { src: "{{ dango_network}}/config/cometbft/config.toml", dest: "cometbft/config.toml" }
+        - { src: "{{ dango_network}}/config/cometbft/genesis.json", dest: "cometbft/genesis.json" }
+        - { src: "{{ dango_network}}/config/cometbft/node_key.json", dest: "cometbft/node_key.json" }
+        - { src: "{{ dango_network}}/config/cometbft/priv_validator_key.json", dest: "cometbft/priv_validator_key.json" }
+        - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
+        - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }
+
+- name: Generate docker-compose.yml
+  become: true
+  become_user: root
+  template:
+    src: docker-compose.yml
+    dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/docker-compose.yml"
+    owner: "{{ deploy_user }}"
+
+- name: Generate .env
+  become: true
+  become_user: root
+  template:
+    src: env.j2
+    dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+    owner: "{{ deploy_user }}"
+
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"
+
+- name: Deploy dango stack first to get binded ports
+  community.docker.docker_compose_v2:
+    project_name: "{{ deployment_name }}"
+    project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    pull: always
+    recreate: always
+    services:
+      - db
+      - faucet-bot
+      - clickhouse
+      - dango
+      - cometbft
+
+- name: Get dango and faucet assigned ports
+  shell: |
+    docker port {{ deployment_name }}-dango-1 8080 | cut -d: -f2
+    docker port {{ deployment_name }}-faucet-bot-1 8082 | cut -d: -f2
+  register: assigned_ports
+
+- name: Set dango and faucet port facts
+  set_fact:
+    dango_port: "{{ assigned_ports.stdout_lines[0] }}"
+    faucet_port: "{{ assigned_ports.stdout_lines[1] }}"
+
+- name: Generate .env with the right ports
+  become: true
+  become_user: root
+  template:
+    src: env.j2
+    dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+    owner: "{{ deploy_user }}"
+
+- name: Deploy all
+  community.docker.docker_compose_v2:
+    project_name: "{{ deployment_name }}"
+    project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+
+- name: Get frontend assigned ports
+  shell: |
+    docker port {{ deployment_name }}-dango-frontend-1 80 | cut -d: -f2
+  register: assigned_ports
+
+- name: Set frontend port facts
+  set_fact:
+    dango_frontend_port: "{{ assigned_ports.stdout_lines[0] }}"
+
+- name: Generate .env with the right ports
+  become: true
+  become_user: root
+  template:
+    src: env.j2
+    dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+    owner: "{{ deploy_user }}"
+
+- name: Comment on PR
+  uri:
+    url: "https://api.github.com/repos/{{ github_repo }}/issues/{{ github_pr_number }}/comments"
+    method: POST
+    headers:
+      Authorization: "token {{ github_token }}"
+    body_format: json
+    body:
+      body: |
+        🚀 **PR Preview Deploy Ready!**
+
+        - **Frontend**: http://{{ tailscale_ip }}:{{ dango_frontend_port }}
+        - **Dango**: http://{{ tailscale_ip }}:{{ dango_port }}
+        - **Faucet**: http://{{ tailscale_ip }}:{{ faucet_port }}
+  when: github_pr_number is defined
+
+- name: Display URLs (manual deploy)
+  debug:
+    msg:
+      - "🚀 Preview Deploy Ready!"
+      - "Frontend: http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
+      - "Dango: http://{{ tailscale_ip }}:{{ dango_port }}"
+      - "Faucet: http://{{ tailscale_ip }}:{{ faucet_port }}"
+  when: github_pr_number is not defined

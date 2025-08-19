@@ -1,0 +1,26 @@
+- hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+  tasks:
+    - name: Stop and remove stack
+      community.docker.docker_compose_v2:
+        project_name: "{{ deployment_name }}"
+        project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+        state: absent
+        remove_orphans: yes
+        remove_volumes: yes
+
+    - name: Remove deployment directory
+      file:
+        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+        state: absent
+
+    - name: Prune unused Docker resources
+      community.docker.docker_prune:
+        containers: yes
+        images: yes
+        networks: yes
+        volumes: yes
+        builder_cache: yes
