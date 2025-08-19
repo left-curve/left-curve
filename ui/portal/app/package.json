@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
-    "eas-build-post-install": "cd ../../../ && pnpm build:kit",
     "build:android": "eas build -p android -e development",
     "dev:android": "eas build:run -p android -e development --latest && expo start --android",
     "build:ios": "eas build -p ios -e development",
