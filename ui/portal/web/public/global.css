@@ -204,8 +204,12 @@ body {
 #chartiq cq-drawing-palette cq-scroll {
   scrollbar-width: none;
   scrollbar-color: initial;
-  max-width: 65px;
-  margin: 0 auto;
+}
+
+#chartiq cq-drawing-palette cq-scroll .drawing-tools-group.lines,
+#chartiq cq-drawing-palette cq-scroll .drawing-tools-group.markings,
+#chartiq cq-drawing-palette cq-scroll .drawing-tools-group.text {
+  margin: 0 3px;
 }
 
 #chartiq cq-drawing-palette cq-scroll::-webkit-scrollbar {

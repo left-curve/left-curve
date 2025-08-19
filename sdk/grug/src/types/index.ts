@@ -91,6 +91,7 @@ export type { UID } from "./common.js";
 
 export type {
   Json,
+  JsonString,
   Hex,
   Base64,
   Binary,

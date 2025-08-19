@@ -20,7 +20,7 @@ function PoolApplet() {
       params: {
         pairSymbols: `${coins.byDenom[pair.baseDenom].symbol}-${coins.byDenom[pair.quoteDenom].symbol}`,
       },
-      replace: false,
+      replace: true,
       search: { action },
     });
   };

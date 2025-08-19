@@ -19,6 +19,7 @@ function BlockExplorerApplet() {
         <BlockExplorer.NotFound />
         <BlockExplorer.FutureBlock />
         <BlockExplorer.Details />
+        <BlockExplorer.CronsOutcomes />
         <BlockExplorer.TxTable />
       </BlockExplorer>
     </div>
