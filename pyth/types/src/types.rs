@@ -1,9 +1,12 @@
 use {
+    crate::LeEcdsaMessage,
     anyhow::{Result, bail},
     grug::{AddrEncoder, Binary, EncodedBytes, NonEmpty},
 };
 
 pub type PythId = EncodedBytes<[u8; 32], AddrEncoder>;
+
+pub type PythLazerId = u32;
 
 #[grug::derive(Serde)]
 pub struct LatestVaaResponse {
@@ -18,7 +21,7 @@ pub struct LatestVaaBinaryResponse {
 #[grug::derive(Serde)]
 pub enum PriceUpdate {
     Core(NonEmpty<Vec<Binary>>),
-    Lazer(String),
+    Lazer(LeEcdsaMessage),
 }
 
 impl PriceUpdate {
@@ -41,7 +44,7 @@ impl PriceUpdate {
     }
 
     /// Try to cast `PriceUpdate` to `Lazer`.
-    pub fn try_into_lazer(&self) -> Result<String> {
+    pub fn try_into_lazer(&self) -> Result<LeEcdsaMessage> {
         match self {
             PriceUpdate::Lazer(lazer) => Ok(lazer.clone()),
             _ => bail!("PriceUpdate is not Lazer"),

@@ -8,4 +8,7 @@ mod wormhole;
 pub use {byte_analyzer::*, lazer::*, types::*, vaa::*, wormhole::*};
 
 // Re-exports
-pub use pyth_sdk::PriceFeed;
+pub use {
+    pyth_lazer_protocol::payload::{PayloadData, PayloadFeedData, PayloadPropertyValue},
+    pyth_sdk::PriceFeed,
+};

@@ -892,7 +892,7 @@ fn test_denom(index: usize) -> impl Strategy<Value = TestDenom> {
     )
         .prop_map(|(denom, precision, price)| TestDenom {
             denom,
-            initial_price: PrecisionlessPrice::new(price, price, Timestamp::from_seconds(0))
+            initial_price: PrecisionlessPrice::new(price, Timestamp::from_seconds(0))
                 .with_precision(precision),
         })
 }

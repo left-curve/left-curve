@@ -7818,6 +7818,7 @@ dependencies = [
  "data-encoding",
  "grug",
  "hex-literal",
+ "pyth-lazer-protocol",
  "pyth-sdk 0.8.0",
  "pythnet-sdk",
 ]

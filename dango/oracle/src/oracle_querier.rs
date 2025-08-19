@@ -1,5 +1,5 @@
 use {
-    crate::{PRICE_SOURCES, PRICES},
+    crate::{PRICE_SOURCES, PRICES, PYTH_LAZER_PRICES},
     anyhow::{anyhow, ensure},
     dango_types::{
         DangoQuerier,
@@ -10,7 +10,7 @@ use {
         Addr, Cache, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp,
         Udec128,
     },
-    pyth_types::PythId,
+    pyth_types::{PythId, PythLazerId},
     std::{cell::OnceCell, collections::HashMap},
 };
 
@@ -109,11 +109,15 @@ impl<'a> OracleQuerierNoCache<'a> {
                 precision,
                 timestamp,
             } => {
-                let price = PrecisionlessPrice::new(humanized_price, humanized_price, timestamp);
+                let price = PrecisionlessPrice::new(humanized_price, timestamp);
                 Ok(price.with_precision(precision))
             },
             PriceSource::Pyth { id, precision } => {
                 let (price, _) = self.ctx.get_price(id)?;
+                Ok(price.with_precision(precision))
+            },
+            PriceSource::PythLazer { id, precision } => {
+                let price = self.ctx.get_lazer_price(id)?;
                 Ok(price.with_precision(precision))
             },
             PriceSource::LendingLiquidity => {
@@ -136,7 +140,6 @@ impl<'a> OracleQuerierNoCache<'a> {
                 // Calculate the price of the LP token.
                 Ok(PrecisionedPrice::new(
                     underlying_price.humanized_price.checked_mul(supply_index)?,
-                    underlying_price.humanized_ema.checked_mul(supply_index)?,
                     underlying_price.timestamp,
                     underlying_price.precision(),
                 ))
@@ -164,6 +167,17 @@ impl OracleContext<'_> {
             },
             OracleContext::Remote { address, querier } => {
                 querier.query_wasm_path(*address, &PRICES.path(pyth_id))
+            },
+        }
+    }
+
+    fn get_lazer_price(&self, lazer_id: PythLazerId) -> StdResult<PrecisionlessPrice> {
+        match self {
+            OracleContext::Local { storage } => {
+                PYTH_LAZER_PRICES.load(*storage, lazer_id)
+            },
+            OracleContext::Remote { address, querier } => {
+                querier.query_wasm_path(*address, &PYTH_LAZER_PRICES.path(lazer_id))
             },
         }
     }
@@ -229,7 +243,6 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(2000),
-                Udec128::new_percent(2000),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
@@ -240,12 +253,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(2000),
-                Udec128::new_percent(2000),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(1000),
                 Udec128::new_percent(1000),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -297,7 +308,6 @@ mod tests {
     ) -> bool {
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(2000),
                 Udec128::new_percent(2000),
                 publish_time,
                 6,
