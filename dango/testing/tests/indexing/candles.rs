@@ -1,9 +1,10 @@
 use {
     assertor::*,
-    chrono::DateTime,
+    chrono::{DateTime, TimeDelta},
     dango_genesis::Contracts,
     dango_testing::{
-        TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer, setup_test_with_indexer,
+        TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer,
+        constants::MOCK_GENESIS_TIMESTAMP, setup_test_with_indexer,
     },
     dango_types::{
         constants::{dango, usdc},
@@ -20,7 +21,7 @@ use {
         CandleInterval, candle::Candle, candle_query::CandleQueryBuilder, pair_price::PairPrice,
         pair_price_query::PairPriceQueryBuilder,
     },
-    std::str::FromStr,
+    std::{str::FromStr, sync::Once},
 };
 
 #[ignore = "This test is now hanging, should be fixed, the mock feature is not working"]
@@ -244,6 +245,41 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
 
+    // Call the `create_pair_prices` function 10 times.
+    //
+    // The first time it is called, it makes 2 blocks:
+    // 1. set up oracle feed (block time: 0.25 s)
+    // 2. place some orders (block time: 0.50 s)
+    //
+    // The orders placed are taken from this example:
+    // https://75m6j-xiaaa-aaaap-ahq4q-cai.icp0.io/?bids=30%2C25%3B20%2C10%3B10%2C10&asks=5%2C10%3B15%2C10%3B25%2C10
+    // It will find the price range 25--30 maximizes the trading volume (denoted
+    // in the base asset). According to our algorithm, the first time this is
+    // done, as no previous auction exists, the clearing price is chosen at the
+    // middle point of the range, which is 27.5. The trading volume is 25 units
+    // of base asset, or or 25 * 27.5 = 687.5 units of quote asset.
+    //
+    // After the auction, the resting order book state is as follows:
+    // https://75m6j-xiaaa-aaaap-ahq4q-cai.icp0.io/?bids=20%2C10%3B10%2C10&asks=25%2C5
+    // - best bid price: 20
+    // - best ask price: 25
+    // - mid price: 22.5
+    //
+    // The function is then called 9 more times. Now, since the mid price exists
+    // and is smaller than the lower bound of the range (22.5 < 25), the clearing
+    // price is chosen as 25 each time. Volume in base asset: 25; volume in
+    // quote asset: 25 * 25 = 625.
+    //
+    // Summary:
+    // - Candle 0s: contains blocks 1-3; block times: 0.25 (no trade), 0.50, 0.75;
+    //   open 27.5, high 27.5, low 25, close 25;
+    //   volume base: 25 * 2 = 50; volume quote: 687.5 + 625 = 1312.5.
+    // - Candle 1s: contains blocks 4-7; block times: 1.00, 1.25, 1.50, 1.75;
+    //   open 25, high 25, low 25, close 25;
+    //   volume base: 25 * 4 = 100; volume quote: 625 * 4 = 2500.
+    // - Candle 2s: contains blocks 8-11; block times: 2.00, 2.25, 2.50, 2.75.
+    //   open 25, high 25, low 25, close 25;
+    //   volume base: 25 * 4 = 100; volume quote: 625 * 4 = 2500.
     for _ in 0..10 {
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
         tokio::time::sleep(std::time::Duration::from_millis(10)).await; // FIXME: avoid having to do this
@@ -256,7 +292,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
         .await?
         .pair_prices;
 
-    assert_that!(pair_prices.clone().len()).is_at_least(10);
+    assert_that!(pair_prices.clone().len()).is_equal_to(10);
 
     let candle_query_builder = CandleQueryBuilder::new(
         CandleInterval::OneSecond,
@@ -268,61 +304,50 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
-    assert_that!(candle_1s.candles).has_length(6);
-    assert_that!(
-        candle_1s
-            .candles
-            .iter()
-            .map(|c| c.time_start.naive_utc().to_string())
-            .collect::<Vec<_>>()
-    )
-    .is_equal_to(vec![
-        "1971-01-01 00:00:05".to_string(),
-        "1971-01-01 00:00:04".to_string(),
-        "1971-01-01 00:00:03".to_string(),
-        "1971-01-01 00:00:02".to_string(),
-        "1971-01-01 00:00:01".to_string(),
-        "1971-01-01 00:00:00".to_string(),
-    ]);
+    assert_that!(candle_1s.candles).has_length(3);
 
-    assert_that!(
-        candle_1s
-            .candles
-            .iter()
-            .map(|c| &c.volume_quote)
-            .collect::<Vec<_>>()
-    )
-    .is_equal_to(vec![
-        &Udec128_6::from_str("687.5").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("687.5").unwrap(),
+    // Note: this vector goes from the newest to the oldest candle.
+    assert_that!(candle_1s.candles).is_equal_to(vec![
+        Candle {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            time_start: MOCK_GENESIS_TIMESTAMP.to_utc_date_time() + TimeDelta::seconds(2),
+            open: Udec128_24::new(25),
+            high: Udec128_24::new(25),
+            low: Udec128_24::new(25),
+            close: Udec128_24::new(25),
+            volume_base: Udec128_6::new(100),
+            volume_quote: Udec128_6::new(2500),
+            interval: CandleInterval::OneSecond,
+            block_height: 11,
+        },
+        Candle {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            time_start: MOCK_GENESIS_TIMESTAMP.to_utc_date_time() + TimeDelta::seconds(1),
+            open: Udec128_24::new(25),
+            high: Udec128_24::new(25),
+            low: Udec128_24::new(25),
+            close: Udec128_24::new(25),
+            volume_base: Udec128_6::new(100),
+            volume_quote: Udec128_6::new(2500),
+            interval: CandleInterval::OneSecond,
+            block_height: 7,
+        },
+        Candle {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            time_start: MOCK_GENESIS_TIMESTAMP.to_utc_date_time(),
+            open: Udec128_24::from_str("27.5").unwrap(),
+            high: Udec128_24::from_str("27.5").unwrap(),
+            low: Udec128_24::new(25),
+            close: Udec128_24::new(25),
+            volume_base: Udec128_6::new(50),
+            volume_quote: Udec128_6::from_str("1312.5").unwrap(),
+            interval: CandleInterval::OneSecond,
+            block_height: 3,
+        },
     ]);
-
-    assert_that!(
-        candle_1s
-            .candles
-            .iter()
-            .map(|c| &c.volume_base)
-            .collect::<Vec<_>>()
-    )
-    .is_equal_to(vec![
-        &Udec128_6::from_str("25").unwrap(),
-        &Udec128_6::from_str("50").unwrap(),
-        &Udec128_6::from_str("50").unwrap(),
-        &Udec128_6::from_str("50").unwrap(),
-        &Udec128_6::from_str("50").unwrap(),
-        &Udec128_6::from_str("25").unwrap(),
-    ]);
-
-    for candle in candle_1s.candles.into_iter() {
-        assert_that!(candle.open).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(candle.high).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(candle.low).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(candle.close).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-    }
 
     Ok(())
 }
@@ -652,20 +677,24 @@ async fn create_pair_prices(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) -> anyhow::Result<()> {
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
+    static SET_UP_ORACLE: Once = Once::new();
+
+    SET_UP_ORACLE.call_once(|| {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                    dango::DENOM.clone() => PriceSource::Fixed {
+                        humanized_price: Udec128::ONE,
+                        precision: 6,
+                        timestamp: Timestamp::from_seconds(1730802926),
+                    },
+                }),
+                Coins::new(),
+            )
+            .should_succeed();
+    });
 
     let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
         (Direction::Bid, 30, 25), // !0 - filled
