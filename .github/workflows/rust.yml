@@ -13,8 +13,8 @@ on:
     branches:
       - "main"
       - "develop"
-      - "ui/testnet"
-      - "ui/release"
+      # - "ui/testnet"
+      # - "ui/release"
     paths:
       - ".github/workflows/rust.yml"
       - "deploy/**"
