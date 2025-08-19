@@ -196,41 +196,39 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 
     assert_that!(pair_prices.clone().len()).is_at_least(10);
 
-    let candle_query_builder = CandleQueryBuilder::new(
+    let candles_1m = CandleQueryBuilder::new(
         CandleInterval::OneMinute,
         "dango".to_string(),
         "bridge/usdc".to_string(),
-    );
+    )
+    .fetch_all(clickhouse_context.clickhouse_client())
+    .await?;
 
-    let candle_1m = candle_query_builder
-        .fetch_all(clickhouse_context.clickhouse_client())
-        .await?;
+    assert_that!(candles_1m.candles).has_length(1);
+    assert_that!(candles_1m.has_next_page).is_false();
+    assert_that!(candles_1m.has_previous_page).is_false();
 
-    assert_that!(candle_1m.candles).has_length(1);
+    let candle = &candles_1m.candles[0];
 
-    assert_that!(candle_1m.has_next_page).is_false();
-    assert_that!(candle_1m.has_previous_page).is_false();
-
-    assert_that!(candle_1m.candles[0].time_start.naive_utc()).is_equal_to(
+    assert_that!(candle.time_start.naive_utc()).is_equal_to(
         DateTime::parse_from_rfc3339("1971-01-01T00:00:00Z")
             .unwrap()
             .naive_utc(),
     );
 
-    assert_that!(candle_1m.candles[0].open).is_equal_to(pair_prices.last().unwrap().open_price);
+    assert_that!(candle.open).is_equal_to(pair_prices.last().unwrap().open_price);
 
-    assert_that!(candle_1m.candles[0].high)
+    assert_that!(candle.high)
         .is_equal_to(pair_prices.iter().map(|p| p.highest_price).max().unwrap());
 
-    assert_that!(candle_1m.candles[0].low)
-        .is_equal_to(pair_prices.iter().map(|p| p.lowest_price).min().unwrap());
+    assert_that!(candle.low).is_equal_to(pair_prices.iter().map(|p| p.lowest_price).min().unwrap());
 
-    assert_that!(candle_1m.candles[0].close).is_equal_to(pair_prices.first().unwrap().close_price);
+    assert_that!(candle.close).is_equal_to(pair_prices.first().unwrap().close_price);
 
-    assert_that!(candle_1m.candles[0].volume_base)
+    assert_that!(candle.volume_base)
         .is_equal_to(pair_prices.iter().map(|p| p.volume_base).sum::<Udec128_6>());
 
-    assert_that!(candle_1m.candles[0].volume_quote).is_equal_to(
+    assert_that!(candle.volume_quote).is_equal_to(
         pair_prices
             .iter()
             .map(|p| p.volume_quote)
@@ -294,20 +292,17 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
 
     assert_that!(pair_prices.clone().len()).is_equal_to(10);
 
-    let candle_query_builder = CandleQueryBuilder::new(
+    let candles_1s = CandleQueryBuilder::new(
         CandleInterval::OneSecond,
         "dango".to_string(),
         "bridge/usdc".to_string(),
-    );
-
-    let candle_1s = candle_query_builder
-        .fetch_all(clickhouse_context.clickhouse_client())
-        .await?;
-
-    assert_that!(candle_1s.candles).has_length(3);
+    )
+    .fetch_all(clickhouse_context.clickhouse_client())
+    .await?
+    .candles;
 
     // Note: this vector goes from the newest to the oldest candle.
-    assert_that!(candle_1s.candles).is_equal_to(vec![
+    assert_that!(candles_1s).is_equal_to(vec![
         Candle {
             base_denom: "dango".to_string(),
             quote_denom: "bridge/usdc".to_string(),
