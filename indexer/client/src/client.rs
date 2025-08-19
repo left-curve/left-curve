@@ -9,35 +9,31 @@ use {
         Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
         UnsignedTx,
     },
+    reqwest::IntoUrl,
     serde::Serialize,
-    std::{fmt::Display, str::FromStr},
+    std::str::FromStr,
+    url::Url,
 };
 
 #[derive(Debug, Clone)]
 pub struct HttpClient {
     inner: reqwest::Client,
-    endpoint: String,
+    url: Url,
 }
 
 impl HttpClient {
-    pub fn new(endpoint: &str) -> Self {
-        Self {
+    pub fn new<U>(url: U) -> Result<Self, anyhow::Error>
+    where
+        U: IntoUrl,
+    {
+        Ok(Self {
             inner: reqwest::Client::new(),
-            endpoint: endpoint.to_string(),
-        }
+            url: url.into_url()?,
+        })
     }
 
-    async fn get<P>(&self, path: P) -> Result<reqwest::Response, anyhow::Error>
-    where
-        P: Display,
-    {
-        error_for_status(
-            self.inner
-                .get(format!("{}/{}", self.endpoint, path))
-                .send()
-                .await?,
-        )
-        .await
+    async fn get(&self, path: &str) -> Result<reqwest::Response, anyhow::Error> {
+        error_for_status(self.inner.get(self.url.join(path)?).send().await?).await
     }
 
     async fn post_graphql<V>(
@@ -52,7 +48,7 @@ impl HttpClient {
         let query = V::Query::build_query(variables);
         let response = error_for_status(
             self.inner
-                .post(format!("{}/graphql", self.endpoint))
+                .post(self.url.join("graphql")?)
                 .json(&query)
                 .send()
                 .await?,
@@ -139,8 +135,8 @@ impl BlockClient for HttpClient {
 
     async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error> {
         let path = match height {
-            Some(height) => format!("api/block/info/{height}"),
-            None => "api/block/info".to_string(),
+            Some(height) => format!("block/info/{height}"),
+            None => "block/info".to_string(),
         };
 
         Ok(self.get(&path).await?.json().await?)
@@ -148,8 +144,8 @@ impl BlockClient for HttpClient {
 
     async fn query_block_outcome(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
         let path = match height {
-            Some(height) => format!("api/block/result/{height}"),
-            None => "api/block/result".to_string(),
+            Some(height) => format!("block/result/{height}"),
+            None => "block/result".to_string(),
         };
 
         Ok(self.get(&path).await?.json().await?)

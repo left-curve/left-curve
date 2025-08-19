@@ -37,7 +37,7 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
 
     wait_for_server_ready(port).await?;
 
-    let client = HttpClient::new(&format!("http://localhost:{port}"));
+    let client = HttpClient::new(format!("http://localhost:{port}"))?;
     let res = client.query_app_config::<AppConfig>(None).await;
 
     assert_that!(res).is_ok();

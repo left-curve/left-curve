@@ -11,7 +11,7 @@ use {
 /// and print the missing amounts if any discrepancies are found.
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = HttpClient::new("https://testnet.dango.exchange");
+    let client = HttpClient::new("https://testnet.dango.exchange")?;
     let cfg: AppConfig = client.query_app_config(None).await?;
 
     // Retrieve the pools reserves.
