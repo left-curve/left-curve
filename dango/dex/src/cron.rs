@@ -20,7 +20,7 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
+        Addr, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
         MutableCtx, Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult,
         Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
         Udec128_24,
@@ -126,7 +126,6 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
 
         clear_orders_of_pair(
             ctx.storage,
-            ctx.api,
             ctx.block.height,
             app_cfg.addresses.dex,
             &mut oracle_querier,
@@ -184,7 +183,6 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
 
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
-    api: &dyn Api,
     current_block_height: u64,
     dex_addr: Addr,
     oracle_querier: &mut OracleQuerier,
@@ -581,8 +579,6 @@ fn clear_orders_of_pair(
         // Record the order's trading volume.
         update_trading_volumes(
             storage,
-            api,
-            dex_addr,
             oracle_querier,
             account_querier,
             &base_denom,
@@ -843,8 +839,6 @@ fn refund_unmatched_market_order(
 /// Updates trading volumes for both user addresses and usernames
 fn update_trading_volumes(
     storage: &mut dyn Storage,
-    api: &dyn Api,
-    dex_addr: Addr,
     oracle_querier: &mut OracleQuerier,
     account_querier: &mut AccountQuerier,
     base_denom: &Denom,
@@ -855,9 +849,15 @@ fn update_trading_volumes(
 ) -> anyhow::Result<()> {
     // Query the base asset's oracle price.
     let base_asset_price = match oracle_querier.query_price(base_denom, None) {
-        Err(err) => {
-            let msg = format!("ERROR: failed to query price! denom: {base_denom}, error: {err}");
-            api.debug(dex_addr, &msg);
+        Err(_err) => {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::warn!(
+                    %base_denom,
+                    %_err,
+                    "Failed to query oracle price for base asset. Skipping volume update"
+                );
+            }
 
             // If the query fails, simply do nothing and return, since we want to
             // ensure that `cron_execute` function doesn't fail.
