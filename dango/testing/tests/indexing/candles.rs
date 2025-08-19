@@ -21,7 +21,7 @@ use {
         CandleInterval, candle::Candle, candle_query::CandleQueryBuilder, pair_price::PairPrice,
         pair_price_query::PairPriceQueryBuilder,
     },
-    std::{str::FromStr, sync::Once},
+    std::str::FromStr,
 };
 
 #[ignore = "This test is now hanging, should be fixed, the mock feature is not working"]
@@ -245,17 +245,15 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
 
     // Call the `create_pair_prices` function 10 times.
     //
-    // The first time it is called, it makes 2 blocks:
-    // 1. set up oracle feed (block time: 0.25 s)
-    // 2. place some orders (block time: 0.50 s)
-    //
     // The orders placed are taken from this example:
     // https://75m6j-xiaaa-aaaap-ahq4q-cai.icp0.io/?bids=30%2C25%3B20%2C10%3B10%2C10&asks=5%2C10%3B15%2C10%3B25%2C10
     // It will find the price range 25--30 maximizes the trading volume (denoted
-    // in the base asset). According to our algorithm, the first time this is
-    // done, as no previous auction exists, the clearing price is chosen at the
-    // middle point of the range, which is 27.5. The trading volume is 25 units
-    // of base asset, or or 25 * 27.5 = 687.5 units of quote asset.
+    // in the base asset).
+    //
+    // According to our algorithm, the first time this is done, as no previous
+    // auction exists, the clearing price is chosen at the middle point of the
+    // range, which is 27.5. The trading volume is 25 units of base asset, or
+    // 25 * 27.5 = 687.5 units of quote asset.
     //
     // After the auction, the resting order book state is as follows:
     // https://75m6j-xiaaa-aaaap-ahq4q-cai.icp0.io/?bids=20%2C10%3B10%2C10&asks=25%2C5
@@ -269,15 +267,15 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
     // quote asset: 25 * 25 = 625.
     //
     // Summary:
-    // - Candle 0s: contains blocks 1-3; block times: 0.25 (no trade), 0.50, 0.75;
+    // - Candle 0s: contains blocks 1-3; block times: 0.25, 0.50, 0.75;
     //   open 27.5, high 27.5, low 25, close 25;
-    //   volume base: 25 * 2 = 50; volume quote: 687.5 + 625 = 1312.5.
+    //   volume base: 25 * 3 = 75; volume quote: 687.5 + 625 * 2 = 1937.5.
     // - Candle 1s: contains blocks 4-7; block times: 1.00, 1.25, 1.50, 1.75;
     //   open 25, high 25, low 25, close 25;
     //   volume base: 25 * 4 = 100; volume quote: 625 * 4 = 2500.
-    // - Candle 2s: contains blocks 8-11; block times: 2.00, 2.25, 2.50, 2.75.
+    // - Candle 2s: contains blocks 8-10; block times: 2.00, 2.25, 2.50.
     //   open 25, high 25, low 25, close 25;
-    //   volume base: 25 * 4 = 100; volume quote: 625 * 4 = 2500.
+    //   volume base: 25 * 3 = 75; volume quote: 625 * 3 = 1875.
     for _ in 0..10 {
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
         tokio::time::sleep(std::time::Duration::from_millis(10)).await; // FIXME: avoid having to do this
@@ -311,10 +309,10 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             high: Udec128_24::new(25),
             low: Udec128_24::new(25),
             close: Udec128_24::new(25),
-            volume_base: Udec128_6::new(100),
-            volume_quote: Udec128_6::new(2500),
+            volume_base: Udec128_6::new(75),
+            volume_quote: Udec128_6::new(1875),
             interval: CandleInterval::OneSecond,
-            block_height: 11,
+            block_height: 10,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -337,8 +335,8 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             high: Udec128_24::from_str("27.5").unwrap(),
             low: Udec128_24::new(25),
             close: Udec128_24::new(25),
-            volume_base: Udec128_6::new(50),
-            volume_quote: Udec128_6::from_str("1312.5").unwrap(),
+            volume_base: Udec128_6::new(75),
+            volume_quote: Udec128_6::from_str("1937.5").unwrap(),
             interval: CandleInterval::OneSecond,
             block_height: 3,
         },
@@ -672,25 +670,6 @@ async fn create_pair_prices(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) -> anyhow::Result<()> {
-    static SET_UP_ORACLE: Once = Once::new();
-
-    SET_UP_ORACLE.call_once(|| {
-        suite
-            .execute(
-                &mut accounts.owner,
-                contracts.oracle,
-                &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                    dango::DENOM.clone() => PriceSource::Fixed {
-                        humanized_price: Udec128::ONE,
-                        precision: 6,
-                        timestamp: Timestamp::from_seconds(1730802926),
-                    },
-                }),
-                Coins::new(),
-            )
-            .should_succeed();
-    });
-
     let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
         (Direction::Bid, 30, 25), // !0 - filled
         (Direction::Bid, 20, 10), // !1 - unfilled
