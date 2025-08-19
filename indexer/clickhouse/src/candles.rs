@@ -262,7 +262,7 @@ impl Indexer {
 
         for (_, pair_price) in all_pair_prices.iter() {
             #[cfg(feature = "tracing")]
-            tracing::warn!(
+            tracing::debug!(
                 "{} Inserting pair price: open {} close {}",
                 pair_price.block_height,
                 pair_price.open_price,
