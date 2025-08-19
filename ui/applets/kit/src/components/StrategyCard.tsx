@@ -1,9 +1,9 @@
 import { useConfig } from "@left-curve/store";
-import { Button } from "#components/Button.js";
+import { Button } from "../components/Button.js";
 
 import type { PairSymbols, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "../utils/twMerge.js";
 
 type StrategyCardProps = {
   pair: PairUpdate;

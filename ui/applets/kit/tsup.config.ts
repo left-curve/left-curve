@@ -8,7 +8,7 @@ export default defineConfig([
   {
     ...(config as Options),
     entry: ["./src/**"],
-    bundle: true,
+    bundle: false,
     splitting: false,
     treeshake: false,
     format: ["esm", "cjs"],

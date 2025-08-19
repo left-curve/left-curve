@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@left-curve/dango": "workspace:*",
+    "@left-curve/applets-kit": "workspace:*",
     "@left-curve/config": "workspace:*",
     "@left-curve/store": "workspace:*",
     "@tanstack/react-query": "catalog:",

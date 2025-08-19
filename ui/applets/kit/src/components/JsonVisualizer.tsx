@@ -1,4 +1,4 @@
-import JsonView from "@microlink/react-json-view";
+import { lazy } from "react";
 
 import type React from "react";
 import type { JsonString, JsonValue, OneRequired } from "@left-curve/dango/types";
@@ -6,6 +6,8 @@ import type { JsonString, JsonValue, OneRequired } from "@left-curve/dango/types
 type JsonVisualizerProps = {
   collapsed?: boolean | number;
 } & OneRequired<{ json: JsonValue; string: JsonString }, "json", "string">;
+
+const JsonView = lazy(() => import("@microlink/react-json-view"));
 
 export const JsonVisualizer: React.FC<JsonVisualizerProps> = ({ json, string, collapsed }) => {
   const source = string ? JSON.parse(string) : json;

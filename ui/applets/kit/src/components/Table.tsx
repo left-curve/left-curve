@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-table";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "../utils/twMerge.js";
 
 import { Fragment } from "react";
 import { Skeleton } from "./Skeleton";
