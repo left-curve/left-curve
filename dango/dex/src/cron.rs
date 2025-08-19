@@ -233,9 +233,15 @@ fn clear_orders_of_pair(
                 quote_denom.clone(),
                 reserve,
             )
-            .inspect_err(|err| {
-                let msg = format!("ERROR: reflect curve failed! base denom: {base_denom}, quote denom: {quote_denom}, reserve: {reserve:?}, error: {err}"); // TODO: use tracing instead
-                api.debug(dex_addr, &msg);
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(
+                    %base_denom,
+                    %quote_denom,
+                    ?reserve,
+                    %_err,
+                    "!!! REFLECT CURVE FAILED !!!"
+                );
             })
             .unwrap_or_else(|_| (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _))
         },
