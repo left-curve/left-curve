@@ -4,7 +4,7 @@ use {
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_types::{PriceUpdate, constants::PYTH_URL},
+    pyth_types::constants::PYTH_URL,
     std::{fmt::Debug, sync::Mutex},
     tracing::error,
 };
@@ -87,12 +87,12 @@ where
         }
 
         // Retrieve the PriceUpdate.
-        let price_update = pyth_handler.fetch_latest_price_update();
+        let maybe_price_update = pyth_handler.fetch_latest_price_update();
 
         // Return if there are no new prices to feed.
-        if price_update.is_empty() {
+        let Some(price_update) = maybe_price_update else {
             return Ok(txs);
-        }
+        };
 
         // Build the tx.
         let tx = Tx {

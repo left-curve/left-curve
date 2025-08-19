@@ -19,7 +19,6 @@ pub struct LatestVaaBinaryResponse {
 pub enum PriceUpdate {
     Core(NonEmpty<Vec<Binary>>),
     Lazer(String),
-    Empty,
 }
 
 impl PriceUpdate {
@@ -31,11 +30,6 @@ impl PriceUpdate {
     /// Check if the `PriceUpdate` is a Lazer.
     pub fn is_lazer(&self) -> bool {
         matches!(self, PriceUpdate::Lazer(_))
-    }
-
-    /// Check if the `PriceUpdate` is empty.
-    pub fn is_empty(&self) -> bool {
-        matches!(self, PriceUpdate::Empty)
     }
 
     /// Try to cast `PriceUpdate` to `Core`.

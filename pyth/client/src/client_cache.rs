@@ -165,7 +165,7 @@ impl PythClientTrait for PythClientCache {
         Ok(Box::pin(stream))
     }
 
-    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
+    fn get_latest_price_update<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
     where
         I: IntoIterator + Clone + Lengthy,
         I::Item: ToString,

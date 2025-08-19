@@ -21,14 +21,14 @@ use {
 /// keep all code related to Pyth for PP in a single structure.
 pub struct PythHandler<P> {
     client: P,
-    shared_vaas: Shared<PriceUpdate>,
+    shared_vaas: Shared<Option<PriceUpdate>>,
     current_ids: Vec<PythId>,
     stoppable_thread: Option<(Arc<AtomicBool>, thread::JoinHandle<()>)>,
 }
 
 impl PythHandler<PythClient> {
     pub fn new<U: IntoUrl>(base_url: U) -> PythHandler<PythClient> {
-        let shared_vaas = Shared::new(PriceUpdate::Empty);
+        let shared_vaas = Shared::new(None);
 
         Self {
             client: PythClient::new(base_url).unwrap(),
@@ -44,7 +44,7 @@ impl PythHandler<PythClientCache> {
     where
         U: IntoUrl,
     {
-        let shared_vaas = Shared::new(PriceUpdate::Empty);
+        let shared_vaas = Shared::new(None);
 
         Self {
             client: PythClientCache::new(base_url).unwrap(),
@@ -59,10 +59,10 @@ impl<P> PythHandler<P>
 where
     P: PythClientTrait,
 {
-    pub fn fetch_latest_price_update(&self) -> PriceUpdate {
+    pub fn fetch_latest_price_update(&self) -> Option<PriceUpdate> {
         // Retrieve the VAAs from the shared memory and consume them in order to
         // avoid pushing the same VAAs again.
-        self.shared_vaas.replace(PriceUpdate::Empty)
+        self.shared_vaas.replace(None)
     }
 
     pub fn close_stream(&mut self) {
@@ -148,7 +148,7 @@ where
                                 }
 
                                 if let Some(data) = data {
-                                    shared_vaas.write_with(|mut shared_vaas| *shared_vaas = data);
+                                    shared_vaas.write_with(|mut shared_vaas| *shared_vaas = Some(data));
                                 }
                             }
 

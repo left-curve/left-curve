@@ -10,13 +10,9 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-# anyhow        = { workspace = true }
-# byteorder     = { workspace = true }
-# data-encoding = { workspace = true }
-grug = { workspace = true }
-# hex-literal   = { workspace = true }
-# dango-types         = { workspace = true }
+grug                = { workspace = true }
 grug-testing        = { workspace = true }
+pyth-client         = { workspace = true }
 pyth-lazer-client   = { workspace = true }
 pyth-lazer-protocol = { workspace = true }
 tokio               = { workspace = true }

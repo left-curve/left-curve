@@ -210,6 +210,7 @@ impl PythClientTrait for PythClient {
                                     match message.data.deserialize_json::<LatestVaaResponse>() {
                                         Ok(vaas) => {
                                             if vaas.binary.data.is_empty() {
+                                                warn!("Received empty data from Pyth SSE stream");
                                                 continue;
                                             }
 
@@ -239,7 +240,7 @@ impl PythClientTrait for PythClient {
         Ok(Box::pin(stream))
     }
 
-    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
+    fn get_latest_price_update<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
     where
         I: IntoIterator + Clone + Lengthy,
         I::Item: ToString,

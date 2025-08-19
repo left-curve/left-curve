@@ -176,11 +176,11 @@ fn multiple_vaas() {
         .collect::<BTreeMap<_, Option<(PrecisionlessPrice, u64)>>>();
 
     for _ in 0..5 {
-        let price_update = pyth_client.get_latest_vaas(ids.clone()).unwrap();
+        let price_update = pyth_client.get_latest_price_update(ids.clone()).unwrap();
 
-        let PriceUpdate::Core(vaas_raw) = price_update else {
-            panic!("Expected Core price update, got: {:?}", price_update);
-        };
+        let vaas_raw = price_update
+            .try_into_core()
+            .expect("Expected PriceUpdate::Core");
 
         let vaas = vaas_raw
             .iter()

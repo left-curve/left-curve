@@ -115,7 +115,7 @@ async fn sse_handler(
     let mut values = vec![];
     for _ in 0..3 {
         let latest_vaas = pyth_client_cache
-            .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
+            .get_latest_price_update(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
             .unwrap();
 
         let data = LatestVaaResponse {

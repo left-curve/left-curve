@@ -17,7 +17,7 @@ pub trait PythClientTrait: Clone {
         I: IntoIterator + Lengthy + Send + Clone,
         I::Item: ToString;
 
-    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
+    fn get_latest_price_update<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
     where
         I: IntoIterator + Clone + Lengthy,
         I::Item: ToString;

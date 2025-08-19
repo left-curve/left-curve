@@ -47,7 +47,7 @@ fn proposal_pyth() {
 
         PythClientCache::new(PYTH_URL)
             .unwrap()
-            .get_latest_vaas(NonEmpty::new(pyth_ids).unwrap())
+            .get_latest_price_update(NonEmpty::new(pyth_ids).unwrap())
             .unwrap();
     }
 

@@ -35,7 +35,7 @@ fn create_cache() {
 
     let client = PythClientCache::new(PYTH_URL).unwrap();
     client
-        .get_latest_vaas(NonEmpty::new_unchecked(update_ids))
+        .get_latest_price_update(NonEmpty::new_unchecked(update_ids))
         .unwrap();
 
     for id in update_ids {

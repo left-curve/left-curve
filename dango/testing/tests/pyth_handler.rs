@@ -34,7 +34,7 @@ fn handler() {
         // Create cache for ids if not present.
         PythClientCache::new(PYTH_URL)
             .unwrap()
-            .get_latest_vaas(NonEmpty::new(pyth_ids).unwrap())
+            .get_latest_price_update(NonEmpty::new(pyth_ids).unwrap())
             .unwrap();
     }
 
@@ -76,7 +76,7 @@ fn handler() {
 
     // Assert the streaming is closed.
     for _ in 0..3 {
-        assert!(handler.fetch_latest_price_update().is_empty());
+        assert!(handler.fetch_latest_price_update().is_none());
         sleep(Duration::from_millis(500));
     }
 
@@ -100,7 +100,7 @@ fn check_handler_works(handler: &PythHandler<PythClientCache>, data_wanted: usiz
         let data = handler.fetch_latest_price_update();
 
         // Check if we received some data.
-        if !data.is_empty() {
+        if data.is_some() {
             received_data += 1;
 
             if let Some(previous) = previous_data {
@@ -110,7 +110,7 @@ fn check_handler_works(handler: &PythHandler<PythClientCache>, data_wanted: usiz
 
             // Now that we have read the data, the next iteration should be empty
             // since the handler didn't have time to fetch new data.
-            assert!(handler.fetch_latest_price_update().is_empty());
+            assert!(handler.fetch_latest_price_update().is_none());
 
             // We have met the data wanted, we can stop.
             if received_data >= data_wanted {

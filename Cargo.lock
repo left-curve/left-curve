@@ -7735,6 +7735,7 @@ version = "0.0.0"
 dependencies = [
  "grug",
  "grug-testing",
+ "pyth-client",
  "pyth-lazer-client",
  "pyth-lazer-protocol",
  "tokio",
