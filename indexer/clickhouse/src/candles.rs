@@ -15,7 +15,8 @@ use {
         CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
         FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten, Number, NumberConst, Udec128_6,
     },
-    std::{collections::HashMap, str::FromStr},
+    std::{collections::HashMap, str::FromStr, time::Duration},
+    tokio::time::sleep,
 };
 
 impl Indexer {
@@ -169,21 +170,41 @@ impl Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!("Saving {} pair prices", pair_prices.len());
 
-        // To reinject previous prices and trigger the clickhouse materialized views
-        let mut last_prices = {
-            let candle_cache = context.candle_cache.read().await;
+        // NOTE: `store_candles` isn't necessarily called in order, during tests with
+        // very fast calls, those won't come in order. Could also potentially
+        // happen in production (but rare I guess).
+        // We must have a previous price, unless it's genesis block. Because the previous
+        // block close price defines this block open price.
+        // Previous prices are also used to trigger clickhouse materialized views
+        // when no new price have arrived in this current block.
 
-            candle_cache
-                .pair_price_for_block(block.info.height - 1)
-                .cloned()
-                .unwrap_or_default()
+        let mut last_prices = {
+            let mut previous_prices = None;
+
+            // NOTE: I'm avoiding genesis block since we know no previous prices exist.
+            if block.info.height > 1 {
+                // Preventing infinite loop
+                for _ in 0..=10 {
+                    let candle_cache = context.candle_cache.read().await;
+                    previous_prices = candle_cache
+                        .pair_price_for_block(block.info.height - 1)
+                        .cloned();
+                    drop(candle_cache);
+
+                    // NOTE: could maybe look at the clickhouse data as a fallback if not in memory,
+                    // which could happen when restarting the indexer.
+                    if previous_prices.is_some() {
+                        break;
+                    }
+
+                    sleep(Duration::from_millis(100)).await;
+                }
+            }
+
+            previous_prices.unwrap_or_default()
         };
 
-        // Use Row binary inserter with the official clickhouse serde helpers
-        let mut inserter = clickhouse_client
-            .inserter::<PairPrice>("pair_prices")?
-            .with_max_rows(pair_prices.len() as u64);
-
+        // Changing open price to the closing price of the previous pair price
         for (pair_id, pair_price) in pair_prices.iter_mut() {
             // open price is the closing price of the previous pair price
             if let Some(last_price) = last_prices.get(pair_id) {
@@ -196,20 +217,15 @@ impl Indexer {
                 if last_price.close_price < pair_price.lowest_price {
                     pair_price.lowest_price = last_price.close_price;
                 }
-            }
 
-            inserter.write(pair_price).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
-                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
-            })?;
+                tracing::debug!(block.info.height, "found previous pair price");
+            } else {
+                #[cfg(feature = "tracing")]
+                tracing::debug!(block.info.height, "didn't find previous pair price");
+            }
         }
 
-        // Manually injecting synthetic pair prices for pairs that
-        // didn't have any trades in this block.
-        // This is needed to ensure that the materialized views are up to date.
-        // We set the open price, lowest price, and highest price to previous
-        // closing price, and the volume to zero.
-        // The created_at and block_height are set to the current block.
         for (pair_id, last_price) in last_prices.iter_mut() {
             if pair_prices.contains_key(pair_id) {
                 // If the pair price already exists, skip it.
@@ -225,24 +241,38 @@ impl Indexer {
             last_price.open_price = last_price.close_price;
             last_price.lowest_price = last_price.close_price;
             last_price.highest_price = last_price.close_price;
-
-            inserter.write(last_price).inspect_err(|_err| {
-                #[cfg(feature = "tracing")]
-                tracing::error!("Failed to write pair price: {last_price:#?}: {_err}");
-            })?;
-
-            #[cfg(feature = "metrics")]
-            metrics::counter!("indexer.clickhouse.synthetic_prices.total").increment(1);
         }
 
-        // Do this after looping in the `pair_prices` for `inserter`
-        // so `open_price` is set correctly
+        let mut all_pair_prices = last_prices;
+
+        all_pair_prices.extend(pair_prices);
+
+        // Writing the cache asap so other threads needing this have it asap.
         {
-            last_prices.extend(pair_prices);
             let mut candle_cache = context.candle_cache.write().await;
-            candle_cache.add_pair_prices(block.info.height, last_prices);
-            candle_cache.compact_keep_n(MAX_ITEMS);
+            candle_cache.add_pair_prices(block.info.height, all_pair_prices.clone());
+            candle_cache.compact_keep_n(MAX_ITEMS * 2);
             drop(candle_cache);
+        }
+
+        // Use Row binary inserter with the official clickhouse serde helpers
+        let mut inserter = clickhouse_client
+            .inserter::<PairPrice>("pair_prices")?
+            .with_max_rows(all_pair_prices.len() as u64);
+
+        for (_, pair_price) in all_pair_prices.iter() {
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                "{} Inserting pair price: open {} close {}",
+                pair_price.block_height,
+                pair_price.open_price,
+                pair_price.close_price
+            );
+
+            inserter.write(pair_price).inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
+            })?;
         }
 
         inserter.commit().await.inspect_err(|_err| {
