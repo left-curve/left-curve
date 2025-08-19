@@ -20,6 +20,8 @@ pub struct FillingOutcome {
     pub fee_base: Udec128_6,
     /// Fee charged in quote asset.
     pub fee_quote: Udec128_6,
+    /// The price at which the order was filled.
+    pub clearing_price: Udec128_24,
 }
 
 /// Clear the orders given a clearing price and volume.
@@ -96,7 +98,14 @@ fn fill_bids(
         // For quote, in case the order is filled at a price better than the
         // limit price, refund the unused deposit.
         let refund_base = filled_base.checked_sub(fee_base)?;
-        let refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
+        let mut refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
+
+        // For market orders, refund the remaining (unfilled) amount, as market
+        // orders are immediate-or-cancel.
+        if let Order::Market(market_order) = order {
+            let remaining_in_quote = market_order.remaining.checked_mul(market_order.price)?;
+            refund_quote.checked_add_assign(remaining_in_quote)?;
+        }
 
         outcome.push(FillingOutcome {
             order_direction: Direction::Bid,
@@ -107,6 +116,7 @@ fn fill_bids(
             refund_quote,
             fee_base,
             fee_quote,
+            clearing_price,
         });
 
         if volume.is_zero() {
@@ -157,8 +167,14 @@ fn fill_asks(
         // Determine the refund amounts.
         // For base, since limit orders are good-till-canceled, no need to refund.
         // For quote, it's the filled amount minus the fee.
-        let refund_base = Udec128_6::ZERO;
+        let mut refund_base = Udec128_6::ZERO;
         let refund_quote = filled_quote.checked_sub(fee_quote)?;
+
+        // For market orders, refund the remaining (unfilled) amount, as market
+        // orders are immediate-or-cancel.
+        if let Order::Market(market_order) = order {
+            refund_base.checked_add_assign(market_order.remaining)?;
+        }
 
         outcome.push(FillingOutcome {
             order_direction: Direction::Ask,
@@ -169,6 +185,7 @@ fn fill_asks(
             refund_quote,
             fee_base,
             fee_quote,
+            clearing_price,
         });
 
         if volume.is_zero() {

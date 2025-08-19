@@ -10,6 +10,7 @@ use {
             self, CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction,
             OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
             QueryOrdersByPairRequest, QueryOrdersRequest, QueryReserveRequest,
+            QueryRestingOrderBookStateRequest, RestingOrderBookState,
         },
         gateway::Remote,
         oracle::{self, PrecisionlessPrice, PriceSource},
@@ -70,7 +71,7 @@ fn cannot_submit_order_with_zero_amount() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::ZERO), // incorrect!
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 }],
                 creates_limit: vec![],
                 cancels: None,
@@ -3696,7 +3697,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3719,7 +3720,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     },
     btree_map! {
         OrderId::new(1) => (Direction::Ask, Udec128::new(1), Uint128::new(100_000_000), Uint128::new(100_000_000), 0),
-    };
+    }
+    => panics "can't create market ask order, because best bid price isn't available";
     "One limit ask, one market ask, no match"
 )]
 #[test_case(
@@ -3747,7 +3749,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3770,7 +3772,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     },
     btree_map! {
         OrderId::new(!1) => (Direction::Bid, Udec128::new(1), Uint128::new(100_000_000), Uint128::new(100_000_000), 0),
-    };
+    }
+    => panics "can't create market bid order, because best ask price isn't available";
     "One limit bid, one market bid, no match"
 )]
 #[test_case(
@@ -3798,7 +3801,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3847,7 +3850,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3896,7 +3899,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3944,8 +3947,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(200_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -3994,7 +3997,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4044,8 +4047,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(200_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4096,7 +4099,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4147,7 +4150,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4198,7 +4201,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4245,7 +4248,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: NonZero::new_unchecked(Udec128_24::new_percent(200)),
+                    price: NonZero::new_unchecked(Udec128_24::new_percent(105)),
                 },
             ],
             coins! {
@@ -4261,11 +4264,11 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(5)),
                 },
             ],
             coins! {
-                usdc::DENOM.clone() => 150_000_000,
+                usdc::DENOM.clone() => 157_500_000,
             },
         )
     ],
@@ -4275,90 +4278,21 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     btree_map! {
         0 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
-            usdc::DENOM.clone() => BalanceChange::Increased(100_000_000),
+            usdc::DENOM.clone() => BalanceChange::Increased(105_000_000),
         },
         1 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
-            usdc::DENOM.clone() => BalanceChange::Increased(50_000_000),
+            dango::DENOM.clone() => BalanceChange::Decreased(100_000_000), // partially filled limit order should stay on the book, half remaining
+            usdc::DENOM.clone() => BalanceChange::Increased(52_500_000),
         },
         2 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Increased(125_000_000),
-            usdc::DENOM.clone() => BalanceChange::Decreased(150_000_000),
+            dango::DENOM.clone() => BalanceChange::Increased(150_000_000),
+            usdc::DENOM.clone() => BalanceChange::Decreased(157_500_000),
         },
     },
     btree_map! {
-        OrderId::new(2) => (Direction::Ask, Udec128::new_percent(200), Uint128::new(100_000_000), Uint128::new(75_000_000), 1),
+        OrderId::new(2) => (Direction::Ask, Udec128::new_percent(105), Uint128::new(100_000_000), Uint128::new(50_000_000), 1),
     };
     "Two limit asks different prices, one market bid, second limit partially filled, no fees, slippage not exceeded"
-)]
-#[test_case(
-    vec![
-        (
-            vec![
-                CreateLimitOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: NonZero::new_unchecked(Udec128_24::new(1)),
-                },
-            ],
-            coins! {
-                dango::DENOM.clone() => 100_000_000,
-            },
-        ),
-        (
-            vec![
-                CreateLimitOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: NonZero::new_unchecked(Udec128_24::new_percent(200)),
-                },
-            ],
-            coins! {
-                dango::DENOM.clone() => 100_000_000,
-            },
-        ),
-    ],
-    vec![
-        (
-            vec![
-                CreateMarketOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(200_000_000)),
-                    max_slippage: Udec128::new_percent(20),
-                },
-            ],
-            coins! {
-                usdc::DENOM.clone() => 200_000_000,
-            },
-        )
-    ],
-    false,
-    Udec128::ZERO,
-    Udec128::ZERO,
-    btree_map! {
-        0 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
-            usdc::DENOM.clone() => BalanceChange::Increased(100_000_000),
-        },
-        1 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(100_000_000),
-            usdc::DENOM.clone() => BalanceChange::Increased(50_000_000),
-        },
-        2 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Increased(125_000_000),
-            usdc::DENOM.clone() => BalanceChange::Decreased(150_000_000),
-        },
-    },
-    btree_map! {
-        OrderId::new(2) => (Direction::Ask, Udec128::new_percent(200), Uint128::new(100_000_000), Uint128::new(75_000_000), 1),
-    };
-    "Two limit asks different prices, one market bid, second limit partially filled, no fees, slippage exceeded"
 )]
 #[test_case(
     vec![
@@ -4399,7 +4333,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(50)),
                 },
             ],
             coins! {
@@ -4413,7 +4347,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     btree_map! {
         0 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Increased(100_000_000),
-            usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
+            usdc::DENOM.clone() => BalanceChange::Decreased(50_000_000),
         },
         1 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Increased(50_000_000),
@@ -4421,82 +4355,13 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         },
         2 => btree_map! {
             dango::DENOM.clone() => BalanceChange::Decreased(150_000_000),
-            usdc::DENOM.clone() => BalanceChange::Increased(125_000_000),
+            usdc::DENOM.clone() => BalanceChange::Increased(75_000_000),
         },
     },
     btree_map! {
         OrderId::new(!2) => (Direction::Bid, Udec128::new_percent(50), Uint128::new(100_000_000), Uint128::new(50_000_000), 1),
     };
     "Two limit bids different prices, one market ask, second limit partially filled, no fees, slippage not exceeded"
-)]
-#[test_case(
-    vec![
-        (
-            vec![
-                CreateLimitOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: NonZero::new_unchecked(Udec128_24::new(1)),
-                },
-            ],
-            coins! {
-                usdc::DENOM.clone() => 100_000_000,
-            },
-        ),
-        (
-            vec![
-                CreateLimitOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: NonZero::new_unchecked(Udec128_24::new_percent(10)),
-                },
-            ],
-            coins! {
-                usdc::DENOM.clone() => 10_000_000,
-            },
-        ),
-    ],
-    vec![
-        (
-            vec![
-                CreateMarketOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::new_percent(10),
-                },
-            ],
-            coins! {
-                dango::DENOM.clone() => 150_000_000,
-            },
-        )
-    ],
-    false,
-    Udec128::ZERO,
-    Udec128::ZERO,
-    btree_map! {
-        0 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Increased(100_000_000),
-            usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
-        },
-        1 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Increased(12_500_000),
-            usdc::DENOM.clone() => BalanceChange::Decreased(10_000_000),
-        },
-        2 => btree_map! {
-            dango::DENOM.clone() => BalanceChange::Decreased(112_500_000),
-            usdc::DENOM.clone() => BalanceChange::Increased(101_250_000),
-        },
-    },
-    btree_map! {
-        OrderId::new(!2) => (Direction::Bid, Udec128::new_percent(10), Uint128::new(100_000_000), Uint128::new(87_500_000), 1),
-    };
-    "Two limit bids different prices, one market ask, second limit partially filled, no fees, slippage exceeded"
 )]
 #[test_case(
     vec![
@@ -4523,11 +4388,11 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
             coins! {
-                usdc::DENOM.clone() => 50_000_000,
+                usdc::DENOM.clone() => 99_500_000,
             },
         ),
         (
@@ -4537,11 +4402,11 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(30_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
             coins! {
-                usdc::DENOM.clone() => 30_000_000,
+                usdc::DENOM.clone() => 59_700_000,
             },
         ),
 
@@ -4593,7 +4458,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
             coins! {
@@ -4607,7 +4472,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(30_000_000)),
-                    max_slippage: Udec128::new_percent(99),
+                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
             coins! {
@@ -4663,7 +4528,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4712,11 +4577,11 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
-                usdc::DENOM.clone() => 150_000_000,
+                usdc::DENOM.clone() => 300_000_000,
             },
         )
     ],
@@ -4761,7 +4626,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4810,7 +4675,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4859,7 +4724,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4880,7 +4745,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             usdc::DENOM.clone() => BalanceChange::Decreased(100_000_000),
         },
     },
-    BTreeMap::new();
+    BTreeMap::new()
+    => panics "can't create market bid order, because best ask price isn't available";
     "One limit ask price 1.0, one market bid, limit order smaller size, 1% maker fee, 5% taker fee, no slippage, limit order placed in same block as market order"
 )]
 #[test_case(
@@ -4908,7 +4774,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -4929,7 +4795,8 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             usdc::DENOM.clone() => BalanceChange::Increased(95_000_000),
         },
     },
-    BTreeMap::new();
+    BTreeMap::new()
+    => panics "can't create market ask order, because best bid price isn't available";
     "One limit bid price 1.0, one market ask, limit order smaller size, 1% maker fee, 5% taker fee, no slippage, limit order placed in same block as market order"
 )]
 #[test_case(
@@ -4957,14 +4824,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5013,14 +4880,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5069,7 +4936,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5083,14 +4950,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5143,7 +5010,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5157,14 +5024,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5217,7 +5084,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5231,14 +5098,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Ask,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5291,7 +5158,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5305,14 +5172,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 CreateMarketOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                     direction: Direction::Bid,
                     amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    max_slippage: Udec128::ZERO,
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             coins! {
@@ -5351,7 +5218,7 @@ fn market_order_clearing(
 ) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
-    // Set maker and taker fee rates to 0 for simplicity
+    // Set maker and taker fee rates
     let mut app_config: AppConfig = suite.query_app_config().unwrap();
     app_config.maker_fee_rate = Bounded::new(maker_fee_rate).unwrap();
     app_config.taker_fee_rate = Bounded::new(taker_fee_rate).unwrap();
@@ -5504,37 +5371,6 @@ fn market_order_clearing(
     CreateLimitOrderRequest {
         base_denom: eth::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(9307)),
-        price: NonZero::new_unchecked(Udec128_24::new(1000000)),
-    },
-    coins! {
-        eth::DENOM.clone() => 9307,
-    },
-    CreateMarketOrderRequest {
-        base_denom: eth::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(500000)),
-        max_slippage: Udec128::new_percent(8),
-    },
-    coins! {
-        usdc::DENOM.clone() => 500000,
-    },
-    btree_map! {
-        eth::DENOM.clone() => BalanceChange::Decreased(9307),
-        usdc::DENOM.clone() => BalanceChange::Increased(498750),
-    },
-    btree_map! {
-        eth::DENOM.clone() => BalanceChange::Unchanged,
-        usdc::DENOM.clone() => BalanceChange::Decreased(500000),
-    }
-    ; "limit ask matched with market bid market size limiting factor market order gets refunded"
-)]
-#[test_case(
-    CreateLimitOrderRequest {
-        base_denom: eth::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
         direction: Direction::Bid,
         amount: NonZero::new_unchecked(Uint128::new(500000)),
         price: NonZero::new_unchecked(Udec128_24::new_bps(1)),
@@ -5547,7 +5383,7 @@ fn market_order_clearing(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Ask,
         amount: NonZero::new_unchecked(Uint128::new(9999)),
-        max_slippage: Udec128::new_percent(8),
+        max_slippage: Bounded::new_unchecked(Udec128::new_percent(8)),
     },
     coins! {
         eth::DENOM.clone() => 9999,
@@ -5560,7 +5396,7 @@ fn market_order_clearing(
         eth::DENOM.clone() => BalanceChange::Decreased(9999),
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
-    ; "limit bid matched with market ask market size limiting factor market order gets refunded"
+    ; "limit bid matched with market ask market size limiting factor market order does not get refunded"
 )]
 #[test_case(
     CreateLimitOrderRequest {
@@ -5578,7 +5414,7 @@ fn market_order_clearing(
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Ask,
         amount: NonZero::new_unchecked(Uint128::new(500000)),
-        max_slippage: Udec128::new_percent(8),
+        max_slippage: Bounded::new_unchecked(Udec128::new_percent(8)),
     },
     coins! {
         eth::DENOM.clone() => 500000,
@@ -5735,4 +5571,581 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
         dango::DENOM.clone() => BalanceChange::Increased(996000),
         usdc::DENOM.clone() => BalanceChange::Decreased(1000000),
     });
+}
+
+#[test]
+fn market_orders_are_sorted_by_price_ascending() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Set maker and taker fee rates to 0 for simplicity
+    // TODO: make this configurable in `TestOptions`
+    let mut app_config: AppConfig = suite.query_app_config().unwrap();
+    app_config.maker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    app_config.taker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    suite
+        .configure(
+            &mut accounts.owner, // Must be the chain owner
+            None,                // No chain config update
+            Some(app_config),    // App config update
+        )
+        .should_succeed();
+
+    // Register oracle price source for USDC and DANGO. Needed for volume tracking in cron_execute
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // No matter which user places the orders they outcome should be the same.
+    for i in 0..2 {
+        let (first_user, second_user) = if i == 0 {
+            (&mut accounts.user2, &mut accounts.user3)
+        } else {
+            (&mut accounts.user3, &mut accounts.user2)
+        };
+
+        suite
+            .balances()
+            .record_many([&*first_user, &*second_user, &accounts.user1]);
+
+        // Place limit ASK with user 1. This is the first order in the order book. Since
+        // no matching orders exist this order will be the only order in the resting order book
+        // at the end of the block.
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates_market: vec![],
+                    creates_limit: vec![CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Ask,
+                        amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                        price: NonZero::new_unchecked(Udec128_24::new(1)),
+                    }],
+                    cancels: None,
+                },
+                coins! {
+                    dango::DENOM.clone() => 1000000,
+                },
+            )
+            .should_succeed();
+
+        // Submit two market orders from different users in the same block. First user
+        // places a market order with 0% slippage and second user places a market order
+        // with 5% slippage.
+        let txs = vec![
+            first_user
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![CreateMarketOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Bid,
+                                    amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                                }],
+                                creates_limit: vec![],
+                                cancels: None,
+                            },
+                            coins! {
+                                usdc::DENOM.clone() => 1000000,
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+            second_user
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![CreateMarketOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Bid,
+                                    amount: NonZero::new_unchecked(Uint128::new(1050000)),
+                                    max_slippage: Bounded::new_unchecked(Udec128::new_percent(5)),
+                                }],
+                                creates_limit: vec![],
+                                cancels: None,
+                            },
+                            coins! {
+                                usdc::DENOM.clone() => 1102500, // amount * (best_ask_price * (1 + max_slippage)) = 1050000 * (1 * (1 + 0.05))
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+        ];
+
+        // Make a block with the order submissions. Ensure all transactions were
+        // successful.
+        suite
+            .make_block(txs)
+            .block_outcome
+            .tx_outcomes
+            .into_iter()
+            .for_each(|outcome| {
+                outcome.should_succeed();
+            });
+
+        // Assert that the second_user gets fully matched and the first_user gets no match
+        // since the second_user's order is at a higher price and fully consumes the limit order.
+        suite.balances().should_change(&accounts.user1, btree_map! {
+            dango::DENOM.clone() => BalanceChange::Decreased(1000000),
+            usdc::DENOM.clone() => BalanceChange::Increased(1000000),
+        });
+        suite.balances().should_change(first_user, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Unchanged, // no match and deposit is refunded
+            dango::DENOM.clone() => BalanceChange::Unchanged, // no match
+        });
+        suite.balances().should_change(second_user, btree_map! {
+            usdc::DENOM.clone() => BalanceChange::Decreased(1000000), // Cleared at resting book price of 1.0 consumes 1000000 USDC and refunds 50000 USDC
+            dango::DENOM.clone() => BalanceChange::Increased(1000000),
+        });
+    }
+}
+
+/// During the `match_orders` function call, there may be an order that's popped
+/// out of the iterator but didn't find a match. Considering the following case:
+///
+/// - id 1, limit ask, price 100, amount 1
+/// - id 2, limit bid, price 101, amount 1
+/// - id 3, market bid, price 100, amount 1
+///
+/// Since order 2 has the better price, it will be matched against 1.
+/// Market order 3 will be popped out of the iterator, but not finding a match.
+/// In this case, we need to handle the cancelation and refund of this order.
+#[test]
+fn refund_left_over_market_bid() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Set maker and taker fee rates to 0 for simplicity
+    // TODO: make this configurable in `TestOptions`
+    let mut app_config: AppConfig = suite.query_app_config().unwrap();
+    app_config.maker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    app_config.taker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    suite
+        .configure(
+            &mut accounts.owner, // Must be the chain owner
+            None,                // No chain config update
+            Some(app_config),    // App config update
+        )
+        .should_succeed();
+
+    // Block 1: we make it such that a mid price of 100 is recorded.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Ask,
+                        amount: NonZero::new_unchecked(Uint128::new(2)),
+                        price: NonZero::new_unchecked(Udec128_24::new(100)),
+                    },
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(1)),
+                        price: NonZero::new_unchecked(Udec128_24::new(100)),
+                    },
+                ],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 2,
+                usdc::DENOM.clone() => 100,
+            },
+        )
+        .should_succeed();
+
+    // Query the mid price to make sure it's accurate.
+    suite
+        .query_wasm_smart(contracts.dex, QueryRestingOrderBookStateRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Udec128_24::new(100)),
+            mid_price: Some(Udec128_24::new(100)),
+        });
+
+    suite
+        .balances()
+        .record_many([&accounts.user1, &accounts.user2, &accounts.user3]);
+
+    // Block 2: submit two orders:
+    // - user 2 submits the limit order that will be matched;
+    // - user 3 submits the market order that will be left over.
+    // The limit order has slightly better price, so it has priority order the
+    // market order.
+    suite
+        .make_block(vec![
+            accounts
+                .user2
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![],
+                                creates_limit: vec![CreateLimitOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Bid,
+                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    price: NonZero::new_unchecked(Udec128_24::new(101)),
+                                }],
+                                cancels: None,
+                            },
+                            coins! {
+                                usdc::DENOM.clone() => 101,
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+            accounts
+                .user3
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![CreateMarketOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Bid,
+                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                                }],
+                                creates_limit: vec![],
+                                cancels: None,
+                            },
+                            coins! {
+                                usdc::DENOM.clone() => 101,
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+        ])
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    // Check user 1 and user 2 balances.
+    // The order should match with range 100-101. Since previous block's mid
+    // price was 100, which is within the range, so the orders settle at 100.
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Increased(100),
+    });
+    suite.balances().should_change(&accounts.user2, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Increased(1),
+        usdc::DENOM.clone() => BalanceChange::Decreased(100),
+    });
+
+    // THE IMPORTANT PART: make sure user 3 has received the refund; or in other
+    // words, his balance should be unchanged.
+    suite.balances().should_change(&accounts.user3, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
+}
+
+/// This is the same as the previous test (`refund_left_over_market_bid`), but
+/// on the different side of the book.
+///
+/// The setup:
+/// - mid price: 100
+/// - resting order book: limit bid, price 100, amount 1
+/// - limit ask, price 99, amount 1
+/// - market ask, price 100, amount 1
+#[test]
+fn refund_left_over_market_ask() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Set maker and taker fee rates to 0 for simplicity
+    // TODO: make this configurable in TestOptions
+    let mut app_config: AppConfig = suite.query_app_config().unwrap();
+    app_config.maker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    app_config.taker_fee_rate = Bounded::new(Udec128::ZERO).unwrap();
+    suite
+        .configure(
+            &mut accounts.owner, // Must be the chain owner
+            None,                // No chain config update
+            Some(app_config),    // App config update
+        )
+        .should_succeed();
+
+    // Block 1: we make it such that a mid price of 100 is recorded.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(2)),
+                        price: NonZero::new_unchecked(Udec128_24::new(100)),
+                    },
+                    CreateLimitOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Ask,
+                        amount: NonZero::new_unchecked(Uint128::new(1)),
+                        price: NonZero::new_unchecked(Udec128_24::new(100)),
+                    },
+                ],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1,
+                usdc::DENOM.clone() => 200,
+            },
+        )
+        .should_succeed();
+
+    // Query the mid price to make sure it's accurate.
+    suite
+        .query_wasm_smart(contracts.dex, QueryRestingOrderBookStateRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(RestingOrderBookState {
+            best_bid_price: Some(Udec128_24::new(100)),
+            best_ask_price: None,
+            mid_price: Some(Udec128_24::new(100)),
+        });
+
+    suite
+        .balances()
+        .record_many([&accounts.user1, &accounts.user2, &accounts.user3]);
+
+    // Block 2: submit two orders:
+    // - user 2 submits the limit order that will be matched;
+    // - user 3 submits the market order that will be left over.
+    // The limit order has slightly better price, so it has priority order the
+    // market order.
+    suite
+        .make_block(vec![
+            accounts
+                .user2
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![],
+                                creates_limit: vec![CreateLimitOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Ask,
+                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    price: NonZero::new_unchecked(Udec128_24::new(99)),
+                                }],
+                                cancels: None,
+                            },
+                            coins! {
+                                dango::DENOM.clone() => 1,
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+            accounts
+                .user3
+                .sign_transaction(
+                    NonEmpty::new_unchecked(vec![
+                        Message::execute(
+                            contracts.dex,
+                            &dex::ExecuteMsg::BatchUpdateOrders {
+                                creates_market: vec![CreateMarketOrderRequest {
+                                    base_denom: dango::DENOM.clone(),
+                                    quote_denom: usdc::DENOM.clone(),
+                                    direction: Direction::Ask,
+                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                                }],
+                                creates_limit: vec![],
+                                cancels: None,
+                            },
+                            coins! {
+                                dango::DENOM.clone() => 1,
+                            },
+                        )
+                        .unwrap(),
+                    ]),
+                    &suite.chain_id,
+                    100_000,
+                )
+                .unwrap(),
+        ])
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    // Check user 1 and user 2 balances.
+    // The order should match with range 99-100. Since previous block's mid
+    // price was 100, which is within the range, so the orders settle at 100.
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Increased(1),
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
+    suite.balances().should_change(&accounts.user2, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Decreased(1),
+        usdc::DENOM.clone() => BalanceChange::Increased(100),
+    });
+
+    // THE IMPORTANT PART: make sure user 3 has received the refund; or in other
+    // words, his balance should be unchanged.
+    suite.balances().should_change(&accounts.user3, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Unchanged,
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
+}
+
+#[test]
+fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let txs = vec![
+        accounts
+            .user1
+            .sign_transaction(
+                NonEmpty::new_unchecked(vec![
+                    Message::execute(
+                        contracts.dex,
+                        &dex::ExecuteMsg::BatchUpdateOrders {
+                            creates_market: vec![],
+                            creates_limit: vec![CreateLimitOrderRequest {
+                                base_denom: dango::DENOM.clone(),
+                                quote_denom: usdc::DENOM.clone(),
+                                direction: Direction::Ask,
+                                amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                                price: NonZero::new_unchecked(Udec128_24::new(100)),
+                            }],
+                            cancels: None,
+                        },
+                        coins! {
+                            dango::DENOM.clone() => 1000000,
+                        },
+                    )
+                    .unwrap(),
+                ]),
+                &suite.chain_id,
+                100_000,
+            )
+            .unwrap(),
+        accounts
+            .user2
+            .sign_transaction(
+                NonEmpty::new_unchecked(vec![
+                    Message::execute(
+                        contracts.dex,
+                        &dex::ExecuteMsg::BatchUpdateOrders {
+                            creates_market: vec![],
+                            creates_limit: vec![CreateLimitOrderRequest {
+                                base_denom: dango::DENOM.clone(),
+                                quote_denom: usdc::DENOM.clone(),
+                                direction: Direction::Bid,
+                                amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                                price: NonZero::new_unchecked(Udec128_24::new(99)),
+                            }],
+                            cancels: None,
+                        },
+                        coins! {
+                            usdc::DENOM.clone() => 1000000 * 99,
+                        },
+                    )
+                    .unwrap(),
+                ]),
+                &suite.chain_id,
+                100_000,
+            )
+            .unwrap(),
+    ];
+
+    suite
+        .make_block(txs)
+        .block_outcome
+        .tx_outcomes
+        .into_iter()
+        .for_each(|outcome| {
+            outcome.should_succeed();
+        });
+
+    suite
+        .query_wasm_smart(contracts.dex, QueryRestingOrderBookStateRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(RestingOrderBookState {
+            best_bid_price: Some(Udec128_24::new(99)),
+            best_ask_price: Some(Udec128_24::new(100)),
+            mid_price: Some(Udec128_24::new_permille(99500)),
+        });
 }
