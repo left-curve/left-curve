@@ -184,7 +184,6 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 
     for _ in 0..10 {
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await; // FIXME: avoid having to do this
     }
 
     suite.app.indexer.wait_for_finish()?;
@@ -278,7 +277,6 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
     //   volume base: 25 * 3 = 75; volume quote: 625 * 3 = 1875.
     for _ in 0..10 {
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await; // FIXME: avoid having to do this
     }
 
     suite.app.indexer.wait_for_finish()?;
