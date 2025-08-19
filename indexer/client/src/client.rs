@@ -135,8 +135,8 @@ impl BlockClient for HttpClient {
 
     async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error> {
         let path = match height {
-            Some(height) => format!("api/block/info/{height}"),
-            None => "api/block/info".to_string(),
+            Some(height) => format!("block/info/{height}"),
+            None => "block/info".to_string(),
         };
 
         Ok(self.get(&path).await?.json().await?)
@@ -144,8 +144,8 @@ impl BlockClient for HttpClient {
 
     async fn query_block_outcome(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
         let path = match height {
-            Some(height) => format!("api/block/result/{height}"),
-            None => "api/block/result".to_string(),
+            Some(height) => format!("block/result/{height}"),
+            None => "block/result".to_string(),
         };
 
         Ok(self.get(&path).await?.json().await?)

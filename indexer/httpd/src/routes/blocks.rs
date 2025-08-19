@@ -1,9 +1,17 @@
 use {
     crate::context::Context,
-    actix_web::{Error, HttpResponse, error::ErrorInternalServerError, get, web},
+    actix_web::{Error, HttpResponse, Scope, error::ErrorInternalServerError, get, web},
     indexer_sql::block_to_index::BlockToIndex,
     std::path::PathBuf,
 };
+
+pub fn services() -> Scope {
+    web::scope("/block")
+        .service(block_info_by_height)
+        .service(latest_block_info)
+        .service(block_result_by_height)
+        .service(block_result)
+}
 
 #[get("/info")]
 pub async fn latest_block_info(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
