@@ -37,7 +37,7 @@ RUN pnpm build:portal-web
 FROM nginx:alpine
 
 LABEL org.opencontainers.image.description="Dango frontend docker image"
-LABEL org.opencontainers.image.revision=$GIT_COMMIT
+LABEL org.opencontainers.image.revision=$GITHUB_COMMIT
 LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 
 COPY --from=builder /app/ui/portal/web/build /usr/share/nginx/html
