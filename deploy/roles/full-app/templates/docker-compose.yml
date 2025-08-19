@@ -81,6 +81,11 @@ services:
         condition: service_healthy
     ports:
       - "{{ tailscale_ip }}:${DANGO_FRONTEND_PORT:-0}:80"
+    environment:
+      INDEXER_URL: ${INDEXER_URL}
+      FAUCET_URL: ${FAUCET_URL}
+      UP_URL: ${UP_URL}
+      QUEST_URL: ${QUEST_URL}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1/"]

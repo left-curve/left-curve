@@ -18,6 +18,10 @@
     deploy_env: "staging"
     chain_id: "dev-9"
     dango_network: "devnet"
+    dango_port: 0
+    quest_port: 0
+    faucet_port: 0
+    dango_frontend_port: 0
   collections:
     - community.docker
     - community.clickhouse
