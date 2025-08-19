@@ -18,7 +18,7 @@ use {
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
-    std::{sync::Arc, time::Duration},
+    std::{collections::HashMap, sync::Arc, time::Duration},
     tokio::{
         sync::{Mutex, mpsc},
         time::sleep,
@@ -294,12 +294,12 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     "baseDenom": "dango",
                     "quoteDenom": "bridge/usdc",
                     "interval": "ONE_MINUTE",
-                    "close": "27.5",
+                    "close": "25",
                     "high": "27.5",
-                    "low": "27.5",
+                    "low": "25",
                     "open": "27.5",
                     "volumeBase": "50",
-                    "volumeQuote": "1375",
+                    "volumeQuote": "1312.5",
                     "blockHeight": 4,
                 }]);
 
@@ -334,13 +334,13 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "interval": "ONE_MINUTE",
-                        "close": "27.5",
+                        "close": "25",
                         "high": "27.5",
-                        "low": "27.5",
+                        "low": "25",
                         "open": "27.5",
                         "blockHeight": 6,
                         "volumeBase": "75",
-                        "volumeQuote": "2062.5",
+                        "volumeQuote": "1937.5",
                     }]);
 
                     assert_json_include!(actual: response.data, expected: expected_json);
@@ -376,7 +376,16 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     // println!("Cache : {:#?}", old_cache.pair_prices);
     // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
-    assert_eq!(cache.pair_prices, old_cache.pair_prices);
+    assert_eq!(
+        cache.pair_prices,
+        // Filtering empty ones, since cache has them but not clickhouse
+        old_cache
+            .pair_prices
+            .clone()
+            .into_iter()
+            .filter(|pp| !pp.1.is_empty())
+            .collect::<HashMap<_, _>>()
+    );
 
     // println!("Cache : {:#?}", old_cache.candles);
     // println!("Cache from clickhouse: {:#?}", cache.candles);
@@ -565,7 +574,16 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     // println!("Cache : {:#?}", old_cache.pair_prices);
     // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
-    assert_eq!(cache.pair_prices, old_cache.pair_prices);
+    assert_eq!(
+        cache.pair_prices,
+        // Filtering empty ones, since cache has them but not clickhouse
+        old_cache
+            .pair_prices
+            .clone()
+            .into_iter()
+            .filter(|pp| !pp.1.is_empty())
+            .collect::<HashMap<_, _>>()
+    );
 
     // println!("Cache : {:#?}", old_cache.candles);
     // println!("Cache from clickhouse: {:#?}", cache.candles);

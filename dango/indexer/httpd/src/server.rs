@@ -19,7 +19,7 @@ where
         cfg.service(index)
             .service(routes::index::up)
             .service(routes::index::sentry_raise)
-            .service(routes::api::services::api_services())
+            .service(routes::blocks::services())
             .service(graphql::graphql_route())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(dango_httpd_context.db.clone()))

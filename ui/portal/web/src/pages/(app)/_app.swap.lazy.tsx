@@ -14,7 +14,7 @@ function SwapApplet() {
   const { from, to } = Route.useSearch();
 
   const onChangePair = (pair: { from: string; to: string }) => {
-    navigate({ to: ".", search: pair, replace: false });
+    navigate({ to: ".", search: pair, replace: true });
   };
 
   return (

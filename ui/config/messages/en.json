@@ -176,6 +176,7 @@
         "title": "Block not found",
         "description": "We couldn’t find the block you were looking for. If it’s a valid block, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
       },
+      "cronsOutcomes": "Crons Outcomes",
       "details": {
         "blockDetails": "Block {height}",
         "blockHash": "Block Hash",

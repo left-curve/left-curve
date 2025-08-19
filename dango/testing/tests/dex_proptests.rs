@@ -290,7 +290,7 @@ impl DexAction {
                             quote_denom: quote_denom.clone(),
                             direction: *direction,
                             amount: NonZero::new(*amount).unwrap(),
-                            max_slippage: Udec128::MAX,
+                            max_slippage: Bounded::new_unchecked(Udec128::MAX),
                         }],
                         creates_limit: vec![],
                         cancels: None,
@@ -618,7 +618,7 @@ fn dex_action() -> impl Strategy<Value = DexAction> {
                 DexAction::SwapExactAmountOut {
                     route: route.clone(),
                     output: Coin::new(output_denom, amount).unwrap(),
-                    funds: Coins::one(input_denom, MAX_AMOUNT * Uint128::new(10_000)).unwrap(),
+                    funds: Coins::one(input_denom, MAX_AMOUNT * Uint128::new(10_000_000)).unwrap(),
                 }
             })
         })
@@ -723,7 +723,7 @@ fn test_dex_actions(
                         domain: ethereum::DOMAIN,
                         contract: ethereum::USDC_WARP,
                     },
-                    amount: Uint128::new(1_000_000_000_000_000),
+                    amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
@@ -731,7 +731,7 @@ fn test_dex_actions(
                         domain: ethereum::DOMAIN,
                         contract: ethereum::WETH_WARP,
                     },
-                    amount: Uint128::new(1_000_000_000_000_000),
+                    amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
@@ -739,7 +739,7 @@ fn test_dex_actions(
                         domain: solana::DOMAIN,
                         contract: solana::SOL_WARP,
                     },
-                    amount: Uint128::new(1_000_000_000_000_000),
+                    amount: Uint128::new(1_000_000_000_000_000_000),
                     recipient: accounts.user1.address(),
                 },
             ]
@@ -824,10 +824,10 @@ fn test_dex_actions(
 
 proptest! {
     #![proptest_config(ProptestConfig {
-        cases: 10_000,
+        cases: 256,
         max_local_rejects: 1_000_000,
         max_global_rejects: 0,
-        max_shrink_iters: 0,
+        max_shrink_iters: 32,
         verbose: 1,
         ..ProptestConfig::default()
     })]

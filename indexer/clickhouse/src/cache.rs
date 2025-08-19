@@ -1,6 +1,9 @@
 #[cfg(feature = "metrics")]
 use metrics::{counter, gauge, histogram};
 
+#[cfg(test)]
+use {grug::Denom, std::str::FromStr};
+
 use {
     crate::{
         entities::{
@@ -55,6 +58,13 @@ impl CandleCache {
         if pair_prices.is_empty() {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height, "Received empty pair_prices");
+
+            // I still need to create the key, so we know we processed this block
+            self.pair_prices
+                .entry(block_height)
+                .or_default()
+                .extend(pair_prices);
+
             return;
         }
 
@@ -83,16 +93,16 @@ impl CandleCache {
                     block_height: pair_price.block_height,
                 };
 
-                #[cfg(feature = "tracing")]
-                tracing::debug!(
-                    %candle.block_height,
-                    %candle.base_denom,
-                    %candle.quote_denom,
-                    %candle.volume_base,
-                    %candle.volume_quote,
-                    %candle_interval,
-                    "Calling add_candle()",
-                );
+                // #[cfg(feature = "tracing")]
+                // tracing::debug!(
+                //     %candle.block_height,
+                //     %candle.base_denom,
+                //     %candle.quote_denom,
+                //     %candle.volume_base,
+                //     %candle.volume_quote,
+                //     %candle_interval,
+                //     "Calling add_candle()",
+                // );
 
                 self.add_candle(key, candle);
             }
@@ -105,6 +115,7 @@ impl CandleCache {
     }
 
     pub fn add_candle(&mut self, key: CandleCacheKey, mut candle: Candle) {
+        let _interval = candle.interval;
         let candles = self.candles.entry(key).or_default();
 
         // no existing candles, we can just push it
@@ -114,6 +125,7 @@ impl CandleCache {
                 %candle.block_height,
                 %candle.base_denom,
                 %candle.quote_denom,
+                %_interval,
                 "Adding candle, cache is empty",
             );
 
@@ -135,9 +147,17 @@ impl CandleCache {
                 %candle.block_height,
                 %candle.base_denom,
                 %candle.quote_denom,
+                %_interval,
                 "Pushing candle, no existing candle found",
             );
-            candles.push(candle);
+
+            // Find correct position to maintain time order
+            let insert_pos = candles
+                .iter()
+                .position(|c| c.time_start > candle.time_start)
+                .unwrap_or(candles.len());
+
+            candles.insert(insert_pos, candle);
             return;
         };
 
@@ -151,6 +171,7 @@ impl CandleCache {
             %existing_candle.block_height,
             %candle.volume_base,
             %candle.volume_quote,
+            %_interval,
             "Modifying existing candle",
         );
 
@@ -391,9 +412,31 @@ impl CandleCache {
 }
 
 #[cfg(test)]
+impl CandleCache {
+    pub fn add_multi_block_pair_prices(&mut self, pair_prices: Vec<PairPrice>) -> Result<()> {
+        for pair_price in pair_prices {
+            let block_height = pair_price.block_height;
+
+            let hashmap_pair_price = HashMap::from([(
+                PairId {
+                    base_denom: Denom::from_str(&pair_price.base_denom)?,
+                    quote_denom: Denom::from_str(&pair_price.quote_denom)?,
+                },
+                pair_price,
+            )]);
+
+            self.add_pair_prices(block_height, hashmap_pair_price);
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use {
         super::*,
+        assertor::*,
         chrono::NaiveDateTime,
         grug::{Denom, Udec128_6, Udec128_24},
         std::{collections::VecDeque, str::FromStr},
@@ -440,7 +483,6 @@ mod tests {
                 candle.block_height >= previous_candle.block_height,
                 "Candle block_height is not greater than or equal to previous candle"
             );
-
             assert_eq!(
                 previous_candle.close, candle.open,
                 "Candle close price does not match next candle open price"
@@ -448,6 +490,138 @@ mod tests {
 
             previous_candle = candle;
         }
+
+        Ok(())
+    }
+
+    // Ensure when candles aren't coming in order, they're grouped properly
+    #[tokio::test]
+    async fn when_pair_prices_are_not_in_order() -> Result<()> {
+        let mut candle_cache = CandleCache::default();
+
+        let quote_denom = "bridge/usdc";
+        let base_denom = "bridge/btc";
+
+        let pair_prices = vec![
+            pair_price(
+                quote_denom,
+                base_denom,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                0,
+                0,
+                "2025-08-13 17:36:01.038565",
+                4,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                1217208030172232059779705322,
+                0,
+                0,
+                "2025-08-13 17:36:00.086616",
+                2,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                1217208030172232059779705322,
+                1216963512618701957116501833,
+                1216963512618701957116501833,
+                1216963512618701957116501833,
+                345160391948092,
+                420047603001999188,
+                "2025-08-13 17:36:01.734583",
+                6,
+            )?,
+        ];
+
+        candle_cache.add_multi_block_pair_prices(pair_prices)?;
+
+        let cache_key = CandleCacheKey::new(
+            base_denom.to_string(),
+            quote_denom.to_string(),
+            CandleInterval::OneSecond,
+        );
+
+        assert_that!(candle_cache.get_candles(&cache_key).cloned().unwrap()).has_length(2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn close_price_is_correct() -> Result<()> {
+        let mut candle_cache = CandleCache::default();
+
+        let quote_denom = "bridge/usdc";
+        let base_denom = "bridge/btc";
+
+        let pair_prices = vec![
+            pair_price(
+                quote_denom,
+                base_denom,
+                27500000000000000000000000,
+                27500000000000000000000000,
+                27500000000000000000000000,
+                27500000000000000000000000,
+                345160391948092,
+                420047603001999188,
+                "1971-01-01 00:00:00.500",
+                2,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                27500000000000000000000000,
+                27500000000000000000000000,
+                25000000000000000000000000,
+                25000000000000000000000000,
+                345160391948092,
+                420047603001999188,
+                "1971-01-01 00:00:01.000",
+                4,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                25000000000000000000000000,
+                25000000000000000000000000,
+                25000000000000000000000000,
+                25000000000000000000000000,
+                345160391948092,
+                420047603001999188,
+                "1971-01-01 00:00:01.500",
+                6,
+            )?,
+        ];
+
+        candle_cache.add_multi_block_pair_prices(pair_prices)?;
+
+        let cache_key = CandleCacheKey::new(
+            base_denom.to_string(),
+            quote_denom.to_string(),
+            CandleInterval::OneSecond,
+        );
+
+        let candles = candle_cache.get_candles(&cache_key).cloned().unwrap();
+
+        let first_candle = candles.first().unwrap();
+
+        assert_that!(first_candle.open)
+            .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(first_candle.close)
+            .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+
+        let last_candle = candles.last().unwrap();
+        assert_that!(last_candle.open)
+            .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(last_candle.close)
+            .is_equal_to::<Udec128_24>(Udec128_24::from_str("25").unwrap());
 
         Ok(())
     }

@@ -53,6 +53,7 @@
     recreate: true
     env:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
+    # Not sure I still need to bind outside
     ports:
       - "127.0.0.1:8123:8123" # HTTP interface
       - "127.0.0.1:9000:9000" # Native TCP interface

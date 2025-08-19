@@ -72,6 +72,8 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         tokio::spawn,
     );
 
+    let indexer_path = app_ctx.indexer_path.clone();
+
     #[allow(unused_mut)]
     let mut schema_builder = Schema::build(
         query::Query::default(),
@@ -97,6 +99,7 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         .data(transaction_events_loader)
         .data(file_transaction_loader)
         .data(event_transaction_loader)
+        .data(indexer_path)
         .limit_complexity(300)
         .limit_depth(20)
         .finish()

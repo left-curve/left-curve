@@ -41,7 +41,7 @@ pub async fn setup_client_test() -> anyhow::Result<(HttpClient, TestAccounts)> {
     wait_for_server_ready(port).await?;
 
     Ok((
-        HttpClient::new(&format!("http://localhost:{port}")),
+        HttpClient::new(format!("http://localhost:{port}"))?,
         accounts,
     ))
 }

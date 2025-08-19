@@ -1,7 +1,7 @@
 use {
     dango_types::{
         account_factory::Username,
-        dex::{Direction, LimitOrder, MarketOrder, OrderId, PairParams},
+        dex::{Direction, LimitOrder, MarketOrder, OrderId, PairParams, RestingOrderBookState},
     },
     grug::{
         Addr, CoinPair, Counter, Denom, IndexedMap, Item, Map, MultiIndex, NumberConst, Timestamp,
@@ -17,26 +17,17 @@ pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
 // (base_denom, quote_denom) => coin_pair
 pub const RESERVES: Map<(&Denom, &Denom), CoinPair> = Map::new("reserve");
 
+pub const RESTING_ORDER_BOOK: Map<(&Denom, &Denom), RestingOrderBookState> = Map::new("resting");
+
 pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", Uint64::ONE, Uint64::ONE);
 
-pub const MARKET_ORDERS: IndexedMap<MarketOrderKey, MarketOrder, MarketOrderIndex> =
-    IndexedMap::new("market_order", MarketOrderIndex {
-        order_id: UniqueIndex::new(
-            |(_, _, order_id), _| *order_id,
-            "market_order",
-            "market_order__id",
-        ),
-        user: MultiIndex::new(|_, order| order.user, "market_order", "market_order__user"),
-    });
+pub const MARKET_ORDERS: Map<(Addr, OrderId), (OrderKey, MarketOrder)> = Map::new("market");
 
-pub const LIMIT_ORDERS: IndexedMap<LimitOrderKey, LimitOrder, LimitOrderIndex> =
+pub const LIMIT_ORDERS: IndexedMap<OrderKey, LimitOrder, LimitOrderIndex> =
     IndexedMap::new("order", LimitOrderIndex {
         order_id: UniqueIndex::new(|(_, _, _, order_id), _| *order_id, "order", "order__id"),
         user: MultiIndex::new(|_, order| order.user, "order", "order__user"),
     });
-
-pub const INCOMING_ORDERS: Map<(Addr, OrderId), (LimitOrderKey, LimitOrder)> =
-    Map::new("incoming_orders");
 
 /// Stores the total trading volume in USD for each account address and timestamp.
 pub const VOLUMES: Map<(&Addr, Timestamp), Udec128_6> = Map::new("volume");
@@ -44,28 +35,19 @@ pub const VOLUMES: Map<(&Addr, Timestamp), Udec128_6> = Map::new("volume");
 /// Stores the total trading volume in USD for each username and timestamp.
 pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Udec128_6> = Map::new("volume_by_user");
 
-/// Storage key for market orders.
+/// Storage key for orders, both limit and market.
 ///
-/// ```plain
-/// ((base_denom, quote_denom), direction, order_id)
-/// ```
-pub type MarketOrderKey = ((Denom, Denom), Direction, OrderId);
-
-/// Storage key for limit orders.
+/// - For limit orders, the `price` is the limit price.
+/// - For market orders, it is calculated based on the best price available in
+///   the resting order book and the order's maximum slippage.
 ///
 /// ```plain
 /// ((base_denom, quote_denom), direction, price, order_id)
 /// ```
-pub type LimitOrderKey = ((Denom, Denom), Direction, Udec128_24, OrderId);
+pub type OrderKey = ((Denom, Denom), Direction, Udec128_24, OrderId);
 
-#[grug::index_list(MarketOrderKey, MarketOrder)]
-pub struct MarketOrderIndex<'a> {
-    pub order_id: UniqueIndex<'a, MarketOrderKey, OrderId, MarketOrder>,
-    pub user: MultiIndex<'a, MarketOrderKey, Addr, MarketOrder>,
-}
-
-#[grug::index_list(LimitOrderKey, LimitOrder)]
+#[grug::index_list(OrderKey, LimitOrder)]
 pub struct LimitOrderIndex<'a> {
-    pub order_id: UniqueIndex<'a, LimitOrderKey, OrderId, LimitOrder>,
-    pub user: MultiIndex<'a, LimitOrderKey, Addr, LimitOrder>,
+    pub order_id: UniqueIndex<'a, OrderKey, OrderId, LimitOrder>,
+    pub user: MultiIndex<'a, OrderKey, Addr, LimitOrder>,
 }

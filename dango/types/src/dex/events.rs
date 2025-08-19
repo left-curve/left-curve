@@ -35,8 +35,10 @@ pub struct OrderCanceled {
 }
 
 #[grug::derive(Serde)]
+// TODO: change the event name to just `order_filled`. this would be an API-breaking change,
+// so only do this after testnet-2 has ended.
 #[grug::event("limit_orders_matched")]
-pub struct LimitOrdersMatched {
+pub struct OrdersMatched {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub clearing_price: Udec128_24,

@@ -1,5 +1,5 @@
 use {
-    crate::{INCOMING_ORDERS, LIMIT_ORDERS, LimitOrderKey, MARKET_ORDERS, MarketOrderKey},
+    crate::{LIMIT_ORDERS, MARKET_ORDERS, OrderKey},
     anyhow::{bail, ensure},
     dango_types::dex::{Direction, LimitOrder, MarketOrder, OrderCanceled, OrderId, OrderKind},
     grug::{
@@ -30,29 +30,14 @@ pub(super) fn cancel_all_orders(
         LIMIT_ORDERS.remove(storage, order_key)?;
     }
 
-    // Cancel incoming limit orders.
-    for ((user, order_id), (order_key, order)) in INCOMING_ORDERS
-        .range(storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?
-    {
-        cancel_limit_order(order_key, order, &mut events, refunds.get_mut(order.user))?;
-
-        INCOMING_ORDERS.remove(storage, (user, order_id));
-    }
-
     // Cancel market orders.
-    for (order_key, order) in MARKET_ORDERS
+    for ((user, order_id), (order_key, order)) in MARKET_ORDERS
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_market_order(
-            order_key.clone(),
-            order,
-            &mut events,
-            refunds.get_mut(order.user),
-        )?;
+        cancel_market_order(order_key, order, &mut events, refunds.get_mut(order.user))?;
 
-        MARKET_ORDERS.remove(storage, order_key)?;
+        MARKET_ORDERS.remove(storage, (user, order_id));
     }
 
     Ok((events, refunds))
@@ -78,28 +63,15 @@ pub(super) fn cancel_all_orders_from_user(
         LIMIT_ORDERS.remove(storage, order_key)?;
     }
 
-    // Cancel incoming limit orders.
-    for ((pair, direction, price, order_id), order) in INCOMING_ORDERS
+    // Cancel market orders.
+    for ((pair, direction, price, order_id), order) in MARKET_ORDERS
         .prefix(user)
         .values(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_limit_order((pair, direction, price, order_id), order, events, refunds)?;
+        cancel_market_order((pair, direction, price, order_id), order, events, refunds)?;
 
-        INCOMING_ORDERS.remove(storage, (user, order_id));
-    }
-
-    // Cancel market orders.
-    for (order_key, order) in MARKET_ORDERS
-        .idx
-        .user
-        .prefix(user)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?
-    {
-        cancel_market_order(order_key.clone(), order, events, refunds)?;
-
-        MARKET_ORDERS.remove(storage, order_key)?;
+        MARKET_ORDERS.remove(storage, (user, order_id));
     }
 
     Ok(())
@@ -115,14 +87,13 @@ pub(super) fn cancel_order_from_user(
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
 ) -> anyhow::Result<()> {
-    // We don't know whether the order is a maker order, an incoming limit order,
-    // or a market order.
-    // First we check whether it's a maker order, which is the highest probability
+    // We don't know whether the order is a limit or a market order.
+    // First we check whether it's a limit order, which is the highest probability
     // situation.
     if let Some((order_key, order)) = LIMIT_ORDERS.idx.order_id.may_load(storage, order_id)? {
         ensure!(
             order.user == user,
-            "maker order `{order_id}` does not belong to the sender",
+            "limit order `{order_id}` does not belong to the sender",
         );
 
         cancel_limit_order(order_key.clone(), order, events, refunds)?;
@@ -132,30 +103,16 @@ pub(super) fn cancel_order_from_user(
         return Ok(());
     }
 
-    // Next, we check whether it's an incoming order.
-    if let Some((order_key, order)) = INCOMING_ORDERS.may_load(storage, (user, order_id))? {
-        ensure!(
-            order.user == user,
-            "incoming order `{order_id}` does not belong to the sender"
-        );
-
-        cancel_limit_order(order_key, order, events, refunds)?;
-
-        INCOMING_ORDERS.remove(storage, (user, order_id));
-
-        return Ok(());
-    }
-
-    // Finally, check whether it's a market order.
-    if let Some((order_key, order)) = MARKET_ORDERS.idx.order_id.may_load(storage, order_id)? {
+    // Next, check whether it's a market order.
+    if let Some((order_key, order)) = MARKET_ORDERS.may_load(storage, (user, order_id))? {
         ensure!(
             order.user == user,
             "market order `{order_id}` does not belong to the sender"
         );
 
-        cancel_market_order(order_key.clone(), order, events, refunds)?;
+        cancel_market_order(order_key, order, events, refunds)?;
 
-        MARKET_ORDERS.remove(storage, order_key)?;
+        MARKET_ORDERS.remove(storage, (user, order_id));
 
         return Ok(());
     }
@@ -164,7 +121,7 @@ pub(super) fn cancel_order_from_user(
 }
 
 fn cancel_limit_order(
-    order_key: LimitOrderKey,
+    order_key: OrderKey,
     order: LimitOrder,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
@@ -197,18 +154,18 @@ fn cancel_limit_order(
 }
 
 fn cancel_market_order(
-    order_key: MarketOrderKey,
+    order_key: OrderKey,
     order: MarketOrder,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
 ) -> StdResult<()> {
-    let ((base_denom, quote_denom), direction, order_id) = order_key;
+    let ((base_denom, quote_denom), direction, price, order_id) = order_key;
 
     // Compute the amount of tokens to be sent back to the user.
     let refund = match direction {
         Direction::Bid => DecCoin {
             denom: quote_denom,
-            amount: order.remaining,
+            amount: order.remaining.checked_mul(price)?,
         },
         Direction::Ask => DecCoin {
             denom: base_denom,
