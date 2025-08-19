@@ -116,7 +116,6 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     MARKET_ORDERS.clear(ctx.storage, None, None);
 
     // Loop through all trading pairs. Match and clear the orders for each of them.
-    // TODO: only process pairs that have received new orders during this block.
     // TODO: spawn a thread for each pair to process them in parallel.
     for (base_denom, quote_denom) in PAIRS
         .keys(ctx.storage, None, None, IterationOrder::Ascending)
