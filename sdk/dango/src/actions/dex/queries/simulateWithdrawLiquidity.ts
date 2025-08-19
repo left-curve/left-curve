@@ -3,8 +3,8 @@ import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
 
 import { getAction, getAppConfig } from "@left-curve/sdk/actions";
 import type { Chain, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "#types/app.js";
-import type { CoinPair, GetDexQueryMsg } from "#types/dex.js";
+import type { AppConfig } from "../../../types/app.js";
+import type { CoinPair, GetDexQueryMsg } from "../../../types/dex.js";
 
 type ActionMsg = GetDexQueryMsg<"simulateWithdrawLiquidity">;
 

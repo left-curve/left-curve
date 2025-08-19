@@ -11,7 +11,7 @@ export default defineConfig([
     bundle: true,
     splitting: false,
     treeshake: false,
-    format: ["esm"],
+    format: ["esm", "cjs"],
     external: ["react", "react-dom", "@tanstack/react-query"],
     platform: "browser",
     publicDir: "./public",

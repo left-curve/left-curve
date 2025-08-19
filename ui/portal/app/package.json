@@ -1,7 +1,7 @@
 {
   "name": "@left-curve/portal-app",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "src/index.ts",
   "scripts": {
     "eas-build-post-install": "cd ../../../ && pnpm build:kit",
     "build:android": "eas build -p android -e development",
@@ -13,6 +13,10 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
+    "@left-curve/dango": "workspace:*",
+    "@left-curve/config": "workspace:*",
+    "@left-curve/store": "workspace:*",
+    "@tanstack/react-query": "catalog:",
     "babel-plugin-module-resolver": "^5.0.2",
     "expo": "~52.0.47",
     "expo-camera": "~16.0.14",

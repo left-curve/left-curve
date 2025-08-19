@@ -1,15 +1,15 @@
 import { getAppConfig } from "@left-curve/sdk";
 import { getAction } from "@left-curve/sdk/actions";
-import { execute } from "#actions/app/index.js";
+import { execute } from "../../app/mutations/execute.js";
 
 import type { Address, Coins, Json, Prettify, Transport } from "@left-curve/sdk/types";
-import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
+import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 
-import type { AppConfig } from "#types/app.js";
-import type { DangoClient } from "#types/clients.js";
-import type { GetDexExecuteMsg } from "#types/dex.js";
-import type { Signer } from "#types/signer.js";
-import type { TypedDataParameter } from "#types/typedData.js";
+import type { AppConfig } from "../../../types/app.js";
+import type { DangoClient } from "../../../types/clients.js";
+import type { GetDexExecuteMsg } from "../../../types/dex.js";
+import type { Signer } from "../../../types/signer.js";
+import type { TypedDataParameter } from "../../../types/typedData.js";
 
 type ActionMsg = GetDexExecuteMsg<"batchUpdateOrders">;
 
