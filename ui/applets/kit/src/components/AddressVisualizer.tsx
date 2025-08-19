@@ -9,7 +9,7 @@ import {
 } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "../utils/twMerge.js";
 
 import { TruncateResponsive } from "./TruncateResponsive";
 import { IconLink } from "./icons/IconLink";

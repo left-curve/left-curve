@@ -26,7 +26,7 @@ export function useTheme(): UseThemeReturnType {
   const theme = themeSchema === "system" ? getPreferredScheme() : themeSchema;
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    const root = window?.document.documentElement;
 
     root.classList.remove("light", "dark");
 

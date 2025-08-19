@@ -2,8 +2,6 @@ import { Spinner } from "./Spinner";
 import { IconChecked } from "./icons/IconChecked";
 import { IconClose } from "./icons/IconClose";
 
-import type { ToastProps } from "#utils/toaster.js";
-
 const Icon = {
   success: (
     <div className="min-h-6 min-w-6 rounded-full bg-surface-quaternary-green text-secondary-green flex items-center justify-center">
@@ -20,6 +18,13 @@ const Icon = {
       <Spinner size="sm" color="current" />
     </div>
   ),
+};
+
+export type ToastProps = {
+  title: string;
+  type: "error" | "success" | "loading";
+  close: () => void;
+  description?: string;
 };
 
 export const Toast: React.FC<ToastProps> = ({ title, description, type, close }) => {

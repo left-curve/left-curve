@@ -7,7 +7,7 @@ import type {
   Signer,
   SubscriptionCallbacks,
   Transport,
-} from "#types/index.js";
+} from "../../../types/index.js";
 
 export type CandlesSubscriptionParameters = SubscriptionCallbacks<{
   candles: Candle[];

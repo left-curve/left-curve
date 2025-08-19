@@ -1,4 +1,4 @@
-import { usePagination } from "#hooks/usePagination.js";
+import { usePagination } from "../hooks/usePagination.js";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "./Button";
@@ -6,7 +6,7 @@ import { IconChevronLeft } from "./icons/IconChevronLeft";
 import { IconChevronRight } from "./icons/IconChevronRight";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "../utils/twMerge.js";
 
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";

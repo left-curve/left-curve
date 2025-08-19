@@ -3,8 +3,8 @@ import type { Client, Transport } from "@left-curve/sdk/types";
 
 import { getAction, getAppConfig } from "@left-curve/sdk/actions";
 import type { Chain, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "#types/app.js";
-import type { DexQueryMsg, PairId, PairUpdate } from "#types/dex.js";
+import type { AppConfig } from "../../../types/app.js";
+import type { DexQueryMsg, PairId, PairUpdate } from "../../../types/dex.js";
 
 export type GetPairsParameters = {
   limit?: number;

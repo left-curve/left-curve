@@ -7,14 +7,15 @@ import {
   useRef,
   useState,
 } from "react";
-import { useClickAway } from "react-use";
-import { useControlledState } from "#hooks/index.js";
+
+import { useClickAway } from "../hooks/useClickAway.js";
+import { useControlledState } from "../hooks/useControlledState.js";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "#utils/index.js";
+import { twMerge } from "../utils/twMerge.js";
 
 import type { PropsWithChildren, ReactElement } from "react";
 import type React from "react";

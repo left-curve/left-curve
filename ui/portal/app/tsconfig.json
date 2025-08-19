@@ -1,6 +1,23 @@
 {
-  "extends": "expo/tsconfig.base",
+  "extends": ["expo/tsconfig.base"],
   "compilerOptions": {
-    "strict": true
-  }
+    "strict": true,
+    "paths": {
+      "~/*": ["./src/*"],
+      "~/store": ["./store.config.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts", "../../config/tailwind/config.ts"],
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../../applets/kit"
+    },
+    {
+      "path": "../../../sdk/dango"
+    },
+    {
+      "path": "../../store"
+    }
+  ]
 }

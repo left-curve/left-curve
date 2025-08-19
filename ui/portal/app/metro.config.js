@@ -23,4 +23,6 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
+config.resolver.unstable_enablePackageExports = true;
+
 module.exports = withNativeWind(config, { input: "./assets/global.css" });

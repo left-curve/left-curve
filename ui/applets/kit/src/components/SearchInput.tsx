@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { type ReactElement, cloneElement, forwardRef, useState } from "react";
 import { useClickAway } from "react-use";
-import { useDOMRef } from "#hooks/index.js";
-import { twMerge } from "#utils/index.js";
+import { useDOMRef } from "../hooks/useDOMRef.js";
+import { useControlledState } from "../hooks/useControlledState.js";
 
+import { twMerge } from "../utils/twMerge.js";
 import { wait } from "@left-curve/dango/utils";
-import { useControlledState } from "#hooks/useControlledState.js";
+
 import { Input, type InputProps } from "./Input";
 import { Spinner } from "./Spinner";
 

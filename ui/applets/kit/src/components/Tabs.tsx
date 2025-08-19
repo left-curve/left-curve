@@ -1,13 +1,13 @@
 import { motion } from "framer-motion";
 import { Children, cloneElement } from "react";
 import { tv } from "tailwind-variants";
-import { useControlledState } from "#hooks/useControlledState.js";
-import { twMerge } from "#utils/twMerge.js";
+import { useControlledState } from "../hooks/useControlledState.js";
+import { twMerge } from "../utils/twMerge.js";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { VariantProps } from "tailwind-variants";
-import { useHasMounted } from "#hooks/useHasMounted.js";
+import { useHasMounted } from "../hooks/useHasMounted.js";
 
 export interface TabsProps extends VariantProps<typeof tabsVariants> {
   onTabChange?: (tab: string) => void;

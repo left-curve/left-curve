@@ -90,6 +90,7 @@
     "tailwindcss": "catalog:"
   },
   "peerDependencies": {
+    "react-hot-toast": ">=2.0.0",
     "@tanstack/react-query": ">=5.0.0",
     "@tanstack/react-table": ">=8.0.0",
     "big.js": ">=6.0.0",
