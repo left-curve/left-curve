@@ -351,7 +351,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
             client
                 .send_message(
                     &mut accounts["sender"],
-                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?,
+                    Message::transfer(to, Coins::one(Denom::from_str("ugrug")?, 2_000)?)?.unwrap(), // safe to unwrap because we know the coins is non-empty
                     GasOption::Predefined { gas_limit: 2000 },
                     &chain_id,
                 )

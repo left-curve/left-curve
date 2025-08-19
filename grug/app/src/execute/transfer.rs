@@ -7,8 +7,8 @@ use {
         catch_and_update_event, catch_event,
     },
     grug_types::{
-        Addr, BankMsg, BlockInfo, Coins, Context, EvtGuest, EvtTransfer, Hash256, MsgTransfer,
-        Storage,
+        Addr, BankMsg, BlockInfo, Coins, Context, EvtGuest, EvtTransfer, Hash256, Inner,
+        MsgTransfer, NonEmpty, Storage,
     },
 };
 
@@ -120,7 +120,7 @@ where
     }
 
     if do_receive {
-        for (to, coins) in msg.transfers {
+        for (to, coins) in msg.transfers.into_inner() {
             // If recipient does not exist, skip the `_do_receive` call.
             if let Ok(Some(contract_info)) = CONTRACTS.may_load(&storage, to) {
                 catch_and_insert_event! {
@@ -155,7 +155,7 @@ fn _do_receive<VM>(
     msg_depth: usize,
     from: Addr,
     to: Addr,
-    coins: Coins,
+    coins: NonEmpty<Coins>, // this function expects the transfer to be non-empty
     code_hash: Hash256,
     trace_opt: TraceOption,
 ) -> EventResult<EvtGuest>
@@ -176,7 +176,7 @@ where
         block,
         contract: to,
         sender: Some(from),
-        funds: Some(coins),
+        funds: Some(coins.into_inner()),
         mode: None,
     };
 

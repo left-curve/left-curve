@@ -1,7 +1,9 @@
+use crate::NonEmpty;
 #[cfg(feature = "async-graphql")]
 use async_graphql::Enum;
 #[cfg(feature = "sea-orm")]
 use sea_orm::entity::prelude::*;
+
 use {
     super::FlattenStatus,
     crate::{
@@ -214,7 +216,7 @@ pub enum FlatEvent {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct FlatEvtTransfer {
     pub sender: Addr,
-    pub transfers: BTreeMap<Addr, Coins>,
+    pub transfers: NonEmpty<BTreeMap<Addr, NonEmpty<Coins>>>,
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]

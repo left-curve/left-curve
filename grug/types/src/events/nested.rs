@@ -1,6 +1,7 @@
 use {
     crate::{
-        Addr, CheckedContractEvent, Coins, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp,
+        Addr, CheckedContractEvent, Coins, EventStatus, Hash256, Json, Label, NonEmpty, ReplyOn,
+        Timestamp,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
@@ -111,13 +112,13 @@ pub struct EvtConfigure {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct EvtTransfer {
     pub sender: Addr,
-    pub transfers: BTreeMap<Addr, Coins>,
+    pub transfers: NonEmpty<BTreeMap<Addr, NonEmpty<Coins>>>,
     pub bank_guest: EventStatus<EvtGuest>,
     pub receive_guests: BTreeMap<Addr, EventStatus<EvtGuest>>,
 }
 
 impl EvtTransfer {
-    pub fn base(sender: Addr, transfers: BTreeMap<Addr, Coins>) -> Self {
+    pub fn base(sender: Addr, transfers: NonEmpty<BTreeMap<Addr, NonEmpty<Coins>>>) -> Self {
         Self {
             sender,
             receive_guests: transfers

@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Coin, Coins, QueryBalanceRequest, QueryBalancesRequest, QuerySuppliesRequest,
-        QuerySupplyRequest,
+        Addr, Coin, Coins, NonEmpty, QueryBalanceRequest, QueryBalancesRequest,
+        QuerySuppliesRequest, QuerySupplyRequest,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
@@ -15,7 +15,7 @@ use {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct BankMsg {
     pub from: Addr,
-    pub transfers: BTreeMap<Addr, Coins>,
+    pub transfers: NonEmpty<BTreeMap<Addr, NonEmpty<Coins>>>,
 }
 
 /// The query message that the host provides the bank contract during the

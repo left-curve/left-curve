@@ -36,7 +36,9 @@ fn index_block() {
         .send_message_with_gas(
             &mut accounts["sender"],
             2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap())
+                .unwrap()
+                .unwrap(),
         )
         .should_succeed();
 
@@ -108,7 +110,9 @@ async fn parse_previous_block_after_restart() {
         .send_message_with_gas(
             &mut accounts["sender"],
             2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap())
+                .unwrap()
+                .unwrap(),
         )
         .should_succeed();
 
@@ -155,7 +159,9 @@ async fn parse_previous_block_after_restart() {
         .send_message_with_gas(
             &mut accounts["sender"],
             2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap())
+                .unwrap()
+                .unwrap(),
         )
         .should_succeed();
 
@@ -204,7 +210,9 @@ fn no_sql_index_error_after_restart() {
         .send_message_with_gas(
             &mut accounts["sender"],
             2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap())
+                .unwrap()
+                .unwrap(),
         )
         .should_succeed();
 
@@ -270,7 +278,9 @@ fn no_sql_index_error_after_restart() {
         .send_message_with_gas(
             &mut accounts["sender"],
             2000,
-            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap()).unwrap(),
+            Message::transfer(to, Coins::one(denom.clone(), 2_000).unwrap())
+                .unwrap()
+                .unwrap(),
         )
         .should_succeed();
 

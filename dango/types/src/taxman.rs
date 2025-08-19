@@ -1,5 +1,5 @@
 use {
-    grug::{Addr, Coins, Denom, Udec128},
+    grug::{Addr, Coins, Denom, NonEmpty, Udec128},
     std::collections::BTreeMap,
 };
 
@@ -48,7 +48,7 @@ pub enum ExecuteMsg {
     Pay {
         #[serde(rename = "type")]
         ty: FeeType,
-        payments: BTreeMap<Addr, Coins>,
+        payments: NonEmpty<BTreeMap<Addr, NonEmpty<Coins>>>,
     },
 }
 

@@ -137,6 +137,7 @@ fn proposal_passing_with_auto_execution() {
                         accounts.owner.address(),
                         Coins::one(usdc::DENOM.clone(), 888_888).unwrap(),
                     )
+                    .unwrap()
                     .unwrap(),
                 ],
             },

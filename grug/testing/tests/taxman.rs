@@ -1,7 +1,7 @@
 use {
     grug_math::{NumberConst, Uint128},
     grug_testing::TestBuilder,
-    grug_types::{Coins, Empty, Message, ResultExt},
+    grug_types::{Coins, Empty, ResultExt, coins},
     grug_vm_rust::ContractBuilder,
     test_case::test_case,
 };
@@ -14,8 +14,8 @@ mod taxman {
     use {
         grug_math::{IsZero, MultiplyFraction, Number, NumberConst, Udec128, Uint128},
         grug_types::{
-            AuthCtx, AuthMode, Coins, Denom, Empty, Message, MutableCtx, QuerierExt, Response,
-            StdResult, Tx, TxOutcome,
+            AuthCtx, AuthMode, Coin, Coins, Denom, Empty, Message, MutableCtx, QuerierExt,
+            Response, StdResult, Tx, TxOutcome,
         },
         std::{str::FromStr, sync::LazyLock},
     };
@@ -68,28 +68,14 @@ mod taxman {
         let charge_amount = Uint128::new(mock_gas_used as u128).checked_mul_dec_ceil(FEE_RATE)?;
         let refund_amount = withheld_amount.saturating_sub(charge_amount);
 
-        let charge_msg = if charge_amount.is_non_zero() {
-            let owner = ctx.querier.query_owner()?;
-            Some(Message::transfer(
-                owner,
-                Coins::one(FEE_DENOM.clone(), charge_amount)?,
-            )?)
-        } else {
-            None
-        };
-
-        let refund_msg = if refund_amount.is_non_zero() {
-            Some(Message::transfer(
-                tx.sender,
-                Coins::one(FEE_DENOM.clone(), refund_amount)?,
-            )?)
-        } else {
-            None
-        };
-
         Ok(Response::new()
-            .may_add_message(charge_msg)
-            .may_add_message(refund_msg))
+            .may_add_message({
+                let owner = ctx.querier.query_owner()?;
+                Message::transfer(owner, Coin::new(FEE_DENOM.clone(), charge_amount)?)?
+            })
+            .may_add_message({
+                Message::transfer(tx.sender, Coin::new(FEE_DENOM.clone(), refund_amount)?)?
+            }))
     }
 
     /// An alternative version of the `finalize_fee` function that errors on
@@ -178,14 +164,11 @@ fn withholding_and_finalizing_fee_works(
 
     let to = accounts["receiver"].address;
 
-    let outcome = suite.send_message_with_gas(
+    let outcome = suite.transfer_with_gas(
         &mut accounts["sender"],
         gas_limit,
-        Message::transfer(
-            to,
-            Coins::one(taxman::FEE_DENOM.clone(), send_amount).unwrap(),
-        )
-        .unwrap(),
+        to,
+        coins! { taxman::FEE_DENOM.clone() => send_amount },
     );
 
     match maybe_err {
@@ -238,10 +221,11 @@ fn finalizing_fee_erroring() {
     // Send a transaction with a single message.
     // `withhold_fee` must pass, which should be the case as we're requesting
     // zero gas limit.
-    let outcome = suite.send_message_with_gas(
+    let outcome = suite.transfer_with_gas(
         &mut accounts["sender"],
         2000,
-        Message::transfer(to, Coins::new()).unwrap(),
+        to,
+        coins! { taxman::FEE_DENOM.clone() => 123 },
     );
 
     // Result should be an error.

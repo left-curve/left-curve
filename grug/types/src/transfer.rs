@@ -1,6 +1,6 @@
 use {
-    crate::{Addr, Coin, Coins, DecCoin, DecCoins, Denom, Message, StdResult},
-    grug_math::{Dec, FixedPoint, NumberConst, Uint128},
+    crate::{Addr, Coin, Coins, DecCoin, DecCoins, Denom, Message, NonEmpty, StdResult},
+    grug_math::{Dec, FixedPoint, IsZero, NumberConst, Uint128},
     std::collections::BTreeMap,
 };
 
@@ -34,6 +34,11 @@ where
 
 impl TransferBuilder<Coins> {
     pub fn insert(&mut self, address: Addr, denom: Denom, amount: Uint128) -> StdResult<()> {
+        // No-op if the amount is zero.
+        if amount.is_zero() {
+            return Ok(());
+        }
+
         self.batch
             .entry(address)
             .or_default()
@@ -42,6 +47,11 @@ impl TransferBuilder<Coins> {
     }
 
     pub fn insert_many(&mut self, address: Addr, coins: Coins) -> StdResult<()> {
+        // No-op if the coins are empty.
+        if coins.is_empty() {
+            return Ok(());
+        }
+
         self.batch
             .entry(address)
             .or_default()
@@ -49,12 +59,23 @@ impl TransferBuilder<Coins> {
             .map(|_| ())
     }
 
-    pub fn into_batch(self) -> BTreeMap<Addr, Coins> {
-        self.batch
+    /// Returns `None` if the transfer is empty.
+    pub fn into_batch(self) -> Option<NonEmpty<BTreeMap<Addr, NonEmpty<Coins>>>> {
+        let batch = self
+            .batch
+            .into_iter()
+            .map(|(to, coins)| {
+                // Note: our insertion logic ensures that `coins` is non-empty.
+                (to, NonEmpty::new_unchecked(coins))
+            })
+            .collect();
+
+        NonEmpty::new(batch).ok()
     }
 
-    pub fn into_message(self) -> Message {
-        Message::Transfer(self.batch)
+    /// Returns `None` if the transfer is empty.
+    pub fn into_message(self) -> Option<Message> {
+        self.into_batch().map(Message::Transfer)
     }
 }
 
@@ -63,6 +84,11 @@ where
     Dec<u128, S>: FixedPoint<u128> + NumberConst,
 {
     pub fn insert(&mut self, address: Addr, denom: Denom, amount: Dec<u128, S>) -> StdResult<()> {
+        // No-op if the amount is zero.
+        if amount.is_zero() {
+            return Ok(());
+        }
+
         self.batch
             .entry(address)
             .or_default()
@@ -71,6 +97,11 @@ where
     }
 
     pub fn insert_many(&mut self, address: Addr, dec_coins: DecCoins<S>) -> StdResult<()> {
+        // No-op if the coins are empty.
+        if dec_coins.is_empty() {
+            return Ok(());
+        }
+
         self.batch
             .entry(address)
             .or_default()
@@ -78,22 +109,26 @@ where
             .map(|_| ())
     }
 
-    pub fn into_batch(self) -> BTreeMap<Addr, Coins> {
-        self.batch
+    /// Returns `None` if the transfer is empty.
+    pub fn into_batch(self) -> Option<NonEmpty<BTreeMap<Addr, NonEmpty<Coins>>>> {
+        let batch = self
+            .batch
             .into_iter()
             .filter_map(|(addr, dec_coins)| {
                 // Round _down_ decimal amount to integer.
                 let coins = dec_coins.into_coins_floor();
-                if coins.is_non_empty() {
-                    Some((addr, coins))
-                } else {
-                    None
-                }
+
+                // Unlike with `Coins`, it's possible that a `DecCoins` is non-empty,
+                // but after rounding down, it becomes empty. So we need to filter.
+                NonEmpty::new(coins).ok().map(|coins| (addr, coins))
             })
-            .collect()
+            .collect();
+
+        NonEmpty::new(batch).ok()
     }
 
-    pub fn into_message(self) -> Message {
-        Message::Transfer(self.into_batch())
+    /// Returns `None` if the transfer is empty.
+    pub fn into_message(self) -> Option<Message> {
+        self.into_batch().map(Message::Transfer)
     }
 }
