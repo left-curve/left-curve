@@ -27,7 +27,6 @@
     }
   },
   "globalEnv": [
-    "NEXT_PUBLIC_FULLPAGE_KEY",
     "CONFIG_ENVIRONMENT",
     "PUBLIC_FP",
     "PUBLIC_WEBRTC_URI",
