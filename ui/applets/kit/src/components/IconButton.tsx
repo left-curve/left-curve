@@ -1,5 +1,7 @@
 import { type VariantProps, tv } from "tailwind-variants";
-import { forwardRefPolymorphic, twMerge } from "#utils/index.js";
+import { twMerge } from "../utils/twMerge.js";
+import { forwardRefPolymorphic } from "../utils/polymorph.js";
+
 import { Spinner } from "./Spinner";
 
 export interface IconButtonProps extends VariantProps<typeof buttonVariants> {

@@ -137,8 +137,8 @@ export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
         setActiveStep(newActiveStepIndex);
         onStepChange?.(newActiveStepIndex);
       }
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
+      if (window?.document.activeElement instanceof HTMLElement) {
+        window?.document.activeElement.blur();
       }
     }, [activeStep, onStepChange]);
 
@@ -150,8 +150,8 @@ export const WizardProvider: React.FC<React.PropsWithChildren<Props>> = memo(
         setActiveStep(newActiveStepIndex);
         onStepChange?.(newActiveStepIndex);
       }
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
+      if (window?.document.activeElement instanceof HTMLElement) {
+        window?.document?.activeElement.blur();
       }
     }, [activeStep, onStepChange]);
 

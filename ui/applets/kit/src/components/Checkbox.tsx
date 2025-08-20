@@ -1,9 +1,9 @@
-import { useControlledState } from "#hooks/useControlledState.js";
+import { useControlledState } from "../hooks/useControlledState.js";
 
 import { Field, Checkbox as HCheckBox, Label } from "@headlessui/react";
 import { tv } from "tailwind-variants";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "../utils/twMerge.js";
 
 import type { VariantProps } from "tailwind-variants";
 

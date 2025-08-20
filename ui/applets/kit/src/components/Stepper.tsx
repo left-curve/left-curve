@@ -1,5 +1,5 @@
 import React from "react";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "../utils/twMerge.js";
 
 interface Props {
   steps: unknown[];

@@ -1,9 +1,8 @@
 {
   "name": "@left-curve/portal-app",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "src/index.ts",
   "scripts": {
-    "eas-build-post-install": "cd ../../../ && pnpm build:kit",
     "build:android": "eas build -p android -e development",
     "dev:android": "eas build:run -p android -e development --latest && expo start --android",
     "build:ios": "eas build -p ios -e development",
@@ -13,6 +12,11 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
+    "@left-curve/applets-kit": "workspace:*",
+    "@left-curve/config": "workspace:*",
+    "@left-curve/dango": "workspace:*",
+    "@left-curve/store": "workspace:*",
+    "@tanstack/react-query": "catalog:",
     "babel-plugin-module-resolver": "^5.0.2",
     "expo": "~52.0.47",
     "expo-camera": "~16.0.14",
@@ -35,6 +39,8 @@
     "react-native-reanimated": "~3.16.1",
     "react-native-safe-area-context": "4.12.0",
     "react-native-screens": "~4.4.0",
+    "react-native-shadow-2": "^7.1.2",
+    "react-native-svg": "15.8.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
     "tailwindcss": "^3.4.17"
