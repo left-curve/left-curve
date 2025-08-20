@@ -1,6 +1,6 @@
 :root:not(.theme-dark) {
   --tv-color-platform-background: #FFF9F0;
-  --tv-color-pane-background: #FFF9F0 !important;
+  --tv-color-pane-background: #FFF9F0;
   --tv-color-toolbar-button-background-hover: #FFF3E1;
   --tv-color-toolbar-button-background-expanded: #FFF3E1;
   --tv-color-toolbar-button-background-active: #FFF3E1;
