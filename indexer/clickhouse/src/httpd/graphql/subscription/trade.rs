@@ -1,12 +1,11 @@
-#[cfg(feature = "metrics")]
-use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
-
 use {
     crate::entities::trade::Trade,
     async_graphql::{futures_util::stream::Stream, *},
     futures::future::ready,
     futures_util::stream::StreamExt,
 };
+#[cfg(feature = "metrics")]
+use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
 
 #[derive(Default)]
 pub struct TradeSubscription;
