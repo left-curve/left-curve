@@ -51,6 +51,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
         backgroundColor: "transparent",
         foregroundColor: "rgb(249 169 178)",
       },
+      enabled_features: ["seconds_resolution"],
       disabled_features: ["header_symbol_search", "header_compare"],
       overrides: {
         "mainSeriesProperties.candleStyle.upColor": "#27AE60",
@@ -72,19 +73,8 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     });
 
     widget.onChartReady(async () => {
-      const chart = widget.activeChart();
       widgetRef.current = widget;
       widget.applyOverrides({ "paneProperties.background": toolbar_bg });
-
-      /*  orders.forEach((order) => {
-        chart.createShape({
-          time: order.timestamp,
-          price: order.price,
-          text: `${order.type} ${order.amount} ${coins.base.symbol}`,
-          color: order.type === "buy" ? "#27AE60" : "#EB5757",
-          shape: "label",
-        });
-      }); */
     });
   }, []);
 

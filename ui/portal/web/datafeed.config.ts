@@ -116,6 +116,7 @@ export function createTradingViewDataFeed(parameters: CreateDataFeedParameters):
         session: "24x7",
         type: "crypto",
         timezone: "Etc/UTC",
+        has_seconds: true,
         exchange: "Dango",
         listed_exchange: "Dango",
         format: "price",
