@@ -170,6 +170,10 @@ const ChartIQ = lazy(() =>
   import("../foundation/ChartIQ").then(({ ChartIQ }) => ({ default: ChartIQ })),
 );
 
+const TradingView = lazy(() =>
+  import("./TradingView").then(({ TradingView }) => ({ default: TradingView })),
+);
+
 const ProTradeChart: React.FC = () => {
   const { state } = useProTrade();
   const { isLg } = useMediaQuery();
@@ -180,7 +184,8 @@ const ProTradeChart: React.FC = () => {
   const Chart = (
     <Suspense fallback={<Spinner color="pink" />}>
       <div className="flex w-full h-full" id="chartiq">
-        <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />
+        {/*     <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} /> */}
+        <TradingView coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />
       </div>
     </Suspense>
   );

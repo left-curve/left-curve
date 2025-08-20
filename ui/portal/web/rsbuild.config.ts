@@ -20,6 +20,8 @@ const { publicVars } = loadEnv();
 
 const environment = process.env.CONFIG_ENVIRONMENT || "local";
 
+const workspaceRoot = path.resolve(__dirname, "../../../");
+
 const chain = {
   local: local,
   dev: devnet,
@@ -84,6 +86,16 @@ export default defineConfig({
     distPath: {
       root: "build",
     },
+    copy: [
+      {
+        from: path.resolve(
+          workspaceRoot,
+          "node_modules",
+          "@left-curve/tradingview/charting_library",
+        ),
+        to: "./static/charting_library",
+      },
+    ],
     minify: {
       jsOptions: {
         exclude: [],

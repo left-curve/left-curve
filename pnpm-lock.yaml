@@ -428,6 +428,9 @@ importers:
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store
+      '@left-curve/tradingview':
+        specifier: ^29.4.0
+        version: 29.4.0
       '@left-curve/ui-config':
         specifier: workspace:^
         version: link:../../config
@@ -2719,6 +2722,9 @@ packages:
 
   '@left-curve/chartiq@9.8.0':
     resolution: {integrity: sha512-O4oEzo15IPkj1gHkriMHzZKF6w6eFs/RmsprsLjMJDP4RIi7q7cwhL+na3Ub4v3P/Eq1oxVPTkbnLiDqZQoqIQ==, tarball: https://npm.pkg.github.com/download/@left-curve/chartiq/9.8.0/f33329b0f33f78a92fb489a21bccdd2ca477f651}
+
+  '@left-curve/tradingview@29.4.0':
+    resolution: {integrity: sha512-dmcthhZA+9qzs16xolv7zdgqECFRn4yJ48b4xYqH6k/xM2mNDnfuj++k0iM3uCwtTcdBIQhR048SpRQV9FjTfA==, tarball: https://npm.pkg.github.com/download/@left-curve/tradingview/29.4.0/0662df570d15127ebf994ff47064f0808425d749}
 
   '@lix-js/sdk@0.4.1':
     resolution: {integrity: sha512-8v9gkLuEa/VXLkDwuXLr+wjZY1D7dPXVhez97jJULYoKurLVuhh2SH/Sv4jF43biV0wee44PGADrFPuU00lnsQ==}
@@ -11056,6 +11062,8 @@ snapshots:
       tslib: 2.8.1
 
   '@left-curve/chartiq@9.8.0': {}
+
+  '@left-curve/tradingview@29.4.0': {}
 
   '@lix-js/sdk@0.4.1':
     dependencies:
