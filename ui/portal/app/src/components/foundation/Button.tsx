@@ -4,6 +4,7 @@ import { twMerge } from "@left-curve/applets-kit";
 import { Shadow } from "react-native-shadow-2";
 import React, { PropsWithChildren } from "react";
 import { LinearGradient } from "expo-linear-gradient";
+import { useTheme } from "~/hooks/useTheme";
 
 export const iconColors = {
   light: {
@@ -123,6 +124,9 @@ const ButtonShadow: React.FC<
     variant?: keyof typeof buttonVariants.variants.variant;
   }>
 > = ({ children, radius, variant }) => {
+  const { theme } = useTheme();
+  const br = radiusSizes[radius];
+
   if (variant === "link") {
     return <>{children}</>;
   }
@@ -131,25 +135,27 @@ const ButtonShadow: React.FC<
     return (
       <Shadow
         distance={3}
-        startColor="rgba(0, 0, 0, 0.07)"
+        startColor="rgba(0,0,0,0.07)"
         offset={[0, -1]}
-        style={{ borderRadius: radiusSizes[radius] }}
+        style={{ borderRadius: br }}
       >
         <Shadow
           distance={3}
-          startColor="rgba(255, 255, 255, 0.07)"
+          startColor="rgba(255,255,255,0.07)"
           offset={[0, 2]}
-          style={{ borderRadius: radiusSizes[radius] }}
+          style={{ borderRadius: br }}
         >
           <Shadow
             distance={1}
-            startColor="rgba(0, 0, 0, 0.04)"
+            startColor="rgba(0,0,0,0.04)"
             offset={[0, 1]}
-            style={{ borderRadius: radiusSizes[radius] }}
+            style={{ borderRadius: br }}
           >
             <LinearGradient
-              colors={["rgba(0,0,0,0.07)", "transparent"]}
-              style={{ ...StyleSheet.absoluteFillObject, borderRadius: radiusSizes[radius] }}
+              colors={["rgba(255,255,255,0.12)", "transparent"]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 0.6 }}
+              style={{ ...StyleSheet.absoluteFillObject, borderRadius: br }}
             />
             {children}
           </Shadow>
@@ -158,22 +164,57 @@ const ButtonShadow: React.FC<
     );
   }
 
-  return (
-    <Shadow
-      distance={4}
-      startColor="rgba(171, 158, 138, 0.4)"
-      offset={[0, 2]}
-      style={{ borderRadius: radiusSizes[radius] }}
-    >
+  if (theme === "light") {
+    return (
       <Shadow
-        distance={2}
-        startColor="rgba(241, 219, 186, 0.5)"
-        offset={[0, -1]}
-        style={{ borderRadius: radiusSizes[radius] }}
+        distance={4}
+        startColor="rgba(171,158,138,0.40)"
+        offset={[0, 2]}
+        style={{ borderRadius: br }}
+      >
+        <Shadow
+          distance={2}
+          startColor="rgba(241,219,186,0.50)"
+          offset={[0, -1]}
+          style={{ borderRadius: br }}
+        >
+          <LinearGradient
+            colors={["rgba(255,255,255,0.64)", "rgba(255,255,255,0.00)"]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 0.7 }}
+            style={{ ...StyleSheet.absoluteFillObject, borderRadius: br }}
+          />
+          <LinearGradient
+            colors={["rgba(255,255,255,0.48)", "rgba(255,255,255,0.00)"]}
+            start={{ x: 0.5, y: 0.3 }}
+            end={{ x: 0.5, y: 1 }}
+            style={{ ...StyleSheet.absoluteFillObject, borderRadius: br }}
+          />
+          {children}
+        </Shadow>
+      </Shadow>
+    );
+  }
+
+  return (
+    <Shadow distance={6} startColor="rgba(0,0,0,0.04)" offset={[0, 4]} style={{ borderRadius: br }}>
+      <Shadow
+        distance={6}
+        startColor="rgba(0,0,0,0.04)"
+        offset={[0, 4]}
+        style={{ borderRadius: br }}
       >
         <LinearGradient
-          colors={["rgba(255,255,255,0.64)", "rgba(255,255,255,0.48)", "transparent"]}
-          style={[{ ...StyleSheet.absoluteFillObject, borderRadius: radiusSizes[radius] }]}
+          colors={["rgba(255,255,255,0.48)", "rgba(255,255,255,0.00)"]}
+          start={{ x: 0.5, y: 0.2 }}
+          end={{ x: 0.5, y: 1 }}
+          style={{ ...StyleSheet.absoluteFillObject, borderRadius: br }}
+        />
+        <LinearGradient
+          colors={["rgba(255,255,255,0.64)", "rgba(255,255,255,0.00)"]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 0.6 }}
+          style={{ ...StyleSheet.absoluteFillObject, borderRadius: br }}
         />
         {children}
       </Shadow>
