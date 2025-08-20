@@ -39,9 +39,12 @@ impl grug_app::Indexer for Indexer {
         let handle = self.runtime_handler.spawn({
             let clickhouse_client = self.context.clickhouse_client().clone();
             async move {
-                for migration in crate::migrations::candle_builder::migrations() {
+                for migration in crate::migrations::candle_builder::migrations()
+                    .iter()
+                    .chain(crate::migrations::trade::Migration::migrations().iter())
+                {
                     clickhouse_client
-                        .query(&migration)
+                        .query(migration)
                         .execute()
                         .await
                         .map_err(|e| {
