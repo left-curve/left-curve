@@ -15,10 +15,10 @@ pub enum Error {
     Std(#[from] grug::StdError),
 
     #[error(transparent)]
-    PubSubError(#[from] PubSubError),
+    PubSub(#[from] PubSubError),
 
     #[error(transparent)]
-    JoinError(#[from] tokio::task::JoinError),
+    Join(#[from] tokio::task::JoinError),
 }
 
 impl From<Error> for grug_app::IndexerError {
