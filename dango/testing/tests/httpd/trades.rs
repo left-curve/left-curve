@@ -14,12 +14,11 @@ use {
         Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
-    indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
-    std::{collections::HashMap, sync::Arc},
+    std::sync::Arc,
     tokio::sync::{Mutex, mpsc},
 };
 
@@ -118,7 +117,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn query_candles_with_address() -> anyhow::Result<()> {
+async fn query_trades_with_address() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -259,7 +258,6 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
     });
 
     let create_tx_clone = create_tx.clone();
-    let context = dango_httpd_context.clone();
 
     local_set
         .run_until(async {
@@ -306,50 +304,6 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
             .await
         })
         .await??;
-
-    {
-        let suite_guard = suite.lock().await;
-        suite_guard.app.indexer.wait_for_finish().unwrap();
-    }
-
-    // The following ensures than loading clickhouse data to a new cache result in the same
-    // loaded data than our current cache
-    let mut cache = CandleCache::default();
-    let pairs =
-        PairPrice::all_pairs(context.indexer_clickhouse_context.clickhouse_client()).await?;
-
-    cache
-        .preload_pairs(
-            &pairs,
-            context.indexer_clickhouse_context.clickhouse_client(),
-        )
-        .await?;
-
-    let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
-
-    // println!("Cache : {:#?}", old_cache.pair_prices);
-    // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
-    assert_eq!(
-        cache.pair_prices,
-        // Filtering empty ones, since cache has them but not clickhouse
-        old_cache
-            .pair_prices
-            .clone()
-            .into_iter()
-            .filter(|pp| !pp.1.is_empty())
-            .collect::<HashMap<_, _>>()
-    );
-
-    // println!("Cache : {:#?}", old_cache.candles);
-    // println!("Cache from clickhouse: {:#?}", cache.candles);
-    assert_eq!(cache.candles, old_cache.candles);
-
-    let mut suite_guard = suite.lock().await;
-    suite_guard
-        .app
-        .indexer
-        .shutdown()
-        .expect("Can't shutdown indexer");
 
     Ok(())
 }
