@@ -88,6 +88,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     "filledQuote": "137.5",
                     "refundBase": "0",
                     "refundQuote": "136.95",
+                    "tradeIdx": 3,
                 },
                 {
                     "addr": accounts.user5.address(),
@@ -99,6 +100,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     "filledQuote": "275",
                     "refundBase": "0",
                     "refundQuote": "273.9",
+                    "tradeIdx": 2,
                 },{
                     "addr": accounts.user4.address(),
                     "baseDenom": "dango",
@@ -109,6 +111,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     "filledQuote": "275",
                     "refundBase": "0",
                     "refundQuote": "273.9",
+                    "tradeIdx": 1,
                 },{
                     "addr": accounts.user1.address(),
                     "baseDenom": "dango",
@@ -119,6 +122,137 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     "filledQuote": "687.5",
                     "refundBase": "24.9",
                     "refundQuote": "62.5",
+                    "tradeIdx": 0,
+                }]);
+
+                assert_json_include!(actual: received_trades, expected: expected_candle);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
+
+    create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+
+    suite.app.indexer.wait_for_finish()?;
+
+    let graphql_query = r#"
+      query Trades($addr: String, $first: Int, $after: String) {
+      trades(addr: $addr, first: $first, after: $after) {
+          nodes {
+            addr
+            quoteDenom
+            baseDenom
+            direction
+            filledBase
+            filledQuote
+            refundBase
+            refundQuote
+            feeBase
+            feeQuote
+            clearingPrice
+            createdAt
+            blockHeight
+            tradeIdx
+          }
+          edges { node { addr quoteDenom baseDenom direction filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight tradeIdx }  cursor }
+          pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
+        }
+      }
+    "#;
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async move {
+                let mut received_trades = Vec::new();
+                let mut after = None;
+
+                loop {
+                    let app = build_actix_app(dango_httpd_context.clone());
+
+                    let mut variables = serde_json::json!({"first": 1});
+                    if let Some(cursor) = after {
+                        variables["after"] = serde_json::json!(cursor);
+                    }
+
+                    let request_body = GraphQLCustomRequest {
+                        name: "trades",
+                        query: graphql_query,
+                        variables: variables.as_object().unwrap().clone(),
+                    };
+
+                    let response: PaginatedResponse<serde_json::Value> =
+                        call_paginated_graphql(app, request_body.clone()).await?;
+
+                    received_trades.append(
+                        &mut response
+                            .edges
+                            .into_iter()
+                            .map(|e| e.node)
+                            .collect::<Vec<_>>(),
+                    );
+
+                    after = response.page_info.end_cursor;
+
+                    if after.is_none() {
+                        break;
+                    }
+                }
+
+                let expected_candle = serde_json::json!([{
+                    "addr": accounts.user6.address(),
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "clearingPrice": "27.5",
+                    "direction": "ASK",
+                    "filledBase": "5",
+                    "filledQuote": "137.5",
+                    "refundBase": "0",
+                    "refundQuote": "136.95",
+                    "tradeIdx": 3,
+                },
+                {
+                    "addr": accounts.user5.address(),
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "clearingPrice": "27.5",
+                    "direction": "ASK",
+                    "filledBase": "10",
+                    "filledQuote": "275",
+                    "refundBase": "0",
+                    "refundQuote": "273.9",
+                    "tradeIdx": 2,
+                },{
+                    "addr": accounts.user4.address(),
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "clearingPrice": "27.5",
+                    "direction": "ASK",
+                    "filledBase": "10",
+                    "filledQuote": "275",
+                    "refundBase": "0",
+                    "refundQuote": "273.9",
+                    "tradeIdx": 1,
+                },{
+                    "addr": accounts.user1.address(),
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "clearingPrice": "27.5",
+                    "direction": "BID",
+                    "filledBase": "25",
+                    "filledQuote": "687.5",
+                    "refundBase": "24.9",
+                    "refundQuote": "62.5",
+                    "tradeIdx": 0,
                 }]);
 
                 assert_json_include!(actual: received_trades, expected: expected_candle);

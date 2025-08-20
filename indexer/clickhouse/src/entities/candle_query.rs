@@ -85,7 +85,7 @@ impl CandleQueryBuilder {
 
         let mut rows: Vec<Candle> = cursor_query.fetch_all().await?;
 
-        let has_next_page = rows.len() > self.limit.unwrap_or_default() - 1;
+        let has_next_page = rows.len() > self.limit.unwrap_or_default();
         if has_next_page {
             rows.pop();
         }

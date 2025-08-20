@@ -61,7 +61,7 @@ impl TradeQueryBuilder {
 
         let mut rows: Vec<Trade> = cursor_query.fetch_all().await?;
 
-        let has_next_page = rows.len() > self.limit - 1;
+        let has_next_page = rows.len() > self.limit;
         if has_next_page {
             rows.pop();
         }
@@ -120,7 +120,7 @@ impl TradeQueryBuilder {
         }
 
         if let Some(later_than) = self.later_than {
-            query.push_str(" AND (block_height, trade_idx) < (?, ?)");
+            query.push_str(" AND (block_height, trade_idx) < (?, ?) ");
             params.push(later_than.0.to_string());
             params.push(later_than.1.to_string());
         }
