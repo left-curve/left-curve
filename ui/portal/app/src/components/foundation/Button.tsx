@@ -123,7 +123,7 @@ const ButtonShadow: React.FC<
     variant?: keyof typeof buttonVariants.variants.variant;
   }>
 > = ({ children, radius, variant }) => {
-  if (variant?.includes("link")) {
+  if (variant === "link") {
     return <>{children}</>;
   }
 

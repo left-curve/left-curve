@@ -1,6 +1,7 @@
 // IconSun.native.tsx
-import React from "react";
-import Svg, { G, Path, Mask, Defs, ClipPath, SvgProps } from "react-native-svg";
+import type React from "react";
+import { useId } from "react";
+import Svg, { G, Path, Mask, Defs, ClipPath, type SvgProps } from "react-native-svg";
 
 export const IconSun: React.FC<SvgProps & { size?: number }> = ({
   color = "#2E2521",
@@ -9,8 +10,9 @@ export const IconSun: React.FC<SvgProps & { size?: number }> = ({
   height,
   ...props
 }) => {
-  const clipId = "clip0_1177_41779";
-  const maskId = "mask0_1177_41779";
+  const id = useId();
+  const clipId = `clip-${id}`;
+  const maskId = `mask-${id}`;
 
   return (
     <Svg
