@@ -26,23 +26,19 @@ export const iconColors = {
   },
 } as const;
 
-export const getRadius = (radius?: string) => {
-  switch (radius) {
-    case "none":
-      return 0;
-    case "sm":
-      return 4;
-    case "md":
-      return 8;
-    case "lg":
-      return 12;
-    case "xl":
-      return 16;
-    case "full":
-      return 999;
-    default:
-      return 999;
-  }
+export const radiusSizes = {
+  none: 0,
+  xxs: 4,
+  xs: 8,
+  sm: 10,
+  md: 12,
+  lg: 14,
+  xl: 16,
+  "2xl": 18,
+  "3xl": 20,
+  "4xl": 22,
+  "5xl": 24,
+  full: 9999,
 };
 
 const buttonVariants = tv({
@@ -135,25 +131,25 @@ const ButtonShadow: React.FC<
     return (
       <Shadow
         distance={3}
-        startColor="rgba(0, 0, 0, 0.07)" // #00000012
+        startColor="rgba(0, 0, 0, 0.07)"
         offset={[0, -1]}
-        style={{ borderRadius: getRadius(radius) }}
+        style={{ borderRadius: radiusSizes[radius] }}
       >
         <Shadow
           distance={3}
-          startColor="rgba(255, 255, 255, 0.07)" // #FFFFFF12
+          startColor="rgba(255, 255, 255, 0.07)"
           offset={[0, 2]}
-          style={{ borderRadius: getRadius(radius) }}
+          style={{ borderRadius: radiusSizes[radius] }}
         >
           <Shadow
             distance={1}
-            startColor="rgba(0, 0, 0, 0.04)" // #0000000A
+            startColor="rgba(0, 0, 0, 0.04)"
             offset={[0, 1]}
-            style={{ borderRadius: getRadius(radius) }}
+            style={{ borderRadius: radiusSizes[radius] }}
           >
             <LinearGradient
               colors={["rgba(0,0,0,0.07)", "transparent"]}
-              style={{ ...StyleSheet.absoluteFillObject, borderRadius: getRadius(radius) }}
+              style={{ ...StyleSheet.absoluteFillObject, borderRadius: radiusSizes[radius] }}
             />
             {children}
           </Shadow>
@@ -167,17 +163,17 @@ const ButtonShadow: React.FC<
       distance={4}
       startColor="rgba(171, 158, 138, 0.4)"
       offset={[0, 2]}
-      style={{ borderRadius: getRadius(radius) }}
+      style={{ borderRadius: radiusSizes[radius] }}
     >
       <Shadow
         distance={2}
         startColor="rgba(241, 219, 186, 0.5)"
         offset={[0, -1]}
-        style={{ borderRadius: getRadius(radius) }}
+        style={{ borderRadius: radiusSizes[radius] }}
       >
         <LinearGradient
           colors={["rgba(255,255,255,0.64)", "rgba(255,255,255,0.48)", "transparent"]}
-          style={[{ ...StyleSheet.absoluteFillObject, borderRadius: getRadius(radius) }]}
+          style={[{ ...StyleSheet.absoluteFillObject, borderRadius: radiusSizes[radius] }]}
         />
         {children}
       </Shadow>
