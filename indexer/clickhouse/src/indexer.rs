@@ -1,6 +1,7 @@
 use {
     crate::{context::Context, error::IndexerError},
     dango_types::DangoQuerier,
+    futures::try_join,
     grug_app::Indexer as IndexerTrait,
     indexer_sql::indexer::RuntimeHandler,
 };
@@ -138,8 +139,10 @@ impl grug_app::Indexer for Indexer {
 
             let dex_addr = querier.as_ref().query_dex()?;
 
-            Self::store_candles(&clickhouse_client, &dex_addr, &ctx, &context).await?;
-            Self::store_trades(&clickhouse_client, &dex_addr, &ctx, &context).await?;
+            try_join!(
+                Self::store_candles(&clickhouse_client, &dex_addr, &ctx, &context),
+                Self::store_trades(&clickhouse_client, &dex_addr, &ctx, &context)
+            )?;
 
             #[cfg(feature = "metrics")]
             histogram!(
