@@ -179,7 +179,7 @@ const ProTradeChart: React.FC = () => {
   const { isLg } = useMediaQuery();
   const { baseCoin, quoteCoin, orders } = state;
 
-  const mobileContainer = usePortalTarget("#chartiq-container");
+  const mobileContainer = usePortalTarget("#chart-container");
 
   const Chart = (
     <Suspense fallback={<Spinner color="pink" />}>
