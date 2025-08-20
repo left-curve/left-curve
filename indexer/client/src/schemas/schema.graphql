@@ -638,7 +638,7 @@ type Subscription {
 	"""
 	candles(baseDenom: String!, quoteDenom: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [Candle!]!
 	"""
-	Get all trades
+	Get all trades, this will not include past trades but only new ones since you subscribed.
 	"""
 	trades(baseDenom: String!, quoteDenom: String!): Trade!
 }
