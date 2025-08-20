@@ -12,7 +12,7 @@ pub struct TradeResult {
 pub struct TradeQueryBuilder {
     pair: Option<PairId>,
     limit: usize,
-    later_block_height: Option<u64>,
+    later_than: Option<(u64, u32)>,
     addr: Option<Addr>,
 }
 
@@ -21,7 +21,7 @@ impl Default for TradeQueryBuilder {
         Self {
             limit: MAX_ITEMS,
             pair: Default::default(),
-            later_block_height: Default::default(),
+            later_than: Default::default(),
             addr: Default::default(),
         }
     }
@@ -43,8 +43,8 @@ impl TradeQueryBuilder {
         self
     }
 
-    pub fn with_later_block_height(mut self, block_height: u64) -> Self {
-        self.later_block_height = Some(block_height);
+    pub fn with_later_than(mut self, block_height: u64, trade_idx: u32) -> Self {
+        self.later_than = Some((block_height, trade_idx));
         self
     }
 
@@ -92,9 +92,9 @@ impl TradeQueryBuilder {
 
         let mut query = r#"
           SELECT
+            addr,
             quote_denom,
             base_denom,
-            addr,
             direction,
             filled_base,
             filled_quote,
@@ -104,7 +104,8 @@ impl TradeQueryBuilder {
             fee_quote,
             clearing_price,
             created_at,
-            block_height
+            block_height,
+            trade_idx
           FROM trades
           WHERE 1=1
         "#
@@ -118,9 +119,10 @@ impl TradeQueryBuilder {
             params.push(pair.quote_denom.to_string());
         }
 
-        if let Some(later_block_height) = self.later_block_height {
-            query.push_str(" AND block_height >= ?");
-            params.push(later_block_height.to_string());
+        if let Some(later_than) = self.later_than {
+            query.push_str(" AND (block_height, trade_idx) < (?, ?)");
+            params.push(later_than.0.to_string());
+            params.push(later_than.1.to_string());
         }
 
         if let Some(addr) = &self.addr {
@@ -128,7 +130,7 @@ impl TradeQueryBuilder {
             params.push(addr.to_string());
         }
 
-        query.push_str(" ORDER BY block_height DESC");
+        query.push_str(" ORDER BY block_height DESC, trade_idx DESC");
         query.push_str(&format!(" LIMIT {}", self.limit + 1));
 
         (query, params, has_previous_page)

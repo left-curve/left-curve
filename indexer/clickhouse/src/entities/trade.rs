@@ -65,6 +65,10 @@ pub struct Trade {
 
     #[cfg_attr(feature = "async-graphql", graphql(name = "blockHeight"))]
     pub block_height: u64,
+
+    // Used for cursor and pagination
+    #[cfg_attr(feature = "async-graphql", graphql(name = "tradeIdx"))]
+    pub trade_idx: u32,
 }
 
 #[cfg(feature = "async-graphql")]

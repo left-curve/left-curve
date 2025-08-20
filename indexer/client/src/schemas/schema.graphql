@@ -205,6 +205,20 @@ The input/output is a string in RFC3339 format.
 """
 scalar DateTime
 
+"""
+The direction of a trade: buy or sell.
+"""
+enum Direction {
+	"""
+	Give away the quote asset, get the base asset; a.k.a. a BUY order.
+	"""
+	BID
+	"""
+	Give away the base asset, get the quote asset; a.k.a. a SELL order.
+	"""
+	ASK
+}
+
 type Event {
 	type: String!
 	method: String
@@ -576,6 +590,23 @@ type Query {
 		"""
 		interval: CandleInterval!,		earlierThan: DateTime,		laterThan: DateTime
 	): CandleConnection!
+	"""
+	Get paginated trades
+	"""
+	trades(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Account Address
+		"""
+		addr: String
+	): TradeConnection!
 }
 
 type Status {
@@ -606,6 +637,59 @@ type Subscription {
 	Get candles for a given base and quote denom, interval
 	"""
 	candles(baseDenom: String!, quoteDenom: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [Candle!]!
+	"""
+	Get all trades
+	"""
+	trades(baseDenom: String!, quoteDenom: String!): Trade!
+}
+
+type Trade {
+	addr: String!
+	quoteDenom: String!
+	baseDenom: String!
+	direction: Direction!
+	blockHeight: Int!
+	tradeIdx: Int!
+	"""
+	Returns the block timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	filledBase: BigDecimal!
+	filledQuote: BigDecimal!
+	refundBase: BigDecimal!
+	refundQuote: BigDecimal!
+	feeBase: BigDecimal!
+	feeQuote: BigDecimal!
+	clearingPrice: BigDecimal!
+}
+
+type TradeConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [TradeEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Trade!]!
+}
+
+"""
+An edge in a connection.
+"""
+type TradeEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Trade!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
 }
 
 type Transaction {

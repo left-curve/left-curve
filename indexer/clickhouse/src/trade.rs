@@ -34,6 +34,8 @@ impl Indexer {
         // of the base asset.
         let mut trades = Vec::new();
 
+        let mut trade_idx = 0;
+
         // DEX order execution happens exclusively in the end-block cronjob, so
         // we loop through the block's cron outcomes.
         for outcome in block_outcome.cron_outcomes {
@@ -94,7 +96,10 @@ impl Indexer {
                             Utc,
                         ),
                         block_height: block.info.height,
+                        trade_idx,
                     };
+
+                    trade_idx += 1;
 
                     trades.push(trade.clone());
                     context.trade_pubsub.publish(trade).await?;

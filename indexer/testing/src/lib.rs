@@ -138,9 +138,9 @@ where
             println!("Failed to parse GraphQL response: {err}");
 
             if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&graphql_response) {
-                println!("{json:#?}");
+                println!("json: {json:#?}");
             } else {
-                println!("{graphql_response:#?}");
+                println!("graphql_response: {graphql_response:#?}");
             }
         })?;
 
@@ -332,7 +332,14 @@ where
                 // println!("text response: \n{}", str::from_utf8(&text)?);
 
                 let mut graphql_response: GraphQLSubscriptionResponse =
-                    serde_json::from_slice(&text)?;
+                    serde_json::from_slice(&text).inspect_err(|err| {
+                        println!("Failed to parse GraphQL subscription response: {err}");
+
+                        println!(
+                            "text response: \n{}",
+                            str::from_utf8(&text).unwrap_or_default()
+                        );
+                    })?;
 
                 // When I need to debug the response
                 // println!("response: \n{graphql_response:#?}");
