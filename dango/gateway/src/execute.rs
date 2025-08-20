@@ -1,18 +1,19 @@
 use {
     crate::{OUTBOUND_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
     anyhow::{anyhow, ensure},
+    core::slice,
     dango_types::{
         bank,
         gateway::{
-            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote, WithdrawalFee,
+            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote, TokenOrigin,
+            WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
     },
     grug::{
         Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst,
-        Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map,
-        coins,
+        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -41,7 +42,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-fn set_routes(ctx: MutableCtx, routes: BTreeSet<(Part, Addr, Remote)>) -> anyhow::Result<Response> {
+fn set_routes(
+    ctx: MutableCtx,
+    routes: BTreeSet<(TokenOrigin, Addr, Remote)>,
+) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "only the owner can set routes"
@@ -52,9 +56,22 @@ fn set_routes(ctx: MutableCtx, routes: BTreeSet<(Part, Addr, Remote)>) -> anyhow
     Ok(Response::new())
 }
 
-fn _set_routes(storage: &mut dyn Storage, routes: BTreeSet<(Part, Addr, Remote)>) -> StdResult<()> {
-    for (part, bridge, remote) in routes {
-        let denom = Denom::from_parts([NAMESPACE.clone(), part])?;
+fn _set_routes(
+    storage: &mut dyn Storage,
+    routes: BTreeSet<(TokenOrigin, Addr, Remote)>,
+) -> anyhow::Result<()> {
+    for (origin, bridge, remote) in routes {
+        let denom = match origin {
+            TokenOrigin::Remote(part) => Denom::from_parts([NAMESPACE.clone(), part])?,
+            TokenOrigin::Native(denom) => {
+                ensure!(
+                    !denom.starts_with(slice::from_ref(&NAMESPACE)),
+                    "native denom must not start with `{}` namespace",
+                    NAMESPACE.as_ref()
+                );
+                denom
+            },
+        };
 
         ROUTES.save(storage, (bridge, remote), &denom)?;
         REVERSE_ROUTES.save(storage, (&denom, remote), &bridge)?;
@@ -132,18 +149,23 @@ fn receive_remote(
         Ok::<_, StdError>(quota.checked_add(amount)?)
     })?;
 
-    // Mint the alloyed token to the recipient.
-    Ok(Response::new().add_message({
-        let bank = ctx.querier.query_bank()?;
-        Message::execute(
-            bank,
-            &bank::ExecuteMsg::Mint {
-                to: recipient,
-                coins: coins! { denom => amount },
-            },
-            Coins::new(),
-        )?
-    }))
+    // Mint the alloyed token to the recipient (if the token is not native on Dango).
+    // Otherwise, transfer the token to the recipient.
+    Ok(
+        Response::new().add_message(if denom.starts_with(slice::from_ref(&NAMESPACE)) {
+            let bank = ctx.querier.query_bank()?;
+            Message::execute(
+                bank,
+                &bank::ExecuteMsg::Mint {
+                    to: recipient,
+                    coins: coins! { denom => amount },
+                },
+                Coins::new(),
+            )?
+        } else {
+            Message::transfer(recipient, coins! { denom => amount })?
+        }),
+    )
 }
 
 fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {
@@ -195,7 +217,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
 
     // 1. Call the bridge contract to make the remote transfer.
-    // 2. Burn the alloyed token to be transferred.
+    // 2. Burn the alloyed token to be transferred (only if the token is not native on Dango).
     // 3. Pay fee to the taxman.
     Ok(Response::new()
         .add_message(Message::execute(
@@ -207,14 +229,18 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             }),
             Coins::new(),
         )?)
-        .add_message(Message::execute(
-            bank,
-            &bank::ExecuteMsg::Burn {
-                from: ctx.contract,
-                coins: coin.clone().into(),
-            },
-            Coins::new(),
-        )?)
+        .may_add_message(if coin.denom.starts_with(slice::from_ref(&NAMESPACE)) {
+            Some(Message::execute(
+                bank,
+                &bank::ExecuteMsg::Burn {
+                    from: ctx.contract,
+                    coins: coin.clone().into(),
+                },
+                Coins::new(),
+            )?)
+        } else {
+            None
+        })
         .may_add_message(if let Some(fee) = maybe_fee {
             Some(Message::execute(
                 taxman,

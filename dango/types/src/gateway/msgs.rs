@@ -11,9 +11,18 @@ pub struct WithdrawalFee {
     pub fee: Uint128,
 }
 
+#[derive(PartialOrd, Ord)]
+#[grug::derive(Serde)]
+pub enum TokenOrigin {
+    /// The token was received through a remote chain.
+    Remote(Part),
+    /// Token is native on Dango.
+    Native(Denom),
+}
+
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub routes: BTreeSet<(Part, Addr, Remote)>,
+    pub routes: BTreeSet<(TokenOrigin, Addr, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub withdrawal_fees: Vec<WithdrawalFee>,
 }
@@ -26,7 +35,7 @@ pub enum ExecuteMsg {
     ///
     /// Not that this is append-only, meaning you can't change or remove an
     /// existing route.
-    SetRoutes(BTreeSet<(Part, Addr, Remote)>),
+    SetRoutes(BTreeSet<(TokenOrigin, Addr, Remote)>),
     /// Set rate limit for the routes.
     SetRateLimits(BTreeMap<Denom, RateLimit>),
     /// Set withdrawal fees for the denoms.
