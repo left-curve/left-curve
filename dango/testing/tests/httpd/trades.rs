@@ -78,52 +78,56 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     .map(|e| e.node)
                     .collect::<Vec<_>>();
 
-                let expected_candle = serde_json::json!([{
-                    "addr": accounts.user6.address(),
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "clearingPrice": "27.5",
-                    "direction": "ASK",
-                    "filledBase": "5",
-                    "filledQuote": "137.5",
-                    "refundBase": "0",
-                    "refundQuote": "136.95",
-                    "tradeIdx": 3,
-                },
-                {
-                    "addr": accounts.user5.address(),
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "clearingPrice": "27.5",
-                    "direction": "ASK",
-                    "filledBase": "10",
-                    "filledQuote": "275",
-                    "refundBase": "0",
-                    "refundQuote": "273.9",
-                    "tradeIdx": 2,
-                },{
-                    "addr": accounts.user4.address(),
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "clearingPrice": "27.5",
-                    "direction": "ASK",
-                    "filledBase": "10",
-                    "filledQuote": "275",
-                    "refundBase": "0",
-                    "refundQuote": "273.9",
-                    "tradeIdx": 1,
-                },{
-                    "addr": accounts.user1.address(),
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "clearingPrice": "27.5",
-                    "direction": "BID",
-                    "filledBase": "25",
-                    "filledQuote": "687.5",
-                    "refundBase": "24.9",
-                    "refundQuote": "62.5",
-                    "tradeIdx": 0,
-                }]);
+                let expected_candle = serde_json::json!([
+                    {
+                        "addr": accounts.user6.address(),
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "clearingPrice": "27.5",
+                        "direction": "ASK",
+                        "filledBase": "5",
+                        "filledQuote": "137.5",
+                        "refundBase": "0",
+                        "refundQuote": "136.95",
+                        "tradeIdx": 3,
+                    },
+                    {
+                        "addr": accounts.user5.address(),
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "clearingPrice": "27.5",
+                        "direction": "ASK",
+                        "filledBase": "10",
+                        "filledQuote": "275",
+                        "refundBase": "0",
+                        "refundQuote": "273.9",
+                        "tradeIdx": 2,
+                    },
+                    {
+                        "addr": accounts.user4.address(),
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "clearingPrice": "27.5",
+                        "direction": "ASK",
+                        "filledBase": "10",
+                        "filledQuote": "275",
+                        "refundBase": "0",
+                        "refundQuote": "273.9",
+                        "tradeIdx": 1,
+                    },
+                    {
+                        "addr": accounts.user1.address(),
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "clearingPrice": "27.5",
+                        "direction": "BID",
+                        "filledBase": "25",
+                        "filledQuote": "687.5",
+                        "refundBase": "24.9",
+                        "refundQuote": "62.5",
+                        "tradeIdx": 0,
+                    },
+                ]);
 
                 assert_json_include!(actual: received_trades, expected: expected_candle);
 
@@ -208,52 +212,56 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                     }
                 }
 
-                let expected_candle = serde_json::json!([{
-                    "addr": accounts.user6.address(),
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "clearingPrice": "27.5",
-                    "direction": "ASK",
-                    "filledBase": "5",
-                    "filledQuote": "137.5",
-                    "refundBase": "0",
-                    "refundQuote": "136.95",
-                    "tradeIdx": 3,
-                },
-                {
-                    "addr": accounts.user5.address(),
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "clearingPrice": "27.5",
-                    "direction": "ASK",
-                    "filledBase": "10",
-                    "filledQuote": "275",
-                    "refundBase": "0",
-                    "refundQuote": "273.9",
-                    "tradeIdx": 2,
-                },{
-                    "addr": accounts.user4.address(),
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "clearingPrice": "27.5",
-                    "direction": "ASK",
-                    "filledBase": "10",
-                    "filledQuote": "275",
-                    "refundBase": "0",
-                    "refundQuote": "273.9",
-                    "tradeIdx": 1,
-                },{
-                    "addr": accounts.user1.address(),
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "clearingPrice": "27.5",
-                    "direction": "BID",
-                    "filledBase": "25",
-                    "filledQuote": "687.5",
-                    "refundBase": "24.9",
-                    "refundQuote": "62.5",
-                    "tradeIdx": 0,
-                }]);
+                let expected_candle = serde_json::json!([
+                    {
+                        "addr": accounts.user6.address(),
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "clearingPrice": "27.5",
+                        "direction": "ASK",
+                        "filledBase": "5",
+                        "filledQuote": "137.5",
+                        "refundBase": "0",
+                        "refundQuote": "136.95",
+                        "tradeIdx": 3,
+                    },
+                    {
+                        "addr": accounts.user5.address(),
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "clearingPrice": "27.5",
+                        "direction": "ASK",
+                        "filledBase": "10",
+                        "filledQuote": "275",
+                        "refundBase": "0",
+                        "refundQuote": "273.9",
+                        "tradeIdx": 2,
+                    },
+                    {
+                        "addr": accounts.user4.address(),
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "clearingPrice": "27.5",
+                        "direction": "ASK",
+                        "filledBase": "10",
+                        "filledQuote": "275",
+                        "refundBase": "0",
+                        "refundQuote": "273.9",
+                        "tradeIdx": 1,
+                    },
+                    {
+                        "addr": accounts.user1.address(),
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "clearingPrice": "27.5",
+                        "direction": "BID",
+                        "filledBase": "25",
+                        "filledQuote": "687.5",
+                        "refundBase": "24.9",
+                        "refundQuote": "62.5",
+                        "tradeIdx": 0,
+                    },
+                ]);
 
                 assert_json_include!(actual: received_trades, expected: expected_candle);
 
@@ -327,13 +335,15 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
                         .collect::<Vec<_>>();
                 }
 
-                let expected_candle = serde_json::json!([{
-                    "addr": accounts.user6.address(),
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "clearingPrice": "27.5",
-                    "direction": "ASK",
-                }]);
+                let expected_candle = serde_json::json!([
+                    {
+                        "addr": accounts.user6.address(),
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "clearingPrice": "27.5",
+                        "direction": "ASK",
+                    },
+                ]);
 
                 assert_json_include!(actual: received_trades, expected: expected_candle);
                 assert_that!(received_trades).has_length(1);
@@ -429,12 +439,14 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
                     received_trades.push(response.data);
                 }
 
-                let expected_json = serde_json::json!([{
-                    "baseDenom": "dango",
-                    "quoteDenom": "bridge/usdc",
-                    "direction": "BID",
-                    "blockHeight": 4,
-                }]);
+                let expected_json = serde_json::json!([
+                    {
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "direction": "BID",
+                        "blockHeight": 4,
+                    },
+                ]);
 
                 assert_json_include!(actual: received_trades, expected: expected_json);
 
