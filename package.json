@@ -2,7 +2,7 @@
   "name": "leftcurve-monorepo",
   "packageManager": "pnpm@10.15.0",
   "engines": {
-    "pnpm": ">=9.0.0",
+    "pnpm": ">=10.15.0",
     "node": ">=21.0.0"
   },
   "scripts": {
