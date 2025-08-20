@@ -158,6 +158,28 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
 
+  # NOTE: this is a private docker image
+  dex-bot:
+    image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
+    profiles: ["dex-bot"]
+    depends_on:
+      - dango
+    restart: always
+    environment:
+      # NOTE: those are public and only use for development and testnets
+      username: "user8"
+      address: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
+      key__privatekey: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
+      http_url: "http://dango:8080"
+      chain_id: "dev-6"
+      app_settings__sleep__min: 3s
+      app_settings__sleep__max: 15s
+      app_settings__size_percent__min: 0.5
+      app_settings__size_percent__max: 3.0
+      app_settings__price_percent__min: 0.05
+      app_settings__price_percent__max: 0.2
+      app_settings__order_type: market
+
   grafana:
     image: grafana/grafana:latest
     profiles: ["analytics"]
