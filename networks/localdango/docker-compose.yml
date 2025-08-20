@@ -65,7 +65,7 @@ services:
       dango:
         condition: service_healthy
     ports:
-      - "127.0.0.1:${DANGO_FRONTEND_PORT:-5081}:80"
+      - "127.0.0.1:${DANGO_FRONTEND_PORT:-5080}:80"
     environment:
       - INDEXER_URL=http://localhost:8080/graphql
       - FAUCET_URL=http://localhost:8082/mint
