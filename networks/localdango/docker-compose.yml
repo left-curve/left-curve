@@ -163,7 +163,8 @@ services:
     image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
     profiles: ["dex-bot"]
     depends_on:
-      - dango
+      dango:
+        condition: service_healthy
     restart: always
     environment:
       # NOTE: those are public and only use for development and testnets
