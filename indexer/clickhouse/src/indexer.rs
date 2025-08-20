@@ -230,6 +230,11 @@ pub fn init_metrics() {
     );
 
     describe_counter!(
+        "indexer.clickhouse.trades.processed.total",
+        "Total trades processed"
+    );
+
+    describe_counter!(
         "indexer.clickhouse.synthetic_prices.total",
         "Total synthetic pair prices injected"
     );
