@@ -1,12 +1,11 @@
 use {
     crate::{OUTBOUND_QUOTAS, RATE_LIMITS, RESERVES, REVERSE_ROUTES, ROUTES, WITHDRAWAL_FEES},
     anyhow::{anyhow, ensure},
-    core::slice,
     dango_types::{
         bank,
         gateway::{
-            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote, TokenOrigin,
-            WithdrawalFee,
+            Addr32, BridgeDenom, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote,
+            TokenOrigin, WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
@@ -65,7 +64,7 @@ fn _set_routes(
             TokenOrigin::Remote(part) => Denom::from_parts([NAMESPACE.clone(), part])?,
             TokenOrigin::Native(denom) => {
                 ensure!(
-                    !denom.starts_with(slice::from_ref(&NAMESPACE)),
+                    !denom.is_remote(),
                     "native denom must not start with `{}` namespace",
                     NAMESPACE.as_ref()
                 );
@@ -151,21 +150,19 @@ fn receive_remote(
 
     // Mint the alloyed token to the recipient (if the token is not native on Dango).
     // Otherwise, transfer the token to the recipient.
-    Ok(
-        Response::new().add_message(if denom.starts_with(slice::from_ref(&NAMESPACE)) {
-            let bank = ctx.querier.query_bank()?;
-            Message::execute(
-                bank,
-                &bank::ExecuteMsg::Mint {
-                    to: recipient,
-                    coins: coins! { denom => amount },
-                },
-                Coins::new(),
-            )?
-        } else {
-            Message::transfer(recipient, coins! { denom => amount })?
-        }),
-    )
+    Ok(Response::new().add_message(if denom.is_remote() {
+        let bank = ctx.querier.query_bank()?;
+        Message::execute(
+            bank,
+            &bank::ExecuteMsg::Mint {
+                to: recipient,
+                coins: coins! { denom => amount },
+            },
+            Coins::new(),
+        )?
+    } else {
+        Message::transfer(recipient, coins! { denom => amount })?
+    }))
 }
 
 fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow::Result<Response> {
@@ -229,7 +226,7 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             }),
             Coins::new(),
         )?)
-        .may_add_message(if coin.denom.starts_with(slice::from_ref(&NAMESPACE)) {
+        .may_add_message(if coin.denom.is_remote() {
             Some(Message::execute(
                 bank,
                 &bank::ExecuteMsg::Burn {
