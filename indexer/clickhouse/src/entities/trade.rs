@@ -149,7 +149,7 @@ pub mod direction {
         match val {
             0 => Ok(Direction::Bid),
             1 => Ok(Direction::Ask),
-            _ => Err(de::Error::custom(format!("Invalid direction: {}", val))),
+            _ => Err(de::Error::custom(format!("Invalid direction: {val}"))),
         }
     }
 }
