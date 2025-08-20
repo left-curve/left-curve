@@ -10,11 +10,16 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
+anyhow              = { workspace = true }
+async-stream        = { workspace = true }
+async-trait         = { workspace = true }
 grug                = { workspace = true }
 grug-testing        = { workspace = true }
 pyth-client         = { workspace = true }
 pyth-lazer-client   = { workspace = true }
 pyth-lazer-protocol = { workspace = true }
+pyth-types          = { workspace = true }
 tokio               = { workspace = true }
+tokio-stream        = { workspace = true }
 tracing             = { workspace = true }
 url                 = { workspace = true }

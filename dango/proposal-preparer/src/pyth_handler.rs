@@ -2,8 +2,9 @@ use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
     grug::{Addr, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    pyth_lazer::PythClientLazer,
     pyth_types::{PriceUpdate, PythId},
-    reqwest::IntoUrl,
+    reqwest::{IntoUrl, Url},
     std::{
         fmt::Debug,
         sync::{
@@ -48,6 +49,22 @@ impl PythHandler<PythClientCache> {
 
         Self {
             client: PythClientCache::new(base_url).unwrap(),
+            shared_vaas,
+            current_ids: vec![],
+            stoppable_thread: None,
+        }
+    }
+}
+
+impl PythHandler<PythClientLazer> {
+    pub fn new_with_lazer(
+        endpoints: Vec<Url>,
+        access_token: String,
+    ) -> PythHandler<PythClientLazer> {
+        let shared_vaas = Shared::new(None);
+
+        Self {
+            client: PythClientLazer::new(endpoints, access_token),
             shared_vaas,
             current_ids: vec![],
             stoppable_thread: None,

@@ -20,6 +20,7 @@ grug-app     = { workspace = true }
 metrics      = { workspace = true, optional = true }
 prost        = { workspace = true }
 pyth-client  = { workspace = true }
+pyth-lazer   = { workspace = true }
 pyth-types   = { workspace = true }
 reqwest      = { workspace = true }
 tokio        = { workspace = true }

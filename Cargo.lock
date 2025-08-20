@@ -3625,6 +3625,7 @@ dependencies = [
  "metrics",
  "prost",
  "pyth-client",
+ "pyth-lazer",
  "pyth-types",
  "reqwest 0.12.15",
  "tokio",
@@ -7733,12 +7734,17 @@ dependencies = [
 name = "pyth-lazer"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "async-stream",
+ "async-trait",
  "grug",
  "grug-testing",
  "pyth-client",
  "pyth-lazer-client",
  "pyth-lazer-protocol",
+ "pyth-types",
  "tokio",
+ "tokio-stream",
  "tracing",
  "url",
 ]

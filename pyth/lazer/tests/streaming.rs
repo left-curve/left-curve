@@ -87,20 +87,20 @@ async fn test() {
                     info!("Received non-stream update response: {:#?}", resp);
                 },
             },
-            AnyResponse::Binary(_) => {
+            AnyResponse::Binary(update) => {
                 info!("Received binary update");
                 sleep(Duration::from_millis(20)).await;
                 // for msg in &update.messages {
-                // match msg {
-                //     Message::LeEcdsa(lecdsa_msg) => {
-                //         let binary = Binary::from_inner(lecdsa_msg.payload.clone());
-                //         let decoded = binary.deserialize_json::<JsonUpdate>().unwrap();
-                //         info!("Decoded ECDSA message: {:#?}", decoded);
-                //     },
-                //     _ => {
-                //         info!("Received non-ECDSA message: {:#?}", msg);
-                //     },
-                // }
+                //     match msg {
+                //         Message::LeEcdsa(lecdsa_msg) => {
+                //             let binary = Binary::from_inner(lecdsa_msg.payload.clone());
+                //             let decoded = binary.deserialize_json::<JsonUpdate>().unwrap();
+                //             info!("Decoded ECDSA message: {:#?}", decoded);
+                //         },
+                //         _ => {
+                //             info!("Received non-ECDSA message: {:#?}", msg);
+                //         },
+                //     }
                 // }
             },
         }

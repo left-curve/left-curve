@@ -258,6 +258,7 @@ indexer-sql                 = { path = "indexer/sql" }
 indexer-sql-migration       = { path = "indexer/sql-migration" }
 indexer-testing             = { path = "indexer/testing" }
 pyth-client                 = { path = "pyth/client" }
+pyth-lazer                  = { path = "pyth/lazer" }
 pyth-types                  = { path = "pyth/types" }
 
 [workspace.dependencies.async-graphql]
