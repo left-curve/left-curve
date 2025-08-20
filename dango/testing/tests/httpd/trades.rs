@@ -29,6 +29,8 @@ async fn query_all_trades() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
+    suite.app.indexer.wait_for_finish()?;
+
     let graphql_query = r#"
       query Trades($addr: String) {
       trades(addr: $addr) {
@@ -65,20 +67,16 @@ async fn query_all_trades() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let mut received_trades: Vec<serde_json::Value> = vec![];
+                let app = build_actix_app(dango_httpd_context.clone());
 
-                for _ in 0..10 {
-                    let app = build_actix_app(dango_httpd_context.clone());
+                let response: PaginatedResponse<serde_json::Value> =
+                    call_paginated_graphql(app, request_body.clone()).await?;
 
-                    let response: PaginatedResponse<serde_json::Value> =
-                        call_paginated_graphql(app, request_body.clone()).await?;
-
-                    received_trades = response
-                        .edges
-                        .into_iter()
-                        .map(|e| e.node)
-                        .collect::<Vec<_>>();
-                }
+                let received_trades = response
+                    .edges
+                    .into_iter()
+                    .map(|e| e.node)
+                    .collect::<Vec<_>>();
 
                 let expected_candle = serde_json::json!([{
                     "addr": accounts.user6.address(),
@@ -138,6 +136,8 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Trades($addr: String) {
