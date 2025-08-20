@@ -1,11 +1,15 @@
 import type React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { useApp } from "~/hooks/useApp";
+import { useTheme } from "@left-curve/applets-kit";
+import { useConfig, usePublicClient } from "@left-curve/store";
+import { useQueryClient } from "@tanstack/react-query";
+
 import * as TV from "@left-curve/tradingview";
-import { UDFCompatibleDatafeed } from "@left-curve/tradingview/datafeeds/udf";
+import { createTradingViewDataFeed } from "~/datafeed";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type { OrdersByUserResponse } from "@left-curve/dango/types";
-import { useTheme } from "@left-curve/applets-kit";
 
 type TradingViewProps = {
   coins: { base: AnyCoin; quote: AnyCoin };
@@ -14,22 +18,35 @@ type TradingViewProps = {
 
 export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
   const { theme } = useTheme();
+  const publicClient = usePublicClient();
+  const queryClient = useQueryClient();
+  const { subscriptions } = useApp();
+  const { coins: allCoins } = useConfig();
+  const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
+
+  const dataFeed = useMemo(
+    () =>
+      createTradingViewDataFeed({
+        client: publicClient,
+        queryClient,
+        subscriptions,
+        coins: allCoins.bySymbol,
+      }),
+    [allCoins, queryClient, publicClient],
+  );
 
   useEffect(() => {
     const toolbar_bg = theme === "dark" ? "#363432" : "#FFF9F0";
     const widget = new TV.widget({
       container: "tv_chart_container",
       autosize: true,
-      symbol: "AAPL",
-      interval: "1D" as any,
+      symbol: `${coins.base.symbol}-${coins.quote.symbol}`,
+      interval: "5" as TV.ResolutionString,
       locale: "en",
       library_path: "/static/charting_library/",
       custom_css_url: "/styles/tv-overrides.css",
       theme,
-      datafeed: new UDFCompatibleDatafeed("https://demo-feed-data.tradingview.com", undefined, {
-        maxResponseLength: 1000,
-        expectedOrder: "latestFirst",
-      }),
+      datafeed: dataFeed,
       loading_screen: {
         backgroundColor: "transparent",
         foregroundColor: "rgb(249 169 178)",
@@ -56,6 +73,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
 
     widget.onChartReady(async () => {
       const chart = widget.activeChart();
+      widgetRef.current = widget;
       widget.applyOverrides({ "paneProperties.background": toolbar_bg });
 
       /*  orders.forEach((order) => {
@@ -69,6 +87,15 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       }); */
     });
   }, []);
+
+  useEffect(() => {
+    if (!widgetRef.current) return;
+    widgetRef.current.setSymbol(
+      `${coins.base.symbol}-${coins.quote.symbol}`,
+      "5" as TV.ResolutionString,
+      () => {},
+    );
+  }, [coins]);
 
   return <div id="tv_chart_container" className="w-full lg:min-h-[52vh] h-full" />;
 };

@@ -60,6 +60,7 @@ export default defineConfig({
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
       "~/chartiq": path.resolve(__dirname, "./chartiq.config.ts"),
+      "~/datafeed": path.resolve(__dirname, "./datafeed.config.ts"),
       "~": path.resolve(__dirname, "./src"),
     },
   },
