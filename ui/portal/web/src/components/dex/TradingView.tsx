@@ -14,23 +14,27 @@ type TradingViewProps = {
 
 export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
   const { theme } = useTheme();
-  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const toolbar_bg = theme === "dark" ? "#2D2C2A" : "#FFFCF6";
-    new TV.widget({
+    const toolbar_bg = theme === "dark" ? "#363432" : "#FFF9F0";
+    const widget = new TV.widget({
       container: "tv_chart_container",
       autosize: true,
       symbol: "AAPL",
       interval: "1D" as any,
       locale: "en",
-      theme: "dark",
       library_path: "/static/charting_library/",
+      custom_css_url: "/styles/tv-overrides.css",
+      theme,
       datafeed: new UDFCompatibleDatafeed("https://demo-feed-data.tradingview.com", undefined, {
         maxResponseLength: 1000,
         expectedOrder: "latestFirst",
       }),
-      enabled_features: ["header_screenshot"],
+      loading_screen: {
+        backgroundColor: "transparent",
+        foregroundColor: "rgb(249 169 178)",
+      },
+      disabled_features: ["header_symbol_search", "header_compare"],
       overrides: {
         "mainSeriesProperties.candleStyle.upColor": "#27AE60",
         "mainSeriesProperties.candleStyle.downColor": "#EB5757",
@@ -39,7 +43,8 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
         "mainSeriesProperties.candleStyle.wickUpColor": "#27AE60",
         "mainSeriesProperties.candleStyle.wickDownColor": "#EB5757",
 
-        "mainSeriesProperties.areaStyle.color1": "#606090",
+        "paneProperties.backgroundType": "solid",
+        "paneProperties.background": toolbar_bg,
       },
 
       studies_overrides: {
@@ -47,6 +52,21 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
         "volume.volume.color.1": "#27AE60",
         "volume.volume.transparency": 50,
       },
+    });
+
+    widget.onChartReady(async () => {
+      const chart = widget.activeChart();
+      widget.applyOverrides({ "paneProperties.background": toolbar_bg });
+
+      /*  orders.forEach((order) => {
+        chart.createShape({
+          time: order.timestamp,
+          price: order.price,
+          text: `${order.type} ${order.amount} ${coins.base.symbol}`,
+          color: order.type === "buy" ? "#27AE60" : "#EB5757",
+          shape: "label",
+        });
+      }); */
     });
   }, []);
 

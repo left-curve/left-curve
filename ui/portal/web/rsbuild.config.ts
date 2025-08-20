@@ -66,6 +66,7 @@ export default defineConfig({
   source: {
     entry: {
       index: "./src/index.tsx",
+      "tv-overrides": "./public/styles/tv-overrides.css",
     },
     define: {
       ...publicVars,
