@@ -1,5 +1,6 @@
-use {crate::error::Result, async_trait::async_trait, std::pin::Pin, tokio_stream::Stream};
+use {super::pubsub::error::Result, async_trait::async_trait, std::pin::Pin, tokio_stream::Stream};
 
+pub mod error;
 pub mod memory;
 pub mod postgres;
 pub mod postgres_multiple;

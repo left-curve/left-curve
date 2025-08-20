@@ -1,5 +1,7 @@
 use {
-    crate::context::Context, grug_app::Indexer as IndexerTrait,
+    crate::{context::Context, error::IndexerError},
+    dango_types::DangoQuerier,
+    grug_app::Indexer as IndexerTrait,
     indexer_sql::indexer::RuntimeHandler,
 };
 
@@ -134,7 +136,10 @@ impl grug_app::Indexer for Indexer {
             #[cfg(feature = "metrics")]
             let start = Instant::now();
 
-            Self::store_candles(&clickhouse_client, querier, &ctx, &context).await?;
+            let dex_addr = querier.as_ref().query_dex()?;
+
+            Self::store_candles(&clickhouse_client, &dex_addr, &ctx, &context).await?;
+            Self::store_trades(&clickhouse_client, &dex_addr, &ctx, &context).await?;
 
             #[cfg(feature = "metrics")]
             histogram!(
@@ -151,7 +156,7 @@ impl grug_app::Indexer for Indexer {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height, "`post_indexing` async work finished");
 
-            Ok::<(), grug_app::IndexerError>(())
+            Ok::<(), IndexerError>(())
         });
 
         self.runtime_handler

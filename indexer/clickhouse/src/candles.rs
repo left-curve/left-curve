@@ -7,12 +7,9 @@ use {
     },
     chrono::{DateTime, Utc},
     clickhouse::Client,
-    dango_types::{
-        DangoQuerier,
-        dex::{OrderFilled, PairId},
-    },
+    dango_types::dex::{OrderFilled, PairId},
     grug::{
-        CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
+        Addr, CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
         FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten, Number, NumberConst, Udec128_6,
     },
     std::{collections::HashMap, str::FromStr, time::Duration},
@@ -22,7 +19,7 @@ use {
 impl Indexer {
     pub(crate) async fn store_candles(
         clickhouse_client: &Client,
-        querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
+        dex_addr: &Addr,
         ctx: &grug_app::IndexerContext,
         context: &Context,
     ) -> Result<()> {
@@ -34,8 +31,6 @@ impl Indexer {
             .get::<grug_types::BlockOutcome>()
             .ok_or(IndexerError::MissingBlockOrBlockOutcome)?
             .clone();
-
-        let dex = querier.as_ref().query_dex()?;
 
         // Clearing price is denominated as the units of quote asset per 1 unit
         // of the base asset.
@@ -55,7 +50,7 @@ impl Indexer {
             };
 
             // If the event wasn't emitted by the DEX, skip it.
-            if event.contract != dex {
+            if event.contract != dex_addr {
                 continue;
             }
 

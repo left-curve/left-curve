@@ -1,4 +1,4 @@
-use thiserror::Error;
+use {indexer_sql::pubsub::error::PubSubError, thiserror::Error};
 
 #[derive(Debug, Error)]
 pub enum IndexerError {
@@ -25,6 +25,9 @@ pub enum IndexerError {
 
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    PubSubError(#[from] PubSubError),
 }
 
 impl From<IndexerError> for grug_app::IndexerError {

@@ -28,6 +28,7 @@ pub struct Trade {
     #[cfg_attr(feature = "async-graphql", graphql(name = "baseDenom"))]
     pub base_denom: String,
 
+    #[serde(with = "direction")]
     pub direction: Direction,
 
     #[serde(with = "dec")]
@@ -114,5 +115,41 @@ impl Trade {
         let inner_value = self.clearing_price.inner();
         let bigint = BigInt::from(*inner_value);
         BigDecimal::new(bigint, 24).normalized()
+    }
+}
+
+/// This will serialize and deserialize direction as u8, which is needed
+/// for clickhouse.
+pub mod direction {
+    use {
+        super::Direction,
+        serde::{
+            Deserialize,
+            de::{self, Deserializer},
+            ser::{Serialize, Serializer},
+        },
+    };
+
+    pub fn serialize<S>(direction: &Direction, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let val: u8 = match direction {
+            Direction::Bid => 0,
+            Direction::Ask => 1,
+        };
+        val.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Direction, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let val = u8::deserialize(deserializer)?;
+        match val {
+            0 => Ok(Direction::Bid),
+            1 => Ok(Direction::Ask),
+            _ => Err(de::Error::custom(format!("Invalid direction: {}", val))),
+        }
     }
 }

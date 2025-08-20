@@ -1,4 +1,6 @@
-use {grug_app::AppError, grug_types::StdError, thiserror::Error};
+use {
+    crate::pubsub::error::PubSubError, grug_app::AppError, grug_types::StdError, thiserror::Error,
+};
 
 #[derive(Debug, Error)]
 pub enum IndexerError {
@@ -49,6 +51,9 @@ pub enum IndexerError {
 
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
+
+    #[error(transparent)]
+    PubSubError(#[from] PubSubError),
 }
 
 impl From<IndexerError> for AppError {
@@ -73,6 +78,7 @@ impl From<IndexerError> for AppError {
             IndexerError::SerdeJson(e) => grug_app::IndexerError::Serialization(e.to_string()),
             IndexerError::Parse(e) => grug_app::IndexerError::Generic(e.to_string()),
             IndexerError::Sqlx(e) => grug_app::IndexerError::Database(e.to_string()),
+            IndexerError::PubSubError(e) => grug_app::IndexerError::Generic(e.to_string()),
         };
         AppError::Indexer(indexer_error)
     }
@@ -100,6 +106,7 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::SerdeJson(e) => grug_app::IndexerError::Serialization(e.to_string()),
             IndexerError::Parse(e) => grug_app::IndexerError::Generic(e.to_string()),
             IndexerError::Sqlx(e) => grug_app::IndexerError::Database(e.to_string()),
+            IndexerError::PubSubError(e) => grug_app::IndexerError::Generic(e.to_string()),
         }
     }
 }
