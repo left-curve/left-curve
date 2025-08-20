@@ -86,6 +86,10 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     "quoteDenom": "bridge/usdc",
                     "clearingPrice": "27.5",
                     "direction": "ASK",
+                    "filledBase": "5",
+                    "filledQuote": "137.5",
+                    "refundBase": "0",
+                    "refundQuote": "136.95",
                 },
                 {
                     "addr": accounts.user5.address(),
@@ -93,18 +97,30 @@ async fn query_all_trades() -> anyhow::Result<()> {
                     "quoteDenom": "bridge/usdc",
                     "clearingPrice": "27.5",
                     "direction": "ASK",
+                    "filledBase": "10",
+                    "filledQuote": "275",
+                    "refundBase": "0",
+                    "refundQuote": "273.9",
                 },{
                     "addr": accounts.user4.address(),
                     "baseDenom": "dango",
                     "quoteDenom": "bridge/usdc",
                     "clearingPrice": "27.5",
                     "direction": "ASK",
+                    "filledBase": "10",
+                    "filledQuote": "275",
+                    "refundBase": "0",
+                    "refundQuote": "273.9",
                 },{
                     "addr": accounts.user1.address(),
                     "baseDenom": "dango",
                     "quoteDenom": "bridge/usdc",
                     "clearingPrice": "27.5",
                     "direction": "BID",
+                    "filledBase": "25",
+                    "filledQuote": "687.5",
+                    "refundBase": "24.9",
+                    "refundQuote": "62.5",
                 }]);
 
                 assert_json_include!(actual: received_trades, expected: expected_candle);
@@ -195,7 +211,6 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
         .await?
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
@@ -263,7 +278,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
@@ -271,21 +286,11 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
 
                 create_tx_clone.send(1).await.unwrap();
 
-                // We should receive 4 trades
-
-                let mut framed = framed;
-
+                // We should receive a total of 4 trades
                 for _ in 1..=4 {
-                    let (f2, response) =
-                        parse_graphql_subscription_response::<serde_json::Value>(framed, name)
+                    let response =
+                        parse_graphql_subscription_response::<serde_json::Value>(&mut framed, name)
                             .await?;
-
-                    framed = f2;
-
-                    println!(
-                        "Received initial trades: {}",
-                        serde_json::to_string_pretty(&response.data)?
-                    );
 
                     received_trades.push(response.data);
                 }

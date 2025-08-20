@@ -303,17 +303,18 @@ where
     B: MessageBody + 'static,
 {
     let name = request_body.name;
-    let (_srv, _ws, framed) = call_ws_graphql_stream(context, app_builder, request_body).await?;
-    let (_, response) = parse_graphql_subscription_response(framed, name).await?;
+    let (_srv, _ws, mut framed) =
+        call_ws_graphql_stream(context, app_builder, request_body).await?;
+    let response = parse_graphql_subscription_response(&mut framed, name).await?;
 
     Ok(response)
 }
 
 /// Parses a GraphQL subscription response.
 pub async fn parse_graphql_subscription_response<R>(
-    mut framed: Framed<BoxedSocket, ws::Codec>,
+    framed: &mut Framed<BoxedSocket, ws::Codec>,
     name: &str,
-) -> anyhow::Result<(Framed<BoxedSocket, ws::Codec>, GraphQLCustomResponse<R>)>
+) -> anyhow::Result<GraphQLCustomResponse<R>>
 where
     R: DeserializeOwned,
 {
@@ -345,10 +346,10 @@ where
                 // println!("response: \n{graphql_response:#?}");
 
                 if let Some(data) = graphql_response.payload.data.remove(name) {
-                    return Ok((framed, GraphQLCustomResponse {
+                    return Ok(GraphQLCustomResponse {
                         data: serde_json::from_value(data)?,
                         errors: graphql_response.payload.errors,
-                    }));
+                    });
                 } else {
                     bail!("can't find {name} in response");
                 }

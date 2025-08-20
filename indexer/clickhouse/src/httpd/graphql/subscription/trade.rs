@@ -14,7 +14,7 @@ pub struct TradeSubscription;
 
 #[Subscription]
 impl TradeSubscription {
-    /// Get all trades
+    /// Get all trades, this will not include past trades but only new ones since you subscribed.
     async fn trades<'a>(
         &self,
         ctx: &async_graphql::Context<'a>,
