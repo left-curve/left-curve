@@ -1,9 +1,10 @@
-use crate::entities::trade::Trade;
 #[cfg(feature = "testing")]
 use clickhouse::test;
-
 use {
-    crate::{cache::CandleCache, entities::pair_price::PairPrice},
+    crate::{
+        cache::CandleCache,
+        entities::{pair_price::PairPrice, trade::Trade},
+    },
     clickhouse::Client,
     indexer_sql::pubsub::{self, PubSub},
     std::sync::Arc,

@@ -6,7 +6,6 @@ use {
     grug::{Udec128_6, Udec128_24},
     serde::{Deserialize, Serialize},
 };
-
 #[cfg(feature = "async-graphql")]
 use {
     async_graphql::{ComplexObject, SimpleObject},
