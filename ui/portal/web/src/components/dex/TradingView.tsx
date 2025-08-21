@@ -73,6 +73,8 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       time_frames: [],
       enabled_features: ["seconds_resolution"],
       disabled_features: [
+        "legend_inplace_edit",
+        "display_market_status",
         "header_symbol_search",
         "header_compare",
         "header_saveload",
