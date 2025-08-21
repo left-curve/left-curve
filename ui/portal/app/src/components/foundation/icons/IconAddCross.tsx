@@ -1,5 +1,7 @@
-import React from "react";
-import Svg, { Path, SvgProps } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
+
+import type { SvgProps } from "react-native-svg";
+import type React from "react";
 
 export const IconAddCross: React.FC<SvgProps & { size?: number }> = ({
   color = "#2E2521",

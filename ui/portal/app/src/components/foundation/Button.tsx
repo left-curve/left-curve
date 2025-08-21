@@ -1,10 +1,15 @@
-import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
-import { tv } from "tailwind-variants";
-import { twMerge } from "@left-curve/applets-kit";
-import { Shadow } from "react-native-shadow-2";
-import React, { PropsWithChildren } from "react";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "~/hooks/useTheme";
+
+import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
+import { Shadow } from "react-native-shadow-2";
+import { LinearGradient } from "expo-linear-gradient";
+
+import { twMerge } from "@left-curve/applets-kit";
+import { tv } from "tailwind-variants";
+
+import type React from "react";
+import type { VariantProps } from "tailwind-variants";
+import type { PropsWithChildren } from "react";
 
 export const iconColors = {
   light: {
@@ -107,14 +112,17 @@ const textVariants = tv({
   },
 });
 
-type ButtonTextProps = {
+interface ButtonTextProps extends VariantProps<typeof textVariants> {
   children: React.ReactNode;
-  variant?: keyof typeof textVariants.variants.variant;
-  size?: keyof typeof textVariants.variants.size;
   isDisabled?: boolean;
-};
+}
 
-const ButtonText: React.FC<ButtonTextProps> = ({ children, variant, size, isDisabled }) => {
+const ButtonText: React.FC<PropsWithChildren<ButtonTextProps>> = ({
+  children,
+  variant,
+  size,
+  isDisabled,
+}) => {
   return <Text className={textVariants({ variant, size, isDisabled })}>{children}</Text>;
 };
 
@@ -222,19 +230,15 @@ const ButtonShadow: React.FC<
   );
 };
 
-export type ButtonProps = {
-  variant?: keyof typeof buttonVariants.variants.variant;
-  size?: keyof typeof buttonVariants.variants.size;
-  radius?: keyof typeof buttonVariants.variants.radius;
-  isDisabled?: boolean;
+export interface ButtonProps extends VariantProps<typeof buttonVariants> {
   isLoading?: boolean;
-  children: React.ReactNode;
+  isDisabled?: boolean;
   onPress?: () => void;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-};
+}
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   variant,
   size,
   isDisabled,

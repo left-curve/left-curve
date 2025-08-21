@@ -1,7 +1,9 @@
-// IconSun.native.tsx
-import type React from "react";
 import { useId } from "react";
-import Svg, { G, Path, Mask, Defs, ClipPath, type SvgProps } from "react-native-svg";
+
+import Svg, { G, Path, Mask, Defs, ClipPath } from "react-native-svg";
+
+import type { SvgProps } from "react-native-svg";
+import type React from "react";
 
 export const IconSun: React.FC<SvgProps & { size?: number }> = ({
   color = "#2E2521",

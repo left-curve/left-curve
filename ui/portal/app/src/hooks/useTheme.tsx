@@ -1,8 +1,11 @@
-// hooks/useTheme.ts
-import type React from "react";
-import { createContext, type PropsWithChildren, useContext, useMemo, useState } from "react";
-import { storage } from "../../storage.config";
+import { useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
+
+import { storage } from "../../storage.config";
+import { createContext } from "@left-curve/applets-kit";
+
+import type { PropsWithChildren } from "react";
+import type React from "react";
 
 export type ThemesSchema = "dark" | "light" | "system";
 export type Themes = "dark" | "light";
@@ -13,7 +16,9 @@ type ThemeContextType = {
   setThemeSchema: (theme: ThemesSchema) => void;
 };
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const [ThemeContextProvider, useTheme] = createContext<ThemeContextType>({
+  name: "ThemeContext",
+});
 
 const THEME_KEY = "app.theme";
 
@@ -34,16 +39,11 @@ export const ThemeProvider: React.FC<PropsWithChildren> = ({ children }) => {
     storage.set(THEME_KEY, next);
   };
 
-  const value = useMemo<ThemeContextType>(
-    () => ({ theme, themeSchema, setThemeSchema }),
-    [theme, themeSchema],
+  return (
+    <ThemeContextProvider value={{ theme, themeSchema, setThemeSchema }}>
+      {children}
+    </ThemeContextProvider>
   );
-
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };
 
-export function useTheme() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useTheme must be used inside ThemeProvider");
-  return ctx;
-}
+export { useTheme };

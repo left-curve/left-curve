@@ -1,5 +1,8 @@
-import { Text, TextProps } from "react-native";
 import { twMerge } from "@left-curve/applets-kit";
+
+import { Text } from "react-native";
+
+import type { TextProps } from "react-native";
 
 //TODO: Add typography (diatype & exposure)
 
