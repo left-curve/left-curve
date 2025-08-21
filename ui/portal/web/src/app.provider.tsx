@@ -7,7 +7,7 @@ import * as Sentry from "@sentry/react";
 import { router } from "./app.router";
 import { Modals } from "./components/modals/RootModal";
 
-import type { ToastController } from "@left-curve/applets-kit";
+import type { ToastController } from "./app.toaster";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 
 type AppState = {
@@ -30,6 +30,7 @@ type AppState = {
   modal: { modal: string | undefined; props: Record<string, unknown> };
   changeSettings: (settings: Partial<AppState["settings"]>) => void;
   settings: {
+    chart: "tradingview" | "chartiq";
     showWelcome: boolean;
     isFirstVisit: boolean;
     useSessionKey: boolean;
@@ -55,8 +56,9 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.3,
+    version: 1.4,
     initialValue: {
+      chart: "tradingview",
       showWelcome: true,
       isFirstVisit: true,
       useSessionKey: true,
@@ -72,6 +74,10 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
     migrations: {
       1.2: (state: AppState["settings"]) => {
         state.showWelcome = true;
+        return state;
+      },
+      1.3: (state: AppState["settings"]) => {
+        state.chart = "tradingview";
         return state;
       },
     },
