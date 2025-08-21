@@ -43,6 +43,9 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
 
   useEffect(() => {
     const toolbar_bg = theme === "dark" ? "#363432" : "#FFF9F0";
+    const toTimestamp = Math.floor(Date.now() / 1000);
+    const fromTimestamp = toTimestamp - 3600 * 4;
+
     const widget = new TV.widget({
       container: "tv_chart_container",
       autosize: true,
@@ -54,6 +57,10 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       theme,
       auto_save_delay: 1,
       datafeed: dataFeed,
+      timeframe: {
+        from: fromTimestamp,
+        to: toTimestamp,
+      },
       loading_screen: {
         backgroundColor: "transparent",
         foregroundColor: "rgb(249 169 178)",
