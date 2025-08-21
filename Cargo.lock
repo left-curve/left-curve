@@ -3380,6 +3380,7 @@ dependencies = [
  "dango-client",
  "dango-genesis",
  "dango-httpd",
+ "dango-indexer-clickhouse",
  "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-types",
@@ -3394,7 +3395,6 @@ dependencies = [
  "grug-vm-hybrid",
  "hex",
  "home",
- "indexer-clickhouse",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
@@ -3495,10 +3495,10 @@ dependencies = [
  "async-graphql-actix-web",
  "chrono",
  "clap",
+ "dango-indexer-clickhouse",
  "dango-indexer-sql",
  "dango-types",
  "grug-httpd",
- "indexer-clickhouse",
  "indexer-httpd",
  "indexer-sql",
  "itertools 0.14.0",
@@ -3510,6 +3510,43 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "dango-indexer-clickhouse"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assertor",
+ "async-graphql",
+ "async-stream",
+ "async-trait",
+ "bigdecimal",
+ "bnum",
+ "borsh 1.5.7",
+ "chrono",
+ "clickhouse",
+ "dango-types",
+ "futures",
+ "grug",
+ "grug-app",
+ "grug-httpd",
+ "grug-types",
+ "indexer-hooked",
+ "indexer-httpd",
+ "indexer-sql",
+ "itertools 0.14.0",
+ "metrics",
+ "serde",
+ "serde_json",
+ "strum 0.27.1",
+ "strum_macros 0.27.1",
+ "tempfile",
+ "test-case",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "tracing",
 ]
 
 [[package]]
@@ -3569,6 +3606,7 @@ dependencies = [
  "anyhow",
  "dango-genesis",
  "dango-httpd",
+ "dango-indexer-clickhouse",
  "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-testing",
@@ -3579,7 +3617,6 @@ dependencies = [
  "grug-types",
  "grug-vm-rust",
  "hyperlane-testing",
- "indexer-clickhouse",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
@@ -3622,10 +3659,15 @@ name = "dango-scripts"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "chrono",
+ "clap",
  "dango-client",
+ "dango-genesis",
+ "dango-testing",
  "dango-types",
  "grug",
  "grug-app",
+ "grug-vm-rust",
  "hex-literal",
  "indexer-client",
  "num-format",
@@ -3663,6 +3705,7 @@ dependencies = [
  "dango-gateway",
  "dango-genesis",
  "dango-httpd",
+ "dango-indexer-clickhouse",
  "dango-indexer-sql",
  "dango-lending",
  "dango-mock-httpd",
@@ -3688,7 +3731,6 @@ dependencies = [
  "hyperlane-testing",
  "hyperlane-types",
  "identity",
- "indexer-clickhouse",
  "indexer-client",
  "indexer-disk-saver",
  "indexer-hooked",
@@ -5758,43 +5800,6 @@ name = "indenter"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
-
-[[package]]
-name = "indexer-clickhouse"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "assertor",
- "async-graphql",
- "async-stream",
- "async-trait",
- "bigdecimal",
- "bnum",
- "borsh 1.5.7",
- "chrono",
- "clickhouse",
- "dango-types",
- "futures",
- "grug",
- "grug-app",
- "grug-httpd",
- "grug-types",
- "indexer-hooked",
- "indexer-httpd",
- "indexer-sql",
- "itertools 0.14.0",
- "metrics",
- "serde",
- "serde_json",
- "strum 0.27.1",
- "strum_macros 0.27.1",
- "tempfile",
- "test-case",
- "thiserror 2.0.12",
- "tokio",
- "tokio-stream",
- "tracing",
-]
 
 [[package]]
 name = "indexer-client"
@@ -9114,9 +9119,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.140"
+version = "1.0.143"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20068b6e96dc6c9bd23e01df8827e6c7e1f2fddd43c21810382803c136b99373"
+checksum = "d401abef1d108fbd9cbaebc3e46611f4b1021f714a0597a71f41ee463f5f4a5a"
 dependencies = [
  "itoa",
  "memchr",

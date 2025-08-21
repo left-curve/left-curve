@@ -20,6 +20,8 @@ const { publicVars } = loadEnv();
 
 const environment = process.env.CONFIG_ENVIRONMENT || "local";
 
+const workspaceRoot = path.resolve(__dirname, "../../../");
+
 const chain = {
   local: local,
   dev: devnet,
@@ -58,12 +60,14 @@ export default defineConfig({
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
       "~/chartiq": path.resolve(__dirname, "./chartiq.config.ts"),
+      "~/datafeed": path.resolve(__dirname, "./datafeed.config.ts"),
       "~": path.resolve(__dirname, "./src"),
     },
   },
   source: {
     entry: {
       index: "./src/index.tsx",
+      "tv-overrides": "./public/styles/tv-overrides.css",
     },
     define: {
       ...publicVars,
@@ -84,6 +88,16 @@ export default defineConfig({
     distPath: {
       root: "build",
     },
+    copy: [
+      {
+        from: path.resolve(
+          workspaceRoot,
+          "node_modules",
+          "@left-curve/tradingview/charting_library",
+        ),
+        to: "./static/charting_library",
+      },
+    ],
     minify: {
       jsOptions: {
         exclude: [],

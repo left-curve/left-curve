@@ -1,5 +1,8 @@
 use {
-    crate::context::Context, grug_app::Indexer as IndexerTrait,
+    crate::{context::Context, error::IndexerError},
+    dango_types::DangoQuerier,
+    futures::try_join,
+    grug_app::Indexer as IndexerTrait,
     indexer_sql::indexer::RuntimeHandler,
 };
 
@@ -39,9 +42,12 @@ impl grug_app::Indexer for Indexer {
         let handle = self.runtime_handler.spawn({
             let clickhouse_client = self.context.clickhouse_client().clone();
             async move {
-                for migration in crate::migrations::candle_builder::migrations() {
+                for migration in crate::migrations::candle_builder::migrations()
+                    .iter()
+                    .chain(crate::migrations::trade::Migration::migrations().iter())
+                {
                     clickhouse_client
-                        .query(&migration)
+                        .query(migration)
                         .execute()
                         .await
                         .map_err(|e| {
@@ -131,7 +137,12 @@ impl grug_app::Indexer for Indexer {
             #[cfg(feature = "metrics")]
             let start = Instant::now();
 
-            Self::store_candles(&clickhouse_client, querier, &ctx, &context).await?;
+            let dex_addr = querier.as_ref().query_dex()?;
+
+            try_join!(
+                Self::store_candles(&clickhouse_client, &dex_addr, &ctx, &context),
+                Self::store_trades(&clickhouse_client, &dex_addr, &ctx, &context)
+            )?;
 
             #[cfg(feature = "metrics")]
             histogram!(
@@ -148,7 +159,7 @@ impl grug_app::Indexer for Indexer {
             #[cfg(feature = "tracing")]
             tracing::debug!(block_height, "`post_indexing` async work finished");
 
-            Ok::<(), grug_app::IndexerError>(())
+            Ok::<(), IndexerError>(())
         });
 
         self.runtime_handler
@@ -216,6 +227,11 @@ pub fn init_metrics() {
     describe_counter!(
         "indexer.clickhouse.pair_prices.processed.total",
         "Total pair prices processed"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.trades.processed.total",
+        "Total trades processed"
     );
 
     describe_counter!(

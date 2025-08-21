@@ -1,4 +1,6 @@
-use {grug_app::AppError, grug_types::StdError, thiserror::Error};
+use {
+    crate::pubsub::error::PubSubError, grug_app::AppError, grug_types::StdError, thiserror::Error,
+};
 
 #[derive(Debug, Error)]
 pub enum IndexerError {
@@ -49,32 +51,14 @@ pub enum IndexerError {
 
     #[error(transparent)]
     Sqlx(#[from] sqlx::Error),
+
+    #[error(transparent)]
+    PubSub(#[from] PubSubError),
 }
 
 impl From<IndexerError> for AppError {
     fn from(err: IndexerError) -> Self {
-        let indexer_error = match err {
-            IndexerError::SeaOrm(e) => grug_app::IndexerError::Database(e.to_string()),
-            IndexerError::Anyhow(e) => grug_app::IndexerError::Generic(e.to_string()),
-            IndexerError::Join(e) => grug_app::IndexerError::Generic(e.to_string()),
-            IndexerError::Indexing(msg) => grug_app::IndexerError::Generic(msg),
-            IndexerError::Poison(msg) => grug_app::IndexerError::Generic(msg),
-            IndexerError::Runtime(msg) => grug_app::IndexerError::Generic(msg),
-            IndexerError::TryFromInt(e) => grug_app::IndexerError::Generic(e.to_string()),
-            IndexerError::App(_) => {
-                // For App errors, just wrap as generic since it's already processed
-                grug_app::IndexerError::Generic("nested app error".to_string())
-            },
-            IndexerError::Std(e) => grug_app::IndexerError::Generic(e.to_string()),
-            IndexerError::Io(e) => grug_app::IndexerError::Io(e.to_string()),
-            IndexerError::Persist(e) => grug_app::IndexerError::Io(e.to_string()),
-            IndexerError::Persistence(e) => grug_app::IndexerError::Storage(e.to_string()),
-            IndexerError::Hooks(msg) => grug_app::IndexerError::Hook(msg),
-            IndexerError::SerdeJson(e) => grug_app::IndexerError::Serialization(e.to_string()),
-            IndexerError::Parse(e) => grug_app::IndexerError::Generic(e.to_string()),
-            IndexerError::Sqlx(e) => grug_app::IndexerError::Database(e.to_string()),
-        };
-        AppError::Indexer(indexer_error)
+        AppError::Indexer(err.into())
     }
 }
 
@@ -100,6 +84,7 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::SerdeJson(e) => grug_app::IndexerError::Serialization(e.to_string()),
             IndexerError::Parse(e) => grug_app::IndexerError::Generic(e.to_string()),
             IndexerError::Sqlx(e) => grug_app::IndexerError::Database(e.to_string()),
+            IndexerError::PubSub(e) => grug_app::IndexerError::Generic(e.to_string()),
         }
     }
 }

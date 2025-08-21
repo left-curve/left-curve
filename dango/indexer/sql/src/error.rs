@@ -1,4 +1,4 @@
-use thiserror::Error;
+use {indexer_sql::pubsub::error::PubSubError, thiserror::Error};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -13,6 +13,12 @@ pub enum Error {
 
     #[error("grug error: {0}")]
     Std(#[from] grug::StdError),
+
+    #[error(transparent)]
+    PubSub(#[from] PubSubError),
+
+    #[error(transparent)]
+    Join(#[from] tokio::task::JoinError),
 }
 
 impl From<Error> for grug_app::IndexerError {
