@@ -1,6 +1,7 @@
 import { useApp } from "~/hooks/useApp";
 
 import {
+  IconDepth,
   IconFormatNumber,
   IconLanguage,
   IconMoon,
@@ -15,7 +16,7 @@ import {
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
 
-import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import { capitalize, type FormatNumberOptions } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 import type React from "react";
 
@@ -39,6 +40,31 @@ const LanguageSection: React.FC = () => {
         {locales.map((locale) => (
           <Select.Item key={locale} value={locale}>
             {m["settings.languages"]({ language: locale })}
+          </Select.Item>
+        ))}
+      </Select>
+    </div>
+  );
+};
+
+const ChartOptionSection: React.FC = () => {
+  const { settings, changeSettings } = useApp();
+
+  const { chart } = settings;
+
+  return (
+    <div className="flex items-center justify-between px-2 rounded-md">
+      <p className="flex items-center justify-center gap-2">
+        <IconDepth className="text-tertiary-500" />
+        <span className="diatype-m-bold text-secondary-700">{m["settings.chart"]()}</span>
+      </p>
+      <Select
+        value={chart}
+        onChange={(c) => changeSettings({ chart: c as "tradingview" | "chartiq" })}
+      >
+        {["tradingview", "chartiq"].map((chart) => (
+          <Select.Item key={chart} value={chart}>
+            {capitalize(chart)}
           </Select.Item>
         ))}
       </Select>
@@ -105,6 +131,7 @@ const ThemeSection: React.FC = () => {
 
 export const DisplaySection = Object.assign(Container, {
   Language: LanguageSection,
+  ChartOptions: ChartOptionSection,
   FormatNumber: FormatNumberSection,
   Theme: ThemeSection,
 });

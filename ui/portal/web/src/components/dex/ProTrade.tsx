@@ -177,15 +177,18 @@ const TradingView = lazy(() =>
 const ProTradeChart: React.FC = () => {
   const { state } = useProTrade();
   const { isLg } = useMediaQuery();
+  const { settings } = useApp();
+  const { chart } = settings;
   const { baseCoin, quoteCoin, orders } = state;
+
+  const ChartComponent = chart === "tradingview" ? TradingView : ChartIQ;
 
   const mobileContainer = usePortalTarget("#chart-container");
 
   const Chart = (
     <Suspense fallback={<Spinner color="pink" />}>
       <div className="flex w-full h-full" id="chartiq">
-        {/*     <ChartIQ coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} /> */}
-        <TradingView coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />
+        <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />
       </div>
     </Suspense>
   );
