@@ -7,7 +7,7 @@ use {
     },
     chrono::{DateTime, Utc},
     clickhouse::Client,
-    dango_types::dex::{OrderFilled, PairId},
+    dango_types::dex::{OrderFilled, OrdersMatched, PairId},
     grug::{
         Addr, CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
         FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten, Number, NumberConst, Udec128_6,
@@ -72,88 +72,34 @@ impl Indexer {
                     continue;
                 };
 
-                // We look for the "order filled" event, regardless whether it's
-                // a limit order or a market order.
-                if event.ty == OrderFilled::EVENT_NAME {
+                if event.ty == OrdersMatched::EVENT_NAME {
                     #[cfg(feature = "metrics")]
-                    metrics::counter!("indexer.clickhouse.order_filled_events.total").increment(1);
+                    metrics::counter!("indexer.clickhouse.order_matched_events.total").increment(1);
 
                     // Deserialize the event.
-                    let order_filled = event.data.clone().deserialize_json::<OrderFilled>()?;
+                    let order_matched = event.data.clone().deserialize_json::<OrdersMatched>()?;
 
-                    // TODO: look at `cleared` field to determine if the order was
-                    // fully filled and cleared from the book. If so, we can add
-                    // the volume to the map?
+                    let pair_id: PairId = (&order_matched).into();
 
-                    let pair_id: PairId = (&order_filled).into();
+                    let volume_quote = order_matched
+                        .volume
+                        .checked_mul(order_matched.clearing_price)?;
 
-                    let pair_price = pair_prices.entry(pair_id).or_insert(PairPrice {
-                        quote_denom: order_filled.quote_denom.to_string(),
-                        base_denom: order_filled.base_denom.to_string(),
-                        open_price: order_filled.clearing_price,
-                        highest_price: order_filled.clearing_price,
-                        lowest_price: order_filled.clearing_price,
-                        close_price: order_filled.clearing_price,
-                        volume_base: Udec128_6::ZERO,
-                        volume_quote: Udec128_6::ZERO,
+                    let _pair_price = pair_prices.entry(pair_id).or_insert(PairPrice {
+                        quote_denom: order_matched.quote_denom.to_string(),
+                        base_denom: order_matched.base_denom.to_string(),
+                        open_price: order_matched.clearing_price,
+                        highest_price: order_matched.clearing_price,
+                        lowest_price: order_matched.clearing_price,
+                        close_price: order_matched.clearing_price,
+                        volume_base: order_matched.volume,
+                        volume_quote,
                         created_at: DateTime::<Utc>::from_naive_utc_and_offset(
                             block.info.timestamp.to_naive_date_time(),
                             Utc,
                         ),
                         block_height: block.info.height,
                     });
-
-                    // divide by 2 (because for each buy there's a sell, so it's double counted)
-                    let volume_base = order_filled.filled_base.checked_div(two)?;
-
-                    // If the volume overflows, set it to the maximum value.
-                    match pair_price.volume_base.checked_add(volume_base) {
-                        Ok(volume) => pair_price.volume_base = volume,
-                        Err(_) => {
-                            // TODO: add sentry error reporting
-                            #[cfg(feature = "tracing")]
-                            tracing::error!("Overflow in volume_base: {pair_price:#?}");
-                            pair_price.volume_base = Udec128_6::MAX;
-                        },
-                    }
-
-                    // divide by 2 (because for each buy there's a sell, so it's double counted)
-                    let volume_quote = order_filled.filled_quote.checked_div(two)?;
-
-                    // If the volume overflows, set it to the maximum value.
-                    match pair_price.volume_quote.checked_add(volume_quote) {
-                        Ok(volume) => pair_price.volume_quote = volume,
-                        Err(_) => {
-                            // TODO: add sentry error reporting
-                            #[cfg(feature = "tracing")]
-                            tracing::error!("Overflow in volume_quote: {pair_price:#?}");
-                            pair_price.volume_quote = Udec128_6::MAX;
-
-                            #[cfg(feature = "metrics")]
-                            metrics::counter!("indexer.clickhouse.volume_overflow.total")
-                                .increment(1);
-                        },
-                    }
-
-                    if order_filled.clearing_price > pair_price.highest_price {
-                        pair_price.highest_price = order_filled.clearing_price;
-                    }
-
-                    if order_filled.clearing_price < pair_price.lowest_price {
-                        pair_price.lowest_price = order_filled.clearing_price;
-                    }
-
-                    // The open price will be overwritten later with the last pair price closing price.
-                    // But if we don't have any (first pair price ever), we set it to the clearing
-                    // price of the first order filled.
-                    // And since we go through the events in reverse order,
-                    // the first event is actually the last event in the block.
-                    pair_price.open_price = order_filled.clearing_price;
-
-                    // We set the close price to the clearing price of the last but since
-                    // we loop through the events in reverse order, the last event
-                    // is actually the first event in the block.
-                    // pair_price.close_price = order_filled.clearing_price;
                 }
             }
         }
