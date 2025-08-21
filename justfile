@@ -55,6 +55,13 @@ testdata:
 book:
   mdbook build --open
 
+update-genesis:
+  cargo run -p dango-scripts --example update_genesis -- \
+    networks/localdango/configs/cometbft/config/genesis.json \
+    deploy/roles/cometbft/templates/devnet/config/genesis.json \
+    deploy/roles/cometbft/templates/testnet/config/genesis.json \
+    deploy/roles/full-app/templates/devnet/config/cometbft/genesis.json
+
 # ---------------------------------- Frontend ----------------------------------
 run-website:
   pnpm i

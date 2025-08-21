@@ -11,11 +11,16 @@ version       = { workspace = true }
 
 [dependencies]
 anyhow         = { workspace = true }
+cargo_metadata = { workspace = true }
 dango-client   = { workspace = true }
+dango-genesis  = { workspace = true }
+dango-testing  = { workspace = true }
 dango-types    = { workspace = true }
 grug           = { workspace = true }
 grug-app       = { workspace = true }
+grug-vm-rust   = { workspace = true }
 hex-literal    = { workspace = true }
+home           = { workspace = true }
 indexer-client = { workspace = true }
 num-format     = { workspace = true }
 tokio          = { workspace = true }
