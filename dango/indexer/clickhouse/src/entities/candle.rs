@@ -6,7 +6,7 @@ use {
     chrono::{DateTime, Utc},
     clickhouse::Row,
     dango_types::dex::PairId,
-    grug::{Denom, Udec128_6, Udec128_24},
+    grug::{Denom, NumberConst, Udec128_6, Udec128_24},
     serde::{Deserialize, Serialize},
     std::str::FromStr,
 };
@@ -50,20 +50,45 @@ pub struct Candle {
     pub block_height: u64,
 }
 
-impl From<PairPrice> for Candle {
-    fn from(pair_price: PairPrice) -> Self {
+impl Candle {
+    pub fn new_with_pair_price(
+        pair_price: PairPrice,
+        interval: CandleInterval,
+        time_start: DateTime<Utc>,
+    ) -> Self {
         Candle {
             quote_denom: pair_price.quote_denom,
             base_denom: pair_price.base_denom,
-            time_start: pair_price.created_at,
+            time_start,
             open: pair_price.clearing_price,
             high: pair_price.clearing_price,
             low: pair_price.clearing_price,
             close: pair_price.clearing_price,
             volume_base: pair_price.volume_base,
             volume_quote: pair_price.volume_quote,
-            interval: CandleInterval::OneMinute,
+            interval,
             block_height: pair_price.block_height,
+        }
+    }
+
+    pub fn new_with_previous_candle(
+        previous_candle: &Candle,
+        interval: CandleInterval,
+        time_start: DateTime<Utc>,
+        block_height: u64,
+    ) -> Self {
+        Candle {
+            quote_denom: previous_candle.quote_denom.clone(),
+            base_denom: previous_candle.base_denom.clone(),
+            time_start,
+            open: previous_candle.close,
+            high: previous_candle.close,
+            low: previous_candle.close,
+            close: previous_candle.close,
+            volume_base: Udec128_6::ZERO,
+            volume_quote: Udec128_6::ZERO,
+            interval,
+            block_height,
         }
     }
 }
@@ -130,21 +155,27 @@ impl Candle {
 }
 
 impl Candle {
+    pub async fn optimize_table(clickhouse_client: &clickhouse::Client) -> Result<()> {
+        Ok(clickhouse_client
+            .query("OPTIMIZE TABLE candles FINAL")
+            .execute()
+            .await?)
+    }
+
     /// Returns all existing pairs for a given interval and an optional block height.
     pub async fn existing_pairs(
         interval: CandleInterval,
         clickhouse_client: &clickhouse::Client,
         block_height: Option<u64>,
     ) -> Result<Vec<PairId>> {
-        let mut query = format!(
-            "SELECT DISTINCT base_denom, quote_denom FROM {}",
-            interval.table_name()
-        );
+        let mut query =
+            "SELECT DISTINCT base_denom, quote_denom FROM candles WHERE interval = ?".to_string();
 
         let mut params: Vec<String> = Vec::new();
+        params.push(interval.to_string());
 
         if let Some(block_height) = block_height {
-            query.push_str(" WHERE finalizeAggregation(block_height) = ?");
+            query.push_str(" AND block_height = ?");
             params.push(block_height.to_string());
         }
 
@@ -193,14 +224,14 @@ impl Candle {
         pair: PairId,
     ) -> Result<Option<u64>> {
         let query = format!(
-            "SELECT max(finalizeAggregation(block_height)) FROM {} WHERE (quote_denom = ? AND base_denom = ?)",
-            interval.table_name()
+            "SELECT max(block_height) FROM candles WHERE (quote_denom = ? AND base_denom = ? AND interval = ?)",
         );
 
         let last_block_height: Option<u64> = clickhouse_client
             .query(&query)
             .bind(pair.quote_denom)
             .bind(pair.base_denom)
+            .bind(interval)
             .fetch_optional()
             .await?;
 

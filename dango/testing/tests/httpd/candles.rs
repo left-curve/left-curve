@@ -2,7 +2,9 @@ use {
     crate::build_actix_app,
     assert_json_diff::assert_json_include,
     dango_genesis::Contracts,
-    dango_indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
+    dango_indexer_clickhouse::{
+        entities::pair_price::PairPrice, indexer::candles::cache::CandleCache,
+    },
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
@@ -387,8 +389,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
             .collect::<HashMap<_, _>>()
     );
 
-    // println!("Cache : {:#?}", old_cache.candles);
-    // println!("Cache from clickhouse: {:#?}", cache.candles);
+    println!("Cache : {:#?}", old_cache.candles);
+    println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;

@@ -1,23 +1,23 @@
 use {
     crate::{
         context::Context,
-        entities::{candle_query::MAX_ITEMS, pair_price::PairPrice},
+        entities::pair_price::PairPrice,
         error::{IndexerError, Result},
         indexer::Indexer,
     },
     chrono::{DateTime, Utc},
-    clickhouse::Client,
-    dango_types::dex::{OrdersMatched, PairId},
+    dango_types::dex::OrdersMatched,
     grug::{
         Addr, CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
         FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten, Number,
     },
-    std::collections::HashMap,
 };
+
+pub mod cache;
+pub mod generator;
 
 impl Indexer {
     pub(crate) async fn store_candles(
-        clickhouse_client: &Client,
         dex_addr: &Addr,
         ctx: &grug_app::IndexerContext,
         context: &Context,
@@ -31,9 +31,14 @@ impl Indexer {
             .ok_or(IndexerError::MissingBlockOrBlockOutcome)?
             .clone();
 
+        let created_at = DateTime::<Utc>::from_naive_utc_and_offset(
+            block.info.timestamp.to_naive_date_time(),
+            Utc,
+        );
+
         // Clearing price is denominated as the units of quote asset per 1 unit
         // of the base asset.
-        let mut pair_prices = HashMap::<PairId, PairPrice>::new();
+        let mut pair_prices = Vec::new();
 
         // DEX order execution happens exclusively in the end-block cronjob, so
         // we loop through the block's cron outcomes.
@@ -77,70 +82,28 @@ impl Indexer {
                     // Deserialize the event.
                     let order_matched = event.data.clone().deserialize_json::<OrdersMatched>()?;
 
-                    let pair_id: PairId = (&order_matched).into();
-
                     let volume_quote = order_matched
                         .volume
                         .checked_mul(order_matched.clearing_price)?;
 
-                    pair_prices.insert(pair_id, PairPrice {
+                    pair_prices.push(PairPrice {
                         quote_denom: order_matched.quote_denom.to_string(),
                         base_denom: order_matched.base_denom.to_string(),
                         clearing_price: order_matched.clearing_price,
                         volume_base: order_matched.volume,
                         volume_quote,
-                        created_at: DateTime::<Utc>::from_naive_utc_and_offset(
-                            block.info.timestamp.to_naive_date_time(),
-                            Utc,
-                        ),
+                        created_at,
                         block_height: block.info.height,
                     });
                 }
             }
         }
 
-        #[cfg(feature = "metrics")]
-        metrics::counter!("indexer.clickhouse.pair_prices.processed.total")
-            .increment(pair_prices.len() as u64);
+        let candle_generator = generator::CandleGenerator::new(context.clone());
 
-        #[cfg(feature = "tracing")]
-        tracing::debug!("Saving {} pair prices", pair_prices.len());
-
-        // Writing the cache asap so other threads needing this have it asap.
-        {
-            let mut candle_cache = context.candle_cache.write().await;
-            candle_cache.add_pair_prices(block.info.height, pair_prices.clone());
-            candle_cache.compact_keep_n(MAX_ITEMS * 2);
-            drop(candle_cache);
-        }
-
-        // Use Row binary inserter with the official clickhouse serde helpers
-        let mut inserter = clickhouse_client
-            .inserter::<PairPrice>("pair_prices")?
-            .with_max_rows(pair_prices.len() as u64);
-
-        for (_, pair_price) in pair_prices.iter() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                "{} Inserting pair price: {}",
-                pair_price.block_height,
-                pair_price.clearing_price,
-            );
-
-            inserter.write(pair_price).inspect_err(|_err| {
-                #[cfg(feature = "tracing")]
-                tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
-            })?;
-        }
-
-        inserter.commit().await.inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            tracing::error!("Failed to commit inserter for pair prices: {_err}");
-        })?;
-        inserter.end().await.inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            tracing::error!("Failed to end inserter for pair prices: {_err}");
-        })?;
+        candle_generator
+            .add_pair_prices(block.info.height, created_at, pair_prices)
+            .await?;
 
         Ok(())
     }
