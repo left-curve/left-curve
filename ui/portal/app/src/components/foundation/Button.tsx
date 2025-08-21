@@ -1,4 +1,4 @@
-import { Pressable, Text, ActivityIndicator, StyleSheet } from "react-native";
+import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
 import { tv } from "tailwind-variants";
 import { twMerge } from "@left-curve/applets-kit";
 import { Shadow } from "react-native-shadow-2";
@@ -80,7 +80,7 @@ const buttonVariants = tv({
 });
 
 const textVariants = tv({
-  base: "exposure-sm-italic pb-2",
+  base: "exposure-sm-italic",
   variants: {
     variant: {
       primary: "text-surface-primary-rice",
@@ -230,6 +230,8 @@ export type ButtonProps = {
   isLoading?: boolean;
   children: React.ReactNode;
   onPress?: () => void;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
 };
 
 export const Button: React.FC<ButtonProps> = ({
@@ -240,6 +242,8 @@ export const Button: React.FC<ButtonProps> = ({
   children,
   onPress,
   radius = "full",
+  leftIcon,
+  rightIcon,
 }) => {
   const styles = buttonVariants({ variant, size, isDisabled, radius });
 
@@ -249,9 +253,13 @@ export const Button: React.FC<ButtonProps> = ({
         {isLoading ? (
           <ActivityIndicator color="white" size="small" />
         ) : (
-          <ButtonText variant={variant} size={size} isDisabled={isDisabled}>
-            {children}
-          </ButtonText>
+          <View className="flex flex-row items-center gap-2 justify-center">
+            {leftIcon}
+            <ButtonText variant={variant} size={size} isDisabled={isDisabled}>
+              {children}
+            </ButtonText>
+            {rightIcon}
+          </View>
         )}
       </Pressable>
     </ButtonShadow>

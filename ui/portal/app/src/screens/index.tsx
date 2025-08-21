@@ -13,8 +13,9 @@ export default function HomeScreen() {
         variant="utility"
         size="md"
         onPress={() => setThemeSchema(theme === "light" ? "dark" : "light")}
+        leftIcon={<IconSun size={28} color={iconColors[theme]["utility"]} />}
       >
-        <IconSun size={28} className="w-8 h-8" color={iconColors[theme]["utility"]} /> Set Theme
+        Set Theme
       </Button>
     </View>
   );
