@@ -47,7 +47,7 @@ const LanguageSection: React.FC = () => {
   );
 };
 
-const ChartOptionSection: React.FC = () => {
+const ChartEngineSection: React.FC = () => {
   const { settings, changeSettings } = useApp();
 
   const { chart } = settings;
@@ -131,7 +131,7 @@ const ThemeSection: React.FC = () => {
 
 export const DisplaySection = Object.assign(Container, {
   Language: LanguageSection,
-  ChartOptions: ChartOptionSection,
+  ChartEngine: ChartEngineSection,
   FormatNumber: FormatNumberSection,
   Theme: ThemeSection,
 });

@@ -24,7 +24,7 @@ function SettingsApplet() {
       <DisplaySection>
         <DisplaySection.Language />
         <DisplaySection.FormatNumber />
-        <DisplaySection.ChartOptions />
+        <DisplaySection.ChartEngine />
         <DisplaySection.Theme />
       </DisplaySection>
       <KeyManagementSection />

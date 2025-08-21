@@ -584,7 +584,7 @@
     "display": "Display",
     "language": "Language",
     "theme": "Theme",
-    "chart": "Chart",
+    "chart": "Chart Engine",
     "session": {
       "title": "Current Session",
       "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
