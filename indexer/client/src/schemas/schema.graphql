@@ -212,11 +212,11 @@ enum Direction {
 	"""
 	Give away the quote asset, get the base asset; a.k.a. a BUY order.
 	"""
-	BID
+	bid
 	"""
 	Give away the base asset, get the quote asset; a.k.a. a SELL order.
 	"""
-	ASK
+	ask
 }
 
 type Event {
@@ -649,7 +649,6 @@ type Trade {
 	baseDenom: String!
 	direction: Direction!
 	blockHeight: Int!
-	tradeIdx: Int!
 	"""
 	Returns the block timestamp in ISO 8601 format with time zone.
 	"""
