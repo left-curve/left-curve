@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+// hooks/useTheme.ts
+import type React from "react";
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import { Appearance } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { storage } from "../../storage.config";
 
 export type ThemesSchema = "dark" | "light" | "system";
 export type Themes = "dark" | "light";
@@ -12,29 +14,38 @@ type ThemeContextType = {
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const THEME_KEY = "app.theme";
 
 function getPreferredScheme(): Themes {
-  const colorScheme = Appearance.getColorScheme();
-  return colorScheme === "dark" ? "dark" : "light";
+  const cs = Appearance.getColorScheme();
+  return cs === "dark" ? "dark" : "light";
 }
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [themeSchema, setThemeSchemaState] = useState<ThemesSchema>("system");
-  const [theme, setTheme] = useState<Themes>(getPreferredScheme());
-
-  useEffect(() => {
-    AsyncStorage.getItem("app.theme").then((saved) => {
-      if (saved) {
-        setThemeSchemaState(saved as ThemesSchema);
-      }
-    });
+export const ThemeProvider: React.FC<PropsWithChildren> = ({ children }) => {
+  const initialSchema = useMemo<ThemesSchema>(() => {
+    const saved = storage.getString(THEME_KEY);
+    return saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
   }, []);
 
-  useEffect(() => {
-    AsyncStorage.setItem("app.theme", themeSchema);
+  const [themeSchema, setThemeSchemaState] = useState<ThemesSchema>(initialSchema);
+  const [theme, setTheme] = useState<Themes>(
+    initialSchema === "system" ? getPreferredScheme() : initialSchema,
+  );
 
-    const nextTheme = themeSchema === "system" ? getPreferredScheme() : themeSchema;
-    setTheme(nextTheme);
+  useEffect(() => {
+    storage.set(THEME_KEY, themeSchema);
+    const next = themeSchema === "system" ? getPreferredScheme() : themeSchema;
+    setTheme(next);
+  }, [themeSchema]);
+
+  useEffect(() => {
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      if (themeSchema === "system") {
+        const next = colorScheme === "dark" ? "dark" : "light";
+        setTheme(next);
+      }
+    });
+    return () => sub.remove();
   }, [themeSchema]);
 
   return (

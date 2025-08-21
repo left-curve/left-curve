@@ -1,6 +1,5 @@
-import { twMerge } from "@left-curve/applets-kit";
 import { View } from "react-native";
-import { Button, GlobalText, IconAddCross, IconAlert, iconColors, IconSun } from "~/components";
+import { Button, GlobalText, iconColors, IconSun } from "~/components";
 import { useTheme } from "~/hooks/useTheme";
 
 export default function HomeScreen() {
