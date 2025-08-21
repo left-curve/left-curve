@@ -1,8 +1,8 @@
 // hooks/useTheme.ts
 import type React from "react";
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
-import { Appearance } from "react-native";
+import { createContext, type PropsWithChildren, useContext, useMemo, useState } from "react";
 import { storage } from "../../storage.config";
+import { useColorScheme } from "react-native";
 
 export type ThemesSchema = "dark" | "light" | "system";
 export type Themes = "dark" | "light";
@@ -14,51 +14,32 @@ type ThemeContextType = {
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
 const THEME_KEY = "app.theme";
 
-function getPreferredScheme(): Themes {
-  const cs = Appearance.getColorScheme();
-  return cs === "dark" ? "dark" : "light";
-}
-
 export const ThemeProvider: React.FC<PropsWithChildren> = ({ children }) => {
-  const initialSchema = useMemo<ThemesSchema>(() => {
-    const saved = storage.getString(THEME_KEY);
-    return saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
-  }, []);
+  const systemScheme = (useColorScheme() ?? "light") as Themes;
 
-  const [themeSchema, setThemeSchemaState] = useState<ThemesSchema>(initialSchema);
-  const [theme, setTheme] = useState<Themes>(
-    initialSchema === "system" ? getPreferredScheme() : initialSchema,
+  const [themeSchema, setThemeSchemaState] = useState<ThemesSchema>(() => {
+    return (storage.getString(THEME_KEY) as ThemesSchema) ?? "system";
+  });
+
+  const theme = useMemo<Themes>(
+    () => (themeSchema === "system" ? systemScheme : themeSchema),
+    [themeSchema, systemScheme],
   );
 
-  useEffect(() => {
-    storage.set(THEME_KEY, themeSchema);
-    const next = themeSchema === "system" ? getPreferredScheme() : themeSchema;
-    setTheme(next);
-  }, [themeSchema]);
+  const setThemeSchema = (next: ThemesSchema) => {
+    setThemeSchemaState(next);
+    storage.set(THEME_KEY, next);
+  };
 
-  useEffect(() => {
-    const sub = Appearance.addChangeListener(({ colorScheme }) => {
-      if (themeSchema === "system") {
-        const next = colorScheme === "dark" ? "dark" : "light";
-        setTheme(next);
-      }
-    });
-    return () => sub.remove();
-  }, [themeSchema]);
-
-  return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        themeSchema,
-        setThemeSchema: setThemeSchemaState,
-      }}
-    >
-      {children}
-    </ThemeContext.Provider>
+  const value = useMemo<ThemeContextType>(
+    () => ({ theme, themeSchema, setThemeSchema }),
+    [theme, themeSchema],
   );
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };
 
 export function useTheme() {
