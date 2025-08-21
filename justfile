@@ -47,15 +47,24 @@ build-graphql-schema:
   cargo run -p dango-httpd build_graphql_schema -- \
     ./indexer/client/src/schemas/schema.graphql
 
-# Update wasm artifacts used in tests
-testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm/wasm/testdata/
-
-# Build the Left Curve Book
+# Build the Dango Book
 book:
   mdbook build --open
 
+# Update CometBFT genesis files
+update-genesis:
+  cargo run -p dango-scripts --example build_genesis -- \
+    networks/localdango/configs/cometbft/config/genesis.json \
+    deploy/roles/cometbft/templates/devnet/config/genesis.json \
+    deploy/roles/cometbft/templates/testnet/config/genesis.json \
+    deploy/roles/full-app/templates/devnet/config/cometbft/genesis.json
+
+# Update wasm artifacts used in tests
+update-testdata:
+  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm/wasm/testdata/
+
 # ---------------------------------- Frontend ----------------------------------
+
 run-website:
   pnpm i
   pnpm dev:portal-web

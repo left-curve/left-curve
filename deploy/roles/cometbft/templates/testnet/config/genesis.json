@@ -33,7 +33,9 @@
       "owner": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
       "permissions": {
         "instantiate": {
-          "somebodies": ["0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"]
+          "somebodies": [
+            "0x18d28bafcdf9d4574f920ea004dea2d13ec16f6b"
+          ]
         },
         "upload": "nobody"
       },
@@ -117,6 +119,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "AF5570F5A1810B7AF78CAF4BC70A660F0DF51E42BAF91D4DE5B2328DE0E83DFC",
           "funds": {},
           "label": "dango/account_factory",
@@ -197,6 +200,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "AAE89FC0F03E2959AE4D701A80CC3915918C950B159F6ABB6C92C1433B1A8534",
           "funds": {},
           "label": "hyperlane/ism/multisig",
@@ -249,6 +253,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "18D8D609947C6B82B9607704AE40D3317038E709238514DE750B5C7411BA4C20",
           "funds": {},
           "label": "dango/warp",
@@ -260,6 +265,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "6CC16ABD70EEFB90DC0BA0D14FB088630873B2C6AD943F7442356735984C35A3",
           "funds": {},
           "label": "hyperlane/mailbox",
@@ -274,6 +280,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "CBBD5F990C53684D7AE650B40FCB5656E02261B53DA5F6A7D8C819C92F2828F8",
           "funds": {},
           "label": "hyperlane/va",
@@ -289,6 +296,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "F13EE6ED54EA2AAE9FC49A9FAEB5DA6E8DDEF0E12ED5D30D35A624AE813E0485",
           "funds": {},
           "label": "dango/dex",
@@ -357,6 +365,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "5FD1B79EBDEF9619A57916A3BFC264B54D37A792659B3693F8AB36EC3EBCE448",
           "funds": {},
           "label": "dango/lending",
@@ -383,6 +392,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "23D7F42B1CDC1F0D492EBD756ED0FE8003995DDA554D99418D47A81813650207",
           "funds": {},
           "label": "dango/gateway",
@@ -602,13 +612,14 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "F0A0278E4372459CCA6159CD5E71CFEE638302A7B9CA9B05C34181AC0A65AC5D",
           "funds": {},
           "label": "dango/bank",
           "msg": {
             "balances": {
               "0x01bba610cbbfe9df0c99b8862f3ad41b2f646553": {
-                "dango": "100000000000000"
+                "dango": "1000000000000000000"
               },
               "0x0fbc6c01f7c334500f465ba456826c890f3c8160": {
                 "dango": "100000000000000"
@@ -707,6 +718,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "220DDE27AFEE4D537CAC96D85D6546F825153B90E828931B74E103807541BC42",
           "funds": {},
           "label": "dango/taxman",
@@ -721,6 +733,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "A111F275CC2E7588000001D300A31E76336D15B9D314CD1A1D8F3D3556975EED",
           "funds": {},
           "label": "dango/oracle",
@@ -818,6 +831,7 @@
       },
       {
         "instantiate": {
+          "admin": "0x33361de42571d6aa20c37daa6da4b5ab67bfaad9",
           "code_hash": "B0BD73E6922C0D2496DBCB99EAC08EB5870090E59F6E06B1EB477D540002A5CD",
           "funds": {},
           "label": "dango/vesting",
@@ -845,7 +859,9 @@
       "max_bytes": "1048576"
     },
     "validator": {
-      "pub_key_types": ["ed25519"]
+      "pub_key_types": [
+        "ed25519"
+      ]
     },
     "version": {
       "app": "0"
