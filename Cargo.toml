@@ -11,6 +11,7 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
+  "dango/indexer/clickhouse",
   "dango/indexer/httpd",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
@@ -49,7 +50,6 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
-  "indexer/clickhouse",
   "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
@@ -206,6 +206,7 @@ dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
 dango-httpd                 = { path = "dango/indexer/httpd" }
+dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }
@@ -246,7 +247,6 @@ hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
-indexer-clickhouse          = { path = "indexer/clickhouse" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }

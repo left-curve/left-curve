@@ -2,6 +2,10 @@ use {
     assertor::*,
     chrono::{DateTime, TimeDelta},
     dango_genesis::Contracts,
+    dango_indexer_clickhouse::entities::{
+        CandleInterval, candle::Candle, candle_query::CandleQueryBuilder, pair_price::PairPrice,
+        pair_price_query::PairPriceQueryBuilder,
+    },
     dango_testing::{
         TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer,
         constants::MOCK_GENESIS_TIMESTAMP, setup_test_with_indexer,
@@ -17,10 +21,6 @@ use {
         Uint128, btree_map, coins,
     },
     grug_app::Indexer,
-    indexer_clickhouse::entities::{
-        CandleInterval, candle::Candle, candle_query::CandleQueryBuilder, pair_price::PairPrice,
-        pair_price_query::PairPriceQueryBuilder,
-    },
     std::str::FromStr,
 };
 
