@@ -49,7 +49,7 @@ impl PairPriceQueryBuilder {
 
         let mut rows: Vec<PairPrice> = cursor_query.fetch_all().await?;
 
-        let has_next_page = rows.len() > self.limit - 1;
+        let has_next_page = rows.len() > self.limit;
         if has_next_page {
             rows.pop();
         }

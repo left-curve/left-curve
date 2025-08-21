@@ -8,5 +8,6 @@ pub mod error;
 pub mod httpd;
 pub mod indexer;
 pub mod migrations;
+pub mod trade;
 
 pub use indexer::Indexer;

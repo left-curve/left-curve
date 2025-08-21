@@ -281,14 +281,16 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last candle
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 let expected_json = serde_json::json!([{
                     "baseDenom": "dango",
@@ -307,15 +309,13 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                 create_candle_tx_clone.send(2).await.unwrap();
 
-                let mut framed = framed;
-
                 loop {
                     // 2nd response
-                    let (f, response) =
-                        parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                            .await?;
-
-                    framed = f;
+                    let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                     // This because blocks aren't indexed in order
                     if response
@@ -479,14 +479,16 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last candle
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 let expected_json = serde_json::json!([{
                     "baseDenom": "dango",
@@ -505,15 +507,13 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
                 crate_block_tx_clone.send(2).await.unwrap();
 
-                let mut framed = framed;
-
                 loop {
                     // 2nd response
-                    let (f, response) =
-                        parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                            .await?;
-
-                    framed = f;
+                    let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                     // This because blocks aren't indexed in order
                     if response

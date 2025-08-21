@@ -1,5 +1,5 @@
 use {
-    crate::context::Context,
+    crate::{context::Context, error::Error},
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug::Storage,
     grug_app::QuerierProvider,
@@ -118,15 +118,11 @@ impl grug_app::Indexer for Indexer {
                         counter!("indexer.dango.hooks.pubsub.errors.total").increment(1);
                     })?;
 
-                Ok::<(), grug_app::IndexerError>(())
+                Ok::<(), Error>(())
             }
         });
 
-        self.runtime_handler.block_on(async {
-            handle
-                .await
-                .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))?
-        })?;
+        self.runtime_handler.block_on(async { handle.await? })?;
 
         #[cfg(feature = "metrics")]
         histogram!("indexer.dango.hooks.duration").record(start.elapsed().as_secs_f64());

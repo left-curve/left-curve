@@ -549,15 +549,17 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response
@@ -571,10 +573,12 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response
@@ -588,10 +592,12 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await.unwrap();
 
                 // 3rd response
-                let (_, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response
@@ -691,15 +697,17 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 // 1st transfer because we filter on one address
                 assert_that!(
@@ -714,10 +722,12 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                 create_block_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response
@@ -731,10 +741,12 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                 create_block_tx.send(3).await.unwrap();
 
                 // 3rd response
-                let (_, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response

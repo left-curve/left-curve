@@ -517,14 +517,15 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::accounts::Model>,
-                >(framed, name)
+                let response = parse_graphql_subscription_response::<Vec<entity::accounts::Model>>(
+                    &mut framed,
+                    name,
+                )
                 .await?;
 
                 assert_that!(
@@ -539,9 +540,10 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (_, response) = parse_graphql_subscription_response::<
-                    Vec<entity::accounts::Model>,
-                >(framed, name)
+                let response = parse_graphql_subscription_response::<Vec<entity::accounts::Model>>(
+                    &mut framed,
+                    name,
+                )
                 .await?;
 
                 assert_that!(
@@ -628,7 +630,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
@@ -641,9 +643,11 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
                 });
 
                 // 1st response is always accounts from the last block if any
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 let account = response
                     .data
@@ -655,9 +659,11 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 let account = response
                     .data

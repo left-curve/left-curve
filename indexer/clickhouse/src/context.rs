@@ -1,7 +1,10 @@
 #[cfg(feature = "testing")]
 use clickhouse::test;
 use {
-    crate::{cache::CandleCache, entities::pair_price::PairPrice},
+    crate::{
+        cache::CandleCache,
+        entities::{pair_price::PairPrice, trade::Trade},
+    },
     clickhouse::Client,
     indexer_sql::pubsub::{self, PubSub},
     std::sync::Arc,
@@ -19,6 +22,7 @@ pub struct Context {
     #[allow(dead_code)]
     clickhouse_client: Client,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
+    pub trade_pubsub: Arc<dyn PubSub<Trade> + Send + Sync>,
     pub candle_cache: Arc<RwLock<CandleCache>>,
 }
 
@@ -32,10 +36,13 @@ impl Context {
             .with_database(&database);
 
         let pubsub: Arc<dyn PubSub<u64> + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let trade_pubsub: Arc<dyn PubSub<Trade> + Send + Sync> =
+            Arc::new(pubsub::MemoryPubSub::new(100));
 
         Self {
             clickhouse_client,
             pubsub,
+            trade_pubsub,
             candle_cache: Default::default(),
         }
     }
@@ -55,12 +62,15 @@ impl Context {
         );
 
         let pubsub: Arc<dyn PubSub<u64> + Send + Sync> = Arc::new(pubsub::MemoryPubSub::new(100));
+        let trade_pubsub: Arc<dyn PubSub<Trade> + Send + Sync> =
+            Arc::new(pubsub::MemoryPubSub::new(100));
 
         Self {
             mock: None,
             clickhouse_database: database,
             clickhouse_client,
             pubsub,
+            trade_pubsub,
             candle_cache: Default::default(),
         }
     }
@@ -85,11 +95,12 @@ impl Context {
         let mock = test::Mock::new();
 
         Self {
-            clickhouse_client: self.clickhouse_client.clone().with_mock(&mock),
+            clickhouse_client: self.clickhouse_client.with_mock(&mock),
             mock: Some(Arc::new(mock)),
-            clickhouse_database: self.clickhouse_database.clone(),
-            pubsub: self.pubsub.clone(),
-            candle_cache: Default::default(),
+            clickhouse_database: self.clickhouse_database,
+            pubsub: self.pubsub,
+            trade_pubsub: self.trade_pubsub,
+            candle_cache: self.candle_cache,
         }
     }
 
@@ -113,7 +124,8 @@ impl Context {
             clickhouse_database: test_database,
             clickhouse_client,
             pubsub: self.pubsub,
-            candle_cache: Default::default(),
+            trade_pubsub: self.trade_pubsub,
+            candle_cache: self.candle_cache,
         })
     }
 
