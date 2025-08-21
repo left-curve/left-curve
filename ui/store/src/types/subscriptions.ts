@@ -6,6 +6,7 @@ import type {
   IndexedBlock,
   IndexedTransferEvent,
   PublicClient,
+  Trade,
   Username,
 } from "@left-curve/dango/types";
 
@@ -35,6 +36,14 @@ export type SubscriptionSchema = [
       limit?: number;
     };
     listener: (event: { candles: Candle[] }) => void;
+  },
+  {
+    key: "trades";
+    params: {
+      baseDenom: Denom;
+      quoteDenom: Denom;
+    };
+    listener: (event: { trades: Trade[] }) => void;
   },
   {
     key: "submitTx";
