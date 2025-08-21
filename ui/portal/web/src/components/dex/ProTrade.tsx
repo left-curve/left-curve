@@ -6,7 +6,7 @@ import {
   useMediaQuery,
   usePortalTarget,
 } from "@left-curve/applets-kit";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useApp } from "~/hooks/useApp";
@@ -183,17 +183,23 @@ const ProTradeChart: React.FC = () => {
 
   const ChartComponent = chart === "tradingview" ? TradingView : ChartIQ;
 
-  const mobileContainer = usePortalTarget("#chart-container");
+  const mobileContainer = usePortalTarget("#chart-container-mobile");
+
+  const ordersByPair = useMemo(
+    () =>
+      orders.data.filter((o) => o.baseDenom === baseCoin.denom && o.quoteDenom === quoteCoin.denom),
+    [orders.data, baseCoin.denom, quoteCoin.denom],
+  );
 
   const Chart = (
-    <Suspense fallback={<Spinner color="pink" />}>
-      <div className="flex w-full h-full" id="chartiq">
-        <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />
+    <Suspense fallback={<Spinner color="pink" size="md" />}>
+      <div className="flex w-full h-full lg:min-h-[52vh]" id="chart-container">
+        <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
       </div>
     </Suspense>
   );
 
-  return <>{isLg || !mobileContainer ? Chart : createPortal(Chart, mobileContainer)}</>;
+  return <>{isLg ? Chart : mobileContainer ? createPortal(Chart, mobileContainer) : null}</>;
 };
 
 const ProTradeMenu: React.FC = () => {

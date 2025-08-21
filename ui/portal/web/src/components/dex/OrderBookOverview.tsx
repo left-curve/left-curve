@@ -37,7 +37,7 @@ export const OrderBookOverview: React.FC = () => {
         classNames={{ button: "exposure-xs-italic" }}
       />
       <div
-        id="chart-container"
+        id="chart-container-mobile"
         className={twMerge("h-full w-full", { hidden: activeTab !== "graph" })}
       />
       {(activeTab === "trades" || activeTab === "order book") && (
