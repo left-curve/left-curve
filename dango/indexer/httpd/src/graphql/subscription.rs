@@ -1,7 +1,7 @@
 use {
     account::AccountSubscription,
     async_graphql::*,
-    indexer_clickhouse::httpd::graphql::subscription::{
+    dango_indexer_clickhouse::httpd::graphql::subscription::{
         candle::CandleSubscription, trade::TradeSubscription,
     },
     indexer_httpd::graphql::subscription::{
