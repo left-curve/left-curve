@@ -16,7 +16,7 @@ import {
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
 
-import { capitalize, type FormatNumberOptions } from "@left-curve/dango/utils";
+import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 import type React from "react";
 
@@ -64,7 +64,7 @@ const ChartEngineSection: React.FC = () => {
       >
         {["tradingview", "chartiq"].map((chart) => (
           <Select.Item key={chart} value={chart}>
-            {capitalize(chart)}
+            {m["settings.chartEngines"]({ chart })}
           </Select.Item>
         ))}
       </Select>
