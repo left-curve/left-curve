@@ -10,10 +10,15 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-async-graphql = ["dep:async-graphql", "dep:indexer-httpd", "grug-types/async-graphql"]
-metrics       = ["dep:metrics", "grug-httpd/metrics", "indexer-httpd/metrics"]
-testing       = ["clickhouse/test-util"]
-tracing       = ["dep:tracing"]
+async-graphql = [
+  "dango-types/async-graphql",
+  "dep:async-graphql",
+  "dep:indexer-httpd",
+  "grug-types/async-graphql",
+]
+metrics = ["dep:metrics", "grug-httpd/metrics", "indexer-httpd/metrics"]
+testing = ["clickhouse/test-util"]
+tracing = ["dep:tracing"]
 
 [dependencies]
 anyhow         = { workspace = true }
