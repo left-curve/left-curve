@@ -35,7 +35,7 @@ fn main() {
         );
 
         let mut file = fs::read(&file_path)
-            .expect(&format!("Failed to read file: {:?}", file_path))
+            .unwrap_or_else(|_| panic!("Failed to read file: {file_path:?}"))
             .deserialize_json::<Json>()
             .unwrap();
 
