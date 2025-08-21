@@ -9,7 +9,7 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[dependencies]
+[dev-dependencies]
 anyhow         = { workspace = true }
 cargo_metadata = { workspace = true }
 dango-client   = { workspace = true }
