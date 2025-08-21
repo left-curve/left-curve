@@ -11,34 +11,34 @@ version       = { workspace = true }
 
 [features]
 metrics = [
-    "dep:actix-web-metrics",
-    "dep:metrics",
-    "indexer-clickhouse/metrics",
-    "indexer-httpd/metrics",
-    "indexer-sql/metrics",
+  "dango-indexer-clickhouse/metrics",
+  "dep:actix-web-metrics",
+  "dep:metrics",
+  "indexer-httpd/metrics",
+  "indexer-sql/metrics",
 ]
 tracing = []
 
 [dependencies]
-actix-cors              = { workspace = true }
-actix-web               = { workspace = true }
-actix-web-metrics       = { workspace = true, optional = true }
-async-graphql           = { workspace = true }
-async-graphql-actix-web = { workspace = true }
-chrono                  = { workspace = true }
-clap                    = { workspace = true }
-dango-indexer-sql       = { workspace = true, features = ["async-graphql"] }
-dango-types             = { workspace = true, features = ["async-graphql"] }
-grug-httpd              = { workspace = true }
-indexer-clickhouse      = { workspace = true, features = ["async-graphql"] }
-indexer-httpd           = { workspace = true, features = ["tracing"] }
-indexer-sql             = { workspace = true, features = ["async-graphql"] }
-itertools               = { workspace = true }
-metrics                 = { workspace = true, optional = true }
-sea-orm                 = { workspace = true }
-sentry-actix            = { workspace = true }
-serde                   = { workspace = true }
-thiserror               = { workspace = true }
-tokio                   = { workspace = true }
-tracing                 = { workspace = true }
-tracing-subscriber      = { workspace = true }
+actix-cors               = { workspace = true }
+actix-web                = { workspace = true }
+actix-web-metrics        = { workspace = true, optional = true }
+async-graphql            = { workspace = true }
+async-graphql-actix-web  = { workspace = true }
+chrono                   = { workspace = true }
+clap                     = { workspace = true }
+dango-indexer-clickhouse = { workspace = true, features = ["async-graphql"] }
+dango-indexer-sql        = { workspace = true, features = ["async-graphql"] }
+dango-types              = { workspace = true, features = ["async-graphql"] }
+grug-httpd               = { workspace = true }
+indexer-httpd            = { workspace = true, features = ["tracing"] }
+indexer-sql              = { workspace = true, features = ["async-graphql"] }
+itertools                = { workspace = true }
+metrics                  = { workspace = true, optional = true }
+sea-orm                  = { workspace = true }
+sentry-actix             = { workspace = true }
+serde                    = { workspace = true }
+thiserror                = { workspace = true }
+tokio                    = { workspace = true }
+tracing                  = { workspace = true }
+tracing-subscriber       = { workspace = true }

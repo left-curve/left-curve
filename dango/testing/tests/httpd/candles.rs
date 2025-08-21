@@ -2,6 +2,7 @@ use {
     crate::build_actix_app,
     assert_json_diff::assert_json_include,
     dango_genesis::Contracts,
+    dango_indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
@@ -13,7 +14,6 @@ use {
         Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
-    indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,

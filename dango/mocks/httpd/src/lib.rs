@@ -120,7 +120,7 @@ where
         indexer_path,
     );
 
-    let indexer_clickhouse_context = indexer_clickhouse::context::Context::new(
+    let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         "http://localhost:8123".to_string(),
         "default".to_string(),
         "default".to_string(),

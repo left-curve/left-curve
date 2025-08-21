@@ -1,6 +1,7 @@
 use {
     assertor::*,
     dango_genesis::Contracts,
+    dango_indexer_clickhouse::entities::trade_query::TradeQueryBuilder,
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
@@ -11,7 +12,6 @@ use {
         Udec128_24, Uint128,
     },
     grug_app::Indexer,
-    indexer_clickhouse::entities::trade_query::TradeQueryBuilder,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

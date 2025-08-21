@@ -153,7 +153,7 @@ pub async fn setup_test_with_indexer(
     MockValidatorSets,
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
-    indexer_clickhouse::context::Context,
+    dango_indexer_clickhouse::context::Context,
 ) {
     let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
@@ -183,7 +183,7 @@ pub async fn setup_test_with_indexer(
     let dango_indexer =
         dango_indexer_sql::indexer::Indexer::new(shared_runtime_handle, dango_context.clone());
 
-    let mut clickhouse_context = indexer_clickhouse::context::Context::new(
+    let mut clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         format!(
             "http://{}:{}",
             std::env::var("CLICKHOUSE_HOST").unwrap_or("localhost".to_string()),
@@ -203,7 +203,7 @@ pub async fn setup_test_with_indexer(
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
-    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(
+    let clickhouse_indexer = dango_indexer_clickhouse::indexer::Indexer::new(
         shared_runtime_handle2,
         clickhouse_context.clone(),
     );
