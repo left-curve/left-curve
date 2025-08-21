@@ -598,6 +598,16 @@
       },
       "time": { "hours": "h", "minutes": "m", "seconds": "s" }
     },
+    "chartEngines": [
+      {
+        "declarations": ["input chart"],
+        "selectors": ["chart"],
+        "match": {
+          "chart=tradingview": "TradingView",
+          "chart=chartiq": "ChartIQ"
+        }
+      }
+    ],
     "languages": [
       {
         "declarations": ["input language"],

@@ -2,7 +2,7 @@ import type React from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { useTheme } from "@left-curve/applets-kit";
-import { useConfig, usePublicClient } from "@left-curve/store";
+import { useConfig, usePublicClient, useStorage } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";
@@ -17,6 +17,8 @@ type TradingViewProps = {
 };
 
 export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
+  const pairSymbol = `${coins.base.symbol}-${coins.quote.symbol}`;
+
   const { theme } = useTheme();
   const publicClient = usePublicClient();
   const queryClient = useQueryClient();
@@ -35,24 +37,30 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     [allCoins, queryClient, publicClient],
   );
 
+  const [chartState, setChartState] = useStorage<object>(`tv.${pairSymbol}`, {
+    sync: true,
+  });
+
   useEffect(() => {
     const toolbar_bg = theme === "dark" ? "#363432" : "#FFF9F0";
     const widget = new TV.widget({
       container: "tv_chart_container",
       autosize: true,
-      symbol: `${coins.base.symbol}-${coins.quote.symbol}`,
+      symbol: pairSymbol,
       interval: "5" as TV.ResolutionString,
       locale: "en",
       library_path: "/static/charting_library/",
       custom_css_url: "/styles/tv-overrides.css",
       theme,
+      auto_save_delay: 1,
       datafeed: dataFeed,
       loading_screen: {
         backgroundColor: "transparent",
         foregroundColor: "rgb(249 169 178)",
       },
       enabled_features: ["seconds_resolution"],
-      disabled_features: ["header_symbol_search", "header_compare"],
+      disabled_features: ["header_symbol_search", "header_compare", "header_saveload"],
+      saved_data: chartState ? chartState : undefined,
       overrides: {
         "mainSeriesProperties.candleStyle.upColor": "#27AE60",
         "mainSeriesProperties.candleStyle.downColor": "#EB5757",
@@ -72,10 +80,17 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       },
     });
 
+    const saveFn = () => widget.save(setChartState);
+
     widget.onChartReady(async () => {
       widgetRef.current = widget;
       widget.applyOverrides({ "paneProperties.background": toolbar_bg });
+      widget.subscribe("onAutoSaveNeeded", saveFn);
     });
+
+    return () => {
+      widget.unsubscribe("onAutoSaveNeeded", saveFn);
+    };
   }, []);
 
   useEffect(() => {
