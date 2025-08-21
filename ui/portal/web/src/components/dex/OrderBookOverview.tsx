@@ -36,7 +36,10 @@ export const OrderBookOverview: React.FC = () => {
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}
       />
-      <div id="chartiq-container" className={twMerge({ hidden: activeTab !== "graph" })} />
+      <div
+        id="chart-container"
+        className={twMerge("h-full w-full", { hidden: activeTab !== "graph" })}
+      />
       {(activeTab === "trades" || activeTab === "order book") && (
         <div className="relative w-full h-full">
           {activeTab === "order book" && <OrderBook />}
