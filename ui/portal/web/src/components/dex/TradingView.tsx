@@ -52,7 +52,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     });
 
     const widget = new TV.widget({
-      container: "chart-container",
+      container: "tv-container",
       autosize: true,
       symbol: pairSymbol,
       interval: "5" as TV.ResolutionString,
@@ -175,9 +175,10 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
             },
           },
         )
-        .then((id) => setDrawnOrders((prev) => new Map(prev).set(order.id, id)));
+        .then((id) => drawnOrders.set(order.id, id));
     }
+    setDrawnOrders(new Map(drawnOrders));
   }, [orders]);
 
-  return <div id="tv_chart_container" className="w-full lg:min-h-[52vh] h-full" />;
+  return <div id="tv-container" className="w-full lg:min-h-[52vh] h-full" />;
 };
