@@ -30,8 +30,7 @@ fn main() {
 
         assert_eq!(
             file_name, "genesis.json",
-            "File name must be genesis.json, found: {}",
-            file_name
+            "File name must be genesis.json, found: {file_name}",
         );
 
         let mut file = fs::read(&file_path)
