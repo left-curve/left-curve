@@ -18,15 +18,15 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_KEY = "app.theme";
 
 export const ThemeProvider: React.FC<PropsWithChildren> = ({ children }) => {
-  const systemScheme = (useColorScheme() ?? "light") as Themes;
+  const systemSchema = (useColorScheme() ?? "light") as Themes;
 
   const [themeSchema, setThemeSchemaState] = useState<ThemesSchema>(() => {
     return (storage.getString(THEME_KEY) as ThemesSchema) ?? "system";
   });
 
   const theme = useMemo<Themes>(
-    () => (themeSchema === "system" ? systemScheme : themeSchema),
-    [themeSchema, systemScheme],
+    () => (themeSchema === "system" ? systemSchema : themeSchema),
+    [themeSchema, systemSchema],
   );
 
   const setThemeSchema = (next: ThemesSchema) => {
