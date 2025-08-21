@@ -330,7 +330,7 @@ fn native_denom() {
                 &isms::multisig::ExecuteMsg::SetValidators {
                     domain: remote_domain,
                     threshold: 2,
-                    validators: validator_set.validator_addesses(),
+                    validators: validator_set.validator_addresses(),
                 },
                 Coins::default(),
             )

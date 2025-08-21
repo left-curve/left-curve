@@ -122,7 +122,7 @@ impl MockValidatorSet {
         (message_id, raw_message, raw_metadata)
     }
 
-    pub fn validator_addesses(&self) -> BTreeSet<HexByteArray<20>> {
+    pub fn validator_addresses(&self) -> BTreeSet<HexByteArray<20>> {
         self.validators
             .iter()
             .map(|sk| HexByteArray::from_inner(derive_address(sk.verifying_key())))
