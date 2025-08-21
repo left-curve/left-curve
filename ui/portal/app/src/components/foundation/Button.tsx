@@ -126,12 +126,11 @@ const ButtonText: React.FC<PropsWithChildren<ButtonTextProps>> = ({
   return <Text className={textVariants({ variant, size, isDisabled })}>{children}</Text>;
 };
 
-const ButtonShadow: React.FC<
-  PropsWithChildren<{
-    radius: keyof typeof buttonVariants.variants.radius;
-    variant?: keyof typeof buttonVariants.variants.variant;
-  }>
-> = ({ children, radius, variant }) => {
+const ButtonShadow: React.FC<PropsWithChildren<Pick<ButtonProps, "radius" | "variant">>> = ({
+  children,
+  radius = "full",
+  variant,
+}) => {
   const { theme } = useTheme();
   const br = radiusSizes[radius];
 
