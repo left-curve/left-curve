@@ -1,6 +1,6 @@
 use {
     crate::{
-        entities::CandleInterval,
+        entities::{CandleInterval, pair_price::PairPrice},
         error::{IndexerError, Result},
     },
     chrono::{DateTime, Utc},
@@ -48,6 +48,24 @@ pub struct Candle {
     pub volume_quote: Udec128_6,
     pub interval: CandleInterval,
     pub block_height: u64,
+}
+
+impl From<PairPrice> for Candle {
+    fn from(pair_price: PairPrice) -> Self {
+        Candle {
+            quote_denom: pair_price.quote_denom,
+            base_denom: pair_price.base_denom,
+            time_start: pair_price.created_at,
+            open: pair_price.clearing_price,
+            high: pair_price.clearing_price,
+            low: pair_price.clearing_price,
+            close: pair_price.clearing_price,
+            volume_base: pair_price.volume_base,
+            volume_quote: pair_price.volume_quote,
+            interval: CandleInterval::OneMinute,
+            block_height: pair_price.block_height,
+        }
+    }
 }
 
 #[cfg(feature = "async-graphql")]

@@ -79,32 +79,7 @@ impl CandleCache {
                     candle_interval,
                 );
 
-                let candle = Candle {
-                    quote_denom: pair_price.quote_denom.clone(),
-                    base_denom: pair_price.base_denom.clone(),
-                    time_start: candle_interval.interval_start(pair_price.created_at),
-                    open: pair_price.open_price,
-                    high: pair_price.highest_price,
-                    low: pair_price.lowest_price,
-                    close: pair_price.close_price,
-                    volume_base: pair_price.volume_base,
-                    volume_quote: pair_price.volume_quote,
-                    interval: candle_interval,
-                    block_height: pair_price.block_height,
-                };
-
-                // #[cfg(feature = "tracing")]
-                // tracing::debug!(
-                //     %candle.block_height,
-                //     %candle.base_denom,
-                //     %candle.quote_denom,
-                //     %candle.volume_base,
-                //     %candle.volume_quote,
-                //     %candle_interval,
-                //     "Calling add_candle()",
-                // );
-
-                self.add_candle(key, candle);
+                self.add_pair_price_to_candle(key, pair_price.clone());
             }
         }
 
@@ -114,20 +89,25 @@ impl CandleCache {
             .extend(pair_prices);
     }
 
-    pub fn add_candle(&mut self, key: CandleCacheKey, mut candle: Candle) {
-        let _interval = candle.interval;
+    pub fn add_pair_price_to_candle(&mut self, key: CandleCacheKey, pair_price: PairPrice) {
+        let time_start = key.interval.interval_start(pair_price.created_at);
+        let _interval = key.interval;
         let candles = self.candles.entry(key).or_default();
 
         // no existing candles, we can just push it
         if candles.is_empty() {
             #[cfg(feature = "tracing")]
             tracing::debug!(
-                %candle.block_height,
-                %candle.base_denom,
-                %candle.quote_denom,
+                %pair_price.block_height,
+                %pair_price.base_denom,
+                %pair_price.quote_denom,
                 %_interval,
-                "Adding candle, cache is empty",
+                "Adding new candle from pair_price",
             );
+
+            let mut candle = Candle::from(pair_price);
+            candle.time_start = time_start;
+            candle.interval = _interval;
 
             candles.push(candle);
             return;
@@ -138,15 +118,15 @@ impl CandleCache {
         let existing_candle = candles
             .iter_mut()
             .rev()
-            .take_while(|existing_candle| existing_candle.time_start >= candle.time_start)
-            .find(|existing_candle| existing_candle.time_start == candle.time_start);
+            .take_while(|existing_candle| existing_candle.time_start >= time_start)
+            .find(|existing_candle| existing_candle.time_start == time_start);
 
         let Some(existing_candle) = existing_candle else {
             #[cfg(feature = "tracing")]
             tracing::debug!(
-                %candle.block_height,
-                %candle.base_denom,
-                %candle.quote_denom,
+                %pair_price.block_height,
+                %pair_price.base_denom,
+                %pair_price.quote_denom,
                 %_interval,
                 "Pushing candle, no existing candle found",
             );
@@ -154,8 +134,12 @@ impl CandleCache {
             // Find correct position to maintain time order
             let insert_pos = candles
                 .iter()
-                .position(|c| c.time_start > candle.time_start)
+                .position(|c| c.time_start > time_start)
                 .unwrap_or(candles.len());
+
+            let mut candle = Candle::from(pair_price);
+            candle.time_start = time_start;
+            candle.interval = _interval;
 
             candles.insert(insert_pos, candle);
             return;
@@ -163,33 +147,29 @@ impl CandleCache {
 
         #[cfg(feature = "tracing")]
         tracing::debug!(
-            %candle.block_height,
-            %candle.base_denom,
-            %candle.quote_denom,
+            %pair_price.block_height,
+            %pair_price.base_denom,
+            %pair_price.quote_denom,
+            %pair_price.volume_base,
+            %pair_price.volume_quote,
+            %_interval,
             %existing_candle.volume_base,
             %existing_candle.volume_quote,
             %existing_candle.block_height,
-            %candle.volume_base,
-            %candle.volume_quote,
-            %_interval,
             "Modifying existing candle",
         );
 
-        if candle.block_height > existing_candle.block_height {
-            candle.open = existing_candle.open;
+        if pair_price.block_height > existing_candle.block_height {
+            existing_candle.open = pair_price.clearing_price;
         } else {
-            candle.close = existing_candle.close;
+            existing_candle.close = pair_price.clearing_price;
         }
 
-        candle.high = existing_candle.high.max(candle.high);
-        candle.low = existing_candle.low.min(candle.low);
-
-        candle.volume_base += existing_candle.volume_base;
-        candle.volume_quote += existing_candle.volume_quote;
-
-        candle.block_height = existing_candle.block_height.max(candle.block_height);
-
-        *existing_candle = candle;
+        existing_candle.high = existing_candle.high.max(pair_price.clearing_price);
+        existing_candle.low = existing_candle.low.min(pair_price.clearing_price);
+        existing_candle.volume_base += pair_price.volume_base;
+        existing_candle.volume_quote += pair_price.volume_quote;
+        existing_candle.block_height = existing_candle.block_height.max(pair_price.block_height);
     }
 
     /// Does the cache have all candles for the given dates?
@@ -507,9 +487,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
                 0,
                 0,
                 "2025-08-13 17:36:01.038565",
@@ -519,9 +496,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
                 0,
                 0,
                 "2025-08-13 17:36:00.086616",
@@ -530,9 +504,6 @@ mod tests {
             pair_price(
                 quote_denom,
                 base_denom,
-                1217208030172232059779705322,
-                1216963512618701957116501833,
-                1216963512618701957116501833,
                 1216963512618701957116501833,
                 345160391948092,
                 420047603001999188,
@@ -566,9 +537,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 27500000000000000000000000,
-                27500000000000000000000000,
-                27500000000000000000000000,
-                27500000000000000000000000,
                 345160391948092,
                 420047603001999188,
                 "1971-01-01 00:00:00.500",
@@ -578,9 +546,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 27500000000000000000000000,
-                27500000000000000000000000,
-                25000000000000000000000000,
-                25000000000000000000000000,
                 345160391948092,
                 420047603001999188,
                 "1971-01-01 00:00:01.000",
@@ -589,9 +554,6 @@ mod tests {
             pair_price(
                 quote_denom,
                 base_denom,
-                25000000000000000000000000,
-                25000000000000000000000000,
-                25000000000000000000000000,
                 25000000000000000000000000,
                 345160391948092,
                 420047603001999188,
@@ -635,9 +597,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
                 0,
                 0,
                 "2025-08-13 17:36:00.038565",
@@ -646,9 +605,6 @@ mod tests {
             pair_price(
                 quote_denom,
                 base_denom,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
                 1217208030172232059779705322,
                 0,
                 0,
@@ -659,9 +615,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1217208030172232059779705322,
-                1216963512618701957116501833,
-                1216963512618701957116501833,
-                1216963512618701957116501833,
                 345160391948092,
                 420047603001999188,
                 "2025-08-13 17:36:02.134583",
@@ -671,9 +624,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1216963512618701957116501833,
-                1216961816562295438187182730,
-                1216961816562295438187182730,
-                1216961816562295438187182730,
                 108404821869154,
                 131924528945998920,
                 "2025-08-13 17:36:03.182534",
@@ -682,9 +632,6 @@ mod tests {
             pair_price(
                 quote_denom,
                 base_denom,
-                1216961816562295438187182730,
-                1216961816562295438187182730,
-                1216961816562295438187182730,
                 1216961816562295438187182730,
                 0,
                 0,
@@ -697,10 +644,7 @@ mod tests {
     fn pair_price(
         quote_denom: &str,
         base_denom: &str,
-        open_price: u128,
-        highest_price: u128,
-        lowest_price: u128,
-        close_price: u128,
+        clearing_price: u128,
         volume_base: u128,
         volume_quote: u128,
         created_at: &str,
@@ -709,10 +653,7 @@ mod tests {
         Ok(PairPrice {
             quote_denom: quote_denom.to_string(),
             base_denom: base_denom.to_string(),
-            open_price: Udec128_24::raw(grug::Int::new(open_price)),
-            highest_price: Udec128_24::raw(grug::Int::new(highest_price)),
-            lowest_price: Udec128_24::raw(grug::Int::new(lowest_price)),
-            close_price: Udec128_24::raw(grug::Int::new(close_price)),
+            clearing_price: Udec128_24::raw(grug::Int::new(clearing_price)),
             volume_base: Udec128_6::raw(grug::Int::new(volume_base)),
             volume_quote: Udec128_6::raw(grug::Int::new(volume_quote)),
             created_at: NaiveDateTime::parse_from_str(created_at, "%Y-%m-%d %H:%M:%S%.f")?
