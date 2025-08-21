@@ -48,9 +48,8 @@ async fn query_all_trades() -> anyhow::Result<()> {
             clearingPrice
             createdAt
             blockHeight
-            tradeIdx
           }
-          edges { node { addr quoteDenom baseDenom direction filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight tradeIdx }  cursor }
+          edges { node { addr quoteDenom baseDenom direction filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -84,48 +83,44 @@ async fn query_all_trades() -> anyhow::Result<()> {
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
-                        "direction": "ASK",
+                        "direction": "ask",
                         "filledBase": "5",
                         "filledQuote": "137.5",
                         "refundBase": "0",
                         "refundQuote": "136.95",
-                        "tradeIdx": 3,
                     },
                     {
                         "addr": accounts.user5.address(),
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
-                        "direction": "ASK",
+                        "direction": "ask",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
                         "refundQuote": "273.9",
-                        "tradeIdx": 2,
                     },
                     {
                         "addr": accounts.user4.address(),
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
-                        "direction": "ASK",
+                        "direction": "ask",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
                         "refundQuote": "273.9",
-                        "tradeIdx": 1,
                     },
                     {
                         "addr": accounts.user1.address(),
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
-                        "direction": "BID",
+                        "direction": "bid",
                         "filledBase": "25",
                         "filledQuote": "687.5",
                         "refundBase": "24.9",
                         "refundQuote": "62.5",
-                        "tradeIdx": 0,
                     },
                 ]);
 
@@ -164,9 +159,8 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
             clearingPrice
             createdAt
             blockHeight
-            tradeIdx
           }
-          edges { node { addr quoteDenom baseDenom direction filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight tradeIdx }  cursor }
+          edges { node { addr quoteDenom baseDenom direction filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -218,48 +212,44 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
-                        "direction": "ASK",
+                        "direction": "ask",
                         "filledBase": "5",
                         "filledQuote": "137.5",
                         "refundBase": "0",
                         "refundQuote": "136.95",
-                        "tradeIdx": 3,
                     },
                     {
                         "addr": accounts.user5.address(),
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
-                        "direction": "ASK",
+                        "direction": "ask",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
                         "refundQuote": "273.9",
-                        "tradeIdx": 2,
                     },
                     {
                         "addr": accounts.user4.address(),
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
-                        "direction": "ASK",
+                        "direction": "ask",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
                         "refundQuote": "273.9",
-                        "tradeIdx": 1,
                     },
                     {
                         "addr": accounts.user1.address(),
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
-                        "direction": "BID",
+                        "direction": "bid",
                         "filledBase": "25",
                         "filledQuote": "687.5",
                         "refundBase": "24.9",
                         "refundQuote": "62.5",
-                        "tradeIdx": 0,
                     },
                 ]);
 
@@ -298,9 +288,8 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
             clearingPrice
             createdAt
             blockHeight
-            tradeIdx
           }
-          edges { node { addr quoteDenom baseDenom direction filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight tradeIdx }  cursor }
+          edges { node { addr quoteDenom baseDenom direction filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -341,7 +330,7 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
-                        "direction": "ASK",
+                        "direction": "ask",
                     },
                 ]);
 
@@ -380,7 +369,6 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
             clearingPrice
             createdAt
             blockHeight
-            tradeIdx
           }
       }
     "#;
@@ -443,7 +431,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
                     {
                         "baseDenom": "dango",
                         "quoteDenom": "bridge/usdc",
-                        "direction": "BID",
+                        "direction": "bid",
                         "blockHeight": 4,
                     },
                 ]);
