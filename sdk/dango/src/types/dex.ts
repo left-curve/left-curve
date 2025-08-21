@@ -367,3 +367,20 @@ export type Candle = {
   timeEnd: string;
   timeEndUnix: number;
 };
+
+export type Trade = {
+  addr: Address;
+  quoteDenom: Denom;
+  baseDenom: Denom;
+  direction: Directions;
+  blockHeight: number;
+  tradeIdx: number;
+  createdAt: string;
+  filledBase: string;
+  filledQuote: string;
+  refundBase: string;
+  refundQuote: string;
+  feeBase: string;
+  feeQuote: string;
+  clearingPrice: string;
+};
