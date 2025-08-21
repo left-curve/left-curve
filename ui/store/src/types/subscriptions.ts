@@ -43,7 +43,7 @@ export type SubscriptionSchema = [
       baseDenom: Denom;
       quoteDenom: Denom;
     };
-    listener: (event: { trades: Trade[] }) => void;
+    listener: (event: { trades: Trade }) => void;
   },
   {
     key: "submitTx";

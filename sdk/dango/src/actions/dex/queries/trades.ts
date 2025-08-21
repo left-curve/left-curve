@@ -7,7 +7,7 @@ import type { GraphqlQueryResult } from "../../../types/graphql.js";
 export type QueryTradesParameters = {
   after?: string;
   first?: number;
-  address: Address;
+  address?: Address;
 };
 
 export type QueryTradesReturnType = Promise<GraphqlQueryResult<Trade>>;
@@ -17,7 +17,7 @@ export async function queryTrades<transport extends Transport>(
   parameters: QueryTradesParameters,
 ): QueryTradesReturnType {
   const document = /* GraphQL */ `
-    query trades($after: String, $first: Int, $address: String!) {
+    query trades($after: String, $first: Int, $address: String) {
       trades(after: $after, first: $first, address: $address) {
         pageInfo {
           hasNextPage

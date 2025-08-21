@@ -9,7 +9,7 @@ import type {
 } from "../../../types/index.js";
 
 export type TradesSubscriptionParameters = SubscriptionCallbacks<{
-  trades: Trade[];
+  trades: Trade;
 }> & {
   baseDenom: Denom;
   quoteDenom: Denom;

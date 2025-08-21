@@ -163,7 +163,9 @@ const ProTradeHeader: React.FC = () => {
 };
 
 const ProTradeOverview: React.FC = () => {
-  return <OrderBookOverview />;
+  const { state } = useProTrade();
+  const { baseCoin, quoteCoin } = state;
+  return <OrderBookOverview base={baseCoin} quote={quoteCoin} />;
 };
 
 const ChartIQ = lazy(() =>
@@ -358,7 +360,7 @@ const ProTradeOrders: React.FC = () => {
           color="line-red"
           layoutId="tabs-open-order"
           selectedTab={activeTab}
-          keys={["open order"]}
+          keys={["open order", "trade history"]}
           onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
         />
