@@ -3,55 +3,90 @@
 //! environment as the tests.
 
 use {
+    anyhow::anyhow,
+    chrono::{DateTime, Utc},
+    clap::Parser,
     dango_genesis::{GenesisCodes, GenesisOption, build_genesis},
-    dango_testing::{
-        Preset,
-        constants::{MOCK_CHAIN_ID, MOCK_GENESIS_TIMESTAMP},
-    },
+    dango_testing::Preset,
     grug::{Inner, Json, JsonDeExt, JsonSerExt},
     grug_vm_rust::RustVm,
-    home::home_dir,
-    std::fs,
+    std::{
+        fs,
+        path::{Path, PathBuf},
+    },
 };
 
-fn main() {
+#[derive(Parser)]
+struct Cli {
+    /// Paths to the CometBFT genesis files
+    #[arg(num_args(1..))]
+    paths: Vec<PathBuf>,
+
+    /// Optionally update the chain ID (e.g. "dev-1")
+    #[arg(long)]
+    chain_id: Option<String>,
+
+    /// Optionally update the genesis time (e.g. "2025-08-21T14:00:00Z")
+    #[arg(long)]
+    genesis_time: Option<DateTime<Utc>>,
+}
+
+fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+
     let (genesis_state, contracts, addresses) =
-        build_genesis(RustVm::genesis_codes(), GenesisOption::preset_test()).unwrap();
+        build_genesis(RustVm::genesis_codes(), GenesisOption::preset_test())?;
 
-    println!(
-        "genesis_state = {}",
-        genesis_state.to_json_string_pretty().unwrap()
-    );
-    println!(
-        "\ncontracts = {}",
-        contracts.to_json_string_pretty().unwrap()
-    );
-    println!(
-        "\naddresses = {}\n",
-        addresses.to_json_string_pretty().unwrap()
-    );
+    println!("genesis_state = {}", genesis_state.to_json_string_pretty()?);
+    println!("\ncontracts = {}", contracts.to_json_string_pretty()?);
+    println!("\naddresses = {}\n", addresses.to_json_string_pretty()?);
 
-    let cometbft_genesis_path = home_dir().unwrap().join(".cometbft/config/genesis.json");
+    let genesis_state = genesis_state.to_json_value()?;
+    let chain_id = cli.chain_id.map(|id| id.to_json_value()).transpose()?;
+    let genesis_time = cli.genesis_time.map(|t| t.to_json_value()).transpose()?;
 
-    let mut cometbft_genesis = fs::read(&cometbft_genesis_path)
-        .unwrap()
-        .deserialize_json::<Json>()
-        .unwrap();
+    for path in cli.paths {
+        update_genesis_file(
+            &path,
+            genesis_state.clone(),
+            chain_id.clone(),
+            genesis_time.clone(),
+        )?;
+    }
 
-    let map = cometbft_genesis.as_object_mut().unwrap();
-    map.insert("chain_id".into(), MOCK_CHAIN_ID.into());
-    map.insert(
-        "genesis_time".into(),
-        MOCK_GENESIS_TIMESTAMP.to_rfc3339_string().into(),
-    );
-    map.insert(
-        "app_state".into(),
-        genesis_state.to_json_value().unwrap().into_inner(),
-    );
+    Ok(())
+}
 
-    fs::write(
-        cometbft_genesis_path,
-        cometbft_genesis.to_json_string_pretty().unwrap(),
-    )
-    .unwrap();
+fn update_genesis_file(
+    path: &Path,
+    genesis_state: Json,
+    chain_id: Option<Json>,
+    genesis_time: Option<Json>,
+) -> anyhow::Result<()> {
+    let mut cometbft_genesis = fs::read(path)?.deserialize_json::<Json>()?;
+
+    let map = cometbft_genesis.as_object_mut().ok_or_else(|| {
+        anyhow!(
+            "cometbft genesis file `{}` isn't a json object",
+            path.display()
+        )
+    })?;
+
+    map.insert("app_state".to_string(), genesis_state.into_inner());
+
+    if let Some(chain_id) = chain_id {
+        map.insert("chain_id".to_string(), chain_id.into_inner());
+    }
+
+    if let Some(genesis_time) = genesis_time {
+        map.insert("genesis_time".to_string(), genesis_time.into_inner());
+    }
+
+    let mut output = cometbft_genesis.to_json_string_pretty()?;
+    output.push('\n'); // add a newline to end of file: https://stackoverflow.com/questions/729692/
+
+    fs::write(path, output)?;
+    println!("updated genesis file written to: {}", path.display());
+
+    Ok(())
 }

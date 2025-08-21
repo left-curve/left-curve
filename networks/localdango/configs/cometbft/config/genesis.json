@@ -844,7 +844,7 @@
       }
     ]
   },
-  "chain_id": "dev-6",
+  "chain_id": "testtest",
   "consensus_params": {
     "abci": {
       "vote_extensions_enable_height": "0"
@@ -867,7 +867,7 @@
       "app": "0"
     }
   },
-  "genesis_time": "1971-01-01T00:00:00Z",
+  "genesis_time": "2025-08-21T14:00:00Z",
   "initial_height": "0",
   "validators": [
     {
