@@ -1,5 +1,6 @@
 use {
     crate::constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
+    eth_utils::derive_address,
     grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared, hash_map},
     hyperlane_types::{
         Addr32, IncrementalMerkleTree,
@@ -10,7 +11,7 @@ use {
         multisig_hash,
     },
     k256::ecdsa::SigningKey,
-    std::collections::HashMap,
+    std::collections::{BTreeSet, HashMap},
 };
 
 pub struct MockValidatorSets(HashMap<Domain, MockValidatorSet>);
@@ -28,6 +29,10 @@ impl MockValidatorSets {
 
     pub fn get(&self, domain: Domain) -> Option<&MockValidatorSet> {
         self.0.get(&domain)
+    }
+
+    pub fn insert(&mut self, domain: Domain, validator_set: MockValidatorSet) {
+        self.0.insert(domain, validator_set);
     }
 }
 
@@ -115,6 +120,13 @@ impl MockValidatorSet {
         .encode();
 
         (message_id, raw_message, raw_metadata)
+    }
+
+    pub fn validator_addesses(&self) -> BTreeSet<HexByteArray<20>> {
+        self.validators
+            .iter()
+            .map(|sk| HexByteArray::from_inner(derive_address(sk.verifying_key())))
+            .collect()
     }
 
     /// Increment the nonce and insert the message into the merkle tree.

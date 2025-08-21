@@ -136,16 +136,21 @@ fn receive_remote(
     // Find the alloyed denom of the given bridge contract and remote.
     let denom = ROUTES.load(ctx.storage, (ctx.sender, remote))?;
 
-    // Increase the reserve.
-    RESERVES.may_update(ctx.storage, (ctx.sender, remote), |maybe_reserve| {
-        let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
-        Ok::<_, StdError>(reserve.checked_add(amount)?)
-    })?;
+    // Increase the reserve only if the denom is remote.
+    if denom.is_remote() {
+        RESERVES.may_update(ctx.storage, (ctx.sender, remote), |maybe_reserve| {
+            let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
+            Ok::<_, StdError>(reserve.checked_add(amount)?)
+        })?;
+    }
 
     // Increase the outbound quota.
-    OUTBOUND_QUOTAS.may_update(ctx.storage, &denom, |maybe_quota| {
-        let quota = maybe_quota.unwrap_or(Uint128::ZERO);
-        Ok::<_, StdError>(quota.checked_add(amount)?)
+    OUTBOUND_QUOTAS.may_modify(ctx.storage, &denom, |maybe_quota| {
+        let Some(quota) = maybe_quota else {
+            return Ok(None);
+        };
+
+        Ok::<_, StdError>(Some(quota.checked_add(amount)?))
     })?;
 
     // Mint the alloyed token to the recipient (if the token is not native on Dango).
@@ -185,30 +190,36 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         })?;
     }
 
-    // Reduce the reserve.
-    RESERVES.may_update(ctx.storage, (bridge, remote), |maybe_reserve| {
-        let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
-        reserve.checked_sub(coin.amount).map_err(|_| {
-            anyhow!(
-                "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
-                bridge,
-                remote,
-                reserve,
-                coin.amount
-            )
-        })
-    })?;
+    // Reduce the reserve only if the denom is remote.
+    if coin.denom.is_remote() {
+        RESERVES.may_update(ctx.storage, (bridge, remote), |maybe_reserve| {
+            let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
+            reserve.checked_sub(coin.amount).map_err(|_| {
+                anyhow!(
+                    "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
+                    bridge,
+                    remote,
+                    reserve,
+                    coin.amount
+                )
+            })
+        })?;
+    }
 
     // Reduce the outbound quota.
-    OUTBOUND_QUOTAS.may_update(ctx.storage, &coin.denom, |maybe_quota| {
-        let quota = maybe_quota.unwrap_or(Uint128::ZERO);
-        quota.checked_sub(coin.amount).map_err(|_| {
+    OUTBOUND_QUOTAS.may_modify(ctx.storage, &coin.denom, |maybe_quota| {
+        let Some(quota) = maybe_quota else {
+            return Ok(None);
+        };
+
+        Some(quota.checked_sub(coin.amount).map_err(|_| {
             anyhow!(
                 "insufficient outbound quota! denom: {}, amount: {}",
                 coin.denom,
                 coin.amount
             )
-        })
+        }))
+        .transpose()
     })?;
 
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
