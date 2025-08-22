@@ -378,6 +378,12 @@ ISO 8601 combined date and time without timezone.
 """
 scalar NaiveDateTime
 
+enum OrderKind {
+	limit
+	market
+	passive
+}
+
 """
 Information about pagination in a connection
 """
@@ -648,6 +654,7 @@ type Trade {
 	quoteDenom: String!
 	baseDenom: String!
 	direction: Direction!
+	orderType: OrderKind!
 	blockHeight: Int!
 	"""
 	Returns the block timestamp in ISO 8601 format with time zone.
