@@ -64,6 +64,9 @@ pub enum ExtendedOrderId {
 }
 
 #[grug::derive(Serde)]
+#[derive(Copy, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "async-graphql", graphql(rename_items = "lowercase"))]
 pub enum OrderKind {
     Limit,
     Market,
