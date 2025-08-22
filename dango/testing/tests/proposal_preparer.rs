@@ -1,11 +1,21 @@
 use {
     dango_oracle::PRICES,
-    dango_testing::setup_test,
-    dango_types::oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
-    grug::{Coins, Denom, NonEmpty, QuerierExt, ResultExt, StorageQuerier, btree_map},
+    dango_proposal_preparer::{ProposalPreparer, RetrievePythId},
+    dango_testing::{TestSuite, setup_test, setup_test_lazer},
+    dango_types::{
+        constants::btc,
+        oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
+    },
+    grug::{
+        Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
+        StorageQuerier, btree_map,
+    },
     hex_literal::hex,
     pyth_client::{PythClientCache, PythClientTrait},
-    pyth_types::{PythId, constants::PYTH_URL},
+    pyth_types::{
+        PythId,
+        constants::{LAZER_TRUSTED_SIGNER, PYTH_URL},
+    },
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
@@ -153,15 +163,149 @@ fn proposal_pyth() {
             .execute(&mut accounts.owner, contracts.oracle, &msg, Coins::new())
             .should_succeed();
 
-        // Run few blocks to trigger the prepare proposal to update the ids
-        // and upload the prices.
-        suite.make_empty_block();
-        thread::sleep(Duration::from_secs(1));
-        suite.make_empty_block();
+        // Assert that the price of test_denom exists.
+        assert_price_exists(&mut suite, contracts.oracle, test_denom.clone());
+    }
+}
+
+#[test]
+fn proposal_pyth_lazer() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_lazer(Default::default());
+
+    let current_time = suite.block.timestamp;
+
+    let not_used_id = 9;
+
+    let oracle = contracts.oracle;
+
+    let price_source = btree_map!(
+        btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 8 }
+    );
+
+    let pubkey = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            oracle,
+            &ExecuteMsg::SetTrustedSigner {
+                public_key: pubkey,
+                expires_at: current_time + GrugDuration::from_minutes(10),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            oracle,
+            &ExecuteMsg::RegisterPriceSources(price_source),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Assert the price of btc exists.
+    assert_price_exists(&mut suite, contracts.oracle, btc::DENOM.clone());
+
+    // Retrieve the prices and sequences.
+    let prices1 = suite
+        .query_wasm_smart(oracle, QueryPriceRequest {
+            denom: btc::DENOM.clone(),
+        })
+        .should_succeed();
+
+    // Await some time and assert that the timestamps are updated.
+    sleep(Duration::from_secs(1));
+
+    suite.make_empty_block();
+
+    let prices2 = suite
+        .query_wasm_smart(oracle, QueryPriceRequest {
+            denom: btc::DENOM.clone(),
+        })
+        .should_succeed();
+
+    // Assert that the prices have been updated.
+    //
+    // This means either the timestamp is newer, or the timestamp is equal but
+    // the sequence is newer.
+    assert_ne!(
+        prices1.timestamp, prices2.timestamp,
+        "The price timestamp should be updated"
+    );
+
+    // Push a new PythId to oracle to verify that the handler update the
+    // ids correctly.
+    {
+        let test_denom = Denom::from_str("test").unwrap();
+
+        // Verify the denom does not exist in the oracle.
+        suite
+            .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+                denom: test_denom.clone(),
+            })
+            .should_fail_with_error("data not found");
+
+        // Verify the NOT_USED_ID is not in the oracle.
+        let _ = suite
+            .query_wasm_smart(contracts.oracle, QueryPriceSourcesRequest {
+                start_after: None,
+                limit: Some(u32::MAX),
+            })
+            .should_succeed()
+            .values()
+            .map(|price_source| {
+                if let PriceSource::PythLazer { id, .. } = price_source {
+                    assert_ne!(id, &not_used_id);
+                }
+            });
+
+        // Push NOT_USED_ID to the oracle.
+        let msg = ExecuteMsg::RegisterPriceSources(
+            btree_map!( test_denom.clone() => PriceSource::PythLazer {
+                id: not_used_id,
+                precision: 6,
+            }),
+        );
+
+        suite
+            .execute(&mut accounts.owner, contracts.oracle, &msg, Coins::new())
+            .should_succeed();
 
         // Verify that the price exists.
-        suite
-            .query_wasm_smart(contracts.oracle, QueryPriceRequest { denom: test_denom })
-            .should_succeed();
+        assert_price_exists(&mut suite, oracle, test_denom);
     }
+}
+
+fn assert_price_exists<P>(suite: &mut TestSuite<ProposalPreparer<P>>, oracle: Addr, denom: Denom)
+where
+    P: PythClientTrait + RetrievePythId + Send + 'static,
+    P::Error: std::fmt::Debug,
+{
+    // Trigger a few blocks to be sure the PP has time to update the prices.
+    let mut price = None;
+
+    for _ in 0..5 {
+        thread::sleep(Duration::from_millis(500));
+
+        let txs = suite.make_empty_block().block_outcome.tx_outcomes;
+
+        // Ensure all tx passed.
+        for tx in txs {
+            tx.should_succeed();
+        }
+
+        match suite.query_wasm_smart(oracle, QueryPriceRequest {
+            denom: denom.clone(),
+        }) {
+            Ok(p) => {
+                price = Some(p);
+                break;
+            },
+            Err(_) => {},
+        };
+    }
+
+    assert!(price.is_some(), "Unable to retrieve price from oracle");
 }

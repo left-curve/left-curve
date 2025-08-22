@@ -17,8 +17,8 @@ use {
     pyth_types::{
         LeEcdsaMessage, PriceUpdate, PythId, PythVaa,
         constants::{
-            ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, PYTH_URL, SOL_USD_ID,
-            USDC_USD_ID, XRP_USD_ID,
+            ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LAZER_TRUSTED_SIGNER,
+            PYTH_URL, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
         },
     },
     std::{cmp::Ordering, collections::BTreeMap, str::FromStr, thread, time::Duration},
@@ -347,8 +347,7 @@ fn pyth_lazer() {
         recovery_id: 0,
     };
 
-    // let trusted_signer = Binary::from_str("A6Q4DwETbrJkD5DBfh4xngK7r77vLm5n3EivU/mCfhVb").unwrap();
-    let trusted_signer = Binary::from_str("AhOxeyarvUY85x19xV6GR/1CnexJAfbFkYRcgLjunVub").unwrap();
+    let trusted_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
 
     // Set price source in oracle
     suite

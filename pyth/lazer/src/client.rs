@@ -10,9 +10,10 @@ use {
             Channel, DeliveryFormat, Format, JsonBinaryEncoding, PriceFeedId, PriceFeedProperty,
             SubscriptionParams, SubscriptionParamsRepr,
         },
-        subscription::{SubscribeRequest, SubscriptionId},
+        subscription::{Response, SubscribeRequest, SubscriptionId},
     },
     pyth_types::PriceUpdate,
+    reqwest::IntoUrl,
     std::{
         pin::Pin,
         sync::{
@@ -35,16 +36,21 @@ pub struct PythClientLazer {
 impl PythClientLazer {
     // TODO: shold we enforce endpoint to be NonEmpty or an Option in order to
     // be able to use the default one inside the sdk?
-    pub fn new<T>(endpoints: Vec<Url>, access_token: T) -> Self
+    pub fn new<V, U, T>(endpoints: V, access_token: T) -> Result<Self, anyhow::Error>
     where
+        V: IntoIterator<Item = U>,
+        U: IntoUrl,
         T: ToString,
     {
-        PythClientLazer {
-            endpoints,
+        Ok(PythClientLazer {
+            endpoints: endpoints
+                .into_iter()
+                .map(|url| url.into_url())
+                .collect::<Result<Vec<_>, _>>()?,
             access_token: access_token.to_string(),
             keep_running: Arc::new(AtomicBool::new(false)),
             current_subscription_id: 0,
-        }
+        })
     }
 }
 
@@ -92,7 +98,7 @@ impl PythClientTrait for PythClientLazer {
             subscription_id: SubscriptionId(current_subscription_id),
             params: SubscriptionParams::new(SubscriptionParamsRepr {
                 price_feed_ids,
-                properties: vec![PriceFeedProperty::Price],
+                properties: vec![PriceFeedProperty::Price, PriceFeedProperty::Exponent],
                 formats: vec![Format::LeEcdsa],
                 delivery_format: DeliveryFormat::Binary,
                 json_binary_encoding: JsonBinaryEncoding::Base64,
@@ -184,8 +190,36 @@ impl PythClientTrait for PythClientLazer {
                                 }
 
                             },
-                            _ => {
-                                error!("Received non-binary update: {:#?}", data);
+                            // TODO: Should we move this part on top, since
+                            // it should only exist for the first response?
+                            AnyResponse::Json(response) => {
+                                match response{
+                                    Response::Error(error_response) => {
+                                        error!("Received error response from Pyth Lazer stream: {:#?}", error_response);
+                                        continue;
+                                    },
+                                    Response::Subscribed(subcription_response) => {
+                                        info!("Subscribed to Pyth Lazer stream with subscription ID: {}", subcription_response.subscription_id.0);
+                                    },
+                                    Response::SubscribedWithInvalidFeedIdsIgnored(subcription_response) => {
+
+                                        if subcription_response.ignored_invalid_feed_ids.unknown_ids.is_empty(){
+                                            info!("Subscribed to Pyth Lazer stream with subscription ID: {}", subcription_response.subscription_id.0);
+                                        } else{
+                                            warn!("Subscribed to Pyth Lazer stream with subscription ID: {} but some feed ids were ignored: {:#?}", subcription_response.subscription_id.0, subcription_response.ignored_invalid_feed_ids);                                        }
+
+                                    },
+                                    Response::Unsubscribed(unsubscribed_response) => {
+                                        info!("Unsubscribed from Pyth Lazer stream with subscription ID: {}", unsubscribed_response.subscription_id.0);
+                                        continue;
+                                    },
+                                    Response::SubscriptionError(subscription_error_response) => {
+                                        error!("Failed to subsciribe to Pyth Lazer stream: {:#?}", subscription_error_response);
+                                        continue;
+                                    },
+                                    Response::StreamUpdated(_) => {},
+                                }
+
                                 continue;
                             },
 

@@ -23,6 +23,7 @@ use {
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
     pyth_client::PythClientCache,
+    pyth_lazer::PythClientLazer,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
 };
@@ -93,6 +94,30 @@ pub fn setup_test(
         MemDb::new(),
         RustVm::new(),
         ProposalPreparer::new_with_cache(),
+        NullIndexer,
+        RustVm::genesis_codes(),
+        test_opt,
+        GenesisOption::preset_test(),
+    )
+}
+
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
+/// `ContractWrapper` codes.
+///
+/// Used for running regular tests.
+pub fn setup_test_lazer(
+    test_opt: TestOption,
+) -> (
+    TestSuite<ProposalPreparer<PythClientLazer>>,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+    MockValidatorSets,
+) {
+    setup_suite_with_db_and_vm(
+        MemDb::new(),
+        RustVm::new(),
+        ProposalPreparer::new_with_lazer(),
         NullIndexer,
         RustVm::genesis_codes(),
         test_opt,

@@ -1,10 +1,11 @@
 use {
-    crate::pyth_handler::PythHandler,
+    crate::{RetrievePythId, pyth_handler::PythHandler},
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_types::constants::PYTH_URL,
+    pyth_lazer::PythClientLazer,
+    pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
     std::{fmt::Debug, sync::Mutex},
     tracing::error,
 };
@@ -16,12 +17,18 @@ use {
 
 const GAS_LIMIT: u64 = 50_000_000;
 
-pub struct ProposalPreparer<P> {
+pub struct ProposalPreparer<P>
+where
+    P: RetrievePythId,
+{
     // `Option` to be able to not clone the `PythHandler`.
     pyth_handler: Option<Mutex<PythHandler<P>>>,
 }
 
-impl<P> Clone for ProposalPreparer<P> {
+impl<P> Clone for ProposalPreparer<P>
+where
+    P: RetrievePythId,
+{
     fn clone(&self) -> Self {
         Self { pyth_handler: None }
     }
@@ -59,9 +66,22 @@ impl ProposalPreparer<PythClientCache> {
     }
 }
 
+impl ProposalPreparer<PythClientLazer> {
+    pub fn new_with_lazer() -> Self {
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
+        let client = PythHandler::new_with_lazer(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST);
+
+        Self {
+            pyth_handler: Some(Mutex::new(client)),
+        }
+    }
+}
+
 impl<P> grug_app::ProposalPreparer for ProposalPreparer<P>
 where
-    P: PythClientTrait + Send + 'static,
+    P: PythClientTrait + RetrievePythId + Send + 'static,
     P::Error: Debug,
 {
     type Error = StdError;

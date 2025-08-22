@@ -15,11 +15,14 @@ async-stream        = { workspace = true }
 async-trait         = { workspace = true }
 grug                = { workspace = true }
 grug-testing        = { workspace = true }
+indexer-disk-saver  = { workspace = true }
 pyth-client         = { workspace = true }
 pyth-lazer-client   = { workspace = true }
 pyth-lazer-protocol = { workspace = true }
 pyth-types          = { workspace = true }
+reqwest             = { workspace = true }
 tokio               = { workspace = true }
 tokio-stream        = { workspace = true }
 tracing             = { workspace = true }
+tracing-subscriber  = { workspace = true }
 url                 = { workspace = true }

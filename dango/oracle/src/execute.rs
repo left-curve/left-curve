@@ -224,7 +224,7 @@ fn verify_pyth_lazer_message(
 mod tests {
     use {
         grug::{Binary, Duration, EncodedBytes, MockApi, MockStorage},
-        pyth_types::LeEcdsaMessage,
+        pyth_types::{LeEcdsaMessage, constants::LAZER_TRUSTED_SIGNER},
         std::str::FromStr,
     };
 
@@ -236,8 +236,8 @@ mod tests {
         let mut storage = MockStorage::default();
         let current_time = Timestamp::from_seconds(1000);
 
-        let trusted_signer =
-            Binary::from_str("A6Q4DwETbrJkD5DBfh4xngK7r77vLm5n3EivU/mCfhVb").unwrap();
+        let trusted_signer: EncodedBytes<Vec<u8>, grug::Base64Encoder> =
+            Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
 
         let message = LeEcdsaMessage {
             payload: vec![
