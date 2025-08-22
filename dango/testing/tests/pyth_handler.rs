@@ -1,10 +1,13 @@
 use {
-    dango_proposal_preparer::PythHandler,
+    dango_proposal_preparer::{PythHandler, RetrievePythId},
     dango_testing::setup_test,
-    dango_types::oracle::{InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
+    dango_types::{
+        constants::btc,
+        oracle::{ExecuteMsg, InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
+    },
     grug::{Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map},
     pyth_client::{PythClientCache, PythClientTrait},
-    pyth_types::constants::PYTH_URL,
+    pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
     std::{thread::sleep, time::Duration},
 };
 
@@ -83,15 +86,15 @@ fn handler() {
     // Update the handler with oracle.
     handler.update_stream(querier, oracle).unwrap();
 
-    // Give some time to get the data ready.
-    sleep(Duration::from_millis(500));
-
     // Assert the handler is working.
     check_handler_works(&handler, 3);
 }
 
 // Check the handler returns data correctly.
-fn check_handler_works(handler: &PythHandler<PythClientCache>, data_wanted: usize) {
+fn check_handler_works<P>(handler: &PythHandler<P>, data_wanted: usize)
+where
+    P: PythClientTrait + RetrievePythId,
+{
     // Assert the streaming is working.
     let mut received_data = 0;
     let mut previous_data = None;
@@ -122,4 +125,70 @@ fn check_handler_works(handler: &PythHandler<PythClientCache>, data_wanted: usiz
     }
 
     panic!("Expected to receive at least {data_wanted} data, but received only {received_data}");
+}
+
+#[test]
+fn handler_lazer() {
+    let (mut suite, mut accounts, codes, contracts, _) = setup_test(Default::default());
+
+    // Oracle from the setup_test has some PythIds already uploaded.
+    let oracle = contracts.oracle;
+
+    // Create an empty oracle (without any PythIds) to test the handler correctly
+    // close the streaming.
+    let empty_oracle = suite
+        .instantiate(
+            &mut accounts.owner,
+            codes.oracle.to_bytes().hash256(),
+            &InstantiateMsg {
+                guardian_sets: btree_map!(),
+                price_sources: btree_map!(),
+            },
+            "salt",
+            None,
+            None,
+            Coins::new(),
+        )
+        .should_succeed()
+        .address;
+
+    let price_source = btree_map!(
+        btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 8 }
+    );
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            oracle,
+            &ExecuteMsg::RegisterPriceSources(price_source),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    let querier = QuerierWrapper::new(&suite);
+    let mut handler = PythHandler::new_with_lazer(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST);
+
+    // Start the handler with oracle.
+    handler.update_stream(querier, oracle).unwrap();
+
+    // Assert the handler is working.
+    check_handler_works(&handler, 3);
+
+    // Update the handler with the empty oracle.
+    handler.update_stream(querier, empty_oracle).unwrap();
+
+    // Remove possible data.
+    handler.fetch_latest_price_update();
+
+    // Assert the streaming is closed.
+    for _ in 0..3 {
+        assert!(handler.fetch_latest_price_update().is_none());
+        sleep(Duration::from_millis(500));
+    }
+
+    // Update the handler with oracle.
+    handler.update_stream(querier, oracle).unwrap();
+
+    // Assert the handler is working.
+    check_handler_works(&handler, 3);
 }
