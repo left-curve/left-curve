@@ -4,7 +4,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { Direction } from "@left-curve/dango/types";
 import { format } from "date-fns";
-import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
+import { calculateTradeSize, Decimal, formatNumber, uid } from "@left-curve/dango/utils";
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
@@ -208,7 +208,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
 
           return (
             <div
-              key={trade.tradeIdx}
+              key={uid()}
               className={
                 "grid grid-cols-3 diatype-xs-medium text-secondary-700 w-full cursor-pointer group relative"
               }

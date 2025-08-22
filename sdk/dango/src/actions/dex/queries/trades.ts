@@ -26,11 +26,11 @@ export async function queryTrades<transport extends Transport>(
           endCursor
         }
         nodes {
+          addr
           quoteDenom
           baseDenom
           blockHeight
           direction
-          tradeIdx
           createdAt
           filledBase
           filledQuote

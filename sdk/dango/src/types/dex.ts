@@ -374,7 +374,6 @@ export type Trade = {
   baseDenom: Denom;
   direction: Directions;
   blockHeight: number;
-  tradeIdx: number;
   createdAt: string;
   filledBase: string;
   filledQuote: string;

@@ -42,7 +42,6 @@ export function tradesSubscription<
         baseDenom
         direction
         blockHeight
-        tradeIdx
         createdAt
         filledBase
         filledQuote
