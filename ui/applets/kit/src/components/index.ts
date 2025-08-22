@@ -85,3 +85,4 @@ export { IconTwitter } from "./icons/IconTwitter";
 export { IconDiscord } from "./icons/IconDiscord";
 export { IconMirror } from "./icons/IconMirror";
 export { IconDepth } from "./icons/IconDepth";
+export { IconWallet } from "./icons/IconWallet";

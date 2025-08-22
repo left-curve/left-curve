@@ -1,22 +1,25 @@
+import { useRef } from "react";
+import { useApp } from "~/hooks/useApp";
+import { useAccount } from "@left-curve/store";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useMediaQuery } from "@left-curve/applets-kit";
+
 import {
   Button,
   IconBell,
+  IconButton,
   IconGear,
   IconUser,
+  IconWallet,
   twMerge,
-  useMediaQuery,
 } from "@left-curve/applets-kit";
-
-import { useAccount } from "@left-curve/store";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useRef } from "react";
-import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
+import { Link } from "@tanstack/react-router";
 import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
-import { Hamburger } from "./Hamburguer";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
+
+import { m } from "~/paraglide/messages";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -30,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
     setNotificationMenuVisibility,
     isNotificationMenuVisible,
     isSidebarVisible,
+    isSearchBarVisible,
   } = useApp();
   const { location } = useRouterState();
   const navigate = useNavigate();
@@ -69,10 +73,25 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           )}
         >
           {!hideSearchBar ? <SearchMenu /> : null}
-          {isProSwap && !isLg ? (
-            <div id="trade-buttons" className="flex gap-2 items-center justify-center w-full" />
+          {isProSwap ? (
+            <div
+              id="trade-buttons"
+              className="flex gap-2 items-center justify-center w-full lg:hidden"
+            />
           ) : null}
-          <Hamburger />
+          {!isSearchBarVisible ? (
+            <IconButton
+              onClick={() =>
+                isConnected ? setSidebarVisibility(true) : navigate({ to: "/signin" })
+              }
+              variant="utility"
+              size="lg"
+              type="button"
+              className="shadow-account-card lg:hidden"
+            >
+              <IconWallet className="h-6 w-6 " />
+            </IconButton>
+          ) : null}
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
           <Button
