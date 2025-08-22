@@ -18,7 +18,7 @@ export async function queryTrades<transport extends Transport>(
 ): QueryTradesReturnType {
   const document = /* GraphQL */ `
     query trades($after: String, $first: Int, $address: String) {
-      trades(after: $after, first: $first, address: $address) {
+      trades(after: $after, first: $first, addr: $address) {
         pageInfo {
           hasNextPage
           hasPreviousPage

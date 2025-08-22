@@ -11,7 +11,7 @@ import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
 import { TransactionsTable } from "./TransactionsTable";
 
-import type { Address, Coins, ContractInfo, IndexedTransaction } from "@left-curve/dango/types";
+import type { Address, Coins, ContractInfo } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type React from "react";
 import type { PropsWithChildren } from "react";

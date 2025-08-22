@@ -22,6 +22,8 @@ export {
   parseUnits,
 } from "./formatters.js";
 
+export { calculateTradeSize } from "./dex.js";
+
 export { Actions } from "./actions.js";
 
 export { DataChannel } from "./webrtc.js";

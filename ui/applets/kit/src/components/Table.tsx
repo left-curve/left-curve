@@ -82,7 +82,7 @@ export const Table = <T,>({
           "scrollbar-none w-full min-w-fit whitespace-nowrap overflow-hidden relative overflow-x-scroll ",
         )}
       >
-        <thead>
+        <thead className="sticky top-0 bg-surface-secondary-rice z-10">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => {

@@ -700,17 +700,27 @@
     "protrade": {
       "underDevelopment": "Feature in development",
       "allOrdersCancelled": "All orders cancelled",
+      "tradeHistory": {
+        "pair": "Pair",
+        "direction": "Direction",
+        "type": "Type",
+        "price": "Price",
+        "size": "Size ({symbol})",
+        "dateAndTime": "Date & Time"
+      },
+      "history": {
+        "id": "ID",
+        "pair": "Pair",
+        "price": "Price",
+        "limitPrice": "Limit Price",
+        "remaining": "Remaining ({symbol})",
+        "type": "Type",
+        "size": "Size ({symbol})",
+        "direction": "Direction",
+        "dateAndTime": "Date & Time",
+        "noOpenOrders": "No open orders yet"
+      },
       "spot": {
-        "noOpenOrders": "No open orders yet",
-        "price": "Limit Price",
-        "ordersTable": {
-          "id": "ID",
-          "pair": "Pair",
-          "remaining": "Remaining ({symbol})",
-          "type": "Type",
-          "size": "Size ({symbol})",
-          "direction": "Direction"
-        },
         "24hChange": "24h Change",
         "volume": "Volume",
         "fees": "Fees",

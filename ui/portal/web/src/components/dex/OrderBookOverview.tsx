@@ -4,7 +4,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { Direction } from "@left-curve/dango/types";
 import { format } from "date-fns";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
@@ -191,7 +191,6 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
     });
 
     return () => {
-      console.log("unmount");
       unsubscribe();
     };
   }, [base, quote]);
@@ -205,16 +204,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
         {trades.map((trade) => {
-          const sizeAmount =
-            trade.direction === Direction.Buy
-              ? Decimal(trade.refundBase)
-                  .div(Decimal(10).pow(base.decimals))
-                  .mul(trade.clearingPrice)
-                  .toFixed(7)
-              : Decimal(trade.refundQuote)
-                  .div(Decimal(10).pow(quote.decimals))
-                  .divFloor(trade.clearingPrice)
-                  .toFixed(7);
+          const sizeAmount = calculateTradeSize(trade, base.decimals).toFixed(7);
 
           return (
             <div
@@ -226,7 +216,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
               <p
                 className={twMerge(
                   "z-10",
-                  trade.direction === "bid" ? "text-status-success" : "text-status-fail",
+                  trade.direction === Direction.Buy ? "text-status-success" : "text-status-fail",
                 )}
               >
                 {formatNumber(
