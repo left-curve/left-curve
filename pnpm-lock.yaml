@@ -429,8 +429,8 @@ importers:
         specifier: workspace:^
         version: link:../../applets/kit
       '@left-curve/chartiq':
-        specifier: ^9.8.0
-        version: 9.8.0
+        specifier: ^9.9.0
+        version: 9.9.0
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../../sdk/dango
@@ -2729,8 +2729,8 @@ packages:
     peerDependencies:
       tslib: '2'
 
-  '@left-curve/chartiq@9.8.0':
-    resolution: {integrity: sha512-O4oEzo15IPkj1gHkriMHzZKF6w6eFs/RmsprsLjMJDP4RIi7q7cwhL+na3Ub4v3P/Eq1oxVPTkbnLiDqZQoqIQ==, tarball: https://npm.pkg.github.com/download/@left-curve/chartiq/9.8.0/f33329b0f33f78a92fb489a21bccdd2ca477f651}
+  '@left-curve/chartiq@9.9.0':
+    resolution: {integrity: sha512-3Kwjf49UJcB10txj4aOchodFE8EBiUgP/P7p5LystRv8ZPUSUBKopoVF1rFugQ7azxdZ8dgvwhFMzhrCtgk+xw==, tarball: https://npm.pkg.github.com/download/@left-curve/chartiq/9.9.0/1ecf5262dd4069d663f8059eb3668fc0582c8605}
 
   '@left-curve/tradingview@29.4.0':
     resolution: {integrity: sha512-dmcthhZA+9qzs16xolv7zdgqECFRn4yJ48b4xYqH6k/xM2mNDnfuj++k0iM3uCwtTcdBIQhR048SpRQV9FjTfA==, tarball: https://npm.pkg.github.com/download/@left-curve/tradingview/29.4.0/0662df570d15127ebf994ff47064f0808425d749}
@@ -11096,7 +11096,7 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@left-curve/chartiq@9.8.0': {}
+  '@left-curve/chartiq@9.9.0': {}
 
   '@left-curve/tradingview@29.4.0': {}
 
