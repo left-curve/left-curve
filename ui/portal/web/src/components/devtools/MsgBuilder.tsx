@@ -1,16 +1,167 @@
-import { Button, twMerge, useTheme } from "@left-curve/applets-kit";
-import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
-import Editor from "@monaco-editor/react";
-import { useState } from "react";
+import {
+  Button,
+  createContext,
+  JsonVisualizer,
+  ResizerContainer,
+  Tabs,
+  useTheme,
+} from "@left-curve/applets-kit";
+import {
+  useAccount,
+  useAppConfig,
+  usePublicClient,
+  useSigningClient,
+  useSubmitTx,
+} from "@left-curve/store";
+import { Editor } from "@monaco-editor/react";
+import { useMutation } from "@tanstack/react-query";
+
+import { useState, type PropsWithChildren } from "react";
 import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 
-export const MsgBuilder: React.FC = () => {
-  const [msg, setMsg] = useState<string>("");
-  const { toast } = useApp();
+type MsgBuilderProps = {
+  currentTab: "execute" | "query";
+};
 
+const [MsgBuilderProvider, useMsgBuilder] = createContext<MsgBuilderProps>({
+  name: "MsgBuilderContext",
+});
+
+const MsgBuilderContainer: React.FC<PropsWithChildren> = ({ children }) => {
+  const [currentTab, setCurrentTab] = useState<"execute" | "query">("query");
+  return (
+    <MsgBuilderProvider value={{ currentTab }}>
+      <div className="w-full mx-auto flex flex-col gap-6 md:max-w-[76rem] p-4">
+        <div className="flex relative">
+          <Tabs
+            color="green"
+            layoutId="tabs-msg-builder"
+            selectedTab={currentTab}
+            keys={["query", "execute"]}
+            onTabChange={(tab) => setCurrentTab(tab as "execute" | "query")}
+          />
+        </div>
+        <ResizerContainer layoutId="msg-builder">{children}</ResizerContainer>
+      </div>
+    </MsgBuilderProvider>
+  );
+};
+
+const QueryMsg: React.FC = () => {
+  const { currentTab } = useMsgBuilder();
+
+  const client = usePublicClient();
+  const [queryMsg, setQueryMsg] = useState<string>("");
+  const { theme } = useTheme();
+  const { data: config } = useAppConfig();
+
+  const {
+    isPending: queryIsPending,
+    mutateAsync: query,
+    data: queryResponse,
+  } = useMutation({
+    mutationFn: () =>
+      client.queryWasmSmart(JSON.parse(queryMsg)).catch((e: any) => {
+        return { error: e.details };
+      }),
+  });
+  if (currentTab !== "query" || !config) return null;
+
+  const addresses = Object.fromEntries(
+    Object.entries(config.addresses).filter(([key]) => !key.includes("0x")),
+  );
+
+  return (
+    <div className="flex flex-col gap-4 w-full">
+      <ResizerContainer
+        layoutId="query-visualizer"
+        className="flex flex-col lg:flex-row gap-4 w-full"
+      >
+        <div className="relative flex min-h-[60vh] flex-col overflow-hidden rounded-xl py-6 bg-surface-playground pr-4 shadow-account-card flex-1 w-full lg:w-auto">
+          <Editor
+            onMount={(_, monaco) => {
+              monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                validate: true,
+                schemas: [
+                  {
+                    uri: "",
+                    fileMatch: ["*"],
+                    schema: {
+                      type: "object",
+                      properties: {
+                        contract: {
+                          anyOf: [
+                            {
+                              type: "string",
+                              enum: Object.values(addresses),
+                              enumDescriptions: Object.keys(addresses).map((k) =>
+                                m["explorer.contracts.contractDescription"]({ contract: k }),
+                              ),
+                            },
+                            {
+                              type: "string",
+                            },
+                          ],
+                          description:
+                            "The address of the contract to which the query will be sent.",
+                        },
+                        msg: {
+                          type: "object",
+                          description:
+                            "The query message in JSON format that will be sent to the contract.",
+                          additionalProperties: true,
+                        },
+                      },
+                      required: ["contract", "msg"],
+                    },
+                  },
+                ],
+              });
+            }}
+            language="json"
+            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+            width="100%"
+            height="60vh"
+            value={queryMsg}
+            onChange={(v) => setQueryMsg(v ?? "")}
+            options={{
+              automaticLayout: true,
+              scrollbar: {
+                verticalScrollbarSize: 0,
+              },
+              suggest: {
+                showStatusBar: true,
+              },
+              minimap: {
+                enabled: false,
+              },
+              formatOnPaste: true,
+              formatOnType: true,
+            }}
+          />
+        </div>
+        {queryResponse ? (
+          <div className="min-h-[60vh] lg:min-h-full p-4 bg-surface-tertiary-rice shadow-account-card  rounded-xl  flex-1 w-full lg:w-auto overflow-auto">
+            <div className="overflow-hidden rounded-lg p-2 bg-[#453d39] h-[61vh] overflow-y-scroll scrollbar-none">
+              <JsonVisualizer json={JSON.stringify(queryResponse)} collapsed={1} />
+            </div>
+          </div>
+        ) : null}
+      </ResizerContainer>
+      <Button isLoading={queryIsPending} onClick={() => query()} className="w-full md:w-auto">
+        {m["devtools.msgBuilder.query"]()}
+      </Button>
+    </div>
+  );
+};
+
+const ExecuteMsg: React.FC = () => {
+  const { currentTab } = useMsgBuilder();
+  const { toast } = useApp();
   const { data: signingClient } = useSigningClient();
   const { isConnected, account } = useAccount();
+  const [executeMsg, setExecuteMsg] = useState<string>("");
   const { theme } = useTheme();
 
   const { isPending, mutateAsync: execute } = useSubmitTx({
@@ -23,104 +174,110 @@ export const MsgBuilder: React.FC = () => {
         if (!signingClient || !account) {
           throw new Error("Signing client or account address is not available");
         }
-        
-        await signingClient.execute({ sender: account.address, execute: JSON.parse(msg) });
+
+        await signingClient.execute({ sender: account.address, execute: JSON.parse(executeMsg) });
       },
     },
   });
+  if (currentTab !== "execute") return null;
 
   return (
-    <div className="w-full md:max-w-[80vw] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-[80svh]">
-      <div
-        className={twMerge(
-          "relative flex h-[60vh] w-full flex-col overflow-hidden rounded-md py-6  shadow-sm md:flex-1",
-          theme === "dark" ? "bg-[#1e1e1e]" : "bg-white",
-        )}
+    <div className="flex flex-col gap-4 w-full">
+      <ResizerContainer
+        layoutId="query-visualizer"
+        className="flex flex-col lg:flex-row gap-4 w-full"
       >
-        <Editor
-          onMount={(_, monaco) => {
-            monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-              validate: true,
-              schemas: [executeSchema],
-            });
-          }}
-          language="json"
-          theme={theme === "dark" ? "vs-dark" : "vs-light"}
-          width="100%"
-          height="60vh"
-          value={msg}
-          onChange={(v) => setMsg(v ?? "")}
-          options={{
-            automaticLayout: true,
-            scrollbar: {
-              verticalScrollbarSize: 0,
-            },
-            minimap: {
-              enabled: false,
-            },
-            formatOnPaste: true,
-            formatOnType: true,
-          }}
-        />
-      </div>
-
-      <div className="flex justify-end">
-        <Button
-          isLoading={isPending}
-          isDisabled={!isConnected}
-          onClick={() => execute()}
-          className="w-full md:w-auto"
-        >
-          {m["devtools.msgBuilder.trigger"]()}
-        </Button>
-      </div>
+        <div className="relative flex min-h-[60vh] w-full flex-col overflow-hidden rounded-xl py-6 md:flex-1 bg-surface-playground pr-4 shadow-account-card">
+          <Editor
+            onMount={(_, monaco) => {
+              monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+                validate: true,
+                schemas: [
+                  {
+                    uri: "",
+                    fileMatch: ["*"],
+                    schema: {
+                      $defs: {
+                        execute: {
+                          type: "object",
+                          properties: {
+                            contract: {
+                              type: "string",
+                              description:
+                                "The address of the contract to which the message will be sent.",
+                            },
+                            msg: {
+                              type: "object",
+                              description:
+                                "The message in JSON format that will be sent to the contract.",
+                              additionalProperties: true,
+                            },
+                            funds: {
+                              type: "array",
+                              description:
+                                "(Optional) Funds (coins) to be sent with the execution.",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  denom: { type: "string" },
+                                  amount: { type: "string" },
+                                },
+                                required: ["denom", "amount"],
+                              },
+                            },
+                          },
+                          required: ["contract", "msg"],
+                        },
+                      },
+                      oneOf: [
+                        {
+                          $ref: "#/$defs/execute",
+                        },
+                        {
+                          type: "array",
+                          items: {
+                            $ref: "#/$defs/execute",
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              });
+            }}
+            language="json"
+            theme={theme === "dark" ? "vs-dark" : "vs-light"}
+            width="100%"
+            height="60vh"
+            value={executeMsg}
+            onChange={(v) => setExecuteMsg(v ?? "")}
+            options={{
+              automaticLayout: true,
+              scrollbar: {
+                verticalScrollbarSize: 0,
+              },
+              minimap: {
+                enabled: false,
+              },
+              formatOnPaste: true,
+              formatOnType: true,
+            }}
+          />
+        </div>
+      </ResizerContainer>
+      <Button
+        isLoading={isPending}
+        isDisabled={!isConnected}
+        onClick={() => execute()}
+        className="w-full"
+      >
+        {m["devtools.msgBuilder.execute"]()}
+      </Button>
     </div>
   );
 };
 
-const executeSchema = {
-  uri: "",
-  fileMatch: ["*"],
-  schema: {
-    $defs: {
-      execute: {
-        type: "object",
-        properties: {
-          contract: {
-            type: "string",
-            description: "The address of the contract to which the message will be sent.",
-          },
-          msg: {
-            type: "object",
-            description: "The message in JSON format that will be sent to the contract.",
-            additionalProperties: true,
-          },
-          funds: {
-            type: "array",
-            description: "(Optional) Funds (coins) to be sent with the execution.",
-            items: {
-              type: "object",
-              properties: {
-                denom: { type: "string" },
-                amount: { type: "string" },
-              },
-              required: ["denom", "amount"],
-            },
-          },
-        },
-        required: ["contract", "msg"],
-      },
-    },
-    oneOf: [
-      {
-        $ref: "#/$defs/execute",
-      },
-      {
-        type: "array",
-        items: {
-          $ref: "#/$defs/execute",
-        },
-      },
-    ],
-  },
-};
+export const MsgBuilder = Object.assign(MsgBuilderContainer, {
+  QueryMsg,
+  ExecuteMsg,
+});
