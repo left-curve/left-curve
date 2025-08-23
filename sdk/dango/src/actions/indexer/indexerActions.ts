@@ -27,11 +27,18 @@ import {
   transferSubscription,
 } from "./subscriptions/transfer.js";
 
+import {
+  tradesSubscription,
+  type TradesSubscriptionParameters,
+  type TradesSubscriptionReturnType,
+} from "./subscriptions/trades.js";
+
 export type IndexerActions = {
   accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
   blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
   candlesSubscription: (args: CandlesSubscriptionParameters) => CandlesSubscriptionReturnType;
   searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
+  tradesSubscription: (args: TradesSubscriptionParameters) => TradesSubscriptionReturnType;
   transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
   queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
 };
@@ -44,6 +51,7 @@ export function indexerActions<transport extends Transport = Transport>(
     accountSubscription: (args) => accountSubscription(client, args),
     candlesSubscription: (args) => candlesSubscription(client, args),
     searchTxs: (args) => searchTxs(client, args),
+    tradesSubscription: (args) => tradesSubscription(client, args),
     transferSubscription: (args) => transferSubscription(client, args),
     queryBlock: (args) => queryBlock(client, args),
   };

@@ -17,6 +17,7 @@ on:
       - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"
+      - "ui/config/**"
   pull_request:
     paths:
       - ".github/workflows/portal-deployment.yaml"
@@ -24,6 +25,7 @@ on:
       - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"
+      - "ui/config/**"
 
 jobs:
   deploy:

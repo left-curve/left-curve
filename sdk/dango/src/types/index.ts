@@ -131,6 +131,7 @@ export type {
   OrderId,
   Candle,
   CandleIntervals,
+  Trade,
 } from "./dex.js";
 
 export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";

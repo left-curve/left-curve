@@ -1,37 +1,42 @@
 import { useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useState } from "react";
+import { useApp } from "~/hooks/useApp";
+
+import { Direction } from "@left-curve/dango/types";
+import { format } from "date-fns";
+import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
+import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
 
-import { m } from "~/paraglide/messages";
-
-import { mockTrades } from "~/mock";
-import { type OrderBookRow, mockOrderBookData } from "~/mock";
-
+import type { AnyCoin } from "@left-curve/store/types";
+import type { Trade } from "@left-curve/dango/types";
 import type React from "react";
 
-export const OrderBookOverview: React.FC = () => {
+type OrderBookOverviewProps = {
+  base: AnyCoin;
+  quote: AnyCoin;
+};
+
+export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ base, quote }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
   const { isLg } = useMediaQuery();
 
   useEffect(() => {
-    setActiveTab(isLg ? "order book" : "graph");
+    setActiveTab(isLg ? "trades" : "graph");
   }, [isLg]);
 
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className={twMerge(
-        "z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]",
-        { hidden: isLg },
-      )}
+      className="z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
     >
       <Tabs
         color="line-red"
         layoutId="tabs-order-history"
         selectedTab={activeTab}
-        keys={isLg ? [] : ["graph"]}
+        keys={isLg ? ["trades"] : ["graph", "trades"]}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}
@@ -43,10 +48,7 @@ export const OrderBookOverview: React.FC = () => {
       {(activeTab === "trades" || activeTab === "order book") && (
         <div className="relative w-full h-full">
           {activeTab === "order book" && <OrderBook />}
-          {activeTab === "trades" && <LiveTrades />}
-          <div className="absolute z-20 top-0 left-0 w-full h-full backdrop-blur-[8px] lg:w-[calc(100%+2rem)] lg:-left-4 flex items-center justify-center exposure-l-italic text-primary-rice">
-            {m["dex.protrade.underDevelopment"]()}
-          </div>
+          {activeTab === "trades" && <LiveTrades base={base} quote={quote} />}
         </div>
       )}
     </ResizerContainer>
@@ -169,21 +171,44 @@ const OrderBook: React.FC = () => {
   );
 };
 
-const LiveTrades: React.FC = () => {
-  const { isLg } = useMediaQuery();
-  const numberOfTrades = isLg ? 24 : 16;
+type LiveTradesProps = {
+  base: AnyCoin;
+  quote: AnyCoin;
+};
+
+const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
+  const { subscriptions, settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const [trades, setTrades] = useState<Trade[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = subscriptions.subscribe("trades", {
+      params: {
+        baseDenom: base.denom,
+        quoteDenom: quote.denom,
+      },
+      listener: ({ trades: trade }) => setTrades([...trades, trade]),
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [base, quote]);
+
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
       <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3 ">
         <p>Price</p>
-        <p className="text-end">Size (ETH)</p>
+        <p className="text-end">Size ({base.symbol})</p>
         <p className="text-end">Time</p>
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
-        {mockTrades.slice(0, numberOfTrades).map((trade) => {
+        {trades.map((trade) => {
+          const sizeAmount = calculateTradeSize(trade, base.decimals).toFixed(7);
+
           return (
             <div
-              key={trade.hash}
+              key={`${trade.addr}-${trade.createdAt}`}
               className={
                 "grid grid-cols-3 diatype-xs-medium text-secondary-700 w-full cursor-pointer group relative"
               }
@@ -191,15 +216,20 @@ const LiveTrades: React.FC = () => {
               <p
                 className={twMerge(
                   "z-10",
-                  trade.side === "BUY" ? "text-status-success" : "text-status-fail",
+                  trade.direction === Direction.Buy ? "text-status-success" : "text-status-fail",
                 )}
               >
-                {trade.price}
+                {formatNumber(
+                  Decimal(trade.clearingPrice)
+                    .times(Decimal(10).pow(base.decimals - quote.decimals))
+                    .toFixed(),
+                  { ...formatNumberOptions, maxSignificantDigits: 10 },
+                )}
               </p>
-              <p className="text-end z-10">{trade.size}</p>
+              <p className="text-end z-10">{sizeAmount}</p>
 
               <div className="flex gap-1 items-center justify-end z-10">
-                <p>{trade.createdAt}</p>
+                <p>{format(trade.createdAt, "HH:mm:ss")}</p>
                 <IconLink className="w-3 h-3" />
               </div>
               <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />

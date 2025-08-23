@@ -310,7 +310,7 @@ const OrdersTab: React.FC<{ orders: WithId<OrdersByUserResponse>[] }> = ({ order
   if (!orders || orders.length === 0) {
     return (
       <div className="px-4">
-        <EmptyPlaceholder component={m["dex.protrade.spot.noOpenOrders"]()} className="p-4" />
+        <EmptyPlaceholder component={m["dex.protrade.history.noOpenOrders"]()} className="p-4" />
       </div>
     );
   }

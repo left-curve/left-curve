@@ -323,7 +323,7 @@
     "description": "We’re delighted to have you with us and look forward to seeing what you do next.",
     "scroll": "Scroll to learn more",
     "trade": "Trade",
-    "tradeText": "crypto assets, real world assets, and derivatives and Dango’s blazingly fast exchange.",
+    "tradeText": "crypto assets, real world assets, and derivatives on Dango’s blazingly fast exchange.",
     "tradeText2": "Enjoy deep liquidity, fast execution, and fair prices.",
     "leverageUp": "Leverage up",
     "leverageUpText": "with Dango’s unified trading account with low cost and high capital efficiency.",
@@ -700,17 +700,38 @@
     "protrade": {
       "underDevelopment": "Feature in development",
       "allOrdersCancelled": "All orders cancelled",
+      "orderType": [
+        {
+          "declarations": ["input orderType"],
+          "selectors": ["orderType"],
+          "match": {
+            "orderType=limit": "Limit",
+            "orderType=market": "Market",
+            "orderType=passive": "Passive"
+          }
+        }
+      ],
+      "tradeHistory": {
+        "pair": "Pair",
+        "direction": "Direction",
+        "type": "Type",
+        "price": "Price",
+        "size": "Size ({symbol})",
+        "dateAndTime": "Date & Time"
+      },
+      "history": {
+        "id": "ID",
+        "pair": "Pair",
+        "price": "Price",
+        "limitPrice": "Limit Price",
+        "remaining": "Remaining ({symbol})",
+        "type": "Type",
+        "size": "Size ({symbol})",
+        "direction": "Direction",
+        "dateAndTime": "Date & Time",
+        "noOpenOrders": "No open orders yet"
+      },
       "spot": {
-        "noOpenOrders": "No open orders yet",
-        "price": "Limit Price",
-        "ordersTable": {
-          "id": "ID",
-          "pair": "Pair",
-          "remaining": "Remaining ({symbol})",
-          "type": "Type",
-          "size": "Size ({symbol})",
-          "direction": "Direction"
-        },
         "24hChange": "24h Change",
         "volume": "Volume",
         "fees": "Fees",
