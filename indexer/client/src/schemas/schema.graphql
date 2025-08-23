@@ -212,11 +212,11 @@ enum Direction {
 	"""
 	Give away the quote asset, get the base asset; a.k.a. a BUY order.
 	"""
-	BID
+	bid
 	"""
 	Give away the base asset, get the quote asset; a.k.a. a SELL order.
 	"""
-	ASK
+	ask
 }
 
 type Event {
@@ -377,6 +377,12 @@ ISO 8601 combined date and time without timezone.
 * `2015-07-01T08:59:60.123`,
 """
 scalar NaiveDateTime
+
+enum OrderKind {
+	limit
+	market
+	passive
+}
 
 """
 Information about pagination in a connection
@@ -648,8 +654,8 @@ type Trade {
 	quoteDenom: String!
 	baseDenom: String!
 	direction: Direction!
+	orderType: OrderKind!
 	blockHeight: Int!
-	tradeIdx: Int!
 	"""
 	Returns the block timestamp in ISO 8601 format with time zone.
 	"""
