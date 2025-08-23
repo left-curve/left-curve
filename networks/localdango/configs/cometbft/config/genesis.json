@@ -404,7 +404,9 @@
             },
             "routes": [
               [
-                "eth",
+                {
+                  "remote": "eth"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -414,7 +416,9 @@
                 }
               ],
               [
-                "eth",
+                {
+                  "remote": "eth"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -424,7 +428,9 @@
                 }
               ],
               [
-                "eth",
+                {
+                  "remote": "eth"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -434,7 +440,9 @@
                 }
               ],
               [
-                "eth",
+                {
+                  "remote": "eth"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -444,7 +452,9 @@
                 }
               ],
               [
-                "sol",
+                {
+                  "remote": "sol"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -454,7 +464,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -464,7 +476,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -474,7 +488,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -484,7 +500,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -494,7 +512,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
