@@ -239,7 +239,25 @@
         "contractAddress": "Contract Address",
         "admin": "Admin",
         "balances": "Balances"
-      }
+      },
+      "contractDescription": [
+        {
+          "declarations": ["input contract"],
+          "selectors": ["contract"],
+          "match": {
+            "contract=accountFactory": "**Account Factory** The contract responsible for creating new accounts.",
+            "contract=gateway": "**Gateway** The contract responsible for handling cross-chain communication.",
+            "contract=lending": "**Lending** The contract responsible for managing loans and collateral.",
+            "contract=oracle": "**Oracle** The contract responsible for providing external data to the blockchain.",
+            "contract=dex": "**DEX** The contract responsible for facilitating decentralized trading.",
+            "contract=warp": "**Warp** The contract responsible for managing the warp protocol.",
+            "contract=taxman": "**Taxman** The contract responsible for handling taxes and fees.",
+            "contract=ism": "**ISM** The contract responsible for managing the interchain security model.",
+            "contract=mailbox": "**Mailbox** The contract responsible for handling messages between chains.",
+            "contract=va": "**VA** The contract responsible for managing the validator set."
+          }
+        }
+      ]
     },
     "accounts": {
       "title": "Account Explorer",

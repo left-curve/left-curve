@@ -6,7 +6,13 @@ import {
   Tabs,
   useTheme,
 } from "@left-curve/applets-kit";
-import { useAccount, usePublicClient, useSigningClient, useSubmitTx } from "@left-curve/store";
+import {
+  useAccount,
+  useAppConfig,
+  usePublicClient,
+  useSigningClient,
+  useSubmitTx,
+} from "@left-curve/store";
 import { Editor } from "@monaco-editor/react";
 import { useMutation } from "@tanstack/react-query";
 
@@ -48,6 +54,7 @@ const QueryMsg: React.FC = () => {
   const client = usePublicClient();
   const [queryMsg, setQueryMsg] = useState<string>("");
   const { theme } = useTheme();
+  const { data: config } = useAppConfig();
 
   const {
     isPending: queryIsPending,
@@ -59,7 +66,11 @@ const QueryMsg: React.FC = () => {
         return { error: e.details };
       }),
   });
-  if (currentTab !== "query") return null;
+  if (currentTab !== "query" || !config) return null;
+
+  const addresses = Object.fromEntries(
+    Object.entries(config.addresses).filter(([key]) => !key.includes("0x")),
+  );
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -72,7 +83,40 @@ const QueryMsg: React.FC = () => {
             onMount={(_, monaco) => {
               monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                 validate: true,
-                schemas: [executeSchema],
+                schemas: [
+                  {
+                    uri: "",
+                    fileMatch: ["*"],
+                    schema: {
+                      type: "object",
+                      properties: {
+                        contract: {
+                          anyOf: [
+                            {
+                              type: "string",
+                              enum: Object.values(addresses),
+                              enumDescriptions: Object.keys(addresses).map((k) =>
+                                m["explorer.contracts.contractDescription"]({ contract: k }),
+                              ),
+                            },
+                            {
+                              type: "string",
+                            },
+                          ],
+                          description:
+                            "The address of the contract to which the query will be sent.",
+                        },
+                        msg: {
+                          type: "object",
+                          description:
+                            "The query message in JSON format that will be sent to the contract.",
+                          additionalProperties: true,
+                        },
+                      },
+                      required: ["contract", "msg"],
+                    },
+                  },
+                ],
               });
             }}
             language="json"
@@ -85,6 +129,9 @@ const QueryMsg: React.FC = () => {
               automaticLayout: true,
               scrollbar: {
                 verticalScrollbarSize: 0,
+              },
+              suggest: {
+                showStatusBar: true,
               },
               minimap: {
                 enabled: false,
@@ -117,7 +164,7 @@ const ExecuteMsg: React.FC = () => {
   const [executeMsg, setExecuteMsg] = useState<string>("");
   const { theme } = useTheme();
 
-  const { isPending: executeIsPending, mutateAsync: execute } = useSubmitTx({
+  const { isPending, mutateAsync: execute } = useSubmitTx({
     toast: {
       success: () => toast.success({ description: "Message executed successfully" }),
       error: (error) => toast.error({ description: `Error executing message: ${error.message}` }),
@@ -145,7 +192,57 @@ const ExecuteMsg: React.FC = () => {
             onMount={(_, monaco) => {
               monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
                 validate: true,
-                schemas: [executeSchema],
+                schemas: [
+                  {
+                    uri: "",
+                    fileMatch: ["*"],
+                    schema: {
+                      $defs: {
+                        execute: {
+                          type: "object",
+                          properties: {
+                            contract: {
+                              type: "string",
+                              description:
+                                "The address of the contract to which the message will be sent.",
+                            },
+                            msg: {
+                              type: "object",
+                              description:
+                                "The message in JSON format that will be sent to the contract.",
+                              additionalProperties: true,
+                            },
+                            funds: {
+                              type: "array",
+                              description:
+                                "(Optional) Funds (coins) to be sent with the execution.",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  denom: { type: "string" },
+                                  amount: { type: "string" },
+                                },
+                                required: ["denom", "amount"],
+                              },
+                            },
+                          },
+                          required: ["contract", "msg"],
+                        },
+                      },
+                      oneOf: [
+                        {
+                          $ref: "#/$defs/execute",
+                        },
+                        {
+                          type: "array",
+                          items: {
+                            $ref: "#/$defs/execute",
+                          },
+                        },
+                      ],
+                    },
+                  },
+                ],
               });
             }}
             language="json"
@@ -169,7 +266,7 @@ const ExecuteMsg: React.FC = () => {
         </div>
       </ResizerContainer>
       <Button
-        isLoading={executeIsPending}
+        isLoading={isPending}
         isDisabled={!isConnected}
         onClick={() => execute()}
         className="w-full"
@@ -184,50 +281,3 @@ export const MsgBuilder = Object.assign(MsgBuilderContainer, {
   QueryMsg,
   ExecuteMsg,
 });
-
-const executeSchema = {
-  uri: "",
-  fileMatch: ["*"],
-  schema: {
-    $defs: {
-      execute: {
-        type: "object",
-        properties: {
-          contract: {
-            type: "string",
-            description: "The address of the contract to which the message will be sent.",
-          },
-          msg: {
-            type: "object",
-            description: "The message in JSON format that will be sent to the contract.",
-            additionalProperties: true,
-          },
-          funds: {
-            type: "array",
-            description: "(Optional) Funds (coins) to be sent with the execution.",
-            items: {
-              type: "object",
-              properties: {
-                denom: { type: "string" },
-                amount: { type: "string" },
-              },
-              required: ["denom", "amount"],
-            },
-          },
-        },
-        required: ["contract", "msg"],
-      },
-    },
-    oneOf: [
-      {
-        $ref: "#/$defs/execute",
-      },
-      {
-        type: "array",
-        items: {
-          $ref: "#/$defs/execute",
-        },
-      },
-    ],
-  },
-};

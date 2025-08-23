@@ -1,5 +1,8 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { MsgBuilder } from "~/components/devtools/MsgBuilder";
+import { MobileTitle } from "~/components/foundation/MobileTitle";
+
+import { m } from "~/paraglide/messages";
 
 export const Route = createLazyFileRoute("/(app)/_app/devtool")({
   component: DevtoolApplet,
@@ -7,9 +10,12 @@ export const Route = createLazyFileRoute("/(app)/_app/devtool")({
 
 function DevtoolApplet() {
   return (
-    <MsgBuilder>
-      <MsgBuilder.QueryMsg />
-      <MsgBuilder.ExecuteMsg />
-    </MsgBuilder>
+    <div className="w-full flex flex-col items-center">
+      <MobileTitle title={m["devtools.title"]()} className="p-4 pb-0" />
+      <MsgBuilder>
+        <MsgBuilder.QueryMsg />
+        <MsgBuilder.ExecuteMsg />
+      </MsgBuilder>
+    </div>
   );
 }

@@ -119,6 +119,8 @@ export type {
   ExtractFromUnion,
   NestedOmit,
   WithId,
+  Flatten,
+  Range,
 } from "./utils.js";
 
 export type {
