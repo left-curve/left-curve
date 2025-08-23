@@ -52,7 +52,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const [operation, setOperation] = useState(orderType);
   const [action, setAction] = useState(initialAction);
 
-  const { data: balances = {}, refetch: updateBalance } = useBalances({
+  const { data: balances = {} } = useBalances({
     address: account?.address,
   });
 
