@@ -41,6 +41,7 @@ export function tradesSubscription<
         quoteDenom
         baseDenom
         direction
+        orderType
         blockHeight
         createdAt
         filledBase

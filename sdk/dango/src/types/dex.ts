@@ -349,6 +349,14 @@ export const CandleInterval = {
   OneWeek: "ONE_WEEK",
 } as const;
 
+export const OrderType = {
+  Limit: "limit",
+  Market: "market",
+  Passive: "passive",
+} as const;
+
+export type OrderTypes = (typeof OrderType)[keyof typeof OrderType];
+
 export type CandleIntervals = (typeof CandleInterval)[keyof typeof CandleInterval];
 
 export type Candle = {
@@ -372,6 +380,7 @@ export type Trade = {
   addr: Address;
   quoteDenom: Denom;
   baseDenom: Denom;
+  orderType: OrderTypes;
   direction: Directions;
   blockHeight: number;
   createdAt: string;

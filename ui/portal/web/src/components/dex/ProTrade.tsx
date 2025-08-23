@@ -402,6 +402,7 @@ const ProTradeOpenOrders: React.FC = () => {
 };
 
 const ProTradeOrdersHistory: React.FC = () => {
+  const navigate = useNavigate();
   const { settings } = useApp();
   const { coins } = useConfig();
 
@@ -432,15 +433,17 @@ const ProTradeOrdersHistory: React.FC = () => {
       cell: ({ row }) => (
         <Cell.OrderDirection
           text={m["dex.protrade.spot.direction"]({
-            direction: row.original.direction.toLowerCase(),
+            direction: row.original.direction,
           })}
-          direction={row.original.direction.toLowerCase() as "bid" | "ask"}
+          direction={row.original.direction}
         />
       ),
     },
     {
       header: m["dex.protrade.history.type"](),
-      cell: ({ row }) => <Cell.Text text="Limit" />,
+      cell: ({ row }) => (
+        <Cell.Text text={m["dex.protrade.orderType"]({ orderType: row.original.orderType })} />
+      ),
     },
     {
       id: "size",
@@ -489,6 +492,9 @@ const ProTradeOrdersHistory: React.FC = () => {
       data={data?.nodes || []}
       columns={columns}
       style="simple"
+      onRowClick={(row) =>
+        navigate({ to: "/block/$block", params: { block: row.original.blockHeight.toString() } })
+      }
       classNames={{
         row: "h-fit",
         header: "pt-0",

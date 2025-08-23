@@ -700,6 +700,17 @@
     "protrade": {
       "underDevelopment": "Feature in development",
       "allOrdersCancelled": "All orders cancelled",
+      "orderType": [
+        {
+          "declarations": ["input orderType"],
+          "selectors": ["orderType"],
+          "match": {
+            "orderType=limit": "Limit",
+            "orderType=market": "Market",
+            "orderType=passive": "Passive"
+          }
+        }
+      ],
       "tradeHistory": {
         "pair": "Pair",
         "direction": "Direction",
