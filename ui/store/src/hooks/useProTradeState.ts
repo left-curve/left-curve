@@ -241,11 +241,9 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       },
       onSuccess: () => {
         orders.refetch();
-        updateBalance();
+        history.refetch();
         controllers.reset();
-        queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
         queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
-        queryClient.invalidateQueries({ queryKey: ["trades", account?.address] });
       },
     },
   });
