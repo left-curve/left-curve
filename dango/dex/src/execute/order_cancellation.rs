@@ -1,10 +1,10 @@
 use {
-    crate::{LIMIT_ORDERS, MARKET_ORDERS, OrderKey, PAIRS, USER_DEPTHS, core},
+    crate::{LIMIT_ORDERS, MARKET_ORDERS, OrderKey, PAIRS, USER_DEPTHS, decrease_depths},
     anyhow::{bail, ensure},
     dango_types::dex::{Direction, LimitOrder, MarketOrder, OrderCanceled, OrderId, OrderKind},
     grug::{
-        Addr, DecCoin, DecCoins, EventBuilder, IsZero, Number, Order as IterationOrder, StdResult,
-        Storage, TransferBuilder,
+        Addr, DecCoin, DecCoins, EventBuilder, Number, Order as IterationOrder, StdResult, Storage,
+        TransferBuilder,
     },
 };
 
@@ -149,18 +149,16 @@ fn cancel_limit_order(
 
     refunds.insert(refund)?;
 
-    for bucket_size in pair.bucket_sizes {
-        let bucket = core::bucket(price, direction, bucket_size)?;
-        let k = ((&base_denom, &quote_denom), *bucket_size, direction, bucket);
-        USER_DEPTHS.modify(storage, k, |mut depth| -> StdResult<_> {
-            depth.checked_sub_assign(order.remaining)?;
-            if depth.is_zero() {
-                Ok(None)
-            } else {
-                Ok(Some(depth))
-            }
-        })?;
-    }
+    decrease_depths(
+        &USER_DEPTHS,
+        storage,
+        &base_denom,
+        &quote_denom,
+        direction,
+        price,
+        order.remaining,
+        &pair.bucket_sizes,
+    )?;
 
     LIMIT_ORDERS.remove(storage, order_key)?;
 

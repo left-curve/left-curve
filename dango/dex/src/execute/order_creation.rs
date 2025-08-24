@@ -1,6 +1,7 @@
 use {
     crate::{
-        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK, USER_DEPTHS, core,
+        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK, USER_DEPTHS,
+        increase_depths,
     },
     anyhow::{anyhow, ensure},
     dango_types::dex::{
@@ -8,8 +9,7 @@ use {
         OrderCreated, OrderKind,
     },
     grug::{
-        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, StdResult, Storage,
-        Udec128_24,
+        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, Storage, Udec128_24,
     },
 };
 
@@ -66,14 +66,18 @@ pub(super) fn create_limit_order(
 
     deposits.insert(deposit)?;
 
-    let limit_order = LimitOrder {
-        user,
-        id: order_id,
-        price: *order.price,
-        amount: *order.amount,
-        remaining: order.amount.checked_into_dec()?,
-        created_at_block_height: current_block_height,
-    };
+    let remaining = order.amount.checked_into_dec()?;
+
+    increase_depths(
+        &USER_DEPTHS,
+        storage,
+        &order.base_denom,
+        &order.quote_denom,
+        order.direction,
+        *order.price,
+        remaining,
+        &pair.bucket_sizes,
+    )?;
 
     LIMIT_ORDERS.save(
         storage,
@@ -83,25 +87,15 @@ pub(super) fn create_limit_order(
             *order.price,
             order_id,
         ),
-        &limit_order,
+        &LimitOrder {
+            user,
+            id: order_id,
+            price: *order.price,
+            amount: *order.amount,
+            remaining,
+            created_at_block_height: current_block_height,
+        },
     )?;
-
-    for bucket_size in pair.bucket_sizes {
-        let bucket = core::bucket(*order.price, order.direction, bucket_size)?;
-        USER_DEPTHS.may_update(
-            storage,
-            (
-                (&order.base_denom, &order.quote_denom),
-                *bucket_size,
-                order.direction,
-                bucket,
-            ),
-            |maybe_depth| -> StdResult<_> {
-                let depth = maybe_depth.unwrap_or_default();
-                Ok(depth.checked_add(limit_order.remaining)?)
-            },
-        )?;
-    }
 
     Ok(())
 }

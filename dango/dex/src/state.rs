@@ -1,12 +1,14 @@
 use {
+    crate::core,
     dango_types::{
         account_factory::Username,
         dex::{Direction, LimitOrder, MarketOrder, OrderId, PairParams, RestingOrderBookState},
     },
     grug::{
-        Addr, CoinPair, Counter, Denom, IndexedMap, Item, Map, MultiIndex, NumberConst, Timestamp,
-        Udec128_6, Udec128_24, Uint64, UniqueIndex,
+        Addr, CoinPair, Counter, Denom, IndexedMap, IsZero, Item, Map, MultiIndex, NonZero, Number,
+        NumberConst, StdResult, Storage, Timestamp, Udec128_6, Udec128_24, Uint64, UniqueIndex,
     },
+    std::collections::BTreeSet,
 };
 
 pub const PAUSED: Item<bool> = Item::new("paused");
@@ -60,4 +62,54 @@ pub type OrderKey = ((Denom, Denom), Direction, Udec128_24, OrderId);
 pub struct LimitOrderIndex<'a> {
     pub order_id: UniqueIndex<'a, OrderKey, OrderId, LimitOrder>,
     pub user: MultiIndex<'a, OrderKey, Addr, LimitOrder>,
+}
+
+pub fn increase_depths(
+    map: &Map<((&Denom, &Denom), Udec128_24, Direction, Udec128_24), Udec128_6>,
+    storage: &mut dyn Storage,
+    base_denom: &Denom,
+    quote_denom: &Denom,
+    direction: Direction,
+    price: Udec128_24,
+    remaining: Udec128_6,
+    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
+) -> StdResult<()> {
+    for bucket_size in bucket_sizes {
+        let bucket = core::bucket(price, direction, *bucket_size)?;
+        let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
+
+        map.may_update(storage, key, |maybe_depth| -> StdResult<_> {
+            let depth = maybe_depth.unwrap_or(Udec128_6::ZERO);
+            Ok(depth.checked_add(remaining)?)
+        })?;
+    }
+
+    Ok(())
+}
+
+pub fn decrease_depths(
+    map: &Map<((&Denom, &Denom), Udec128_24, Direction, Udec128_24), Udec128_6>,
+    storage: &mut dyn Storage,
+    base_denom: &Denom,
+    quote_denom: &Denom,
+    direction: Direction,
+    price: Udec128_24,
+    remaining: Udec128_6,
+    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
+) -> StdResult<()> {
+    for bucket_size in bucket_sizes {
+        let bucket = core::bucket(price, direction, *bucket_size)?;
+        let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
+
+        map.modify(storage, key, |depth| -> StdResult<_> {
+            let depth = depth.checked_sub(remaining)?;
+            if depth.is_zero() {
+                Ok(None)
+            } else {
+                Ok(Some(depth))
+            }
+        })?;
+    }
+
+    Ok(())
 }
