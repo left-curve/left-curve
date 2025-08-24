@@ -1,12 +1,15 @@
 use {
-    crate::{LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK},
+    crate::{
+        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK, USER_DEPTHS, core,
+    },
     anyhow::{anyhow, ensure},
     dango_types::dex::{
         CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, LimitOrder, MarketOrder,
         OrderCreated, OrderKind,
     },
     grug::{
-        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, Storage, Udec128_24,
+        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, StdResult, Storage,
+        Udec128_24,
     },
 };
 
@@ -18,12 +21,17 @@ pub(super) fn create_limit_order(
     events: &mut EventBuilder,
     deposits: &mut Coins,
 ) -> anyhow::Result<()> {
-    ensure!(
-        PAIRS.has(storage, (&order.base_denom, &order.quote_denom)),
-        "pair not found with base `{}` and quote `{}`",
-        order.base_denom,
-        order.quote_denom
-    );
+    // TODO: cache this to avoid repeatedly querying this, in case a user creates
+    // multiple orders in the same pair in the same transaction.
+    let pair = PAIRS
+        .may_load(storage, (&order.base_denom, &order.quote_denom))?
+        .ok_or_else(|| {
+            anyhow!(
+                "pair not found with base `{}` and quote `{}`",
+                order.base_denom,
+                order.quote_denom
+            )
+        })?;
 
     let deposit = match order.direction {
         Direction::Bid => Coin {
@@ -58,23 +66,42 @@ pub(super) fn create_limit_order(
 
     deposits.insert(deposit)?;
 
+    let limit_order = LimitOrder {
+        user,
+        id: order_id,
+        price: *order.price,
+        amount: *order.amount,
+        remaining: order.amount.checked_into_dec()?,
+        created_at_block_height: current_block_height,
+    };
+
     LIMIT_ORDERS.save(
         storage,
         (
-            (order.base_denom, order.quote_denom),
+            (order.base_denom.clone(), order.quote_denom.clone()),
             order.direction,
             *order.price,
             order_id,
         ),
-        &LimitOrder {
-            user,
-            id: order_id,
-            price: *order.price,
-            amount: *order.amount,
-            remaining: order.amount.checked_into_dec()?,
-            created_at_block_height: current_block_height,
-        },
+        &limit_order,
     )?;
+
+    for bucket_size in pair.bucket_sizes {
+        let bucket = core::bucket(*order.price, order.direction, bucket_size)?;
+        USER_DEPTHS.may_update(
+            storage,
+            (
+                (&order.base_denom, &order.quote_denom),
+                *bucket_size,
+                order.direction,
+                bucket,
+            ),
+            |maybe_depth| -> StdResult<_> {
+                let depth = maybe_depth.unwrap_or_default();
+                Ok(depth.checked_add(limit_order.remaining)?)
+            },
+        )?;
+    }
 
     Ok(())
 }

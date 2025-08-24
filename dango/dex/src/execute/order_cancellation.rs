@@ -1,17 +1,17 @@
 use {
-    crate::{LIMIT_ORDERS, MARKET_ORDERS, OrderKey},
+    crate::{LIMIT_ORDERS, MARKET_ORDERS, OrderKey, PAIRS, USER_DEPTHS, core},
     anyhow::{bail, ensure},
     dango_types::dex::{Direction, LimitOrder, MarketOrder, OrderCanceled, OrderId, OrderKind},
     grug::{
-        Addr, DecCoin, DecCoins, EventBuilder, Number, Order as IterationOrder, StdResult, Storage,
-        TransferBuilder,
+        Addr, DecCoin, DecCoins, EventBuilder, IsZero, Number, Order as IterationOrder, StdResult,
+        Storage, TransferBuilder,
     },
 };
 
 /// Cancel all orders from all users.
 pub(super) fn cancel_all_orders(
     storage: &mut dyn Storage,
-) -> StdResult<(EventBuilder, TransferBuilder<DecCoins<6>>)> {
+) -> anyhow::Result<(EventBuilder, TransferBuilder<DecCoins<6>>)> {
     let mut events = EventBuilder::new();
     let mut refunds = TransferBuilder::<DecCoins<6>>::new();
 
@@ -21,23 +21,26 @@ pub(super) fn cancel_all_orders(
         .collect::<StdResult<Vec<_>>>()?
     {
         cancel_limit_order(
+            storage,
             order_key.clone(),
             order,
             &mut events,
             refunds.get_mut(order.user),
         )?;
-
-        LIMIT_ORDERS.remove(storage, order_key)?;
     }
 
     // Cancel market orders.
-    for ((user, order_id), (order_key, order)) in MARKET_ORDERS
-        .range(storage, None, None, IterationOrder::Ascending)
+    for (order_key, order) in MARKET_ORDERS
+        .values(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_market_order(order_key, order, &mut events, refunds.get_mut(order.user))?;
-
-        MARKET_ORDERS.remove(storage, (user, order_id));
+        cancel_market_order(
+            storage,
+            order_key,
+            order,
+            &mut events,
+            refunds.get_mut(order.user),
+        )?;
     }
 
     Ok((events, refunds))
@@ -49,7 +52,7 @@ pub(super) fn cancel_all_orders_from_user(
     user: Addr,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
-) -> StdResult<()> {
+) -> anyhow::Result<()> {
     // Cancel maker orders, meaning limit orders that are already in the book.
     for (order_key, order) in LIMIT_ORDERS
         .idx
@@ -58,9 +61,7 @@ pub(super) fn cancel_all_orders_from_user(
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_limit_order(order_key.clone(), order, events, refunds)?;
-
-        LIMIT_ORDERS.remove(storage, order_key)?;
+        cancel_limit_order(storage, order_key.clone(), order, events, refunds)?;
     }
 
     // Cancel market orders.
@@ -69,9 +70,13 @@ pub(super) fn cancel_all_orders_from_user(
         .values(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_market_order((pair, direction, price, order_id), order, events, refunds)?;
-
-        MARKET_ORDERS.remove(storage, (user, order_id));
+        cancel_market_order(
+            storage,
+            (pair, direction, price, order_id),
+            order,
+            events,
+            refunds,
+        )?;
     }
 
     Ok(())
@@ -96,11 +101,7 @@ pub(super) fn cancel_order_from_user(
             "limit order `{order_id}` does not belong to the sender",
         );
 
-        cancel_limit_order(order_key.clone(), order, events, refunds)?;
-
-        LIMIT_ORDERS.remove(storage, order_key)?;
-
-        return Ok(());
+        return cancel_limit_order(storage, order_key.clone(), order, events, refunds);
     }
 
     // Next, check whether it's a market order.
@@ -110,32 +111,30 @@ pub(super) fn cancel_order_from_user(
             "market order `{order_id}` does not belong to the sender"
         );
 
-        cancel_market_order(order_key, order, events, refunds)?;
-
-        MARKET_ORDERS.remove(storage, (user, order_id));
-
-        return Ok(());
+        return cancel_market_order(storage, order_key, order, events, refunds);
     }
 
     bail!("order not found with ID `{order_id}`");
 }
 
 fn cancel_limit_order(
+    storage: &mut dyn Storage,
     order_key: OrderKey,
     order: LimitOrder,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
-) -> StdResult<()> {
-    let ((base_denom, quote_denom), direction, price, order_id) = order_key;
+) -> anyhow::Result<()> {
+    let ((base_denom, quote_denom), direction, price, order_id) = order_key.clone();
+    let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
 
     // Compute the amount of tokens to be sent back to the user.
     let refund = match direction {
         Direction::Bid => DecCoin {
-            denom: quote_denom,
+            denom: quote_denom.clone(),
             amount: order.remaining.checked_mul(price)?,
         },
         Direction::Ask => DecCoin {
-            denom: base_denom,
+            denom: base_denom.clone(),
             amount: order.remaining,
         },
     };
@@ -150,15 +149,31 @@ fn cancel_limit_order(
 
     refunds.insert(refund)?;
 
+    for bucket_size in pair.bucket_sizes {
+        let bucket = core::bucket(price, direction, bucket_size)?;
+        let k = ((&base_denom, &quote_denom), *bucket_size, direction, bucket);
+        USER_DEPTHS.modify(storage, k, |mut depth| -> StdResult<_> {
+            depth.checked_sub_assign(order.remaining)?;
+            if depth.is_zero() {
+                Ok(None)
+            } else {
+                Ok(Some(depth))
+            }
+        })?;
+    }
+
+    LIMIT_ORDERS.remove(storage, order_key)?;
+
     Ok(())
 }
 
 fn cancel_market_order(
+    storage: &mut dyn Storage,
     order_key: OrderKey,
     order: MarketOrder,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
-) -> StdResult<()> {
+) -> anyhow::Result<()> {
     let ((base_denom, quote_denom), direction, price, order_id) = order_key;
 
     // Compute the amount of tokens to be sent back to the user.
@@ -182,6 +197,8 @@ fn cancel_market_order(
     })?;
 
     refunds.insert(refund)?;
+
+    MARKET_ORDERS.remove(storage, (order.user, order.id));
 
     Ok(())
 }
