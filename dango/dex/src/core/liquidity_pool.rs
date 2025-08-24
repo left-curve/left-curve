@@ -443,7 +443,7 @@ mod tests {
             oracle::PrecisionedPrice,
         },
         grug::{Bounded, Coins, Inner, Timestamp, coin_pair, coins, hash_map},
-        std::collections::HashMap,
+        std::collections::{BTreeSet, HashMap},
         test_case::test_case,
     };
 
@@ -644,6 +644,7 @@ mod tests {
             pool_type,
             swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+            bucket_sizes: BTreeSet::new(),
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
@@ -704,6 +705,7 @@ mod tests {
             },
             swap_fee_rate: Bounded::new(Udec128::new_percent(1)).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+            bucket_sizes: BTreeSet::new(),
         };
 
         let reserve = coins! {
@@ -1024,6 +1026,7 @@ mod tests {
             pool_type,
             swap_fee_rate: Bounded::new(fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+            bucket_sizes: BTreeSet::new(),
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
@@ -1344,6 +1347,7 @@ mod tests {
             pool_type,
             swap_fee_rate: Bounded::new(fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+            bucket_sizes: BTreeSet::new(),
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.

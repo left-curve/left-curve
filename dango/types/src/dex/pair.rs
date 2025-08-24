@@ -1,6 +1,8 @@
+use std::collections::BTreeSet;
+
 use grug::{
-    Bounded, Denom, Udec128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
-    ZeroInclusiveOneExclusive,
+    Bounded, Denom, NonZero, Udec128, Udec128_24, ZeroExclusiveOneExclusive,
+    ZeroExclusiveOneInclusive, ZeroInclusiveOneExclusive,
 };
 
 /// Parameters of a trading pair.
@@ -14,6 +16,8 @@ pub struct PairParams {
     /// For the xyk pool, this also sets the spread of the orders when the
     /// passive liquidity is reflected onto the orderbook.
     pub swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+    /// Price granularities for the liquidity depth chart.
+    pub bucket_sizes: BTreeSet<NonZero<Udec128_24>>,
     // TODO: minimum order size
 }
 

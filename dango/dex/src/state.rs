@@ -29,6 +29,16 @@ pub const LIMIT_ORDERS: IndexedMap<OrderKey, LimitOrder, LimitOrderIndex> =
         user: MultiIndex::new(|_, order| order.user, "order", "order__user"),
     });
 
+/// Liquidity depth from user orders.
+// ((base_denom, quote_denom), bucket_size, direction, price)
+pub const USER_DEPTHS: Map<((&Denom, &Denom), Udec128_24, Direction, Udec128_24), Udec128_6> =
+    Map::new("user_depth");
+
+/// Liquidity depth from passive pool orders.
+// ((base_denom, quote_denom), bucket_size, direction, price)
+pub const PASSIVE_DEPTHS: Map<((&Denom, &Denom), Udec128_24, Direction, Udec128_24), Udec128_6> =
+    Map::new("passive_depth");
+
 /// Stores the total trading volume in USD for each account address and timestamp.
 pub const VOLUMES: Map<(&Addr, Timestamp), Udec128_6> = Map::new("volume");
 

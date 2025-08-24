@@ -879,7 +879,7 @@ mod tests {
             oracle::PriceSource,
         },
         grug::{Bounded, MockContext, MockQuerier, Timestamp, Uint128},
-        std::str::FromStr,
+        std::{collections::BTreeSet, str::FromStr},
         test_case::test_case,
     };
 
@@ -1100,6 +1100,7 @@ mod tests {
                         ratio: Bounded::new_unchecked(Udec128::ONE),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    bucket_sizes: BTreeSet::new(),
                 },
             )
             .unwrap();
