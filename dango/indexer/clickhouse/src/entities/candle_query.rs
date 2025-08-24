@@ -175,6 +175,7 @@ impl CandleQueryBuilder {
                 volume_quote,
                 block_height,
                 interval,
+                blocks_count,
               FROM candles FINAL
               WHERE quote_denom = ? AND base_denom = ? AND interval = ?
             "#

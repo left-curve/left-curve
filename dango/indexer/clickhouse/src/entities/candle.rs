@@ -48,6 +48,8 @@ pub struct Candle {
     pub volume_quote: Udec128_6,
     pub interval: CandleInterval,
     pub block_height: u64,
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
+    pub blocks_count: u32,
 }
 
 impl Candle {
@@ -68,6 +70,7 @@ impl Candle {
             volume_quote: pair_price.volume_quote,
             interval,
             block_height: pair_price.block_height,
+            blocks_count: 1,
         }
     }
 
@@ -89,6 +92,7 @@ impl Candle {
             volume_quote: Udec128_6::ZERO,
             interval,
             block_height,
+            blocks_count: 1,
         }
     }
 }
@@ -223,12 +227,10 @@ impl Candle {
         clickhouse_client: &clickhouse::Client,
         pair: PairId,
     ) -> Result<Option<u64>> {
-        let query = format!(
-            "SELECT max(block_height) FROM candles WHERE (quote_denom = ? AND base_denom = ? AND interval = ?)",
-        );
+        let query = "SELECT max(block_height) FROM candles WHERE (quote_denom = ? AND base_denom = ? AND interval = ?)";
 
         let last_block_height: Option<u64> = clickhouse_client
-            .query(&query)
+            .query(query)
             .bind(pair.quote_denom)
             .bind(pair.base_denom)
             .bind(interval)

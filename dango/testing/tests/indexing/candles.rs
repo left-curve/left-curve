@@ -2,12 +2,9 @@ use {
     assertor::*,
     chrono::{DateTime, TimeDelta},
     dango_genesis::Contracts,
-    dango_indexer_clickhouse::{
-        entities::{
-            CandleInterval, candle::Candle, candle_query::CandleQueryBuilder,
-            pair_price::PairPrice, pair_price_query::PairPriceQueryBuilder,
-        },
-        indexer::candles::cache::CandleCacheKey,
+    dango_indexer_clickhouse::entities::{
+        CandleInterval, candle::Candle, candle_query::CandleQueryBuilder, pair_price::PairPrice,
+        pair_price_query::PairPriceQueryBuilder,
     },
     dango_testing::{
         TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer,
@@ -21,11 +18,10 @@ use {
     grug::{
         BlockInfo, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero,
         NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24,
-        Uint128, btree_map, coins, setup_tracing_subscriber,
+        Uint128, btree_map, coins,
     },
     grug_app::Indexer,
     std::str::FromStr,
-    tracing::Level,
 };
 
 #[ignore = "This test is now hanging, should be fixed, the mock feature is not working"]
@@ -127,11 +123,9 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
 
     Ok(())
 }
-#[ignore]
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -182,7 +176,7 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
 
     Ok(())
 }
-#[ignore]
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
@@ -244,7 +238,6 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
     Ok(())
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
@@ -319,6 +312,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_quote: Udec128_6::new(1875),
             interval: CandleInterval::OneSecond,
             block_height: 10,
+            blocks_count: 3,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -332,6 +326,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_quote: Udec128_6::new(2500),
             interval: CandleInterval::OneSecond,
             block_height: 7,
+            blocks_count: 4,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -345,6 +340,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_quote: Udec128_6::from_str("1937.5").unwrap(),
             interval: CandleInterval::OneSecond,
             block_height: 3,
+            blocks_count: 3,
         },
     ]);
 
@@ -353,8 +349,6 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_changing_prices() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::DEBUG);
-
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption {
             // Start at block 0 at 1 second, with a block time of 20 seconds.
@@ -536,16 +530,16 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
-    println!("{:#?}", candle_1m);
+    // println!("{:#?}", candle_1m);
 
-    let candle_cache = clickhouse_context.candle_cache.read().await;
-    let key = CandleCacheKey::new(
-        "dango".to_string(),
-        "bridge/usdc".to_string(),
-        CandleInterval::OneMinute,
-    );
+    // let candle_cache = clickhouse_context.candle_cache.read().await;
+    // let key = CandleCacheKey::new(
+    //     "dango".to_string(),
+    //     "bridge/usdc".to_string(),
+    //     CandleInterval::OneMinute,
+    // );
 
-    println!("Candle cache: {:#?}", candle_cache.get_candles(&key));
+    // println!("Candle cache: {:#?}", candle_cache.get_candles(&key));
 
     // Ensure there are two candles.
     // The most recent candle is the first; the oldest is the last.
@@ -577,7 +571,6 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =

@@ -389,8 +389,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
             .collect::<HashMap<_, _>>()
     );
 
-    println!("Cache : {:#?}", old_cache.candles);
-    println!("Cache from clickhouse: {:#?}", cache.candles);
+    // println!("Cache : {:#?}", old_cache.candles);
+    // println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;

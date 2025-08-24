@@ -44,6 +44,7 @@ impl CandleCacheKey {
 pub struct CandleCache {
     pub candles: HashMap<CandleCacheKey, Vec<Candle>>,
     pub pair_prices: HashMap<u64, Vec<PairPrice>>,
+    pub denoms: HashSet<PairId>,
 }
 
 impl CandleCache {
@@ -60,10 +61,14 @@ impl CandleCache {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, ?pair_prices, "Adding pair_prices");
 
-        let mut candles = Vec::new();
+        let mut result = Vec::new();
 
-        for pair_price in pair_prices.iter() {
-            for candle_interval in CandleInterval::iter() {
+        for candle_interval in CandleInterval::iter() {
+            for pair_price in pair_prices.iter() {
+                if let Ok(denom) = pair_price.try_into() {
+                    self.denoms.insert(denom);
+                }
+
                 let key = CandleCacheKey::new(
                     pair_price.base_denom.clone(),
                     pair_price.quote_denom.clone(),
@@ -76,7 +81,28 @@ impl CandleCache {
                     created_at,
                     Some(pair_price.clone()),
                 ) {
-                    candles.push(candle);
+                    result.push(candle);
+                }
+            }
+
+            if pair_prices.is_empty() {
+                let all_denoms = self.denoms.clone();
+
+                for pair_price in all_denoms {
+                    let key = CandleCacheKey::new(
+                        pair_price.base_denom.to_string(),
+                        pair_price.quote_denom.to_string(),
+                        candle_interval,
+                    );
+
+                    if let Some(candle) = self.update_or_create_candle(
+                        key,
+                        block_height,
+                        created_at,
+                        None, // No new pair_price
+                    ) {
+                        result.push(candle);
+                    }
                 }
             }
         }
@@ -86,7 +112,7 @@ impl CandleCache {
             .or_default()
             .extend(pair_prices);
 
-        candles
+        result
     }
 
     /// This is also called when we don't have new pair_prices but need to create/update a candle
@@ -164,6 +190,8 @@ impl CandleCache {
                         block_height,
                     );
 
+                    candles.insert(insert_pos, candle.clone());
+
                     return Some(candle);
                 } else {
                     #[cfg(feature = "tracing")]
@@ -235,6 +263,7 @@ impl CandleCache {
         }
 
         existing_candle.block_height = existing_candle.block_height.max(block_height);
+        existing_candle.blocks_count += 1;
 
         Some(existing_candle.clone())
     }
@@ -315,6 +344,10 @@ impl CandleCache {
                 acc
             },
         ));
+
+        // Add all denoms
+        let all_pairs = PairPrice::all_pairs(clickhouse_client).await?;
+        self.denoms.extend(all_pairs);
 
         // Create all fetch tasks
         let fetch_tasks = pairs
@@ -470,7 +503,7 @@ mod tests {
         super::*,
         assertor::*,
         chrono::NaiveDateTime,
-        grug::{Udec128_6, Udec128_24},
+        grug::{NumberConst, Udec128_6, Udec128_24},
         std::{collections::VecDeque, str::FromStr},
     };
 
@@ -614,18 +647,73 @@ mod tests {
 
         let first_candle = candles.first().unwrap();
 
-        assert_that!(first_candle.open)
-            .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(first_candle.close)
-            .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(first_candle.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(first_candle.close).is_equal_to(Udec128_24::from_str("27.5").unwrap());
 
         let last_candle = candles.last().unwrap();
-        assert_that!(last_candle.open)
-            .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(last_candle.close)
-            .is_equal_to::<Udec128_24>(Udec128_24::from_str("25").unwrap());
+        assert_that!(last_candle.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(last_candle.close).is_equal_to(Udec128_24::from_str("25").unwrap());
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn missing_pair_prices_creates_candles() -> Result<()> {
+        let mut candle_cache = CandleCache::default();
+
+        let quote_denom = "bridge/usdc";
+        let base_denom = "bridge/btc";
+
+        let pair_prices = vec![
+            pair_price(
+                quote_denom,
+                base_denom,
+                27500000000000000000000000,
+                345160391948092,
+                420047603001999188,
+                "1971-01-01 00:00:00.500",
+                2,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                27500000000000000000000000,
+                345160391948092,
+                420047603001999188,
+                "1971-01-01 00:00:01.500",
+                4,
+            )?,
+        ];
+
+        candle_cache.add_multi_block_pair_prices(pair_prices)?;
+
+        candle_cache.add_pair_prices(3, parse_timestamp("1971-01-01 00:00:01.000")?, vec![]);
+        candle_cache.add_pair_prices(5, parse_timestamp("1971-01-01 00:00:02.000")?, vec![]);
+
+        let cache_key = CandleCacheKey::new(
+            base_denom.to_string(),
+            quote_denom.to_string(),
+            CandleInterval::OneSecond,
+        );
+
+        let candles = candle_cache.get_candles(&cache_key).cloned().unwrap();
+
+        assert_that!(candles).has_length(3);
+        assert_that!(candles.iter().map(|c| c.blocks_count).sum()).is_equal_to(4);
+
+        let last_candle = candles.last().unwrap();
+        assert_that!(last_candle.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(last_candle.close).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+
+        assert_that!(last_candle.volume_quote).is_equal_to(Udec128_6::ZERO);
+        assert_that!(last_candle.volume_base).is_equal_to(Udec128_6::ZERO);
+
+        Ok(())
+    }
+
+    fn parse_timestamp(s: &str) -> Result<DateTime<Utc>> {
+        let naive = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.3f")?;
+        Ok(DateTime::from_naive_utc_and_offset(naive, Utc))
     }
 
     fn parsed_pair_prices() -> Result<Vec<PairPrice>> {
