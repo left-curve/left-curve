@@ -129,6 +129,7 @@ impl CandleCache {
 
         // no previous existing candles, we can just push a new candle
         if candles.is_empty() {
+            #[allow(clippy::question_mark)]
             let Some(pair_price) = pair_price else {
                 #[cfg(feature = "tracing")]
                 tracing::debug!(
