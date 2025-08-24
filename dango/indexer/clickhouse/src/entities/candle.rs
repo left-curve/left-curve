@@ -53,6 +53,10 @@ pub struct Candle {
 }
 
 impl Candle {
+    pub fn has_all_blocks(&self, now: DateTime<Utc>) -> bool {
+        now >= self.time_start + self.interval.duration() * self.blocks_count as i32
+    }
+
     pub fn new_with_pair_price(
         pair_price: PairPrice,
         interval: CandleInterval,

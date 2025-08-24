@@ -20,11 +20,8 @@ use {
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
-    std::{collections::HashMap, sync::Arc, time::Duration},
-    tokio::{
-        sync::{Mutex, mpsc},
-        time::sleep,
-    },
+    std::{collections::HashMap, sync::Arc},
+    tokio::sync::{Mutex, mpsc},
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -87,15 +84,6 @@ async fn query_candles() -> anyhow::Result<()> {
                         .into_iter()
                         .map(|e| e.node)
                         .collect::<Vec<_>>();
-
-                    // I have to use a loop because the candles are filled up
-                    // through async materialized views and it can take a few
-                    // milliseconds.
-                    if !received_candles.is_empty() {
-                        break;
-                    }
-
-                    sleep(Duration::from_millis(100)).await;
                 }
 
                 let expected_candle = serde_json::json!({
@@ -181,15 +169,6 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
                         .into_iter()
                         .map(|e| e.node)
                         .collect::<Vec<_>>();
-
-                    // I have to use a loop because the candles are filled up
-                    // through async materialized views and it can take a few
-                    // milliseconds.
-                    if !received_candles.is_empty() {
-                        break;
-                    }
-
-                    sleep(Duration::from_millis(100)).await;
                 }
 
                 let expected_candle = serde_json::json!({
