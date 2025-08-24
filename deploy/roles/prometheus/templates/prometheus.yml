@@ -78,11 +78,11 @@ scrape_configs:
           service: 'dango'
           environment: 'production'
           network: 'devnet'
-      - targets: ['ovh2:9191'] # ovh2
-        labels:
-          service: 'dango'
-          environment: 'production'
-          network: 'testnet'
+      # - targets: ['ovh2:9191'] # ovh2
+      #   labels:
+      #     service: 'dango'
+      #     environment: 'production'
+      #     network: 'testnet'
 
   - job_name: 'cometbft'
     static_configs:
@@ -90,7 +90,7 @@ scrape_configs:
         labels:
           environment: 'production'
           network: 'devnet'
-      - targets: ['ovh2:26660'] # ovh2
-        labels:
-          environment: 'production'
-          network: 'testnet'
+      # - targets: ['ovh2:26660'] # ovh2
+      #   labels:
+      #     environment: 'production'
+      #     network: 'testnet'

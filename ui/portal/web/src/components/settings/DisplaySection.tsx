@@ -1,6 +1,7 @@
 import { useApp } from "~/hooks/useApp";
 
 import {
+  IconDepth,
   IconFormatNumber,
   IconLanguage,
   IconMoon,
@@ -39,6 +40,31 @@ const LanguageSection: React.FC = () => {
         {locales.map((locale) => (
           <Select.Item key={locale} value={locale}>
             {m["settings.languages"]({ language: locale })}
+          </Select.Item>
+        ))}
+      </Select>
+    </div>
+  );
+};
+
+const ChartEngineSection: React.FC = () => {
+  const { settings, changeSettings } = useApp();
+
+  const { chart } = settings;
+
+  return (
+    <div className="flex items-center justify-between px-2 rounded-md">
+      <p className="flex items-center justify-center gap-2">
+        <IconDepth className="text-tertiary-500" />
+        <span className="diatype-m-bold text-secondary-700">{m["settings.chart"]()}</span>
+      </p>
+      <Select
+        value={chart}
+        onChange={(c) => changeSettings({ chart: c as "tradingview" | "chartiq" })}
+      >
+        {["tradingview", "chartiq"].map((chart) => (
+          <Select.Item key={chart} value={chart}>
+            {m["settings.chartEngines"]({ chart })}
           </Select.Item>
         ))}
       </Select>
@@ -105,6 +131,7 @@ const ThemeSection: React.FC = () => {
 
 export const DisplaySection = Object.assign(Container, {
   Language: LanguageSection,
+  ChartEngine: ChartEngineSection,
   FormatNumber: FormatNumberSection,
   Theme: ThemeSection,
 });

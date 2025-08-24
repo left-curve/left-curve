@@ -62,7 +62,7 @@
   --color-bg-card-green-2: linear-gradient(0deg, #F8F9EF, #F8F9EF), linear-gradient(98.89deg, rgba(248, 249, 239, 0.05) 5.88%, rgba(235, 236, 183, 0.05) 46.73%, rgba(248, 249, 239, 0.05) 94.73%);
 }
 
-html.dark {
+.dark {
   --color-surface-primary-rice: #2D2C2A;
   --color-surface-primary-green: #7C7A65;
   --color-surface-primary-red: #564D4C;
