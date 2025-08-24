@@ -31,6 +31,8 @@ async fn query_candles() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
+    suite.app.indexer.wait_for_finish()?;
+
     let graphql_query = r#"
       query Candles($base_denom: String!, $quote_denom: String!, $interval: String) {
       candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval) {
@@ -114,6 +116,8 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Candles($base_denom: String!, $quote_denom: String!, $interval: String, $earlierThan: DateTime) {
