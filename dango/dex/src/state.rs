@@ -71,7 +71,7 @@ pub fn increase_depths(
     quote_denom: &Denom,
     direction: Direction,
     price: Udec128_24,
-    remaining: Udec128_6,
+    amount: Udec128_6,
     bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
 ) -> StdResult<()> {
     for bucket_size in bucket_sizes {
@@ -80,7 +80,7 @@ pub fn increase_depths(
 
         map.may_update(storage, key, |maybe_depth| -> StdResult<_> {
             let depth = maybe_depth.unwrap_or(Udec128_6::ZERO);
-            Ok(depth.checked_add(remaining)?)
+            Ok(depth.checked_add(amount)?)
         })?;
     }
 
@@ -94,7 +94,7 @@ pub fn decrease_depths(
     quote_denom: &Denom,
     direction: Direction,
     price: Udec128_24,
-    remaining: Udec128_6,
+    filled: Udec128_6,
     bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
 ) -> StdResult<()> {
     for bucket_size in bucket_sizes {
@@ -102,7 +102,7 @@ pub fn decrease_depths(
         let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
 
         map.modify(storage, key, |depth| -> StdResult<_> {
-            let depth = depth.checked_sub(remaining)?;
+            let depth = depth.checked_sub(filled)?;
             if depth.is_zero() {
                 Ok(None)
             } else {

@@ -1,11 +1,12 @@
 use {
     crate::{
         LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES,
-        RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
+        RESTING_ORDER_BOOK, USER_DEPTHS, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, fill_orders,
             match_orders,
         },
+        decrease_depths,
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
@@ -21,12 +22,12 @@ use {
     },
     grug::{
         Addr, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult,
-        Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
+        MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder, Response, StdError,
+        StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
         Udec128_24,
     },
     std::{
-        collections::{BTreeMap, HashMap, hash_map::Entry},
+        collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
         iter,
     },
 };
@@ -117,12 +118,12 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // Loop through all trading pairs. Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
-    for (base_denom, quote_denom) in PAIRS
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
+    for ((base_denom, quote_denom), pair) in PAIRS
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        let pair = (base_denom.clone(), quote_denom.clone());
-        let (market_bids, market_asks) = market_orders.remove(&pair).unwrap_or_default();
+        let pair_id = (base_denom.clone(), quote_denom.clone());
+        let (market_bids, market_asks) = market_orders.remove(&pair_id).unwrap_or_default();
 
         clear_orders_of_pair(
             ctx.storage,
@@ -136,6 +137,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             quote_denom.clone(),
             market_bids,
             market_asks,
+            &pair.bucket_sizes,
             &mut events,
             &mut refunds,
             &mut fees,
@@ -193,6 +195,7 @@ fn clear_orders_of_pair(
     quote_denom: Denom,
     market_bids: MarketOrders,
     market_asks: MarketOrders,
+    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
     events: &mut EventBuilder,
     refunds: &mut TransferBuilder<DecCoins<6>>,
     fees: &mut DecCoins<6>,
@@ -518,6 +521,17 @@ fn clear_orders_of_pair(
             )?;
 
             if let Order::Limit(limit_order) = order {
+                decrease_depths(
+                    &USER_DEPTHS,
+                    storage,
+                    &base_denom,
+                    &quote_denom,
+                    order_direction,
+                    limit_order.price,
+                    filled_base,
+                    bucket_sizes,
+                )?;
+
                 if limit_order.remaining.is_zero() {
                     // Remove the order from the storage if it was fully filled
                     LIMIT_ORDERS.remove(
