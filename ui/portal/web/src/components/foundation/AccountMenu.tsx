@@ -6,9 +6,10 @@ import {
   useSessionKey,
 } from "@left-curve/store";
 import { useNavigate, useRouter } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";
 import { useApp } from "~/hooks/useApp";
+import { useNotifications } from "~/hooks/useNotifications";
 
 import { motion } from "framer-motion";
 
@@ -28,20 +29,84 @@ import {
   IconChevronDown,
   IconMobile,
   IconLogOut,
+  createContext,
 } from "@left-curve/applets-kit";
 import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";
 import { EmptyPlaceholder } from "./EmptyPlaceholder";
-
-import type { PropsWithChildren } from "react";
-import type React from "react";
-
 import { Notifications } from "../notifications/Notifications";
-import { useNotifications } from "~/hooks/useNotifications";
 
-const Container: React.FC<PropsWithChildren> = ({ children }) => {
-  return <>{children}</>;
+import { Direction } from "@left-curve/dango/types";
+
+import type React from "react";
+import type { Coins } from "@left-curve/dango/types";
+import { Decimal } from "@left-curve/dango/utils";
+
+const [AccountMenuProvider, useAccountMenu] = createContext<{
+  balances: Coins;
+  totalBalance: string;
+}>();
+
+const Container: React.FC = () => {
+  const { settings } = useApp();
+  const { isLg } = useMediaQuery();
+  const { account } = useAccount();
+  const { calculateBalance } = usePrices();
+
+  const { formatNumberOptions } = settings;
+
+  const { data: balances = {} } = useBalances({ address: account?.address });
+
+  const { data: orders = [] } = useOrdersByUser();
+
+  const allBalances = useMemo(() => {
+    if (!orders.length) return balances;
+    return orders.reduce(
+      (acc, order) => {
+        const { baseDenom, quoteDenom, amount, direction, remaining } = order;
+        if (direction === Direction.Buy) {
+          const quoteAmount = remaining;
+          acc[quoteDenom] = Decimal(acc[quoteDenom] || "0")
+            .plus(quoteAmount)
+            .toFixed();
+          const restAmount = Decimal(amount).minus(remaining).toFixed();
+          acc[baseDenom] = Decimal(acc[baseDenom] || "0")
+            .minus(restAmount)
+            .toFixed();
+        } else {
+          const baseAmount = remaining;
+          acc[baseDenom] = Decimal(acc[baseDenom] || "0")
+            .plus(baseAmount)
+            .toFixed();
+          const restAmount = Decimal(amount).minus(remaining).toFixed();
+          acc[quoteDenom] = Decimal(acc[quoteDenom] || "0")
+            .minus(restAmount)
+            .toFixed();
+        }
+        return acc;
+      },
+      { ...balances },
+    );
+  }, [balances, orders]);
+
+  const totalBalance = useMemo(
+    () =>
+      calculateBalance(allBalances, {
+        format: true,
+        formatOptions: {
+          ...formatNumberOptions,
+          currency: "USD",
+        },
+      }),
+    [allBalances],
+  );
+
+  return (
+    <AccountMenuProvider value={{ balances: allBalances, totalBalance }}>
+      {isLg ? <Desktop /> : <Mobile />}
+    </AccountMenuProvider>
+  );
 };
 
 type AccountMenuProps = {
@@ -49,22 +114,11 @@ type AccountMenuProps = {
 };
 
 const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
-  const { settings, isSidebarVisible } = useApp();
-  const { formatNumberOptions } = settings;
+  const { isSidebarVisible } = useApp();
   const { account } = useAccount();
   const { history } = useRouter();
+  const { totalBalance } = useAccountMenu();
   const [isAccountSelectorActive, setAccountSelectorActive] = useState(false);
-
-  const { data: balances = {} } = useBalances({ address: account?.address });
-  const { calculateBalance } = usePrices();
-
-  const totalBalance = calculateBalance(balances, {
-    format: true,
-    formatOptions: {
-      ...formatNumberOptions,
-      currency: "USD",
-    },
-  });
 
   useEffect(() => {
     if (!isSidebarVisible) setAccountSelectorActive(false);
@@ -233,19 +287,15 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
 };
 
 export const WalletTab: React.FC = () => {
-  const { account } = useAccount();
-  const { data: balances = {} } = useBalances({ address: account?.address });
-
-  const { data: orders = [] } = useOrdersByUser();
-
-  const allBalances = Object.entries(balances);
+  const context = useAccountMenu();
+  const balances = Object.entries(context.balances);
 
   return (
     <div className="flex flex-col w-full items-center">
-      {allBalances.length > 0 ? (
+      {balances.length > 0 ? (
         <div className="flex flex-col w-full gap-4 items-center">
           <div className="flex flex-col w-full gap-2">
-            {allBalances.map(([denom, amount]) => (
+            {balances.map(([denom, amount]) => (
               <AssetCard key={denom} coin={{ denom, amount }} />
             ))}
           </div>
@@ -267,21 +317,30 @@ export const NotificationsTab: React.FC = () => {
 
   return (
     <div className="pb-[2.5rem] flex flex-col">
-      <Notifications
-        className="max-h-[41rem] overflow-y-scroll scrollbar-none"
-        maxNotifications={5}
-      />
       {totalNotifications > 0 ? (
-        <div className="p-4 flex items-center justify-center">
-          <Button
-            variant="link"
-            className="py-0 h-fit"
-            onClick={() => [navigate({ to: "/notifications" }), setSidebarVisibility(false)]}
-          >
-            {m["common.viewAll"]()}
-          </Button>
+        <>
+          <Notifications
+            className="max-h-[41rem] overflow-y-scroll scrollbar-none"
+            maxNotifications={5}
+          />
+          <div className="p-4 flex items-center justify-center">
+            <Button
+              variant="link"
+              className="py-0 h-fit"
+              onClick={() => [navigate({ to: "/notifications" }), setSidebarVisibility(false)]}
+            >
+              {m["common.viewAll"]()}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="px-4">
+          <EmptyPlaceholder
+            component={m["notifications.noNotifications.title"]()}
+            className="p-4"
+          />
         </div>
-      ) : null}
+      )}
     </div>
   );
 };

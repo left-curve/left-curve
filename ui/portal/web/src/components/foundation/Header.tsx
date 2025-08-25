@@ -4,15 +4,7 @@ import { useAccount } from "@left-curve/store";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useMediaQuery } from "@left-curve/applets-kit";
 
-import {
-  Button,
-  IconBell,
-  IconButton,
-  IconGear,
-  IconUser,
-  IconWallet,
-  twMerge,
-} from "@left-curve/applets-kit";
+import { Button, IconButton, IconWallet, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
 import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
@@ -28,19 +20,12 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected } = useAccount();
 
-  const {
-    setSidebarVisibility,
-    setNotificationMenuVisibility,
-    isNotificationMenuVisible,
-    isSidebarVisible,
-    isSearchBarVisible,
-  } = useApp();
+  const { setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
   const navigate = useNavigate();
   const { isLg } = useMediaQuery();
   const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
-  const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
   const isProSwap = location.pathname.includes("trade");
 
   const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
@@ -89,41 +74,11 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
               type="button"
               className="shadow-account-card lg:hidden"
             >
-              <IconWallet className="h-6 w-6 " />
+              <TxIndicator icon={<IconWallet className="w-6 h-6" />} />
             </IconButton>
           ) : null}
         </div>
         <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
-          <Button
-            as={Link}
-            variant="utility"
-            size="lg"
-            to="/settings"
-            className=""
-            data-status={linkStatus("/settings")}
-          >
-            <IconGear className="w-6 h-6" />
-          </Button>
-
-          {isConnected ? (
-            <TxIndicator
-              as={Button}
-              variant="utility"
-              size="lg"
-              data-status={linkStatus("/notifications")}
-              onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
-            >
-              <Button
-                ref={buttonNotificationsRef}
-                variant="utility"
-                size="lg"
-                data-status={linkStatus("/notifications")}
-                onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
-              >
-                <IconBell className="w-6 h-6" />
-              </Button>
-            </TxIndicator>
-          ) : null}
           <Button
             dng-connect-button="true"
             variant="utility"
@@ -133,10 +88,12 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             }
           >
             {isConnected ? (
-              <>
-                <IconUser className="w-6 h-6" />
-                <span className="italic font-exposure font-bold">{account?.username}</span>
-              </>
+              <div className="flex items-center justify-center gap-2">
+                <TxIndicator icon={<IconWallet className="w-6 h-6" />} />
+                <span className="italic font-exposure font-bold capitalize">
+                  {account?.type} # {account?.index}
+                </span>
+              </div>
             ) : (
               <span>{m["common.signin"]()}</span>
             )}
@@ -144,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         </div>
         <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
-      {isLg ? <AccountMenu.Desktop /> : <AccountMenu.Mobile />}
+      <AccountMenu />
     </header>
   );
 };
