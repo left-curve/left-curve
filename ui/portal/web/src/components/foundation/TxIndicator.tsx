@@ -3,7 +3,10 @@ import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
 import type React from "react";
-import type { PropsWithChildren } from "react";
+
+type TxIndicatorProps = {
+  icon: React.ReactNode;
+};
 
 const Indicators = {
   spinner: Spinner,
@@ -11,23 +14,12 @@ const Indicators = {
   error: IconCloseCircle,
 };
 
-type IndicatorProps<C extends React.ElementType = React.ElementType> = PropsWithChildren<
-  {
-    as?: C;
-  } & React.ComponentPropsWithoutRef<C>
->;
-
-export const TxIndicator = <C extends React.ElementType = React.ElementType>({
-  as,
-  children,
-  ...props
-}: IndicatorProps<C>) => {
+export const TxIndicator: React.FC<TxIndicatorProps> = ({ icon }) => {
   const { subscriptions } = useApp();
   const [isSubmittingTx, setIsSubmittingTx] = useState(false);
   const [indicator, setIndicator] = useState<keyof typeof Indicators>("spinner");
 
   const IndicatorComponent = Indicators[indicator];
-  const WrapperComponent = as ?? "button";
 
   useEffect(() => {
     const unsubscribe = subscriptions.subscribe("submitTx", {
@@ -47,17 +39,15 @@ export const TxIndicator = <C extends React.ElementType = React.ElementType>({
   }, []);
 
   return isSubmittingTx ? (
-    <WrapperComponent {...props}>
-      <IndicatorComponent
-        size="md"
-        color="current"
-        className={twMerge({
-          "text-green-bean-300 w-6 h-6": indicator === "success",
-          "text-red-bean-300 w-6 h-6": indicator === "error",
-        })}
-      />
-    </WrapperComponent>
+    <IndicatorComponent
+      size="md"
+      color="current"
+      className={twMerge({
+        "text-green-bean-300 w-6 h-6": indicator === "success",
+        "text-red-bean-300 w-6 h-6": indicator === "error",
+      })}
+    />
   ) : (
-    <>{children}</>
+    icon
   );
 };

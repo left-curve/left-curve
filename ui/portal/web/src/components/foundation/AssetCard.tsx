@@ -7,9 +7,9 @@ import { motion } from "framer-motion";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 
-import type { AnyCoin, WithAmount } from "@left-curve/store/types";
+import type { Coin } from "@left-curve/dango/types";
 interface Props {
-  coin: WithAmount<AnyCoin>;
+  coin: Coin;
 }
 
 export const AssetCard: React.FC<Props> = ({ coin }) => {
