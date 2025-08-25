@@ -1,9 +1,6 @@
 #[cfg(feature = "metrics")]
 use metrics::{counter, gauge, histogram};
 
-#[cfg(test)]
-use {grug::Denom, std::str::FromStr};
-
 use {
     crate::{
         entities::{
@@ -46,65 +43,67 @@ impl CandleCacheKey {
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct CandleCache {
     pub candles: HashMap<CandleCacheKey, Vec<Candle>>,
-    pub pair_prices: HashMap<u64, HashMap<PairId, PairPrice>>,
+    pub pair_prices: HashMap<u64, Vec<PairPrice>>,
+    pub denoms: HashSet<PairId>,
 }
 
 impl CandleCache {
-    pub fn pair_price_for_block(&self, block_height: u64) -> Option<&HashMap<PairId, PairPrice>> {
+    pub fn pair_price_for_block(&self, block_height: u64) -> Option<&Vec<PairPrice>> {
         self.pair_prices.get(&block_height)
     }
 
-    pub fn add_pair_prices(&mut self, block_height: u64, pair_prices: HashMap<PairId, PairPrice>) {
-        if pair_prices.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(block_height, "Received empty pair_prices");
-
-            // I still need to create the key, so we know we processed this block
-            self.pair_prices
-                .entry(block_height)
-                .or_default()
-                .extend(pair_prices);
-
-            return;
-        }
-
+    pub fn add_pair_prices(
+        &mut self,
+        block_height: u64,
+        created_at: DateTime<Utc>,
+        pair_prices: Vec<PairPrice>,
+    ) -> Vec<Candle> {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, ?pair_prices, "Adding pair_prices");
 
-        for pair_price in pair_prices.values() {
-            for candle_interval in CandleInterval::iter() {
+        let mut result = Vec::new();
+
+        for candle_interval in CandleInterval::iter() {
+            for pair_price in pair_prices.iter() {
+                if let Ok(denom) = pair_price.try_into() {
+                    self.denoms.insert(denom);
+                }
+
                 let key = CandleCacheKey::new(
                     pair_price.base_denom.clone(),
                     pair_price.quote_denom.clone(),
                     candle_interval,
                 );
 
-                let candle = Candle {
-                    quote_denom: pair_price.quote_denom.clone(),
-                    base_denom: pair_price.base_denom.clone(),
-                    time_start: candle_interval.interval_start(pair_price.created_at),
-                    open: pair_price.open_price,
-                    high: pair_price.highest_price,
-                    low: pair_price.lowest_price,
-                    close: pair_price.close_price,
-                    volume_base: pair_price.volume_base,
-                    volume_quote: pair_price.volume_quote,
-                    interval: candle_interval,
-                    block_height: pair_price.block_height,
-                };
+                if let Some(candle) = self.update_or_create_candle(
+                    key,
+                    block_height,
+                    created_at,
+                    Some(pair_price.clone()),
+                ) {
+                    result.push(candle);
+                }
+            }
 
-                // #[cfg(feature = "tracing")]
-                // tracing::debug!(
-                //     %candle.block_height,
-                //     %candle.base_denom,
-                //     %candle.quote_denom,
-                //     %candle.volume_base,
-                //     %candle.volume_quote,
-                //     %candle_interval,
-                //     "Calling add_candle()",
-                // );
+            if pair_prices.is_empty() {
+                let all_denoms = self.denoms.clone();
 
-                self.add_candle(key, candle);
+                for pair_price in all_denoms {
+                    let key = CandleCacheKey::new(
+                        pair_price.base_denom.to_string(),
+                        pair_price.quote_denom.to_string(),
+                        candle_interval,
+                    );
+
+                    if let Some(candle) = self.update_or_create_candle(
+                        key,
+                        block_height,
+                        created_at,
+                        None, // No new pair_price
+                    ) {
+                        result.push(candle);
+                    }
+                }
             }
         }
 
@@ -112,84 +111,162 @@ impl CandleCache {
             .entry(block_height)
             .or_default()
             .extend(pair_prices);
+
+        result
     }
 
-    pub fn add_candle(&mut self, key: CandleCacheKey, mut candle: Candle) {
-        let _interval = candle.interval;
-        let candles = self.candles.entry(key).or_default();
+    /// This is also called when we don't have new pair_prices but need to create/update a candle
+    pub fn update_or_create_candle(
+        &mut self,
+        key: CandleCacheKey,
+        block_height: u64,
+        created_at: DateTime<Utc>,
+        pair_price: Option<PairPrice>,
+    ) -> Option<Candle> {
+        let time_start = key.interval.interval_start(created_at);
+        let interval = key.interval;
+        let candles = self.candles.entry(key.clone()).or_default();
 
-        // no existing candles, we can just push it
+        // no previous existing candles, we can just push a new candle
         if candles.is_empty() {
+            #[allow(clippy::question_mark)]
+            let Some(pair_price) = pair_price else {
+                #[cfg(feature = "tracing")]
+                tracing::debug!(
+                    %created_at,
+                    %interval,
+                    "Candles is empty, no pair_price, creating no candle",
+                );
+
+                return None;
+            };
+
             #[cfg(feature = "tracing")]
             tracing::debug!(
-                %candle.block_height,
-                %candle.base_denom,
-                %candle.quote_denom,
-                %_interval,
-                "Adding candle, cache is empty",
+                %pair_price.block_height,
+                %pair_price.base_denom,
+                %pair_price.quote_denom,
+                %interval,
+                "Candles is empty, adding a new candle",
             );
 
-            candles.push(candle);
-            return;
-        };
+            let candle = Candle::new_with_pair_price(pair_price, interval, time_start);
+
+            candles.push(candle.clone());
+
+            return Some(candle);
+        }
 
         // NOTE: Candles don't necessarily come in order, because the indexing
         // is done async per block. We could receive block 5 before block 4.
+        // The existing candle could be an older candle than our last.
         let existing_candle = candles
             .iter_mut()
             .rev()
-            .take_while(|existing_candle| existing_candle.time_start >= candle.time_start)
-            .find(|existing_candle| existing_candle.time_start == candle.time_start);
+            .take_while(|existing_candle| existing_candle.time_start >= time_start)
+            .find(|existing_candle| existing_candle.time_start == time_start);
 
         let Some(existing_candle) = existing_candle else {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                %candle.block_height,
-                %candle.base_denom,
-                %candle.quote_denom,
-                %_interval,
-                "Pushing candle, no existing candle found",
-            );
-
             // Find correct position to maintain time order
             let insert_pos = candles
                 .iter()
-                .position(|c| c.time_start > candle.time_start)
+                .position(|c| c.time_start > time_start)
                 .unwrap_or(candles.len());
 
-            candles.insert(insert_pos, candle);
-            return;
+            let Some(pair_price) = pair_price else {
+                if insert_pos > 0 {
+                    let previous_candle = &candles[insert_pos - 1];
+
+                    #[cfg(feature = "tracing")]
+                    tracing::debug!(
+                        %created_at,
+                        %interval,
+                        "Found no existing candle, and no pair_price, will create a candle based on previous candle",
+                    );
+
+                    let candle = Candle::new_with_previous_candle(
+                        previous_candle,
+                        interval,
+                        time_start,
+                        block_height,
+                    );
+
+                    candles.insert(insert_pos, candle.clone());
+
+                    return Some(candle);
+                } else {
+                    #[cfg(feature = "tracing")]
+                    tracing::debug!(
+                        %created_at,
+                        %interval,
+                        "Found no existing candle, no pair_price, no previous candle, creating no candle",
+                    );
+                    return None;
+                }
+            };
+
+            #[cfg(feature = "tracing")]
+            tracing::debug!(
+                %block_height,
+                %key.base_denom,
+                %key.quote_denom,
+                %interval,
+                "No existing candle found, adding a new candle",
+            );
+
+            let mut candle = Candle::new_with_pair_price(pair_price, interval, time_start);
+
+            // We set the open price for the new candle to the previous candle close price
+            if insert_pos > 0 {
+                let previous_candle = &candles[insert_pos - 1];
+                candle.open = previous_candle.close;
+            }
+
+            candles.insert(insert_pos, candle.clone());
+
+            return Some(candle);
         };
 
         #[cfg(feature = "tracing")]
         tracing::debug!(
-            %candle.block_height,
-            %candle.base_denom,
-            %candle.quote_denom,
+            %block_height,
+            %key.base_denom,
+            %key.quote_denom,
+            %interval,
             %existing_candle.volume_base,
             %existing_candle.volume_quote,
             %existing_candle.block_height,
-            %candle.volume_base,
-            %candle.volume_quote,
-            %_interval,
             "Modifying existing candle",
         );
 
-        if candle.block_height > existing_candle.block_height {
-            candle.open = existing_candle.open;
-        } else {
-            candle.close = existing_candle.close;
+        if block_height == existing_candle.block_height {
+            #[cfg(feature = "tracing")]
+            tracing::error!(
+                %interval,
+                %block_height,
+                "Seeing the same pair_price for the same block_height",
+            );
+        } else if block_height > existing_candle.block_height {
+            // PairPrice might not come in order, we only set close price if the
+            // pair price has a later block.
+            // NOTE: we should also change the open price of the next candle, if exists.
+            if let Some(pair_price) = &pair_price {
+                existing_candle.close = pair_price.clearing_price;
+            }
         }
 
-        candle.high = existing_candle.high.max(candle.high);
-        candle.low = existing_candle.low.min(candle.low);
+        if let Some(pair_price) = pair_price {
+            existing_candle.volume_base += pair_price.volume_base;
+            existing_candle.volume_quote += pair_price.volume_quote;
 
-        candle.volume_base += existing_candle.volume_base;
-        candle.volume_quote += existing_candle.volume_quote;
+            existing_candle.high = existing_candle.high.max(pair_price.clearing_price);
+            existing_candle.low = existing_candle.low.min(pair_price.clearing_price);
+        }
 
-        candle.block_height = existing_candle.block_height.max(candle.block_height);
+        existing_candle.block_height = existing_candle.block_height.max(block_height);
+        existing_candle.blocks_count += 1;
 
-        *existing_candle = candle;
+        Some(existing_candle.clone())
     }
 
     /// Does the cache have all candles for the given dates?
@@ -253,28 +330,25 @@ impl CandleCache {
         pairs: &[PairId],
         clickhouse_client: &clickhouse::Client,
     ) -> Result<()> {
-        let last_prices = PairPrice::latest_prices(clickhouse_client, MAX_ITEMS)
-            .await?
-            .into_iter()
-            .map(|price| Ok(((&price).try_into()?, price)))
-            .filter_map(Result::ok)
-            .fold(
-                HashMap::<u64, HashMap<PairId, PairPrice>>::new(),
-                |mut acc, (pair_id, price)| {
-                    acc.entry(price.block_height)
-                        .or_default()
-                        .insert(pair_id, price);
-                    acc
-                },
-            );
+        let last_prices = PairPrice::latest_prices(clickhouse_client, MAX_ITEMS).await?;
 
-        let Some(highest_block_height) = last_prices.keys().copied().max() else {
+        let Some(highest_block_height) = last_prices.last().map(|price| price.block_height) else {
             #[cfg(feature = "tracing")]
             tracing::warn!("No last prices found, skipping candle preload since it's all empty.");
             return Ok(());
         };
 
-        self.pair_prices.extend(last_prices);
+        self.pair_prices.extend(last_prices.into_iter().fold(
+            HashMap::new(),
+            |mut acc: HashMap<u64, Vec<PairPrice>>, price| {
+                acc.entry(price.block_height).or_default().push(price);
+                acc
+            },
+        ));
+
+        // Add all denoms
+        let all_pairs = PairPrice::all_pairs(clickhouse_client).await?;
+        self.denoms.extend(all_pairs);
 
         // Create all fetch tasks
         let fetch_tasks = pairs
@@ -404,7 +478,7 @@ impl CandleCache {
                 .set(self.pair_prices.len() as f64);
 
             // Total individual pair_prices stored
-            let total_pair_prices: usize = self.pair_prices.values().map(HashMap::len).sum();
+            let total_pair_prices: usize = self.pair_prices.values().map(Vec::len).sum();
             gauge!("indexer.clickhouse.pair_prices.cache.size.pair_prices")
                 .set(total_pair_prices as f64);
         }
@@ -417,15 +491,7 @@ impl CandleCache {
         for pair_price in pair_prices {
             let block_height = pair_price.block_height;
 
-            let hashmap_pair_price = HashMap::from([(
-                PairId {
-                    base_denom: Denom::from_str(&pair_price.base_denom)?,
-                    quote_denom: Denom::from_str(&pair_price.quote_denom)?,
-                },
-                pair_price,
-            )]);
-
-            self.add_pair_prices(block_height, hashmap_pair_price);
+            self.add_pair_prices(block_height, pair_price.created_at, vec![pair_price]);
         }
 
         Ok(())
@@ -438,7 +504,7 @@ mod tests {
         super::*,
         assertor::*,
         chrono::NaiveDateTime,
-        grug::{Denom, Udec128_6, Udec128_24},
+        grug::{NumberConst, Udec128_6, Udec128_24},
         std::{collections::VecDeque, str::FromStr},
     };
 
@@ -446,19 +512,7 @@ mod tests {
     async fn create_candles() -> Result<()> {
         let mut candle_cache = CandleCache::default();
 
-        for pair_price in parsed_pair_prices()? {
-            let block_height = pair_price.block_height;
-
-            let hashmap_pair_price = HashMap::from([(
-                PairId {
-                    base_denom: Denom::from_str(&pair_price.base_denom)?,
-                    quote_denom: Denom::from_str(&pair_price.quote_denom)?,
-                },
-                pair_price,
-            )]);
-
-            candle_cache.add_pair_prices(block_height, hashmap_pair_price);
-        }
+        candle_cache.add_multi_block_pair_prices(parsed_pair_prices()?)?;
 
         let cache_key = CandleCacheKey::new(
             "bridge/btc".to_string(),
@@ -507,9 +561,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
                 0,
                 0,
                 "2025-08-13 17:36:01.038565",
@@ -519,9 +570,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
                 0,
                 0,
                 "2025-08-13 17:36:00.086616",
@@ -530,9 +578,6 @@ mod tests {
             pair_price(
                 quote_denom,
                 base_denom,
-                1217208030172232059779705322,
-                1216963512618701957116501833,
-                1216963512618701957116501833,
                 1216963512618701957116501833,
                 345160391948092,
                 420047603001999188,
@@ -566,9 +611,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 27500000000000000000000000,
-                27500000000000000000000000,
-                27500000000000000000000000,
-                27500000000000000000000000,
                 345160391948092,
                 420047603001999188,
                 "1971-01-01 00:00:00.500",
@@ -578,9 +620,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 27500000000000000000000000,
-                27500000000000000000000000,
-                25000000000000000000000000,
-                25000000000000000000000000,
                 345160391948092,
                 420047603001999188,
                 "1971-01-01 00:00:01.000",
@@ -589,9 +628,6 @@ mod tests {
             pair_price(
                 quote_denom,
                 base_denom,
-                25000000000000000000000000,
-                25000000000000000000000000,
-                25000000000000000000000000,
                 25000000000000000000000000,
                 345160391948092,
                 420047603001999188,
@@ -612,18 +648,73 @@ mod tests {
 
         let first_candle = candles.first().unwrap();
 
-        assert_that!(first_candle.open)
-            .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(first_candle.close)
-            .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(first_candle.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(first_candle.close).is_equal_to(Udec128_24::from_str("27.5").unwrap());
 
         let last_candle = candles.last().unwrap();
-        assert_that!(last_candle.open)
-            .is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(last_candle.close)
-            .is_equal_to::<Udec128_24>(Udec128_24::from_str("25").unwrap());
+        assert_that!(last_candle.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(last_candle.close).is_equal_to(Udec128_24::from_str("25").unwrap());
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn missing_pair_prices_creates_candles() -> Result<()> {
+        let mut candle_cache = CandleCache::default();
+
+        let quote_denom = "bridge/usdc";
+        let base_denom = "bridge/btc";
+
+        let pair_prices = vec![
+            pair_price(
+                quote_denom,
+                base_denom,
+                27500000000000000000000000,
+                345160391948092,
+                420047603001999188,
+                "1971-01-01 00:00:00.500",
+                2,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                27500000000000000000000000,
+                345160391948092,
+                420047603001999188,
+                "1971-01-01 00:00:01.500",
+                4,
+            )?,
+        ];
+
+        candle_cache.add_multi_block_pair_prices(pair_prices)?;
+
+        candle_cache.add_pair_prices(3, parse_timestamp("1971-01-01 00:00:01.000")?, vec![]);
+        candle_cache.add_pair_prices(5, parse_timestamp("1971-01-01 00:00:02.000")?, vec![]);
+
+        let cache_key = CandleCacheKey::new(
+            base_denom.to_string(),
+            quote_denom.to_string(),
+            CandleInterval::OneSecond,
+        );
+
+        let candles = candle_cache.get_candles(&cache_key).cloned().unwrap();
+
+        assert_that!(candles).has_length(3);
+        assert_that!(candles.iter().map(|c| c.blocks_count).sum()).is_equal_to(4);
+
+        let last_candle = candles.last().unwrap();
+        assert_that!(last_candle.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+        assert_that!(last_candle.close).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+
+        assert_that!(last_candle.volume_quote).is_equal_to(Udec128_6::ZERO);
+        assert_that!(last_candle.volume_base).is_equal_to(Udec128_6::ZERO);
+
+        Ok(())
+    }
+
+    fn parse_timestamp(s: &str) -> Result<DateTime<Utc>> {
+        let naive = NaiveDateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S%.3f")?;
+        Ok(DateTime::from_naive_utc_and_offset(naive, Utc))
     }
 
     fn parsed_pair_prices() -> Result<Vec<PairPrice>> {
@@ -635,9 +726,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
                 0,
                 0,
                 "2025-08-13 17:36:00.038565",
@@ -647,9 +735,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
-                1217208030172232059779705322,
                 0,
                 0,
                 "2025-08-13 17:36:01.086616",
@@ -658,9 +743,6 @@ mod tests {
             pair_price(
                 quote_denom,
                 base_denom,
-                1217208030172232059779705322,
-                1216963512618701957116501833,
-                1216963512618701957116501833,
                 1216963512618701957116501833,
                 345160391948092,
                 420047603001999188,
@@ -671,9 +753,6 @@ mod tests {
                 quote_denom,
                 base_denom,
                 1216963512618701957116501833,
-                1216961816562295438187182730,
-                1216961816562295438187182730,
-                1216961816562295438187182730,
                 108404821869154,
                 131924528945998920,
                 "2025-08-13 17:36:03.182534",
@@ -682,9 +761,6 @@ mod tests {
             pair_price(
                 quote_denom,
                 base_denom,
-                1216961816562295438187182730,
-                1216961816562295438187182730,
-                1216961816562295438187182730,
                 1216961816562295438187182730,
                 0,
                 0,
@@ -697,10 +773,7 @@ mod tests {
     fn pair_price(
         quote_denom: &str,
         base_denom: &str,
-        open_price: u128,
-        highest_price: u128,
-        lowest_price: u128,
-        close_price: u128,
+        clearing_price: u128,
         volume_base: u128,
         volume_quote: u128,
         created_at: &str,
@@ -709,10 +782,7 @@ mod tests {
         Ok(PairPrice {
             quote_denom: quote_denom.to_string(),
             base_denom: base_denom.to_string(),
-            open_price: Udec128_24::raw(grug::Int::new(open_price)),
-            highest_price: Udec128_24::raw(grug::Int::new(highest_price)),
-            lowest_price: Udec128_24::raw(grug::Int::new(lowest_price)),
-            close_price: Udec128_24::raw(grug::Int::new(close_price)),
+            clearing_price: Udec128_24::raw(grug::Int::new(clearing_price)),
             volume_base: Udec128_6::raw(grug::Int::new(volume_base)),
             volume_quote: Udec128_6::raw(grug::Int::new(volume_quote)),
             created_at: NaiveDateTime::parse_from_str(created_at, "%Y-%m-%d %H:%M:%S%.f")?

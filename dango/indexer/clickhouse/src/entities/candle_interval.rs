@@ -80,32 +80,6 @@ impl CandleInterval {
             CandleInterval::OneWeek => Duration::seconds(604800),
         }
     }
-
-    pub fn table_name(&self) -> &str {
-        match self {
-            CandleInterval::OneSecond => "pair_prices_1s",
-            CandleInterval::OneMinute => "pair_prices_1m",
-            CandleInterval::FiveMinutes => "pair_prices_5m",
-            CandleInterval::FifteenMinutes => "pair_prices_15m",
-            CandleInterval::OneHour => "pair_prices_1h",
-            CandleInterval::FourHours => "pair_prices_4h",
-            CandleInterval::OneDay => "pair_prices_1d",
-            CandleInterval::OneWeek => "pair_prices_1w",
-        }
-    }
-
-    pub fn materialized_table_name(&self) -> &str {
-        match self {
-            CandleInterval::OneSecond => "pair_prices_1s_mv",
-            CandleInterval::OneMinute => "pair_prices_1m_mv",
-            CandleInterval::FiveMinutes => "pair_prices_5m_mv",
-            CandleInterval::FifteenMinutes => "pair_prices_15m_mv",
-            CandleInterval::OneHour => "pair_prices_1h_mv",
-            CandleInterval::FourHours => "pair_prices_4h_mv",
-            CandleInterval::OneDay => "pair_prices_1d_mv",
-            CandleInterval::OneWeek => "pair_prices_1w_mv",
-        }
-    }
 }
 
 impl Serialize for CandleInterval {

@@ -46,6 +46,15 @@ pub struct OrdersMatched {
     pub volume: Udec128_6,
 }
 
+impl From<&OrdersMatched> for PairId {
+    fn from(order: &OrdersMatched) -> Self {
+        PairId {
+            base_denom: order.base_denom.to_owned(),
+            quote_denom: order.quote_denom.to_owned(),
+        }
+    }
+}
+
 #[grug::derive(Serde)]
 #[grug::event("order_filled")]
 pub struct OrderFilled {

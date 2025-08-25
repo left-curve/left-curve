@@ -24,16 +24,7 @@ pub struct PairPrice {
     pub base_denom: String,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "dec")]
-    pub open_price: Udec128_24,
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "dec")]
-    pub highest_price: Udec128_24,
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "dec")]
-    pub lowest_price: Udec128_24,
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    #[serde(with = "dec")]
-    pub close_price: Udec128_24,
+    pub clearing_price: Udec128_24,
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     #[serde(with = "dec")]
     pub volume_base: Udec128_6,
@@ -178,10 +169,7 @@ mod test {
         let pair_price = PairPrice {
             quote_denom: "USDC".to_string(),
             base_denom: "USDT".to_string(),
-            open_price: Udec128_24::MAX,
-            close_price: Udec128_24::MAX,
-            highest_price: Udec128_24::MAX,
-            lowest_price: Udec128_24::MAX,
+            clearing_price: Udec128_24::MAX,
             volume_base: Udec128_6::MAX,
             volume_quote: Udec128_6::MAX,
             // On the CI I saw nanoseconds (9), on my computer it's milliseconds (6).

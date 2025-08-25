@@ -12,6 +12,9 @@ use {
     std::time::Instant,
 };
 
+pub mod candles;
+pub mod trades;
+
 pub struct Indexer {
     pub context: Context,
     pub runtime_handler: RuntimeHandler,
@@ -128,7 +131,6 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` work started");
 
-        let clickhouse_client = self.context.clickhouse_client().clone();
         let querier = querier.clone();
         let ctx = ctx.clone();
         let context = self.context.clone();
@@ -140,8 +142,8 @@ impl grug_app::Indexer for Indexer {
             let dex_addr = querier.as_ref().query_dex()?;
 
             try_join!(
-                Self::store_candles(&clickhouse_client, &dex_addr, &ctx, &context),
-                Self::store_trades(&clickhouse_client, &dex_addr, &ctx, &context)
+                Self::store_candles(&dex_addr, &ctx, &context),
+                Self::store_trades(&dex_addr, &ctx, &context)
             )?;
 
             #[cfg(feature = "metrics")]

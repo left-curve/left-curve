@@ -119,7 +119,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.close_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
+    assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
 
     Ok(())
 }
@@ -144,14 +144,14 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.close_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
+    assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
     assert_that!(pair_price.volume_base)
         .is_equal_to::<Udec128_6>(Udec128_6::from_str("25.0").unwrap());
     assert_that!(pair_price.volume_quote)
         .is_equal_to::<Udec128_6>(Udec128_6::from_str("687.5").unwrap());
 
     // Makes sure we get correct precision: 27.4 without specific number, since this can change.
-    assert_that!(pair_price.close_price.to_string().len()).is_equal_to(4);
+    assert_that!(pair_price.clearing_price.to_string().len()).is_equal_to(4);
 
     let candle_query_builder = CandleQueryBuilder::new(
         CandleInterval::OneMinute,
@@ -215,14 +215,15 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
             .naive_utc(),
     );
 
-    assert_that!(candle.open).is_equal_to(pair_prices.last().unwrap().open_price);
+    assert_that!(candle.open).is_equal_to(pair_prices.last().unwrap().clearing_price);
 
     assert_that!(candle.high)
-        .is_equal_to(pair_prices.iter().map(|p| p.highest_price).max().unwrap());
+        .is_equal_to(pair_prices.iter().map(|p| p.clearing_price).max().unwrap());
 
-    assert_that!(candle.low).is_equal_to(pair_prices.iter().map(|p| p.lowest_price).min().unwrap());
+    assert_that!(candle.low)
+        .is_equal_to(pair_prices.iter().map(|p| p.clearing_price).min().unwrap());
 
-    assert_that!(candle.close).is_equal_to(pair_prices.first().unwrap().close_price);
+    assert_that!(candle.close).is_equal_to(pair_prices.first().unwrap().clearing_price);
 
     assert_that!(candle.volume_base)
         .is_equal_to(pair_prices.iter().map(|p| p.volume_base).sum::<Udec128_6>());
@@ -311,6 +312,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_quote: Udec128_6::new(1875),
             interval: CandleInterval::OneSecond,
             block_height: 10,
+            blocks_count: 3,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -324,6 +326,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_quote: Udec128_6::new(2500),
             interval: CandleInterval::OneSecond,
             block_height: 7,
+            blocks_count: 4,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -337,6 +340,7 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_quote: Udec128_6::from_str("1937.5").unwrap(),
             interval: CandleInterval::OneSecond,
             block_height: 3,
+            blocks_count: 3,
         },
     ]);
 
@@ -526,6 +530,17 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
+    // println!("{:#?}", candle_1m);
+
+    // let candle_cache = clickhouse_context.candle_cache.read().await;
+    // let key = CandleCacheKey::new(
+    //     "dango".to_string(),
+    //     "bridge/usdc".to_string(),
+    //     CandleInterval::OneMinute,
+    // );
+
+    // println!("Candle cache: {:#?}", candle_cache.get_candles(&key));
+
     // Ensure there are two candles.
     // The most recent candle is the first; the oldest is the last.
     //
@@ -645,7 +660,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
         .await?
         .expect("Pair price should be found");
 
-    assert_that!(pair_price.close_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
+    assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
 
     Ok(())
 }

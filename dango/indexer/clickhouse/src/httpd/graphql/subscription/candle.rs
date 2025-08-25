@@ -3,8 +3,8 @@ use grug_httpd::metrics::GaugeGuard;
 
 use {
     crate::{
-        cache,
         entities::{CandleInterval, candle::Candle},
+        indexer::candles::cache,
     },
     async_graphql::{futures_util::stream::Stream, *},
     chrono::{DateTime, Utc},
