@@ -236,7 +236,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         await signingClient.batchUpdateOrders({
           sender: account.address,
           ...order,
-          funds: { [availableCoin.denom]: amount },
+          funds: {
+            [availableCoin.denom]:
+              operation === "market" ? Decimal(amount).mulCeil(1.18).toFixed() : amount,
+          },
         });
       },
       onSuccess: () => {

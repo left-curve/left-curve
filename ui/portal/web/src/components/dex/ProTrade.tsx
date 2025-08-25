@@ -8,7 +8,7 @@ import {
   usePortalTarget,
 } from "@left-curve/applets-kit";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
+import { useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useApp } from "~/hooks/useApp";
 
@@ -16,14 +16,7 @@ import { m } from "~/paraglide/messages";
 import { createPortal } from "react-dom";
 import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 
-import {
-  AddressVisualizer,
-  Badge,
-  Cell,
-  IconChevronDownFill,
-  Table,
-  Tabs,
-} from "@left-curve/applets-kit";
+import { Badge, Cell, IconChevronDownFill, Table, Tabs } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { Modals } from "../modals/RootModal";
@@ -77,7 +70,6 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
 };
 
 const ProTradeHeader: React.FC = () => {
-  const { data: config } = useAppConfig();
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
   const { state } = useProTrade();
@@ -85,9 +77,9 @@ const ProTradeHeader: React.FC = () => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
-
-  const navigate = useNavigate();
+  const { getPrice } = usePrices({
+    defaultFormatOptions: { ...formatNumberOptions, maxSignificantDigits: 8 },
+  });
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -129,7 +121,7 @@ const ProTradeHeader: React.FC = () => {
           >
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start pt-8 lg:pt-0">
               <p className="diatype-xs-medium text-tertiary-500">
-                {m["dex.protrade.history.limitPrice"]()}
+                {m["dex.protrade.history.price"]()}
               </p>
               <p className="diatype-sm-bold text-secondary-700">
                 {getPrice(1, pairId.baseDenom, { format: true })}
@@ -146,15 +138,6 @@ const ProTradeHeader: React.FC = () => {
                 {m["dex.protrade.spot.volume"]()}
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
-            </div>
-            <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-tertiary-500">{m["dex.contract"]()}</p>
-              <AddressVisualizer
-                address={config?.addresses.dex || "0x"}
-                withIcon
-                onClick={(url) => navigate({ to: url })}
-                classNames={{ text: "diatype-sm-bold" }}
-              />
             </div>
           </motion.div>
         ) : null}
