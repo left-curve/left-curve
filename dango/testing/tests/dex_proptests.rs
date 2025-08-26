@@ -219,15 +219,24 @@ impl DexAction {
                 amount,
                 price,
             } => {
-                let deposit = match direction {
-                    Direction::Bid => Coin {
-                        denom: quote_denom.clone(),
-                        amount: amount.checked_mul_dec_ceil(*price)?,
+                let (deposit, amount) = match direction {
+                    Direction::Bid => {
+                        let amount_quote = amount.checked_mul_dec_ceil(*price)?;
+                        (
+                            Coin {
+                                denom: quote_denom.clone(),
+                                amount: amount_quote,
+                            },
+                            amount_quote,
+                        )
                     },
-                    Direction::Ask => Coin {
-                        denom: base_denom.clone(),
-                        amount: *amount,
-                    },
+                    Direction::Ask => (
+                        Coin {
+                            denom: base_denom.clone(),
+                            amount: *amount,
+                        },
+                        *amount,
+                    ),
                 };
 
                 let msg = Message::execute(
@@ -238,7 +247,7 @@ impl DexAction {
                             base_denom: base_denom.clone(),
                             quote_denom: quote_denom.clone(),
                             direction: *direction,
-                            amount: NonZero::new(*amount)?,
+                            amount: NonZero::new(amount)?,
                             price: NonZero::new(*price)?,
                         }],
                         cancels: None,

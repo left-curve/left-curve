@@ -25,71 +25,95 @@ use {
 pub type SwapRoute = MaxLength<UniqueVec<PairId>, 2>;
 
 /// A request to create a new limit order.
-///
-/// When creating a new limit order, the trader must send appropriate amount of
-/// funds along with the message:
-///
-/// - For SELL orders, must send `base_denom` of `amount` amount.
-///
-/// - For BUY orders, must send `quote_denom` of the amount calculated as:
-///
-///   ```plain
-///   ceil(amount * price)
-///   ```
 #[grug::derive(Serde)]
-pub struct CreateLimitOrderRequest {
-    pub base_denom: Denom,
-    pub quote_denom: Denom,
-    pub direction: Direction,
-    /// The amount of _base asset_ to trade.
-    ///
-    /// The frontend UI may allow user to choose the amount in terms of the
-    /// quote asset, and convert it to the base asset amount behind the scene:
-    ///
-    /// ```plain
-    /// base_asset_amount = floor(quote_asset_amount / price)
-    /// ```
-    pub amount: NonZero<Uint128>,
-    /// The limit price measured _in the quote asset_, i.e. how many units of
-    /// quote asset is equal in value to 1 unit of base asset.
-    ///
-    /// Note: price must be non-zero, otherwise we get "division by zero" error
-    /// which causes cronjob to fail.
-    pub price: NonZero<Udec128_24>,
+pub enum CreateLimitOrderRequest {
+    Bid {
+        base_denom: Denom,
+        quote_denom: Denom,
+        amount_quote: NonZero<Uint128>,
+        /// The limit price measured _in the quote asset_, i.e. how many units of
+        /// quote asset is equal in value to 1 unit of base asset.
+        ///
+        /// Note: price must be non-zero, otherwise we get "division by zero" error
+        /// which causes cronjob to fail.
+        price: NonZero<Udec128_24>,
+    },
+    Ask {
+        base_denom: Denom,
+        quote_denom: Denom,
+        amount_base: NonZero<Uint128>,
+        /// The limit price measured _in the quote asset_, i.e. how many units of
+        /// quote asset is equal in value to 1 unit of base asset.
+        ///
+        /// Note: price must be non-zero, otherwise we get "division by zero" error
+        /// which causes cronjob to fail.
+        price: NonZero<Udec128_24>,
+    },
 }
 
+/// A request to create a new market order.
 #[grug::derive(Serde)]
-pub struct CreateMarketOrderRequest {
-    pub base_denom: Denom,
-    pub quote_denom: Denom,
-    pub direction: Direction,
-    /// Amount is specified in the base asset for both BUY and SELL orders.
-    pub amount: NonZero<Uint128>,
-    /// The maximum slippage percentage.
-    ///
-    /// This parameter works as follow:
-    ///
-    /// - For a market BUY order, suppose the best (lowest) SELL price in the
-    ///   resting order book is `p_best`, then the market order's _average
-    ///   execution price_ can't be worse than:
-    ///
-    ///   ```math
-    ///   p_best * (1 + max_slippage)
-    ///   ```
-    ///
-    /// - For a market SELL order, suppose the best (highest) BUY price in the
-    ///   resting order book is `p_best`, then the market order's _average
-    ///   execution price_ can't be worse than:
-    ///
-    ///   ```math
-    ///   p_best * (1 - max_slippage)
-    ///   ```
-    ///
-    /// Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
-    /// enough liquidity in the resting order book to fully fill the market
-    /// order under its max slippage, it's filled as much as possible, with the
-    /// unfilled portion is canceled.
-    pub max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+pub enum CreateMarketOrderRequest {
+    Bid {
+        base_denom: Denom,
+        quote_denom: Denom,
+        amount_quote: NonZero<Uint128>,
+        /// The maximum slippage percentage.
+        ///
+        /// This parameter works as follow:
+        ///
+        /// - For a market BUY order, suppose the best (lowest) SELL price in the
+        ///   resting order book is `p_best`, then the market order's _average
+        ///   execution price_ can't be worse than:
+        ///
+        ///   ```math
+        ///   p_best * (1 + max_slippage)
+        ///   ```
+        ///
+        /// - For a market SELL order, suppose the best (highest) BUY price in the
+        ///   resting order book is `p_best`, then the market order's _average
+        ///   execution price_ can't be worse than:
+        ///
+        ///   ```math
+        ///   p_best * (1 - max_slippage)
+        ///   ```
+        ///
+        /// Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
+        /// enough liquidity in the resting order book to fully fill the market
+        /// order under its max slippage, it's filled as much as possible, with the
+        /// unfilled portion is canceled.
+        max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    },
+    Ask {
+        base_denom: Denom,
+        quote_denom: Denom,
+        amount_base: NonZero<Uint128>,
+        /// The maximum slippage percentage.
+        ///
+        /// This parameter works as follow:
+        ///
+        /// - For a market BUY order, suppose the best (lowest) SELL price in the
+        ///   resting order book is `p_best`, then the market order's _average
+        ///   execution price_ can't be worse than:
+        ///
+        ///   ```math
+        ///   p_best * (1 + max_slippage)
+        ///   ```
+        ///
+        /// - For a market SELL order, suppose the best (highest) BUY price in the
+        ///   resting order book is `p_best`, then the market order's _average
+        ///   execution price_ can't be worse than:
+        ///
+        ///   ```math
+        ///   p_best * (1 - max_slippage)
+        ///   ```
+        ///
+        /// Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
+        /// enough liquidity in the resting order book to fully fill the market
+        /// order under its max slippage, it's filled as much as possible, with the
+        /// unfilled portion is canceled.
+        max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    },
 }
 
 #[grug::derive(Serde)]

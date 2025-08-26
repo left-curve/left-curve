@@ -18,29 +18,60 @@ pub(super) fn create_limit_order(
     events: &mut EventBuilder,
     deposits: &mut Coins,
 ) -> anyhow::Result<()> {
-    ensure!(
-        PAIRS.has(storage, (&order.base_denom, &order.quote_denom)),
-        "pair not found with base `{}` and quote `{}`",
-        order.base_denom,
-        order.quote_denom
-    );
-
-    let deposit = match order.direction {
-        Direction::Bid => Coin {
-            denom: order.quote_denom.clone(),
-            amount: order.amount.checked_mul_dec_ceil(*order.price)?,
+    let (base_denom, quote_denom, price, amount_base, deposit, direction) = match order {
+        CreateLimitOrderRequest::Bid {
+            base_denom,
+            quote_denom,
+            amount_quote,
+            price,
+        } => {
+            let amount_base = amount_quote.checked_div_dec_floor(*price)?;
+            let deposit = Coin {
+                denom: quote_denom.clone(),
+                amount: *amount_quote,
+            };
+            (
+                base_denom,
+                quote_denom,
+                price,
+                amount_base,
+                deposit,
+                Direction::Bid,
+            )
         },
-        Direction::Ask => Coin {
-            denom: order.base_denom.clone(),
-            amount: *order.amount,
+        CreateLimitOrderRequest::Ask {
+            base_denom,
+            quote_denom,
+            amount_base,
+            price,
+        } => {
+            let deposit = Coin {
+                denom: base_denom.clone(),
+                amount: *amount_base,
+            };
+            (
+                base_denom,
+                quote_denom,
+                price,
+                *amount_base,
+                deposit,
+                Direction::Ask,
+            )
         },
     };
+
+    ensure!(
+        PAIRS.has(storage, (&base_denom, &quote_denom)),
+        "pair not found with base `{}` and quote `{}`",
+        base_denom,
+        quote_denom
+    );
 
     let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
 
     // For BUY orders, invert the order ID. This is necessary for enforcing
     // price-time priority. See the docs on `OrderId` for details.
-    if order.direction == Direction::Bid {
+    if direction == Direction::Bid {
         order_id = !order_id;
     }
 
@@ -48,11 +79,11 @@ pub(super) fn create_limit_order(
         user,
         id: order_id,
         kind: OrderKind::Limit,
-        base_denom: order.base_denom.clone(),
-        quote_denom: order.quote_denom.clone(),
-        direction: order.direction,
-        price: Some(*order.price),
-        amount: *order.amount,
+        base_denom: base_denom.clone(),
+        quote_denom: quote_denom.clone(),
+        direction,
+        price: Some(*price),
+        amount: amount_base,
         deposit: deposit.clone(),
     })?;
 
@@ -60,18 +91,13 @@ pub(super) fn create_limit_order(
 
     LIMIT_ORDERS.save(
         storage,
-        (
-            (order.base_denom, order.quote_denom),
-            order.direction,
-            *order.price,
-            order_id,
-        ),
+        ((base_denom, quote_denom), direction, *price, order_id),
         &LimitOrder {
             user,
             id: order_id,
-            price: *order.price,
-            amount: *order.amount,
-            remaining: order.amount.checked_into_dec()?,
+            price: *price,
+            amount: amount_base,
+            remaining: amount_base.checked_into_dec()?,
             created_at_block_height: current_block_height,
         },
     )?;
@@ -87,80 +113,109 @@ pub(super) fn create_market_order(
     events: &mut EventBuilder,
     deposits: &mut Coins,
 ) -> anyhow::Result<()> {
+    let (base_denom, quote_denom) = match &order {
+        CreateMarketOrderRequest::Bid {
+            base_denom,
+            quote_denom,
+            ..
+        }
+        | CreateMarketOrderRequest::Ask {
+            base_denom,
+            quote_denom,
+            ..
+        } => (base_denom, quote_denom),
+    };
+
     ensure!(
-        PAIRS.has(storage, (&order.base_denom, &order.quote_denom)),
+        PAIRS.has(storage, (base_denom, quote_denom)),
         "pair not found with base `{}` and quote `{}`",
-        order.base_denom,
-        order.quote_denom
+        base_denom,
+        quote_denom
     );
 
     // Load the resting order book of the pair.
     // The best price available in the book, together with the order's maximum
     // slippage, will be used to determine the order's "limit price"
     let resting_order_book = RESTING_ORDER_BOOK
-        .load(storage, (&order.base_denom, &order.quote_denom))
+        .load(storage, (base_denom, quote_denom))
         .map_err(|err| {
             anyhow!(
                 "can't create market order, because resting order book either doesn't exist or is corrupted. base denom: {}, quote denom: {}, err: {err}",
-                order.base_denom,
-                order.quote_denom
+                base_denom,
+                quote_denom
             )
         })?;
 
-    let (price, deposit) = match order.direction {
-        Direction::Bid => {
+    let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+
+    let (price, direction, deposit, amount_base) = match order {
+        CreateMarketOrderRequest::Bid {
+            amount_quote,
+            max_slippage,
+            ..
+        } => {
             let best_ask_price = resting_order_book.best_ask_price.ok_or_else(|| {
                 anyhow!(
                     "can't create market bid order, because best ask price isn't available. base denom: {}, quote denom: {}",
-                    order.base_denom,
-                    order.quote_denom
+                    base_denom,
+                    quote_denom
                 )
             })?;
 
-            let one_add_max_slippage = Udec128_24::ONE.saturating_add(*order.max_slippage);
+            let one_add_max_slippage = Udec128_24::ONE.saturating_add(*max_slippage);
             let price = best_ask_price.saturating_mul(one_add_max_slippage);
 
-            (price, Coin {
-                denom: order.quote_denom.clone(),
-                amount: order.amount.checked_mul_dec_ceil(price)?,
-            })
+            // For BUY orders, invert the order ID. This is necessary for enforcing
+            // price-time priority. See the docs on `OrderId` for details.
+            order_id = !order_id;
+
+            (
+                price,
+                Direction::Bid,
+                Coin {
+                    denom: quote_denom.clone(),
+                    amount: *amount_quote,
+                },
+                (*amount_quote).checked_div_dec_floor(price)?,
+            )
         },
-        Direction::Ask => {
+        CreateMarketOrderRequest::Ask {
+            amount_base,
+            max_slippage,
+            ..
+        } => {
             let best_bid_price = resting_order_book.best_bid_price.ok_or_else(|| {
                 anyhow!(
                     "can't create market ask order, because best bid price isn't available. base denom: {}, quote denom: {}",
-                    order.base_denom,
-                    order.quote_denom
+                    base_denom,
+                    quote_denom
                 )
             })?;
 
-            let one_sub_max_slippage = Udec128_24::ONE.saturating_sub(*order.max_slippage);
+            let one_sub_max_slippage = Udec128_24::ONE.saturating_sub(*max_slippage);
             let price = best_bid_price.saturating_mul(one_sub_max_slippage);
 
-            (price, Coin {
-                denom: order.base_denom.clone(),
-                amount: *order.amount,
-            })
+            (
+                price,
+                Direction::Ask,
+                Coin {
+                    denom: base_denom.clone(),
+                    amount: *amount_base,
+                },
+                *amount_base,
+            )
         },
     };
-
-    let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
-
-    // For BUY orders, invert the order ID. This is necessary for enforcing
-    // price-time priority. See the docs on `OrderId` for details.
-    if order.direction == Direction::Bid {
-        order_id = !order_id;
-    }
 
     events.push(OrderCreated {
         user,
         id: order_id,
         kind: OrderKind::Market,
-        base_denom: order.base_denom.clone(),
-        quote_denom: order.quote_denom.clone(),
-        direction: order.direction,
+        base_denom: base_denom.clone(),
+        quote_denom: quote_denom.clone(),
+        direction,
         price: None,
-        amount: *order.amount,
+        amount: amount_base,
         deposit: deposit.clone(),
     })?;
 
@@ -171,8 +226,8 @@ pub(super) fn create_market_order(
         (user, order_id),
         &(
             (
-                (order.base_denom, order.quote_denom),
-                order.direction,
+                (base_denom.clone(), quote_denom.clone()),
+                direction,
                 price,
                 order_id,
             ),
@@ -180,8 +235,8 @@ pub(super) fn create_market_order(
                 user,
                 id: order_id,
                 price,
-                amount: *order.amount,
-                remaining: order.amount.checked_into_dec()?,
+                amount: amount_base,
+                remaining: amount_base.checked_into_dec()?,
                 created_at_block_height: current_block_height,
             },
         ),
