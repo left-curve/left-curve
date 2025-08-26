@@ -1177,7 +1177,7 @@ fn only_owner_can_create_passive_pool() {
                     pool_type: PassiveLiquidity::Xyk(Xyk {
                         spacing: Udec128::new_bps(1),
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                        limit: 30,
+                        limit: 10,
                     }),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
@@ -1199,7 +1199,7 @@ fn only_owner_can_create_passive_pool() {
                     pool_type: PassiveLiquidity::Xyk(Xyk {
                         spacing: Udec128::new_bps(1),
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                        limit: 30,
+                        limit: 10,
                     }),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
@@ -1218,7 +1218,7 @@ fn only_owner_can_create_passive_pool() {
     PassiveLiquidity::Xyk(Xyk {
         spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-        limit: 30,
+        limit: 10,
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
@@ -1236,7 +1236,7 @@ fn only_owner_can_create_passive_pool() {
     PassiveLiquidity::Xyk(Xyk {
         spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-        limit: 30,
+        limit: 10,
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
@@ -1254,7 +1254,7 @@ fn only_owner_can_create_passive_pool() {
     PassiveLiquidity::Xyk(Xyk {
         spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-        limit: 30,
+        limit: 10,
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
@@ -1272,7 +1272,7 @@ fn only_owner_can_create_passive_pool() {
     PassiveLiquidity::Geometric(Geometric {
         spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-        limit: 30,
+        limit: 10,
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
@@ -1290,7 +1290,7 @@ fn only_owner_can_create_passive_pool() {
     PassiveLiquidity::Geometric(Geometric {
         spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-        limit: 30,
+        limit: 10,
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
@@ -1308,7 +1308,7 @@ fn only_owner_can_create_passive_pool() {
     PassiveLiquidity::Geometric(Geometric {
         spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-        limit: 30,
+        limit: 10,
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
@@ -1326,7 +1326,7 @@ fn only_owner_can_create_passive_pool() {
     PassiveLiquidity::Geometric(Geometric {
         spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-        limit: 30,
+        limit: 10,
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
@@ -1486,7 +1486,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
-                                limit: 30,
+                                limit: 10,
                             }),
                         },
                     }])),
@@ -2425,7 +2425,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
-                                limit: 30,
+                                limit: 10,
                             }),
                         },
                     }])),
