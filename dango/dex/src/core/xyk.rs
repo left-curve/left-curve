@@ -1,9 +1,8 @@
 use {
     anyhow::ensure,
-    dango_types::dex::PassiveOrder,
     grug::{
         Bounded, CoinPair, Exponentiate, IsZero, MathResult, MultiplyFraction, MultiplyRatio,
-        Number, NumberConst, Udec128, Udec128_24, Uint64, Uint128, ZeroExclusiveOneExclusive,
+        Number, NumberConst, Udec128, Udec128_24, Uint128, ZeroExclusiveOneExclusive,
         ZeroInclusiveOneExclusive,
     },
     std::{cmp, iter},
@@ -102,8 +101,8 @@ pub fn reflect_curve(
     reserve_ratio: Bounded<Udec128, ZeroInclusiveOneExclusive>,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<(
-    Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
-    Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
+    Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
+    Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
 )> {
     // Withhold the funds corresponding to the reserve requirement.
     // These funds will not be used to place orders.
@@ -117,7 +116,6 @@ pub fn reflect_curve(
     // Construct the bid order iterator.
     // Start from the marginal price minus the swap fee rate.
     let bids = {
-        let mut id = Uint64::ZERO;
         let one_sub_fee_rate = Udec128::ONE.checked_sub(*swap_fee_rate)?;
         let mut maybe_price = marginal_price.checked_mul(one_sub_fee_rate).ok();
         let mut prev_size = Uint128::ZERO;
@@ -160,23 +158,16 @@ pub fn reflect_curve(
             }
 
             // Update the iterator state.
-            id += Uint64::ONE;
             prev_size = size;
             prev_size_quote = size_quote;
             maybe_price = price.checked_sub(order_spacing).ok();
 
-            Some((price, PassiveOrder {
-                id,
-                price,
-                amount,
-                remaining: amount.checked_into_dec().ok()?,
-            }))
+            Some((price, amount))
         })
     };
 
     // Construct the ask order iterator.
     let asks = {
-        let mut id = Uint64::MAX;
         let one_plus_fee_rate = Udec128::ONE.checked_add(*swap_fee_rate)?;
         let mut maybe_price = marginal_price.checked_mul(one_plus_fee_rate).ok();
         let mut prev_size = Uint128::ZERO;
@@ -205,16 +196,10 @@ pub fn reflect_curve(
             }
 
             // Update the iterator state.
-            id -= Uint64::ONE;
             prev_size = size;
             maybe_price = price.checked_add(order_spacing).ok();
 
-            Some((price, PassiveOrder {
-                id,
-                price,
-                amount,
-                remaining: amount.checked_into_dec().ok()?,
-            }))
+            Some((price, amount))
         })
     };
 

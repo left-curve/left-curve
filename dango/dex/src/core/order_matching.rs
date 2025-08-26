@@ -1,5 +1,5 @@
 use {
-    dango_types::dex::{Order, OrderTrait},
+    dango_types::dex::Order,
     grug::{IsZero, Number, NumberConst, StdResult, Udec128_6, Udec128_24},
     std::cmp::Ordering,
 };
@@ -74,12 +74,12 @@ where
 
         if bid_is_new {
             bids.push((bid_price, bid_order));
-            bid_volume.checked_add_assign(*bid_order.remaining())?;
+            bid_volume.checked_add_assign(bid_order.remaining)?;
         }
 
         if ask_is_new {
             asks.push((ask_price, ask_order));
-            ask_volume.checked_add_assign(*ask_order.remaining())?;
+            ask_volume.checked_add_assign(ask_order.remaining)?;
         }
 
         if bid_volume <= ask_volume {
