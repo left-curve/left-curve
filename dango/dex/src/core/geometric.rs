@@ -1,9 +1,10 @@
 use {
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
+    dango_types::dex::Geometric,
     grug::{
         Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128,
-        Udec128_24, Uint128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
+        Udec128_24, Uint128, ZeroExclusiveOneExclusive,
     },
     std::{cmp, iter},
 };
@@ -42,8 +43,7 @@ pub fn swap_exact_amount_in(
     quote_denom: &Denom,
     input: &Coin,
     reserve: &CoinPair,
-    ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
-    order_spacing: Udec128,
+    params: Geometric,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<Uint128> {
     let (passive_bids, passive_asks) = reflect_curve(
@@ -52,8 +52,7 @@ pub fn swap_exact_amount_in(
         quote_denom,
         reserve.amount_of(base_denom)?,
         reserve.amount_of(quote_denom)?,
-        ratio,
-        order_spacing,
+        params,
         swap_fee_rate,
     )?;
 
@@ -128,8 +127,7 @@ pub fn swap_exact_amount_out(
     quote_denom: &Denom,
     output: &Coin,
     reserve: &CoinPair,
-    ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
-    order_spacing: Udec128,
+    params: Geometric,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<Uint128> {
     let output_reserve = reserve.amount_of(&output.denom)?;
@@ -146,8 +144,7 @@ pub fn swap_exact_amount_out(
         quote_denom,
         reserve.amount_of(base_denom)?,
         reserve.amount_of(quote_denom)?,
-        ratio,
-        order_spacing,
+        params,
         swap_fee_rate,
     )?;
 
@@ -217,8 +214,7 @@ pub fn reflect_curve(
     quote_denom: &Denom,
     base_reserve: Uint128,
     quote_reserve: Uint128,
-    ratio: Bounded<Udec128, ZeroExclusiveOneInclusive>,
-    order_spacing: Udec128,
+    params: Geometric,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<(
     Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
@@ -256,17 +252,18 @@ pub fn reflect_curve(
                 return None;
             }
 
-            let size_in_quote = remaining_quote.checked_mul_dec(*ratio).ok()?;
+            let size_in_quote = remaining_quote.checked_mul_dec(*params.ratio).ok()?;
             let size = size_in_quote.checked_div_dec_floor(price).ok()?;
             if size.is_zero() {
                 return None;
             }
 
-            maybe_price = price.checked_sub(order_spacing).ok();
+            maybe_price = price.checked_sub(params.spacing).ok();
             remaining_quote.checked_sub_assign(size_in_quote).ok()?;
 
             Some((price, size))
         })
+        .take(params.limit)
     };
 
     // Construct ask price iterator with increasing prices.
@@ -279,16 +276,17 @@ pub fn reflect_curve(
         iter::from_fn(move || {
             let price = maybe_price?;
 
-            let size = remaining_base.checked_mul_dec(*ratio).ok()?;
+            let size = remaining_base.checked_mul_dec(*params.ratio).ok()?;
             if size.is_zero() {
                 return None;
             }
 
-            maybe_price = price.checked_add(order_spacing).ok();
+            maybe_price = price.checked_add(params.spacing).ok();
             remaining_base.checked_sub_assign(size).ok()?;
 
             Some((price, size))
         })
+        .take(params.limit)
     };
 
     Ok((Box::new(bids), Box::new(asks)))

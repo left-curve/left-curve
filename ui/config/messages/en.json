@@ -741,6 +741,7 @@
         "id": "ID",
         "pair": "Pair",
         "price": "Price",
+        "time": "Time",
         "limitPrice": "Limit Price",
         "remaining": "Remaining ({symbol})",
         "type": "Type",

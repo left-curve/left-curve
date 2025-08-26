@@ -1,9 +1,9 @@
 use {
     anyhow::ensure,
+    dango_types::dex::Xyk,
     grug::{
         Bounded, CoinPair, Exponentiate, IsZero, MathResult, MultiplyFraction, MultiplyRatio,
         Number, NumberConst, Udec128, Udec128_24, Uint128, ZeroExclusiveOneExclusive,
-        ZeroInclusiveOneExclusive,
     },
     std::{cmp, iter},
 };
@@ -97,8 +97,7 @@ pub fn swap_exact_amount_out(
 pub fn reflect_curve(
     mut base_reserve: Uint128,
     mut quote_reserve: Uint128,
-    order_spacing: Udec128,
-    reserve_ratio: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    params: Xyk,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<(
     Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
@@ -106,7 +105,7 @@ pub fn reflect_curve(
 )> {
     // Withhold the funds corresponding to the reserve requirement.
     // These funds will not be used to place orders.
-    let one_sub_reserve_ratio = Udec128::ONE - *reserve_ratio;
+    let one_sub_reserve_ratio = Udec128::ONE - *params.reserve_ratio;
     base_reserve.checked_mul_dec_floor_assign(one_sub_reserve_ratio)?;
     quote_reserve.checked_mul_dec_floor_assign(one_sub_reserve_ratio)?;
 
@@ -160,10 +159,11 @@ pub fn reflect_curve(
             // Update the iterator state.
             prev_size = size;
             prev_size_quote = size_quote;
-            maybe_price = price.checked_sub(order_spacing).ok();
+            maybe_price = price.checked_sub(params.spacing).ok();
 
             Some((price, amount))
         })
+        .take(params.limit)
     };
 
     // Construct the ask order iterator.
@@ -197,10 +197,11 @@ pub fn reflect_curve(
 
             // Update the iterator state.
             prev_size = size;
-            maybe_price = price.checked_add(order_spacing).ok();
+            maybe_price = price.checked_add(params.spacing).ok();
 
             Some((price, amount))
         })
+        .take(params.limit)
     };
 
     Ok((Box::new(bids), Box::new(asks)))
@@ -241,8 +242,11 @@ mod tests {
         let (mut bids, mut asks) = reflect_curve(
             base_reserve,
             quote_reserve,
-            Udec128::ONE,
-            Bounded::new_unchecked(Udec128::ZERO),
+            Xyk {
+                spacing: Udec128::ONE,
+                reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                limit: 30,
+            },
             Bounded::new_unchecked(Udec128::new_bps(30)),
         )
         .unwrap();
