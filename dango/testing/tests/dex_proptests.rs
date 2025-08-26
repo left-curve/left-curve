@@ -8,7 +8,7 @@ use {
         constants::{dango, eth, sol, usdc},
         dex::{
             self, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, PairId, PairParams,
-            PairUpdate, PassiveLiquidity, SwapRoute,
+            PairUpdate, PassiveLiquidity, SwapRoute, Xyk,
         },
         gateway::Remote,
     },
@@ -793,10 +793,11 @@ fn test_dex_actions(
                                 pair.base_denom, pair.quote_denom
                             ))
                             .unwrap(),
-                            pool_type: PassiveLiquidity::Xyk {
-                                order_spacing: Udec128::new_bps(1000),
+                            pool_type: PassiveLiquidity::Xyk(Xyk {
+                                spacing: Udec128::new_bps(1000),
                                 reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
-                            },
+                                limit: 30,
+                            }),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                         },
                     })

@@ -875,7 +875,7 @@ mod tests {
         dango_types::{
             config::{AppAddresses, AppConfig},
             constants::{dango, usdc},
-            dex::{PairParams, PassiveLiquidity},
+            dex::{Geometric, PairParams, PassiveLiquidity},
             oracle::PriceSource,
         },
         grug::{Bounded, MockContext, MockQuerier, Timestamp, Uint128},
@@ -1095,10 +1095,11 @@ mod tests {
                 (&dango::DENOM, &usdc::DENOM),
                 &PairParams {
                     lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
-                    pool_type: PassiveLiquidity::Geometric {
-                        order_spacing: Udec128::ZERO,
+                    pool_type: PassiveLiquidity::Geometric(Geometric {
+                        spacing: Udec128::ZERO,
                         ratio: Bounded::new_unchecked(Udec128::ONE),
-                    },
+                        limit: 10,
+                    }),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
                 },
             )
