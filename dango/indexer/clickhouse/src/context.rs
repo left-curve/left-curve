@@ -21,6 +21,7 @@ pub struct Context {
     pub clickhouse_database: String,
     #[allow(dead_code)]
     clickhouse_client: Client,
+    // pub psql_pool: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub trade_pubsub: Arc<dyn PubSub<Trade> + Send + Sync>,
     pub candle_cache: Arc<RwLock<CandleCache>>,

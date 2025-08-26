@@ -44,12 +44,30 @@ impl CandleCacheKey {
 pub struct CandleCache {
     pub candles: HashMap<CandleCacheKey, Vec<Candle>>,
     pub pair_prices: HashMap<u64, Vec<PairPrice>>,
-    pub denoms: HashSet<PairId>,
+    // All denoms we've seen so far
+    denoms: HashSet<PairId>,
 }
 
 impl CandleCache {
     pub fn pair_price_for_block(&self, block_height: u64) -> Option<&Vec<PairPrice>> {
         self.pair_prices.get(&block_height)
+    }
+
+    #[allow(dead_code)]
+    /// Returns true if there are gaps in the cached pair prices
+    fn has_gaps(self) -> bool {
+        let mut heights: Vec<u64> = self.pair_prices.keys().copied().collect();
+        heights.sort_unstable();
+
+        for window in heights.windows(2) {
+            if let [a, b] = window {
+                if *b != *a + 1 {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 
     pub fn add_pair_prices(
@@ -63,10 +81,13 @@ impl CandleCache {
 
         let mut result = Vec::new();
 
-        for candle_interval in CandleInterval::iter() {
-            for pair_price in pair_prices.iter() {
+        let mut seen_pair_prices: HashSet<PairId> = HashSet::new();
+
+        for pair_price in pair_prices.iter() {
+            for candle_interval in CandleInterval::iter() {
                 if let Ok(denom) = pair_price.try_into() {
-                    self.denoms.insert(denom);
+                    // self.denoms.insert(denom);
+                    seen_pair_prices.insert(denom);
                 }
 
                 let key = CandleCacheKey::new(
@@ -84,28 +105,33 @@ impl CandleCache {
                     result.push(candle);
                 }
             }
+        }
 
-            if pair_prices.is_empty() {
-                let all_denoms = self.denoms.clone();
+        // This is so we keep creating candles even if we don't have new pair prices in this block
+        for pair_price in self.denoms.clone() {
+            if seen_pair_prices.contains(&pair_price) {
+                continue;
+            }
 
-                for pair_price in all_denoms {
-                    let key = CandleCacheKey::new(
-                        pair_price.base_denom.to_string(),
-                        pair_price.quote_denom.to_string(),
-                        candle_interval,
-                    );
+            for candle_interval in CandleInterval::iter() {
+                let key = CandleCacheKey::new(
+                    pair_price.base_denom.to_string(),
+                    pair_price.quote_denom.to_string(),
+                    candle_interval,
+                );
 
-                    if let Some(candle) = self.update_or_create_candle(
-                        key,
-                        block_height,
-                        created_at,
-                        None, // No new pair_price
-                    ) {
-                        result.push(candle);
-                    }
+                if let Some(candle) = self.update_or_create_candle(
+                    key,
+                    block_height,
+                    created_at,
+                    None, // No new pair_price
+                ) {
+                    result.push(candle);
                 }
             }
         }
+
+        self.denoms.extend(seen_pair_prices);
 
         self.pair_prices
             .entry(block_height)
@@ -150,7 +176,8 @@ impl CandleCache {
                 "Candles is empty, adding a new candle",
             );
 
-            let candle = Candle::new_with_pair_price(pair_price, interval, time_start);
+            let candle =
+                Candle::new_with_pair_price(pair_price, interval, time_start, block_height);
 
             candles.push(candle.clone());
 
@@ -214,7 +241,8 @@ impl CandleCache {
                 "No existing candle found, adding a new candle",
             );
 
-            let mut candle = Candle::new_with_pair_price(pair_price, interval, time_start);
+            let mut candle =
+                Candle::new_with_pair_price(pair_price, interval, time_start, block_height);
 
             // We set the open price for the new candle to the previous candle close price
             if insert_pos > 0 {
@@ -438,7 +466,11 @@ impl CandleCache {
         Ok(())
     }
 
-    // Keep last N candles
+    pub fn store_candles_in_clickhouse(_candles: Vec<Candle>) {
+        todo!()
+    }
+
+    // Keep last N candles, store the rest on Clickhouse
     pub fn compact_keep_n(&mut self, n: usize) {
         self.candles.retain(|_key, candles| {
             if candles.is_empty() {
@@ -446,7 +478,10 @@ impl CandleCache {
             } else {
                 // Keep only last N candles
                 let start = candles.len().saturating_sub(n);
-                candles.drain(..start);
+                let drained: Vec<_> = candles.drain(..start).collect();
+
+                // Store drained candles in Clickhouse
+                Self::store_candles_in_clickhouse(drained);
 
                 true
             }

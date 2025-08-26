@@ -61,6 +61,7 @@ impl Candle {
         pair_price: PairPrice,
         interval: CandleInterval,
         time_start: DateTime<Utc>,
+        block_height: u64,
     ) -> Self {
         Candle {
             quote_denom: pair_price.quote_denom,
@@ -73,7 +74,7 @@ impl Candle {
             volume_base: pair_price.volume_base,
             volume_quote: pair_price.volume_quote,
             interval,
-            block_height: pair_price.block_height,
+            block_height,
             blocks_count: 1,
         }
     }

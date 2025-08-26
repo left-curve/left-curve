@@ -3537,6 +3537,7 @@ dependencies = [
  "indexer-sql",
  "itertools 0.14.0",
  "metrics",
+ "sea-orm",
  "serde",
  "serde_json",
  "strum 0.27.1",
