@@ -42,6 +42,7 @@ target/
 **/build
 !ui/portal/app/.eas/build/
 !ui/portal/web/**/*.pdf
+ui/portal/web/public/images
 **/.turbo
 
 # SDK
