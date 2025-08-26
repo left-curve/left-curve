@@ -3,7 +3,7 @@ use {
     async_stream::stream,
     async_trait::async_trait,
     grug::{Inner, JsonDeExt, Lengthy, NonEmpty},
-    pyth_types::{LatestVaaResponse, PriceUpdate},
+    pyth_types::{LatestVaaResponse, PriceUpdate, PythId},
     reqwest::{Client, IntoUrl, Url},
     reqwest_eventsource::{Event, EventSource, retry::ExponentialBackoff},
     std::{
@@ -39,8 +39,7 @@ impl PythClient {
 
     fn create_request_params<I>(ids: NonEmpty<I>) -> Vec<(&'static str, String)>
     where
-        I: IntoIterator + Lengthy,
-        I::Item: ToString,
+        I: IntoIterator<Item = PythId> + Lengthy,
     {
         let mut params = ids
             .into_inner()
@@ -145,14 +144,14 @@ impl PythClient {
 #[async_trait]
 impl PythClientTrait for PythClient {
     type Error = crate::error::Error;
+    type PythId = PythId;
 
     async fn stream<I>(
         &mut self,
         ids: NonEmpty<I>,
     ) -> Result<Pin<Box<dyn tokio_stream::Stream<Item = PriceUpdate> + Send>>, Self::Error>
     where
-        I: IntoIterator + Lengthy + Send + Clone,
-        I::Item: ToString,
+        I: IntoIterator<Item = Self::PythId> + Lengthy + Send + Clone,
     {
         // Close the previous connection.
         self.close();
@@ -242,8 +241,7 @@ impl PythClientTrait for PythClient {
 
     fn get_latest_price_update<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
     where
-        I: IntoIterator + Clone + Lengthy,
-        I::Item: ToString,
+        I: IntoIterator<Item = Self::PythId> + Clone + Lengthy,
     {
         let vaas = reqwest::blocking::Client::new()
             .get(self.base_url.join("v2/updates/price/latest")?)

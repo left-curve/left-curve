@@ -1,10 +1,10 @@
 use {
     crate::oracle::Precision,
     grug::{Timestamp, Udec128},
-    pyth_types::{PythId, PythLazerId},
+    pyth_types::{Channel, PythId, PythLazerId},
 };
 
-#[grug::derive(Serde, Borsh)]
+#[grug::derive(Serde)]
 pub enum PriceSource {
     /// A price source that uses a fixed price. For testing purposes only.
     Fixed {
@@ -33,6 +33,8 @@ pub enum PriceSource {
         /// the price from its smallest unit to a humanized form. E.g. 1 ATOM
         /// is 10^6 uatom, so the precision is 6.
         precision: Precision,
+        /// The channel of the Pyth Lazer price feed.
+        channel: Channel,
     },
     /// A price source for an LP token of the lending pool.
     LendingLiquidity,

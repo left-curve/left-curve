@@ -19,7 +19,7 @@ const GAS_LIMIT: u64 = 50_000_000;
 
 pub struct ProposalPreparer<P>
 where
-    P: RetrievePythId,
+    P: PythClientTrait,
 {
     // `Option` to be able to not clone the `PythHandler`.
     pyth_handler: Option<Mutex<PythHandler<P>>>,
@@ -27,7 +27,7 @@ where
 
 impl<P> Clone for ProposalPreparer<P>
 where
-    P: RetrievePythId,
+    P: PythClientTrait,
 {
     fn clone(&self) -> Self {
         Self { pyth_handler: None }

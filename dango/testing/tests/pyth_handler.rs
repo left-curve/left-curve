@@ -7,7 +7,10 @@ use {
     },
     grug::{Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map},
     pyth_client::{PythClientCache, PythClientTrait},
-    pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
+    pyth_types::{
+        Channel,
+        constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
+    },
     std::{thread::sleep, time::Duration},
 };
 
@@ -153,7 +156,7 @@ fn handler_lazer() {
         .address;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 8 }
+        btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 8, channel: Channel::RealTime }
     );
 
     suite

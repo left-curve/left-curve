@@ -96,8 +96,7 @@ pub fn test_latest_vaas<P, I>(pyth_client: P, ids: I)
 where
     P: PythClientTrait + Debug,
     P::Error: Debug,
-    I: IntoIterator + Clone + Lengthy,
-    I::Item: ToString,
+    I: IntoIterator<Item = P::PythId> + Clone + Lengthy,
 {
     let mut vaas_checker = VaasChecker::new(ids.clone());
     let ids = NonEmpty::new(ids).unwrap();
@@ -121,8 +120,7 @@ pub async fn test_stream<P, I>(mut client: P, ids1: I, ids2: I)
 where
     P: PythClientTrait + Debug,
     P::Error: Debug,
-    I: IntoIterator + Clone + Lengthy + Send + 'static,
-    I::Item: ToString,
+    I: IntoIterator<Item = P::PythId> + Clone + Lengthy + Send + 'static,
 {
     let mut vaas_checker = VaasChecker::new(ids1.clone());
     let mut stream = client.stream(NonEmpty::new_unchecked(ids1)).await.unwrap();

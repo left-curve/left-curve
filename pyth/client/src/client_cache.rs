@@ -4,7 +4,7 @@ use {
     async_trait::async_trait,
     grug::{Binary, Inner, Lengthy, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
-    pyth_types::PriceUpdate,
+    pyth_types::{PriceUpdate, PythId},
     reqwest::{IntoUrl, Url},
     std::{
         collections::HashMap,
@@ -48,8 +48,7 @@ impl PythClientCache {
         ids: NonEmpty<I>,
     ) -> HashMap<PathBuf, Vec<NonEmpty<Vec<Binary>>>>
     where
-        I: IntoIterator + Lengthy + Clone,
-        I::Item: ToString,
+        I: IntoIterator<Item = PythId> + Lengthy + Clone,
     {
         let mut stored_vaas = HashMap::new();
 
@@ -70,7 +69,7 @@ impl PythClientCache {
                     let mut client = PythClient::new(base_url.clone()).unwrap();
 
                     let mut stream = client
-                        .stream(NonEmpty::new(vec![id.to_string()]).unwrap())
+                        .stream(NonEmpty::new(vec![id]).unwrap())
                         .await
                         .unwrap();
 
@@ -85,7 +84,7 @@ impl PythClientCache {
                                 }
                                 values.push(vaas);
                             } else {
-                                panic!("Received non-core PriceUpdate: {:?}", price_update);
+                                panic!("Received non-core PriceUpdate: {price_update:?}",);
                             }
                         }
                     }
@@ -122,14 +121,14 @@ impl PythClientCache {
 #[async_trait]
 impl PythClientTrait for PythClientCache {
     type Error = error::Error;
+    type PythId = PythId;
 
     async fn stream<I>(
         &mut self,
         ids: NonEmpty<I>,
     ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = PriceUpdate> + Send>>, Self::Error>
     where
-        I: IntoIterator + Lengthy + Send + Clone,
-        I::Item: ToString,
+        I: IntoIterator<Item = Self::PythId> + Lengthy + Send + Clone,
     {
         self.close();
         self.keep_running = Arc::new(AtomicBool::new(true));
@@ -146,8 +145,7 @@ impl PythClientTrait for PythClientCache {
 
                 let vaas = stored_vaas
                     .iter_mut()
-                    .filter_map(|(_, v)| v.get(index).cloned()).map(|v| v.into_inner())
-                    .flatten()
+                    .filter_map(|(_, v)| v.get(index).cloned()).flat_map(|v| v.into_inner())
                     .collect::<Vec<_>>();
 
                 index += 1;
@@ -167,8 +165,7 @@ impl PythClientTrait for PythClientCache {
 
     fn get_latest_price_update<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
     where
-        I: IntoIterator + Clone + Lengthy,
-        I::Item: ToString,
+        I: IntoIterator<Item = Self::PythId> + Clone + Lengthy,
     {
         // Load the data.
         let stored_vaas = Self::load_or_retrieve_data(&self.base_url, ids);
@@ -177,8 +174,7 @@ impl PythClientTrait for PythClientCache {
         let result = stored_vaas
             .into_iter()
             .filter_map(|(_, v)| v.get(index).cloned())
-            .map(|v| v.into_inner())
-            .flatten()
+            .flat_map(|v| v.into_inner())
             .collect::<Vec<_>>();
 
         self.vaas_index.fetch_add(1, Ordering::SeqCst);

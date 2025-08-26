@@ -15,7 +15,7 @@ use {
     grug_app::NaiveProposalPreparer,
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
-        LeEcdsaMessage, PriceUpdate, PythId, PythVaa,
+        Channel, LeEcdsaMessage, PriceUpdate, PythId, PythVaa,
         constants::{
             ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LAZER_TRUSTED_SIGNER,
             PYTH_URL, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
@@ -355,8 +355,8 @@ fn pyth_lazer() {
             &mut accounts.owner,
             oracle,
             &ExecuteMsg::RegisterPriceSources(btree_map! {
-                btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 6 },
-                eth::DENOM.clone() => PriceSource::PythLazer { id: 2, precision: 18 },
+                btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 6, channel:Channel::RealTime },
+                eth::DENOM.clone() => PriceSource::PythLazer { id: 2, precision: 18 , channel:Channel::RealTime },
             }),
             Coins::default(),
         )
@@ -367,7 +367,9 @@ fn pyth_lazer() {
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::FeedPrices(PriceUpdate::Lazer(message.clone())),
+            &ExecuteMsg::FeedPrices(PriceUpdate::Lazer(NonEmpty::new_unchecked(vec![
+                message.clone(),
+            ]))),
             Coins::default(),
         )
         .should_fail_with_error("signer is not trusted");
@@ -408,7 +410,9 @@ fn pyth_lazer() {
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::FeedPrices(PriceUpdate::Lazer(message.clone())),
+            &ExecuteMsg::FeedPrices(PriceUpdate::Lazer(NonEmpty::new_unchecked(vec![
+                message.clone(),
+            ]))),
             Coins::default(),
         )
         .should_fail_with_error("signer is no longer trusted");
@@ -431,7 +435,7 @@ fn pyth_lazer() {
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::FeedPrices(PriceUpdate::Lazer(message)),
+            &ExecuteMsg::FeedPrices(PriceUpdate::Lazer(NonEmpty::new_unchecked(vec![message]))),
             Coins::default(),
         )
         .should_succeed();

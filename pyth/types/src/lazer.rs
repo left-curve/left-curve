@@ -1,10 +1,25 @@
 use {
     grug::{ByteArray, Inner},
-    pyth_lazer_protocol::message::LeEcdsaMessage as LazerLeEcdsaMessage,
+    pyth_lazer_protocol::{message::LeEcdsaMessage as LazerLeEcdsaMessage, router::Channel},
+    std::fmt::Display,
 };
 
+pub type PythLazerId = u32;
+
 #[grug::derive(Serde)]
-/// LE-ECDSA format enveope.
+pub struct PythLazerSubscriptionDetails {
+    pub id: PythLazerId,
+    pub channel: Channel,
+}
+
+impl Display for PythLazerSubscriptionDetails {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.id, self.channel)
+    }
+}
+
+#[grug::derive(Serde)]
+/// LE-ECDSA format envelope.
 pub struct LeEcdsaMessage {
     pub payload: Vec<u8>,
     pub signature: ByteArray<64>,

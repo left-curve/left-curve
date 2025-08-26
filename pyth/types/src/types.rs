@@ -6,8 +6,6 @@ use {
 
 pub type PythId = EncodedBytes<[u8; 32], AddrEncoder>;
 
-pub type PythLazerId = u32;
-
 #[grug::derive(Serde)]
 pub struct LatestVaaResponse {
     pub binary: LatestVaaBinaryResponse,
@@ -21,7 +19,7 @@ pub struct LatestVaaBinaryResponse {
 #[grug::derive(Serde)]
 pub enum PriceUpdate {
     Core(NonEmpty<Vec<Binary>>),
-    Lazer(LeEcdsaMessage),
+    Lazer(NonEmpty<Vec<LeEcdsaMessage>>),
 }
 
 impl PriceUpdate {
@@ -44,7 +42,7 @@ impl PriceUpdate {
     }
 
     /// Try to cast `PriceUpdate` to `Lazer`.
-    pub fn try_into_lazer(&self) -> Result<LeEcdsaMessage> {
+    pub fn try_into_lazer(&self) -> Result<NonEmpty<Vec<LeEcdsaMessage>>> {
         match self {
             PriceUpdate::Lazer(lazer) => Ok(lazer.clone()),
             _ => bail!("PriceUpdate is not Lazer"),

@@ -3,18 +3,17 @@ use {
     pyth_lazer_client::{client::PythLazerClientBuilder, ws_connection::AnyResponse},
     pyth_lazer_protocol::{
         router::{
-            Channel, DeliveryFormat, Format, JsonBinaryEncoding, PriceFeedId, PriceFeedProperty,
-            SubscriptionParams, SubscriptionParamsRepr,
+            Channel, DeliveryFormat, FixedRate, Format, JsonBinaryEncoding, PriceFeedId,
+            PriceFeedProperty, SubscriptionParams, SubscriptionParamsRepr,
         },
         subscription::{Response, SubscribeRequest, SubscriptionId},
     },
-    std::{str::FromStr, time::Duration},
-    tokio::time::sleep,
+    std::str::FromStr,
     tracing::{Level, info},
     url::Url,
 };
 
-#[ignore = "work in progress"]
+#[ignore = "remove once the lazer implementation is completed"]
 #[tokio::test]
 async fn test() {
     setup_tracing_subscriber(Level::INFO);
@@ -48,21 +47,39 @@ async fn test() {
     client.subscribe(subscribe_request).await.unwrap();
     info!("Subscription request sent, waiting for responses...");
 
+    let subscribe_request = SubscribeRequest {
+        subscription_id: SubscriptionId(2),
+        params: SubscriptionParams::new(SubscriptionParamsRepr {
+            price_feed_ids: vec![PriceFeedId(18)],
+            properties: vec![PriceFeedProperty::Price],
+            formats: vec![Format::LeEcdsa],
+            delivery_format: DeliveryFormat::Binary,
+            json_binary_encoding: JsonBinaryEncoding::Base64,
+            parsed: false,
+            channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+            ignore_invalid_feed_ids: true,
+        })
+        .unwrap(),
+    };
+
+    client.subscribe(subscribe_request).await.unwrap();
+    info!("Subscription request sent, waiting for responses...");
+
     // When I process the data, I need to clear old data.
 
-    while let Some(mut response) = receiver.recv().await {
+    while let Some(response) = receiver.recv().await {
         // Drain all the channel.
-        let mut count = 0;
-        loop {
-            match receiver.try_recv() {
-                Ok(resp) => {
-                    response = resp;
-                    count += 1;
-                },
-                Err(_) => break,
-            }
-        }
-        info!("Received {} responses in this batch", count);
+        // let mut count = 0;
+        // loop {
+        //     match receiver.try_recv() {
+        //         Ok(resp) => {
+        //             response = resp;
+        //             count += 1;
+        //         },
+        //         Err(_) => break,
+        //     }
+        // }
+        // info!("Received {} responses in this batch", count);
 
         match &response {
             AnyResponse::Json(resp) => match resp {
@@ -83,13 +100,20 @@ async fn test() {
                         info!("Received parsed data: {:#?}", parsed);
                     };
                 },
+                Response::Subscribed(resp) => {
+                    info!("Received subscription response: {:#?}", resp);
+                },
+
+                Response::SubscriptionError(resp) => {
+                    info!("Received subscription error: {:#?}", resp);
+                },
                 _ => {
                     info!("Received non-stream update response: {:#?}", resp);
                 },
             },
             AnyResponse::Binary(update) => {
-                info!("Received binary update");
-                sleep(Duration::from_millis(20)).await;
+                info!("Subscription ID: {}", update.subscription_id.0);
+                // sleep(Duration::from_millis(20)).await;
                 // for msg in &update.messages {
                 //     match msg {
                 //         Message::LeEcdsa(lecdsa_msg) => {

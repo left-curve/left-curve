@@ -8,13 +8,13 @@ use {
     },
     grug::{
         Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
-        StorageQuerier, btree_map,
+        StorageQuerier, btree_map, setup_tracing_subscriber,
     },
     hex_literal::hex,
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
-        PythId,
-        constants::{LAZER_TRUSTED_SIGNER, PYTH_URL},
+        Channel, FixedRate, PythId,
+        constants::{BTC_USD_ID_LAZER, LAZER_TRUSTED_SIGNER, PYTH_URL},
     },
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -22,6 +22,7 @@ use {
         thread::{self, sleep},
         time::Duration,
     },
+    tracing::Level,
 };
 
 const NOT_USED_ID: PythId = PythId::from_inner(hex!(
@@ -170,6 +171,8 @@ fn proposal_pyth() {
 
 #[test]
 fn proposal_pyth_lazer() {
+    setup_tracing_subscriber(Level::INFO);
+
     let (mut suite, mut accounts, _, contracts, _) = setup_test_lazer(Default::default());
 
     let current_time = suite.block.timestamp;
@@ -179,7 +182,7 @@ fn proposal_pyth_lazer() {
     let oracle = contracts.oracle;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 8 }
+        btc::DENOM.clone() => PriceSource::PythLazer { id: BTC_USD_ID_LAZER.id, channel: BTC_USD_ID_LAZER.channel, precision: 8 }
     );
 
     let pubkey = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
@@ -206,6 +209,7 @@ fn proposal_pyth_lazer() {
         .should_succeed();
 
     // Assert the price of btc exists.
+    sleep(Duration::from_secs(2));
     assert_price_exists(&mut suite, contracts.oracle, btc::DENOM.clone());
 
     // Retrieve the prices and sequences.
@@ -266,6 +270,7 @@ fn proposal_pyth_lazer() {
             btree_map!( test_denom.clone() => PriceSource::PythLazer {
                 id: not_used_id,
                 precision: 6,
+                channel: Channel::FixedRate(FixedRate::RATE_200_MS),
             }),
         );
 
@@ -274,6 +279,7 @@ fn proposal_pyth_lazer() {
             .should_succeed();
 
         // Verify that the price exists.
+        sleep(Duration::from_secs(1));
         assert_price_exists(&mut suite, oracle, test_denom);
     }
 }
@@ -296,15 +302,12 @@ where
             tx.should_succeed();
         }
 
-        match suite.query_wasm_smart(oracle, QueryPriceRequest {
+        if let Ok(p) = suite.query_wasm_smart(oracle, QueryPriceRequest {
             denom: denom.clone(),
         }) {
-            Ok(p) => {
-                price = Some(p);
-                break;
-            },
-            Err(_) => {},
-        };
+            price = Some(p);
+            break;
+        }
     }
 
     assert!(price.is_some(), "Unable to retrieve price from oracle");

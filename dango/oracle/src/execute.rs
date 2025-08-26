@@ -140,33 +140,35 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
                 }
             }
         },
-        PriceUpdate::Lazer(message) => {
-            verify_pyth_lazer_message(ctx.storage, ctx.block.timestamp, ctx.api, &message)?;
+        PriceUpdate::Lazer(messages) => {
+            for message in messages.into_inner() {
+                verify_pyth_lazer_message(ctx.storage, ctx.block.timestamp, ctx.api, &message)?;
 
-            // Deserialize the payload.
-            let payload = PayloadData::deserialize_slice_le(&message.payload)?;
-            let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
+                // Deserialize the payload.
+                let payload = PayloadData::deserialize_slice_le(&message.payload)?;
+                let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
 
-            // Store the prices from each feed.
-            for feed in payload.feeds {
-                let id = feed.feed_id.0;
-                let price = PrecisionlessPrice::try_from((feed, timestamp))?;
-                PYTH_LAZER_PRICES.may_update(
-                    ctx.storage,
-                    id,
-                    |current_record| -> anyhow::Result<_> {
-                        match current_record {
-                            Some(current_price) => {
-                                if current_price.timestamp > timestamp {
-                                    Ok(current_price)
-                                } else {
-                                    Ok(price)
-                                }
-                            },
-                            None => Ok(price),
-                        }
-                    },
-                )?;
+                // Store the prices from each feed.
+                for feed in payload.feeds {
+                    let id = feed.feed_id.0;
+                    let price = PrecisionlessPrice::try_from((feed, timestamp))?;
+                    PYTH_LAZER_PRICES.may_update(
+                        ctx.storage,
+                        id,
+                        |current_record| -> anyhow::Result<_> {
+                            match current_record {
+                                Some(current_price) => {
+                                    if current_price.timestamp > timestamp {
+                                        Ok(current_price)
+                                    } else {
+                                        Ok(price)
+                                    }
+                                },
+                                None => Ok(price),
+                            }
+                        },
+                    )?;
+                }
             }
         },
     }
