@@ -830,7 +830,7 @@ fn refund_market_order(
         Direction::Ask => (base_denom.clone(), order.remaining),
     };
 
-    // TODO: ensure refund amount is zero
+    // TODO: Ensure refund amount is non-zero. If it's zero, no-op.
 
     events.push(OrderCanceled {
         user: order.user,
