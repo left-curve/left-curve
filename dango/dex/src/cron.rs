@@ -830,17 +830,19 @@ fn refund_market_order(
         Direction::Ask => (base_denom.clone(), order.remaining),
     };
 
-    // TODO: Ensure refund amount is non-zero. If it's zero, no-op.
+    if refund_amount.is_non_zero() {
+        events.push(OrderCanceled {
+            user: order.user,
+            id: order.id,
+            kind: order.kind,
+            remaining: order.remaining,
+            refund: (refund_denom.clone(), refund_amount).into(),
+        })?;
 
-    events.push(OrderCanceled {
-        user: order.user,
-        id: order.id,
-        kind: order.kind,
-        remaining: order.remaining,
-        refund: (refund_denom.clone(), refund_amount).into(),
-    })?;
+        refunds.insert(order.user, refund_denom, refund_amount)?;
+    }
 
-    refunds.insert(order.user, refund_denom, refund_amount)
+    Ok(())
 }
 
 /// Updates trading volumes for both user addresses and usernames
