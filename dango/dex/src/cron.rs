@@ -1,7 +1,7 @@
 use {
     crate::{
         LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES,
-        RESTING_ORDER_BOOK, USER_DEPTHS, VOLUMES, VOLUMES_BY_USER,
+        RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, fill_orders,
             match_orders,
@@ -439,7 +439,7 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ----------------- 5. Save the resting order book state ------------------
+    // ----- 5. Save resting order book state and passive liquidity depths -----
 
     // Find the best bid and ask prices that remains after the auction.
     let best_bid_price = find_best_remaining_price(
@@ -530,7 +530,6 @@ fn clear_orders_of_pair(
 
             if let Order::Limit(limit_order) = order {
                 decrease_depths(
-                    &USER_DEPTHS,
                     storage,
                     &base_denom,
                     &quote_denom,

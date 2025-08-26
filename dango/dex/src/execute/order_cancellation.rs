@@ -1,5 +1,5 @@
 use {
-    crate::{LIMIT_ORDERS, MARKET_ORDERS, OrderKey, PAIRS, USER_DEPTHS, decrease_depths},
+    crate::{LIMIT_ORDERS, MARKET_ORDERS, OrderKey, PAIRS, decrease_depths},
     anyhow::{bail, ensure},
     dango_types::dex::{Direction, LimitOrder, MarketOrder, OrderCanceled, OrderId, OrderKind},
     grug::{
@@ -150,7 +150,6 @@ fn cancel_limit_order(
     refunds.insert(refund)?;
 
     decrease_depths(
-        &USER_DEPTHS,
         storage,
         &base_denom,
         &quote_denom,

@@ -5,7 +5,7 @@ use {
 
 /// The direction of a trade: buy or sell.
 #[grug::derive(Serde, Borsh)]
-#[derive(Copy)]
+#[derive(Copy, PartialOrd, Ord)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
 #[cfg_attr(feature = "async-graphql", graphql(rename_items = "lowercase"))]
 pub enum Direction {

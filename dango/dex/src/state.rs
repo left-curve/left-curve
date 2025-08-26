@@ -8,7 +8,7 @@ use {
         Addr, CoinPair, Counter, Denom, IndexedMap, IsZero, Item, Map, MultiIndex, NonZero, Number,
         NumberConst, StdResult, Storage, Timestamp, Udec128_6, Udec128_24, Uint64, UniqueIndex,
     },
-    std::collections::BTreeSet,
+    std::collections::{BTreeMap, BTreeSet},
 };
 
 pub const PAUSED: Item<bool> = Item::new("paused");
@@ -37,15 +37,18 @@ pub const USER_DEPTHS: Map<((&Denom, &Denom), Udec128_24, Direction, Udec128_24)
     Map::new("user_depth");
 
 /// Liquidity depth from passive pool orders.
-// ((base_denom, quote_denom), bucket_size, direction, price)
-pub const PASSIVE_DEPTHS: Map<((&Denom, &Denom), Udec128_24, Direction, Udec128_24), Udec128_6> =
-    Map::new("passive_depth");
+// (base_denom, quote_denom) => depths
+pub const PASSIVE_DEPTHS: Map<(&Denom, &Denom), PassiveLiquidityDepths> = Map::new("passive_depth");
 
 /// Stores the total trading volume in USD for each account address and timestamp.
 pub const VOLUMES: Map<(&Addr, Timestamp), Udec128_6> = Map::new("volume");
 
 /// Stores the total trading volume in USD for each username and timestamp.
 pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Udec128_6> = Map::new("volume_by_user");
+
+// bucket_size => direction => price => depth (total base asset)
+pub type PassiveLiquidityDepths =
+    BTreeMap<Udec128_24, BTreeMap<Direction, BTreeMap<Udec128_24, Udec128_6>>>;
 
 /// Storage key for orders, both limit and market.
 ///
@@ -65,7 +68,6 @@ pub struct LimitOrderIndex<'a> {
 }
 
 pub fn increase_depths(
-    map: &Map<((&Denom, &Denom), Udec128_24, Direction, Udec128_24), Udec128_6>,
     storage: &mut dyn Storage,
     base_denom: &Denom,
     quote_denom: &Denom,
@@ -78,7 +80,7 @@ pub fn increase_depths(
         let bucket = core::bucket(price, direction, *bucket_size)?;
         let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
 
-        map.may_update(storage, key, |maybe_depth| -> StdResult<_> {
+        USER_DEPTHS.may_update(storage, key, |maybe_depth| -> StdResult<_> {
             let depth = maybe_depth.unwrap_or(Udec128_6::ZERO);
             Ok(depth.checked_add(amount)?)
         })?;
@@ -88,7 +90,6 @@ pub fn increase_depths(
 }
 
 pub fn decrease_depths(
-    map: &Map<((&Denom, &Denom), Udec128_24, Direction, Udec128_24), Udec128_6>,
     storage: &mut dyn Storage,
     base_denom: &Denom,
     quote_denom: &Denom,
@@ -101,7 +102,7 @@ pub fn decrease_depths(
         let bucket = core::bucket(price, direction, *bucket_size)?;
         let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
 
-        map.modify(storage, key, |depth| -> StdResult<_> {
+        USER_DEPTHS.modify(storage, key, |depth| -> StdResult<_> {
             let depth = depth.checked_sub(filled)?;
             if depth.is_zero() {
                 Ok(None)
