@@ -2,15 +2,15 @@ use {
     assertor::*,
     dango_genesis::Contracts,
     dango_indexer_clickhouse::entities::trade_query::TradeQueryBuilder,
-    dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
+    dango_testing::{
+        TestAccounts, TestOption, TestSuiteWithIndexer, create_limit_order_request,
+        setup_test_with_indexer,
+    },
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction},
+        dex::{self, Direction},
     },
-    grug::{
-        Coins, Message, MultiplyFraction, NonEmpty, NonZero, ResultExt, Signer, StdResult,
-        Udec128_24, Uint128,
-    },
+    grug::{Message, NonEmpty, ResultExt, Signer, StdResult, Udec128_24, Uint128},
     grug_app::Indexer,
 };
 
@@ -69,25 +69,19 @@ async fn create_pair_prices(
             let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
-            let funds = match direction {
-                Direction::Bid => {
-                    let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(usdc::DENOM.clone(), quote_amount).unwrap()
-                },
-                Direction::Ask => Coins::one(dango::DENOM.clone(), amount).unwrap(),
-            };
+            let (funds, request) = create_limit_order_request(
+                dango::DENOM.clone(),
+                usdc::DENOM.clone(),
+                direction,
+                amount,
+                price,
+            );
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                    creates_limit: vec![request],
                     cancels: None,
                 },
                 funds,

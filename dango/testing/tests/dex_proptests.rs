@@ -219,15 +219,20 @@ impl DexAction {
                 amount,
                 price,
             } => {
-                let (deposit, amount) = match direction {
+                let (deposit, request) = match direction {
                     Direction::Bid => {
-                        let amount_quote = amount.checked_mul_dec_ceil(*price)?;
+                        let amount_quote = amount.checked_mul_dec_floor(*price)?;
                         (
                             Coin {
                                 denom: quote_denom.clone(),
                                 amount: amount_quote,
                             },
-                            amount_quote,
+                            CreateLimitOrderRequest::Bid {
+                                base_denom: base_denom.clone(),
+                                quote_denom: quote_denom.clone(),
+                                amount_quote: NonZero::new(amount_quote)?,
+                                price: NonZero::new(*price)?,
+                            },
                         )
                     },
                     Direction::Ask => (
@@ -235,7 +240,12 @@ impl DexAction {
                             denom: base_denom.clone(),
                             amount: *amount,
                         },
-                        *amount,
+                        CreateLimitOrderRequest::Ask {
+                            base_denom: base_denom.clone(),
+                            quote_denom: quote_denom.clone(),
+                            amount_base: NonZero::new(*amount)?,
+                            price: NonZero::new(*price)?,
+                        },
                     ),
                 };
 
@@ -243,13 +253,7 @@ impl DexAction {
                     contracts.dex,
                     &dex::ExecuteMsg::BatchUpdateOrders {
                         creates_market: vec![],
-                        creates_limit: vec![CreateLimitOrderRequest {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            direction: *direction,
-                            amount: NonZero::new(amount)?,
-                            price: NonZero::new(*price)?,
-                        }],
+                        creates_limit: vec![request],
                         cancels: None,
                     },
                     Coins::one(deposit.denom, deposit.amount)?,
@@ -280,27 +284,37 @@ impl DexAction {
                 direction,
                 amount,
             } => {
-                let deposit = match direction {
-                    Direction::Bid => Coin {
-                        denom: quote_denom.clone(),
-                        amount: *amount,
-                    },
-                    Direction::Ask => Coin {
-                        denom: base_denom.clone(),
-                        amount: *amount,
-                    },
+                let (deposit, request) = match direction {
+                    Direction::Bid => (
+                        Coin {
+                            denom: quote_denom.clone(),
+                            amount: *amount,
+                        },
+                        CreateMarketOrderRequest::Bid {
+                            base_denom: base_denom.clone(),
+                            quote_denom: quote_denom.clone(),
+                            amount_quote: NonZero::new(*amount).unwrap(),
+                            max_slippage: Bounded::new_unchecked(Udec128::MAX),
+                        },
+                    ),
+                    Direction::Ask => (
+                        Coin {
+                            denom: base_denom.clone(),
+                            amount: *amount,
+                        },
+                        CreateMarketOrderRequest::Ask {
+                            base_denom: base_denom.clone(),
+                            quote_denom: quote_denom.clone(),
+                            amount_base: NonZero::new(*amount).unwrap(),
+                            max_slippage: Bounded::new_unchecked(Udec128::MAX),
+                        },
+                    ),
                 };
 
                 let msg = Message::execute(
                     contracts.dex,
                     &dex::ExecuteMsg::BatchUpdateOrders {
-                        creates_market: vec![CreateMarketOrderRequest {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            direction: *direction,
-                            amount: NonZero::new(*amount).unwrap(),
-                            max_slippage: Bounded::new_unchecked(Udec128::MAX),
-                        }],
+                        creates_market: vec![request],
                         creates_limit: vec![],
                         cancels: None,
                     },
