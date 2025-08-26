@@ -8,6 +8,7 @@ import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/uti
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
+import { m } from "~/paraglide/messages";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type { Trade } from "@left-curve/dango/types";
@@ -187,10 +188,11 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
         baseDenom: base.denom,
         quoteDenom: quote.denom,
       },
-      listener: ({ trades: trade }) => setTrades([...trades, trade]),
+      listener: ({ trades: trade }) => setTrades((prev) => [trade, ...prev].slice(0, 25)),
     });
 
     return () => {
+      setTrades([]);
       unsubscribe();
     };
   }, [base, quote]);
@@ -198,9 +200,9 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
       <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3 ">
-        <p>Price</p>
-        <p className="text-end">Size ({base.symbol})</p>
-        <p className="text-end">Time</p>
+        <p>{m["dex.protrade.history.price"]()}</p>
+        <p className="text-end">{m["dex.protrade.history.size"]({ symbol: base.symbol })}</p>
+        <p className="text-end">{m["dex.protrade.history.time"]()}</p>
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
         {trades.map((trade) => {
@@ -208,7 +210,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
 
           return (
             <div
-              key={`${trade.addr}-${trade.createdAt}`}
+              key={`${trade.addr}-${trade.createdAt}-${trade.direction}`}
               className={
                 "grid grid-cols-3 diatype-xs-medium text-secondary-700 w-full cursor-pointer group relative"
               }
@@ -223,10 +225,16 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
                   Decimal(trade.clearingPrice)
                     .times(Decimal(10).pow(base.decimals - quote.decimals))
                     .toFixed(),
-                  { ...formatNumberOptions, maxSignificantDigits: 10 },
+                  { ...formatNumberOptions, maxSignificantDigits: 10, maxFractionDigits: 5 },
                 )}
               </p>
-              <p className="text-end z-10">{sizeAmount}</p>
+              <p className="text-end z-10">
+                {formatNumber(sizeAmount, {
+                  ...formatNumberOptions,
+                  maxSignificantDigits: 10,
+                  maxFractionDigits: 5,
+                })}
+              </p>
 
               <div className="flex gap-1 items-center justify-end z-10">
                 <p>{format(trade.createdAt, "HH:mm:ss")}</p>
