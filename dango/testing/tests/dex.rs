@@ -3870,7 +3870,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(200_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4173,7 +4173,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    amount_quote: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(157_500_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::new_percent(5)),
                 },
             ],
