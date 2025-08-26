@@ -3034,7 +3034,6 @@ fn curve_on_orderbook(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            dbg!(orders);
             assert_eq!(orders.len(), expected_orders_after_clearing.len());
             for (order_id, (price, remaining, direction)) in expected_orders_after_clearing {
                 let order = orders.get(&order_id).unwrap();
