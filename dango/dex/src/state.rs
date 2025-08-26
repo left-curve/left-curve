@@ -32,9 +32,11 @@ pub const LIMIT_ORDERS: IndexedMap<OrderKey, LimitOrder, LimitOrderIndex> =
     });
 
 /// Liquidity depth from user orders.
-// ((base_denom, quote_denom), bucket_size, direction, price)
-pub const USER_DEPTHS: Map<((&Denom, &Denom), Udec128_24, Direction, Udec128_24), Udec128_6> =
-    Map::new("user_depth");
+// ((base_denom, quote_denom), bucket_size, direction, price) => (amount_base, amount_quote)
+pub const USER_DEPTHS: Map<
+    ((&Denom, &Denom), Udec128_24, Direction, Udec128_24),
+    (Udec128_6, Udec128_6),
+> = Map::new("user_depth");
 
 /// Liquidity depth from passive pool orders.
 // (base_denom, quote_denom) => depths
@@ -67,47 +69,60 @@ pub struct LimitOrderIndex<'a> {
     pub user: MultiIndex<'a, OrderKey, Addr, LimitOrder>,
 }
 
+/// Increase the liquidity depth when a user limit order is created.
 pub fn increase_depths(
     storage: &mut dyn Storage,
     base_denom: &Denom,
     quote_denom: &Denom,
     direction: Direction,
     price: Udec128_24,
-    amount: Udec128_6,
+    amount_base: Udec128_6,
+    amount_quote: Udec128_6,
     bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
 ) -> StdResult<()> {
     for bucket_size in bucket_sizes {
         let bucket = core::bucket(price, direction, *bucket_size)?;
         let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
 
-        USER_DEPTHS.may_update(storage, key, |maybe_depth| -> StdResult<_> {
-            let depth = maybe_depth.unwrap_or(Udec128_6::ZERO);
-            Ok(depth.checked_add(amount)?)
+        USER_DEPTHS.may_update(storage, key, |maybe_depths| -> StdResult<_> {
+            let (depth_base, depth_quote) = maybe_depths.unwrap_or_default();
+
+            let depth_base = depth_base.checked_add(amount_base)?;
+            let depth_quote = depth_quote.checked_add(amount_quote)?;
+
+            Ok((depth_base, depth_quote))
         })?;
     }
 
     Ok(())
 }
 
+/// Decrease the liquidity depth when a user limit order is canceled or fulfilled.
 pub fn decrease_depths(
     storage: &mut dyn Storage,
     base_denom: &Denom,
     quote_denom: &Denom,
     direction: Direction,
     price: Udec128_24,
-    filled: Udec128_6,
+    amount_base: Udec128_6,
+    amount_quote: Udec128_6,
     bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
 ) -> StdResult<()> {
     for bucket_size in bucket_sizes {
         let bucket = core::bucket(price, direction, *bucket_size)?;
         let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
 
-        USER_DEPTHS.modify(storage, key, |depth| -> StdResult<_> {
-            let depth = depth.checked_sub(filled)?;
-            if depth.is_zero() {
+        USER_DEPTHS.modify(storage, key, |(depth_base, depth_quote)| -> StdResult<_> {
+            // Use saturating sub, in case underflows due to rounding.
+            let depth_base = depth_base.saturating_sub(amount_base);
+            let depth_quote = depth_quote.saturating_sub(amount_quote);
+
+            // If any one is zero, we delete the entry.
+            // TODO: can there be situations where only one is zero? maybe due to rounding?
+            if depth_base.is_zero() || depth_quote.is_zero() {
                 Ok(None)
             } else {
-                Ok(Some(depth))
+                Ok(Some((depth_base, depth_quote)))
             }
         })?;
     }

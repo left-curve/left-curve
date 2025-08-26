@@ -156,6 +156,7 @@ fn cancel_limit_order(
         direction,
         price,
         order.remaining,
+        order.remaining.checked_mul(price)?,
         &pair.bucket_sizes,
     )?;
 

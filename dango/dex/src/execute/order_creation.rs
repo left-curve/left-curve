@@ -66,6 +66,7 @@ pub(super) fn create_limit_order(
     deposits.insert(deposit)?;
 
     let remaining = order.amount.checked_into_dec()?;
+    let remaining_in_quote = remaining.checked_mul(*order.price)?;
 
     increase_depths(
         storage,
@@ -74,6 +75,7 @@ pub(super) fn create_limit_order(
         order.direction,
         *order.price,
         remaining,
+        remaining_in_quote,
         &pair.bucket_sizes,
     )?;
 

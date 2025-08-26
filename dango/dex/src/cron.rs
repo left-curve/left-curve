@@ -536,6 +536,7 @@ fn clear_orders_of_pair(
                     order_direction,
                     limit_order.price,
                     filled_base,
+                    filled_quote,
                     bucket_sizes,
                 )?;
 
