@@ -49,9 +49,30 @@ services:
       - DB_NAME=grug_dev
       - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres@db:5432/grug_dev}
       - INDEXER__CLICKHOUSE__URL=${INDEXER__CLICKHOUSE__URL:-http://clickhouse:8123}
+      - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD:-}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
+    labels:
+      <<: *common-labels
+    depends_on:
+      dango:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${DANGO_FRONTEND_PORT:-5081}:80"
+    environment:
+      - INDEXER_URL=http://localhost:8080/graphql
+      - FAUCET_URL=http://localhost:8082/mint
+      - QUEST_URL=http://localhost:8081/check_username
+      - UP_URL=http://localhost:8080/up
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -80,6 +101,48 @@ services:
       printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
       exec cometbft start
       "
+
+  # Need to create the database
+  # quest:
+  #   image: ghcr.io/left-curve/bots/quest-2:${QUEST_VERSION:-latest}
+  #   profiles: ["quest"]
+  #   depends_on:
+  #     - db
+  #     - cometbft
+  #   restart: always
+  #   ports:
+  #     - 127.0.0.1:${QUEST_PORT:-8081}:8081
+  #   environment:
+  #     httpd_url: "http://cometbft:26657"
+  #     rest_url: "0.0.0.0:8081"
+  #     db_url: postgres://myuser:mypassword@db:5432/mydb
+  #     initial_loops: 9
+  #     max_loops: 3
+  #     trading_volume_threshold: 1000000000000
+  #     trading_pairs_threshold: 3
+  #     eth_txs_threshold: 10
+  #     eth_txs_cache_ttl: 30s
+  #     eth_rpc_url: "${ETH_RPC_URL}"
+
+  faucet:
+    image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
+    profiles: ["faucet"]
+    labels:
+      <<: *common-labels
+    depends_on:
+      dango:
+        condition: service_healthy
+    environment:
+      - HOME=/app
+    tty: true
+    ports:
+      - 127.0.0.1:${FAUCET_PORT:-8082}:8082
+    command: ["faucet", "--provider-url", "http://dango:8080", "--chain-id", "{{ chain_id }}"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   prometheus:
     image: prom/prometheus:latest
@@ -165,6 +228,7 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
+      - ./configs/clickhouse/backups:/backups
       - ./configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro
       - ./configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro
     environment:

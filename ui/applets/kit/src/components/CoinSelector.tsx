@@ -1,8 +1,8 @@
 import { Select } from "./Select";
+import { twMerge } from "../utils/twMerge.js";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type { SelectProps } from "./Select";
-import { twMerge } from "#utils/twMerge.js";
 
 interface Props extends Omit<SelectProps, "children"> {
   coins: AnyCoin[];

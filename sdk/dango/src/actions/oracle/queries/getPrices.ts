@@ -3,8 +3,8 @@ import type { Client, Transport } from "@left-curve/sdk/types";
 
 import { getAction, getAppConfig } from "@left-curve/sdk/actions";
 import type { Chain, Denom, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "#types/app.js";
-import type { Price } from "#types/oracle.js";
+import type { AppConfig } from "../../../types/app.js";
+import type { Price } from "../../../types/oracle.js";
 
 export type GetPricesParameters = {
   startAfter?: Denom;

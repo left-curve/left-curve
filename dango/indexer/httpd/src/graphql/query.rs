@@ -1,8 +1,8 @@
 use {
     account::AccountQuery,
     async_graphql::MergedObject,
+    dango_indexer_clickhouse::httpd::graphql::query::{candle::CandleQuery, trade::TradeQuery},
     grug_httpd::graphql::query::grug::GrugQuery,
-    indexer_clickhouse::httpd::graphql::query::candle::CandleQuery,
     indexer_httpd::graphql::query::{
         block::BlockQuery, event::EventQuery, message::MessageQuery, transaction::TransactionQuery,
     },
@@ -25,4 +25,5 @@ pub struct Query(
     AccountQuery,
     UserQuery,
     CandleQuery,
+    TradeQuery,
 );

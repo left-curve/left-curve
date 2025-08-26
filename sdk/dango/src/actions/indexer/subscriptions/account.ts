@@ -6,7 +6,7 @@ import type {
   SubscriptionCallbacks,
   Transport,
   Username,
-} from "#types/index.js";
+} from "../../../types/index.js";
 
 export type AccountSubscriptionParameters = SubscriptionCallbacks<{
   accounts: IndexedAccountEvent[];

@@ -1,6 +1,6 @@
 import { Children, useState } from "react";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "../utils/twMerge.js";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";

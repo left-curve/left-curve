@@ -2,6 +2,7 @@ use {
     crate::build_actix_app,
     assert_json_diff::assert_json_include,
     dango_genesis::Contracts,
+    dango_indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
@@ -11,20 +12,17 @@ use {
     grug::{
         Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
         Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
-        setup_tracing_subscriber,
     },
     grug_app::Indexer,
-    indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
-    std::{sync::Arc, time::Duration},
+    std::{collections::HashMap, sync::Arc, time::Duration},
     tokio::{
         sync::{Mutex, mpsc},
         time::sleep,
     },
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -216,7 +214,7 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::DEBUG);
+    let _span = tracing::info_span!("graphql_subscribe_to_candles").entered();
 
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
@@ -283,18 +281,27 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last candle
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 let expected_json = serde_json::json!([{
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "interval": "ONE_MINUTE",
+                    "close": "25",
+                    "high": "27.5",
+                    "low": "25",
+                    "open": "27.5",
                     "volumeBase": "50",
-                    "volumeQuote": "1375",
+                    "volumeQuote": "1312.5",
                     "blockHeight": 4,
                 }]);
 
@@ -302,17 +309,15 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
                 create_candle_tx_clone.send(2).await.unwrap();
 
-                let mut framed = framed;
-
                 loop {
                     // 2nd response
-                    let (f, response) =
-                        parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                            .await?;
+                    let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
-                    framed = f;
-
-                    // This prevents a flaky test but I shouldn't need this.
+                    // This because blocks aren't indexed in order
                     if response
                         .data
                         .first()
@@ -326,8 +331,16 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     }
 
                     let expected_json = serde_json::json!([{
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "interval": "ONE_MINUTE",
+                        "close": "25",
+                        "high": "27.5",
+                        "low": "25",
+                        "open": "27.5",
+                        "blockHeight": 6,
                         "volumeBase": "75",
-                        "volumeQuote": "2062.5",
+                        "volumeQuote": "1937.5",
                     }]);
 
                     assert_json_include!(actual: response.data, expected: expected_json);
@@ -361,12 +374,21 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
     let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
 
-    println!("Cache : {:#?}", old_cache.pair_prices);
-    println!("Cache from clickhouse: {:#?}", cache.pair_prices);
-    assert_eq!(cache.pair_prices, old_cache.pair_prices);
+    // println!("Cache : {:#?}", old_cache.pair_prices);
+    // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
+    assert_eq!(
+        cache.pair_prices,
+        // Filtering empty ones, since cache has them but not clickhouse
+        old_cache
+            .pair_prices
+            .clone()
+            .into_iter()
+            .filter(|pp| !pp.1.is_empty())
+            .collect::<HashMap<_, _>>()
+    );
 
-    println!("Cache : {:#?}", old_cache.candles);
-    println!("Cache from clickhouse: {:#?}", cache.candles);
+    // println!("Cache : {:#?}", old_cache.candles);
+    // println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;
@@ -381,8 +403,6 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::DEBUG);
-
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -459,37 +479,72 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last candle
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 let expected_json = serde_json::json!([{
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "blockHeight": 2,
+                    "close": "27.5",
+                    "high": "27.5",
+                    "interval": "ONE_MINUTE",
+                    "low": "27.5",
+                    "open": "27.5",
                     "volumeBase": "25",
                     "volumeQuote": "687.5",
-                    "blockHeight": 2,
                 }]);
 
                 assert_json_include!(actual: response.data, expected: expected_json);
 
                 crate_block_tx_clone.send(2).await.unwrap();
 
-                // 2nd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                loop {
+                    // 2nd response
+                    let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
-                let expected_json = serde_json::json!([{
-                    "volumeBase": "25",
-                    "volumeQuote": "687.5",
-                    "blockHeight": 3,
-                }]);
+                    // This because blocks aren't indexed in order
+                    if response
+                        .data
+                        .first()
+                        .unwrap()
+                        .get("blockHeight")
+                        .and_then(|v| v.as_u64())
+                        .unwrap()
+                        < 3
+                    {
+                        continue;
+                    }
 
-                assert_json_include!(actual: response.data, expected: expected_json);
+                    let expected_json = serde_json::json!([{
+                        "baseDenom": "dango",
+                        "quoteDenom": "bridge/usdc",
+                        "blockHeight": 3,
+                        "close": "27.5",
+                        "high": "27.5",
+                        "interval": "ONE_MINUTE",
+                        "low": "27.5",
+                        "open": "27.5",
+                        "volumeBase": "25",
+                        "volumeQuote": "687.5",
+                    }]);
+
+                    assert_json_include!(actual: response.data, expected: expected_json);
+
+                    break;
+                }
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -517,12 +572,21 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     let old_cache = context.indexer_clickhouse_context.candle_cache.read().await;
 
-    println!("Cache : {:#?}", old_cache.pair_prices);
-    println!("Cache from clickhouse: {:#?}", cache.pair_prices);
-    assert_eq!(cache.pair_prices, old_cache.pair_prices);
+    // println!("Cache : {:#?}", old_cache.pair_prices);
+    // println!("Cache from clickhouse: {:#?}", cache.pair_prices);
+    assert_eq!(
+        cache.pair_prices,
+        // Filtering empty ones, since cache has them but not clickhouse
+        old_cache
+            .pair_prices
+            .clone()
+            .into_iter()
+            .filter(|pp| !pp.1.is_empty())
+            .collect::<HashMap<_, _>>()
+    );
 
-    println!("Cache : {:#?}", old_cache.candles);
-    println!("Cache from clickhouse: {:#?}", cache.candles);
+    // println!("Cache : {:#?}", old_cache.candles);
+    // println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
 
     let mut suite_guard = suite.lock().await;

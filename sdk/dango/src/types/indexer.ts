@@ -1,4 +1,4 @@
-import type { Address, Hex, Json, UID } from "@left-curve/sdk/types";
+import type { Address, Hex, Json, JsonString, UID } from "@left-curve/sdk/types";
 import type { AccountTypes } from "./account.js";
 
 export type IndexedBlock = {
@@ -6,6 +6,7 @@ export type IndexedBlock = {
   createdAt: string;
   hash: string;
   appHash: string;
+  cronsOutcomes: JsonString;
   transactions: IndexedTransaction[];
 };
 

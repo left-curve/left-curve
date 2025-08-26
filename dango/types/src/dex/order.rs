@@ -1,6 +1,4 @@
-use grug::{
-    Addr, MathResult, Number, NumberConst, Udec128, Udec128_6, Udec128_24, Uint64, Uint128,
-};
+use grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64, Uint128};
 
 /// Numerical identifier of an order (limit or market).
 ///
@@ -66,6 +64,9 @@ pub enum ExtendedOrderId {
 }
 
 #[grug::derive(Serde)]
+#[derive(Copy, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "async-graphql", graphql(rename_items = "lowercase"))]
 pub enum OrderKind {
     Limit,
     Market,
@@ -102,14 +103,16 @@ pub struct MarketOrder {
     pub user: Addr,
     /// The order's identifier.
     pub id: OrderId,
-    /// For BUY orders, the amount of quote asset; for SELL orders, that of the
-    /// base asset.
+    /// The "limit price" of this market order, calculated by the previous block's
+    /// best available price and the order's maximum slippage.
+    pub price: Udec128_24,
+    /// The order's total size, measured in the _base asset_.
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the unit as the
     /// `amount` field.
     pub remaining: Udec128_6,
-    /// Max slippage percentage.
-    pub max_slippage: Udec128,
+    /// The block height at which the order was submitted.
+    pub created_at_block_height: u64,
 }
 
 #[grug::derive(Borsh, Serde)]
@@ -251,7 +254,7 @@ impl OrderTrait for MarketOrder {
     }
 
     fn created_at_block_height(&self) -> Option<u64> {
-        None
+        Some(self.created_at_block_height)
     }
 
     fn remaining(&self) -> &Udec128_6 {

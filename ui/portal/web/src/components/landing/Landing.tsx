@@ -5,6 +5,7 @@ import {
   createContext,
   IconChevronDown,
   IconDiscord,
+  IconMirror,
   IconTwitter,
   useMediaQuery,
   useTheme,
@@ -31,7 +32,7 @@ const LandingContainer: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="w-full mx-auto flex flex-col gap-6 pt-0 pb-16 flex-1">
       <ReactFullpage
-        beforeLeave={(_, destination) => setQuestBannerVisibility(destination.isFirst)}
+        beforeLeave={(_, _destination) => setQuestBannerVisibility(false)}
         licenseKey={decodeUtf8(decodeBase64(import.meta.env.PUBLIC_FP || "RkFMTEJBQ0tfS0VZCg=="))}
         scrollingSpeed={1000}
         credits={{ enabled: false }}
@@ -186,18 +187,34 @@ const SectionCommunity: React.FC = () => {
             </h2>
             <div className="flex gap-4">
               <Button
+                as="a"
+                href="https://x.com/dango"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="gap-0"
-                onClick={() => window.open("https://x.com/dangoXchg", "_blank")}
               >
                 <IconTwitter className="w-6 h-6" />
                 <span>Twitter</span>
               </Button>
               <Button
+                as="a"
+                href="https://discord.gg/4uB9UDzYhz"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="gap-0"
-                onClick={() => window.open("https://discord.gg/4uB9UDzYhz", "_blank")}
               >
-                <IconDiscord className="w-6 h-6" />
+                <IconDiscord className="w-5 h-5" />
                 <span className="pl-[6px]">Discord</span>
+              </Button>
+              <Button
+                as="a"
+                href="https://mirror.xyz/0x8E4AA2B6F137D2eD6Ba3E3Bb8E64240D46035DE6"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gap-0"
+              >
+                <IconMirror className="w-5 h-5" />
+                <span className="pl-[6px]">Mirror</span>
               </Button>
             </div>
           </div>
@@ -206,7 +223,7 @@ const SectionCommunity: React.FC = () => {
           <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
           <div className="flex gap-10 lg:gap-4 diatype-m-medium">
             <a
-              href="/documents/Dango%20-%20Terms%20of%20use.pdf"
+              href="/documents/Dango%20-%20Terms%20of%20Use.pdf"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:underline text-tertiary-500"

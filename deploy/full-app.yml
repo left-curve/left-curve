@@ -1,0 +1,29 @@
+- hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  vars:
+    tailscale_iface: tailscale0
+    tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
+    dango_image_tag: "{{ lookup('pipe','git rev-parse HEAD') }}"
+    ghcr_user: "{{ lookup('env','GITHUB_USER') }}"
+    ghcr_token: "{{ lookup('env','GITHUB_TOKEN') }}"
+    timestamp: "{{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}{{ ansible_date_time.second }}"
+    deployment_name: "{% if pr_name is defined and pr_name != '' %}{{ pr_name }}-{% endif %}{{ timestamp }}"
+    COMETBFT_NODE_KEY: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_NODE_KEY') }}"
+    COMETBFT_VALIDATOR_ADDRESS: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_VALIDATOR_ADDRESS') }}"
+    COMETBFT_VALIDATOR_PUB_KEY: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_VALIDATOR_PUB_KEY') }}"
+    COMETBFT_VALIDATOR_PRIVATE_KEY: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_VALIDATOR_PRIVATE_KEY') }}"
+    dango_host: "dango"
+    cometbft_host: "cometbft"
+    deploy_env: "staging"
+    chain_id: "dev-9"
+    dango_network: "devnet"
+    dango_port: 0
+    quest_port: 0
+    faucet_port: 0
+    dango_frontend_port: 0
+  collections:
+    - community.docker
+    - community.clickhouse
+  roles:
+    - full-app

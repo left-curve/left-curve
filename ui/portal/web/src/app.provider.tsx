@@ -7,7 +7,7 @@ import * as Sentry from "@sentry/react";
 import { router } from "./app.router";
 import { Modals } from "./components/modals/RootModal";
 
-import type { ToastController } from "@left-curve/applets-kit";
+import type { ToastController } from "./app.toaster";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 
 type AppState = {
@@ -30,6 +30,7 @@ type AppState = {
   modal: { modal: string | undefined; props: Record<string, unknown> };
   changeSettings: (settings: Partial<AppState["settings"]>) => void;
   settings: {
+    chart: "tradingview" | "chartiq";
     showWelcome: boolean;
     isFirstVisit: boolean;
     useSessionKey: boolean;
@@ -49,14 +50,15 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
-  const [isQuestBannerVisible, setQuestBannerVisibility] = useState(true);
+  const [isQuestBannerVisible, setQuestBannerVisibility] = useState(false);
 
   useTheme();
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.3,
+    version: 1.4,
     initialValue: {
+      chart: "tradingview",
       showWelcome: true,
       isFirstVisit: true,
       useSessionKey: true,
@@ -72,6 +74,10 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
     migrations: {
       1.2: (state: AppState["settings"]) => {
         state.showWelcome = true;
+        return state;
+      },
+      1.3: (state: AppState["settings"]) => {
+        state.chart = "tradingview";
         return state;
       },
     },
@@ -95,7 +101,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const showModal = useCallback((modal: string, props = {}) => setModal({ modal, props }), []);
 
   // Track user errors
-  const { username, connector, account } = useAccount();
+  const { username, connector, account, isConnected } = useAccount();
   useEffect(() => {
     if (!username) Sentry.setUser(null);
     else {
@@ -121,7 +127,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
     const intervalId = setInterval(() => {
       if (
         (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
-        account &&
+        isConnected &&
         settings.useSessionKey &&
         connector &&
         connector.type !== "session"
@@ -134,7 +140,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
     return () => {
       clearInterval(intervalId);
     };
-  }, [session, modal, settings.useSessionKey, connector]);
+  }, [session, modal, settings.useSessionKey, connector, isConnected]);
 
   return (
     <AppContext.Provider

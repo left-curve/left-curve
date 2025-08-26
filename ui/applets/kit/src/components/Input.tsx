@@ -1,6 +1,6 @@
 import * as React from "react";
 import { type VariantProps, tv } from "tailwind-variants";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "../utils/twMerge.js";
 import { Skeleton } from "./Skeleton";
 
 export interface InputProps

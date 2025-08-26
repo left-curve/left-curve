@@ -41,6 +41,7 @@ target/
 **/tsconfig.tsbuildinfo
 **/build
 !ui/portal/app/.eas/build/
+!ui/portal/web/**/*.pdf
 **/.turbo
 
 # SDK
@@ -68,4 +69,6 @@ ui/config/project.inlang/*
 # Network data
 networks/**/configs/cometbft/config/addrbook.json
 networks/**/configs/cometbft/config/write-file-atomic-*
+networks/**/configs/backups
 networks/**/data
+networks/**/logs

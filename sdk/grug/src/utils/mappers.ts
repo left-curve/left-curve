@@ -92,3 +92,21 @@ export function invertObject(obj: object): object {
 
   return invert(obj);
 }
+
+/**
+ * Given an object, return a new object with only the keys that have non-null and non-undefined values.
+ * This function works recursively on nested objects.
+ * @param obj The object to transform.
+ * @returns The transformed object.
+ */
+export function plainObject<T = object>(obj: object, newObj = Object.create({})): T {
+  return Object.entries(obj).reduce((acc, [key, value]) => {
+    if (value === null || value === undefined) return acc;
+    if (typeof value === "object" && !Array.isArray(value)) {
+      plainObject(value, acc);
+    } else {
+      acc[key] = value;
+    }
+    return acc;
+  }, newObj);
+}

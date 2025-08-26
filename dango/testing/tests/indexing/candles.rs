@@ -1,23 +1,26 @@
 use {
     assertor::*,
-    chrono::DateTime,
+    chrono::{DateTime, TimeDelta},
     dango_genesis::Contracts,
-    dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
+    dango_indexer_clickhouse::entities::{
+        CandleInterval, candle::Candle, candle_query::CandleQueryBuilder, pair_price::PairPrice,
+        pair_price_query::PairPriceQueryBuilder,
+    },
+    dango_testing::{
+        TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer,
+        constants::MOCK_GENESIS_TIMESTAMP, setup_test_with_indexer,
+    },
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction},
+        dex::{self, CreateLimitOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
     grug::{
-        BlockInfo, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero, Number,
+        BlockInfo, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero,
         NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24,
         Uint128, btree_map, coins,
     },
     grug_app::Indexer,
-    indexer_clickhouse::entities::{
-        CandleInterval, candle_query::CandleQueryBuilder, pair_price::PairPrice,
-        pair_price_query::PairPriceQueryBuilder,
-    },
     std::str::FromStr,
 };
 
@@ -192,44 +195,43 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 
     assert_that!(pair_prices.clone().len()).is_at_least(10);
 
-    let candle_query_builder = CandleQueryBuilder::new(
+    let candles_1m = CandleQueryBuilder::new(
         CandleInterval::OneMinute,
         "dango".to_string(),
         "bridge/usdc".to_string(),
-    );
+    )
+    .fetch_all(clickhouse_context.clickhouse_client())
+    .await?;
 
-    let candle_1m = candle_query_builder
-        .fetch_all(clickhouse_context.clickhouse_client())
-        .await?;
+    assert_that!(candles_1m.candles).has_length(1);
+    assert_that!(candles_1m.has_next_page).is_false();
+    assert_that!(candles_1m.has_previous_page).is_false();
 
-    assert_that!(candle_1m.candles).has_length(1);
+    let candle = &candles_1m.candles[0];
 
-    assert_that!(candle_1m.has_next_page).is_false();
-    assert_that!(candle_1m.has_previous_page).is_false();
-
-    assert_that!(candle_1m.candles[0].time_start.naive_utc()).is_equal_to(
+    assert_that!(candle.time_start.naive_utc()).is_equal_to(
         DateTime::parse_from_rfc3339("1971-01-01T00:00:00Z")
             .unwrap()
             .naive_utc(),
     );
 
-    assert_that!(candle_1m.candles[0].open).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].high).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].low).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].close).is_equal_to(pair_prices[0].clone().close_price);
-    assert_that!(candle_1m.candles[0].volume_base).is_equal_to(
-        pair_prices[0]
-            .clone()
-            .volume_base
-            .checked_mul(Udec128_6::from_str("10.0").unwrap())
-            .unwrap(),
-    );
-    assert_that!(candle_1m.candles[0].volume_quote).is_equal_to(
-        pair_prices[0]
-            .clone()
-            .volume_quote
-            .checked_mul(Udec128_6::from_str("10.0").unwrap())
-            .unwrap(),
+    assert_that!(candle.open).is_equal_to(pair_prices.last().unwrap().open_price);
+
+    assert_that!(candle.high)
+        .is_equal_to(pair_prices.iter().map(|p| p.highest_price).max().unwrap());
+
+    assert_that!(candle.low).is_equal_to(pair_prices.iter().map(|p| p.lowest_price).min().unwrap());
+
+    assert_that!(candle.close).is_equal_to(pair_prices.first().unwrap().close_price);
+
+    assert_that!(candle.volume_base)
+        .is_equal_to(pair_prices.iter().map(|p| p.volume_base).sum::<Udec128_6>());
+
+    assert_that!(candle.volume_quote).is_equal_to(
+        pair_prices
+            .iter()
+            .map(|p| p.volume_quote)
+            .sum::<Udec128_6>(),
     );
 
     Ok(())
@@ -240,6 +242,39 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
 
+    // Call the `create_pair_prices` function 10 times.
+    //
+    // The orders placed are taken from this example:
+    // https://75m6j-xiaaa-aaaap-ahq4q-cai.icp0.io/?bids=30%2C25%3B20%2C10%3B10%2C10&asks=5%2C10%3B15%2C10%3B25%2C10
+    // It will find the price range 25--30 maximizes the trading volume (denoted
+    // in the base asset).
+    //
+    // According to our algorithm, the first time this is done, as no previous
+    // auction exists, the clearing price is chosen at the middle point of the
+    // range, which is 27.5. The trading volume is 25 units of base asset, or
+    // 25 * 27.5 = 687.5 units of quote asset.
+    //
+    // After the auction, the resting order book state is as follows:
+    // https://75m6j-xiaaa-aaaap-ahq4q-cai.icp0.io/?bids=20%2C10%3B10%2C10&asks=25%2C5
+    // - best bid price: 20
+    // - best ask price: 25
+    // - mid price: 22.5
+    //
+    // The function is then called 9 more times. Now, since the mid price exists
+    // and is smaller than the lower bound of the range (22.5 < 25), the clearing
+    // price is chosen as 25 each time. Volume in base asset: 25; volume in
+    // quote asset: 25 * 25 = 625.
+    //
+    // Summary:
+    // - Candle 0s: contains blocks 1-3; block times: 0.25, 0.50, 0.75;
+    //   open 27.5, high 27.5, low 25, close 25;
+    //   volume base: 25 * 3 = 75; volume quote: 687.5 + 625 * 2 = 1937.5.
+    // - Candle 1s: contains blocks 4-7; block times: 1.00, 1.25, 1.50, 1.75;
+    //   open 25, high 25, low 25, close 25;
+    //   volume base: 25 * 4 = 100; volume quote: 625 * 4 = 2500.
+    // - Candle 2s: contains blocks 8-10; block times: 2.00, 2.25, 2.50.
+    //   open 25, high 25, low 25, close 25;
+    //   volume base: 25 * 3 = 75; volume quote: 625 * 3 = 1875.
     for _ in 0..10 {
         create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
     }
@@ -251,85 +286,65 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
         .await?
         .pair_prices;
 
-    assert_that!(pair_prices.clone().len()).is_at_least(10);
+    assert_that!(pair_prices.clone().len()).is_equal_to(10);
 
-    let candle_query_builder = CandleQueryBuilder::new(
+    let candles_1s = CandleQueryBuilder::new(
         CandleInterval::OneSecond,
         "dango".to_string(),
         "bridge/usdc".to_string(),
-    );
-
-    let candle_1s = candle_query_builder
-        .fetch_all(clickhouse_context.clickhouse_client())
-        .await?;
-
-    assert_that!(candle_1s.candles).has_length(6);
-    assert_that!(
-        candle_1s
-            .candles
-            .iter()
-            .map(|c| c.time_start.naive_utc().to_string())
-            .collect::<Vec<_>>()
     )
-    .is_equal_to(vec![
-        "1971-01-01 00:00:05".to_string(),
-        "1971-01-01 00:00:04".to_string(),
-        "1971-01-01 00:00:03".to_string(),
-        "1971-01-01 00:00:02".to_string(),
-        "1971-01-01 00:00:01".to_string(),
-        "1971-01-01 00:00:00".to_string(),
-    ]);
+    .fetch_all(clickhouse_context.clickhouse_client())
+    .await?
+    .candles;
 
-    assert_that!(
-        candle_1s
-            .candles
-            .iter()
-            .map(|c| &c.volume_quote)
-            .collect::<Vec<_>>()
-    )
-    .is_equal_to(vec![
-        &Udec128_6::from_str("687.5").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("1375").unwrap(),
-        &Udec128_6::from_str("687.5").unwrap(),
+    // Note: this vector goes from the newest to the oldest candle.
+    assert_that!(candles_1s).is_equal_to(vec![
+        Candle {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            time_start: MOCK_GENESIS_TIMESTAMP.to_utc_date_time() + TimeDelta::seconds(2),
+            open: Udec128_24::new(25),
+            high: Udec128_24::new(25),
+            low: Udec128_24::new(25),
+            close: Udec128_24::new(25),
+            volume_base: Udec128_6::new(75),
+            volume_quote: Udec128_6::new(1875),
+            interval: CandleInterval::OneSecond,
+            block_height: 10,
+        },
+        Candle {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            time_start: MOCK_GENESIS_TIMESTAMP.to_utc_date_time() + TimeDelta::seconds(1),
+            open: Udec128_24::new(25),
+            high: Udec128_24::new(25),
+            low: Udec128_24::new(25),
+            close: Udec128_24::new(25),
+            volume_base: Udec128_6::new(100),
+            volume_quote: Udec128_6::new(2500),
+            interval: CandleInterval::OneSecond,
+            block_height: 7,
+        },
+        Candle {
+            base_denom: "dango".to_string(),
+            quote_denom: "bridge/usdc".to_string(),
+            time_start: MOCK_GENESIS_TIMESTAMP.to_utc_date_time(),
+            open: Udec128_24::from_str("27.5").unwrap(),
+            high: Udec128_24::from_str("27.5").unwrap(),
+            low: Udec128_24::new(25),
+            close: Udec128_24::new(25),
+            volume_base: Udec128_6::new(75),
+            volume_quote: Udec128_6::from_str("1937.5").unwrap(),
+            interval: CandleInterval::OneSecond,
+            block_height: 3,
+        },
     ]);
-
-    assert_that!(
-        candle_1s
-            .candles
-            .iter()
-            .map(|c| &c.volume_base)
-            .collect::<Vec<_>>()
-    )
-    .is_equal_to(vec![
-        &Udec128_6::from_str("25").unwrap(),
-        &Udec128_6::from_str("50").unwrap(),
-        &Udec128_6::from_str("50").unwrap(),
-        &Udec128_6::from_str("50").unwrap(),
-        &Udec128_6::from_str("50").unwrap(),
-        &Udec128_6::from_str("25").unwrap(),
-    ]);
-
-    for candle in candle_1s.candles.into_iter() {
-        assert_that!(candle.open).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(candle.high).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(candle.low).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(candle.close).is_equal_to::<Udec128_24>(Udec128_24::from_str("27.5").unwrap());
-    }
 
     Ok(())
 }
 
-/// A comprehensive test that covers all cases:
-/// - limit bid matched against limit ask
-/// - limit bid matched against market ask
-/// - limit ask matched against limit bid
-/// - limit ask matched against market bid
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -> anyhow::Result<()>
-{
+async fn index_candles_changing_prices() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption {
             // Start at block 0 at 1 second, with a block time of 20 seconds.
@@ -364,52 +379,52 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
     // Make an empty block at timestamps 41.
     suite.make_empty_block();
 
-    // -------------------------------- block 1 --------------------------------
+    // This function makes a block containing a single limit buy order and a
+    // limit sell order of the same price and size. This produces a clearing
+    // price that is to be indexed.
+    let mut make_block_with_price = |suite: &mut TestSuite<_, _, _, _>, price, amount| {
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.dex,
+                &dex::ExecuteMsg::BatchUpdateOrders {
+                    creates_market: vec![],
+                    creates_limit: vec![
+                        CreateLimitOrderRequest {
+                            base_denom: dango::DENOM.clone(),
+                            quote_denom: usdc::DENOM.clone(),
+                            direction: Direction::Ask,
+                            amount: NonZero::new_unchecked(amount),
+                            price: NonZero::new_unchecked(price),
+                        },
+                        CreateLimitOrderRequest {
+                            base_denom: dango::DENOM.clone(),
+                            quote_denom: usdc::DENOM.clone(),
+                            direction: Direction::Bid,
+                            amount: NonZero::new_unchecked(amount),
+                            price: NonZero::new_unchecked(price),
+                        },
+                    ],
+                    cancels: None,
+                },
+                coins! {
+                    dango::DENOM.clone() => amount,
+                    usdc::DENOM.clone() => amount.checked_mul_dec_ceil(price).unwrap(),
+                },
+            )
+            .should_succeed();
+    };
 
-    // Block 1
-    // Block time: 61 seconds
-    // Place the following orders:
-    // - limit, sell, price 100000 USDC per DANGO, size 2 DANGO
-    // - limit, buy, price 100000, size 1 DANGO
-    // - market, buy, size 1 DANGO
-    suite
-        .execute(
-            &mut accounts.user1,
-            contracts.dex,
-            &dex::ExecuteMsg::BatchUpdateOrders {
-                creates_market: vec![CreateMarketOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000)), // price 100_000 * size 1
-                    max_slippage: Udec128::ZERO,
-                }],
-                creates_limit: vec![
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(2)),
-                        price: NonZero::new_unchecked(Udec128_24::new(100_000)),
-                    },
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(1)),
-                        price: NonZero::new_unchecked(Udec128_24::new(100_000)),
-                    },
-                ],
-                cancels: None,
-            },
-            coins! {
-                dango::DENOM.clone() => Uint128::new(2),
-                usdc::DENOM.clone() => Uint128::new(200_000), // market 100_000 + limit 100_000
-            },
-        )
-        .should_succeed();
-
-    suite.app.indexer.wait_for_finish()?;
+    let assert_candle = |candle: &Candle, open, close, low, high, vol_base, vol_quote, time| {
+        assert_that!(candle.open).is_equal_to(Udec128_24::new(open));
+        assert_that!(candle.close).is_equal_to(Udec128_24::new(close));
+        assert_that!(candle.low).is_equal_to(Udec128_24::new(low));
+        assert_that!(candle.high).is_equal_to(Udec128_24::new(high));
+        assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(vol_base));
+        assert_that!(candle.volume_quote).is_equal_to(Udec128_6::new(vol_quote));
+        assert_that!(candle.time_start.naive_utc())
+            .is_equal_to(DateTime::parse_from_rfc3339(time).unwrap().naive_utc());
+    };
 
     let candle_query_builder = CandleQueryBuilder::new(
         CandleInterval::OneMinute,
@@ -417,148 +432,68 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
         "bridge/usdc".to_string(),
     );
 
+    // -------------------------------- block 1 --------------------------------
+
+    // Block 1
+    // Block time: 61 seconds
+    // Price: 100_000
+    // Volume in DANGO: 1
+    // Volume in USDC: 1 * 100_000 = 100_000
+    make_block_with_price(&mut suite, Udec128_24::new(100_000), Uint128::new(1));
+
+    suite.app.indexer.wait_for_finish()?;
+
     let candle_1m = candle_query_builder
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
-    assert!(
-        candle_1m.candles.len() == 1,
-        "Expected one candle after first block, received: {candle_1m:#?}"
-    );
-
-    let candle = &candle_1m.candles[0];
-
-    // time 60-120, open 100_000, high 100_000, low 100_000, close 100_000, volume 200_000 USD
-
-    assert_that!(candle.open).is_equal_to(Udec128_24::new(100000));
-    assert_that!(candle.close).is_equal_to(Udec128_24::new(100000));
-    assert_that!(candle.low).is_equal_to(Udec128_24::new(100000));
-    assert_that!(candle.high).is_equal_to(Udec128_24::new(100000));
-    assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(2));
-    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::new(200000));
-    assert_that!(candle.time_start.naive_utc()).is_equal_to(
-        DateTime::parse_from_rfc3339("1970-01-01T00:01:00Z")
-            .unwrap()
-            .naive_utc(),
+    assert_that!(candle_1m.candles).has_length(1);
+    assert_candle(
+        &candle_1m.candles[0],
+        100_000,
+        100_000,
+        100_000,
+        100_000,
+        1,
+        100_000,
+        "1970-01-01T00:01:00Z",
     );
 
     // -------------------------------- block 2 --------------------------------
 
     // Block 2
     // Block time: 81 seconds
-    // Place the following orders:
-    // - limit, sell, price 99999, size 2
-    // - limit, buy, price 100000, size 1
-    // - market, buy, size 1
-    // The market order should fill at 99999 (volume: 99999 USD), limit orders should fill at 99999.5 (volume: 99999.5 USD).
-    // Total volume: 99999 + 99999.5 = 199998.5 USD.
-    suite
-        .execute(
-            &mut accounts.user1,
-            contracts.dex,
-            &dex::ExecuteMsg::BatchUpdateOrders {
-                creates_market: vec![CreateMarketOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(99_999)), // price 99_999 * size 1
-                    max_slippage: Udec128::ZERO,
-                }],
-                creates_limit: vec![
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(2)),
-                        price: NonZero::new_unchecked(Udec128_24::new(99_999)),
-                    },
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(1)),
-                        price: NonZero::new_unchecked(Udec128_24::new(100_000)),
-                    },
-                ],
-                cancels: None,
-            },
-            coins! {
-                dango::DENOM.clone() => Uint128::new(2),
-                usdc::DENOM.clone() => Uint128::new(199_999), // market 99_999 + limit 100_000
-            },
-        )
-        .should_succeed();
+    // Price: 99_999
+    // Volume in DANGO: 1 + 1 (from previous block) = 2
+    // Volume in USDC: 99_999 + 100_000 (from previous block) = 199_999
+    make_block_with_price(&mut suite, Udec128_24::new(99_999), Uint128::new(1));
 
     suite.app.indexer.wait_for_finish()?;
-
-    // time 60-120, open 100_000, high 100_000, low 99_999, close 99_999.5, volume 399_998.5 (200_000 + 199_998.5)
 
     let candle_1m = candle_query_builder
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
     assert_that!(candle_1m.candles).has_length(1);
-
-    let candle = &candle_1m.candles[0];
-
-    assert_that!(candle.open).is_equal_to(Udec128_24::new(100000));
-    assert_that!(candle.close).is_equal_to(Udec128_24::from_str("99999.5").unwrap());
-    assert_that!(candle.low).is_equal_to(Udec128_24::new(99_999));
-    assert_that!(candle.high).is_equal_to(Udec128_24::new(100000));
-    assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(4));
-    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::from_str("399998.5").unwrap());
-    assert_that!(candle.time_start.naive_utc()).is_equal_to(
-        DateTime::parse_from_rfc3339("1970-01-01T00:01:00Z")
-            .unwrap()
-            .naive_utc(),
+    assert_candle(
+        &candle_1m.candles[0],
+        100_000,
+        99_999,
+        99_999,
+        100_000,
+        2,
+        199_999,
+        "1970-01-01T00:01:00Z",
     );
 
     // -------------------------------- block 3 --------------------------------
 
     // Block 3
     // Block time: 101 seconds
-    // Place the following orders:
-    // - limit, sell, price 100000, size 1
-    // - limit, buy, price 100001, size 2
-    // - market, sell, size 1
-    // The market order should fill at 100_001 (volume: 100_001 USD), limit orders should fill at 100_000.5 (volume: 100_000.5 USD).
-    // Total volume: 100_001 + 100_000.5 = 200_001.5 USD.
-    suite
-        .execute(
-            &mut accounts.user1,
-            contracts.dex,
-            &dex::ExecuteMsg::BatchUpdateOrders {
-                creates_market: vec![CreateMarketOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(1)),
-                    max_slippage: Udec128::ZERO,
-                }],
-                creates_limit: vec![
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(1)),
-                        price: NonZero::new_unchecked(Udec128_24::new(100_000)),
-                    },
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(2)),
-                        price: NonZero::new_unchecked(Udec128_24::new(100_001)),
-                    },
-                ],
-                cancels: None,
-            },
-            coins! {
-                dango::DENOM.clone() => Uint128::new(2), // market 1 + limit 1
-                usdc::DENOM.clone() => Uint128::new(200_002), // price 100_001 * size 2
-            },
-        )
-        .should_succeed();
+    // Price: 100_001
+    // Volume in DANGO: 1 + 2 (from previous blocks) = 3
+    // Volume in USDC: 100_001 + 199_999 (from previous blocks) = 300_000
+    make_block_with_price(&mut suite, Udec128_24::new(100_001), Uint128::new(1));
 
     suite.app.indexer.wait_for_finish()?;
 
@@ -567,20 +502,15 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
         .await?;
 
     assert_that!(candle_1m.candles).has_length(1);
-
-    let candle = &candle_1m.candles[0];
-
-    // time 60-120, open 100_000, high 100_001, low 99_999, close 100_000.5, volume 600_000 (399_998.5 + 200_001.5)
-    assert_that!(candle.open).is_equal_to(Udec128_24::new(100000));
-    assert_that!(candle.close).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
-    assert_that!(candle.low).is_equal_to(Udec128_24::new(99_999));
-    assert_that!(candle.high).is_equal_to(Udec128_24::new(100001));
-    assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(6));
-    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::new(600000));
-    assert_that!(candle.time_start.naive_utc()).is_equal_to(
-        DateTime::parse_from_rfc3339("1970-01-01T00:01:00Z")
-            .unwrap()
-            .naive_utc(),
+    assert_candle(
+        &candle_1m.candles[0],
+        100_000,
+        100_001,
+        99_999,
+        100_001,
+        3,
+        300_000,
+        "1970-01-01T00:01:00Z",
     );
 
     // -------------------------------- block 4 --------------------------------
@@ -596,40 +526,31 @@ async fn index_candles_with_both_market_and_limit_orders_one_minute_interval() -
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
-    // ensure there are two candles
+    // Ensure there are two candles.
+    // The most recent candle is the first; the oldest is the last.
+    //
+    // Since no trade happened in the new candle, its prices are all inherited
+    // from the close price of the previous candle, and volume is zero.
     assert_that!(candle_1m.candles).has_length(2);
-
-    // Most recent is first, oldest is last.
-    let candle = &candle_1m.candles[1];
-
-    // Oldest candle
-    // time 60-120, open 100_000, high 100_001, low 99_999, close 100_000.5, volume 600_000
-    assert_that!(candle.open).is_equal_to(Udec128_24::new(100000));
-    assert_that!(candle.close).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
-    assert_that!(candle.low).is_equal_to(Udec128_24::new(99_999));
-    assert_that!(candle.high).is_equal_to(Udec128_24::new(100001));
-    assert_that!(candle.volume_base).is_equal_to(Udec128_6::new(6));
-    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::new(600000));
-    assert_that!(candle.time_start.naive_utc()).is_equal_to(
-        DateTime::parse_from_rfc3339("1970-01-01T00:01:00Z")
-            .unwrap()
-            .naive_utc(),
+    assert_candle(
+        &candle_1m.candles[0],
+        100_001,
+        100_001,
+        100_001,
+        100_001,
+        0,
+        0,
+        "1970-01-01T00:02:00Z",
     );
-
-    let candle = &candle_1m.candles[0];
-
-    // Most recent candle
-    // time 120-180, open 100_000.5, high 100_000.5, low 100_000.5, close 100_000.5, volume 0
-    assert_that!(candle.open).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
-    assert_that!(candle.close).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
-    assert_that!(candle.low).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
-    assert_that!(candle.high).is_equal_to(Udec128_24::from_str("100000.5").unwrap());
-    assert_that!(candle.volume_base).is_equal_to(Udec128_6::ZERO);
-    assert_that!(candle.volume_quote).is_equal_to(Udec128_6::ZERO);
-    assert_that!(candle.time_start.naive_utc()).is_equal_to(
-        DateTime::parse_from_rfc3339("1970-01-01T00:02:00Z")
-            .unwrap()
-            .naive_utc(),
+    assert_candle(
+        &candle_1m.candles[1],
+        100_000,
+        100_001,
+        99_999,
+        100_001,
+        3,
+        300_000,
+        "1970-01-01T00:01:00Z",
     );
 
     Ok(())
@@ -729,26 +650,24 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// The auction over the orders in `orders_to_submit` should find maximum volume
+/// in the range 25--30. Since no previous mid price exists, it takes the mid
+/// point of the range, which is 27.5.
+///
+/// After the order has been filled, the remaining best bid is 20, best ask
+/// is 25, so mid price is 22.5.
+///
+/// Summary:
+/// - If this function is run a single time, the clearing price is 27.5.
+/// - If it is run more than one times, any subsequent calls with have clearing
+///   price of 25, because the previous auction's mid price (22.5) is smaller
+///   than the lower bound of the range (25--30), so the lower bound (25) is
+///   chosen.
 async fn create_pair_prices(
     suite: &mut TestSuiteWithIndexer,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) -> anyhow::Result<()> {
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
     let orders_to_submit: Vec<(Direction, u128, u128)> = vec![
         (Direction::Bid, 30, 25), // !0 - filled
         (Direction::Bid, 20, 10), // !1 - unfilled

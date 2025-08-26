@@ -24,6 +24,7 @@ export const tailwindConfig: Partial<Config> = {
           "quaternary-green": "var(--color-surface-quaternary-green)",
           "quaternary-rice-hover": "var(--color-surface-quaternary-rice-hover)",
           "disabled-gray": "var(--color-surface-disabled-gray)",
+          playground: "var(--color-surface-playground)",
         },
         overlay: {
           rice: "var(--color-overlay-rice)",

@@ -35,6 +35,15 @@
     - config.xml
     - users.xml
 
+- name: Copy backup script
+  become: true
+  become_user: root
+  template:
+    src: "make_clickhouse_backup.sh"
+    dest: "{{ ansible_env.HOME }}"
+    mode: '0755'
+    owner: '{{ deploy_user }}'
+
 - name: Deploy clickhouse container
   docker_container:
     name: "{{ container_name }}"
@@ -44,6 +53,7 @@
     recreate: true
     env:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
+    # Not sure I still need to bind outside
     ports:
       - "127.0.0.1:8123:8123" # HTTP interface
       - "127.0.0.1:9000:9000" # Native TCP interface

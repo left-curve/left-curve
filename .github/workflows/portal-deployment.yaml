@@ -1,5 +1,9 @@
 name: Portal Deployment
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
@@ -8,16 +12,20 @@ on:
       - "ui/testnet"
       - "ui/release"
     paths:
+      - ".github/workflows/portal-deployment.yaml"
       - "sdk/**"
       - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"
+      - "ui/config/**"
   pull_request:
     paths:
+      - ".github/workflows/portal-deployment.yaml"
       - "sdk/**"
       - "ui/store/**"
       - "ui/portal/**"
       - "ui/applets/**"
+      - "ui/config/**"
 
 jobs:
   deploy:
@@ -44,7 +52,7 @@ jobs:
       - name: Install dependencies
         run: pnpm i --frozen-lockfile
         env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN_NPM }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Portal
         run: pnpm build:portal-web

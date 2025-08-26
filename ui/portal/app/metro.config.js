@@ -14,4 +14,15 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, "node_modules"),
 ];
 
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === "crypto") {
+    // when importing crypto, resolve to react-native-quick-crypto
+    return context.resolveRequest(context, "react-native-quick-crypto", platform);
+  }
+  // otherwise chain to the standard Metro resolver.
+  return context.resolveRequest(context, moduleName, platform);
+};
+
+config.resolver.unstable_enablePackageExports = true;
+
 module.exports = withNativeWind(config, { input: "./assets/global.css" });

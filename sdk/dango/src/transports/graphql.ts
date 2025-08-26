@@ -10,7 +10,7 @@ import type {
   SubscribeFn,
   Transport,
 } from "@left-curve/sdk/types";
-import type { GraphQLClientResponse, GraphqlOperation } from "#types/graphql.js";
+import type { GraphQLClientResponse, GraphqlOperation } from "../types/graphql.js";
 
 export type GraphqlTransportConfig = {
   /**
@@ -106,35 +106,6 @@ export function graphql(
         },
       );
     };
-
-    subscribe(
-      {
-        query: `
-        subscription {
-          eventByAddresses(
-            addresses: ["0x0c8072e72a8c485399fbbe0f883449e9007dc706"]
-          ) {
-            data
-            type
-            transaction {
-              hash
-            }
-          }
-        }
-        `,
-      },
-      {
-        next: (data) => {
-          console.log("events received", data);
-        },
-        error: (error) => {
-          console.error(error);
-        },
-        complete: () => {
-          console.log("complete");
-        },
-      },
-    );
 
     return createTransport<"http-graphql">({
       type: "http-graphql",

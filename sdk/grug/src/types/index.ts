@@ -91,6 +91,7 @@ export type { UID } from "./common.js";
 
 export type {
   Json,
+  JsonString,
   Hex,
   Base64,
   Binary,
@@ -119,6 +120,8 @@ export type {
   ExtractFromUnion,
   NestedOmit,
   WithId,
+  Flatten,
+  Range,
 } from "./utils.js";
 
 export type {

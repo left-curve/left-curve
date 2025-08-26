@@ -1,0 +1,124 @@
+# This is a TOML config file.
+# For more information, see https://github.com/toml-lang/toml
+
+# Logging verbosity: error|warn|info|debug|trace.
+log_level = "info"
+
+# Logging format: text|json.
+log_format = "text"
+
+################################################################################
+###                            Grug Configuration                            ###
+################################################################################
+
+[grug]
+
+# Capacity of the wasm module cache; zero means to not use a cache.
+wasm_cache_capacity = 1000
+
+# Gas limit when serving query requests.
+query_gas_limit = 100000000
+
+################################################################################
+###                          Indexer Configuration                           ###
+################################################################################
+
+[indexer]
+
+# Whether to enable indexer.
+enabled = true
+
+# Whether to store block respnonses.
+keep_blocks = true
+
+[indexer.clickhouse]
+
+# URL to the Clickhouse database to be used by the indexer.
+url = "http://clickhouse:8123"
+
+user = "dango"
+
+password = ""
+
+database = "dango_prod"
+
+[indexer.database]
+
+# URL to the SQL database to be used by the indexer.
+# This will get overwritten by ENV variables to include password.
+url = "postgres://postgres@db:5432/grug_dev"
+
+max_connections = 10
+
+[httpd]
+
+# Whether to enable the HTTP server.
+enabled = true
+
+# IP address to listen on. `0.0.0.0` means all interfaces.
+ip = "0.0.0.0"
+
+# Port to listen on.
+port = 8080
+
+# Allowed origin for CORS.
+#
+# Wildcards are not supported here. To allow all origins, simply comment out
+# this line.
+#cors_allowed_origin = "*"
+
+[metrics_httpd]
+
+# Whether to enable the HTTP server.
+enabled = true
+
+# IP address to listen on. `0.0.0.0` means all interfaces.
+ip = "0.0.0.0"
+
+# Port to listen on.
+port = 9191
+
+################################################################################
+###                         Tendermint Configuration                         ###
+################################################################################
+
+[tendermint]
+
+# Tendermint RPC listening address.
+rpc_addr = "http://{{ cometbft_host }}:26657"
+
+# Tendermint ABCI listening address.
+abci_addr = "0.0.0.0:26658"
+
+################################################################################
+###                        Transaction Configuration                         ###
+################################################################################
+
+[transactions]
+
+# Chain identifier.
+chain_id = "dev-6"
+
+# Scaling factor to apply to simulated gas consumption.
+gas_adjustment = 1.4
+
+################################################################################
+###                          Sentry Configuration                            ###
+################################################################################
+
+[sentry]
+
+# Whether to enable Sentry.
+enabled = false
+
+# DSN to use for Sentry.
+dsn = "https://your-dsn-here"
+
+# Environment to use for Sentry.
+environment = "development"
+
+# Sample rate for Sentry.
+sample_rate = 1.0
+
+# Traces sample rate for Sentry.
+traces_sample_rate = 1.0

@@ -1,8 +1,8 @@
 import { Spinner } from "./Spinner";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "#utils/index.js";
-import { forwardRefPolymorphic } from "#utils/polymorph.js";
+import { twMerge } from "../utils/twMerge.js";
+import { forwardRefPolymorphic } from "../utils/polymorph.js";
 
 import type { VariantProps } from "tailwind-variants";
 

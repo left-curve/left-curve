@@ -371,12 +371,12 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(httpd_context, build_app_service, request_body).await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) =
-                    parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
+                let response =
+                    parse_graphql_subscription_response::<entity::blocks::Model>(&mut framed, name)
                         .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(1);
@@ -384,8 +384,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await?;
 
                 // 2nd response
-                let (framed, response) =
-                    parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
+                let response =
+                    parse_graphql_subscription_response::<entity::blocks::Model>(&mut framed, name)
                         .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(2);
@@ -393,8 +393,8 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await?;
 
                 // 3rd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<entity::blocks::Model>(framed, name)
+                let response =
+                    parse_graphql_subscription_response::<entity::blocks::Model>(&mut framed, name)
                         .await?;
 
                 assert_that!(response.data.block_height).is_equal_to(3);

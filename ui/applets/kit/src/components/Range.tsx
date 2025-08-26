@@ -1,9 +1,9 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { useControlledState } from "#hooks/useControlledState.js";
+import { useControlledState } from "../hooks/useControlledState.js";
 
 import { Input } from "./Input";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "../utils/twMerge.js";
 
 import type React from "react";
 
@@ -110,17 +110,17 @@ export const Range: React.FC<RangeProps> = ({
     };
 
     if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("touchmove", handleMouseMove, { passive: false });
-      document.addEventListener("mouseup", handleMouseUp);
-      document.addEventListener("touchend", handleMouseUp);
+      window?.document.addEventListener("mousemove", handleMouseMove);
+      window?.document.addEventListener("touchmove", handleMouseMove, { passive: false });
+      window?.document.addEventListener("mouseup", handleMouseUp);
+      window?.document.addEventListener("touchend", handleMouseUp);
     }
 
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("touchmove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.removeEventListener("touchend", handleMouseUp);
+      window?.document.removeEventListener("mousemove", handleMouseMove);
+      window?.document.removeEventListener("touchmove", handleMouseMove);
+      window?.document.removeEventListener("mouseup", handleMouseUp);
+      window?.document.removeEventListener("touchend", handleMouseUp);
     };
   }, [isDragging, isDisabled, handleInteraction]);
 
