@@ -1,104 +1,103 @@
 use {
-    super::Prepend,
     dango_types::dex::Order,
     grug::{Order as IterationOrder, StdResult, Udec128_24},
-    std::cmp::Ordering,
+    std::{cmp::Ordering, iter::Peekable},
 };
 
-pub struct MergedOrders<A, B>
+pub struct MergedOrders<A, B, C>
 where
     A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
     B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    C: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
-    a: A,
-    // We don't use Rust's built-in `Peekable`, because it can't be disassembled;
-    // meaning, given a `Peekable<T>`, there's no way to destroy it and get the
-    // inner `T` out.
-    a_peeked: Option<Option<StdResult<(Udec128_24, Order)>>>,
-    b: B,
-    b_peeked: Option<Option<StdResult<(Udec128_24, Order)>>>,
+    a: Peekable<A>,
+    b: Peekable<B>,
+    c: Peekable<C>,
     /// Iterating from the lowest price to highest, or the other way around.
     iteration_order: IterationOrder,
 }
 
-impl<A, B> MergedOrders<A, B>
+impl<A, B, C> MergedOrders<A, B, C>
 where
     A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
     B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    C: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
-    pub fn new(a: A, b: B, iteration_order: IterationOrder) -> Self {
+    pub fn new(a: A, b: B, c: C, iteration_order: IterationOrder) -> Self {
         Self {
-            a,
-            a_peeked: None,
-            b,
-            b_peeked: None,
+            a: a.peekable(),
+            b: b.peekable(),
+            c: c.peekable(),
             iteration_order,
         }
     }
 
-    pub fn disassemble(self) -> (Prepend<A>, Prepend<B>) {
-        (
-            Prepend::new(self.a, self.a_peeked.flatten()),
-            Prepend::new(self.b, self.b_peeked.flatten()),
-        )
-    }
-
-    fn peek_both(
-        &mut self,
-    ) -> (
-        Option<&StdResult<(Udec128_24, Order)>>,
-        Option<&StdResult<(Udec128_24, Order)>>,
-    ) {
-        (
-            self.a_peeked.get_or_insert_with(|| self.a.next()).as_ref(),
-            self.b_peeked.get_or_insert_with(|| self.b.next()).as_ref(),
-        )
-    }
-
-    fn next_a(&mut self) -> Option<StdResult<(Udec128_24, Order)>> {
-        match self.a_peeked.take() {
-            Some(item) => item,
-            None => self.a.next(),
-        }
-    }
-
-    fn next_b(&mut self) -> Option<StdResult<(Udec128_24, Order)>> {
-        match self.b_peeked.take() {
-            Some(item) => item,
-            None => self.b.next(),
-        }
+    pub fn disassemble(self) -> (Peekable<A>, Peekable<B>, Peekable<C>) {
+        (self.a, self.b, self.c)
     }
 }
 
-impl<A, B> Iterator for MergedOrders<A, B>
+impl<A, B, C> Iterator for MergedOrders<A, B, C>
 where
     A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
     B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    C: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
     type Item = StdResult<(Udec128_24, Order)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.peek_both() {
-            (Some(Ok((a_price, _))), Some(Ok((b_price, _)))) => {
-                // Compare only the price since passive orders don't have an order ID.
-                let ordering_raw = a_price.cmp(b_price);
-                let ordering = match self.iteration_order {
-                    IterationOrder::Ascending => ordering_raw,
-                    IterationOrder::Descending => ordering_raw.reverse(),
-                };
-
-                match ordering {
-                    // In case of equal price, pick `b`.
-                    // When calling `MergedOrders::new`, the caller should ensure
-                    // to put the prioritized iterator as `b`.
-                    Ordering::Less => self.next_a(),
-                    _ => self.next_b(),
+        // Note: if prices are the same, priority is c > b > a.
+        match (self.a.peek(), self.b.peek(), self.c.peek()) {
+            (Some(Ok((a_price, _))), Some(Ok((b_price, _))), Some(Ok((c_price, _)))) => {
+                match compare(a_price, b_price, self.iteration_order) {
+                    // a is prioritized over b. Now compare a and c.
+                    Ordering::Less => match compare(a_price, c_price, self.iteration_order) {
+                        Ordering::Less => self.a.next(),
+                        _ => self.c.next(),
+                    },
+                    // b is prioritized over a. Now compare b and c.
+                    _ => match compare(b_price, c_price, self.iteration_order) {
+                        Ordering::Less => self.b.next(),
+                        _ => self.c.next(),
+                    },
                 }
             },
-            (Some(Ok(_)), None) => self.next_a(),
-            (None, Some(Ok(_))) => self.next_b(),
-            (None, None) => None,
-            (Some(Err(err)), _) | (_, Some(Err(err))) => Some(Err(err.clone())),
+            (Some(Ok((a_price, _))), Some(Ok((b_price, _))), None) => {
+                match compare(a_price, b_price, self.iteration_order) {
+                    // In case of equal price, priority b > a.
+                    Ordering::Less => self.a.next(),
+                    _ => self.b.next(),
+                }
+            },
+            (Some(Ok((a_price, _))), None, Some(Ok((c_price, _)))) => {
+                match compare(a_price, c_price, self.iteration_order) {
+                    // In case of equal price, priority c > a.
+                    Ordering::Less => self.a.next(),
+                    _ => self.c.next(),
+                }
+            },
+            (None, Some(Ok((b_price, _))), Some(Ok((c_price, _)))) => {
+                match compare(b_price, c_price, self.iteration_order) {
+                    // In case of equal price, priority c > b.
+                    Ordering::Less => self.b.next(),
+                    _ => self.c.next(),
+                }
+            },
+            (Some(Ok(_)), None, None) => self.a.next(),
+            (None, Some(Ok(_)), None) => self.b.next(),
+            (None, None, Some(Ok(_))) => self.c.next(),
+            (None, None, None) => None,
+            (Some(Err(err)), ..) | (_, Some(Err(err)), _) | (_, _, Some(Err(err))) => {
+                Some(Err(err.clone()))
+            },
         }
+    }
+}
+
+fn compare(p1: &Udec128_24, p2: &Udec128_24, iteration_order: IterationOrder) -> Ordering {
+    let ordering_raw = p1.cmp(p2);
+    match iteration_order {
+        IterationOrder::Ascending => ordering_raw,
+        IterationOrder::Descending => ordering_raw.reverse(),
     }
 }

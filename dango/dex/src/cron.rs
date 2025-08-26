@@ -28,7 +28,7 @@ use {
     },
     std::{
         collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
-        iter,
+        iter::{self, Peekable},
     },
 };
 
@@ -300,8 +300,10 @@ fn clear_orders_of_pair(
     //    `storage` is released;
     // 2. get the unmatched market orders, so we can process their cancelation.
     // Limit orders are good-until-canceled, so no action is needed for them.
-    let (mut unmatched_limit_bids, unmatched_market_bids) = merged_bids.disassemble();
-    let (mut unmatched_limit_asks, unmatched_market_asks) = merged_asks.disassemble();
+    let (mut unmatched_passive_bids, mut unmatched_limit_bids, unmatched_market_bids) =
+        merged_bids.disassemble();
+    let (mut unmatched_passive_asks, mut unmatched_limit_asks, unmatched_market_asks) =
+        merged_asks.disassemble();
 
     #[cfg(feature = "tracing")]
     {
@@ -444,17 +446,23 @@ fn clear_orders_of_pair(
         last_partial_matched_bid,
         unmatched_bid,
         &mut unmatched_limit_bids,
+        &mut unmatched_passive_bids,
+        IterationOrder::Descending,
     )?;
     let best_ask_price = find_best_remaining_price(
         last_partial_matched_ask,
         unmatched_ask,
         &mut unmatched_limit_asks,
+        &mut unmatched_passive_asks,
+        IterationOrder::Ascending,
     )?;
 
     // Drop the limit order iterators. This frees the immutable reference on `storage`.
     // All writes to the storage can only happen after this point.
     drop(unmatched_limit_bids);
     drop(unmatched_limit_asks);
+    drop(unmatched_passive_bids);
+    drop(unmatched_passive_asks);
 
     // Determine the mid price:
     // - if both best bid and ask prices exist, then take the average of them;
@@ -638,10 +646,8 @@ fn nested_merged_orders<A, B, C>(
     passive: C,
     iteration_order: IterationOrder,
 ) -> MergedOrders<
-    MergedOrders<
-        impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
-        impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
-    >,
+    impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
     impl Iterator<Item = StdResult<(Udec128_24, Order)>>, /* TODO: simplify this return type once trait alias is stablized: https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html */
 >
 where
@@ -654,20 +660,13 @@ where
     let market = market.map(|((price, _), order)| Ok((price, Order::Market(order))));
     let passive = passive.map(|(price, order)| Ok((price, Order::Passive(order))));
 
-    // Merge the three iterators.
-    //
-    // The ordering of the three iterators matters! For two reasons:
-    // 1. In `MergedOrders::new(a, b, ..)`, `b` is prioritized.
-    //    We use the following priority: market > limit > passive.
-    // 2. We need to disassemble the `MergedOrders` later and retrieve the market
-    //    order iterator. Note that `Peekable<T>` can't be disassembled to take
-    //    out the inner `T`. So we need to make sure the market order iterator
-    //    is only nested once, not twice.
-    MergedOrders::new(
-        MergedOrders::new(passive, limit, iteration_order),
-        market,
-        iteration_order,
-    )
+    // The ordering of the three iterators matters!
+    // In `MergedOrders::new(a, b, c)`, the priority is c > b > a. That is, in
+    // case two orders have the same price, c is prioritized over b, which is
+    // prioritized over a.
+    // Here, we give market orders the highest priority, while giving passive
+    // orders the lowest, as the passive pool is intended only as backstop liquidity.
+    MergedOrders::new(passive, limit, market, iteration_order)
 }
 
 /// Find the best price available on one side of the order book after the auction:
@@ -675,15 +674,14 @@ where
 ///   a limit order, then it's the best; otherwise,
 /// - if there's a left over bid, and it's a limit order, then it's the best;
 ///   otherwise,
-/// - the first unmatched limit order is the best.
-fn find_best_remaining_price<I>(
+/// - the first unmatched limit or passive order is the best.
+fn find_best_remaining_price(
     last_partial_matched_order: Option<(Udec128_24, Order)>,
     first_unmatched_order: Option<(Udec128_24, Order)>,
-    other_unmatched_orders: &mut I,
-) -> StdResult<Option<Udec128_24>>
-where
-    I: Iterator<Item = StdResult<(Udec128_24, Order)>>,
-{
+    unmatched_limit_orders: &mut Peekable<impl Iterator<Item = StdResult<(Udec128_24, Order)>>>,
+    unmatched_passive_orders: &mut Peekable<impl Iterator<Item = StdResult<(Udec128_24, Order)>>>,
+    iteration_order: IterationOrder,
+) -> StdResult<Option<Udec128_24>> {
     if let Some((price, Order::Limit(_) | Order::Passive(_))) = last_partial_matched_order {
         return Ok(Some(price));
     }
@@ -692,13 +690,24 @@ where
         return Ok(Some(price));
     }
 
-    for res in other_unmatched_orders {
-        if let (price, Order::Limit(_) | Order::Passive(_)) = res? {
-            return Ok(Some(price));
-        }
-    }
+    match (
+        unmatched_limit_orders.peek(),
+        unmatched_passive_orders.peek(),
+    ) {
+        (Some(Ok((a_price, Order::Limit(_)))), Some(Ok((b_price, Order::Passive(_))))) => {
+            let better_price = match iteration_order {
+                IterationOrder::Ascending => (*a_price).min(*b_price),
+                IterationOrder::Descending => (*a_price).max(*b_price),
+            };
 
-    Ok(None)
+            Ok(Some(better_price))
+        },
+        (Some(Ok((price, Order::Limit(_)))), None) => Ok(Some(*price)),
+        (None, Some(Ok((price, Order::Passive(_))))) => Ok(Some(*price)),
+        (None, None) => Ok(None),
+        (Some(Err(err)), _) | (_, Some(Err(err))) => Err(err.clone()),
+        _ => unreachable!("unexpected order type"),
+    }
 }
 
 /// Handle the `FillingOutcome` of a user order.
