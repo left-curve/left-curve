@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "exports": {
     "./fonts/*": "./fonts/*",
+    "./images/*": "./images/*",
     "./tailwind/*": "./tailwind/*",
     "./messages/*": "./messages/*",
     "./inlang/*": "./project.inlang/*"
