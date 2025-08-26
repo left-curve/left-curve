@@ -33,14 +33,15 @@ pub const LIMIT_ORDERS: IndexedMap<OrderKey, LimitOrder, LimitOrderIndex> =
 
 /// Liquidity depth from user orders.
 // ((base_denom, quote_denom), bucket_size, direction, price) => (amount_base, amount_quote)
-pub const USER_DEPTHS: Map<
+pub const USER_LIQUIDITY_DEPTHS: Map<
     ((&Denom, &Denom), Udec128_24, Direction, Udec128_24),
     (Udec128_6, Udec128_6),
 > = Map::new("user_depth");
 
 /// Liquidity depth from passive pool orders.
 // (base_denom, quote_denom) => depths
-pub const PASSIVE_DEPTHS: Map<(&Denom, &Denom), PassiveLiquidityDepths> = Map::new("passive_depth");
+pub const PASSIVE_LIQUIDITY_DEPTHS: Map<(&Denom, &Denom), PassiveLiquidityDepths> =
+    Map::new("passive_depth");
 
 /// Stores the total trading volume in USD for each account address and timestamp.
 pub const VOLUMES: Map<(&Addr, Timestamp), Udec128_6> = Map::new("volume");
@@ -70,7 +71,7 @@ pub struct LimitOrderIndex<'a> {
 }
 
 /// Increase the liquidity depth when a user limit order is created.
-pub fn increase_depths(
+pub fn increase_user_liquidity_depths(
     storage: &mut dyn Storage,
     base_denom: &Denom,
     quote_denom: &Denom,
@@ -84,7 +85,7 @@ pub fn increase_depths(
         let bucket = core::bucket(price, direction, *bucket_size)?;
         let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
 
-        USER_DEPTHS.may_update(storage, key, |maybe_depths| -> StdResult<_> {
+        USER_LIQUIDITY_DEPTHS.may_update(storage, key, |maybe_depths| -> StdResult<_> {
             let (depth_base, depth_quote) = maybe_depths.unwrap_or_default();
 
             let depth_base = depth_base.checked_add(amount_base)?;
@@ -98,7 +99,7 @@ pub fn increase_depths(
 }
 
 /// Decrease the liquidity depth when a user limit order is canceled or fulfilled.
-pub fn decrease_depths(
+pub fn decrease_user_liquidity_depths(
     storage: &mut dyn Storage,
     base_denom: &Denom,
     quote_denom: &Denom,
@@ -112,19 +113,23 @@ pub fn decrease_depths(
         let bucket = core::bucket(price, direction, *bucket_size)?;
         let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
 
-        USER_DEPTHS.modify(storage, key, |(depth_base, depth_quote)| -> StdResult<_> {
-            // Use saturating sub, in case underflows due to rounding.
-            let depth_base = depth_base.saturating_sub(amount_base);
-            let depth_quote = depth_quote.saturating_sub(amount_quote);
+        USER_LIQUIDITY_DEPTHS.modify(
+            storage,
+            key,
+            |(depth_base, depth_quote)| -> StdResult<_> {
+                // Use saturating sub, in case underflows due to rounding.
+                let depth_base = depth_base.saturating_sub(amount_base);
+                let depth_quote = depth_quote.saturating_sub(amount_quote);
 
-            // If any one is zero, we delete the entry.
-            // TODO: can there be situations where only one is zero? maybe due to rounding?
-            if depth_base.is_zero() || depth_quote.is_zero() {
-                Ok(None)
-            } else {
-                Ok(Some((depth_base, depth_quote)))
-            }
-        })?;
+                // If any one is zero, we delete the entry.
+                // TODO: can there be situations where only one is zero? maybe due to rounding?
+                if depth_base.is_zero() || depth_quote.is_zero() {
+                    Ok(None)
+                } else {
+                    Ok(Some((depth_base, depth_quote)))
+                }
+            },
+        )?;
     }
 
     Ok(())

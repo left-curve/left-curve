@@ -6,7 +6,7 @@ use {
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, fill_orders,
             match_orders,
         },
-        decrease_depths,
+        decrease_user_liquidity_depths,
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
@@ -529,7 +529,7 @@ fn clear_orders_of_pair(
             )?;
 
             if let Order::Limit(limit_order) = order {
-                decrease_depths(
+                decrease_user_liquidity_depths(
                     storage,
                     &base_denom,
                     &quote_denom,

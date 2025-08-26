@@ -1,6 +1,7 @@
 use {
     crate::{
-        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK, increase_depths,
+        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK,
+        increase_user_liquidity_depths,
     },
     anyhow::{anyhow, ensure},
     dango_types::dex::{
@@ -68,7 +69,7 @@ pub(super) fn create_limit_order(
     let remaining = order.amount.checked_into_dec()?;
     let remaining_in_quote = remaining.checked_mul(*order.price)?;
 
-    increase_depths(
+    increase_user_liquidity_depths(
         storage,
         &order.base_denom,
         &order.quote_denom,
