@@ -104,6 +104,12 @@ fn check_balances(
 
     let mut order_balances = Coins::new();
     for (_, order) in open_orders {
+        // Skip orders placed by the DEX contract itself, because those tokens
+        // are already accounted for by the reserves.
+        if order.user == contracts.dex {
+            continue;
+        }
+
         let (denom, amount) = match order.direction {
             Direction::Bid => {
                 let remaining_in_quote = order.remaining.checked_mul_dec_ceil(order.price)?;
