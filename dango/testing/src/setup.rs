@@ -36,7 +36,7 @@ pub struct TestOption {
     /// A function that takes a list of test accounts that will be created, and
     /// returns a list of incoming bridge transfers to be appended to the
     /// genesis state.
-    pub bridge_ops: fn(&TestAccounts) -> Vec<BridgeOp>,
+    pub bridge_ops: Box<dyn Fn(&TestAccounts) -> Vec<BridgeOp>>,
     pub mocked_clickhouse: bool,
 }
 

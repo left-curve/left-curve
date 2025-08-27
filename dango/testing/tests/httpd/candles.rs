@@ -636,24 +636,34 @@ async fn create_pair_prices(
             let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
-            let funds = match direction {
+            let (funds, amount) = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(usdc::DENOM.clone(), quote_amount).unwrap()
+                    (
+                        Coins::one(usdc::DENOM.clone(), quote_amount).unwrap(),
+                        quote_amount,
+                    )
                 },
-                Direction::Ask => Coins::one(dango::DENOM.clone(), amount).unwrap(),
+                Direction::Ask => (Coins::one(dango::DENOM.clone(), amount).unwrap(), amount),
             };
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
+                    creates_limit: vec![match direction {
+                        Direction::Bid => CreateLimitOrderRequest::Bid {
+                            base_denom: dango::DENOM.clone(),
+                            quote_denom: usdc::DENOM.clone(),
+                            amount_quote: NonZero::new_unchecked(amount),
+                            price: NonZero::new_unchecked(price),
+                        },
+                        Direction::Ask => CreateLimitOrderRequest::Ask {
+                            base_denom: dango::DENOM.clone(),
+                            quote_denom: usdc::DENOM.clone(),
+                            amount_base: NonZero::new_unchecked(amount),
+                            price: NonZero::new_unchecked(price),
+                        },
                     }],
                     cancels: None,
                 },

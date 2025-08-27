@@ -458,7 +458,7 @@ mod tests {
         crate::RESTING_ORDER_BOOK,
         dango_types::{
             constants::{dango, usdc},
-            dex::{Direction, PairParams, PassiveLiquidity, RestingOrderBookState},
+            dex::{PairParams, PassiveLiquidity, RestingOrderBookState},
         },
         grug::{Addr, Bounded, MockContext, NumberConst, Udec128, Udec128_24},
         std::str::FromStr,
@@ -471,11 +471,10 @@ mod tests {
         None,
         ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![],
-            creates_limit: vec![CreateLimitOrderRequest {
+            creates_limit: vec![CreateLimitOrderRequest::Bid {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
+                amount_quote: NonZero::new_unchecked(Uint128::new(200)),
                 price: NonZero::new_unchecked(Udec128_24::new(2)),
             }],
             cancels: None,
@@ -488,11 +487,10 @@ mod tests {
         None,
         ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![],
-            creates_limit: vec![CreateLimitOrderRequest {
+            creates_limit: vec![CreateLimitOrderRequest::Ask {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
+                amount_base: NonZero::new_unchecked(Uint128::new(100)),
                 price: NonZero::new_unchecked(Udec128_24::new(2)),
             }],
             cancels: None,
@@ -508,11 +506,10 @@ mod tests {
             mid_price: Some(Udec128_24::new(100)),
         }),
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![CreateMarketOrderRequest {
+            creates_market: vec![CreateMarketOrderRequest::Bid {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::new(1)),
+                amount_quote: NonZero::new_unchecked(Uint128::new(100)),
                 max_slippage: Bounded::new_unchecked(Udec128::ZERO),
             }],
             creates_limit: vec![],
@@ -529,11 +526,10 @@ mod tests {
             mid_price: Some(Udec128_24::new(100)),
         }),
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![CreateMarketOrderRequest {
+            creates_market: vec![CreateMarketOrderRequest::Ask {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
+                amount_base: NonZero::new_unchecked(Uint128::new(100)),
                 max_slippage: Bounded::new_unchecked(Udec128::ZERO),
             }],
             creates_limit: vec![],
@@ -551,34 +547,30 @@ mod tests {
         }),
         ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
             creates_limit: vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(200)),
                     price: NonZero::new_unchecked(Udec128_24::new(2)),
                 },
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100)),
                     price: NonZero::new_unchecked(Udec128_24::new(2)),
                 },
             ],

@@ -55,7 +55,7 @@ impl Preset for TestOption {
             },
             mocked_clickhouse: false,
             // By default, give the owner and each user 100k USDC from Ethereum.
-            bridge_ops: |accounts| {
+            bridge_ops: Box::new(|accounts| {
                 vec![
                     BridgeOp {
                         remote: Remote::Warp {
@@ -162,7 +162,7 @@ impl Preset for TestOption {
                         recipient: accounts.user9.address(),
                     },
                 ]
-            },
+            }),
         }
     }
 }
