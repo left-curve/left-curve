@@ -14,7 +14,7 @@ use {
 #[test]
 fn rate_limit() {
     let (mut suite, mut accounts, _, contracts, valset) = setup_test(TestOption {
-        bridge_ops: |_| vec![],
+        bridge_ops: Box::new(|_| vec![]),
         ..TestOption::default()
     });
 

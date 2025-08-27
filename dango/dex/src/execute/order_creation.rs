@@ -6,7 +6,8 @@ use {
         OrderCreated, OrderKind,
     },
     grug::{
-        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, Storage, Udec128_24,
+        Addr, Coin, Coins, EventBuilder, MultiplyFraction, NonZero, Number, NumberConst, Storage,
+        Udec128_24, Uint128,
     },
 };
 
@@ -25,10 +26,14 @@ pub(super) fn create_limit_order(
             amount_quote,
             price,
         } => {
-            let amount_base = amount_quote.checked_div_dec_floor(*price)?;
+            let ComputedBidAmounts {
+                amount_base,
+                amount_quote,
+            } = compute_bid_amounts(*amount_quote, *price)?;
+
             let deposit = Coin {
                 denom: quote_denom.clone(),
-                amount: *amount_quote,
+                amount: amount_quote,
             };
             (
                 base_denom,
@@ -165,6 +170,11 @@ pub(super) fn create_market_order(
             let one_add_max_slippage = Udec128_24::ONE.saturating_add(*max_slippage);
             let price = best_ask_price.saturating_mul(one_add_max_slippage);
 
+            let ComputedBidAmounts {
+                amount_base,
+                amount_quote,
+            } = compute_bid_amounts(*amount_quote, price)?;
+
             // For BUY orders, invert the order ID. This is necessary for enforcing
             // price-time priority. See the docs on `OrderId` for details.
             order_id = !order_id;
@@ -174,9 +184,9 @@ pub(super) fn create_market_order(
                 Direction::Bid,
                 Coin {
                     denom: quote_denom.clone(),
-                    amount: *amount_quote,
+                    amount: amount_quote,
                 },
-                (*amount_quote).checked_div_dec_floor(price)?,
+                amount_base,
             )
         },
         CreateMarketOrderRequest::Ask {
@@ -243,4 +253,25 @@ pub(super) fn create_market_order(
     )?;
 
     Ok(())
+}
+
+fn compute_bid_amounts(
+    amount_quote: Uint128,
+    price: Udec128_24,
+) -> anyhow::Result<ComputedBidAmounts> {
+    let amount_base = NonZero::new(amount_quote.checked_div_dec_floor(price)?)?;
+    // Is safe to use `checked_mul_dec_floor` instead of `checked_mul_dec_ceil`
+    // because if the order is cancelled, we calculate the refund amount from the base
+    // amount, which is always rounded down.
+    // See proptests at dango/testing/tests/dex_proptests.rs:test_order_creation.
+    let amount_quote = NonZero::new(amount_base.checked_mul_dec_floor(price)?)?;
+    Ok(ComputedBidAmounts {
+        amount_base: *amount_base,
+        amount_quote: *amount_quote,
+    })
+}
+
+struct ComputedBidAmounts {
+    amount_base: Uint128,
+    amount_quote: Uint128,
 }

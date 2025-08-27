@@ -13,9 +13,9 @@ use {
         gateway::Remote,
     },
     grug::{
-        Addressable, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero, MaxLength, Message,
-        MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed, Signer,
-        Udec128, Udec128_24, Uint128, UniqueVec, btree_map, coins,
+        Addressable, Bounded, Coin, Coins, Dec, Dec128_24, Denom, Inner, Int, IsZero, MaxLength,
+        Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed,
+        Signer, Udec128, Udec128_24, Uint128, UniqueVec, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -739,7 +739,7 @@ fn test_dex_actions(
     dex_actions: Vec<DexAction>,
 ) -> Result<(TestSuite<NaiveProposalPreparer>, TestAccounts, Contracts), TestCaseError> {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
-        bridge_ops: |accounts| {
+        bridge_ops: Box::new(|accounts| {
             vec![
                 BridgeOp {
                     remote: Remote::Warp {
@@ -766,7 +766,7 @@ fn test_dex_actions(
                     recipient: accounts.user1.address(),
                 },
             ]
-        },
+        }),
         ..Default::default()
     });
 
@@ -908,4 +908,161 @@ fn xyk_liquidity_should_not_reduce_to_zero_by_market_order() {
             reserve.amount_of(&eth::DENOM).unwrap().is_non_zero()
                 && reserve.amount_of(&usdc::DENOM).unwrap().is_non_zero()
         });
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 256,
+        max_shrink_iters: 0,
+        ..ProptestConfig::default()
+    })]
+
+    #[test]
+    fn order_creation((amount_quote, price) in (0..(u128::MAX / 10_u128.pow(6))).prop_flat_map(|amount_quote|
+        {
+            // Define a range for the price to avoid overflow in conversion.
+            let free = u128::MAX / 10_u128.pow(6) - amount_quote;
+            let min = 10_u128.pow(24).saturating_sub(free);
+            let max = 10_u128.pow(24).saturating_add(free);
+            (Just(amount_quote), min..max)
+        }))
+    {
+        test_order_creation(amount_quote, price)?;
+    }
+}
+
+fn test_order_creation(amount_quote: u128, price: u128) -> Result<(), TestCaseError> {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
+        bridge_ops: Box::new(move |accounts| {
+            vec![
+                BridgeOp {
+                    remote: Remote::Warp {
+                        domain: ethereum::DOMAIN,
+                        contract: ethereum::USDC_WARP,
+                    },
+                    amount: Uint128::new(amount_quote),
+                    recipient: accounts.user1.address(),
+                },
+                BridgeOp {
+                    remote: Remote::Warp {
+                        domain: ethereum::DOMAIN,
+                        contract: ethereum::WETH_WARP,
+                    },
+                    amount: Uint128::new(123),
+                    recipient: accounts.user2.address(),
+                },
+            ]
+        }),
+        ..Default::default()
+    });
+
+    prop_assert_eq!(
+        suite.query_balance(&accounts.user1, usdc::DENOM.clone())?,
+        Uint128::new(amount_quote)
+    );
+
+    // Limit order
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![dex::CreateLimitOrderRequest::Bid {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    amount_quote: NonZero::new_unchecked(Int::new(amount_quote)),
+                    price: NonZero::new_unchecked(Dec::raw(Int::new(price))),
+                }],
+                cancels: None,
+            },
+            coins! {
+                usdc::DENOM.clone() => Uint128::new(amount_quote),
+            },
+        )
+        .result
+        .map_err(TestCaseError::fail)?;
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![],
+                cancels: Some(dex::CancelOrderRequest::All),
+            },
+            Coins::default(),
+        )
+        .result
+        .map_err(TestCaseError::fail)?;
+
+    prop_assert_eq!(
+        suite.query_balance(&accounts.user1, usdc::DENOM.clone())?,
+        Uint128::new(amount_quote)
+    );
+
+    // Market order
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![dex::CreateLimitOrderRequest::Ask {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    amount_base: NonZero::new_unchecked(Int::new(123)),
+                    price: NonZero::new_unchecked(Dec::raw(Int::new(price))),
+                }],
+                cancels: None,
+            },
+            coins! {
+                eth::DENOM.clone() => Uint128::new(123),
+            },
+        )
+        .result
+        .map_err(TestCaseError::fail)?;
+
+    suite
+        .send_messages(
+            &mut accounts.user1,
+            NonEmpty::new_unchecked(vec![
+                Message::execute(
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![dex::CreateMarketOrderRequest::Bid {
+                            base_denom: eth::DENOM.clone(),
+                            quote_denom: usdc::DENOM.clone(),
+                            amount_quote: NonZero::new_unchecked(Int::new(amount_quote)),
+                            max_slippage: Bounded::new_unchecked(Dec::ZERO),
+                        }],
+                        creates_limit: vec![],
+                        cancels: None,
+                    },
+                    coins! {
+                        usdc::DENOM.clone() => Uint128::new(amount_quote),
+                    },
+                )?,
+                Message::execute(
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![],
+                        creates_limit: vec![],
+                        cancels: Some(dex::CancelOrderRequest::All),
+                    },
+                    Coins::default(),
+                )?,
+            ]),
+        )
+        .result
+        .map_err(TestCaseError::fail)?;
+
+    prop_assert_eq!(
+        suite.query_balance(&accounts.user1, usdc::DENOM.clone())?,
+        Uint128::new(amount_quote)
+    );
+
+    Ok(())
 }

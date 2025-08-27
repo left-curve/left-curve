@@ -50,7 +50,7 @@ fn cannot_submit_order_with_zero_amount() {
                 creates_limit: vec![CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    amount_quote: NonZero::new(Uint128::ZERO).unwrap(), // incorrect!
+                    amount_quote: NonZero::new_unchecked(Uint128::ZERO), // incorrect!
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -68,7 +68,7 @@ fn cannot_submit_order_with_zero_amount() {
                 creates_market: vec![CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    amount_quote: NonZero::new(Uint128::ZERO).unwrap(), // incorrect!
+                    amount_quote: NonZero::new_unchecked(Uint128::ZERO), // incorrect!
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 }],
                 creates_limit: vec![],
@@ -1032,7 +1032,7 @@ fn query_orders_by_pair(
 ) {
     // For this test, we need some ETH and USDC for user1.
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
-        bridge_ops: |accounts| {
+        bridge_ops: Box::new(move |accounts| {
             vec![
                 BridgeOp {
                     remote: Remote::Warp {
@@ -1051,7 +1051,7 @@ fn query_orders_by_pair(
                     recipient: accounts.user1.address(),
                 },
             ]
-        },
+        }),
         ..Default::default()
     });
 
@@ -2761,7 +2761,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
             CreateLimitOrderRequest::Bid {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                amount_quote: NonZero::new_unchecked(Uint128::from(157784 * 203)),
+                amount_quote: NonZero::new_unchecked(Uint128::from(157784 * 202)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(20200)),
             },
         ],
@@ -2771,7 +2771,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
             eth::DENOM.clone() => 162284,
         },
         coins! {
-            usdc::DENOM.clone() => 157784 * 203,
+            usdc::DENOM.clone() => 157784 * 202,
         },
     ],
     BTreeMap::new(),
@@ -3966,7 +3966,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(200_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -5283,11 +5283,11 @@ fn market_order_clearing(
         eth::DENOM.clone() => 500000,
     },
     btree_map! {
-        eth::DENOM.clone() => BalanceChange::Increased(9974),
+        eth::DENOM.clone() => BalanceChange::Increased(9975),
         usdc::DENOM.clone() => BalanceChange::Decreased(1),
     },
     btree_map! {
-        eth::DENOM.clone() => BalanceChange::Decreased(9999),
+        eth::DENOM.clone() => BalanceChange::Decreased(10000),
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
     ; "limit bid matched with market ask limit size too small market order is consumed with zero output"
