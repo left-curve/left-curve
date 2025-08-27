@@ -381,7 +381,6 @@ scalar NaiveDateTime
 enum OrderKind {
 	limit
 	market
-	passive
 }
 
 """
