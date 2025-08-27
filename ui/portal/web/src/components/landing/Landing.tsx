@@ -16,7 +16,7 @@ import { AppletsSection } from "../overview/AppletsSection";
 import { useApp } from "~/hooks/useApp";
 import { decodeBase64, decodeUtf8 } from "@left-curve/dango/encoding";
 
-import type { PropsWithChildren } from "react";
+import { useEffect, type PropsWithChildren } from "react";
 import { format } from "date-fns";
 
 type LandingProps = {
@@ -49,9 +49,15 @@ const LandingContainer: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const Header: React.FC = () => {
+  const { isSidebarVisible } = useApp();
   const { isLg } = useMediaQuery();
   const { theme } = useTheme();
   const { fullpageApi } = useLanding();
+
+  useEffect(() => {
+    if (!fullpageApi) return;
+    fullpageApi.setAllowScrolling(!isSidebarVisible);
+  }, [fullpageApi, isSidebarVisible]);
 
   return (
     <div className="section min-h-svh flex items-center justify-center relative w-full">
