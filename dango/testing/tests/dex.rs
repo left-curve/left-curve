@@ -1179,6 +1179,7 @@ fn only_owner_can_create_passive_pool() {
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                         limit: 10,
                     }),
+                    bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }])),
@@ -1201,6 +1202,7 @@ fn only_owner_can_create_passive_pool() {
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                         limit: 10,
                     }),
+                    bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }])),
@@ -1368,6 +1370,7 @@ fn provide_liquidity(
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             pool_type,
                         },
@@ -1482,6 +1485,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: pair_params.swap_fee_rate,
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 spacing: Udec128::ONE,
@@ -1560,6 +1564,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             pool_type: pair_params.pool_type.clone(),
                         },
@@ -1951,6 +1956,7 @@ fn swap_exact_amount_in(
                                 quote_denom: quote_denom.clone(),
                                 params: PairParams {
                                     lp_denom: pair_params.lp_denom.clone(),
+                                    bucket_sizes: BTreeSet::new(),
                                     swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                                     pool_type: pair_params.pool_type.clone(),
                                 },
@@ -2421,6 +2427,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: pair_params.swap_fee_rate,
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 spacing: Udec128::ONE,
@@ -2914,6 +2921,7 @@ fn curve_on_orderbook(
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
                             pool_type,
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                         },
                     }])),
