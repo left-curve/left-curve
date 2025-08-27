@@ -461,7 +461,7 @@ mod tests {
             dex::{Direction, PairParams, PassiveLiquidity, RestingOrderBookState, Xyk},
         },
         grug::{Addr, Bounded, MockContext, NumberConst, Udec128, Udec128_24},
-        std::str::FromStr,
+        std::{collections::BTreeSet, str::FromStr},
         test_case::test_case,
     };
 
@@ -619,6 +619,7 @@ mod tests {
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                         limit: 10,
                     }),
+                    bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                 },
             )

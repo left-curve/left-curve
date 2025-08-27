@@ -29,22 +29,27 @@ pub const LIMIT_ORDERS: IndexedMap<OrderKey, Order, LimitOrderIndex> =
         user: MultiIndex::new(|_, order| order.user, "order", "order__user"),
     });
 
+pub const DEPTHS: Map<DepthKey, (Udec128_6, Udec128_6)> = Map::new("depth");
+
 /// Stores the total trading volume in USD for each account address and timestamp.
 pub const VOLUMES: Map<(&Addr, Timestamp), Udec128_6> = Map::new("volume");
 
 /// Stores the total trading volume in USD for each username and timestamp.
 pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Udec128_6> = Map::new("volume_by_user");
 
-/// Storage key for orders, both limit and market.
-///
-/// - For limit orders, the `price` is the limit price.
-/// - For market orders, it is calculated based on the best price available in
-///   the resting order book and the order's maximum slippage.
+/// Storage key for orders.
 ///
 /// ```plain
 /// ((base_denom, quote_denom), direction, price, order_id)
 /// ```
 pub type OrderKey = ((Denom, Denom), Direction, Udec128_24, OrderId);
+
+/// Storage key for liquidity depths.
+///
+/// ```plain
+/// ((base_denom, quote_denom), bucket_size, direction, bucket)
+/// ```
+pub type DepthKey<'a> = ((&'a Denom, &'a Denom), Udec128_24, Direction, Udec128_24);
 
 #[grug::index_list(OrderKey, Order)]
 pub struct LimitOrderIndex<'a> {

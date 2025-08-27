@@ -6,6 +6,7 @@ use {
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, fill_orders,
             match_orders,
         },
+        liquidity_depth::decrease_liquidity_depths,
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
@@ -20,11 +21,11 @@ use {
     },
     grug::{
         Addr, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult,
-        Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
+        MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder, Response, StdError,
+        StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
         Udec128_24,
     },
-    std::collections::{BTreeMap, HashMap, hash_map::Entry},
+    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -113,8 +114,8 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
 
     // Loop through all trading pairs. Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
-    for (base_denom, quote_denom) in PAIRS
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
+    for ((base_denom, quote_denom), pair) in PAIRS
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
         let pair = (base_denom.clone(), quote_denom.clone());
@@ -130,6 +131,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             app_cfg.taker_fee_rate.into_inner(),
             base_denom.clone(),
             quote_denom.clone(),
+            &pair.bucket_sizes,
             market_bids,
             market_asks,
             &mut events,
@@ -187,6 +189,7 @@ fn clear_orders_of_pair(
     taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
+    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
     market_bids: MarketOrders,
     market_asks: MarketOrders,
     events: &mut EventBuilder,
@@ -199,13 +202,25 @@ fn clear_orders_of_pair(
     // --------------------- 1. Update passive pool orders ---------------------
 
     // Delete the passive orders from the previous block.
-    for order_key in LIMIT_ORDERS
+    for ((direction, price, order_id), order) in LIMIT_ORDERS
         .idx
         .user
         .prefix(dex_addr)
-        .keys(storage, None, None, IterationOrder::Ascending)
+        .append((base_denom.clone(), quote_denom.clone()))
+        .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
+        decrease_liquidity_depths(
+            storage,
+            &base_denom,
+            &quote_denom,
+            direction,
+            price,
+            order.remaining,
+            order.remaining.checked_mul(price)?,
+            bucket_sizes,
+        )?;
+
         LIMIT_ORDERS.remove(storage, order_key)?;
     }
 
