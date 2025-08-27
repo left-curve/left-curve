@@ -32,30 +32,13 @@ where
 
 impl PythHandler<PythClient> {
     pub fn new<U: IntoUrl>(base_url: U) -> PythHandler<PythClient> {
-        let shared_vaas = Shared::new(None);
-
-        Self {
-            client: PythClient::new(base_url).unwrap(),
-            shared_vaas,
-            current_ids: vec![],
-            stoppable_thread: None,
-        }
+        Self::new_with_client(PythClient::new(base_url).unwrap())
     }
 }
 
 impl PythHandler<PythClientCache> {
-    pub fn new_with_cache<U>(base_url: U) -> PythHandler<PythClientCache>
-    where
-        U: IntoUrl,
-    {
-        let shared_vaas = Shared::new(None);
-
-        Self {
-            client: PythClientCache::new(base_url).unwrap(),
-            shared_vaas,
-            current_ids: vec![],
-            stoppable_thread: None,
-        }
+    pub fn new_with_cache<U: IntoUrl>(base_url: U) -> PythHandler<PythClientCache> {
+        Self::new_with_client(PythClientCache::new(base_url).unwrap())
     }
 }
 
@@ -66,14 +49,7 @@ impl PythHandler<PythClientLazer> {
         U: IntoUrl,
         T: ToString,
     {
-        let shared_vaas = Shared::new(None);
-
-        Self {
-            client: PythClientLazer::new(endpoints, access_token).unwrap(),
-            shared_vaas,
-            current_ids: vec![],
-            stoppable_thread: None,
-        }
+        Self::new_with_client(PythClientLazer::new(endpoints, access_token).unwrap())
     }
 }
 
@@ -87,14 +63,7 @@ impl PythHandler<PythClientLazerCache> {
         U: IntoUrl,
         T: ToString,
     {
-        let shared_vaas = Shared::new(None);
-
-        Self {
-            client: PythClientLazerCache::new(endpoints, access_token).unwrap(),
-            shared_vaas,
-            current_ids: vec![],
-            stoppable_thread: None,
-        }
+        Self::new_with_client(PythClientLazerCache::new(endpoints, access_token).unwrap())
     }
 }
 
@@ -102,6 +71,15 @@ impl<P> PythHandler<P>
 where
     P: PythClientTrait + RetrievePythId,
 {
+    fn new_with_client(client: P) -> PythHandler<P> {
+        Self {
+            client,
+            shared_vaas: Shared::new(None),
+            current_ids: vec![],
+            stoppable_thread: None,
+        }
+    }
+
     pub fn fetch_latest_price_update(&self) -> Option<PriceUpdate> {
         // Retrieve the VAAs from the shared memory and consume them in order to
         // avoid pushing the same VAAs again.
