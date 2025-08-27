@@ -1,8 +1,9 @@
-use std::collections::BTreeSet;
-
-use grug::{
-    Bounded, Denom, NonZero, Udec128, Udec128_24, ZeroExclusiveOneExclusive,
-    ZeroExclusiveOneInclusive, ZeroInclusiveOneExclusive,
+use {
+    grug::{
+        Bounded, Denom, NonZero, Udec128, Udec128_24, ZeroExclusiveOneExclusive,
+        ZeroExclusiveOneInclusive, ZeroInclusiveOneExclusive,
+    },
+    std::collections::BTreeSet,
 };
 
 /// Parameters of a trading pair.
