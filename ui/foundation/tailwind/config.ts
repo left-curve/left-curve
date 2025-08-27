@@ -11,6 +11,9 @@ export const tailwindConfig: Partial<Config> = {
   theme: {
     extend: {
       colors: {
+        brand: {
+          green: "#AFB244",
+        },
         surface: {
           "primary-rice": "var(--color-surface-primary-rice)",
           "primary-green": "var(--color-surface-primary-green)",
