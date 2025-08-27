@@ -21,7 +21,7 @@ use {
     hyperlane_types::constants::{ethereum, solana},
     proptest::{prelude::*, proptest, sample::select},
     std::{
-        collections::{HashMap, hash_map},
+        collections::{BTreeSet, HashMap, hash_map},
         fmt::Debug,
         str::FromStr,
     },
@@ -798,6 +798,7 @@ fn test_dex_actions(
                                 reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
                                 limit: 30,
                             }),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                         },
                     })
