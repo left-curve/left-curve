@@ -14,11 +14,11 @@ pub struct PythLazerSubscriptionDetails {
 
 impl Display for PythLazerSubscriptionDetails {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}", self.id, self.channel)
+        write!(f, "{}", self.id)
     }
 }
 
-#[grug::derive(Serde)]
+#[grug::derive(Serde, Borsh)]
 /// LE-ECDSA format envelope.
 pub struct LeEcdsaMessage {
     pub payload: Vec<u8>,

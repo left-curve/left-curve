@@ -2,7 +2,7 @@ use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
     grug::{Addr, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_lazer::PythClientLazer,
+    pyth_lazer::{PythClientLazer, PythClientLazerCache},
     pyth_types::{PriceUpdate, PythId, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
@@ -70,6 +70,27 @@ impl PythHandler<PythClientLazer> {
 
         Self {
             client: PythClientLazer::new(endpoints, access_token).unwrap(),
+            shared_vaas,
+            current_ids: vec![],
+            stoppable_thread: None,
+        }
+    }
+}
+
+impl PythHandler<PythClientLazerCache> {
+    pub fn new_with_lazer_cache<V, U, T>(
+        endpoints: V,
+        access_token: T,
+    ) -> PythHandler<PythClientLazerCache>
+    where
+        V: IntoIterator<Item = U>,
+        U: IntoUrl,
+        T: ToString,
+    {
+        let shared_vaas = Shared::new(None);
+
+        Self {
+            client: PythClientLazerCache::new(endpoints, access_token).unwrap(),
             shared_vaas,
             current_ids: vec![],
             stoppable_thread: None,
@@ -233,24 +254,37 @@ fn pyth_ids_core(querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>
 }
 
 impl RetrievePythId for PythClientLazer {
-    //  TODO: optimize this by using the raw WasmScan query.
     /// Retrieve the Pyth ids from the Oracle contract.
     fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>> {
-        let new_ids = querier
-            .query_wasm_smart(oracle, QueryPriceSourcesRequest {
-                start_after: None,
-                limit: Some(u32::MAX),
-            })?
-            .into_values()
-            .filter_map(|price_source| {
-                if let PriceSource::PythLazer { id, channel, .. } = price_source {
-                    Some(PythLazerSubscriptionDetails { id, channel })
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        Ok(new_ids)
+        pyth_ids_lazer(querier, oracle)
     }
+}
+
+impl RetrievePythId for PythClientLazerCache {
+    fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>> {
+        pyth_ids_lazer(querier, oracle)
+    }
+}
+
+fn pyth_ids_lazer(
+    querier: QuerierWrapper,
+    oracle: Addr,
+) -> StdResult<Vec<PythLazerSubscriptionDetails>> {
+    //  TODO: optimize this by using the raw WasmScan query.
+    let new_ids = querier
+        .query_wasm_smart(oracle, QueryPriceSourcesRequest {
+            start_after: None,
+            limit: Some(u32::MAX),
+        })?
+        .into_values()
+        .filter_map(|price_source| {
+            if let PriceSource::PythLazer { id, channel, .. } = price_source {
+                Some(PythLazerSubscriptionDetails { id, channel })
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    Ok(new_ids)
 }

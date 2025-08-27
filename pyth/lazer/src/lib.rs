@@ -1,3 +1,4 @@
 mod client;
+mod client_cache;
 
-pub use client::*;
+pub use {client::*, client_cache::*};

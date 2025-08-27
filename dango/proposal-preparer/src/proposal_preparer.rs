@@ -4,7 +4,7 @@ use {
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_lazer::PythClientLazer,
+    pyth_lazer::{PythClientLazer, PythClientLazerCache},
     pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
     std::{fmt::Debug, sync::Mutex},
     tracing::error,
@@ -72,6 +72,20 @@ impl ProposalPreparer<PythClientLazer> {
         init_metrics();
 
         let client = PythHandler::new_with_lazer(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST);
+
+        Self {
+            pyth_handler: Some(Mutex::new(client)),
+        }
+    }
+}
+
+impl ProposalPreparer<PythClientLazerCache> {
+    pub fn new_with_lazer_cache() -> Self {
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
+        let client =
+            PythHandler::new_with_lazer_cache(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST);
 
         Self {
             pyth_handler: Some(Mutex::new(client)),

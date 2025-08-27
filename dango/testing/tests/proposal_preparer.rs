@@ -1,7 +1,7 @@
 use {
     dango_oracle::PRICES,
     dango_proposal_preparer::{ProposalPreparer, RetrievePythId},
-    dango_testing::{TestSuite, setup_test, setup_test_lazer},
+    dango_testing::{TestSuite, setup_test, setup_test_lazer_cache},
     dango_types::{
         constants::btc,
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
@@ -12,9 +12,13 @@ use {
     },
     hex_literal::hex,
     pyth_client::{PythClientCache, PythClientTrait},
+    pyth_lazer::PythClientLazerCache,
     pyth_types::{
-        Channel, FixedRate, PythId,
-        constants::{BTC_USD_ID_LAZER, LAZER_TRUSTED_SIGNER, PYTH_URL},
+        Channel, FixedRate, PythId, PythLazerSubscriptionDetails,
+        constants::{
+            BTC_USD_ID_LAZER, LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER,
+            PYTH_URL,
+        },
     },
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -28,6 +32,11 @@ use {
 const NOT_USED_ID: PythId = PythId::from_inner(hex!(
     "2b9ab1e972a281585084148ba1389800799bd4be63b957507db1349314e47445"
 ));
+
+const NOT_USED_ID_LAZER: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
+    id: 9,
+    channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+};
 
 #[test]
 fn proposal_pyth() {
@@ -171,13 +180,44 @@ fn proposal_pyth() {
 
 #[test]
 fn proposal_pyth_lazer() {
+    // Ensure there are all cache file for the PythIds in oracle and also for
+    // the NOT_USED_ID and retrieve them if not presents. This is needed since
+    // the PythPPHandler create a thread to get the data from Pyth and if the
+    // cache files are not present the thread will not wait for client to retrieve
+    // and save them. The test will end before the client is able to finish.
+    {
+        let (suite, _, _, contracts, _) = setup_test_lazer_cache(Default::default());
+
+        // Retrieve all PythIds from the oracle.
+        let mut pyth_ids = suite
+            .query_wasm_smart(contracts.oracle, QueryPriceSourcesRequest {
+                start_after: None,
+                limit: None,
+            })
+            .should_succeed()
+            .into_iter()
+            .filter_map(|(_, price_source)| match price_source {
+                PriceSource::PythLazer { id, channel, .. } => {
+                    Some(PythLazerSubscriptionDetails { id, channel })
+                },
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        // Create cache for ids if not present.
+        pyth_ids.push(NOT_USED_ID_LAZER);
+
+        // Ensure to have the cache files for all the ids.
+        PythClientLazerCache::new(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST)
+            .unwrap()
+            .load_or_retrieve_data(NonEmpty::new_unchecked(pyth_ids));
+    }
+
     setup_tracing_subscriber(Level::INFO);
 
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_lazer(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_lazer_cache(Default::default());
 
     let current_time = suite.block.timestamp;
-
-    let not_used_id = 9;
 
     let oracle = contracts.oracle;
 
@@ -261,16 +301,16 @@ fn proposal_pyth_lazer() {
             .values()
             .map(|price_source| {
                 if let PriceSource::PythLazer { id, .. } = price_source {
-                    assert_ne!(id, &not_used_id);
+                    assert_ne!(id, &NOT_USED_ID_LAZER.id);
                 }
             });
 
         // Push NOT_USED_ID to the oracle.
         let msg = ExecuteMsg::RegisterPriceSources(
             btree_map!( test_denom.clone() => PriceSource::PythLazer {
-                id: not_used_id,
+                id: NOT_USED_ID_LAZER.id,
                 precision: 6,
-                channel: Channel::FixedRate(FixedRate::RATE_200_MS),
+                channel: NOT_USED_ID_LAZER.channel,
             }),
         );
 
@@ -292,8 +332,8 @@ where
     // Trigger a few blocks to be sure the PP has time to update the prices.
     let mut price = None;
 
-    for _ in 0..5 {
-        thread::sleep(Duration::from_millis(500));
+    for _ in 0..10 {
+        thread::sleep(Duration::from_millis(200));
 
         let txs = suite.make_empty_block().block_outcome.tx_outcomes;
 
