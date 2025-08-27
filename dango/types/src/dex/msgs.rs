@@ -52,6 +52,10 @@ pub enum CreateLimitOrderRequest {
 }
 
 /// A request to create a new market order.
+/// Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
+/// enough liquidity in the resting order book to fully fill the market
+/// order under its max slippage, it's filled as much as possible, with the
+/// unfilled portion is canceled.
 #[grug::derive(Serde)]
 pub enum CreateMarketOrderRequest {
     Bid {
@@ -67,11 +71,6 @@ pub enum CreateMarketOrderRequest {
         ///   ```math
         ///   p_best * (1 + max_slippage)
         ///   ```
-        ///
-        /// Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
-        /// enough liquidity in the resting order book to fully fill the market
-        /// order under its max slippage, it's filled as much as possible, with the
-        /// unfilled portion is canceled.
         max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
     },
     Ask {
@@ -87,11 +86,6 @@ pub enum CreateMarketOrderRequest {
         ///   ```math
         ///   p_best * (1 - max_slippage)
         ///   ```
-        ///
-        /// Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
-        /// enough liquidity in the resting order book to fully fill the market
-        /// order under its max slippage, it's filled as much as possible, with the
-        /// unfilled portion is canceled.
         max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
     },
 }
