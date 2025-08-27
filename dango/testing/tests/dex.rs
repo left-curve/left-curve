@@ -3034,7 +3034,15 @@ fn curve_on_orderbook(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            assert_eq!(orders.len(), expected_orders_after_clearing.len());
+            // `expected_orders_after_clearing` contains only the expected
+            // orders from the users, so we filter off the passive pool orders.
+            assert_eq!(
+                orders
+                    .iter()
+                    .filter(|(_, order)| order.user != contracts.dex)
+                    .count(),
+                expected_orders_after_clearing.len()
+            );
             for (order_id, (price, remaining, direction)) in expected_orders_after_clearing {
                 let order = orders.get(&order_id).unwrap();
                 assert_eq!(order.price, price.convert_precision().unwrap());

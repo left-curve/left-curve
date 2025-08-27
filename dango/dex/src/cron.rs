@@ -111,6 +111,17 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Since market orders are immediate-or-cancel, delete them from storage.
     MARKET_ORDERS.clear(ctx.storage, None, None);
 
+    // Delete the passive orders left over from the previous block.
+    for order_key in LIMIT_ORDERS
+        .idx
+        .user
+        .prefix(app_cfg.addresses.dex)
+        .keys(ctx.storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?
+    {
+        LIMIT_ORDERS.remove(ctx.storage, order_key)?;
+    }
+
     // Loop through all trading pairs. Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
     for (base_denom, quote_denom) in PAIRS
@@ -197,17 +208,6 @@ fn clear_orders_of_pair(
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
     // --------------------- 1. Update passive pool orders ---------------------
-
-    // Delete the passive orders from the previous block.
-    for order_key in LIMIT_ORDERS
-        .idx
-        .user
-        .prefix(dex_addr)
-        .keys(storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?
-    {
-        LIMIT_ORDERS.remove(storage, order_key)?;
-    }
 
     // Generate updated passive orders and insert them into the book.
     //
