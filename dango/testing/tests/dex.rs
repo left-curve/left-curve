@@ -2504,7 +2504,12 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
         },
     ],
     btree_map! {
-        OrderId::new(!1) => (Udec128::new_percent(20100), Udec128::new(49751), Direction::Bid),
+        // Why the order ID should be `!21`? Because:
+        // - The one block where we provide liquidity, the auction generates 10
+        //   passive orders on each side of the book. They take up order IDs 1-20.
+        // - The next block, we place a new order. It gets order ID 21.
+        // - Because the order is a bid, it's bitwise NOT-ed, so `!21`.
+        OrderId::new(!21) => (Udec128::new_percent(20100), Udec128::new(49751), Direction::Bid),
     },
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
@@ -2644,7 +2649,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
         },
     ],
     btree_map! {
-        OrderId::new(!1) => (Udec128::new_percent(20300), Udec128::new(10000), Direction::Bid),
+        OrderId::new(!21) => (Udec128::new_percent(20300), Udec128::new(10000), Direction::Bid),
     },
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
@@ -2784,7 +2789,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
         },
     ],
     btree_map! {
-        OrderId::new(1) => (Udec128::new_percent(19900), Udec128::new(10000), Direction::Ask),
+        OrderId::new(21) => (Udec128::new_percent(19900), Udec128::new(10000), Direction::Ask),
     },
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
@@ -3029,7 +3034,15 @@ fn curve_on_orderbook(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            assert_eq!(orders.len(), expected_orders_after_clearing.len());
+            // `expected_orders_after_clearing` contains only the expected
+            // orders from the users, so we filter off the passive pool orders.
+            assert_eq!(
+                orders
+                    .iter()
+                    .filter(|(_, order)| order.user != contracts.dex)
+                    .count(),
+                expected_orders_after_clearing.len()
+            );
             for (order_id, (price, remaining, direction)) in expected_orders_after_clearing {
                 let order = orders.get(&order_id).unwrap();
                 assert_eq!(order.price, price.convert_precision().unwrap());

@@ -9,15 +9,15 @@ use {
         DangoQuerier,
         account_factory::Username,
         dex::{
-            Direction, OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId,
-            PairParams, PairUpdate, PassiveOrder, QueryMsg, ReservesResponse,
-            RestingOrderBookState, RestingOrderBookStatesResponse, SwapRoute,
+            OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
+            PairUpdate, QueryMsg, ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
+            RestingOrderBookStatesResponse, SwapRoute,
         },
     },
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
         JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult,
-        Timestamp, Udec128_6, Udec128_24, Uint128,
+        Timestamp, Udec128_6, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -123,10 +123,9 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         QueryMsg::ReflectCurve {
             base_denom,
             quote_denom,
-            direction,
             limit,
         } => {
-            let res = query_reflect_curve(ctx, base_denom, quote_denom, direction, limit)?;
+            let res = query_reflect_curve(ctx, base_denom, quote_denom, limit)?;
             res.to_json_value()
         },
     }
@@ -473,9 +472,8 @@ fn query_reflect_curve(
     ctx: ImmutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
-    direction: Direction,
     limit: Option<u32>,
-) -> anyhow::Result<BTreeMap<Udec128_24, PassiveOrder>> {
+) -> anyhow::Result<ReflectCurveResponse> {
     // Create oracle querier.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
@@ -488,12 +486,10 @@ fn query_reflect_curve(
     let (bids, asks) =
         pair.reflect_curve(&mut oracle_querier, base_denom, quote_denom, &reserve)?;
 
-    let orders = match direction {
-        Direction::Bid => bids,
-        Direction::Ask => asks,
-    };
-
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    Ok(orders.take(limit).collect())
+    Ok(ReflectCurveResponse {
+        bids: bids.take(limit).collect(),
+        asks: asks.take(limit).collect(),
+    })
 }

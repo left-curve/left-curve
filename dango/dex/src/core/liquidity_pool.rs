@@ -2,7 +2,7 @@ use {
     super::{geometric, xyk},
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
-    dango_types::dex::{PairParams, PassiveLiquidity, PassiveOrder},
+    dango_types::dex::{PairParams, PassiveLiquidity},
     grug::{
         Coin, CoinPair, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst,
         PrevNumber, Sign, Udec128, Udec128_24, Uint128,
@@ -133,8 +133,8 @@ pub trait PassiveLiquidityPool {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>, // bids
-        Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>, // asks
+        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>, // bids: price => amount in base asset
+        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>, // asks: price => amount in base asset
     )>;
 }
 
@@ -378,8 +378,8 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
-        Box<dyn Iterator<Item = (Udec128_24, PassiveOrder)>>,
+        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
+        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;
@@ -667,18 +667,18 @@ mod tests {
         assert_eq!(asks.len(), expected_asks.len());
 
         // Assert that the orders are correct.
-        for (ask, expected_ask) in asks.into_iter().zip(expected_asks.iter()) {
-            assert_eq!(ask.0, expected_ask.0.convert_precision().unwrap());
-            assert!(
-                ask.1.amount.inner().abs_diff(expected_ask.1.into_inner()) <= order_size_tolerance
-            );
+        for ((price, amount), (expected_price, expected_amount)) in
+            asks.into_iter().zip(expected_asks.iter())
+        {
+            assert_eq!(price, expected_price.convert_precision().unwrap());
+            assert!(amount.inner().abs_diff(expected_amount.into_inner()) <= order_size_tolerance);
         }
 
-        for (bid, expected_bid) in bids.into_iter().zip(expected_bids.iter()) {
-            assert_eq!(bid.0, expected_bid.0.convert_precision().unwrap());
-            assert!(
-                bid.1.amount.inner().abs_diff(expected_bid.1.into_inner()) <= order_size_tolerance
-            );
+        for ((price, amount), (expected_price, expected_amount)) in
+            bids.into_iter().zip(expected_bids.iter())
+        {
+            assert_eq!(price, expected_price.convert_precision().unwrap());
+            assert!(amount.inner().abs_diff(expected_amount.into_inner()) <= order_size_tolerance);
         }
     }
 
@@ -730,12 +730,14 @@ mod tests {
 
         assert_eq!(bids_collected.len(), 2);
 
-        for (bid, expected_bid) in bids_collected.into_iter().zip([
-            (Udec128::new_percent(99), Uint128::from(5050505)),
-            (Udec128::new_percent(49), Uint128::from(5102040)),
-        ]) {
-            assert_eq!(bid.0, expected_bid.0.convert_precision().unwrap());
-            assert_eq!(bid.1.amount, expected_bid.1);
+        for ((price, amount), (expected_price, expected_amount)) in
+            bids_collected.into_iter().zip([
+                (Udec128::new_percent(99), Uint128::from(5050505)),
+                (Udec128::new_percent(49), Uint128::from(5102040)),
+            ])
+        {
+            assert_eq!(price, expected_price.convert_precision().unwrap());
+            assert_eq!(amount, expected_amount);
         }
 
         // Check that ask iterator keeps going after bid iterator is exhausted

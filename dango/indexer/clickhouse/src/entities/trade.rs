@@ -178,7 +178,6 @@ pub mod order_type {
         let val: u8 = match order_type {
             OrderKind::Limit => 0,
             OrderKind::Market => 1,
-            OrderKind::Passive => 2,
         };
         val.serialize(serializer)
     }
@@ -191,7 +190,6 @@ pub mod order_type {
         match val {
             0 => Ok(OrderKind::Limit),
             1 => Ok(OrderKind::Market),
-            2 => Ok(OrderKind::Passive),
             _ => Err(de::Error::custom(format!("Invalid order type: {val}"))),
         }
     }
