@@ -66,7 +66,7 @@ pub fn increase_liquidity_depths(
 /// This is called under three circumstances:
 /// - in `execute::batch_update_orders`, when canceling user limit orders;
 /// - in `cron::auction`, when canceling passive orders from the previous block;
-/// - in `cron::auction`, when a limit order (user or passive) is fulfilled.
+/// - in `cron::clear_orders_of_pair`, when a limit order (user or passive) is fulfilled.
 pub fn decrease_liquidity_depths(
     storage: &mut dyn Storage,
     base_denom: &Denom,
