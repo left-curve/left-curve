@@ -86,6 +86,13 @@ export type {
   IndexedEvent,
   EventStatus,
   CommitmentStatus,
+  EventData,
+  ContractEvent,
+  TransferEvent,
+  ExecuteEvent,
+  OrderCreatedEvent,
+  OrderCanceledEvent,
+  OrderFilledEvent,
 } from "./event.js";
 
 export type {
@@ -138,6 +145,7 @@ export type {
   Candle,
   CandleIntervals,
   Trade,
+  OrderTypes,
 } from "./dex.js";
 
 export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";
@@ -152,4 +160,4 @@ export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
 
-export { Direction, CandleInterval } from "./dex.js";
+export { Direction, CandleInterval, OrderType } from "./dex.js";
