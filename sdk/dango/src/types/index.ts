@@ -86,6 +86,13 @@ export type {
   IndexedEvent,
   EventStatus,
   CommitmentStatus,
+  EventData,
+  ContractEvent,
+  TransferEvent,
+  ExecuteEvent,
+  OrderCreatedEvent,
+  OrderCanceledEvent,
+  OrderFilledEvent,
 } from "./event.js";
 
 export type {

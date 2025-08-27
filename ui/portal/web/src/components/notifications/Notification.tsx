@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { useConfig } from "@left-curve/store";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 import {
@@ -11,7 +12,14 @@ import {
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { AddressVisualizer, IconClose, IconInfo, twMerge, useApp } from "@left-curve/applets-kit";
+import {
+  AddressVisualizer,
+  IconClose,
+  IconInfo,
+  PairAssets,
+  twMerge,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";
@@ -59,14 +67,11 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
   const navigate = useNavigate();
   const { settings, setNotificationMenuVisibility } = useApp();
   const { deleteNotification } = useNotifications();
-  const { coin, type, fromAddress, toAddress, amount, txHash } = notification.data;
+  const { getCoinInfo } = useConfig();
+  const { id, blockHeight, createdAt, txHash } = notification;
+  const { coins, type, fromAddress, toAddress } = notification.data;
   const { formatNumberOptions } = settings;
   const isSent = type === "sent";
-
-  const formattedAmount = formatNumber(formatUnits(amount, coin.decimals), {
-    ...formatNumberOptions,
-    maxSignificantDigits: 4,
-  });
 
   const originAddress = isSent ? fromAddress : toAddress;
   const targetAddress = isSent ? toAddress : fromAddress;
@@ -85,22 +90,47 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
           if (element.closest(".address-visualizer") || element.closest(".remove-notification")) {
             return;
           }
-          onNavigate(`/tx/${txHash}`);
+          onNavigate(txHash ? `/tx/${txHash}` : `/block/${blockHeight}`);
         }}
       >
         <IconInfo className="text-secondary-700 w-5 h-5 flex-shrink-0" />
 
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
+          <span className="diatype-m-medium text-secondary-700">
+            {m["notifications.notification.transfer.title"]({ action: type })}
+          </span>
           <div className="flex gap-2">
-            <span className="diatype-m-medium text-secondary-700">
-              {m["notifications.notification.transfer.title"]({ action: type })}
-            </span>
-            <span
-              className={twMerge("diatype-m-bold flex-shrink-0", {
-                "text-status-success": type === "received",
-                "text-status-fail": type === "sent",
-              })}
-            >{`${isSent ? "−" : "+"}${formattedAmount}  ${coin.symbol}`}</span>
+            {Object.entries(coins).map(([denom, amount]) => {
+              const coin = getCoinInfo(denom);
+              return (
+                <p
+                  className={twMerge(
+                    "diatype-m-bold flex-shrink-0 flex items-center justify-center gap-1",
+                    {
+                      "text-status-success": type === "received",
+                      "text-status-fail": type === "sent",
+                    },
+                  )}
+                >
+                  <span>
+                    {coin.type === "lp" ? (
+                      <PairAssets assets={[coin.base, coin.quote]} />
+                    ) : (
+                      <img
+                        src={coin.logoURI}
+                        alt={coin.symbol}
+                        className="w-5 h-5 select-none drag-none"
+                        loading="lazy"
+                      />
+                    )}
+                  </span>
+                  {`${isSent ? "−" : "+"}${formatNumber(formatUnits(amount, coin.decimals), {
+                    ...formatNumberOptions,
+                    maxSignificantDigits: 4,
+                  })}  ${coin.symbol}`}
+                </p>
+              );
+            })}
           </div>
           <div className="flex diatype-m-medium text-tertiary-500 flex-wrap items-center gap-1">
             <div className="flex flex-wrap items-center gap-1">
@@ -131,9 +161,9 @@ const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notificatio
       <div className="flex flex-col diatype-sm-medium text-tertiary-500 min-w-fit items-center relative">
         <IconClose
           className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px] remove-notification"
-          onClick={() => deleteNotification(notification.id)}
+          onClick={() => deleteNotification(id)}
         />
-        <p>{formatNotificationTimestamp(new Date(notification.createdAt))}</p>
+        <p>{formatNotificationTimestamp(new Date(createdAt))}</p>
       </div>
     </div>
   );
