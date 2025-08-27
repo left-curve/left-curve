@@ -534,7 +534,7 @@
         }
       },
       "account": {
-        "title": "{accountType} Account Created"
+        "title": "Account created"
       }
     }
   },
