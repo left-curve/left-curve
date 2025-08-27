@@ -1,4 +1,6 @@
-import ReactFullpage, { type fullpageApi } from "@fullpage/react-fullpage";
+import { useEffect } from "react";
+import { useApp } from "~/hooks/useApp";
+import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
 
 import {
   Button,
@@ -7,17 +9,17 @@ import {
   IconDiscord,
   IconMirror,
   IconTwitter,
-  useMediaQuery,
-  useTheme,
 } from "@left-curve/applets-kit";
-import { m } from "~/paraglide/messages";
 import { SearchMenu } from "../foundation/SearchMenu";
 import { AppletsSection } from "../overview/AppletsSection";
-import { useApp } from "~/hooks/useApp";
-import { decodeBase64, decodeUtf8 } from "@left-curve/dango/encoding";
 
-import { useEffect, type PropsWithChildren } from "react";
+import { decodeBase64, decodeUtf8 } from "@left-curve/dango/encoding";
+import ReactFullpage from "@fullpage/react-fullpage";
+import { m } from "~/paraglide/messages";
 import { format } from "date-fns";
+
+import type { fullpageApi } from "@fullpage/react-fullpage";
+import type { PropsWithChildren } from "react";
 
 type LandingProps = {
   fullpageApi: fullpageApi;
