@@ -156,14 +156,6 @@
       "keywords": "settings,preferences,options"
     },
     "6": {
-      "id": "notifications",
-      "img": "/images/emojis/simple/notifications.svg",
-      "title": "Notifications",
-      "description": "View recent transactions.",
-      "path": "/notifications",
-      "keywords": "notifications,alerts"
-    },
-    "7": {
       "id": "devtool",
       "img": "/images/emojis/simple/factory-2.svg",
       "title": "DevTool",
