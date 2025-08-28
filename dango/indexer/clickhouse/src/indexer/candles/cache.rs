@@ -183,13 +183,11 @@ impl CandleCache {
         // NOTE: Candles don't necessarily come in order, because the indexing
         // is done async per block. We could receive block 5 before block 4.
         // The existing candle could be an older candle than our last.
-        let current_candle = candles
-            .iter_mut()
-            .rev()
-            .take_while(|candle| candle.time_start >= time_start)
-            .find(|candle| candle.time_start == time_start);
+        let current_index = candles
+            .iter()
+            .rposition(|candle| candle.time_start == time_start);
 
-        let Some(current_candle) = current_candle else {
+        let Some(current_index) = current_index else {
             // Find correct position to maintain time order since pair_price can arrive out of order
             let insert_pos = candles
                 .iter()
@@ -265,44 +263,44 @@ impl CandleCache {
             %key.base_denom,
             %key.quote_denom,
             %interval,
-            %current_candle.volume_base,
-            %current_candle.volume_quote,
-            %current_candle.block_height,
+            volume_base = %candles[current_index].volume_base,
+            volume_quote = %candles[current_index].volume_quote,
+            block_height = %candles[current_index].block_height,
             "Found current candle, updating with pair_price",
         );
 
-        if block_height == current_candle.block_height {
+        if block_height == candles[current_index].block_height {
             #[cfg(feature = "tracing")]
             tracing::error!(
                 %interval,
                 %block_height,
                 "Seeing the same pair_price for the same block_height",
             );
-        } else if block_height > current_candle.block_height {
+        } else if block_height > candles[current_index].block_height {
             // PairPrice might not come in order, we only set close price if the
             // pair price has a later block.
-            // NOTE: we should also change the open price of the next candle, if exists.
             if let Some(pair_price) = &pair_price {
-                current_candle.close = pair_price.clearing_price;
+                candles[current_index].close = pair_price.clearing_price;
 
                 // Update the open price of the next candle, if exists.
-                if let Some(next_candle) = candles.get_mut(insert_pos + 1) {
+                if let Some(next_candle) = candles.get_mut(current_index + 1) {
                     next_candle.open = pair_price.clearing_price;
                 }
             }
         }
 
         if let Some(pair_price) = pair_price {
-            current_candle.volume_base += pair_price.volume_base;
-            current_candle.volume_quote += pair_price.volume_quote;
+            candles[current_index].volume_base += pair_price.volume_base;
+            candles[current_index].volume_quote += pair_price.volume_quote;
 
-            current_candle.high = current_candle.high.max(pair_price.clearing_price);
-            current_candle.low = current_candle.low.min(pair_price.clearing_price);
+            candles[current_index].high =
+                candles[current_index].high.max(pair_price.clearing_price);
+            candles[current_index].low = candles[current_index].low.min(pair_price.clearing_price);
         }
 
-        current_candle.block_height = current_candle.block_height.max(block_height);
+        candles[current_index].block_height = candles[current_index].block_height.max(block_height);
 
-        Some(current_candle.clone())
+        Some(candles[current_index].clone())
     }
 
     /// Does the cache have all candles for the given dates?
