@@ -1,5 +1,5 @@
 {
-  "name": "@left-curve/ui-config",
+  "name": "@left-curve/foundation-shared",
   "version": "0.1.0",
   "exports": {
     "./fonts/*": "./fonts/*",

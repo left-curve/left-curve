@@ -8,7 +8,12 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts", "../../config/tailwind/config.ts"],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind-env.d.ts",
+    "../../foundation/shared/tailwind/config.ts"
+  ],
   "exclude": ["node_modules"],
   "references": [
     {

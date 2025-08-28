@@ -7,8 +7,3 @@ export { useCountdown } from "./useCountdown";
 export { useTheme } from "./useTheme";
 export { usePortalTarget } from "./usePortalTarget";
 export { useClickAway } from "./useClickAway";
-
-export {
-  type UseUsernamesReturnType,
-  useUsernames,
-} from "./useUsernames";

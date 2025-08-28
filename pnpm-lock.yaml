@@ -165,12 +165,12 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../../sdk/dango
+      '@left-curve/foundation-shared':
+        specifier: workspace:^
+        version: link:../../foundation/shared
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store
-      '@left-curve/ui-config':
-        specifier: workspace:^
-        version: link:../../config
       '@microlink/react-json-view':
         specifier: ^1.26.2
         version: 1.26.2(@types/react@18.3.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -281,7 +281,7 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1(@rsbuild/core@1.3.20)(@rspack/core@1.3.10(@swc/helpers@0.5.17))(@storybook/test@8.6.14(storybook@8.6.14(prettier@3.5.0)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@4.24.0)(storybook@8.6.14(prettier@3.5.0))(typescript@5.6.3)(webpack-sources@3.2.3)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.25.0))
 
-  ui/config:
+  ui/foundation/shared:
     dependencies:
       '@inlang/cli':
         specifier: ^3.0.3
@@ -440,15 +440,15 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../../sdk/dango
+      '@left-curve/foundation-shared':
+        specifier: workspace:^
+        version: link:../../foundation/shared
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store
       '@left-curve/tradingview':
         specifier: ^29.4.0
         version: 29.4.0
-      '@left-curve/ui-config':
-        specifier: workspace:^
-        version: link:../../config
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
