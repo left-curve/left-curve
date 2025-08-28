@@ -3,9 +3,9 @@
   "extends": "@left-curve/config/ts/react.json",
   "compilerOptions": {
     "outDir": "build",
-    "rootDir": "ui"
+    "rootDir": "react"
   },
-  "include": ["ui"],
+  "include": ["react"],
   "exclude": ["node_modules"],
   "references": [{ "path": "../../../sdk/dango" }]
 }
