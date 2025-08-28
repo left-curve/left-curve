@@ -128,7 +128,8 @@ type Candle {
 	quoteDenom: String!
 	baseDenom: String!
 	interval: CandleInterval!
-	blockHeight: Int!
+	minBlockHeight: Int!
+	maxBlockHeight: Int!
 	open: BigDecimal!
 	high: BigDecimal!
 	low: BigDecimal!
