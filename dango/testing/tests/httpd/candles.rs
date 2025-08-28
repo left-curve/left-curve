@@ -290,6 +290,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     "blockHeight": 4,
                 }]);
 
+                println!("{:#?}", response.data);
+
                 assert_json_include!(actual: response.data, expected: expected_json);
 
                 create_candle_tx_clone.send(2).await.unwrap();
