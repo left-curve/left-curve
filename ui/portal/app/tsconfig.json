@@ -3,8 +3,9 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "~/*": ["./src/*"],
-      "~/store": ["./store.config.ts"]
+      "~/assets/*": ["./assets/*"],
+      "~/store": ["./store.config.ts"],
+      "~/*": ["./src/*"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts", "../../config/tailwind/config.ts"],

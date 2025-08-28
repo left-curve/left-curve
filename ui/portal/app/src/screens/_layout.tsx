@@ -1,28 +1,20 @@
 import { Stack } from "expo-router";
-import { config } from "~/store";
-import { DangoStoreProvider } from "@left-curve/store";
-import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { ThemeProvider } from "~/hooks/useTheme";
-import { Layout } from "~/components";
-
-const queryClient = new QueryClient();
+import { AppProviders } from "~/app.providers";
+import { AppTheme } from "~/app.theme";
 
 export default function RootLayout() {
   return (
-    <DangoStoreProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <SafeAreaProvider>
-            <Layout>
-              <Stack>
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-            </Layout>
-          </SafeAreaProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </DangoStoreProvider>
+    <AppProviders>
+      <AppTheme>
+        <Stack>
+          <Stack.Screen name="(app)" options={{ headerShown: false }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="search"
+            options={{ headerShown: false, presentation: "containedModal" }}
+          />
+        </Stack>
+      </AppTheme>
+    </AppProviders>
   );
 }
