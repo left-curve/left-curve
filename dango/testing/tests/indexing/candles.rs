@@ -530,17 +530,6 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
         .fetch_all(clickhouse_context.clickhouse_client())
         .await?;
 
-    // println!("{:#?}", candle_1m);
-
-    // let candle_cache = clickhouse_context.candle_cache.read().await;
-    // let key = CandleCacheKey::new(
-    //     "dango".to_string(),
-    //     "bridge/usdc".to_string(),
-    //     CandleInterval::OneMinute,
-    // );
-
-    // println!("Candle cache: {:#?}", candle_cache.get_candles(&key));
-
     // Ensure there are two candles.
     // The most recent candle is the first; the oldest is the last.
     //
