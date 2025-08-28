@@ -79,6 +79,16 @@ impl CandleCache {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, ?pair_prices, "Adding pair_prices");
 
+        let max_block_height = self.pair_prices.keys().copied().max().unwrap_or(0);
+        if block_height <= max_block_height {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(
+                block_height,
+                max_block_height,
+                "Block height is earlier than max block height"
+            );
+        }
+
         let mut result = Vec::new();
 
         let mut seen_pair_prices: HashSet<PairId> = HashSet::new();
