@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { useAccount } from "@left-curve/store";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
@@ -6,7 +5,6 @@ import { useMediaQuery } from "@left-curve/applets-kit";
 
 import { Button, IconButton, IconWallet, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
@@ -24,7 +22,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { location } = useRouterState();
   const navigate = useNavigate();
   const { isLg } = useMediaQuery();
-  const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   const isProSwap = location.pathname.includes("trade");
 
@@ -99,7 +96,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             )}
           </Button>
         </div>
-        <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
       <AccountMenu />
     </header>
