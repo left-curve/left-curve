@@ -51,6 +51,7 @@ pub struct Candle {
 }
 
 impl Candle {
+    /// Creates a new candle from a pair price.
     pub fn new_with_pair_price(
         pair_price: PairPrice,
         interval: CandleInterval,
@@ -72,6 +73,7 @@ impl Candle {
         }
     }
 
+    /// Creates a new candle from a previous candle.
     pub fn new_with_previous_candle(
         previous_candle: &Candle,
         interval: CandleInterval,

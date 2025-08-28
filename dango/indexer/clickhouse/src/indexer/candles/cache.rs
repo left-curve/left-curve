@@ -86,7 +86,6 @@ impl CandleCache {
         for pair_price in pair_prices.iter() {
             for candle_interval in CandleInterval::iter() {
                 if let Ok(denom) = pair_price.try_into() {
-                    // self.denoms.insert(denom);
                     seen_pair_prices.insert(denom);
                 }
 
@@ -120,12 +119,9 @@ impl CandleCache {
                     candle_interval,
                 );
 
-                if let Some(candle) = self.update_or_create_candle(
-                    key,
-                    block_height,
-                    created_at,
-                    None, // No new pair_price
-                ) {
+                if let Some(candle) =
+                    self.update_or_create_candle(key, block_height, created_at, None)
+                {
                     result.push(candle);
                 }
             }
@@ -161,7 +157,7 @@ impl CandleCache {
                 tracing::debug!(
                     %created_at,
                     %interval,
-                    "Candles is empty, no pair_price, creating no candle",
+                    "Candles is empty, no pair_price, can not create candle",
                 );
 
                 return None;
@@ -173,7 +169,7 @@ impl CandleCache {
                 %pair_price.base_denom,
                 %pair_price.quote_denom,
                 %interval,
-                "Candles is empty, adding a new candle",
+                "Candles is empty, adding a new candle from pair_price",
             );
 
             let candle =
@@ -187,14 +183,14 @@ impl CandleCache {
         // NOTE: Candles don't necessarily come in order, because the indexing
         // is done async per block. We could receive block 5 before block 4.
         // The existing candle could be an older candle than our last.
-        let existing_candle = candles
+        let current_candle = candles
             .iter_mut()
             .rev()
-            .take_while(|existing_candle| existing_candle.time_start >= time_start)
-            .find(|existing_candle| existing_candle.time_start == time_start);
+            .take_while(|candle| candle.time_start >= time_start)
+            .find(|candle| candle.time_start == time_start);
 
-        let Some(existing_candle) = existing_candle else {
-            // Find correct position to maintain time order
+        let Some(current_candle) = current_candle else {
+            // Find correct position to maintain time order since pair_price can arrive out of order
             let insert_pos = candles
                 .iter()
                 .position(|c| c.time_start > time_start)
@@ -210,7 +206,7 @@ impl CandleCache {
                     tracing::debug!(
                         %created_at,
                         %interval,
-                        "Found no existing candle, and no pair_price, will create a candle based on previous candle",
+                        "Found no current candle, and no pair_price, will create a candle based on previous candle",
                     );
 
                     let candle = Candle::new_with_previous_candle(
@@ -230,7 +226,7 @@ impl CandleCache {
                     tracing::debug!(
                         %created_at,
                         %interval,
-                        "Found no existing candle, no pair_price, no previous candle, creating no candle",
+                        "Found no current candle, no pair_price, no previous candle, can not create candle",
                     );
                     return None;
                 }
@@ -242,7 +238,7 @@ impl CandleCache {
                 %key.base_denom,
                 %key.quote_denom,
                 %interval,
-                "Found no existing candle, adding a new candle with pair_price",
+                "Found no current candle, adding a new candle from pair_price",
             );
 
             let mut candle =
@@ -269,39 +265,39 @@ impl CandleCache {
             %key.base_denom,
             %key.quote_denom,
             %interval,
-            %existing_candle.volume_base,
-            %existing_candle.volume_quote,
-            %existing_candle.block_height,
-            "Found existing candle, updating with pair_price",
+            %current_candle.volume_base,
+            %current_candle.volume_quote,
+            %current_candle.block_height,
+            "Found current candle, updating with pair_price",
         );
 
-        if block_height == existing_candle.block_height {
+        if block_height == current_candle.block_height {
             #[cfg(feature = "tracing")]
             tracing::error!(
                 %interval,
                 %block_height,
                 "Seeing the same pair_price for the same block_height",
             );
-        } else if block_height > existing_candle.block_height {
+        } else if block_height > current_candle.block_height {
             // PairPrice might not come in order, we only set close price if the
             // pair price has a later block.
             // NOTE: we should also change the open price of the next candle, if exists.
             if let Some(pair_price) = &pair_price {
-                existing_candle.close = pair_price.clearing_price;
+                current_candle.close = pair_price.clearing_price;
             }
         }
 
         if let Some(pair_price) = pair_price {
-            existing_candle.volume_base += pair_price.volume_base;
-            existing_candle.volume_quote += pair_price.volume_quote;
+            current_candle.volume_base += pair_price.volume_base;
+            current_candle.volume_quote += pair_price.volume_quote;
 
-            existing_candle.high = existing_candle.high.max(pair_price.clearing_price);
-            existing_candle.low = existing_candle.low.min(pair_price.clearing_price);
+            current_candle.high = current_candle.high.max(pair_price.clearing_price);
+            current_candle.low = current_candle.low.min(pair_price.clearing_price);
         }
 
-        existing_candle.block_height = existing_candle.block_height.max(block_height);
+        current_candle.block_height = current_candle.block_height.max(block_height);
 
-        Some(existing_candle.clone())
+        Some(current_candle.clone())
     }
 
     /// Does the cache have all candles for the given dates?
