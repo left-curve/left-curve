@@ -600,7 +600,7 @@ mod tests {
             );
             assert!(
                 candle.max_block_height >= previous_candle.max_block_height,
-                "Candle block_height is not greater than or equal to previous candle"
+                "Candle max_block_height is not greater than or equal to previous candle"
             );
             assert_eq!(
                 previous_candle.close, candle.open,
