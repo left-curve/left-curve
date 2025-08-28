@@ -8,7 +8,6 @@ import {
   useMediaQuery,
   useWatchEffect,
 } from "@left-curve/applets-kit";
-import { capitalize } from "@left-curve/dango/utils";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Notification } from "./Notification";
@@ -16,7 +15,6 @@ import { Notification } from "./Notification";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
-import type { NotificationProps } from "./Notification";
 
 type NotificationsProps = {
   className?: string;
@@ -79,12 +77,9 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
               <motion.div key={dateKey}>
                 <p className="text-sm text-tertiary-500 mx-2 my-1">{dateKey}</p>
                 <div className="flex flex-col gap-2 max-w-full">
-                  {n.map((notification) => {
-                    const NotificationCard = Notification[
-                      capitalize(notification.type) as keyof typeof Notification
-                    ] as React.FC<NotificationProps>;
-                    return <NotificationCard key={notification.id} notification={notification} />;
-                  })}
+                  {n.map((notification) => (
+                    <Notification key={notification.id} notification={notification} />
+                  ))}
                 </div>
               </motion.div>
             ))}
