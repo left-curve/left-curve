@@ -112,7 +112,7 @@ impl CandleGenerator {
         // and generate duplicates with clickhouse.
         let _candles = candle_cache.add_pair_prices(block_height, created_at, pair_prices);
         // Use this to be smarter and only store them once, once completed.
-        // NOTE: I only want to save past candles when they are complete and there is no gaps in pair_price
+        // NOTE: I only want to save past candles when they are complete and there are no gaps in pair_prices
         let mut candles = Vec::new();
 
         if !candle_cache.completed_candles.is_empty() && !candle_cache.has_gaps() {
