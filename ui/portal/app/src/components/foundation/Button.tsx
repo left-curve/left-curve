@@ -7,9 +7,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { twMerge } from "@left-curve/applets-kit";
 import { tv } from "tailwind-variants";
 
-import React from "react";
+import React, { isValidElement } from "react";
 import type { VariantProps } from "tailwind-variants";
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 
 export const radiusSizes = {
   none: 0,
@@ -256,6 +256,22 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   classNames,
 }) => {
   const styles = buttonVariants({ variant, size, isDisabled, radius });
+  const renderIcon = (node?: ReactNode) =>
+    isValidElement(node)
+      ? React.cloneElement(node as ReactElement, {
+          className: twMerge(styles.icons(), classNames?.icons),
+        })
+      : null;
+
+  const styledLeftIcon = renderIcon(leftIcon);
+  const styledRightIcon = renderIcon(rightIcon);
+
+  const childrenComponent =
+    children && isValidElement(children)
+      ? React.cloneElement(children as React.ReactElement, {
+          className: twMerge(styles.text(), classNames?.text),
+        })
+      : children;
 
   return (
     <ButtonShadow radius={radius} variant={variant}>
@@ -270,25 +286,13 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
               classNames?.base,
             )}
           >
-            {leftIcon
-              ? React.cloneElement(leftIcon as React.ReactElement, {
-                  className: twMerge(styles.icons(), classNames?.icons),
-                })
-              : null}
+            {styledLeftIcon}
 
             {children ? (
-              <Text className={twMerge(styles.text(), classNames?.text)}>
-                {React.cloneElement(children as React.ReactElement, {
-                  className: twMerge(styles.text(), classNames?.text),
-                })}
-              </Text>
+              <Text className={twMerge(styles.text(), classNames?.text)}>{childrenComponent}</Text>
             ) : null}
 
-            {rightIcon
-              ? React.cloneElement(rightIcon as React.ReactElement, {
-                  className: twMerge(styles.icons(), classNames?.icons),
-                })
-              : null}
+            {styledRightIcon}
           </View>
         )}
       </Pressable>
