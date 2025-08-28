@@ -3,12 +3,12 @@ import { createStore } from "zustand/vanilla";
 
 import { createPublicClient } from "@left-curve/dango";
 import { plainObject, uid } from "@left-curve/dango/utils";
+import { createStorage } from "@left-curve/foundation-shared";
 
 import pkgJson from "../package.json" with { type: "json" };
 import { eip6963 } from "./connectors/eip6963.js";
 import { type EventData, createEmitter } from "./createEmitter.js";
 import { createMipdStore } from "./mipd.js";
-import { createStorage } from "./storages/createStorage.js";
 import { ConnectionStatus } from "./types/store.js";
 
 import type {

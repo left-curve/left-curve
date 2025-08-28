@@ -32,7 +32,8 @@
     "build": "pnpm tsup --clean"
   },
   "devDependencies": {
-    "@left-curve/config": "workspace:^"
+    "@left-curve/config": "workspace:^",
+    "@tanstack/react-query": "catalog:"
   },
   "dependencies": {
     "@inlang/cli": "^3.0.3",

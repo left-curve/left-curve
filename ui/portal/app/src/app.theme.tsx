@@ -1,6 +1,4 @@
-import { useTheme } from "./hooks/useTheme";
-
-import { twMerge } from "@left-curve/foundation-app";
+import { twMerge, useTheme } from "@left-curve/foundation-app";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { PropsWithChildren } from "react";

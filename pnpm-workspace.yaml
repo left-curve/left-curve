@@ -32,13 +32,14 @@ catalog:
   "@tanstack/router-devtools": "^1.111.3"
   "@tanstack/react-router": "^1.111.3"
   "@tanstack/zod-adapter": "^1.111.3"
-  "nuqs": "^2.2.3"
   "zod": "^3.24.1"
   "zustand": "^5.0.1"
+  "react-native-mmkv": "^3.3.0"
   # Animations
   "framer-motion": "^11.11.7"
   # CSS
   "tailwindcss": "^3.4.13"
+  "tailwind-variants": "^0.2.1"
   "autoprefixer": "^10.4.20"
   "postcss": "^8"
   "@unocss/postcss": "^0.63.3"

@@ -1,5 +1,6 @@
 export { GlobalText } from "./GlobalText";
 export { TextLoop } from "./TextLoop";
+export { Button } from "./Button";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Icon                                    */

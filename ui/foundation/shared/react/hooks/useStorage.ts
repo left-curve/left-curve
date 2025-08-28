@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { useQuery } from "../query.js";
+import { useQuery } from "@tanstack/react-query";
+
 import { createStorage } from "../storages/createStorage.js";
 
 import type { Dispatch, SetStateAction } from "react";

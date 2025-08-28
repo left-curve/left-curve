@@ -1,10 +1,9 @@
-import { useTheme } from "~/hooks/useTheme";
-
 import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
 import { Shadow } from "react-native-shadow-2";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { twMerge } from "@left-curve/foundation-app";
+import { useTheme } from "../hooks/useTheme";
+import { twMerge } from "@left-curve/foundation-shared";
 import { tv } from "tailwind-variants";
 
 import React, { isValidElement } from "react";

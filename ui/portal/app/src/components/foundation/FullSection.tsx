@@ -1,7 +1,6 @@
-import { twMerge } from "@left-curve/foundation-app";
+import { twMerge, useTheme } from "@left-curve/foundation-app";
 import { Dimensions, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useTheme } from "~/hooks/useTheme";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 

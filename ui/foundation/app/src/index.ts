@@ -6,3 +6,4 @@ export * from "./components";
 /* -------------------------------------------------------------------------- */
 
 export { useTheme } from "./hooks/useTheme";
+export { useStorage } from "./hooks/useStorage";

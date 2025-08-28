@@ -46,7 +46,7 @@
     "qr-code-styling": "^1.7.2",
     "react-use": "^17.5.1",
     "tailwind-scrollbar": "^3.1.0",
-    "tailwind-variants": "^0.2.1",
+    "tailwind-variants": "catalog:",
     "tailwindcss": "catalog:",
     "tailwindcss-animate": "^1.0.7"
   },

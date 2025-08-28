@@ -40,18 +40,19 @@
     "nativewind": "catalog:"
   },
   "devDependencies": {
+    "react-native-mmkv": "catalog:",
     "@left-curve/config": "workspace:^",
     "@types/big.js": "^6.2.2",
-    "@types/node": "catalog:",
     "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
     "autoprefixer": "catalog:",
     "postcss": "catalog:",
     "react": "catalog:",
     "react-native": "catalog:",
-    "tailwindcss": "catalog:"
+    "tailwindcss": "catalog:",
+    "tailwind-variants": "catalog:"
   },
   "peerDependencies": {
+    "react-native-mmkv": ">=3.0.0",
     "@tanstack/react-query": ">=5.0.0",
     "@tanstack/react-table": ">=8.0.0",
     "big.js": ">=6.0.0",
