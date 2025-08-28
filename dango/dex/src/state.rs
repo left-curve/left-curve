@@ -1,7 +1,7 @@
 use {
     dango_types::{
         account_factory::Username,
-        dex::{Direction, LimitOrder, MarketOrder, OrderId, PairParams, RestingOrderBookState},
+        dex::{Direction, Order, OrderId, PairParams, RestingOrderBookState},
     },
     grug::{
         Addr, CoinPair, Counter, Denom, IndexedMap, Item, Map, MultiIndex, NumberConst, Timestamp,
@@ -21,9 +21,9 @@ pub const RESTING_ORDER_BOOK: Map<(&Denom, &Denom), RestingOrderBookState> = Map
 
 pub const NEXT_ORDER_ID: Counter<OrderId> = Counter::new("order_id", Uint64::ONE, Uint64::ONE);
 
-pub const MARKET_ORDERS: Map<(Addr, OrderId), (OrderKey, MarketOrder)> = Map::new("market");
+pub const MARKET_ORDERS: Map<(Addr, OrderId), (OrderKey, Order)> = Map::new("market");
 
-pub const LIMIT_ORDERS: IndexedMap<OrderKey, LimitOrder, LimitOrderIndex> =
+pub const LIMIT_ORDERS: IndexedMap<OrderKey, Order, LimitOrderIndex> =
     IndexedMap::new("order", LimitOrderIndex {
         order_id: UniqueIndex::new(|(_, _, _, order_id), _| *order_id, "order", "order__id"),
         user: MultiIndex::new(|_, order| order.user, "order", "order__user"),
@@ -46,8 +46,8 @@ pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Udec128_6> = Map::new("vo
 /// ```
 pub type OrderKey = ((Denom, Denom), Direction, Udec128_24, OrderId);
 
-#[grug::index_list(OrderKey, LimitOrder)]
+#[grug::index_list(OrderKey, Order)]
 pub struct LimitOrderIndex<'a> {
-    pub order_id: UniqueIndex<'a, OrderKey, OrderId, LimitOrder>,
-    pub user: MultiIndex<'a, OrderKey, Addr, LimitOrder>,
+    pub order_id: UniqueIndex<'a, OrderKey, OrderId, Order>,
+    pub user: MultiIndex<'a, OrderKey, Addr, Order>,
 }

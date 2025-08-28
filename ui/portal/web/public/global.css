@@ -15,6 +15,7 @@
   --color-surface-quaternary-rice: #F3E5BF;
   --color-surface-quaternary-rice-hover: #EFDAA4;
   --color-surface-disabled-gray: #F5F4F4;
+  --color-surface-playground: #FFF;
   --color-overlay-rice: #F2E2B8CC;
   --color-border-secondary-rice: #EFDAA4;
   --color-border-tertiary-blue: #E2E3F2;
@@ -75,6 +76,7 @@ html.dark {
   --color-surface-quaternary-rice: #594F3C;
   --color-surface-quaternary-rice-hover: #6A5D42;
   --color-surface-disabled-gray: #363432;
+  --color-surface-playground: #1e1e1e;
   --color-overlay-rice: #F2E2B84D;
   --color-border-secondary-rice: #594F3C;
   --color-border-tertiary-blue: #646273;
@@ -192,119 +194,119 @@ body {
 }
 
 /* ChartIQ */
-#chartiq cq-drawing-palette cq-separator {
+#chart-container cq-drawing-palette cq-separator {
   opacity: .4;
   border-color: var(--color-secondary-700);
 }
 
-#chartiq cq-drawing-palette .tool-group .drawing-tools-group cq-separator {
+#chart-container cq-drawing-palette .tool-group .drawing-tools-group cq-separator {
   margin: 5px 4px;
 }
 
-#chartiq cq-drawing-palette cq-scroll {
+#chart-container cq-drawing-palette cq-scroll {
   scrollbar-width: none;
   scrollbar-color: initial;
 }
 
-#chartiq cq-drawing-palette cq-scroll .drawing-tools-group.lines,
-#chartiq cq-drawing-palette cq-scroll .drawing-tools-group.markings,
-#chartiq cq-drawing-palette cq-scroll .drawing-tools-group.text {
+#chart-container cq-drawing-palette cq-scroll .drawing-tools-group.lines,
+#chart-container cq-drawing-palette cq-scroll .drawing-tools-group.markings,
+#chart-container cq-drawing-palette cq-scroll .drawing-tools-group.text {
   margin: 0 3px;
 }
 
-#chartiq cq-drawing-palette cq-scroll::-webkit-scrollbar {
+#chart-container cq-drawing-palette cq-scroll::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
 
-#chartiq cq-drawing-palette cq-scroll:hover {
+#chart-container cq-drawing-palette cq-scroll:hover {
   scrollbar-width: thin;
   scrollbar-color: var(--color-secondary-gray) var(--color-surface-primary-rice);
 }
 
 
-#chartiq .ciq-day .ciq-nav,
-#chartiq .ciq-day .chartContainer,
-#chartiq .ciq-day cq-chart-title,
-#chartiq .ciq-night .ciq-nav,
-#chartiq .ciq-night .chartContainer,
-#chartiq .ciq-night cq-chart-title {
+#chart-container .ciq-day .ciq-nav,
+#chart-container .ciq-day .chartContainer,
+#chart-container .ciq-day cq-chart-title,
+#chart-container .ciq-night .ciq-nav,
+#chart-container .ciq-night .chartContainer,
+#chart-container .ciq-night cq-chart-title {
   color: var(--color-tertiary-500) !important;
   background: var(--color-surface-secondary-rice) !important;
   border: none;
 }
 
-#chartiq cq-palette-dock [orientation="vertical"] {
+#chart-container cq-palette-dock [orientation="vertical"] {
   border-right: var(--color-secondary-gray) 1px solid;
 }
 
-#chartiq cq-separator {
+#chart-container cq-separator {
   border-color: var(--color-secondary-gray);
 }
 
-#chartiq .palette-container {
+#chart-container .palette-container {
   background: var(--color-surface-secondary-rice);
   border: none;
 }
 
-#chartiq .ciq-day cq-menu .menu-clickable:not(cq-help),
-#chartiq .ciq-night cq-menu .menu-clickable:not(cq-help) {
+#chart-container .ciq-day cq-menu .menu-clickable:not(cq-help),
+#chart-container .ciq-night cq-menu .menu-clickable:not(cq-help) {
   color: var(--color-tertiary-500);
 }
 
-#chartiq .stx-subholder {
+#chart-container .stx-subholder {
   border: none;
 }
 
-#chartiq .ciq-chart {
+#chart-container .ciq-chart {
   box-shadow: none;
 }
 
-#chartiq cq-drawing-palette .tool-group .drawing-tools-group {
+#chart-container cq-drawing-palette .tool-group .drawing-tools-group {
   margin: 0;
 }
 
-#chartiq .ciq-day .ciq-chart:first-of-type,
-#chartiq .ciq-day cq-dropdown .content,
-#chartiq .ciq-night .ciq-chart:first-of-type,
-#chartiq .ciq-night cq-dropdown .content,
-#chartiq cq-drawing-palette .ciq-tool:before,
-#chartiq cq-drawing-palette .ciq-mini-widget:before {
+#chart-container .ciq-day .ciq-chart:first-of-type,
+#chart-container .ciq-day cq-dropdown .content,
+#chart-container .ciq-night .ciq-chart:first-of-type,
+#chart-container .ciq-night cq-dropdown .content,
+#chart-container cq-drawing-palette .ciq-tool:before,
+#chart-container cq-drawing-palette .ciq-mini-widget:before {
   background: var(--color-surface-secondary-rice);
 }
 
-#chartiq .ciq-night cq-drawing-palette .ciq-tool:before,
-#chartiq .ciq-night cq-drawing-palette .ciq-mini-widget:before,
-#chartiq .ciq-night .ciq-select:hover,
-#chartiq .ciq-day cq-drawing-palette .ciq-tool:before,
-#chartiq .ciq-day cq-drawing-palette .ciq-mini-widget:before,
-#chartiq .ciq-day .ciq-select:hover {
+#chart-container .ciq-night cq-drawing-palette .ciq-tool:before,
+#chart-container .ciq-night cq-drawing-palette .ciq-mini-widget:before,
+#chart-container .ciq-night .ciq-select:hover,
+#chart-container .ciq-day cq-drawing-palette .ciq-tool:before,
+#chart-container .ciq-day cq-drawing-palette .ciq-mini-widget:before,
+#chart-container .ciq-day .ciq-select:hover {
   background: var(--color-surface-tertiary-rice);
   border: transparent;
   color: var(--color-primary-900);
 }
 
-#chartiq cq-heading {
+#chart-container cq-heading {
   @apply exposure-xs-italic;
   text-transform: capitalize;
   color: var(--color-secondary-700);
 }
 
-#chartiq cq-dropdown .content>.item.ciq-active .ciq-switch,
-#chartiq cq-dropdown .content>.item.ciq-active:hover .ciq-switch,
-#chartiq .ciq-active .ciq-radio span:after,
-#chartiq .ciq-radio.ciq-active span:after,
-#chartiq .ciq-active>.ciq-switch,
-#chartiq .ciq-switch:checked,
-#chartiq .ciq-active>.ciq-switch:hover,
-html:not([ciq-last-interaction="touch"]) #chartiq .ciq-context-menu div.ciq-switch-item.ciq-active:hover .ciq-switch,
+#chart-container cq-dropdown .content>.item.ciq-active .ciq-switch,
+#chart-container cq-dropdown .content>.item.ciq-active:hover .ciq-switch,
+#chart-container .ciq-active .ciq-radio span:after,
+#chart-container .ciq-radio.ciq-active span:after,
+#chart-container .ciq-active>.ciq-switch,
+#chart-container .ciq-switch:checked,
+#chart-container .ciq-active>.ciq-switch:hover,
+html:not([ciq-last-interaction="touch"]) #chart-container .ciq-context-menu div.ciq-switch-item.ciq-active:hover .ciq-switch,
 .ciq-context-menu div.ciq-switch-item.ciq-active .ciq-switch {
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
   background: theme("colors.red-bean.500");
 }
 
-#chartiq .ciq-active .ciq-radio span:after,
-#chartiq .ciq-radio.ciq-active span:after {
+#chart-container .ciq-active .ciq-radio span:after,
+#chart-container .ciq-radio.ciq-active span:after {
   bottom: initial;
   top: 50%;
   left: 50%;
@@ -312,23 +314,23 @@ html:not([ciq-last-interaction="touch"]) #chartiq .ciq-context-menu div.ciq-swit
 }
 
 
-#chartiq cq-drawing-palette.list .mini-widget-group .ciq-mini-widget[cq-view="list"] .icon,
-#chartiq cq-drawing-palette.grid .mini-widget-group .ciq-mini-widget[cq-view="grid"] .icon,
-#chartiq cq-drawing-palette .ciq-mini-widget.active .icon,
-#chartiq cq-drawing-palette .ciq-mini-widget .active .icon,
-#chartiq cq-drawing-palette .ciq-mini-widget:active .icon,
-#chartiq cq-drawing-palette .ciq-mini-widget .active+.icon,
-#chartiq cq-drawing-palette .ciq-tool.active .icon,
-#chartiq cq-drawing-palette .ciq-tool:active .icon {
+#chart-container cq-drawing-palette.list .mini-widget-group .ciq-mini-widget[cq-view="list"] .icon,
+#chart-container cq-drawing-palette.grid .mini-widget-group .ciq-mini-widget[cq-view="grid"] .icon,
+#chart-container cq-drawing-palette .ciq-mini-widget.active .icon,
+#chart-container cq-drawing-palette .ciq-mini-widget .active .icon,
+#chart-container cq-drawing-palette .ciq-mini-widget:active .icon,
+#chart-container cq-drawing-palette .ciq-mini-widget .active+.icon,
+#chart-container cq-drawing-palette .ciq-tool.active .icon,
+#chart-container cq-drawing-palette .ciq-tool:active .icon {
   filter: var(--chartiq-filter);
 }
 
-#chartiq cq-drawing-palette .ciq-tool label,
-#chartiq cq-drawing-palette .ciq-tool span[label],
-#chartiq cq-drawing-palette .ciq-mini-widget label,
-#chartiq cq-drawing-palette .ciq-mini-widget span[label],
-#chartiq [cq-tooltip],
-#chartiq *>[cq-tooltip] {
+#chart-container cq-drawing-palette .ciq-tool label,
+#chart-container cq-drawing-palette .ciq-tool span[label],
+#chart-container cq-drawing-palette .ciq-mini-widget label,
+#chart-container cq-drawing-palette .ciq-mini-widget span[label],
+#chart-container [cq-tooltip],
+#chart-container *>[cq-tooltip] {
   background: var(--color-surface-quaternary-rice);
   color: var(--color-foreground-primary-rice);
   border-radius: 8px;
@@ -337,60 +339,60 @@ html:not([ciq-last-interaction="touch"]) #chartiq .ciq-context-menu div.ciq-swit
   font-size: 10px;
 }
 
-:host(cq-dropdown.ciq-night) #chartiq .item.separator-item hr,
-#chartiq .ciq-night cq-dropdown .item.separator-item hr,
-:host(cq-dropdown.ciq-day) #chartiq .item.separator-item hr,
-#chartiq .ciq-day cq-dropdown .item.separator-item hr,
-#chartiq cq-dialog.ciq-night hr,
-#chartiq cq-dialog.ciq-day hr {
+:host(cq-dropdown.ciq-night) #chart-container .item.separator-item hr,
+#chart-container .ciq-night cq-dropdown .item.separator-item hr,
+:host(cq-dropdown.ciq-day) #chart-container .item.separator-item hr,
+#chart-container .ciq-day cq-dropdown .item.separator-item hr,
+#chart-container cq-dialog.ciq-night hr,
+#chart-container cq-dialog.ciq-day hr {
   border-bottom-color: var(--color-border-secondary-rice);
 }
 
-#chartiq cq-dropdown .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)):hover>*,
-#chartiq cq-drawing-palette,
-#chartiq cq-menu.nav-dropdown:before,
-#chartiq .ciq-nav cq-toggle:before,
-#chartiq cq-views .item:hover,
-#chartiq cq-study-legend.shaded .item:hover,
-html:not([ciq-last-interaction="touch"]) #chartiq cq-studies .item:hover {
+#chart-container cq-dropdown .content>.item:not(:is(.separator-item, .heading-item, .template-item, .ciq-btn)):hover>*,
+#chart-container cq-drawing-palette,
+#chart-container cq-menu.nav-dropdown:before,
+#chart-container .ciq-nav cq-toggle:before,
+#chart-container cq-views .item:hover,
+#chart-container cq-study-legend.shaded .item:hover,
+html:not([ciq-last-interaction="touch"]) #chart-container cq-studies .item:hover {
   background: var(--color-surface-tertiary-rice) !important
 }
 
-#chartiq cq-drawing-palette {
+#chart-container cq-drawing-palette {
   outline: none;
 }
 
-:host(cq-toggle.active) #chartiq,
-#chartiq cq-toggle.active {
+:host(cq-toggle.active) #chart-container,
+#chart-container cq-toggle.active {
   border-bottom: 3px solid var(--color-primary-rice)
 }
 
-#chartiq .stx_current_hr_up,
-#chartiq .stx_candle_up {
+#chart-container .stx_current_hr_up,
+#chart-container .stx_candle_up {
   background-color: var(--color-status-success);
 }
 
-#chartiq .stx_current_hr_down,
-#chartiq .stx_candle_down {
+#chart-container .stx_current_hr_down,
+#chart-container .stx_candle_down {
   background-color: var(--color-status-fail);
 }
 
-#chartiq .cq-down,
-#chartiq .stx_candle_down {
+#chart-container .cq-down,
+#chart-container .stx_candle_down {
   color: var(--color-status-fail);
 }
 
-#chartiq .cq-up,
-#chartiq .stx_candle_up {
+#chart-container .cq-up,
+#chart-container .stx_candle_up {
   color: var(--color-status-success);
 }
 
-#chartiq .ciq-chart-area,
-#chartiq cq-side-panel {
+#chart-container .ciq-chart-area,
+#chart-container cq-side-panel {
   bottom: 0;
 }
 
-#chartiq .cq-dialogs {
+#chart-container .cq-dialogs {
   z-index: 99999999;
   position: fixed;
   top: 50%;
@@ -400,17 +402,17 @@ html:not([ciq-last-interaction="touch"]) #chartiq cq-studies .item:hover {
   color: var(--color-primary-900);
 }
 
-html:not([ciq-last-interaction="touch"]) #chartiq .ciq-night .ciq-context-menu div:hover {
+html:not([ciq-last-interaction="touch"]) #chart-container .ciq-night .ciq-context-menu div:hover {
   background: var(--color-surface-tertiary-rice);
 
 }
 
-#chartiq cq-dialog.ciq-night[cq-drawing-context],
-#chartiq cq-dialog.ciq-night[cq-study-context],
-#chartiq cq-dialog.ciq-night[cq-yaxis-context],
-#chartiq cq-dialog.ciq-day[cq-drawing-context],
-#chartiq cq-dialog.ciq-day[cq-study-context],
-#chartiq cq-dialog.ciq-day[cq-yaxis-context] {
+#chart-container cq-dialog.ciq-night[cq-drawing-context],
+#chart-container cq-dialog.ciq-night[cq-study-context],
+#chart-container cq-dialog.ciq-night[cq-yaxis-context],
+#chart-container cq-dialog.ciq-day[cq-drawing-context],
+#chart-container cq-dialog.ciq-day[cq-study-context],
+#chart-container cq-dialog.ciq-day[cq-yaxis-context] {
   box-shadow: var(--shadow-card);
 }
 
@@ -419,34 +421,34 @@ html:not([ciq-last-interaction="touch"]) #chartiq .ciq-night .ciq-context-menu d
 .ciq-night cq-dropdown .content,
 cq-dropdown.ciq-night .content,
 :host(cq-dropdown.ciq-day) .content,
-#chartiq .ciq-day cq-dropdown .content,
-#chartiq cq-dropdown.ciq-day .content {
+#chart-container .ciq-day cq-dropdown .content,
+#chart-container cq-dropdown.ciq-day .content {
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
   box-shadow: theme("boxShadow.account-card");
   @apply diatype-xs-medium;
 }
 
-html:not([ciq-last-interaction="touch"]) #chartiq cq-palette-dock .ciq-select:hover {
+html:not([ciq-last-interaction="touch"]) #chart-container cq-palette-dock .ciq-select:hover {
   color: var(--color-secondary-700);
 }
 
-#chartiq .ciq-select {
+#chart-container .ciq-select {
   background: var(--color-surface-secondary-rice);
   border-radius: 8px;
   border: 1px solid var(--color-surface-tertiary-rice) !important;
 }
 
-#chartiq cq-menu .ciq-screen-reader {
+#chart-container cq-menu .ciq-screen-reader {
   @apply diatype-xs-medium;
 }
 
-#chartiq .chartContainer {
+#chart-container .chartContainer {
   @apply diatype-xs-medium;
   font-size: 10px;
 }
 
-#chartiq cq-dialog.ciq-night,
-#chartiq cq-dialog.ciq-day {
+#chart-container cq-dialog.ciq-night,
+#chart-container cq-dialog.ciq-day {
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind boxShadow */
   box-shadow: theme("boxShadow.account-card");
   margin-top: 0;
@@ -457,24 +459,24 @@ html:not([ciq-last-interaction="touch"]) #chartiq cq-palette-dock .ciq-select:ho
 }
 
 
-#chartiq cq-chart-title cq-symbol {
+#chart-container cq-chart-title cq-symbol {
   @apply h3-heavy;
 }
 
-#chartiq cq-dialog.ciq-night input:hover,
-#chartiq cq-dialog.ciq-day input:hover {
+#chart-container cq-dialog.ciq-night input:hover,
+#chart-container cq-dialog.ciq-day input:hover {
   background: var(--color-surface-tertiary-rice);
 }
 
-#chartiq .ciq-night .ciq-btn,
-#chartiq .ciq-night .ciq-btn-negative,
-#chartiq .ciq-night .annotationCancel,
-#chartiq .ciq-night .annotationSave,
-#chartiq .ciq-day .ciq-btn,
-#chartiq .ciq-day .ciq-btn-negative,
-#chartiq .ciq-day .annotationCancel,
-#chartiq .ciq-day .annotationSave,
-#chartiq cq-study-legend .item.ciq-btn {
+#chart-container .ciq-night .ciq-btn,
+#chart-container .ciq-night .ciq-btn-negative,
+#chart-container .ciq-night .annotationCancel,
+#chart-container .ciq-night .annotationSave,
+#chart-container .ciq-day .ciq-btn,
+#chart-container .ciq-day .ciq-btn-negative,
+#chart-container .ciq-day .annotationCancel,
+#chart-container .ciq-day .annotationSave,
+#chart-container cq-study-legend .item.ciq-btn {
   display: inline-flex;
   justify-content: center;
   align-items: center;
@@ -493,29 +495,29 @@ html:not([ciq-last-interaction="touch"]) #chartiq cq-palette-dock .ciq-select:ho
   @apply exposure-xs-italic;
 }
 
-#chartiq cq-study-legend.shaded [section-dynamic] {
+#chart-container cq-study-legend.shaded [section-dynamic] {
   background: var(--color-surface-secondary-rice);
 }
 
-#chartiq .ciq-dialog-cntrls {
+#chart-container .ciq-dialog-cntrls {
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
-#chartiq cq-clickable {
+#chart-container cq-clickable {
   margin: 8px auto 0;
 }
 
-#chartiq .ciq-night .ciq-btn:hover,
-#chartiq .ciq-night .ciq-btn-negative:hover,
-#chartiq .ciq-night .annotationCancel:hover,
-#chartiq .ciq-night .annotationSave:hover,
-#chartiq .ciq-day .ciq-btn:hover,
-#chartiq .ciq-day .ciq-btn-negative:hover,
-#chartiq .ciq-day .annotationCancel:hover,
-#chartiq .ciq-day .annotationSave:hover,
-#chartiq cq-study-legend.shaded cq-clickable.clickable-item.item.ciq-btn:hover {
+#chart-container .ciq-night .ciq-btn:hover,
+#chart-container .ciq-night .ciq-btn-negative:hover,
+#chart-container .ciq-night .annotationCancel:hover,
+#chart-container .ciq-night .annotationSave:hover,
+#chart-container .ciq-day .ciq-btn:hover,
+#chart-container .ciq-day .ciq-btn-negative:hover,
+#chart-container .ciq-day .annotationCancel:hover,
+#chart-container .ciq-day .annotationSave:hover,
+#chart-container cq-study-legend.shaded cq-clickable.clickable-item.item.ciq-btn:hover {
   /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind colors */
   background: theme("colors.red-bean.600") !important;
   color: var(--color-surface-primary-rice) !important;
@@ -525,7 +527,7 @@ html:not([ciq-last-interaction="touch"]) #chartiq cq-palette-dock .ciq-select:ho
 }
 
 
-#chartiq cq-heading.dropdown input {
+#chart-container cq-heading.dropdown input {
   border: 0px solid transparent;
   padding-left: 8px;
   outline: none;
@@ -537,12 +539,12 @@ html:not([ciq-last-interaction="touch"]) #chartiq cq-palette-dock .ciq-select:ho
   font-style: normal;
 }
 
-#chartiq cq-study-legend.shaded cq-clickable.clickable-item.item.ciq-btn {
+#chart-container cq-study-legend.shaded cq-clickable.clickable-item.item.ciq-btn {
   display: flex;
   margin: 6px auto 0;
 }
 
-#chartiq cq-dropdown[config="studies"] .content {
+#chart-container cq-dropdown[config="studies"] .content {
   padding-top: 16px;
 }
 

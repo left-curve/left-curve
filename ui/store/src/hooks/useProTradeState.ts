@@ -7,6 +7,7 @@ import { usePrices } from "./usePrices.js";
 import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
+import { useQueryWithPagination } from "./useQueryWithPagination.js";
 
 import { Direction } from "@left-curve/dango/types";
 import { Decimal, capitalize, formatUnits, parseUnits } from "@left-curve/dango/utils";
@@ -51,7 +52,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const [operation, setOperation] = useState(orderType);
   const [action, setAction] = useState(initialAction);
 
-  const { data: balances = {}, refetch: updateBalance } = useBalances({
+  const { data: balances = {} } = useBalances({
     address: account?.address,
   });
 
@@ -127,6 +128,15 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     },
     initialData: [],
     refetchInterval: 1000 * 10,
+  });
+
+  const history = useQueryWithPagination({
+    enabled: !!account,
+    queryKey: ["tradeHistory", account?.address as string],
+    queryFn: async () => {
+      if (!account) throw new Error();
+      return await publicClient.queryTrades({ address: account.address });
+    },
   });
 
   const orderAmount = useMemo(() => {
@@ -226,12 +236,15 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         await signingClient.batchUpdateOrders({
           sender: account.address,
           ...order,
-          funds: { [availableCoin.denom]: amount },
+          funds: {
+            [availableCoin.denom]:
+              operation === "market" ? Decimal(amount).mulCeil(1.18).toFixed() : amount,
+          },
         });
       },
       onSuccess: () => {
         orders.refetch();
-        updateBalance();
+        history.refetch();
         controllers.reset();
         queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
       },
@@ -252,6 +265,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     setOperation,
     action,
     changeAction,
+    history,
     orders: {
       ...orders,
       data: orders.data ? orders.data : [],

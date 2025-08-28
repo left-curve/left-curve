@@ -8,9 +8,9 @@ use {
         constants::{atom, dango, eth, usdc, xrp},
         dex::{
             self, CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction,
-            OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
+            Geometric, OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
             QueryOrdersByPairRequest, QueryOrdersRequest, QueryReserveRequest,
-            QueryRestingOrderBookStateRequest, RestingOrderBookState,
+            QueryRestingOrderBookStateRequest, RestingOrderBookState, Xyk,
         },
         gateway::Remote,
         oracle::{self, PrecisionlessPrice, PriceSource},
@@ -1174,10 +1174,11 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    pool_type: PassiveLiquidity::Xyk {
-                        order_spacing: Udec128::new_bps(1),
+                    pool_type: PassiveLiquidity::Xyk(Xyk {
+                        spacing: Udec128::new_bps(1),
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                    },
+                        limit: 10,
+                    }),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }])),
@@ -1195,10 +1196,11 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    pool_type: PassiveLiquidity::Xyk {
-                        order_spacing: Udec128::new_bps(1),
+                    pool_type: PassiveLiquidity::Xyk(Xyk {
+                        spacing: Udec128::new_bps(1),
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                    },
+                        limit: 10,
+                    }),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }])),
@@ -1213,10 +1215,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 100,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
@@ -1230,10 +1233,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
@@ -1247,10 +1251,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
@@ -1264,10 +1269,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 100,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Geometric {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Geometric(Geometric {
+        spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
@@ -1281,10 +1287,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Geometric {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Geometric(Geometric {
+        spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
@@ -1298,10 +1305,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Geometric {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Geometric(Geometric {
+        spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
@@ -1315,10 +1323,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 100,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Geometric {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Geometric(Geometric {
+        spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
@@ -1474,10 +1483,11 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
                             swap_fee_rate: pair_params.swap_fee_rate,
-                            pool_type: PassiveLiquidity::Geometric {
-                                order_spacing: Udec128::ONE,
+                            pool_type: PassiveLiquidity::Geometric(Geometric {
+                                spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
-                            },
+                                limit: 10,
+                            }),
                         },
                     }])),
                     Coins::new(),
@@ -2412,10 +2422,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
                             swap_fee_rate: pair_params.swap_fee_rate,
-                            pool_type: PassiveLiquidity::Geometric {
-                                order_spacing: Udec128::ONE,
+                            pool_type: PassiveLiquidity::Geometric(Geometric {
+                                spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
-                            },
+                                limit: 10,
+                            }),
                         },
                     }])),
                     Coins::new(),
@@ -2466,10 +2477,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 }
 
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2492,7 +2504,12 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
         },
     ],
     btree_map! {
-        OrderId::new(!1) => (Udec128::new_percent(20100), Udec128::new(49751), Direction::Bid),
+        // Why the order ID should be `!21`? Because:
+        // - The one block where we provide liquidity, the auction generates 10
+        //   passive orders on each side of the book. They take up order IDs 1-20.
+        // - The next block, we place a new order. It gets order ID 21.
+        // - Because the order is a bid, it's bitwise NOT-ed, so `!21`.
+        OrderId::new(!21) => (Udec128::new_percent(20100), Udec128::new(49751), Direction::Bid),
     },
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
@@ -2513,10 +2530,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 one percent fee no matching orders"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2558,10 +2576,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 no fee user bid order exactly matches passive order"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2603,10 +2622,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2629,7 +2649,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
         },
     ],
     btree_map! {
-        OrderId::new(!1) => (Udec128::new_percent(20300), Udec128::new(10000), Direction::Bid),
+        OrderId::new(!21) => (Udec128::new_percent(20300), Udec128::new(10000), Direction::Bid),
     },
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
@@ -2650,10 +2670,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 one percent fee user bid order fully fills passive order with amount remaining after"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2695,10 +2716,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 no fee user ask order exactly matches passive order"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2740,10 +2762,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 no fee user ask order partially fills passive order"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2766,7 +2789,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
         },
     ],
     btree_map! {
-        OrderId::new(1) => (Udec128::new_percent(19900), Udec128::new(10000), Direction::Ask),
+        OrderId::new(21) => (Udec128::new_percent(19900), Udec128::new(10000), Direction::Ask),
     },
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
@@ -2787,10 +2810,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 no fee user ask order fully fills passive order with amount remaining after"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -3010,7 +3034,15 @@ fn curve_on_orderbook(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            assert_eq!(orders.len(), expected_orders_after_clearing.len());
+            // `expected_orders_after_clearing` contains only the expected
+            // orders from the users, so we filter off the passive pool orders.
+            assert_eq!(
+                orders
+                    .iter()
+                    .filter(|(_, order)| order.user != contracts.dex)
+                    .count(),
+                expected_orders_after_clearing.len()
+            );
             for (order_id, (price, remaining, direction)) in expected_orders_after_clearing {
                 let order = orders.get(&order_id).unwrap();
                 assert_eq!(order.price, price.convert_precision().unwrap());

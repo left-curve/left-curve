@@ -6,6 +6,7 @@ import type {
   ChainId,
   Client,
   Denom,
+  Flatten,
   Hex,
   PairUpdate,
   Transport,
@@ -58,7 +59,7 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
   getCoinInfo(denom: Denom): AnyCoin;
   getAppConfig(): Promise<
     {
-      addresses: AppConfig["addresses"] & Record<Address, string>;
+      addresses: Flatten<AppConfig["addresses"]> & Record<Address, string>;
       accountFactory: { codeHashes: Record<AccountTypes, Hex> };
       pairs: Record<Denom, PairUpdate>;
     } & Omit<AppConfig, "addresses">

@@ -2,7 +2,7 @@ use {
     super::pair_price::dec,
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    dango_types::dex::Direction,
+    dango_types::dex::{Direction, OrderKind},
     grug::{Udec128_6, Udec128_24},
     serde::{Deserialize, Serialize},
 };
@@ -29,6 +29,10 @@ pub struct Trade {
 
     #[serde(with = "direction")]
     pub direction: Direction,
+
+    #[serde(with = "order_type")]
+    #[cfg_attr(feature = "async-graphql", graphql(name = "orderType"))]
+    pub order_type: OrderKind,
 
     #[serde(with = "dec")]
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
@@ -66,7 +70,7 @@ pub struct Trade {
     pub block_height: u64,
 
     // Used for cursor and pagination
-    #[cfg_attr(feature = "async-graphql", graphql(name = "tradeIdx"))]
+    #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub trade_idx: u32,
 }
 
@@ -153,6 +157,40 @@ pub mod direction {
             0 => Ok(Direction::Bid),
             1 => Ok(Direction::Ask),
             _ => Err(de::Error::custom(format!("Invalid direction: {val}"))),
+        }
+    }
+}
+
+pub mod order_type {
+    use {
+        super::OrderKind,
+        serde::{
+            Deserialize,
+            de::{self, Deserializer},
+            ser::{Serialize, Serializer},
+        },
+    };
+
+    pub fn serialize<S>(order_type: &OrderKind, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let val: u8 = match order_type {
+            OrderKind::Limit => 0,
+            OrderKind::Market => 1,
+        };
+        val.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<OrderKind, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let val = u8::deserialize(deserializer)?;
+        match val {
+            0 => Ok(OrderKind::Limit),
+            1 => Ok(OrderKind::Market),
+            _ => Err(de::Error::custom(format!("Invalid order type: {val}"))),
         }
     }
 }

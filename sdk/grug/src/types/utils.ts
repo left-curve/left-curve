@@ -111,3 +111,17 @@ export type NestedOmit<T, TPath extends string> = TPath extends `${infer TKey}.$
 export type WithId<T, Id = string> = T & {
   id: Id;
 };
+
+export type Flatten<T> = {
+  [K in keyof T]: T[K] extends Record<string, unknown>
+    ? T[K] extends Array<any>
+      ? T[K]
+      : never
+    : T[K];
+} & {
+  [K in keyof T as T[K] extends Record<string, unknown>
+    ? keyof T[K] extends string | number | symbol
+      ? keyof T[K]
+      : never
+    : never]: T[K] extends Record<string, unknown> ? T[K][keyof T[K]] : never;
+};

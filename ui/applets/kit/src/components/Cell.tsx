@@ -248,13 +248,14 @@ const TxHash: React.FC<CellTxHashProps> = ({ hash, navigate }) => {
 
 type CellTimeProps = {
   className?: string;
-  date: Date;
+  dateFormat: string;
+  date: Date | string | number;
 };
 
-const Time: React.FC<CellTimeProps> = ({ date, className }) => {
+const Time: React.FC<CellTimeProps> = ({ date, dateFormat, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-tertiary-500", className)}>
-      <p>{format(date, "MM/dd")}</p>
+    <div className={twMerge("flex flex-col gap-1", className)}>
+      <p>{format(date, dateFormat)}</p>
     </div>
   );
 };

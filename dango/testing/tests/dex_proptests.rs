@@ -8,7 +8,7 @@ use {
         constants::{dango, eth, sol, usdc},
         dex::{
             self, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, PairId, PairParams,
-            PairUpdate, PassiveLiquidity, SwapRoute,
+            PairUpdate, PassiveLiquidity, SwapRoute, Xyk,
         },
         gateway::Remote,
     },
@@ -104,6 +104,12 @@ fn check_balances(
 
     let mut order_balances = Coins::new();
     for (_, order) in open_orders {
+        // Skip orders placed by the DEX contract itself, because those tokens
+        // are already accounted for by the reserves.
+        if order.user == contracts.dex {
+            continue;
+        }
+
         let (denom, amount) = match order.direction {
             Direction::Bid => {
                 let remaining_in_quote = order.remaining.checked_mul_dec_ceil(order.price)?;
@@ -793,10 +799,11 @@ fn test_dex_actions(
                                 pair.base_denom, pair.quote_denom
                             ))
                             .unwrap(),
-                            pool_type: PassiveLiquidity::Xyk {
-                                order_spacing: Udec128::new_bps(1000),
+                            pool_type: PassiveLiquidity::Xyk(Xyk {
+                                spacing: Udec128::new_bps(1000),
                                 reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
-                            },
+                                limit: 30,
+                            }),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                         },
                     })

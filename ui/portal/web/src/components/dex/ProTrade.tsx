@@ -1,28 +1,22 @@
 import {
   createContext,
+  CursorPagination,
   Spinner,
   twMerge,
   useInputs,
   useMediaQuery,
   usePortalTarget,
 } from "@left-curve/applets-kit";
-import { lazy, Suspense, useEffect, useState } from "react";
-import { useAppConfig, useConfig, usePrices, useProTradeState } from "@left-curve/store";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 import { createPortal } from "react-dom";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 
-import {
-  AddressVisualizer,
-  Badge,
-  Cell,
-  IconChevronDownFill,
-  Table,
-  Tabs,
-} from "@left-curve/applets-kit";
+import { Badge, Cell, IconChevronDownFill, Table, Tabs } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { Modals } from "../modals/RootModal";
@@ -33,7 +27,7 @@ import { TradeMenu } from "./TradeMenu";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { OrderId, OrdersByUserResponse, PairId } from "@left-curve/dango/types";
+import type { OrderId, OrdersByUserResponse, PairId, Trade } from "@left-curve/dango/types";
 
 const [ProTradeProvider, useProTrade] = createContext<{
   state: ReturnType<typeof useProTradeState>;
@@ -76,7 +70,6 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
 };
 
 const ProTradeHeader: React.FC = () => {
-  const { data: config } = useAppConfig();
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
   const { state } = useProTrade();
@@ -84,9 +77,9 @@ const ProTradeHeader: React.FC = () => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
-
-  const navigate = useNavigate();
+  const { getPrice } = usePrices({
+    defaultFormatOptions: { ...formatNumberOptions, maxSignificantDigits: 8 },
+  });
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -128,7 +121,7 @@ const ProTradeHeader: React.FC = () => {
           >
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start pt-8 lg:pt-0">
               <p className="diatype-xs-medium text-tertiary-500">
-                {m["dex.protrade.spot.price"]()}
+                {m["dex.protrade.history.price"]()}
               </p>
               <p className="diatype-sm-bold text-secondary-700">
                 {getPrice(1, pairId.baseDenom, { format: true })}
@@ -146,15 +139,6 @@ const ProTradeHeader: React.FC = () => {
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
-            <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-tertiary-500">{m["dex.contract"]()}</p>
-              <AddressVisualizer
-                address={config?.addresses.dex || "0x"}
-                withIcon
-                onClick={(url) => navigate({ to: url })}
-                classNames={{ text: "diatype-sm-bold" }}
-              />
-            </div>
           </motion.div>
         ) : null}
       </AnimatePresence>
@@ -163,7 +147,9 @@ const ProTradeHeader: React.FC = () => {
 };
 
 const ProTradeOverview: React.FC = () => {
-  return <OrderBookOverview />;
+  const { state } = useProTrade();
+  const { baseCoin, quoteCoin } = state;
+  return <OrderBookOverview base={baseCoin} quote={quoteCoin} />;
 };
 
 const ChartIQ = lazy(() =>
@@ -183,17 +169,23 @@ const ProTradeChart: React.FC = () => {
 
   const ChartComponent = chart === "tradingview" ? TradingView : ChartIQ;
 
-  const mobileContainer = usePortalTarget("#chart-container");
+  const mobileContainer = usePortalTarget("#chart-container-mobile");
+
+  const ordersByPair = useMemo(
+    () =>
+      orders.data.filter((o) => o.baseDenom === baseCoin.denom && o.quoteDenom === quoteCoin.denom),
+    [orders.data, baseCoin.denom, quoteCoin.denom],
+  );
 
   const Chart = (
-    <Suspense fallback={<Spinner color="pink" />}>
-      <div className="flex w-full h-full" id="chartiq">
-        <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={orders.data} />
+    <Suspense fallback={<Spinner color="pink" size="md" />}>
+      <div className="flex w-full h-full lg:min-h-[52vh]" id="chart-container">
+        <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
       </div>
     </Suspense>
   );
 
-  return <>{isLg || !mobileContainer ? Chart : createPortal(Chart, mobileContainer)}</>;
+  return <>{isLg ? Chart : mobileContainer ? createPortal(Chart, mobileContainer) : null}</>;
 };
 
 const ProTradeMenu: React.FC = () => {
@@ -208,10 +200,34 @@ const ProTradeMenu: React.FC = () => {
   );
 };
 
-const ProTradeOrders: React.FC = () => {
+const ProTradeHistory: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
+
+  return (
+    <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
+      <div className="relative">
+        <Tabs
+          color="line-red"
+          layoutId="tabs-open-order"
+          selectedTab={activeTab}
+          keys={["open order", "trade history"]}
+          onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
+          classNames={{ button: "exposure-xs-italic", base: "z-10" }}
+        />
+
+        <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
+      </div>
+      <div className="w-full h-full relative">
+        {activeTab === "open order" ? <ProTradeOpenOrders /> : null}
+        {activeTab === "trade history" ? <ProTradeOrdersHistory /> : null}
+      </div>
+    </div>
+  );
+};
+
+const ProTradeOpenOrders: React.FC = () => {
   const { showModal, settings } = useApp();
   const { coins } = useConfig();
-  const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
 
   const { state } = useProTrade();
   const { orders, baseCoin } = state;
@@ -223,7 +239,7 @@ const ProTradeOrders: React.FC = () => {
       cell: ({ row }) => <Cell.Time date={row.original.time} />,
     }, */
     {
-      header: m["dex.protrade.spot.ordersTable.id"](),
+      header: m["dex.protrade.history.id"](),
       cell: ({ row }) => {
         const orderId = Decimal(row.original.id);
         const value = orderId.gte("9223372036854775807")
@@ -239,11 +255,11 @@ const ProTradeOrders: React.FC = () => {
     },
 
     {
-      header: m["dex.protrade.spot.ordersTable.type"](),
+      header: m["dex.protrade.history.type"](),
       cell: (_) => <Cell.Text text="Limit" />,
     },
     {
-      header: m["dex.protrade.spot.ordersTable.pair"](),
+      header: m["dex.protrade.history.pair"](),
       cell: ({ row }) => {
         return (
           <div className="flex items-center gap-1">
@@ -259,7 +275,7 @@ const ProTradeOrders: React.FC = () => {
       },
     },
     {
-      header: m["dex.protrade.spot.ordersTable.direction"](),
+      header: m["dex.protrade.history.direction"](),
       cell: ({ row }) => (
         <Cell.OrderDirection
           text={m["dex.protrade.spot.direction"]({
@@ -272,7 +288,7 @@ const ProTradeOrders: React.FC = () => {
     {
       id: "remaining",
       header: () =>
-        m["dex.protrade.spot.ordersTable.remaining"]({
+        m["dex.protrade.history.remaining"]({
           symbol: baseCoin.symbol,
         }),
       cell: ({ row }) => (
@@ -287,7 +303,7 @@ const ProTradeOrders: React.FC = () => {
     {
       id: "size",
       header: () =>
-        m["dex.protrade.spot.ordersTable.size"]({
+        m["dex.protrade.history.size"]({
           symbol: baseCoin.symbol,
         }),
       cell: ({ row }) => (
@@ -300,7 +316,7 @@ const ProTradeOrders: React.FC = () => {
       ),
     },
     {
-      header: m["dex.protrade.spot.price"](),
+      header: m["dex.protrade.history.limitPrice"](),
       cell: ({ row }) => (
         <Cell.Text
           text={formatNumber(
@@ -346,56 +362,155 @@ const ProTradeOrders: React.FC = () => {
   ];
 
   return (
-    <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
-      <div className="relative">
-        <Tabs
-          color="line-red"
-          layoutId="tabs-open-order"
-          selectedTab={activeTab}
-          keys={["open order"]}
-          onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
-          classNames={{ button: "exposure-xs-italic", base: "z-10" }}
+    <Table
+      data={orders.data}
+      columns={columns}
+      style="simple"
+      classNames={{
+        row: "h-fit",
+        header: "pt-0",
+        base: "pb-0 max-h-52 overflow-y-scroll",
+        cell: twMerge("diatype-xs-regular py-1", {
+          "group-hover:bg-transparent": !orders.data.length,
+        }),
+      }}
+      emptyComponent={
+        <EmptyPlaceholder
+          component={m["dex.protrade.history.noOpenOrders"]()}
+          className="h-[3.5rem]"
         />
+      }
+    />
+  );
+};
 
-        <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
-      </div>
-      <div className="w-full h-full relative">
-        {activeTab === "open order" ? (
-          <Table
-            data={orders.data}
-            columns={columns}
-            style="simple"
-            classNames={{
-              row: "h-fit",
-              header: "pt-0",
-              base: "pb-0",
-              cell: twMerge("diatype-xs-regular py-1", {
-                "group-hover:bg-transparent": !orders.data.length,
-              }),
-            }}
-            emptyComponent={
-              activeTab === "open order" ? (
-                <EmptyPlaceholder
-                  component={m["dex.protrade.spot.noOpenOrders"]()}
-                  className="h-[3.5rem]"
-                />
-              ) : null
-            }
-          />
-        ) : (
-          <div className="min-h-[88.8px] w-full backdrop-blur-[8px] flex items-center justify-center exposure-l-italic text-primary-rice">
-            {m["dex.protrade.underDevelopment"]()}
+const ProTradeOrdersHistory: React.FC = () => {
+  const navigate = useNavigate();
+  const { settings } = useApp();
+  const { coins } = useConfig();
+
+  const { state } = useProTrade();
+  const { history, baseCoin } = state;
+  const { data, pagination, isLoading } = history;
+  const { formatNumberOptions } = settings;
+
+  const columns: TableColumn<Trade> = [
+    {
+      header: m["dex.protrade.tradeHistory.pair"](),
+      cell: ({ row }) => {
+        return (
+          <div className="flex items-center gap-1">
+            <Cell.PairName
+              className="diatype-xs-medium"
+              pairId={{
+                baseDenom: row.original.baseDenom,
+                quoteDenom: row.original.quoteDenom,
+              }}
+            />
           </div>
-        )}
-      </div>
-    </div>
+        );
+      },
+    },
+    {
+      header: m["dex.protrade.tradeHistory.direction"](),
+      cell: ({ row }) => (
+        <Cell.OrderDirection
+          text={m["dex.protrade.spot.direction"]({
+            direction: row.original.direction,
+          })}
+          direction={row.original.direction}
+        />
+      ),
+    },
+    {
+      header: m["dex.protrade.history.type"](),
+      cell: ({ row }) => (
+        <Cell.Text text={m["dex.protrade.orderType"]({ orderType: row.original.orderType })} />
+      ),
+    },
+    {
+      id: "size",
+      header: () =>
+        m["dex.protrade.history.size"]({
+          symbol: baseCoin.symbol,
+        }),
+      cell: ({ row }) => {
+        return (
+          <Cell.Number
+            formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+            value={calculateTradeSize(
+              row.original,
+              coins.byDenom[row.original.baseDenom].decimals,
+            ).toFixed()}
+          />
+        );
+      },
+    },
+    {
+      header: m["dex.protrade.history.price"](),
+      cell: ({ row }) => (
+        <Cell.Text
+          text={formatNumber(
+            Decimal(row.original.clearingPrice)
+              .times(
+                Decimal(10).pow(
+                  coins.byDenom[row.original.baseDenom].decimals -
+                    coins.byDenom[row.original.quoteDenom].decimals,
+                ),
+              )
+              .toFixed(),
+            { ...formatNumberOptions, maxSignificantDigits: 10 },
+          )}
+        />
+      ),
+    },
+    {
+      header: "Time",
+      cell: ({ row }) => <Cell.Time date={row.original.createdAt} dateFormat="MM/dd/yy h:mm a" />,
+    },
+  ];
+
+  return (
+    <Table
+      data={data?.nodes || []}
+      columns={columns}
+      style="simple"
+      onRowClick={(row) =>
+        navigate({ to: "/block/$block", params: { block: row.original.blockHeight.toString() } })
+      }
+      classNames={{
+        row: "h-fit",
+        header: "pt-0",
+        base: "pb-0 max-h-52 overflow-y-scroll",
+        cell: twMerge("diatype-xs-regular py-1", {
+          "group-hover:bg-transparent": !data?.nodes.length,
+        }),
+      }}
+      bottomContent={
+        pagination ? (
+          <CursorPagination
+            {...pagination}
+            isLoading={isLoading}
+            className="flex w-full justify-end gap-2"
+            nextLabel={m["pagination.next"]()}
+            previousLabel={m["pagination.previous"]()}
+          />
+        ) : null
+      }
+      emptyComponent={
+        <EmptyPlaceholder
+          component={m["dex.protrade.history.noOpenOrders"]()}
+          className="h-[3.5rem]"
+        />
+      }
+    />
   );
 };
 
 export const ProTrade = Object.assign(ProTradeContainer, {
   Header: ProTradeHeader,
   Chart: ProTradeChart,
-  Orders: ProTradeOrders,
+  History: ProTradeHistory,
   OrderBook: ProTradeOverview,
   TradeMenu: ProTradeMenu,
 });

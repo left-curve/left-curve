@@ -2,7 +2,7 @@ import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
 import { createPublicClient } from "@left-curve/dango";
-import { uid } from "@left-curve/dango/utils";
+import { plainObject, uid } from "@left-curve/dango/utils";
 
 import pkgJson from "../package.json" with { type: "json" };
 import { eip6963 } from "./connectors/eip6963.js";
@@ -17,6 +17,7 @@ import type {
   AppConfig,
   Client,
   Denom,
+  Flatten,
   Hex,
   PairUpdate,
   PublicClient,
@@ -119,7 +120,7 @@ export function createConfig<
 
   let _appConfig:
     | ({
-        addresses: AppConfig["addresses"] & Record<Address, string>;
+        addresses: Flatten<AppConfig["addresses"]> & Record<Address, string>;
         accountFactory: { codeHashes: Record<AccountTypes, Hex> };
         pairs: Record<Denom, PairUpdate>;
       } & Omit<AppConfig, "addresses">)
@@ -134,11 +135,13 @@ export function createConfig<
       client.getPairs(),
     ]);
 
+    const addresses = plainObject(appConfig.addresses) as Flatten<AppConfig["addresses"]>;
+
     _appConfig = {
       ...appConfig,
       addresses: {
-        ...appConfig.addresses,
-        ...invertObject(appConfig.addresses),
+        ...addresses,
+        ...invertObject(addresses),
       },
       accountFactory: { codeHashes },
       pairs: pairs.reduce((acc, pair) => {
