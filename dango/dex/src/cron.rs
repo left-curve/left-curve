@@ -354,12 +354,12 @@ fn clear_orders_of_pair(
     //    highest (ascending).
     // 2. The market order vectors are ordered ascendingly, so for bids we need
     //    to reverse it.
-    let mut merged_bids = nested_merged_orders(
+    let mut merged_bids = merged_orders(
         limit_bids,
         market_bids.into_iter().rev(),
         IterationOrder::Descending,
     );
-    let mut merged_asks = nested_merged_orders(
+    let mut merged_asks = merged_orders(
         limit_asks,
         market_asks.into_iter(),
         IterationOrder::Ascending,
@@ -738,7 +738,7 @@ fn clear_orders_of_pair(
 
 /// Merges three iterators over limit, market, ans passive orders into one iterator.
 /// It achieves this by nesting two `MergedOrders` iterators.
-fn nested_merged_orders<A, B>(
+fn merged_orders<A, B>(
     limit: A,
     market: B,
     iteration_order: IterationOrder,
