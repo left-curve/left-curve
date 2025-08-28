@@ -12,11 +12,12 @@ use {
         SearchTxOutcome, StdError, Tx, TxOutcome, UnsignedTx,
     },
     async_trait::async_trait,
-    std::sync::Arc,
+    std::{fmt::Debug, sync::Arc},
 };
 
 pub trait Client<E, P>:
-    BroadcastClient<Error = E>
+    Debug
+    + BroadcastClient<Error = E>
     + QueryClient<Error = E, Proof = P>
     + SearchTxClient<Error = E>
     + BlockClient<Error = E>
@@ -24,13 +25,15 @@ pub trait Client<E, P>:
 }
 
 impl<T, E, P> Client<E, P> for T where
-    T: BroadcastClient<Error = E>
+    T: Debug
+        + BroadcastClient<Error = E>
         + QueryClient<Error = E, Proof = P>
         + SearchTxClient<Error = E>
         + BlockClient<Error = E>
 {
 }
 
+#[derive(Debug)]
 pub struct ClientWrapper<E, P = Proof> {
     pub client: Arc<dyn Client<E, P>>,
 }
