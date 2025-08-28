@@ -79,18 +79,37 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
+    fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+        if !self.indexing {
+            return Ok(());
+        }
+
+        self.runtime_handler.block_on(async move {
+            let candle_generator = candles::generator::CandleGenerator::new(self.context.clone());
+
+            if let Err(_err) = candle_generator.save_all_candles().await {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_err, "Failed to save candles");
+            }
+
+            Ok::<(), grug_app::IndexerError>(())
+        })
+    }
+
     fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
         }
 
+        self.wait_for_finish()?;
+
         self.indexing = false;
 
-        #[cfg(feature = "testing")]
         {
             let context = self.context.clone();
             self.runtime_handler.block_on(async move {
+                #[cfg(feature = "testing")]
                 if let Err(_err) = context.cleanup_test_database().await {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(err = %_err, "Failed to cleanup test database");

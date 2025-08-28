@@ -137,7 +137,6 @@ impl CandleSubscription {
                     return Ok(None);
                 }
 
-
                 Ok(Some(candle))
             }
         }))

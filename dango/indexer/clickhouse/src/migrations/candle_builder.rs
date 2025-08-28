@@ -25,7 +25,6 @@ pub const CANDLE_TABLE: &str = r#"
     volume_quote UInt128,
     block_height UInt64,
     interval String,
-    blocks_count UInt32
   ) ENGINE = ReplacingMergeTree(block_height)
   PARTITION BY (interval, toYYYYMM(time_start))
   ORDER BY (quote_denom, base_denom, interval, time_start)

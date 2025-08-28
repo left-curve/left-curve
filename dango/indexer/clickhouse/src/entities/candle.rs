@@ -19,7 +19,7 @@ use {
     grug::Timestamp,
 };
 
-#[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(complex))]
 pub struct Candle {
@@ -48,15 +48,9 @@ pub struct Candle {
     pub volume_quote: Udec128_6,
     pub interval: CandleInterval,
     pub block_height: u64,
-    #[cfg_attr(feature = "async-graphql", graphql(skip))]
-    pub blocks_count: u32,
 }
 
 impl Candle {
-    pub fn has_all_blocks(&self, now: DateTime<Utc>) -> bool {
-        now >= self.time_start + self.interval.duration() * self.blocks_count as i32
-    }
-
     pub fn new_with_pair_price(
         pair_price: PairPrice,
         interval: CandleInterval,
@@ -75,7 +69,6 @@ impl Candle {
             volume_quote: pair_price.volume_quote,
             interval,
             block_height,
-            blocks_count: 1,
         }
     }
 
@@ -97,7 +90,6 @@ impl Candle {
             volume_quote: Udec128_6::ZERO,
             interval,
             block_height,
-            blocks_count: 1,
         }
     }
 }

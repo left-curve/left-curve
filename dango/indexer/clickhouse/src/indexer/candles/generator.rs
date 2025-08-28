@@ -15,6 +15,49 @@ impl CandleGenerator {
         Self { context }
     }
 
+    async fn store_candles(&self, candles: Vec<Candle>) -> Result<()> {
+        #[cfg(feature = "tracing")]
+        tracing::debug!("Saving {} candles", candles.len());
+
+        let mut inserter = self
+            .context
+            .clickhouse_client()
+            .inserter::<Candle>("candles")?
+            .with_max_rows(candles.len() as u64);
+
+        for candle in candles {
+            inserter.write(&candle).inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                tracing::error!("Failed to write candle: {candle:#?}: {_err}");
+            })?;
+        }
+
+        inserter.commit().await.inspect_err(|_err| {
+            #[cfg(feature = "tracing")]
+            tracing::error!("Failed to commit inserter for candles: {_err}");
+        })?;
+        inserter.end().await.inspect_err(|_err| {
+            #[cfg(feature = "tracing")]
+            tracing::error!("Failed to end inserter for candles: {_err}");
+        })?;
+
+        Ok(())
+    }
+
+    /// Saving all candles, even if not yet finished
+    pub async fn save_all_candles(&self) -> Result<()> {
+        let mut candle_cache = self.context.candle_cache.write().await;
+        let mut candles = candle_cache.completed_candles.drain().collect::<Vec<_>>();
+
+        for candle_list in candle_cache.candles.values() {
+            candles.extend(candle_list.clone());
+        }
+
+        drop(candle_cache);
+
+        self.store_candles(candles).await
+    }
+
     pub async fn add_pair_prices(
         &self,
         block_height: u64,
@@ -59,34 +102,23 @@ impl CandleGenerator {
         })?;
 
         let mut candle_cache = self.context.candle_cache.write().await;
-        let candles = candle_cache.add_pair_prices(block_height, created_at, pair_prices);
+
+        // Use this to store all candles, meaning they're going to be saved multiple times.
+        let _candles = candle_cache.add_pair_prices(block_height, created_at, pair_prices);
+        // Use this to be smarter and only store them once, once completed.
+        // NOTE: I only want to save past candles when they are complete and have no gaps.
+        let mut candles = Vec::new();
+
+        if !candle_cache.completed_candles.is_empty() && !candle_cache.has_gaps() {
+            candles = candle_cache.completed_candles.drain().collect::<Vec<_>>();
+        }
+
         candle_cache.compact_keep_n(MAX_ITEMS * 2);
         drop(candle_cache);
 
-        #[cfg(feature = "tracing")]
-        tracing::debug!("Saving {} candles", candles.len());
+        self.store_candles(candles).await?;
 
-        let mut inserter = self
-            .context
-            .clickhouse_client()
-            .inserter::<Candle>("candles")?
-            .with_max_rows(candles.len() as u64);
-
-        for candle in candles {
-            inserter.write(&candle).inspect_err(|_err| {
-                #[cfg(feature = "tracing")]
-                tracing::error!("Failed to write candle: {candle:#?}: {_err}");
-            })?;
-        }
-
-        inserter.commit().await.inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            tracing::error!("Failed to commit inserter for candles: {_err}");
-        })?;
-        inserter.end().await.inspect_err(|_err| {
-            #[cfg(feature = "tracing")]
-            tracing::error!("Failed to end inserter for candles: {_err}");
-        })?;
+        self.context.pubsub.publish(block_height).await?;
 
         Ok(())
     }

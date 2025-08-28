@@ -44,6 +44,7 @@ impl CandleCacheKey {
 pub struct CandleCache {
     pub candles: HashMap<CandleCacheKey, Vec<Candle>>,
     pub pair_prices: HashMap<u64, Vec<PairPrice>>,
+    pub completed_candles: HashSet<Candle>,
     // All denoms we've seen so far
     denoms: HashSet<PairId>,
 }
@@ -53,9 +54,8 @@ impl CandleCache {
         self.pair_prices.get(&block_height)
     }
 
-    #[allow(dead_code)]
     /// Returns true if there are gaps in the cached pair prices
-    fn has_gaps(self) -> bool {
+    pub fn has_gaps(&self) -> bool {
         let mut heights: Vec<u64> = self.pair_prices.keys().copied().collect();
         heights.sort_unstable();
 
@@ -201,9 +201,11 @@ impl CandleCache {
                 .unwrap_or(candles.len());
 
             let Some(pair_price) = pair_price else {
-                if insert_pos > 0 {
-                    let previous_candle = &candles[insert_pos - 1];
-
+                if let Some(previous_candle) = insert_pos
+                    .checked_sub(1)
+                    .and_then(|idx| candles.get(idx))
+                    .cloned()
+                {
                     #[cfg(feature = "tracing")]
                     tracing::debug!(
                         %created_at,
@@ -212,13 +214,15 @@ impl CandleCache {
                     );
 
                     let candle = Candle::new_with_previous_candle(
-                        previous_candle,
+                        &previous_candle,
                         interval,
                         time_start,
                         block_height,
                     );
 
                     candles.insert(insert_pos, candle.clone());
+
+                    self.completed_candles.replace(previous_candle);
 
                     return Some(candle);
                 } else {
@@ -238,16 +242,20 @@ impl CandleCache {
                 %key.base_denom,
                 %key.quote_denom,
                 %interval,
-                "No existing candle found, adding a new candle",
+                "Found no existing candle, adding a new candle with pair_price",
             );
 
             let mut candle =
                 Candle::new_with_pair_price(pair_price, interval, time_start, block_height);
 
             // We set the open price for the new candle to the previous candle close price
-            if insert_pos > 0 {
-                let previous_candle = &candles[insert_pos - 1];
+            if let Some(previous_candle) = insert_pos
+                .checked_sub(1)
+                .and_then(|idx| candles.get(idx))
+                .cloned()
+            {
                 candle.open = previous_candle.close;
+                self.completed_candles.replace(previous_candle);
             }
 
             candles.insert(insert_pos, candle.clone());
@@ -264,7 +272,7 @@ impl CandleCache {
             %existing_candle.volume_base,
             %existing_candle.volume_quote,
             %existing_candle.block_height,
-            "Modifying existing candle",
+            "Found existing candle, updating with pair_price",
         );
 
         if block_height == existing_candle.block_height {
@@ -292,7 +300,6 @@ impl CandleCache {
         }
 
         existing_candle.block_height = existing_candle.block_height.max(block_height);
-        existing_candle.blocks_count += 1;
 
         Some(existing_candle.clone())
     }
@@ -466,10 +473,6 @@ impl CandleCache {
         Ok(())
     }
 
-    pub fn store_candles_in_clickhouse(_candles: Vec<Candle>) {
-        todo!()
-    }
-
     // Keep last N candles, store the rest on Clickhouse
     pub fn compact_keep_n(&mut self, n: usize) {
         self.candles.retain(|_key, candles| {
@@ -478,10 +481,7 @@ impl CandleCache {
             } else {
                 // Keep only last N candles
                 let start = candles.len().saturating_sub(n);
-                let drained: Vec<_> = candles.drain(..start).collect();
-
-                // Store drained candles in Clickhouse
-                Self::store_candles_in_clickhouse(drained);
+                let _drained: Vec<_> = candles.drain(..start).collect();
 
                 true
             }
@@ -735,7 +735,6 @@ mod tests {
         let candles = candle_cache.get_candles(&cache_key).cloned().unwrap();
 
         assert_that!(candles).has_length(3);
-        assert_that!(candles.iter().map(|c| c.blocks_count).sum()).is_equal_to(4);
 
         let last_candle = candles.last().unwrap();
         assert_that!(last_candle.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());

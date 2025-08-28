@@ -253,7 +253,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
             create_pair_prices(&mut suite_guard, &mut accounts, &contracts).await?;
 
             // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish()?;
+            // suite_guard.app.indexer.wait_for_finish()?;
         }
 
         Ok::<(), anyhow::Error>(())
@@ -376,7 +376,10 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     // println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
 
+    drop(old_cache);
+
     let mut suite_guard = suite.lock().await;
+
     suite_guard
         .app
         .indexer
@@ -451,7 +454,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                 .should_succeed();
 
             // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
+            // suite_guard.app.indexer.wait_for_finish();
         }
 
         Ok::<(), anyhow::Error>(())
@@ -573,6 +576,8 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
     // println!("Cache : {:#?}", old_cache.candles);
     // println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
+
+    drop(old_cache);
 
     let mut suite_guard = suite.lock().await;
     suite_guard

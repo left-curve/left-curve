@@ -312,7 +312,6 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_quote: Udec128_6::new(1875),
             interval: CandleInterval::OneSecond,
             block_height: 10,
-            blocks_count: 3,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -326,7 +325,6 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_quote: Udec128_6::new(2500),
             interval: CandleInterval::OneSecond,
             block_height: 7,
-            blocks_count: 4,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -340,7 +338,6 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_quote: Udec128_6::from_str("1937.5").unwrap(),
             interval: CandleInterval::OneSecond,
             block_height: 3,
-            blocks_count: 3,
         },
     ]);
 
