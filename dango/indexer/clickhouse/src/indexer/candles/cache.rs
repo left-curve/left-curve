@@ -284,6 +284,11 @@ impl CandleCache {
             // NOTE: we should also change the open price of the next candle, if exists.
             if let Some(pair_price) = &pair_price {
                 current_candle.close = pair_price.clearing_price;
+
+                // Update the open price of the next candle, if exists.
+                if let Some(next_candle) = candles.get_mut(insert_pos + 1) {
+                    next_candle.open = pair_price.clearing_price;
+                }
             }
         }
 
