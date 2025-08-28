@@ -8,7 +8,7 @@ import { useFavApplets } from "./useFavApplets";
 
 import { APPLETS } from "~/constants";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
+import type { AppletMetadata } from "@left-curve/foundation-web";
 import type {
   Account,
   Address,

@@ -1,6 +1,6 @@
-import { twMerge, useTheme } from "@left-curve/applets-kit";
+import { twMerge, useTheme } from "@left-curve/foundation-web";
 
-import { Button, Carousel } from "@left-curve/applets-kit";
+import { Button, Carousel } from "@left-curve/foundation-web";
 
 import { m } from "~/paraglide/messages";
 

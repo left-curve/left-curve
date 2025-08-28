@@ -1,4 +1,4 @@
-import { twMerge, useTheme } from "@left-curve/applets-kit";
+import { twMerge, useTheme } from "@left-curve/foundation-web";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/maintenance")({

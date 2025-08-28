@@ -1,6 +1,6 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 
-import { WizardProvider } from "@left-curve/applets-kit";
+import { WizardProvider } from "@left-curve/foundation-web";
 import { AccountCreation } from "~/components/account/AccountCreation";
 
 export const Route = createLazyFileRoute("/(app)/_app/account/create")({

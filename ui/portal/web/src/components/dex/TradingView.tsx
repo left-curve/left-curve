@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
-import { useTheme } from "@left-curve/applets-kit";
+import { useTheme } from "@left-curve/foundation-web";
 import { useConfig, usePublicClient, useStorage } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
 

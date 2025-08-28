@@ -1,10 +1,10 @@
-import { Cell, Table } from "@left-curve/applets-kit";
+import { Cell, Table } from "@left-curve/foundation-web";
 import { useConfig, usePrices } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
 import { formatUnits } from "@left-curve/dango/utils";
 
-import type { TableColumn } from "@left-curve/applets-kit";
+import type { TableColumn } from "@left-curve/foundation-web";
 import type { Coins } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount, WithPrice } from "@left-curve/store/types";
 

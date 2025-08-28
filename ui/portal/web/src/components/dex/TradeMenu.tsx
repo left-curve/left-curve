@@ -17,7 +17,7 @@ import {
   twMerge,
   type useInputs,
   useMediaQuery,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import { Sheet } from "react-modal-sheet";
 
 import { Decimal, formatNumber } from "@left-curve/dango/utils";

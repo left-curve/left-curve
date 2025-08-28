@@ -1,6 +1,6 @@
 import React from "react";
 
-import { twMerge } from "@left-curve/applets-kit";
+import { twMerge } from "@left-curve/foundation-web";
 
 import type { PropsWithChildren } from "react";
 

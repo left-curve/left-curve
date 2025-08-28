@@ -9,13 +9,13 @@ import {
   Tabs,
   twMerge,
   useMediaQuery,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import { Sheet } from "react-modal-sheet";
 import { SearchTokenTable } from "./SearchTokenTable";
 
 import { m } from "~/paraglide/messages";
 
-import type { PopoverRef } from "@left-curve/applets-kit";
+import type { PopoverRef } from "@left-curve/foundation-web";
 import type { PairId } from "@left-curve/dango/types";
 import type React from "react";
 

@@ -12,7 +12,7 @@ import {
 
 import { m } from "~/paraglide/messages";
 
-import { AddressVisualizer, IconClose, IconInfo, twMerge } from "@left-curve/applets-kit";
+import { AddressVisualizer, IconClose, IconInfo, twMerge } from "@left-curve/foundation-web";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";

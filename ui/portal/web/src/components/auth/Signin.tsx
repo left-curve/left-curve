@@ -5,7 +5,7 @@ import {
   IconQR,
   useMediaQuery,
   useWizard,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import {
   useAccount,
   useConnectors,
@@ -18,7 +18,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { Button, IconLeft, ResizerContainer } from "@left-curve/applets-kit";
+import { Button, IconLeft, ResizerContainer } from "@left-curve/foundation-web";
 import { Link } from "@tanstack/react-router";
 import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";

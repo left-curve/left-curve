@@ -1,8 +1,8 @@
 import { useConfig, usePrices } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
-import { PairAssets } from "@left-curve/applets-kit";
-import { twMerge } from "@left-curve/applets-kit";
+import { PairAssets } from "@left-curve/foundation-web";
+import { twMerge } from "@left-curve/foundation-web";
 import { motion } from "framer-motion";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";

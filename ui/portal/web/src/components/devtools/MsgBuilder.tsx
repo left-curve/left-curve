@@ -5,7 +5,7 @@ import {
   ResizerContainer,
   Tabs,
   useTheme,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import {
   useAccount,
   useAppConfig,

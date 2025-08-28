@@ -1,4 +1,4 @@
-import { Button } from "@left-curve/applets-kit";
+import { Button } from "@left-curve/foundation-web";
 import { useAccount, useBalances } from "@left-curve/store";
 import { Link } from "@tanstack/react-router";
 import type React from "react";

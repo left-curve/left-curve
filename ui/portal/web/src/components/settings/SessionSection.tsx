@@ -9,7 +9,7 @@ import {
   IconUser,
   Skeleton,
   useMediaQuery,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import { Modals } from "../modals/RootModal";
 import { SessionCountdown } from "./SessionCountdown";
 

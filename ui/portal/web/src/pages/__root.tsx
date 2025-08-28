@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 
-import { Spinner, twMerge, useTheme } from "@left-curve/applets-kit";
+import { Spinner, twMerge, useTheme } from "@left-curve/foundation-web";
 import { createPortal } from "react-dom";
 
 import type { RouterContext } from "~/app.router";

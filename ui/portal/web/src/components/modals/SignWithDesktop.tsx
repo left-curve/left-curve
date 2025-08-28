@@ -2,7 +2,7 @@ import { useSigninWithDesktop } from "@left-curve/store";
 import { forwardRef, useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { Spinner } from "@left-curve/applets-kit";
+import { Spinner } from "@left-curve/foundation-web";
 import { Scanner } from "@yudiel/react-qr-scanner";
 
 import { WEBRTC_URI } from "~/constants";

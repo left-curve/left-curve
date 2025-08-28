@@ -1,4 +1,4 @@
-import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
+import { twMerge, useClickAway, useMediaQuery } from "@left-curve/foundation-web";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -14,12 +14,12 @@ import {
   ResizerContainer,
   Spinner,
   TextLoop,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { SearchItem } from "./SearchItem";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
+import type { AppletMetadata } from "@left-curve/foundation-web";
 import type React from "react";
 import type { SearchBarResult } from "~/hooks/useSearchBar";
 
@@ -87,7 +87,7 @@ const SearchMenu: React.FC = () => {
             !isLg && isSearchBarVisible
               ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-surface-primary-rice p-4 gap-4"
               : "",
-            isLg && location.pathname === "/" ? "lg:top-0":"lg:top-[-22px]"
+            isLg && location.pathname === "/" ? "lg:top-0" : "lg:top-[-22px]",
           )}
         >
           <div className="w-full gap-[10px] lg:gap-0 flex items-center">

@@ -4,7 +4,7 @@ import {
   numberMask,
   Skeleton,
   useInputs,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import { usePoolLiquidityState, usePrices } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
@@ -17,7 +17,7 @@ import {
   Tabs,
   createContext,
   twMerge,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import { motion } from "framer-motion";
 
 import { formatNumber } from "@left-curve/dango/utils";

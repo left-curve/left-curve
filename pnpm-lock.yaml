@@ -193,6 +193,9 @@ importers:
       '@inlang/cli':
         specifier: ^3.0.3
         version: 3.0.3
+      '@left-curve/dango':
+        specifier: workspace:^
+        version: link:../../../sdk/dango
       '@tanstack/react-query':
         specifier: '>=5.0.0'
         version: 5.59.0(react@18.3.1)
@@ -490,9 +493,6 @@ importers:
       '@inlang/paraglide-js':
         specifier: 2.0.0-beta.30
         version: 2.0.0-beta.30
-      '@left-curve/applets-kit':
-        specifier: workspace:^
-        version: link:../../applets/kit
       '@left-curve/chartiq':
         specifier: ^9.9.0
         version: 9.9.0
@@ -502,6 +502,9 @@ importers:
       '@left-curve/foundation-shared':
         specifier: workspace:^
         version: link:../../foundation/shared
+      '@left-curve/foundation-web':
+        specifier: workspace:^
+        version: link:../../foundation/web
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store

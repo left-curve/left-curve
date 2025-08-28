@@ -1,4 +1,10 @@
-import { AddressVisualizer, Badge, TextCopy, TruncateText, twMerge } from "@left-curve/applets-kit";
+import {
+  AddressVisualizer,
+  Badge,
+  TextCopy,
+  TruncateText,
+  twMerge,
+} from "@left-curve/foundation-web";
 
 import type { Address } from "@left-curve/dango/types";
 import type React from "react";

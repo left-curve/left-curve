@@ -1,4 +1,4 @@
-import { AddressVisualizer } from "@left-curve/applets-kit";
+import { AddressVisualizer } from "@left-curve/foundation-web";
 import { usePrices, usePublicClient, useQueryWithPagination } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -7,7 +7,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 
-import { Badge, TextCopy } from "@left-curve/applets-kit";
+import { Badge, TextCopy } from "@left-curve/foundation-web";
 import { AccountCard } from "../foundation/AccountCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";

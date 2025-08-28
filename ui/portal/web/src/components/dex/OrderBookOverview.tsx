@@ -1,4 +1,4 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
+import { useMediaQuery } from "@left-curve/foundation-web";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
-import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
+import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/foundation-web";
 import { m } from "~/paraglide/messages";
 
 import type { AnyCoin } from "@left-curve/store/types";

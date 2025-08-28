@@ -5,7 +5,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 
-import { Badge, TextCopy } from "@left-curve/applets-kit";
+import { Badge, TextCopy } from "@left-curve/foundation-web";
 import { ContractCard } from "../foundation/ContractCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";

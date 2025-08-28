@@ -38,7 +38,8 @@
     "@inlang/cli": "^3.0.3",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "catalog:",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "@left-curve/dango": "workspace:^"
   },
     "peerDependencies": {
     "react-hot-toast": ">=2.0.0",

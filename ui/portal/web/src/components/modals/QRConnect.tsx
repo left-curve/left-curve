@@ -5,7 +5,7 @@ import { captureException } from "@sentry/react";
 import { forwardRef, useId, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
+import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/foundation-web";
 
 import { WEBRTC_URI } from "~/constants";
 import { m } from "~/paraglide/messages";

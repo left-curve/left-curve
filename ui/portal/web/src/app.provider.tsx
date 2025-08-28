@@ -1,4 +1,4 @@
-import { useTheme } from "@left-curve/applets-kit";
+import { useTheme } from "@left-curve/foundation-web";
 import { useAccount, useAppConfig, useConfig, useSessionKey, useStorage } from "@left-curve/store";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 import { useNotifications } from "./hooks/useNotifications";

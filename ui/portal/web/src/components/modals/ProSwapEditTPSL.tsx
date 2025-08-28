@@ -1,4 +1,4 @@
-import { Button, Checkbox, IconButton, IconClose, Input, Range } from "@left-curve/applets-kit";
+import { Button, Checkbox, IconButton, IconClose, Input, Range } from "@left-curve/foundation-web";
 import { useApp } from "~/hooks/useApp";
 
 import { forwardRef } from "react";

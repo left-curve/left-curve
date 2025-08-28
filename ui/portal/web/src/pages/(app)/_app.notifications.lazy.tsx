@@ -1,4 +1,4 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
+import { useMediaQuery } from "@left-curve/foundation-web";
 
 import { Notifications } from "~/components/notifications/Notifications";
 import { MobileTitle } from "~/components/foundation/MobileTitle";

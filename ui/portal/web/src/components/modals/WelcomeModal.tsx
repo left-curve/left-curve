@@ -1,6 +1,6 @@
 import { useConfig } from "@left-curve/store";
 
-import { Button, twMerge } from "@left-curve/applets-kit";
+import { Button, twMerge } from "@left-curve/foundation-web";
 
 import { m } from "~/paraglide/messages";
 

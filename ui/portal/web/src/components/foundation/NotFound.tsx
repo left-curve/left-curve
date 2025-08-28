@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 
-import { Button } from "@left-curve/applets-kit";
+import { Button } from "@left-curve/foundation-web";
 
 import { m } from "~/paraglide/messages";
 

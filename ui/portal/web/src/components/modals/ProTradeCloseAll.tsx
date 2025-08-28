@@ -1,4 +1,4 @@
-import { Button, IconButton, IconClose } from "@left-curve/applets-kit";
+import { Button, IconButton, IconClose } from "@left-curve/foundation-web";
 import { useApp } from "~/hooks/useApp";
 
 import { useQueryClient } from "@tanstack/react-query";

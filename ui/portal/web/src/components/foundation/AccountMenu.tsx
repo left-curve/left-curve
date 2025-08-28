@@ -30,7 +30,7 @@ import {
   IconMobile,
   IconLogOut,
   createContext,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";

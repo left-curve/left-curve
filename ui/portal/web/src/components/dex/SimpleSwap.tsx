@@ -17,13 +17,13 @@ import {
   IconArrowDown,
   Input,
   Skeleton,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import { Link } from "@tanstack/react-router";
 import { Modals } from "../modals/RootModal";
 
 import { m } from "~/paraglide/messages";
 
-import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
+import { createContext, numberMask, twMerge, useInputs } from "@left-curve/foundation-web";
 import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curve/dango/utils";
 
 import { type PropsWithChildren, useEffect, useState } from "react";

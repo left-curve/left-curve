@@ -1,4 +1,4 @@
-import { ensureErrorMessage, useInputs, useWizard } from "@left-curve/applets-kit";
+import { ensureErrorMessage, useInputs, useWizard } from "@left-curve/foundation-web";
 import {
   useAccount,
   useConfig,
@@ -32,7 +32,7 @@ import {
   Spinner,
   Stepper,
   XCircleIcon,
-} from "@left-curve/applets-kit";
+} from "@left-curve/foundation-web";
 import { Link } from "@tanstack/react-router";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";

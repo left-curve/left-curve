@@ -7,5 +7,5 @@
   },
   "include": ["ui"],
   "exclude": ["node_modules"],
-  "references": []
+  "references": [{ "path": "../../../sdk/dango" }]
 }

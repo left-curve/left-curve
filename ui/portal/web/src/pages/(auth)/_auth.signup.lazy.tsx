@@ -1,4 +1,4 @@
-import { WizardProvider } from "@left-curve/applets-kit";
+import { WizardProvider } from "@left-curve/foundation-web";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { Signup } from "~/components/auth/Signup";
 
