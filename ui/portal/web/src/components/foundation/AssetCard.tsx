@@ -7,9 +7,9 @@ import { motion } from "framer-motion";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 
-import type { AnyCoin, WithAmount } from "@left-curve/store/types";
+import type { Coin } from "@left-curve/dango/types";
 interface Props {
-  coin: WithAmount<AnyCoin>;
+  coin: Coin;
 }
 
 export const AssetCard: React.FC<Props> = ({ coin }) => {
@@ -25,7 +25,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
   const price = getPrice(humanAmount, coin.denom, { format: true });
 
   return (
-    <motion.div layout="position" className="flex flex-col p-4">
+    <motion.div layout="position" className="flex flex-col p-4 w-full">
       <div className={twMerge("flex items-center justify-between transition-all")}>
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">

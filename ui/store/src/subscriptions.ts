@@ -121,6 +121,20 @@ const candlesSubscriptionExecutor: SubscriptionExecutor<"candles"> = ({
   });
 };
 
+const tradesSubscriptionExecutor: SubscriptionExecutor<"trades"> = ({
+  client,
+  params,
+  getListeners,
+}) => {
+  return client.tradesSubscription({
+    ...params,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+  });
+};
+
 const submitTxSubscriptionExecutor: SubscriptionExecutor<"submitTx"> = () => {
   // This execute is a noop function for submitTx subscription.
   return () => {};
@@ -131,5 +145,6 @@ const SubscriptionExecutors = {
   block: blockSubscriptionExecutor,
   candles: candlesSubscriptionExecutor,
   submitTx: submitTxSubscriptionExecutor,
+  trades: tradesSubscriptionExecutor,
   transfer: transferSubscriptionExecutor,
 };

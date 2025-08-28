@@ -458,7 +458,7 @@ mod tests {
         crate::RESTING_ORDER_BOOK,
         dango_types::{
             constants::{dango, usdc},
-            dex::{Direction, PairParams, PassiveLiquidity, RestingOrderBookState},
+            dex::{Direction, PairParams, PassiveLiquidity, RestingOrderBookState, Xyk},
         },
         grug::{Addr, Bounded, MockContext, NumberConst, Udec128, Udec128_24},
         std::str::FromStr,
@@ -614,10 +614,11 @@ mod tests {
                 (&dango::DENOM, &usdc::DENOM),
                 &PairParams {
                     lp_denom: Denom::from_str("lp").unwrap(),
-                    pool_type: PassiveLiquidity::Xyk {
-                        order_spacing: Udec128::ONE,
+                    pool_type: PassiveLiquidity::Xyk(Xyk {
+                        spacing: Udec128::ONE,
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                    },
+                        limit: 10,
+                    }),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                 },
             )

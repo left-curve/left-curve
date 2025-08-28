@@ -59,8 +59,7 @@ impl From<&OrdersMatched> for PairId {
 #[grug::event("order_filled")]
 pub struct OrderFilled {
     pub user: Addr,
-    // `None` if the order is from the passive liquidity pool.
-    pub id: Option<OrderId>,
+    pub id: OrderId,
     pub kind: OrderKind,
     pub base_denom: Denom,
     pub quote_denom: Denom,
