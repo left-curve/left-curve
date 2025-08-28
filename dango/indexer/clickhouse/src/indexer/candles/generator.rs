@@ -6,6 +6,7 @@ use crate::{
     error::Result,
 };
 
+/// Take care of creating candles and storing them in clickhouse when needed
 pub struct CandleGenerator {
     context: Context,
 }
@@ -16,6 +17,9 @@ impl CandleGenerator {
     }
 
     async fn store_candles(&self, candles: Vec<Candle>) -> Result<()> {
+        metrics::counter!("indexer.clickhouse.candles.stored.total")
+            .increment(candles.len() as u64);
+
         #[cfg(feature = "tracing")]
         tracing::debug!("Saving {} candles", candles.len());
 
@@ -103,10 +107,11 @@ impl CandleGenerator {
 
         let mut candle_cache = self.context.candle_cache.write().await;
 
-        // Use this to store all candles, meaning they're going to be saved multiple times.
+        // Use this to store all candles, meaning they're going to be saved multiple times
+        // and generate duplicates with clickhouse.
         let _candles = candle_cache.add_pair_prices(block_height, created_at, pair_prices);
         // Use this to be smarter and only store them once, once completed.
-        // NOTE: I only want to save past candles when they are complete and have no gaps.
+        // NOTE: I only want to save past candles when they are complete and there is no gaps in pair_price
         let mut candles = Vec::new();
 
         if !candle_cache.completed_candles.is_empty() && !candle_cache.has_gaps() {

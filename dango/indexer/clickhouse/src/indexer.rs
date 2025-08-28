@@ -251,6 +251,11 @@ pub fn init_metrics() {
     );
 
     describe_counter!(
+        "indexer.clickhouse.candles.stored.total",
+        "Total candles stored"
+    );
+
+    describe_counter!(
         "indexer.clickhouse.trades.processed.total",
         "Total trades processed"
     );
