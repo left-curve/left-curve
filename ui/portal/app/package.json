@@ -12,7 +12,7 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
-    "@left-curve/applets-kit": "workspace:*",
+    "@left-curve/foundation-app": "workspace:*",
     "@left-curve/config": "workspace:*",
     "@left-curve/dango": "workspace:*",
     "@left-curve/store": "workspace:*",
@@ -35,7 +35,7 @@
     "nativewind": "^4.1.23",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-native": "0.76.9",
+    "react-native": "catalog:",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-mmkv": "^3.3.0",
     "react-native-passkey": "^3.1.0",

@@ -1,4 +1,4 @@
-import { twMerge } from "@left-curve/applets-kit";
+import { twMerge } from "@left-curve/foundation-app";
 import { Dimensions, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "~/hooks/useTheme";

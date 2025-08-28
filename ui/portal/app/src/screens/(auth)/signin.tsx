@@ -1,5 +1,5 @@
+import { GlobalText } from "@left-curve/foundation-app";
 import { View } from "react-native";
-import { GlobalText } from "~/components/foundation";
 
 export default function AuthScreen() {
   return (

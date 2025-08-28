@@ -1,8 +1,7 @@
 import { useMemo, useState } from "react";
 import { useColorScheme } from "react-native";
 
-import { storage } from "../../storage.config";
-import { createContext } from "@left-curve/foundation-app";
+import { createContext } from "@left-curve/foundation-shared";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";
@@ -22,7 +21,10 @@ const [ThemeContextProvider, useTheme] = createContext<ThemeContextType>({
 
 const THEME_KEY = "app.theme";
 
-export const ThemeProvider: React.FC<PropsWithChildren> = ({ children }) => {
+export const ThemeProvider: React.FC<PropsWithChildren<{ storage: any }>> = ({
+  children,
+  storage,
+}) => {
   const systemSchema = (useColorScheme() ?? "light") as Themes;
 
   const [themeSchema, setThemeSchemaState] = useState<ThemesSchema>(() => {

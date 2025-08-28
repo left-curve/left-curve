@@ -17,7 +17,7 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../applets/kit"
+      "path": "../../foundation/app"
     },
     {
       "path": "../../../sdk/dango"

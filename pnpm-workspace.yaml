@@ -24,6 +24,7 @@ catalog:
   # UI
   "react": "^18.3.1"
   "react-dom": "^18.3.1"
+  "react-native": "0.76.9"
   "react-hook-form": "^7.53.0"
   "react-router-dom": "^6.26.2"
   "react-hot-toast": "^2.4.1"
@@ -42,6 +43,10 @@ catalog:
   "postcss": "^8"
   "@unocss/postcss": "^0.63.3"
   "@unocss/reset": "^0.63.3"
+  "react-native-svg": "15.8.0"
+  "react-native-svg-transformer": "^1.5.1"
+  "moti": "^0.30.0"
+  "nativewind": "^4.1.23"
   # Types
   "@types/react": "^18.3.1"
   "@types/react-dom": "^18.3.1"

@@ -1,11 +1,10 @@
-import React from "react";
-import { Pressable, View } from "react-native";
-import { IconSearch } from "./icons/IconSearch";
-import { GlobalText } from "./GlobalText";
-import { TextLoop } from "./TextLoop";
-import { Button } from "./Button";
-import { IconWallet } from "./icons/IconWallet";
 import { useRouter } from "expo-router";
+
+import { Pressable, View } from "react-native";
+import { Button } from "./Button";
+import { GlobalText, IconSearch, IconWallet, TextLoop } from "@left-curve/foundation-app";
+
+import type React from "react";
 
 export const Menu: React.FC = () => {
   const { navigate } = useRouter();

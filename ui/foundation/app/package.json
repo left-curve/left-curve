@@ -1,0 +1,62 @@
+{
+  "name": "@left-curve/foundation-app",
+  "version": "0.1.0",
+  "scripts": {
+    "ci": "pnpm lint",
+    "lint": "pnpm biome check --write ./src",
+    "lint:fix": "pnpm biome ci ./src",
+    "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
+    "clean:build": "rm -rf ./build",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
+    "build": "pnpm tsup --clean"
+  },
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "build",
+    "src",
+    "!**/*.spec.ts",
+    "!typedoc.json",
+    "!tsup.config.ts"
+  ],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
+    }
+  },
+  "dependencies": {
+    "@left-curve/dango": "workspace:^",
+    "@left-curve/store": "workspace:^",
+    "@left-curve/foundation-shared": "workspace:^",
+    "react-native-svg": "catalog:",
+    "react-native-svg-transformer": "catalog:",
+    "moti": "catalog:",
+    "nativewind": "catalog:"
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "@types/big.js": "^6.2.2",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "autoprefixer": "catalog:",
+    "postcss": "catalog:",
+    "react": "catalog:",
+    "react-native": "catalog:",
+    "tailwindcss": "catalog:"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": ">=5.0.0",
+    "@tanstack/react-table": ">=8.0.0",
+    "big.js": ">=6.0.0",
+    "date-fns": ">=4.0.0",
+    "react": "^18",
+    "react-native": ">=0.70.0"
+  }
+}
