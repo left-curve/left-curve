@@ -22,6 +22,9 @@
     "switch": "Switch",
     "hi": "Hi",
     "to": "To",
+    "for": "for",
+    "at": "at",
+    "width": "width",
     "error": "Error",
     "confirm": "Confirm",
     "signinWithDesktop": "Sign in with Desktop",
@@ -535,6 +538,9 @@
       },
       "account": {
         "title": "Account created"
+      },
+      "orderCreated": {
+        "title": "Created {orderType} order"
       }
     }
   },
