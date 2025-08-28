@@ -136,7 +136,7 @@ impl CandleQueryBuilder {
         clickhouse_client: &clickhouse::Client,
     ) -> Result<u64, crate::error::IndexerError> {
         let query = r#"SELECT
-                maxMerge(block_height) as block_height
+                maxMerge(max_block_height) as max_block_height
                FROM candles
                WHERE quote_denom = ? AND base_denom = ?"#;
 
@@ -169,7 +169,8 @@ impl CandleQueryBuilder {
                 close,
                 volume_base,
                 volume_quote,
-                block_height,
+                min_block_height,
+                max_block_height,
                 interval
               FROM candles FINAL
               WHERE quote_denom = ? AND base_denom = ? AND interval = ?

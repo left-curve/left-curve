@@ -311,7 +311,8 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_base: Udec128_6::new(75),
             volume_quote: Udec128_6::new(1875),
             interval: CandleInterval::OneSecond,
-            block_height: 10,
+            min_block_height: 8,
+            max_block_height: 10,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -324,7 +325,8 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_base: Udec128_6::new(100),
             volume_quote: Udec128_6::new(2500),
             interval: CandleInterval::OneSecond,
-            block_height: 7,
+            min_block_height: 4,
+            max_block_height: 7,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -337,7 +339,8 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_base: Udec128_6::new(75),
             volume_quote: Udec128_6::from_str("1937.5").unwrap(),
             interval: CandleInterval::OneSecond,
-            block_height: 3,
+            min_block_height: 1,
+            max_block_height: 3,
         },
     ]);
 

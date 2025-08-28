@@ -47,7 +47,8 @@ pub struct Candle {
     #[serde(with = "super::pair_price::dec")]
     pub volume_quote: Udec128_6,
     pub interval: CandleInterval,
-    pub block_height: u64,
+    pub min_block_height: u64,
+    pub max_block_height: u64,
 }
 
 impl Candle {
@@ -69,7 +70,8 @@ impl Candle {
             volume_base: pair_price.volume_base,
             volume_quote: pair_price.volume_quote,
             interval,
-            block_height,
+            max_block_height: block_height,
+            min_block_height: block_height,
         }
     }
 
@@ -91,8 +93,14 @@ impl Candle {
             volume_base: Udec128_6::ZERO,
             volume_quote: Udec128_6::ZERO,
             interval,
-            block_height,
+            max_block_height: block_height,
+            min_block_height: block_height,
         }
+    }
+
+    pub fn set_high_low(&mut self, price: Udec128_24) {
+        self.high = self.high.max(price);
+        self.low = self.low.min(price);
     }
 }
 

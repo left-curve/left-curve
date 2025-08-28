@@ -124,8 +124,6 @@ impl CandleGenerator {
 
         self.store_candles(candles).await?;
 
-        self.context.pubsub.publish(block_height).await?;
-
         Ok(())
     }
 }

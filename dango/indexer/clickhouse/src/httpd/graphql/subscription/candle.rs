@@ -97,14 +97,14 @@ impl CandleSubscription {
                     return Ok(None);
                 };
 
-                if candle.block_height < current_block_height {
+                if candle.max_block_height < current_block_height {
                     let candle_cache = candle_cache
                         .read()
                         .await;
                     let candle_cache_block_heights = candle_cache
                         .candles
                         .get(&cache_key)
-                        .map(|candles| candles.iter().map(|c| c.block_height).collect::<Vec<_>>())
+                        .map(|candles| candles.iter().map(|c| c.max_block_height).collect::<Vec<_>>())
                         .unwrap_or_default();
                     let pair_prices_block_heights = candle_cache.pair_prices.keys().cloned().collect::<Vec<_>>();
 
@@ -123,7 +123,7 @@ impl CandleSubscription {
                     tracing::warn!(
                         previous_block_height,
                         current_block_height,
-                        %candle.block_height,
+                        %candle.max_block_height,
                         cache_max_block_height=?_cache_max_block_height,
                         cache_min_block_height=?_cache_min_block_height,
                         cache_len=?_cache_len,

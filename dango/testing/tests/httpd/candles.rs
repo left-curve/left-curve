@@ -14,7 +14,6 @@ use {
     grug::{
         Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
         Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
-        setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_testing::{
@@ -23,7 +22,6 @@ use {
     },
     std::{collections::HashMap, sync::Arc},
     tokio::sync::{Mutex, mpsc},
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -49,9 +47,10 @@ async fn query_candles() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             interval
-            blockHeight
+            minBlockHeight
+            maxBlockHeight
           }
-          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom blockHeight }  cursor }
+          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom minBlockHeight maxBlockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -135,9 +134,10 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             interval
-            blockHeight
+            minBlockHeight
+            maxBlockHeight
           }
-          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom blockHeight }  cursor }
+          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom minBlockHeight maxBlockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -201,8 +201,6 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::DEBUG);
-
     let _span = tracing::info_span!("graphql_subscribe_to_candles").entered();
 
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
@@ -226,7 +224,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
               quoteDenom
               baseDenom
               interval
-              blockHeight
+              minBlockHeight
+              maxBlockHeight
           }
       }
     "#;
@@ -291,10 +290,9 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     "open": "27.5",
                     "volumeBase": "50",
                     "volumeQuote": "1312.5",
-                    "blockHeight": 4,
+                    "minBlockHeight": 2,
+                    "maxBlockHeight": 4,
                 }]);
-
-                println!("{:#?}", response.data);
 
                 assert_json_include!(actual: response.data, expected: expected_json);
 
@@ -313,7 +311,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                         .data
                         .first()
                         .unwrap()
-                        .get("blockHeight")
+                        .get("maxBlockHeight")
                         .and_then(|v| v.as_u64())
                         .unwrap()
                         < 6
@@ -329,7 +327,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                         "high": "27.5",
                         "low": "25",
                         "open": "27.5",
-                        "blockHeight": 6,
+                        "minBlockHeight": 2,
+                        "maxBlockHeight": 6,
                         "volumeBase": "75",
                         "volumeQuote": "1937.5",
                     }]);
@@ -417,7 +416,8 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
               quoteDenom
               baseDenom
               interval
-              blockHeight
+              minBlockHeight
+              maxBlockHeight
           }
       }
     "#;
@@ -441,7 +441,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     // Can't call this from LocalSet so using channels instead.
     // Creating a block without creating a candle (no new pair prices).
-    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
+    let (create_block_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(_idx) = rx.recv().await {
             let msgs = vec![Message::transfer(
@@ -466,7 +466,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
         Ok::<(), anyhow::Error>(())
     });
 
-    let crate_block_tx_clone = crate_block_tx.clone();
+    let create_block_tx_clone = create_block_tx.clone();
     let context = dango_httpd_context.clone();
 
     local_set
@@ -487,7 +487,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                 let expected_json = serde_json::json!([{
                     "baseDenom": "dango",
                     "quoteDenom": "bridge/usdc",
-                    "blockHeight": 2,
+                    "maxBlockHeight": 2,
                     "close": "27.5",
                     "high": "27.5",
                     "interval": "ONE_MINUTE",
@@ -499,46 +499,29 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
                 assert_json_include!(actual: response.data, expected: expected_json);
 
-                crate_block_tx_clone.send(2).await.unwrap();
+                create_block_tx_clone.send(2).await.unwrap();
 
-                loop {
-                    // 2nd response
-                    let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                // 2nd response
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
-                    // This because blocks aren't indexed in order
-                    if response
-                        .data
-                        .first()
-                        .unwrap()
-                        .get("blockHeight")
-                        .and_then(|v| v.as_u64())
-                        .unwrap()
-                        < 3
-                    {
-                        continue;
-                    }
+                let expected_json = serde_json::json!([{
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "maxBlockHeight": 3,
+                    "close": "27.5",
+                    "high": "27.5",
+                    "interval": "ONE_MINUTE",
+                    "low": "27.5",
+                    "open": "27.5",
+                    "volumeBase": "25",
+                    "volumeQuote": "687.5",
+                }]);
 
-                    let expected_json = serde_json::json!([{
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "blockHeight": 3,
-                        "close": "27.5",
-                        "high": "27.5",
-                        "interval": "ONE_MINUTE",
-                        "low": "27.5",
-                        "open": "27.5",
-                        "volumeBase": "25",
-                        "volumeQuote": "687.5",
-                    }]);
-
-                    assert_json_include!(actual: response.data, expected: expected_json);
-
-                    break;
-                }
+                assert_json_include!(actual: response.data, expected: expected_json);
 
                 Ok::<(), anyhow::Error>(())
             })

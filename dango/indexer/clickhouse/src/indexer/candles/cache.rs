@@ -77,17 +77,12 @@ impl CandleCache {
         pair_prices: Vec<PairPrice>,
     ) -> Vec<Candle> {
         #[cfg(feature = "tracing")]
-        tracing::debug!(block_height, ?pair_prices, "Adding pair_prices");
-
-        let max_block_height = self.pair_prices.keys().copied().max().unwrap_or(0);
-        if block_height <= max_block_height {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                block_height,
-                max_block_height,
-                "Block height is earlier than max block height"
-            );
-        }
+        tracing::debug!(
+            block_height,
+            ?pair_prices,
+            "Adding pair_prices: {:#?}",
+            pair_prices
+        );
 
         let mut result = Vec::new();
 
@@ -250,7 +245,7 @@ impl CandleCache {
             );
 
             let mut candle =
-                Candle::new_with_pair_price(pair_price, interval, time_start, block_height);
+                Candle::new_with_pair_price(pair_price.clone(), interval, time_start, block_height);
 
             // We set the open price for the new candle to the previous candle close price
             if let Some(previous_candle) = insert_pos
@@ -259,10 +254,18 @@ impl CandleCache {
                 .cloned()
             {
                 candle.open = previous_candle.close;
+                candle.set_high_low(previous_candle.close);
+
                 self.completed_candles.replace(previous_candle);
             }
 
             candles.insert(insert_pos, candle.clone());
+
+            // Update the open price of the next candle, if exists.
+            if let Some(next_candle) = candles.get_mut(insert_pos + 1) {
+                next_candle.open = pair_price.clearing_price;
+                next_candle.set_high_low(pair_price.clearing_price);
+            }
 
             return Some(candle);
         };
@@ -275,40 +278,57 @@ impl CandleCache {
             %interval,
             volume_base = %candles[current_index].volume_base,
             volume_quote = %candles[current_index].volume_quote,
-            block_height = %candles[current_index].block_height,
+            block_height = %candles[current_index].max_block_height,
             "Found current candle, updating with pair_price",
         );
 
-        if block_height == candles[current_index].block_height {
+        if block_height == candles[current_index].max_block_height {
             #[cfg(feature = "tracing")]
             tracing::error!(
                 %interval,
                 %block_height,
                 "Seeing the same pair_price for the same block_height",
             );
-        } else if block_height > candles[current_index].block_height {
-            // PairPrice might not come in order, we only set close price if the
-            // pair price has a later block.
-            if let Some(pair_price) = &pair_price {
-                candles[current_index].close = pair_price.clearing_price;
-
-                // Update the open price of the next candle, if exists.
-                if let Some(next_candle) = candles.get_mut(current_index + 1) {
-                    next_candle.open = pair_price.clearing_price;
-                }
-            }
         }
 
         if let Some(pair_price) = pair_price {
             candles[current_index].volume_base += pair_price.volume_base;
             candles[current_index].volume_quote += pair_price.volume_quote;
 
-            candles[current_index].high =
-                candles[current_index].high.max(pair_price.clearing_price);
-            candles[current_index].low = candles[current_index].low.min(pair_price.clearing_price);
+            candles[current_index].set_high_low(pair_price.clearing_price);
+
+            if block_height < candles[current_index].min_block_height {
+                // PairPrice might not come in order, we only set open price if the
+                // pair price has an earlier block and we have no previous candle
+                if current_index.checked_sub(1).is_none() {
+                    candles[current_index].open = pair_price.clearing_price;
+                }
+
+                candles[current_index].set_high_low(pair_price.clearing_price);
+            }
+
+            // Set close price from latest block (maximum block_height)
+            if block_height > candles[current_index].max_block_height {
+                // PairPrice might not come in order, we only set close price if the
+                // pair price has a later block.
+                candles[current_index].close = pair_price.clearing_price;
+                candles[current_index].set_high_low(pair_price.clearing_price);
+
+                // Update the open price of the next candle, if exists.
+                if let Some(next_candle) = candles.get_mut(current_index + 1) {
+                    next_candle.open = pair_price.clearing_price;
+                    next_candle.set_high_low(pair_price.clearing_price);
+                }
+            }
         }
 
-        candles[current_index].block_height = candles[current_index].block_height.max(block_height);
+        if block_height < candles[current_index].min_block_height {
+            candles[current_index].min_block_height = block_height;
+        }
+
+        if block_height > candles[current_index].max_block_height {
+            candles[current_index].max_block_height = block_height;
+        }
 
         Some(candles[current_index].clone())
     }
@@ -430,10 +450,10 @@ impl CandleCache {
                             candles = query_builder.fetch_all(clickhouse_client).await?.candles;
 
                             if let Some(candle) = candles.first() {
-                                if candle.block_height < highest_block_height {
+                                if candle.max_block_height < highest_block_height {
                                     #[cfg(feature = "tracing")]
                                     tracing::warn!(
-                                        %candle.block_height,
+                                        %candle.max_block_height,
                                         %highest_block_height,
                                         %key.base_denom,
                                         %key.quote_denom,
@@ -549,6 +569,7 @@ mod tests {
         assertor::*,
         chrono::NaiveDateTime,
         grug::{NumberConst, Udec128_6, Udec128_24},
+        itertools::Itertools,
         std::{collections::VecDeque, str::FromStr},
     };
 
@@ -578,7 +599,7 @@ mod tests {
                 "Candle time_start is not greater than previous candle"
             );
             assert!(
-                candle.block_height >= previous_candle.block_height,
+                candle.max_block_height >= previous_candle.max_block_height,
                 "Candle block_height is not greater than or equal to previous candle"
             );
             assert_eq!(
@@ -639,6 +660,128 @@ mod tests {
         );
 
         assert_that!(candle_cache.get_candles(&cache_key).cloned().unwrap()).has_length(2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn correct_candles_when_pair_prices_are_not_in_order() -> Result<()> {
+        let quote_denom = "bridge/usdc";
+        let base_denom = "bridge/btc";
+
+        let pair_prices = vec![
+            pair_price(
+                quote_denom,
+                base_denom,
+                25000000000000000000000000,
+                25000000,
+                625000000,
+                "1971-01-01 00:00:01.500",
+                6,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                27500000000000000000000000,
+                25000000,
+                687500000,
+                "1971-01-01 00:00:00.500",
+                2,
+            )?,
+            pair_price(
+                quote_denom,
+                base_denom,
+                25000000000000000000000000,
+                25000000,
+                625000000,
+                "1971-01-01 00:00:01.000",
+                4,
+            )?,
+        ];
+
+        let len = pair_prices.len();
+        let all_pair_prices: Vec<Vec<PairPrice>> =
+            pair_prices.into_iter().permutations(len).collect();
+
+        for pair_prices in all_pair_prices {
+            let mut candle_cache = CandleCache::default();
+
+            // println!("Adding pair prices: {:#?}", pair_prices);
+
+            candle_cache.add_multi_block_pair_prices(pair_prices)?;
+
+            let cache_key = CandleCacheKey::new(
+                base_denom.to_string(),
+                quote_denom.to_string(),
+                CandleInterval::OneMinute,
+            );
+
+            let cached_candles = candle_cache
+                .get_candles(&cache_key)
+                .expect("no candles found");
+
+            let expected_candle = Candle {
+                base_denom: base_denom.to_string(),
+                quote_denom: quote_denom.to_string(),
+                interval: CandleInterval::OneMinute,
+                close: Udec128_24::from_str("25").unwrap(),
+                high: Udec128_24::from_str("27.5").unwrap(),
+                low: Udec128_24::from_str("25").unwrap(),
+                open: Udec128_24::from_str("27.5").unwrap(),
+                volume_base: Udec128_6::from_str("75").unwrap(),
+                volume_quote: Udec128_6::from_str("1937.5").unwrap(),
+                max_block_height: 6,
+                min_block_height: 2,
+                time_start: parse_timestamp("1971-01-01 00:00:00.000")?,
+            };
+
+            assert_that!(cached_candles.first().unwrap()).is_equal_to(&expected_candle);
+
+            let cache_key = CandleCacheKey::new(
+                base_denom.to_string(),
+                quote_denom.to_string(),
+                CandleInterval::OneSecond,
+            );
+
+            let cached_candles = candle_cache
+                .get_candles(&cache_key)
+                .expect("no candles found");
+
+            let expected_candles = vec![
+                Candle {
+                    base_denom: base_denom.to_string(),
+                    quote_denom: quote_denom.to_string(),
+                    interval: CandleInterval::OneSecond,
+                    close: Udec128_24::from_str("27.5").unwrap(),
+                    high: Udec128_24::from_str("27.5").unwrap(),
+                    low: Udec128_24::from_str("27.5").unwrap(),
+                    open: Udec128_24::from_str("27.5").unwrap(),
+                    volume_base: Udec128_6::from_str("25").unwrap(),
+                    volume_quote: Udec128_6::from_str("687.5").unwrap(),
+                    min_block_height: 2,
+                    max_block_height: 2,
+                    time_start: parse_timestamp("1971-01-01 00:00:00.000")?,
+                },
+                Candle {
+                    base_denom: base_denom.to_string(),
+                    quote_denom: quote_denom.to_string(),
+                    interval: CandleInterval::OneSecond,
+                    close: Udec128_24::from_str("25").unwrap(),
+                    high: Udec128_24::from_str("27.5").unwrap(),
+                    low: Udec128_24::from_str("25").unwrap(),
+                    open: Udec128_24::from_str("27.5").unwrap(),
+                    volume_base: Udec128_6::from_str("50").unwrap(),
+                    volume_quote: Udec128_6::from_str("1250").unwrap(),
+                    min_block_height: 4,
+                    max_block_height: 6,
+                    time_start: parse_timestamp("1971-01-01 00:00:01.000")?,
+                },
+            ];
+
+            // println!("Cached candles: {:#?}", cached_candles);
+
+            assert_that!(cached_candles).is_equal_to(&expected_candles);
+        }
 
         Ok(())
     }
@@ -714,8 +857,8 @@ mod tests {
                 quote_denom,
                 base_denom,
                 27500000000000000000000000,
-                345160391948092,
-                420047603001999188,
+                25000000,
+                625000000,
                 "1971-01-01 00:00:00.500",
                 2,
             )?,
@@ -723,8 +866,8 @@ mod tests {
                 quote_denom,
                 base_denom,
                 27500000000000000000000000,
-                345160391948092,
-                420047603001999188,
+                25000000,
+                625000000,
                 "1971-01-01 00:00:01.500",
                 4,
             )?,
@@ -741,16 +884,58 @@ mod tests {
             CandleInterval::OneSecond,
         );
 
-        let candles = candle_cache.get_candles(&cache_key).cloned().unwrap();
+        let cached_candles = candle_cache
+            .get_candles(&cache_key)
+            .expect("no candles found");
 
-        assert_that!(candles).has_length(3);
+        let expected_candles = vec![
+            Candle {
+                base_denom: base_denom.to_string(),
+                quote_denom: quote_denom.to_string(),
+                interval: CandleInterval::OneSecond,
+                close: Udec128_24::from_str("27.5").unwrap(),
+                high: Udec128_24::from_str("27.5").unwrap(),
+                low: Udec128_24::from_str("27.5").unwrap(),
+                open: Udec128_24::from_str("27.5").unwrap(),
+                volume_base: Udec128_6::from_str("25").unwrap(),
+                volume_quote: Udec128_6::from_str("625").unwrap(),
+                min_block_height: 2,
+                max_block_height: 2,
+                time_start: parse_timestamp("1971-01-01 00:00:00.000")?,
+            },
+            Candle {
+                base_denom: base_denom.to_string(),
+                quote_denom: quote_denom.to_string(),
+                interval: CandleInterval::OneSecond,
+                close: Udec128_24::from_str("27.5").unwrap(),
+                high: Udec128_24::from_str("27.5").unwrap(),
+                low: Udec128_24::from_str("27.5").unwrap(),
+                open: Udec128_24::from_str("27.5").unwrap(),
+                volume_base: Udec128_6::from_str("25").unwrap(),
+                volume_quote: Udec128_6::from_str("625").unwrap(),
+                min_block_height: 3,
+                max_block_height: 4,
+                time_start: parse_timestamp("1971-01-01 00:00:01.000")?,
+            },
+            Candle {
+                base_denom: base_denom.to_string(),
+                quote_denom: quote_denom.to_string(),
+                interval: CandleInterval::OneSecond,
+                close: Udec128_24::from_str("27.5").unwrap(),
+                high: Udec128_24::from_str("27.5").unwrap(),
+                low: Udec128_24::from_str("27.5").unwrap(),
+                open: Udec128_24::from_str("27.5").unwrap(),
+                volume_base: Udec128_6::ZERO,
+                volume_quote: Udec128_6::ZERO,
+                min_block_height: 5,
+                max_block_height: 5,
+                time_start: parse_timestamp("1971-01-01 00:00:02.000")?,
+            },
+        ];
 
-        let last_candle = candles.last().unwrap();
-        assert_that!(last_candle.open).is_equal_to(Udec128_24::from_str("27.5").unwrap());
-        assert_that!(last_candle.close).is_equal_to(Udec128_24::from_str("27.5").unwrap());
+        // println!("Cached candles: {:#?}", cached_candles);
 
-        assert_that!(last_candle.volume_quote).is_equal_to(Udec128_6::ZERO);
-        assert_that!(last_candle.volume_base).is_equal_to(Udec128_6::ZERO);
+        assert_that!(cached_candles).is_equal_to(&expected_candles);
 
         Ok(())
     }
