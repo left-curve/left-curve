@@ -17,6 +17,7 @@ impl CandleGenerator {
     }
 
     async fn store_candles(&self, candles: Vec<Candle>) -> Result<()> {
+        #[cfg(feature = "metrics")]
         metrics::counter!("indexer.clickhouse.candles.stored.total")
             .increment(candles.len() as u64);
 

@@ -106,10 +106,10 @@ impl grug_app::Indexer for Indexer {
 
         self.indexing = false;
 
+        #[cfg(feature = "testing")]
         {
             let context = self.context.clone();
             self.runtime_handler.block_on(async move {
-                #[cfg(feature = "testing")]
                 if let Err(_err) = context.cleanup_test_database().await {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(err = %_err, "Failed to cleanup test database");
