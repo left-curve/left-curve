@@ -1,23 +1,25 @@
 use {
     crate::{
-        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK, VOLUMES,
-        VOLUMES_BY_USER,
+        DEPTHS, LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK,
+        VOLUMES, VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
+        liquidity_depth::get_bucket,
     },
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::Username,
         dex::{
-            OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
-            PairUpdate, QueryMsg, ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
+            Direction, LiquidityDepth, LiquidityDepthResponse, OrderId, OrderResponse,
+            OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams, PairUpdate, QueryMsg,
+            ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
             RestingOrderBookStatesResponse, SwapRoute,
         },
     },
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
         JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult,
-        Timestamp, Udec128_6, Uint128,
+        Timestamp, Udec128_6, Udec128_24, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -128,8 +130,83 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_reflect_curve(ctx, base_denom, quote_denom, limit)?;
             res.to_json_value()
         },
+        QueryMsg::LiquidityDepth {
+            base_denom,
+            quote_denom,
+            bucket_size,
+        } => {
+            let res = query_liquidity_depth(ctx, base_denom, quote_denom, bucket_size)?;
+            res.to_json_value()
+        },
     }
     .map_err(Into::into)
+}
+
+fn query_liquidity_depth(
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    bucket_size: Udec128_24,
+) -> StdResult<LiquidityDepthResponse> {
+    // Load the resting order book.
+    let resting_order_book = RESTING_ORDER_BOOK.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Load the liquidity depth for asks.
+    let ask_depth = if let Some(best_ask_price) = resting_order_book.best_ask_price {
+        Some(
+            DEPTHS
+                .prefix((&base_denom, &quote_denom))
+                .append(bucket_size)
+                .append(Direction::Ask)
+                .range(
+                    ctx.storage,
+                    Some(Bound::Inclusive(best_ask_price)),
+                    None,
+                    IterationOrder::Ascending,
+                )
+                .map(|res| {
+                    let (bucket, (depth_base, depth_quote)) = res?;
+                    Ok((bucket, LiquidityDepth {
+                        depth_base,
+                        depth_quote,
+                    }))
+                })
+                .collect::<StdResult<_>>()?,
+        )
+    } else {
+        None
+    };
+
+    // Load the liquidity depth for bids.
+    let bid_depth = if let Some(best_bid_price) = resting_order_book.best_bid_price {
+        Some(
+            DEPTHS
+                .prefix((&base_denom, &quote_denom))
+                .append(bucket_size)
+                .append(Direction::Bid)
+                .range(
+                    ctx.storage,
+                    Some(Bound::Inclusive(best_bid_price)),
+                    None,
+                    IterationOrder::Descending,
+                )
+                .map(|res| {
+                    let (bucket, (depth_base, depth_quote)) = res?;
+                    Ok((bucket, LiquidityDepth {
+                        depth_base,
+                        depth_quote,
+                    }))
+                })
+                .collect::<StdResult<_>>()?,
+        )
+    } else {
+        None
+    };
+
+    Ok(LiquidityDepthResponse {
+        bid_depth,
+        ask_depth,
+    })
 }
 
 fn query_paused(ctx: ImmutableCtx) -> StdResult<bool> {

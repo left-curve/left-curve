@@ -291,6 +291,13 @@ pub enum QueryMsg {
         /// Up to how many orders to return.
         limit: Option<u32>,
     },
+    /// Returns the liquidity depth of a pair.
+    #[returns(LiquidityDepthResponse)]
+    LiquidityDepth {
+        base_denom: Denom,
+        quote_denom: Denom,
+        bucket_size: Udec128_24,
+    },
 }
 
 /// Identifier of a trading pair. Consists of the base asset and quote asset
@@ -354,4 +361,18 @@ pub struct OrdersByUserResponse {
 pub struct ReflectCurveResponse {
     pub bids: BTreeMap<Udec128_24, Uint128>, // price => amount in base asset
     pub asks: BTreeMap<Udec128_24, Uint128>, // price => amount in base asset
+}
+
+/// Response type of the `QueryMsg::LiquidityDepth` query.
+#[grug::derive(Serde)]
+pub struct LiquidityDepth {
+    pub depth_base: Udec128_6,
+    pub depth_quote: Udec128_6,
+}
+
+/// Response type of the `QueryMsg::LiquidityDepth` query.
+#[grug::derive(Serde)]
+pub struct LiquidityDepthResponse {
+    pub bid_depth: Option<Vec<(Udec128_24, LiquidityDepth)>>,
+    pub ask_depth: Option<Vec<(Udec128_24, LiquidityDepth)>>,
 }
