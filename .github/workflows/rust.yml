@@ -196,20 +196,20 @@ jobs:
         run: cargo install cargo-llvm-cov
 
       # Prior to introducing coverage, we were running tests here like this:
-      # - name: Run tests
-      #   run: |
-      #     cargo test --all-features
-      #   env:
-      #     RUST_BACKTRACE: 1
-      #
-      # Leaving here since coverage takes more time than tests and we might want to revert at some point.
-      - name: Run tests and collect coverage
+      - name: Run tests
         run: |
-          mkdir -p target/coverage
-          cargo llvm-cov --workspace --all-features \
-                         --lcov  --output-path target/coverage/lcov.info
+          cargo test --all-features -- --test-threads=1
         env:
           RUST_BACKTRACE: 1
+      #
+      # Leaving here since coverage takes more time than tests and we might want to revert at some point.
+      # - name: Run tests and collect coverage
+      #   run: |
+      #     mkdir -p target/coverage
+      #     cargo llvm-cov --workspace --all-features \
+      #                    --lcov  --output-path target/coverage/lcov.info
+      #   env:
+      #     RUST_BACKTRACE: 1
 
       - name: Upload coverage to Qlty
         uses: qltysh/qlty-action/coverage@v2
