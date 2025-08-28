@@ -1,29 +1,18 @@
 import { useId } from "react";
 
-import Svg, { G, Path, Mask, Defs, ClipPath } from "react-native-svg";
+import { G, Path, Mask, Defs, ClipPath } from "react-native-svg";
 
 import type { SvgProps } from "react-native-svg";
 import type React from "react";
+import { Svg } from "./SvgBase";
 
-export const IconSun: React.FC<SvgProps & { size?: number }> = ({
-  color = "#2E2521",
-  size = 24,
-  width,
-  height,
-  ...props
-}) => {
+export const IconSun: React.FC<SvgProps> = ({ ...props }) => {
   const id = useId();
   const clipId = `clip-${id}`;
   const maskId = `mask-${id}`;
 
   return (
-    <Svg
-      width={size || width || 24}
-      height={size || height || 24}
-      viewBox="0 0 24 24"
-      color={color}
-      {...props}
-    >
+    <Svg viewBox="0 0 24 24" width={24} height={24} color="currentColor" {...props}>
       <G clipPath={`url(#${clipId})`}>
         <Mask id={maskId} x={0} y={0} width={24} height={24} maskUnits="userSpaceOnUse">
           <Path fill="#fff" d="M24 0H0v24h24z" />
