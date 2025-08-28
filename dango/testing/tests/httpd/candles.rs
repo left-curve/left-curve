@@ -14,6 +14,7 @@ use {
     grug::{
         Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
         Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
+        setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_testing::{
@@ -22,6 +23,7 @@ use {
     },
     std::{collections::HashMap, sync::Arc},
     tokio::sync::{Mutex, mpsc},
+    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -199,6 +201,8 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::DEBUG);
+
     let _span = tracing::info_span!("graphql_subscribe_to_candles").entered();
 
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =

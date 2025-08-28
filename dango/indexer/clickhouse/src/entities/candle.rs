@@ -158,6 +158,7 @@ impl Candle {
 }
 
 impl Candle {
+    /// NOTE: this should not be called too often, it can take some time.
     pub async fn optimize_table(clickhouse_client: &clickhouse::Client) -> Result<()> {
         Ok(clickhouse_client
             .query("OPTIMIZE TABLE candles FINAL")
