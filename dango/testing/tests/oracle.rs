@@ -13,7 +13,7 @@ use {
         StorageQuerier, Timestamp, Udec128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
-    pyth_client::{PythClientCache, PythClientTrait},
+    pyth_client::{PythClientCoreCache, PythClientTrait},
     pyth_types::{
         Channel, LeEcdsaMessage, PriceUpdate, PythId, PythVaa,
         constants::{
@@ -143,7 +143,7 @@ fn oracle() {
 fn multiple_vaas() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
-    let pyth_client = PythClientCache::new(PYTH_URL).unwrap();
+    let pyth_client = PythClientCoreCache::new(PYTH_URL).unwrap();
 
     let id_denoms = btree_map! {
         ATOM_USD_ID => atom::DENOM.clone(),

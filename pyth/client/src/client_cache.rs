@@ -1,5 +1,5 @@
 use {
-    crate::{PythClient, PythClientTrait, error},
+    crate::{PythClientCore, PythClientTrait, error},
     async_stream::stream,
     async_trait::async_trait,
     grug::{Binary, Inner, Lengthy, NonEmpty},
@@ -26,14 +26,14 @@ use {
 pub const PYTH_CACHE_SAMPLES: usize = 50;
 
 #[derive(Debug, Clone)]
-pub struct PythClientCache {
+pub struct PythClientCoreCache {
     base_url: Url,
     // Used to return newer vaas at each call.
     vaas_index: Arc<AtomicU64>,
     keep_running: Arc<AtomicBool>,
 }
 
-impl PythClientCache {
+impl PythClientCoreCache {
     pub fn new<U: IntoUrl>(base_url: U) -> Result<Self, error::Error> {
         Ok(Self {
             base_url: base_url.into_url()?,
@@ -66,7 +66,7 @@ impl PythClientCache {
 
                 let rt = Runtime::new().unwrap();
                 let values = rt.block_on(async {
-                    let mut client = PythClient::new(base_url.clone()).unwrap();
+                    let mut client = PythClientCore::new(base_url.clone()).unwrap();
 
                     let mut stream = client
                         .stream(NonEmpty::new(vec![id]).unwrap())
@@ -119,7 +119,7 @@ impl PythClientCache {
 }
 
 #[async_trait]
-impl PythClientTrait for PythClientCache {
+impl PythClientTrait for PythClientCoreCache {
     type Error = error::Error;
     type PythId = PythId;
 

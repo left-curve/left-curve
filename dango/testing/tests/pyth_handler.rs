@@ -1,12 +1,12 @@
 use {
-    dango_proposal_preparer::{PythHandler, RetrievePythId},
+    dango_proposal_preparer::{PythHandler, QueryPythId},
     dango_testing::setup_test,
     dango_types::{
         constants::btc,
         oracle::{ExecuteMsg, InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
     },
     grug::{Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map},
-    pyth_client::{PythClientCache, PythClientTrait},
+    pyth_client::{PythClientCoreCache, PythClientTrait},
     pyth_types::{
         Channel,
         constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
@@ -38,7 +38,7 @@ fn handler() {
             .collect::<Vec<_>>();
 
         // Create cache for ids if not present.
-        PythClientCache::new(PYTH_URL)
+        PythClientCoreCache::new(PYTH_URL)
             .unwrap()
             .get_latest_price_update(NonEmpty::new(pyth_ids).unwrap())
             .unwrap();
@@ -66,7 +66,7 @@ fn handler() {
         .address;
 
     let querier = QuerierWrapper::new(&suite);
-    let mut handler = PythHandler::<PythClientCache>::new_with_cache(PYTH_URL);
+    let mut handler = PythHandler::<PythClientCoreCache>::new_with_core_cache(PYTH_URL);
 
     // Start the handler with oracle.
     handler.update_stream(querier, oracle).unwrap();
@@ -96,7 +96,7 @@ fn handler() {
 // Check the handler returns data correctly.
 fn check_handler_works<P>(handler: &PythHandler<P>, data_wanted: usize)
 where
-    P: PythClientTrait + RetrievePythId,
+    P: PythClientTrait + QueryPythId,
 {
     // Assert the streaming is working.
     let mut received_data = 0;
@@ -169,7 +169,10 @@ fn handler_lazer() {
         .should_succeed();
 
     let querier = QuerierWrapper::new(&suite);
-    let mut handler = PythHandler::new_with_lazer(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST);
+    let mut handler = PythHandler::new_with_lazer(
+        NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
+        LAZER_ACCESS_TOKEN_TEST,
+    );
 
     // Start the handler with oracle.
     handler.update_stream(querier, oracle).unwrap();

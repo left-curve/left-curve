@@ -22,7 +22,7 @@ use {
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
-    pyth_client::PythClientCache,
+    pyth_client::PythClientCoreCache,
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
@@ -64,14 +64,14 @@ pub struct BridgeOp {
 }
 
 pub type TestSuite<
-    PP = ProposalPreparer<PythClientCache>,
+    PP = ProposalPreparer<PythClientCoreCache>,
     DB = MemDb,
     VM = RustVm,
     ID = NullIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
 pub type TestSuiteWithIndexer<
-    PP = ProposalPreparer<PythClientCache>,
+    PP = ProposalPreparer<PythClientCoreCache>,
     DB = MemDb,
     VM = RustVm,
     ID = HookedIndexer,

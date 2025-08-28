@@ -16,7 +16,11 @@ use {
 
 #[tokio::test]
 async fn test_lazer_stream() {
-    let client = PythClientLazerCache::new(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST).unwrap();
+    let client = PythClientLazerCache::new(
+        NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
+        LAZER_ACCESS_TOKEN_TEST,
+    )
+    .unwrap();
     test_stream(client, vec![BTC_USD_ID_LAZER, DOGE_USD_ID_LAZER], vec![
         ETH_USD_ID_LAZER,
         ATOM_USD_ID_LAZER,
@@ -31,8 +35,11 @@ async fn test_lazer_stream() {
 fn create_cache() {
     let update_ids = LAZER_ID_ALL;
 
-    let mut client =
-        PythClientLazerCache::new(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST).unwrap();
+    let mut client = PythClientLazerCache::new(
+        NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
+        LAZER_ACCESS_TOKEN_TEST,
+    )
+    .unwrap();
     client.load_or_retrieve_data(NonEmpty::new_unchecked(update_ids.clone()));
 
     for id in update_ids {

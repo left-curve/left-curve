@@ -35,16 +35,15 @@ pub struct PythClientLazer {
 }
 
 impl PythClientLazer {
-    // TODO: shold we enforce endpoint to be NonEmpty or an Option in order to
-    // be able to use the default one inside the sdk?
-    pub fn new<V, U, T>(endpoints: V, access_token: T) -> Result<Self, anyhow::Error>
+    pub fn new<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> Result<Self, anyhow::Error>
     where
-        V: IntoIterator<Item = U>,
+        V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
         Ok(PythClientLazer {
             endpoints: endpoints
+                .into_inner()
                 .into_iter()
                 .map(|url| url.into_url())
                 .collect::<Result<Vec<_>, _>>()?,

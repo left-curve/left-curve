@@ -1,6 +1,6 @@
 use {
     dango_oracle::PRICES,
-    dango_proposal_preparer::{ProposalPreparer, RetrievePythId},
+    dango_proposal_preparer::{ProposalPreparer, QueryPythId},
     dango_testing::{TestSuite, setup_test, setup_test_lazer_cache},
     dango_types::{
         constants::btc,
@@ -11,7 +11,7 @@ use {
         StorageQuerier, btree_map, setup_tracing_subscriber,
     },
     hex_literal::hex,
-    pyth_client::{PythClientCache, PythClientTrait},
+    pyth_client::{PythClientCoreCache, PythClientTrait},
     pyth_lazer::PythClientLazerCache,
     pyth_types::{
         Channel, FixedRate, PythId, PythLazerSubscriptionDetails,
@@ -65,7 +65,7 @@ fn proposal_pyth() {
         // Create cache for ids if not present.
         pyth_ids.push(NOT_USED_ID);
 
-        PythClientCache::new(PYTH_URL)
+        PythClientCoreCache::new(PYTH_URL)
             .unwrap()
             .get_latest_price_update(NonEmpty::new(pyth_ids).unwrap())
             .unwrap();
@@ -208,9 +208,12 @@ fn proposal_pyth_lazer() {
         pyth_ids.push(NOT_USED_ID_LAZER);
 
         // Ensure to have the cache files for all the ids.
-        PythClientLazerCache::new(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST)
-            .unwrap()
-            .load_or_retrieve_data(NonEmpty::new_unchecked(pyth_ids));
+        PythClientLazerCache::new(
+            NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
+            LAZER_ACCESS_TOKEN_TEST,
+        )
+        .unwrap()
+        .load_or_retrieve_data(NonEmpty::new_unchecked(pyth_ids));
     }
 
     setup_tracing_subscriber(Level::INFO);
@@ -326,7 +329,7 @@ fn proposal_pyth_lazer() {
 
 fn assert_price_exists<P>(suite: &mut TestSuite<ProposalPreparer<P>>, oracle: Addr, denom: Denom)
 where
-    P: PythClientTrait + RetrievePythId + Send + 'static,
+    P: PythClientTrait + QueryPythId + Send + 'static,
     P::Error: std::fmt::Debug,
 {
     // Trigger a few blocks to be sure the PP has time to update the prices.

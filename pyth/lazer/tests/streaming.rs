@@ -13,6 +13,7 @@ use {
     url::Url,
 };
 
+// TODO: remove this test once lazer implementation is completed.
 #[ignore = "remove once the lazer implementation is completed"]
 #[tokio::test]
 async fn test() {

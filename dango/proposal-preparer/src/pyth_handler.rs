@@ -1,7 +1,7 @@
 use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
     grug::{Addr, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
-    pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    pyth_client::{PythClientCore, PythClientCoreCache, PythClientTrait},
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
     pyth_types::{PriceUpdate, PythId, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
@@ -30,22 +30,25 @@ where
     stoppable_thread: Option<(Arc<AtomicBool>, thread::JoinHandle<()>)>,
 }
 
-impl PythHandler<PythClient> {
-    pub fn new<U: IntoUrl>(base_url: U) -> PythHandler<PythClient> {
-        Self::new_with_client(PythClient::new(base_url).unwrap())
+impl PythHandler<PythClientCore> {
+    pub fn new_with_core<U: IntoUrl>(base_url: U) -> PythHandler<PythClientCore> {
+        Self::new_with_client(PythClientCore::new(base_url).unwrap())
     }
 }
 
-impl PythHandler<PythClientCache> {
-    pub fn new_with_cache<U: IntoUrl>(base_url: U) -> PythHandler<PythClientCache> {
-        Self::new_with_client(PythClientCache::new(base_url).unwrap())
+impl PythHandler<PythClientCoreCache> {
+    pub fn new_with_core_cache<U: IntoUrl>(base_url: U) -> PythHandler<PythClientCoreCache> {
+        Self::new_with_client(PythClientCoreCache::new(base_url).unwrap())
     }
 }
 
 impl PythHandler<PythClientLazer> {
-    pub fn new_with_lazer<V, U, T>(endpoints: V, access_token: T) -> PythHandler<PythClientLazer>
+    pub fn new_with_lazer<V, U, T>(
+        endpoints: NonEmpty<V>,
+        access_token: T,
+    ) -> PythHandler<PythClientLazer>
     where
-        V: IntoIterator<Item = U>,
+        V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
@@ -55,11 +58,11 @@ impl PythHandler<PythClientLazer> {
 
 impl PythHandler<PythClientLazerCache> {
     pub fn new_with_lazer_cache<V, U, T>(
-        endpoints: V,
+        endpoints: NonEmpty<V>,
         access_token: T,
     ) -> PythHandler<PythClientLazerCache>
     where
-        V: IntoIterator<Item = U>,
+        V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
@@ -69,7 +72,7 @@ impl PythHandler<PythClientLazerCache> {
 
 impl<P> PythHandler<P>
 where
-    P: PythClientTrait + RetrievePythId,
+    P: PythClientTrait + QueryPythId,
 {
     fn new_with_client(client: P) -> PythHandler<P> {
         Self {
@@ -98,7 +101,7 @@ where
 
 impl<P> PythHandler<P>
 where
-    P: PythClientTrait + RetrievePythId + Send + 'static,
+    P: PythClientTrait + QueryPythId + Send + 'static,
     P::Error: Debug,
 {
     fn connect_stream<I>(&mut self, ids: NonEmpty<I>)
@@ -192,18 +195,18 @@ where
     }
 }
 
-pub trait RetrievePythId: PythClientTrait {
+pub trait QueryPythId: PythClientTrait {
     fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>>;
 }
 
-impl RetrievePythId for PythClient {
+impl QueryPythId for PythClientCore {
     //  TODO: optimize this by using the raw WasmScan query.
     /// Retrieve the Pyth ids from the Oracle contract.
     fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>> {
         pyth_ids_core(querier, oracle)
     }
 }
-impl RetrievePythId for PythClientCache {
+impl QueryPythId for PythClientCoreCache {
     //  TODO: optimize this by using the raw WasmScan query.
     /// Retrieve the Pyth ids from the Oracle contract.
     fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>> {
@@ -231,14 +234,14 @@ fn pyth_ids_core(querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>
     Ok(new_ids)
 }
 
-impl RetrievePythId for PythClientLazer {
+impl QueryPythId for PythClientLazer {
     /// Retrieve the Pyth ids from the Oracle contract.
     fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>> {
         pyth_ids_lazer(querier, oracle)
     }
 }
 
-impl RetrievePythId for PythClientLazerCache {
+impl QueryPythId for PythClientLazerCache {
     fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>> {
         pyth_ids_lazer(querier, oracle)
     }

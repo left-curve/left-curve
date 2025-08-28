@@ -2,7 +2,7 @@ use {
     clap::{Parser, Subcommand},
     grug::Inner,
     grug_types::{JsonSerExt, MockApi, NonEmpty},
-    pyth_client::{PythClient, PythClientTrait},
+    pyth_client::{PythClientCore, PythClientTrait},
     pyth_types::{
         PythVaa,
         constants::{BTC_USD_ID, ETH_USD_ID, PYTH_URL},
@@ -30,7 +30,7 @@ impl TestCmd {
                 // For the purpose of this test, we fetch the prices of BTC and ETH.
                 let ids = NonEmpty::new_unchecked(vec![BTC_USD_ID, ETH_USD_ID]);
 
-                let mut client = PythClient::new(PYTH_URL)?;
+                let mut client = PythClientCore::new(PYTH_URL)?;
                 let mut stream = client.stream(ids).await?;
 
                 loop {

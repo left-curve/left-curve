@@ -1,9 +1,9 @@
 use {
-    crate::{RetrievePythId, pyth_handler::PythHandler},
+    crate::{QueryPythId, pyth_handler::PythHandler},
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
-    pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    pyth_client::{PythClientCore, PythClientCoreCache, PythClientTrait},
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
     pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
     std::{fmt::Debug, sync::Mutex},
@@ -34,12 +34,12 @@ where
     }
 }
 
-impl ProposalPreparer<PythClient> {
+impl ProposalPreparer<PythClientCore> {
     pub fn new() -> Self {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new(PYTH_URL);
+        let client = PythHandler::new_with_core(PYTH_URL);
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
@@ -47,18 +47,18 @@ impl ProposalPreparer<PythClient> {
     }
 }
 
-impl Default for ProposalPreparer<PythClient> {
+impl Default for ProposalPreparer<PythClientCore> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ProposalPreparer<PythClientCache> {
+impl ProposalPreparer<PythClientCoreCache> {
     pub fn new_with_cache() -> Self {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new_with_cache(PYTH_URL);
+        let client = PythHandler::new_with_core_cache(PYTH_URL);
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
@@ -71,7 +71,10 @@ impl ProposalPreparer<PythClientLazer> {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new_with_lazer(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST);
+        let client = PythHandler::new_with_lazer(
+            NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
+            LAZER_ACCESS_TOKEN_TEST,
+        );
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
@@ -84,8 +87,10 @@ impl ProposalPreparer<PythClientLazerCache> {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client =
-            PythHandler::new_with_lazer_cache(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST);
+        let client = PythHandler::new_with_lazer_cache(
+            NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
+            LAZER_ACCESS_TOKEN_TEST,
+        );
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
@@ -95,7 +100,7 @@ impl ProposalPreparer<PythClientLazerCache> {
 
 impl<P> grug_app::ProposalPreparer for ProposalPreparer<P>
 where
-    P: PythClientTrait + RetrievePythId + Send + 'static,
+    P: PythClientTrait + QueryPythId + Send + 'static,
     P::Error: Debug,
 {
     type Error = StdError;

@@ -35,9 +35,9 @@ pub struct PythClientLazerCache {
 }
 
 impl PythClientLazerCache {
-    pub fn new<V, U, T>(endpoints: V, access_token: T) -> Result<Self, anyhow::Error>
+    pub fn new<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> Result<Self, anyhow::Error>
     where
-        V: IntoIterator<Item = U>,
+        V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
@@ -56,14 +56,14 @@ impl PythClientLazerCache {
     where
         I: IntoIterator<Item = PythLazerSubscriptionDetails> + Lengthy + Clone,
     {
-        let mut stored_vaas = HashMap::new();
+        let mut stored_data = HashMap::new();
 
         // Load data for each id.
         for id in ids.into_inner() {
             let filename = Self::cache_filename(&id);
 
             // If the file is not in memory, try to read from disk.
-            stored_vaas.entry(filename.clone()).or_insert_with(|| {
+            stored_data.entry(filename.clone()).or_insert_with(|| {
                 let mut cache_file = DiskPersistence::new(filename, true);
 
                 if cache_file.exists() {
@@ -99,7 +99,7 @@ impl PythClientLazerCache {
             });
         }
 
-        stored_vaas
+        stored_data
     }
 
     pub fn cache_filename(id: &PythLazerSubscriptionDetails) -> PathBuf {
