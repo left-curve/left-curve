@@ -3,13 +3,9 @@
   "extends": "@left-curve/config/ts/react.json",
   "compilerOptions": {
     "outDir": "build",
-    "rootDir": "src"
+    "rootDir": "ui"
   },
-  "include": ["src"],
+  "include": ["ui"],
   "exclude": ["node_modules"],
-  "references": [
-    {
-      "path": "../../foundation/web"
-    }
-  ]
+  "references": []
 }

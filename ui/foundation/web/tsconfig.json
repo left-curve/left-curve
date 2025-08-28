@@ -9,7 +9,13 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../foundation/web"
+      "path": "../../../sdk/dango"
+    },
+    {
+      "path": "../../store"
+    },
+    {
+      "path": "../shared"
     }
   ]
 }

@@ -12,7 +12,7 @@ export default defineConfig([
     splitting: false,
     treeshake: false,
     format: ["esm", "cjs"],
-    external: ["react", "react-dom"],
+    external: ["react", "react-dom", "@tanstack/react-query"],
     platform: "browser",
     publicDir: "./public",
     outExtension: ({ format }) => (format === "cjs" ? { js: ".cjs" } : { js: ".js" }),

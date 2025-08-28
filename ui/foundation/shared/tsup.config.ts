@@ -7,7 +7,7 @@ import { type Options, defineConfig } from "tsup";
 export default defineConfig([
   {
     ...(config as Options),
-    entry: ["./src/**"],
+    entry: ["./ui/**"],
     bundle: false,
     splitting: false,
     treeshake: false,
