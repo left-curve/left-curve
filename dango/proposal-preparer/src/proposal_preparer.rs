@@ -1,10 +1,11 @@
 use {
-    crate::pyth_handler::PythHandler,
+    crate::{QueryPythId, pyth_handler::PythHandler},
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
     grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
     prost::bytes::Bytes,
-    pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_types::constants::PYTH_URL,
+    pyth_client::{PythClientCore, PythClientCoreCache, PythClientTrait},
+    pyth_lazer::{PythClientLazer, PythClientLazerCache},
+    pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
     std::{fmt::Debug, sync::Mutex},
     tracing::error,
 };
@@ -16,23 +17,29 @@ use {
 
 const GAS_LIMIT: u64 = 50_000_000;
 
-pub struct ProposalPreparer<P> {
+pub struct ProposalPreparer<P>
+where
+    P: PythClientTrait,
+{
     // `Option` to be able to not clone the `PythHandler`.
     pyth_handler: Option<Mutex<PythHandler<P>>>,
 }
 
-impl<P> Clone for ProposalPreparer<P> {
+impl<P> Clone for ProposalPreparer<P>
+where
+    P: PythClientTrait,
+{
     fn clone(&self) -> Self {
         Self { pyth_handler: None }
     }
 }
 
-impl ProposalPreparer<PythClient> {
+impl ProposalPreparer<PythClientCore> {
     pub fn new() -> Self {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new(PYTH_URL);
+        let client = PythHandler::new_with_core(PYTH_URL);
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
@@ -40,18 +47,50 @@ impl ProposalPreparer<PythClient> {
     }
 }
 
-impl Default for ProposalPreparer<PythClient> {
+impl Default for ProposalPreparer<PythClientCore> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ProposalPreparer<PythClientCache> {
+impl ProposalPreparer<PythClientCoreCache> {
     pub fn new_with_cache() -> Self {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new_with_cache(PYTH_URL);
+        let client = PythHandler::new_with_core_cache(PYTH_URL);
+
+        Self {
+            pyth_handler: Some(Mutex::new(client)),
+        }
+    }
+}
+
+impl ProposalPreparer<PythClientLazer> {
+    pub fn new_with_lazer() -> Self {
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
+        let client = PythHandler::new_with_lazer(
+            NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
+            LAZER_ACCESS_TOKEN_TEST,
+        );
+
+        Self {
+            pyth_handler: Some(Mutex::new(client)),
+        }
+    }
+}
+
+impl ProposalPreparer<PythClientLazerCache> {
+    pub fn new_with_lazer_cache() -> Self {
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
+        let client = PythHandler::new_with_lazer_cache(
+            NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
+            LAZER_ACCESS_TOKEN_TEST,
+        );
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
@@ -61,7 +100,7 @@ impl ProposalPreparer<PythClientCache> {
 
 impl<P> grug_app::ProposalPreparer for ProposalPreparer<P>
 where
-    P: PythClientTrait + Send + 'static,
+    P: PythClientTrait + QueryPythId + Send + 'static,
     P::Error: Debug,
 {
     type Error = StdError;
@@ -86,13 +125,13 @@ where
             error!("Failed to update Pyth stream: {:?}", err);
         }
 
-        // Retrieve the VAAs.
-        let vaas = pyth_handler.fetch_latest_vaas();
+        // Retrieve the PriceUpdate.
+        let maybe_price_update = pyth_handler.fetch_latest_price_update();
 
-        // Return if there are no VAAs to feed.
-        if vaas.is_empty() {
+        // Return if there are no new prices to feed.
+        let Some(price_update) = maybe_price_update else {
             return Ok(txs);
-        }
+        };
 
         // Build the tx.
         let tx = Tx {
@@ -100,7 +139,7 @@ where
             gas_limit: GAS_LIMIT,
             msgs: NonEmpty::new_unchecked(vec![Message::execute(
                 cfg.addresses.oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new(vaas)?),
+                &ExecuteMsg::FeedPrices(price_update),
                 Coins::new(),
             )?]),
             data: Json::null(),

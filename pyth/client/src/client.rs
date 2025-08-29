@@ -2,8 +2,8 @@ use {
     crate::{PythClientTrait, error},
     async_stream::stream,
     async_trait::async_trait,
-    grug::{Binary, Inner, JsonDeExt, Lengthy, NonEmpty},
-    pyth_types::LatestVaaResponse,
+    grug::{Inner, JsonDeExt, Lengthy, NonEmpty},
+    pyth_types::{LatestVaaResponse, PriceUpdate, PythId},
     reqwest::{Client, IntoUrl, Url},
     reqwest_eventsource::{Event, EventSource, retry::ExponentialBackoff},
     std::{
@@ -22,14 +22,14 @@ use {
 
 const MAX_DELAY: Duration = Duration::from_secs(5);
 
-/// PythClient is a client to interact with the Pyth network.
+/// PythClientCore is a client to interact with the Pyth Core network.
 #[derive(Debug, Clone)]
-pub struct PythClient {
+pub struct PythClientCore {
     pub base_url: Url,
     keep_running: Arc<AtomicBool>,
 }
 
-impl PythClient {
+impl PythClientCore {
     pub fn new<U: IntoUrl>(base_url: U) -> Result<Self, error::Error> {
         Ok(Self {
             base_url: base_url.into_url()?,
@@ -39,8 +39,7 @@ impl PythClient {
 
     fn create_request_params<I>(ids: NonEmpty<I>) -> Vec<(&'static str, String)>
     where
-        I: IntoIterator + Lengthy,
-        I::Item: ToString,
+        I: IntoIterator<Item = PythId> + Lengthy,
     {
         let mut params = ids
             .into_inner()
@@ -143,16 +142,16 @@ impl PythClient {
 }
 
 #[async_trait]
-impl PythClientTrait for PythClient {
+impl PythClientTrait for PythClientCore {
     type Error = crate::error::Error;
+    type PythId = PythId;
 
     async fn stream<I>(
         &mut self,
         ids: NonEmpty<I>,
-    ) -> Result<Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
+    ) -> Result<Pin<Box<dyn tokio_stream::Stream<Item = PriceUpdate> + Send>>, Self::Error>
     where
-        I: IntoIterator + Lengthy + Send + Clone,
-        I::Item: ToString,
+        I: IntoIterator<Item = Self::PythId> + Lengthy + Send + Clone,
     {
         // Close the previous connection.
         self.close();
@@ -161,7 +160,7 @@ impl PythClientTrait for PythClient {
         let keep_running = self.keep_running.clone();
 
         let url = self.base_url.join("v2/updates/price/stream")?;
-        let params = PythClient::create_request_params(ids);
+        let params = PythClientCore::create_request_params(ids);
 
         let stream = stream! {
             loop {
@@ -209,7 +208,12 @@ impl PythClientTrait for PythClient {
                                 Ok(Event::Message(message)) => {
                                     match message.data.deserialize_json::<LatestVaaResponse>() {
                                         Ok(vaas) => {
-                                            yield vaas.binary.data;
+                                            if vaas.binary.data.is_empty() {
+                                                warn!("Received empty data from Pyth SSE stream");
+                                                continue;
+                                            }
+
+                                            yield PriceUpdate::Core(NonEmpty::new(vaas.binary.data).unwrap());
                                         },
                                         Err(err) => {
                                             error!(
@@ -235,19 +239,20 @@ impl PythClientTrait for PythClient {
         Ok(Box::pin(stream))
     }
 
-    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<Vec<Binary>, Self::Error>
+    fn get_latest_price_update<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
     where
-        I: IntoIterator + Clone + Lengthy,
-        I::Item: ToString,
+        I: IntoIterator<Item = Self::PythId> + Clone + Lengthy,
     {
-        Ok(reqwest::blocking::Client::new()
+        let vaas = reqwest::blocking::Client::new()
             .get(self.base_url.join("v2/updates/price/latest")?)
-            .query(&PythClient::create_request_params(ids.clone()))
+            .query(&PythClientCore::create_request_params(ids.clone()))
             .send()?
             .error_for_status()?
             .json::<LatestVaaResponse>()?
             .binary
-            .data)
+            .data;
+
+        Ok(PriceUpdate::Core(NonEmpty::new(vaas)?))
     }
 
     fn close(&mut self) {

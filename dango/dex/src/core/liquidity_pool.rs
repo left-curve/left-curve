@@ -638,12 +638,10 @@ mod tests {
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -705,12 +703,10 @@ mod tests {
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -758,12 +754,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -791,12 +785,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -824,12 +816,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -857,12 +847,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -890,12 +878,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -923,12 +909,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -956,12 +940,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -989,12 +971,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1054,12 +1034,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1087,12 +1065,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1120,12 +1096,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1153,12 +1127,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1186,12 +1158,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1219,12 +1189,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1252,12 +1220,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1285,12 +1251,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1318,12 +1282,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,

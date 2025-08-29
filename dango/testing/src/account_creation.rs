@@ -14,12 +14,17 @@ use {
     grug_vm_rust::RustVm,
     hyperlane_types::constants::solana,
     indexer_hooked::HookedIndexer,
-    pyth_client::PythClientCache,
+    pyth_client::PythClientCoreCache,
     std::{ops::DerefMut, str::FromStr},
 };
 
 pub fn create_user_account(
-    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
+    suite: &mut HyperlaneTestSuite<
+        MemDb,
+        RustVm,
+        ProposalPreparer<PythClientCoreCache>,
+        HookedIndexer,
+    >,
     contracts: &Contracts,
     test_account: &mut TestAccount,
 ) {
@@ -27,7 +32,12 @@ pub fn create_user_account(
 }
 
 pub fn add_user_public_key(
-    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
+    suite: &mut HyperlaneTestSuite<
+        MemDb,
+        RustVm,
+        ProposalPreparer<PythClientCoreCache>,
+        HookedIndexer,
+    >,
     contracts: &Contracts,
     test_account: &mut TestAccount,
 ) -> (Key, Hash256) {
@@ -49,7 +59,12 @@ pub fn add_user_public_key(
 }
 
 pub fn add_account_with_existing_user(
-    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
+    suite: &mut HyperlaneTestSuite<
+        MemDb,
+        RustVm,
+        ProposalPreparer<PythClientCoreCache>,
+        HookedIndexer,
+    >,
     contracts: &Contracts,
     test_account: &mut TestAccount,
 ) -> TestAccount {
@@ -64,7 +79,12 @@ pub fn add_account_with_existing_user(
 }
 
 pub fn create_user_and_account(
-    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
+    suite: &mut HyperlaneTestSuite<
+        MemDb,
+        RustVm,
+        ProposalPreparer<PythClientCoreCache>,
+        HookedIndexer,
+    >,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     codes: &Codes<ContractWrapper>,

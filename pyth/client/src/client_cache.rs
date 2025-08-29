@@ -1,13 +1,14 @@
 use {
-    crate::{PythClient, PythClientTrait, error},
+    crate::{PythClientCore, PythClientTrait, error},
     async_stream::stream,
     async_trait::async_trait,
     grug::{Binary, Inner, Lengthy, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
+    pyth_types::{PriceUpdate, PythId},
     reqwest::{IntoUrl, Url},
     std::{
         collections::HashMap,
-        env,
+        env, panic,
         path::{Path, PathBuf},
         sync::{
             Arc,
@@ -18,20 +19,21 @@ use {
     },
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
+    tracing::warn,
 };
 
 /// Define the number of samples for each PythId to store in file.
 pub const PYTH_CACHE_SAMPLES: usize = 50;
 
 #[derive(Debug, Clone)]
-pub struct PythClientCache {
+pub struct PythClientCoreCache {
     base_url: Url,
     // Used to return newer vaas at each call.
     vaas_index: Arc<AtomicU64>,
     keep_running: Arc<AtomicBool>,
 }
 
-impl PythClientCache {
+impl PythClientCoreCache {
     pub fn new<U: IntoUrl>(base_url: U) -> Result<Self, error::Error> {
         Ok(Self {
             base_url: base_url.into_url()?,
@@ -44,10 +46,9 @@ impl PythClientCache {
     pub fn load_or_retrieve_data<I>(
         base_url: &Url,
         ids: NonEmpty<I>,
-    ) -> HashMap<PathBuf, Vec<Vec<Binary>>>
+    ) -> HashMap<PathBuf, Vec<NonEmpty<Vec<Binary>>>>
     where
-        I: IntoIterator + Lengthy + Clone,
-        I::Item: ToString,
+        I: IntoIterator<Item = PythId> + Lengthy + Clone,
     {
         let mut stored_vaas = HashMap::new();
 
@@ -60,23 +61,31 @@ impl PythClientCache {
                 let mut cache_file = DiskPersistence::new(filename, true);
 
                 if cache_file.exists() {
-                    return cache_file.load::<Vec<Vec<Binary>>>().unwrap();
+                    return cache_file.load::<Vec<NonEmpty<Vec<Binary>>>>().unwrap();
                 }
 
                 let rt = Runtime::new().unwrap();
                 let values = rt.block_on(async {
-                    let mut client = PythClient::new(base_url.clone()).unwrap();
+                    let mut client = PythClientCore::new(base_url.clone()).unwrap();
 
                     let mut stream = client
-                        .stream(NonEmpty::new(vec![id.to_string()]).unwrap())
+                        .stream(NonEmpty::new(vec![id]).unwrap())
                         .await
                         .unwrap();
 
                     // Retrieve CACHE_SAMPLES values to be able to return newer values each time.
                     let mut values = vec![];
                     while values.len() < PYTH_CACHE_SAMPLES {
-                        if let Some(vaas) = stream.next().await {
-                            values.push(vaas);
+                        if let Some(price_update) = stream.next().await {
+                            if let PriceUpdate::Core(vaas) = price_update {
+                                if vaas.is_empty() {
+                                    warn!("Empty VAA received, skipping");
+                                    continue;
+                                }
+                                values.push(vaas);
+                            } else {
+                                panic!("Received non-core PriceUpdate: {price_update:?}",);
+                            }
                         }
                     }
 
@@ -110,16 +119,16 @@ impl PythClientCache {
 }
 
 #[async_trait]
-impl PythClientTrait for PythClientCache {
+impl PythClientTrait for PythClientCoreCache {
     type Error = error::Error;
+    type PythId = PythId;
 
     async fn stream<I>(
         &mut self,
         ids: NonEmpty<I>,
-    ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
+    ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = PriceUpdate> + Send>>, Self::Error>
     where
-        I: IntoIterator + Lengthy + Send + Clone,
-        I::Item: ToString,
+        I: IntoIterator<Item = Self::PythId> + Lengthy + Send + Clone,
     {
         self.close();
         self.keep_running = Arc::new(AtomicBool::new(true));
@@ -137,12 +146,16 @@ impl PythClientTrait for PythClientCache {
                 let vaas = stored_vaas
                     .iter_mut()
                     .filter_map(|(_, v)| v.get(index).cloned())
-                    .flatten()
+                    .flat_map(|v| v.into_inner())
                     .collect::<Vec<_>>();
 
                 index += 1;
 
-                yield vaas;
+                if vaas.is_empty() {
+                    warn!("No new VAA data available, waiting for next update");
+                }else{
+                    yield PriceUpdate::Core(NonEmpty::new(vaas).unwrap());
+                }
 
                 sleep(Duration::from_millis(500));
             }
@@ -151,10 +164,9 @@ impl PythClientTrait for PythClientCache {
         Ok(Box::pin(stream))
     }
 
-    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<Vec<Binary>, Self::Error>
+    fn get_latest_price_update<I>(&self, ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
     where
-        I: IntoIterator + Clone + Lengthy,
-        I::Item: ToString,
+        I: IntoIterator<Item = Self::PythId> + Clone + Lengthy,
     {
         // Load the data.
         let stored_vaas = Self::load_or_retrieve_data(&self.base_url, ids);
@@ -163,12 +175,12 @@ impl PythClientTrait for PythClientCache {
         let result = stored_vaas
             .into_iter()
             .filter_map(|(_, v)| v.get(index).cloned())
-            .flatten()
+            .flat_map(|v| v.into_inner())
             .collect::<Vec<_>>();
 
         self.vaas_index.fetch_add(1, Ordering::SeqCst);
 
-        Ok(result)
+        Ok(PriceUpdate::Core(NonEmpty::new(result)?))
     }
 
     fn close(&mut self) {
