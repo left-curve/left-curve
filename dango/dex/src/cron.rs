@@ -1215,7 +1215,7 @@ mod tests {
                         limit: 10,
                     }),
                     bucket_sizes: BTreeSet::new(),
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::from_str("0.001").unwrap()),
                 },
             )
             .unwrap();
