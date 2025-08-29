@@ -1,10 +1,10 @@
-import { AddressVisualizer, useMediaQuery } from "@left-curve/foundation-web";
+import { AddressVisualizer, useMediaQuery } from "@left-curve/applets-kit";
 import { useFavApplets } from "~/hooks/useFavApplets";
 
-import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/foundation-web";
+import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import type { AppletMetadata } from "@left-curve/foundation-web";
+import type { AppletMetadata } from "@left-curve/applets-kit";
 import type { Account, Address, ContractInfo } from "@left-curve/dango/types";
 import type { AnyCoin, WithPrice } from "@left-curve/store/types";
 import type { MouseEvent, PropsWithChildren } from "react";

@@ -7,7 +7,7 @@ import {
   TruncateText,
   twMerge,
   useMediaQuery,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import { decodeBase64, encodeHex } from "@left-curve/dango/encoding";
 import { uid } from "@left-curve/dango/utils";
 import { useAccount, useSigningClient } from "@left-curve/store";

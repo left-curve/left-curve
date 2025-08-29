@@ -7,7 +7,7 @@ import {
   twMerge,
   useMediaQuery,
   useWatchEffect,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import { capitalize } from "@left-curve/dango/utils";
 
 import { AnimatePresence, motion } from "framer-motion";

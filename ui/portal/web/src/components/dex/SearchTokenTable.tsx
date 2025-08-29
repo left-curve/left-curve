@@ -1,9 +1,9 @@
 import { useConfig, usePrices } from "@left-curve/store";
 import { useMemo } from "react";
 
-import { Cell, Table } from "@left-curve/foundation-web";
+import { Cell, Table } from "@left-curve/applets-kit";
 
-import type { TableClassNames, TableColumn } from "@left-curve/foundation-web";
+import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { PairId, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";

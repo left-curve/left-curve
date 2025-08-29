@@ -1,8 +1,8 @@
-import { useStorage } from "@left-curve/foundation-web";
+import { useStorage } from "@left-curve/applets-kit";
 
 import { APPLETS, DEFAULT_FAV_APPLETS } from "~/constants";
 
-import type { AppletMetadata } from "@left-curve/foundation-web";
+import type { AppletMetadata } from "@left-curve/applets-kit";
 import { useCallback } from "react";
 
 export function useFavApplets() {

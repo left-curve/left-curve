@@ -1,4 +1,4 @@
-import { Badge, Button, IconButton, IconClose, PairAssets } from "@left-curve/foundation-web";
+import { Badge, Button, IconButton, IconClose, PairAssets } from "@left-curve/applets-kit";
 import { useApp } from "~/hooks/useApp";
 
 import { forwardRef, useImperativeHandle } from "react";

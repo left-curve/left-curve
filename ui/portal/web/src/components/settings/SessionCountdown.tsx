@@ -1,4 +1,4 @@
-import { useCountdown } from "@left-curve/foundation-web";
+import { useCountdown } from "@left-curve/applets-kit";
 import { useSessionKey } from "@left-curve/store";
 
 import { AnimatePresence, motion } from "framer-motion";

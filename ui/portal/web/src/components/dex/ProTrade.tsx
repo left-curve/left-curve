@@ -6,7 +6,7 @@ import {
   useInputs,
   useMediaQuery,
   usePortalTarget,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
@@ -16,7 +16,7 @@ import { m } from "~/paraglide/messages";
 import { createPortal } from "react-dom";
 import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 
-import { Badge, Cell, IconChevronDownFill, Table, Tabs } from "@left-curve/foundation-web";
+import { Badge, Cell, IconChevronDownFill, Table, Tabs } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
 import { Modals } from "../modals/RootModal";
@@ -26,7 +26,7 @@ import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
 
 import type { PropsWithChildren } from "react";
-import type { TableColumn } from "@left-curve/foundation-web";
+import type { TableColumn } from "@left-curve/applets-kit";
 import type { OrderId, OrdersByUserResponse, PairId, Trade } from "@left-curve/dango/types";
 
 const [ProTradeProvider, useProTrade] = createContext<{

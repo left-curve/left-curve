@@ -10,7 +10,7 @@ import {
   twMerge,
   useCountdown,
   useWatchEffect,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 import { TransactionsTable } from "./TransactionsTable";
 

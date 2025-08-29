@@ -1,4 +1,4 @@
-import { Button, IconAlert, IconButton, IconClose } from "@left-curve/foundation-web";
+import { Button, IconAlert, IconButton, IconClose } from "@left-curve/applets-kit";
 import { useApp } from "~/hooks/useApp";
 
 import { forwardRef, useImperativeHandle } from "react";

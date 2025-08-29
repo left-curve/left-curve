@@ -1,4 +1,4 @@
-import { twMerge, useMediaQuery } from "@left-curve/foundation-web";
+import { twMerge, useMediaQuery } from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";

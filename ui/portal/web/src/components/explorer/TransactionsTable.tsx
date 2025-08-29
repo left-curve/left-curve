@@ -2,9 +2,9 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "~/paraglide/messages";
 
-import { Cell, CursorPagination, Table } from "@left-curve/foundation-web";
+import { Cell, CursorPagination, Table } from "@left-curve/applets-kit";
 
-import type { TableColumn } from "@left-curve/foundation-web";
+import type { TableColumn } from "@left-curve/applets-kit";
 import type { IndexedTransaction } from "@left-curve/dango/types";
 
 type TransactionsTableProps = {

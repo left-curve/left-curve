@@ -1,4 +1,4 @@
-import { twMerge, useClickAway, useMediaQuery } from "@left-curve/foundation-web";
+import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
@@ -14,12 +14,12 @@ import {
   ResizerContainer,
   Spinner,
   TextLoop,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { SearchItem } from "./SearchItem";
 
-import type { AppletMetadata } from "@left-curve/foundation-web";
+import type { AppletMetadata } from "@left-curve/applets-kit";
 import type React from "react";
 import type { SearchBarResult } from "~/hooks/useSearchBar";
 

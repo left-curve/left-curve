@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useApp } from "~/hooks/useApp";
-import { useMediaQuery, useTheme } from "@left-curve/foundation-web";
+import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
 
 import {
   Button,
@@ -9,7 +9,7 @@ import {
   IconDiscord,
   IconMirror,
   IconTwitter,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import { SearchMenu } from "../foundation/SearchMenu";
 import { AppletsSection } from "../overview/AppletsSection";
 

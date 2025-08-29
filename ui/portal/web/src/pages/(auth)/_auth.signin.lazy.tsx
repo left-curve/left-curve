@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useSearch } from "@tanstack/react-router";
 
-import { WizardProvider } from "@left-curve/foundation-web";
+import { WizardProvider } from "@left-curve/applets-kit";
 import { useEffect } from "react";
 import { Signin } from "~/components/auth/Signin";
 import { Modals } from "~/components/modals/RootModal";

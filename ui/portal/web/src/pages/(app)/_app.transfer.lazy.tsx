@@ -1,4 +1,4 @@
-import { useInputs, useWatchEffect } from "@left-curve/foundation-web";
+import { useInputs, useWatchEffect } from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -22,7 +22,7 @@ import {
   Tabs,
   TextCopy,
   TruncateText,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import type { Address } from "@left-curve/dango/types";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
 import { Modals } from "~/components/modals/RootModal";

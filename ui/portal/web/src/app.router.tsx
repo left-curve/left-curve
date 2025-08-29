@@ -2,7 +2,7 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 
 import { useAccount, useConfig, usePublicClient } from "@left-curve/store";
 
-import { Spinner } from "@left-curve/foundation-web";
+import { Spinner } from "@left-curve/applets-kit";
 
 import type {
   UseAccountReturnType,

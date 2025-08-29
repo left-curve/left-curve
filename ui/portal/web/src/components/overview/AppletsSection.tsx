@@ -1,4 +1,4 @@
-import { IconAddCross } from "@left-curve/foundation-web";
+import { IconAddCross } from "@left-curve/applets-kit";
 import { useApp } from "~/hooks/useApp";
 
 import { useFavApplets } from "~/hooks/useFavApplets";

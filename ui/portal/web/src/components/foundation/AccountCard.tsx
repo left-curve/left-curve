@@ -13,7 +13,7 @@ import {
   TextCopy,
   TruncateText,
   twMerge,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import { useApp } from "~/hooks/useApp";
 
 export const AccountCardOptions = {

@@ -4,7 +4,7 @@ import {
   IconChevronRight,
   twMerge,
   usePortalTarget,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";

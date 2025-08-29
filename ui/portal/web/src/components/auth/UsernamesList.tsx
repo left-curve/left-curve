@@ -1,4 +1,4 @@
-import { IconButton, IconChevronRight } from "@left-curve/foundation-web";
+import { IconButton, IconChevronRight } from "@left-curve/applets-kit";
 import { Fragment } from "react";
 
 import type { Username } from "@left-curve/dango/types";

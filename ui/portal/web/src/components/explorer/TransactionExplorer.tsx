@@ -2,7 +2,7 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { AccordionItem, IconLink, twMerge } from "@left-curve/foundation-web";
+import { AccordionItem, IconLink, twMerge } from "@left-curve/applets-kit";
 
 import {
   AddressVisualizer,
@@ -10,7 +10,7 @@ import {
   JsonVisualizer,
   TextCopy,
   createContext,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 
 import { m } from "~/paraglide/messages";

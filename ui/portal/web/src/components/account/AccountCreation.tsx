@@ -1,4 +1,4 @@
-import { useInputs, useMediaQuery, useWizard } from "@left-curve/foundation-web";
+import { useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -21,8 +21,8 @@ import {
   Input,
   ResizerContainer,
   Stepper,
-} from "@left-curve/foundation-web";
-import { ensureErrorMessage, twMerge } from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
+import { ensureErrorMessage, twMerge } from "@left-curve/applets-kit";
 import { AccountType } from "@left-curve/dango/types";
 import { Link } from "@tanstack/react-router";
 import { Modals } from "../modals/RootModal";

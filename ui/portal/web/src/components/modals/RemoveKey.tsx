@@ -5,7 +5,7 @@ import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 
-import { Button, IconButton, IconClose, IconTrash } from "@left-curve/foundation-web";
+import { Button, IconButton, IconClose, IconTrash } from "@left-curve/applets-kit";
 
 import type { KeyHash } from "@left-curve/dango/types";
 interface Props {

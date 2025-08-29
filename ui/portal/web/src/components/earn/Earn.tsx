@@ -3,12 +3,12 @@ import type { PropsWithChildren } from "react";
 import { uid } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
 
-import { Cell, Table } from "@left-curve/foundation-web";
+import { Cell, Table } from "@left-curve/applets-kit";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
-import { StrategyCard, createContext } from "@left-curve/foundation-web";
+import { StrategyCard, createContext } from "@left-curve/applets-kit";
 import { useAccount, useAppConfig, useBalances, useConfig } from "@left-curve/store";
 
-import type { TableColumn } from "@left-curve/foundation-web";
+import type { TableColumn } from "@left-curve/applets-kit";
 import type { PairSymbols } from "@left-curve/dango/types";
 import type { LpCoin, WithAmount } from "@left-curve/store/types";
 

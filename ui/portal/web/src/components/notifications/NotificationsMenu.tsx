@@ -1,4 +1,4 @@
-import { Button, twMerge, useClickAway } from "@left-curve/foundation-web";
+import { Button, twMerge, useClickAway } from "@left-curve/applets-kit";
 import { useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 

@@ -1,6 +1,6 @@
 import { useRouter } from "@tanstack/react-router";
 
-import { IconButton, IconChevronDown, twMerge } from "@left-curve/foundation-web";
+import { IconButton, IconChevronDown, twMerge } from "@left-curve/applets-kit";
 
 import type React from "react";
 

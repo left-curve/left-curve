@@ -1,7 +1,7 @@
 import { useConfig } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
 
-import { Button } from "@left-curve/foundation-web";
+import { Button } from "@left-curve/applets-kit";
 import { ButtonLink } from "../foundation/ButtonLink";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";

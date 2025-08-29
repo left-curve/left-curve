@@ -1,4 +1,4 @@
-import { twMerge, useMediaQuery, useTheme } from "@left-curve/foundation-web";
+import { twMerge, useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";

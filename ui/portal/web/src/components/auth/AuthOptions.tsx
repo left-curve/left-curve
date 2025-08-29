@@ -1,4 +1,4 @@
-import { Button, IconPasskey } from "@left-curve/foundation-web";
+import { Button, IconPasskey } from "@left-curve/applets-kit";
 import { useConnectors } from "@left-curve/store";
 import { motion } from "framer-motion";
 import type React from "react";

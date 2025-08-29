@@ -1,4 +1,4 @@
-import { IconCheckedCircle, IconCloseCircle, Spinner, twMerge } from "@left-curve/foundation-web";
+import { IconCheckedCircle, IconCloseCircle, Spinner, twMerge } from "@left-curve/applets-kit";
 import { useEffect, useState } from "react";
 import { useApp } from "~/hooks/useApp";
 

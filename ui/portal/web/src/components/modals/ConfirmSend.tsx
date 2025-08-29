@@ -1,4 +1,4 @@
-import { Button, IconButton, IconClose, Skeleton, TruncateText } from "@left-curve/foundation-web";
+import { Button, IconButton, IconClose, Skeleton, TruncateText } from "@left-curve/applets-kit";
 import { useApp } from "~/hooks/useApp";
 
 import type { Address } from "@left-curve/dango/types";

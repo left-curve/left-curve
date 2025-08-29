@@ -4,7 +4,7 @@ import "@left-curve/chartiq/js/standard";
 import "@left-curve/chartiq/js/componentUI";
 import "@left-curve/chartiq/js/addOns";
 
-import { useMediaQuery, useTheme, useStorage } from "@left-curve/foundation-web";
+import { useMediaQuery, useTheme, useStorage } from "@left-curve/applets-kit";
 import { CIQ } from "@left-curve/chartiq/js/components";
 import { useConfig, usePublicClient } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useRef } from "react";

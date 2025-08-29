@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Suspense, lazy, useMemo, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 
-import { Button, useMediaQuery } from "@left-curve/foundation-web";
+import { Button, useMediaQuery } from "@left-curve/applets-kit";
 import type React from "react";
 import { Sheet, type SheetRef } from "react-modal-sheet";
 

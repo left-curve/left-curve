@@ -1,4 +1,4 @@
-import { Toast } from "@left-curve/foundation-web";
+import { Toast } from "@left-curve/applets-kit";
 import { RootModal } from "./components/modals/RootModal";
 
 import { DangoStoreProvider } from "@left-curve/store";

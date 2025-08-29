@@ -1,4 +1,4 @@
-import { Button } from "@left-curve/foundation-web";
+import { Button } from "@left-curve/applets-kit";
 import { Link, createLazyFileRoute } from "@tanstack/react-router";
 import { m } from "~/paraglide/messages";
 

@@ -11,7 +11,7 @@ import {
   Tab,
   Tabs,
   useTheme,
-} from "@left-curve/foundation-web";
+} from "@left-curve/applets-kit";
 
 import { m } from "~/paraglide/messages";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
