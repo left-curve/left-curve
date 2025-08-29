@@ -3,7 +3,6 @@ use {
         DEPTHS, LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK,
         VOLUMES, VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
-        liquidity_depth::get_bucket,
     },
     dango_oracle::OracleQuerier,
     dango_types::{
