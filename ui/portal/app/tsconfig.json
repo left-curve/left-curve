@@ -20,6 +20,9 @@
       "path": "../../foundation/app"
     },
     {
+      "path": "../../foundation/shared"
+    },
+    {
       "path": "../../../sdk/dango"
     },
     {

@@ -1,4 +1,6 @@
-import { twMerge, useTheme } from "@left-curve/foundation-app";
+import { useTheme } from "./hooks/useTheme";
+
+import { twMerge } from "@left-curve/foundation-shared";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import type { PropsWithChildren } from "react";
@@ -6,6 +8,7 @@ import type React from "react";
 
 export const AppTheme: React.FC<PropsWithChildren> = ({ children }) => {
   const { theme } = useTheme();
+
   return (
     <SafeAreaView
       className={twMerge(

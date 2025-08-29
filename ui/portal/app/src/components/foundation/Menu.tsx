@@ -1,7 +1,11 @@
 import { useRouter } from "expo-router";
 
 import { Pressable, View } from "react-native";
-import { GlobalText, IconSearch, IconWallet, TextLoop, Button } from "@left-curve/foundation-app";
+import { IconSearch } from "./icons/IconSearch";
+import { GlobalText } from "./GlobalText";
+import { TextLoop } from "./TextLoop";
+import { Button } from "./Button";
+import { IconWallet } from "./icons/IconWallet";
 
 import type React from "react";
 

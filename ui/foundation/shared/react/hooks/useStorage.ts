@@ -14,12 +14,11 @@ export type UseStorageOptions<T = undefined> = {
   migrations?: Record<number, (data: any) => T>;
   sync?: boolean;
 };
+
 export function useStorage<T = undefined>(
   key: string,
   options: UseStorageOptions<T> = {},
 ): [T extends undefined ? null : T, Dispatch<SetStateAction<T>>] {
-  const [channel] = useState(new BroadcastChannel(`dango.storage.${key}`));
-
   const {
     enabled = true,
     sync = false,
@@ -28,6 +27,8 @@ export function useStorage<T = undefined>(
     version: __version__ = 1,
     migrations = {},
   } = options;
+
+  const [channel] = useState<BroadcastChannel>(new BroadcastChannel(`dango.storage.${key}`));
 
   const storage = (() => {
     if (_storage_) return _storage_;

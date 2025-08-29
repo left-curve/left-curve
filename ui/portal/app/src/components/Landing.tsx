@@ -3,7 +3,7 @@ import { FullSection } from "./foundation";
 
 import Logo from "~/assets/images/dango.svg";
 import { cssInterop } from "nativewind";
-import { GlobalText } from "@left-curve/foundation-app";
+import { GlobalText } from "./foundation/GlobalText";
 
 import type { PropsWithChildren } from "react";
 

@@ -1,7 +1,8 @@
-import { IconChevronDown, useTheme } from "@left-curve/foundation-app";
+import { useTheme } from "~/hooks/useTheme";
 import { useRouter } from "expo-router";
+
+import { Button, IconChevronDown } from "~/components/foundation";
 import { TextInput, View } from "react-native";
-import { Button } from "~/components/foundation";
 
 export default function SearchScreen() {
   const { theme } = useTheme();

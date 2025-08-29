@@ -1,4 +1,4 @@
-import { tailwindConfig } from "../../config/tailwind/config";
+import { tailwindConfig } from "@left-curve/foundation-shared/tailwind/config";
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {

@@ -45,10 +45,8 @@
     "framer-motion": "catalog:",
     "qr-code-styling": "^1.7.2",
     "react-use": "^17.5.1",
-    "tailwind-scrollbar": "^3.1.0",
     "tailwind-variants": "catalog:",
-    "tailwindcss": "catalog:",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss": "catalog:"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
@@ -59,8 +57,6 @@
     "@storybook/addon-links": "^8.6.12",
     "@storybook/blocks": "^8.6.12",
     "@storybook/react": "^8.6.12",
-    "@types/big.js": "^6.2.2",
-    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "autoprefixer": "catalog:",
@@ -72,13 +68,10 @@
     "tailwindcss": "catalog:"
   },
   "peerDependencies": {
-    "react-hot-toast": ">=2.0.0",
     "@tanstack/react-query": ">=5.0.0",
     "@tanstack/react-table": ">=8.0.0",
-    "big.js": ">=6.0.0",
     "date-fns": ">=4.0.0",
     "react": "^18",
-    "react-dom": "^18",
-    "react-hook-form": "^7"
+    "react-dom": "^18"
   }
 }

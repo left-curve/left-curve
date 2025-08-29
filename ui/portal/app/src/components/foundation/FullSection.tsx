@@ -1,4 +1,7 @@
-import { twMerge, useTheme } from "@left-curve/foundation-app";
+import { useTheme } from "~/hooks/useTheme";
+
+import { twMerge } from "@left-curve/foundation-shared";
+
 import { Dimensions, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
