@@ -1,7 +1,10 @@
 use {
     crate::DEPTHS,
     dango_types::dex::Direction,
-    grug::{Denom, IsZero, MathResult, NonZero, Number, StdResult, Storage, Udec128_6, Udec128_24},
+    grug::{
+        Decimal, Denom, IsZero, MathResult, NonZero, Number, StdResult, Storage, Udec128_6,
+        Udec128_24,
+    },
     std::collections::BTreeSet,
 };
 
