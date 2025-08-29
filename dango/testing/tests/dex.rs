@@ -6682,7 +6682,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     Some(CancelOrderRequest::Some(BTreeSet::from([
         OrderId::new(!7),
         OrderId::new(!10),
-        OrderId::new(16),     
+        OrderId::new(16),
     ]))),
     Price::new(10),
     None,
@@ -6877,7 +6877,6 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
             funds,
         )
         .should_succeed();
-
 
     // Query the liquidity depth
     suite
