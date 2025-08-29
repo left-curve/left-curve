@@ -1,8 +1,8 @@
-import { useControlledState } from "../hooks/useControlledState.js";
+import { useControlledState } from "@left-curve/foundation";
 import { useId } from "react";
 
-import { createContext } from "../utils/context.js";
-import { twMerge } from "../utils/twMerge.js";
+import { createContext } from "@left-curve/foundation";
+import { twMerge } from "@left-curve/foundation";
 
 import { motion } from "framer-motion";
 

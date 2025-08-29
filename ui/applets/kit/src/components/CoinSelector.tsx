@@ -1,5 +1,5 @@
 import { Select } from "./Select";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type { SelectProps } from "./Select";

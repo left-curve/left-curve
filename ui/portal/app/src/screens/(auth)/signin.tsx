@@ -1,5 +1,6 @@
-import { View } from "react-native";
 import { GlobalText } from "~/components/foundation";
+
+import { View } from "react-native";
 
 export default function AuthScreen() {
   return (

@@ -1,7 +1,8 @@
-import { useRouter } from "expo-router";
-import { TextInput, View } from "react-native";
-import { Button, IconChevronDown } from "~/components/foundation";
 import { useTheme } from "~/hooks/useTheme";
+import { useRouter } from "expo-router";
+
+import { Button, IconChevronDown } from "~/components/foundation";
+import { TextInput, View } from "react-native";
 
 export default function SearchScreen() {
   const { theme } = useTheme();

@@ -1,16 +1,16 @@
 import { createSessionSigner, createSignerClient } from "@left-curve/dango";
 import { Secp256k1 } from "@left-curve/dango/crypto";
-import { createStorage } from "../storages/createStorage.js";
+import { createStorage } from "@left-curve/foundation";
 
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "./useAccount.js";
 import { useConfig } from "./useConfig.js";
-import useStorage from "./useStorage.js";
 
 import { encodeBase64 } from "@left-curve/dango/encoding";
 import type { SigningSession, SigningSessionInfo } from "@left-curve/dango/types";
 import type { Connector } from "../types/connector.js";
 import { useEffect, useState } from "react";
+import { useStorage } from "@left-curve/foundation";
 
 export type UseSessionKeyParameters = {
   session?: SigningSession;

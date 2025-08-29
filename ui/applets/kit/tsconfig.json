@@ -9,10 +9,13 @@
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../../sdk/dango"
+      "path": "../../foundation"
     },
     {
       "path": "../../store"
+    },
+    {
+      "path": "../../../sdk/dango"
     }
   ]
 }

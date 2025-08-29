@@ -3,6 +3,7 @@ packages:
   - "ui/applets/*"
   - "ui/workers/*"
   - "ui/portal/*"
+  - "ui/foundation/*"
   - "ui/store/*"
   - "ui/*"
 
@@ -23,6 +24,7 @@ catalog:
   # UI
   "react": "^18.3.1"
   "react-dom": "^18.3.1"
+  "react-native": "0.76.9"
   "react-hook-form": "^7.53.0"
   "react-router-dom": "^6.26.2"
   "react-hot-toast": "^2.4.1"
@@ -30,17 +32,22 @@ catalog:
   "@tanstack/router-devtools": "^1.111.3"
   "@tanstack/react-router": "^1.111.3"
   "@tanstack/zod-adapter": "^1.111.3"
-  "nuqs": "^2.2.3"
   "zod": "^3.24.1"
   "zustand": "^5.0.1"
+  "react-native-mmkv": "^3.3.0"
   # Animations
   "framer-motion": "^11.11.7"
   # CSS
   "tailwindcss": "^3.4.13"
+  "tailwind-variants": "^0.2.1"
   "autoprefixer": "^10.4.20"
   "postcss": "^8"
   "@unocss/postcss": "^0.63.3"
   "@unocss/reset": "^0.63.3"
+  "react-native-svg": "15.8.0"
+  "react-native-svg-transformer": "^1.5.1"
+  "moti": "^0.30.0"
+  "nativewind": "^4.1.23"
   # Types
   "@types/react": "^18.3.1"
   "@types/react-dom": "^18.3.1"

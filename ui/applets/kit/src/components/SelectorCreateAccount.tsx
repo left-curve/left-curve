@@ -1,6 +1,6 @@
 import { IconCheckedCircle } from "./icons/IconCheckedCircle";
 
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";

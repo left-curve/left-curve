@@ -1,0 +1,50 @@
+{
+  "name": "@left-curve/foundation",
+  "private": true,
+  "version": "0.1.0",
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    "./fonts/*": "./fonts/*",
+    "./images/*": "./images/*",
+    "./tailwind/*": "./tailwind/*",
+    "./messages/*": "./messages/*",
+    "./inlang/*": "./project.inlang/*",
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
+    }
+  },
+  "scripts": {
+    "inlang": "inlang",
+    "machine-translate": "inlang machine translate --project ./project.inlang",
+    "ci": "pnpm lint",
+    "lint": "pnpm biome check --write ./src",
+    "lint:fix": "pnpm biome ci ./src",
+    "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
+    "clean:build": "rm -rf ./build",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
+    "build": "pnpm tsup --clean"
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "@tanstack/react-query": "catalog:"
+  },
+  "dependencies": {
+    "@inlang/cli": "^3.0.3",
+    "@left-curve/dango": "workspace:^",
+    "tailwind-scrollbar": "^3.1.0",
+    "tailwindcss": "catalog:",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": ">=5.0.0",
+    "react": "^18",
+    "react-dom": "^18"
+  }
+}

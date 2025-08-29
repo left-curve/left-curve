@@ -1,6 +1,6 @@
 import QRCodeStyling, { type Options as QROptions } from "qr-code-styling";
 import { useEffect, useRef } from "react";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 import { Spinner } from "./Spinner";
 
 const defaultOptions: QROptions = {

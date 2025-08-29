@@ -10,6 +10,9 @@
   "references": [
     {
       "path": "../../sdk/dango"
+    },
+    {
+      "path": "../foundation"
     }
   ]
 }

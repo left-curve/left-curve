@@ -1,4 +1,4 @@
-import { usePagination } from "../hooks/usePagination.js";
+import { usePagination } from "@left-curve/foundation";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "./Button";
@@ -6,11 +6,11 @@ import { IconChevronLeft } from "./icons/IconChevronLeft";
 import { IconChevronRight } from "./icons/IconChevronRight";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
-import type { UsePaginationParameters } from "../hooks/usePagination";
+import type { UsePaginationParameters } from "@left-curve/foundation";
 
 type PaginationProps = VariantProps<typeof paginationVariants> &
   Omit<UsePaginationParameters, "setCurrentPage"> & {

@@ -1,7 +1,7 @@
 import type { Preview } from "@storybook/react";
 
 import "../styles.css";
-import "@left-curve/ui-config/fonts/ABCDiatypeRounded/index.css";
+import "@left-curve/foundation/fonts/ABCDiatypeRounded/index.css";
 
 const preview: Preview = {
   parameters: {

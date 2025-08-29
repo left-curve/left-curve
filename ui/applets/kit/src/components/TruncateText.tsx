@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 type Props = {
   text?: string;

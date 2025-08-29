@@ -41,6 +41,7 @@
   },
   "dependencies": {
     "@left-curve/dango": "workspace:^",
+    "@left-curve/foundation": "workspace:^",
     "eventemitter3": "^5.0.1",
     "use-sync-external-store": "^1.2.2",
     "zustand": "catalog:"

@@ -40,8 +40,6 @@ target/
 **/node_modules
 **/tsconfig.tsbuildinfo
 **/build
-!ui/portal/app/.eas/build/
-!ui/portal/web/**/*.pdf
 **/.turbo
 
 # SDK
@@ -56,9 +54,12 @@ sdk/docs
 *storybook.log
 app.pages.ts
 next-env.d.ts
-ui/config/project.inlang/*
-!ui/config/project.inlang/settings.json
-!ui/config/project.inlang/project_id
+ui/portal/web/public/images
+ui/foundation/project.inlang/*
+!ui/foundation/project.inlang/settings.json
+!ui/foundation/project.inlang/project_id
+!ui/portal/app/.eas/build/
+!ui/portal/web/**/*.pdf
 
 # Data used in testing
 **/testdata/

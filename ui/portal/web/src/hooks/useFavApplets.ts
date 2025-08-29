@@ -1,4 +1,4 @@
-import { useStorage } from "@left-curve/store";
+import { useStorage } from "@left-curve/applets-kit";
 
 import { APPLETS, DEFAULT_FAV_APPLETS } from "~/constants";
 

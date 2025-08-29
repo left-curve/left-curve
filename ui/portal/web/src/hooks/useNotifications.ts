@@ -1,4 +1,5 @@
-import { useAccount, useConfig, useStorage } from "@left-curve/store";
+import { useAccount, useConfig } from "@left-curve/store";
+import { useStorage } from "@left-curve/foundation";
 import { useCallback, useMemo } from "react";
 
 import { uid } from "@left-curve/dango/utils";

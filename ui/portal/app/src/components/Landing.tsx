@@ -1,8 +1,9 @@
 import { Image, View } from "react-native";
-import { GlobalText, FullSection } from "./foundation";
+import { FullSection } from "./foundation";
 
 import Logo from "~/assets/images/dango.svg";
 import { cssInterop } from "nativewind";
+import { GlobalText } from "./foundation/GlobalText";
 
 import type { PropsWithChildren } from "react";
 
