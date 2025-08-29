@@ -13,7 +13,10 @@ pub fn get_bucket(
     price: Udec128_24,
 ) -> MathResult<Udec128_24> {
     // This is the bucket immediately smaller than the price.
-    let lower = price.checked_div(bucket_size)?.checked_mul(bucket_size)?;
+    let lower = price
+        .checked_div(bucket_size)?
+        .checked_floor()?
+        .checked_mul(bucket_size)?;
 
     debug_assert!(
         lower <= price,
