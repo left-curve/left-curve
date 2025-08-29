@@ -1,5 +1,8 @@
 use {
-    crate::{LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK},
+    crate::{
+        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK,
+        liquidity_depth::increase_liquidity_depths,
+    },
     anyhow::{anyhow, ensure},
     dango_types::dex::{
         CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, Order, OrderCreated,
@@ -18,12 +21,16 @@ pub(super) fn create_limit_order(
     events: &mut EventBuilder,
     deposits: &mut Coins,
 ) -> anyhow::Result<()> {
-    ensure!(
-        PAIRS.has(storage, (&order.base_denom, &order.quote_denom)),
-        "pair not found with base `{}` and quote `{}`",
-        order.base_denom,
-        order.quote_denom
-    );
+    // TODO: cache this, so there's no need to repeated query the same thing
+    let pair = PAIRS
+        .may_load(storage, (&order.base_denom, &order.quote_denom))?
+        .ok_or_else(|| {
+            anyhow!(
+                "pair not found with base `{}` and quote `{}`",
+                order.base_denom,
+                order.quote_denom
+            )
+        })?;
 
     let deposit = match order.direction {
         Direction::Bid => Coin {
@@ -58,6 +65,20 @@ pub(super) fn create_limit_order(
 
     deposits.insert(deposit)?;
 
+    let remaining = order.amount.checked_into_dec()?;
+    let remaining_in_quote = remaining.checked_mul(*order.price)?;
+
+    increase_liquidity_depths(
+        storage,
+        &order.base_denom,
+        &order.quote_denom,
+        order.direction,
+        *order.price,
+        remaining,
+        remaining_in_quote,
+        &pair.bucket_sizes,
+    )?;
+
     LIMIT_ORDERS.save(
         storage,
         (
@@ -72,7 +93,7 @@ pub(super) fn create_limit_order(
             kind: OrderKind::Limit,
             price: *order.price,
             amount: *order.amount,
-            remaining: order.amount.checked_into_dec()?,
+            remaining,
             created_at_block_height: Some(current_block_height),
         },
     )?;
@@ -188,6 +209,9 @@ pub(super) fn create_market_order(
             },
         ),
     )?;
+
+    // Note: no need to change depth for market orders, since market orders are
+    // canceled at the end of the block.
 
     Ok(())
 }

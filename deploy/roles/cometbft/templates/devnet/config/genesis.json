@@ -305,6 +305,7 @@
               {
                 "base_denom": "dango",
                 "params": {
+                  "bucket_sizes": [],
                   "lp_denom": "dex/pool/dango/usdc",
                   "pool_type": {
                     "xyk": {
@@ -320,6 +321,14 @@
               {
                 "base_denom": "bridge/btc",
                 "params": {
+                  "bucket_sizes": [
+                    "0.01",
+                    "0.1",
+                    "1",
+                    "10",
+                    "50",
+                    "100"
+                  ],
                   "lp_denom": "dex/pool/btc/usdc",
                   "pool_type": {
                     "xyk": {
@@ -335,6 +344,14 @@
               {
                 "base_denom": "bridge/eth",
                 "params": {
+                  "bucket_sizes": [
+                    "0.01",
+                    "0.1",
+                    "1",
+                    "10",
+                    "50",
+                    "100"
+                  ],
                   "lp_denom": "dex/pool/eth/usdc",
                   "pool_type": {
                     "xyk": {
@@ -350,6 +367,12 @@
               {
                 "base_denom": "bridge/sol",
                 "params": {
+                  "bucket_sizes": [
+                    "0.01",
+                    "0.1",
+                    "1",
+                    "10"
+                  ],
                   "lp_denom": "dex/pool/sol/usdc",
                   "pool_type": {
                     "xyk": {

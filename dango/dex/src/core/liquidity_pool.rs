@@ -425,7 +425,7 @@ mod tests {
             oracle::PrecisionedPrice,
         },
         grug::{Bounded, Coins, Inner, Timestamp, coin_pair, coins, hash_map},
-        std::collections::HashMap,
+        std::collections::{BTreeSet, HashMap},
         test_case::test_case,
     };
 
@@ -629,6 +629,7 @@ mod tests {
     ) {
         let pair = PairParams {
             pool_type,
+            bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
@@ -690,6 +691,7 @@ mod tests {
                 spacing: Udec128::new_percent(50),
                 limit: 10,
             }),
+            bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(Udec128::new_percent(1)).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
@@ -1020,6 +1022,7 @@ mod tests {
     ) {
         let pair = PairParams {
             pool_type,
+            bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
@@ -1349,6 +1352,7 @@ mod tests {
     ) {
         let pair = PairParams {
             pool_type,
+            bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
         };
