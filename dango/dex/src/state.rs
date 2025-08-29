@@ -29,6 +29,7 @@ pub const LIMIT_ORDERS: IndexedMap<OrderKey, Order, LimitOrderIndex> =
         user: MultiIndex::new(|_, order| order.user, "order", "order__user"),
     });
 
+/// Stores the liquidity depths for each bucket size. The value is a tuple of (base, quote) depths.
 pub const DEPTHS: Map<DepthKey, (Udec128_6, Udec128_6)> = Map::new("depth");
 
 /// Stores the total trading volume in USD for each account address and timestamp.

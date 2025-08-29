@@ -34,7 +34,7 @@ pub fn get_bucket(
 
 /// Increase the liquidity depths of the given bucket sizes.
 ///
-/// This is called in three circumstances:
+/// This is called in two circumstances:
 /// - in `execute::batch_update_orders`, when creating new user limit orders;
 /// - in `cron::auction`, when creating new passive orders.
 pub fn increase_liquidity_depths(
