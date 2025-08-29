@@ -3,7 +3,7 @@
 import { useAccount, useAppConfig, useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import { twMerge, useStorage } from "@left-curve/foundation-shared";
+import { twMerge, useStorage } from "@left-curve/foundation";
 
 import { TruncateResponsive } from "./TruncateResponsive";
 import { IconLink } from "./icons/IconLink";

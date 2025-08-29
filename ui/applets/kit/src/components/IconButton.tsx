@@ -1,6 +1,6 @@
 import { type VariantProps, tv } from "tailwind-variants";
-import { twMerge } from "@left-curve/foundation-shared";
-import { forwardRefPolymorphic } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
+import { forwardRefPolymorphic } from "@left-curve/foundation";
 
 import { Spinner } from "./Spinner";
 

@@ -1,4 +1,4 @@
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 import { Text } from "react-native";
 

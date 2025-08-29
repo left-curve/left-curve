@@ -2,12 +2,12 @@ import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef, useState } from "react";
 
-import { useControlledState } from "@left-curve/foundation-shared";
+import { useControlledState } from "@left-curve/foundation";
 import { useDOMRef } from "../hooks/useDOMRef.js";
 import { useClickAway } from "../hooks/useClickAway.js";
 
 import { capitalize, wait } from "@left-curve/dango/utils";
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 import { Input, type InputProps } from "./Input";
 import { Spinner } from "./Spinner";

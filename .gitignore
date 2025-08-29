@@ -55,9 +55,9 @@ sdk/docs
 app.pages.ts
 next-env.d.ts
 ui/portal/web/public/images
-ui/foundation/shared/project.inlang/*
-!ui/foundation/shared/project.inlang/settings.json
-!ui/foundation/shared/project.inlang/project_id
+ui/foundation/project.inlang/*
+!ui/foundation/project.inlang/settings.json
+!ui/foundation/project.inlang/project_id
 !ui/portal/app/.eas/build/
 !ui/portal/web/**/*.pdf
 

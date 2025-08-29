@@ -1,4 +1,4 @@
-export * from "@left-curve/foundation-shared";
+export * from "@left-curve/foundation";
 export * from "./components";
 
 /* -------------------------------------------------------------------------- */

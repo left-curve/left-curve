@@ -2,9 +2,9 @@ import type React from "react";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { tv, type VariantProps } from "tailwind-variants";
-import { useControlledState } from "@left-curve/foundation-shared";
+import { useControlledState } from "@left-curve/foundation";
 import { type ReactNode, useRef, useState, type PropsWithChildren, useEffect } from "react";
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 type TooltipPlacement = "top" | "bottom" | "left" | "right" | "auto";
 

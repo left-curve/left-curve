@@ -1,8 +1,8 @@
-import { useControlledState } from "@left-curve/foundation-shared";
+import { useControlledState } from "@left-curve/foundation";
 import { useId } from "react";
 
-import { createContext } from "@left-curve/foundation-shared";
-import { twMerge } from "@left-curve/foundation-shared";
+import { createContext } from "@left-curve/foundation";
+import { twMerge } from "@left-curve/foundation";
 
 import { motion } from "framer-motion";
 

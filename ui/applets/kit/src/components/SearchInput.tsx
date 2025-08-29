@@ -2,9 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { type ReactElement, cloneElement, forwardRef, useState } from "react";
 import { useClickAway } from "react-use";
 import { useDOMRef } from "../hooks/useDOMRef.js";
-import { useControlledState } from "@left-curve/foundation-shared";
+import { useControlledState } from "@left-curve/foundation";
 
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 import { wait } from "@left-curve/dango/utils";
 
 import { Input, type InputProps } from "./Input";

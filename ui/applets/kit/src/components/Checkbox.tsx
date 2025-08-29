@@ -1,9 +1,9 @@
-import { useControlledState } from "@left-curve/foundation-shared";
+import { useControlledState } from "@left-curve/foundation";
 
 import { Field, Checkbox as HCheckBox, Label } from "@headlessui/react";
 import { tv } from "tailwind-variants";
 
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 import type { VariantProps } from "tailwind-variants";
 

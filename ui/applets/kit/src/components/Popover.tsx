@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ResizerContainer } from "./ResizerContainer";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 export type PopoverRef = {
   close: () => void;

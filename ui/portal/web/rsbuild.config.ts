@@ -24,7 +24,7 @@ const environment = process.env.CONFIG_ENVIRONMENT || "local";
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
 fs.copySync(
-  path.resolve(__dirname, "node_modules", "@left-curve/foundation-shared/images"),
+  path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
   path.resolve(__dirname, "public/images"),
   { overwrite: true },
 );
@@ -134,7 +134,7 @@ export default defineConfig({
           emitGitIgnore: false,
           emitPrettierIgnore: false,
           includeEslintDisableComment: false,
-          project: "../../foundation/shared/project.inlang",
+          project: "../../foundation/project.inlang",
           strategy: ["localStorage", "preferredLanguage", "baseLocale"],
           localStorageKey: "dango.locale",
         }),

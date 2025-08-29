@@ -7,5 +7,5 @@
   },
   "include": ["react"],
   "exclude": ["node_modules"],
-  "references": [{ "path": "../../../sdk/dango" }]
+  "references": [{ "path": "../../sdk/dango" }]
 }

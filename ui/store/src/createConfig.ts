@@ -3,7 +3,7 @@ import { createStore } from "zustand/vanilla";
 
 import { createPublicClient } from "@left-curve/dango";
 import { plainObject, uid } from "@left-curve/dango/utils";
-import { createStorage } from "@left-curve/foundation-shared";
+import { createStorage } from "@left-curve/foundation";
 
 import pkgJson from "../package.json" with { type: "json" };
 import { eip6963 } from "./connectors/eip6963.js";

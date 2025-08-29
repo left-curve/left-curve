@@ -9,13 +9,13 @@ import {
 } from "react";
 
 import { useClickAway } from "../hooks/useClickAway.js";
-import { useControlledState } from "@left-curve/foundation-shared";
+import { useControlledState } from "@left-curve/foundation";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 import type { PropsWithChildren, ReactElement } from "react";
 import type React from "react";

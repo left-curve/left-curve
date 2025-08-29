@@ -1,7 +1,7 @@
-import { createStorage, useStorage as sharedUseStorage } from "@left-curve/foundation-shared";
+import { createStorage, useStorage as sharedUseStorage } from "@left-curve/foundation";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { UseStorageOptions } from "@left-curve/foundation-shared";
+import type { UseStorageOptions } from "@left-curve/foundation";
 
 import { MMKV, Mode } from "react-native-mmkv";
 

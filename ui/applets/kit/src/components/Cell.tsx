@@ -2,7 +2,7 @@ import { useConfig, usePrices } from "@left-curve/store";
 
 import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 import { AddressVisualizer } from "./AddressVisualizer";
 import { Badge } from "./Badge";

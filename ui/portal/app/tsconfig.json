@@ -8,19 +8,11 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "nativewind-env.d.ts",
-    "../../foundation/shared/tailwind/config.ts"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts", "../../foundation/tailwind/config.ts"],
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../foundation/app"
-    },
-    {
-      "path": "../../foundation/shared"
+      "path": "../../foundation"
     },
     {
       "path": "../../../sdk/dango"

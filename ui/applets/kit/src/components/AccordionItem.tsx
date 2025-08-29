@@ -1,11 +1,11 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { useControlledState } from "@left-curve/foundation-shared";
+import { useControlledState } from "@left-curve/foundation";
 
 type AccordionItemProps = {
   text: string;

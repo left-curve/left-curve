@@ -1,9 +1,9 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { useControlledState } from "@left-curve/foundation-shared";
+import { useControlledState } from "@left-curve/foundation";
 
 import { Input } from "./Input";
 
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 

@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-table";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 import { Fragment } from "react";
 import { Skeleton } from "./Skeleton";

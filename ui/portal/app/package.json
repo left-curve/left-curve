@@ -14,7 +14,7 @@
   "dependencies": {
     "@left-curve/config": "workspace:*",
     "@left-curve/dango": "workspace:*",
-    "@left-curve/foundation-shared": "workspace:*",
+    "@left-curve/foundation": "workspace:*",
     "@left-curve/store": "workspace:*",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@tanstack/react-query": "catalog:",

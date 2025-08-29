@@ -12,7 +12,7 @@
       "path": "../../sdk/dango"
     },
     {
-      "path": "../foundation/shared"
+      "path": "../foundation"
     }
   ]
 }

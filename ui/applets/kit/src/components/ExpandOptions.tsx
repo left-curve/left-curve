@@ -1,6 +1,6 @@
 import { Children, useState } from "react";
 
-import { twMerge } from "@left-curve/foundation-shared";
+import { twMerge } from "@left-curve/foundation";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";

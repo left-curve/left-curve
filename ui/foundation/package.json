@@ -1,5 +1,5 @@
 {
-  "name": "@left-curve/foundation-shared",
+  "name": "@left-curve/foundation",
   "private": true,
   "version": "0.1.0",
   "main": "./build/index.cjs",
