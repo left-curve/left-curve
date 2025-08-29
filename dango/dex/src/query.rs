@@ -185,8 +185,8 @@ fn query_liquidity_depth(
                 .append(Direction::Bid)
                 .range(
                     ctx.storage,
-                    Some(Bound::Inclusive(best_bid_price)),
                     None,
+                    Some(Bound::Inclusive(best_bid_price)),
                     IterationOrder::Descending,
                 )
                 .map(|res| {
