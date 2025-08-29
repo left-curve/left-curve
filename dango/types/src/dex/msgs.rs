@@ -297,6 +297,7 @@ pub enum QueryMsg {
         base_denom: Denom,
         quote_denom: Denom,
         bucket_size: Udec128_24,
+        limit: Option<u32>,
     },
 }
 

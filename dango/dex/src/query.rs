@@ -133,8 +133,15 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             base_denom,
             quote_denom,
             bucket_size,
+            limit,
         } => {
-            let res = query_liquidity_depth(ctx, base_denom, quote_denom, bucket_size)?;
+            let res = query_liquidity_depth(
+                ctx,
+                base_denom,
+                quote_denom,
+                bucket_size,
+                limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize,
+            )?;
             res.to_json_value()
         },
     }
@@ -146,7 +153,16 @@ fn query_liquidity_depth(
     base_denom: Denom,
     quote_denom: Denom,
     bucket_size: Udec128_24,
-) -> StdResult<LiquidityDepthResponse> {
+    limit: usize,
+) -> anyhow::Result<LiquidityDepthResponse> {
+    // load the pair params
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    anyhow::ensure!(
+        pair.bucket_sizes.contains(&NonZero::new(bucket_size)?),
+        "Bucket size {bucket_size} not found for pair ({base_denom}, {quote_denom})"
+    );
+
     // Load the resting order book.
     let resting_order_book = RESTING_ORDER_BOOK.load(ctx.storage, (&base_denom, &quote_denom))?;
 
@@ -163,6 +179,7 @@ fn query_liquidity_depth(
                     None,
                     IterationOrder::Ascending,
                 )
+                .take(limit)
                 .map(|res| {
                     let (bucket, (depth_base, depth_quote)) = res?;
                     Ok((bucket, LiquidityDepth {
@@ -189,6 +206,7 @@ fn query_liquidity_depth(
                     Some(Bound::Inclusive(best_bid_price)),
                     IterationOrder::Descending,
                 )
+                .take(limit)
                 .map(|res| {
                     let (bucket, (depth_base, depth_quote)) = res?;
                     Ok((bucket, LiquidityDepth {
