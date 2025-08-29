@@ -110,7 +110,7 @@ where
     {
         self.close_stream();
 
-        let shared_vaas = self.shared_vaas.clone();
+        let shared_data = self.shared_vaas.clone();
         let keep_running = Arc::new(AtomicBool::new(true));
         let mut client = self.client.clone();
 
@@ -150,7 +150,7 @@ where
                                 }
 
                                 if let Some(data) = data {
-                                    shared_vaas.write_with(|mut shared_vaas| *shared_vaas = Some(data));
+                                    shared_data.write_with(|mut shared_vaas| *shared_vaas = Some(data));
                                 }
                             }
 

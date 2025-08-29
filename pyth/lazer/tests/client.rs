@@ -2,17 +2,19 @@ pub mod common_function;
 
 use {
     crate::common_function::test_stream,
-    grug::NonEmpty,
+    grug::{NonEmpty, setup_tracing_subscriber},
     pyth_lazer::PythClientLazer,
     pyth_types::constants::{
         ATOM_USD_ID_LAZER, BTC_USD_ID_LAZER, DOGE_USD_ID_LAZER, ETH_USD_ID_LAZER,
         LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST,
     },
+    tracing::Level,
 };
 
 #[ignore = "rely on network calls"]
 #[tokio::test]
 async fn test_lazer_stream() {
+    setup_tracing_subscriber(Level::INFO);
     let client = PythClientLazer::new(
         NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
         LAZER_ACCESS_TOKEN_TEST,

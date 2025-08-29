@@ -3,7 +3,10 @@ use {
     async_stream::stream,
     grug::{Inner, Lengthy, NonEmpty},
     pyth_client::PythClientTrait,
-    pyth_lazer_client::{client::PythLazerClientBuilder, ws_connection::AnyResponse},
+    pyth_lazer_client::{
+        client::{PythLazerClient, PythLazerClientBuilder},
+        ws_connection::AnyResponse,
+    },
     pyth_lazer_protocol::{
         message::Message,
         router::{
@@ -21,10 +24,14 @@ use {
             Arc,
             atomic::{AtomicBool, Ordering},
         },
+        time::Duration,
     },
+    tokio::{sync::mpsc::Receiver, time::sleep},
     tracing::{error, info, warn},
     url::Url,
 };
+
+pub const RESUBSCRIBE_ATTEMPTS: usize = 5;
 
 #[derive(Clone, Debug)]
 pub struct PythClientLazer {
@@ -71,6 +78,175 @@ impl PythClientLazer {
         .map_err(|e| anyhow::anyhow!(e))
     }
 
+    // Subscribe to the price feeds.
+    // The subscribe function return error if at least one subscription fails.
+    // Ignore the error here and analyze the data received from the stream: in case
+    // we don't receive any data for a subscription, we will resubscribe.
+    async fn connect(client: &mut PythLazerClient, subscribe_requests: Vec<SubscribeRequest>) {
+        for subscription in subscribe_requests {
+            let _ = client.subscribe(subscription).await;
+        }
+    }
+
+    async fn subscribe(
+        client: &mut PythLazerClient,
+        receiver: &mut Receiver<AnyResponse>,
+        ids_per_channel: HashMap<Channel, (u64, Vec<PriceFeedId>)>,
+    ) -> Result<(), anyhow::Error> {
+        // Collect all subscription IDs in a vector to easily check if we are receiving data for all subscriptions.
+        let mut subscription_ids = Vec::with_capacity(ids_per_channel.len());
+
+        // Create the subscribe requests.
+        let subscribe_requests = ids_per_channel
+            .into_iter()
+            .map(|(channel, (subscribe_id, feed_ids))| {
+                let params = Self::subscription_params(feed_ids, channel)?;
+
+                subscription_ids.push(subscribe_id);
+
+                Ok(SubscribeRequest {
+                    subscription_id: SubscriptionId(subscribe_id),
+                    params,
+                })
+            })
+            .collect::<Result<Vec<_>, anyhow::Error>>()?;
+
+        // Subscribe to the price feeds.
+        Self::connect(client, subscribe_requests.clone()).await;
+
+        // Ensure that we are receiving data for all subscriptions.
+        let mut data_per_ids = HashMap::new();
+        for id in subscription_ids.clone() {
+            data_per_ids.insert(id, false);
+        }
+
+        let mut resubscribe_attempts = 0;
+        let mut to_resubscribe = false;
+        let mut read_data = 0;
+
+        loop {
+            // If we have read a lot of data and we haven't received data for all subscriptions,
+            // try to reconnect.
+            if read_data > 1000 {
+                read_data = 0;
+                warn!("Not all subscriptions received data, attempting to resubscribe...");
+                to_resubscribe = true;
+            }
+
+            // Check if we need to resubscribe.
+            if to_resubscribe {
+                to_resubscribe = false;
+                resubscribe_attempts += 1;
+
+                // Return error if we have reached the maximum number of resubscription attempts.
+                if resubscribe_attempts > RESUBSCRIBE_ATTEMPTS {
+                    return Err(anyhow::anyhow!("Pyth Lazer connection closed"));
+                }
+
+                sleep(Duration::from_millis(200)).await;
+
+                // Reset all received data to false for each subscription ID, just to be sure that
+                // everything works fine.
+                for (_, value) in data_per_ids.iter_mut() {
+                    *value = false;
+                }
+
+                warn!(
+                    "Attempting to resubscribe... (attempt {}/{})",
+                    resubscribe_attempts, RESUBSCRIBE_ATTEMPTS
+                );
+
+                Self::connect(client, subscribe_requests.clone()).await;
+            }
+
+            let mut buffer = vec![];
+            let num_data_received = receiver.recv_many(&mut buffer, 100).await;
+
+            read_data += num_data_received;
+
+            // If the number of data received is zero, it means the channel is closed and we need to resubscribe.
+            if num_data_received == 0 {
+                // No data received, continue to the next iteration to check for resubscription.
+                error!("Pyth Lazer connection closed");
+                to_resubscribe = true;
+                continue;
+            }
+
+            for data in buffer {
+                match data {
+                    AnyResponse::Binary(update) => {
+                        // We have received data for this subscription ID.
+                        if let Some(entry) = data_per_ids.get_mut(&update.subscription_id.0) {
+                            *entry = true;
+
+                            // Check if we have received data for all subscription IDs.
+                            if data_per_ids.values().all(|&v| v) {
+                                info!("Successfully subscribed to all price feeds");
+                                return Ok(());
+                            }
+                        }
+                    },
+
+                    AnyResponse::Json(response) => match response {
+                        Response::Error(error_response) => {
+                            error!("Subscription failed: {}", error_response.error);
+
+                            // In this error there is no information about which subscription failed.
+                            // So we will try to resubscribe to all subscriptions.
+                            // If a connection is already established, the server will send a
+                            // SubscriptionError response.
+                            to_resubscribe = true;
+                        },
+                        Response::SubscriptionError(subscription_error_response) => {
+                            // Ignore duplicate subscription ID errors.
+                            if subscription_error_response.error != "duplicate subscription id" {
+                                error!(
+                                    "Subscription error for id {}: {}",
+                                    subscription_error_response.subscription_id.0,
+                                    subscription_error_response.error
+                                );
+                            }
+                        },
+                        Response::Subscribed(subscription_response) => {
+                            info!(
+                                "Subscribed with ID: {}",
+                                subscription_response.subscription_id.0
+                            );
+                        },
+                        Response::SubscribedWithInvalidFeedIdsIgnored(subscription_response) => {
+                            if subscription_response
+                                .ignored_invalid_feed_ids
+                                .unknown_ids
+                                .is_empty()
+                            {
+                                info!(
+                                    "Subscribed with ID: {}",
+                                    subscription_response.subscription_id.0
+                                );
+                            } else {
+                                warn!(
+                                    "Subscribed with ID: {}, but some feed ids were ignored: {:#?}",
+                                    subscription_response.subscription_id.0,
+                                    subscription_response.ignored_invalid_feed_ids
+                                );
+                            }
+                        },
+                        Response::Unsubscribed(unsubscribed_response) => {
+                            info!(
+                                "Unsubscribed with ID: {}",
+                                unsubscribed_response.subscription_id.0
+                            );
+                        },
+
+                        Response::StreamUpdated(_) => {
+                            error!("Received Lazer data in json format, only support Binary");
+                        },
+                    },
+                }
+            }
+        }
+    }
+
     /// Analyze the data received from the Pyth Lazer stream.
     fn analyze_data(
         data: AnyResponse,
@@ -115,48 +291,15 @@ impl PythClientLazer {
             },
 
             AnyResponse::Json(response) => match response {
-                // TODO How to handle subscription errors?
                 Response::Error(error_response) => {
-                    error!("Failed to subscribe: {:#?}", error_response);
+                    error!("Received error: {:#?}", error_response);
                 },
-                Response::Subscribed(subscription_response) => {
-                    info!(
-                        "Subscribed with ID: {}",
-                        subscription_response.subscription_id.0
-                    );
-                },
-                Response::SubscribedWithInvalidFeedIdsIgnored(subscription_response) => {
-                    if subscription_response
-                        .ignored_invalid_feed_ids
-                        .unknown_ids
-                        .is_empty()
-                    {
-                        info!(
-                            "Subscribed to Pyth Lazer stream with subscription ID: {}",
-                            subscription_response.subscription_id.0
-                        );
-                    } else {
-                        warn!(
-                            "Subscribed to Pyth Lazer stream with subscription ID: {} but some feed ids were ignored: {:#?}",
-                            subscription_response.subscription_id.0,
-                            subscription_response.ignored_invalid_feed_ids
-                        );
-                    }
-                },
-                Response::Unsubscribed(unsubscribed_response) => {
-                    info!(
-                        "Unsubscribed from Pyth Lazer stream with subscription ID: {}",
-                        unsubscribed_response.subscription_id.0
-                    );
-                },
-                Response::SubscriptionError(subscription_error_response) => {
-                    error!(
-                        "Failed to subscribe to Pyth Lazer stream: {:#?}",
-                        subscription_error_response
-                    );
-                },
+
                 Response::StreamUpdated(_) => {
                     error!("Received Lazer data in json format, only support Binary");
+                },
+                _ => {
+                    warn!("Received json response");
                 },
             },
         }
@@ -181,6 +324,29 @@ impl PythClientTrait for PythClientLazer {
         self.keep_running = Arc::new(AtomicBool::new(true));
         let keep_running = self.keep_running.clone();
 
+        // Divide the ids depending on the channel.
+        let mut ids_per_channel: HashMap<Channel, (u64, Vec<PriceFeedId>)> = HashMap::new();
+
+        let mut subscription_ids = vec![];
+
+        for value in ids.into_inner() {
+            let channel = value.channel;
+
+            match ids_per_channel.get_mut(&channel) {
+                Some((_, price_feed)) => price_feed.push(PriceFeedId(value.id)),
+                None => {
+                    self.last_subscription_id += 1;
+
+                    subscription_ids.push(self.last_subscription_id);
+
+                    ids_per_channel.insert(
+                        channel,
+                        (self.last_subscription_id, vec![PriceFeedId(value.id)]),
+                    );
+                },
+            }
+        }
+
         // Build the new client and subscribe to the price feeds.
         let builder = PythLazerClientBuilder::new(self.access_token.clone())
             .with_endpoints(self.endpoints.clone());
@@ -188,52 +354,24 @@ impl PythClientTrait for PythClientLazer {
         let mut client = builder.build()?;
         let mut receiver = client.start().await?;
 
-        // Divide the ids depending on the channel.
-        let mut ids_per_channel = HashMap::new();
-        for value in ids.into_inner() {
-            let channel = value.channel;
-            ids_per_channel
-                .entry(channel)
-                .or_insert_with(Vec::new)
-                .push(PriceFeedId(value.id));
-        }
-
-        // Create a subscription requests for each channel.
-        let mut subscription_ids = Vec::with_capacity(ids_per_channel.len());
-
-        let subscribe_requests = ids_per_channel
-            .into_iter()
-            .map(|(channel, ids)| {
-                let params = Self::subscription_params(ids, channel)?;
-
-                self.last_subscription_id += 1;
-                subscription_ids.push(self.last_subscription_id);
-
-                Ok(SubscribeRequest {
-                    subscription_id: SubscriptionId(self.last_subscription_id),
-                    params,
-                })
-            })
-            .collect::<Result<Vec<_>, anyhow::Error>>()?;
-
-        // Subscribe to the price feeds.
-        // TODO: How to Handle the error here?
-        for subscription in subscribe_requests {
-            client
-                .subscribe(subscription)
-                .await
-                .map_err(|e| anyhow::anyhow!(e))?;
-        }
+        Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await?;
 
         // Since there are multiple subscriptions, we need to keep the last data for each subscriptions.
-        let mut susbscriptions_data = HashMap::with_capacity(subscription_ids.len());
+        let mut subscriptions_data = HashMap::with_capacity(ids_per_channel.len());
 
+        // Create the buffer to pull data from the receiver.
+        let mut buffer = Vec::with_capacity(1000);
+
+        // Create the stream.
         let stream = stream! {
             loop {
+                // Clear the buffer.
+                buffer.clear();
+
                 tokio::select! {
                     // The server is not sending any more data.
                     // Log the error and keep running, since the client will handle reconnection.
-                    _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)) => {
+                    _ = tokio::time::sleep(tokio::time::Duration::from_millis(500)) => {
 
                         // Check if the streaming has to be closed.
                         if !keep_running.load(Ordering::Relaxed) {
@@ -241,11 +379,11 @@ impl PythClientTrait for PythClientLazer {
                             break;
                         }
 
-                        warn!("No new data received for a second");
+                        warn!("No new data received for 500ms");
                     },
 
                     // Read next data from stream.
-                    data = receiver.recv() => {
+                    data_count = receiver.recv_many(&mut buffer, 1000) => {
 
                         // Check if the streaming has to be closed.
                         if !keep_running.load(Ordering::Acquire) {
@@ -253,29 +391,28 @@ impl PythClientTrait for PythClientLazer {
                             break;
                         }
 
-                        // TODO: Handle the case when the connection is closed.
-                        let Some(data) = data else {
+                        // Connection closed, try to reconnect.
+                        if data_count == 0 {
                             error!("Pyth Lazer connection closed. Start reconnecting");
-                            return;
+
+                            match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await{
+                                Ok(()) => {
+                                    info!("Reconnected successfully");
+                                },
+                                Err(err) => error!("Failed to reconnect: {}", err.to_string()),
+                            }
+
+                            continue;
                         };
 
-                        // Analyze the data.
-                        Self::analyze_data(data, &subscription_ids, &mut susbscriptions_data);
-
-                        // Pull all data available from the receiver.
-                        while !receiver.is_empty() {
-                            let mut buffer = vec![];
-                            receiver.recv_many(&mut buffer, 100).await;
-
-                            // Analyze data.
-                            for data in buffer {
-                                Self::analyze_data(data, &subscription_ids, &mut susbscriptions_data);
-                            }
+                        // Analyze the data received.
+                        for data in buffer.drain(..) {
+                            Self::analyze_data(data, &subscription_ids, &mut subscriptions_data);
                         }
 
                         // Yield the current data.
-                        if !susbscriptions_data.is_empty(){
-                            let send_data = susbscriptions_data.clone();
+                        if !subscriptions_data.is_empty(){
+                            let send_data = subscriptions_data.clone();
                             yield PriceUpdate::Lazer(NonEmpty::new_unchecked(send_data.into_values().collect::<Vec<_>>()));
                         }
                     }

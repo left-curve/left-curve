@@ -8,6 +8,7 @@ use {
         },
         subscription::{Response, SubscribeRequest, SubscriptionId},
     },
+    pyth_types::constants::LAZER_ACCESS_TOKEN_TEST,
     std::str::FromStr,
     tracing::{Level, info},
     url::Url,
@@ -19,10 +20,9 @@ use {
 async fn test() {
     setup_tracing_subscriber(Level::INFO);
     let builder =
-        PythLazerClientBuilder::new("gr6DS1uhFL7dUrcrboueU4ykRk2XhOfT3GO-demo".to_string())
-            .with_endpoints(vec![
-                Url::from_str("wss://pyth-lazer-0.dourolabs.app/v1/stream").unwrap(),
-            ]);
+        PythLazerClientBuilder::new(LAZER_ACCESS_TOKEN_TEST.to_string()).with_endpoints(vec![
+            Url::from_str("wss://pyth-lazer-0.dourolabs.app/v1/stream").unwrap(),
+        ]);
 
     info!("Connecting to Pyth Lazer server...");
     let mut client = builder.build().unwrap();
@@ -45,7 +45,23 @@ async fn test() {
         .unwrap(),
     };
 
+    let subscribe_request2 = SubscribeRequest {
+        subscription_id: SubscriptionId(1),
+        params: SubscriptionParams::new(SubscriptionParamsRepr {
+            price_feed_ids: vec![PriceFeedId(1), PriceFeedId(2)],
+            properties: vec![PriceFeedProperty::Price],
+            formats: vec![Format::LeEcdsa],
+            delivery_format: DeliveryFormat::Binary,
+            json_binary_encoding: JsonBinaryEncoding::Base64,
+            parsed: false,
+            channel: Channel::RealTime,
+            ignore_invalid_feed_ids: true,
+        })
+        .unwrap(),
+    };
+
     client.subscribe(subscribe_request).await.unwrap();
+    client.subscribe(subscribe_request2).await.unwrap();
     info!("Subscription request sent, waiting for responses...");
 
     let subscribe_request = SubscribeRequest {
