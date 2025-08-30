@@ -130,7 +130,7 @@ type Candle {
 	interval: CandleInterval!
 	minBlockHeight: Int!
 	maxBlockHeight: Int!
-	blockHeight: Int! @deprecated(reason: "Use `max_block_height` instead")
+	blockHeight: Int! @deprecated(reason: "Use `maxBlockHeight` instead")
 	open: BigDecimal!
 	high: BigDecimal!
 	low: BigDecimal!
