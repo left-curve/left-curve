@@ -6,7 +6,6 @@ use {
         indexer::Indexer,
     },
     chrono::{DateTime, Utc},
-    clickhouse::Client,
     dango_types::dex::OrderFilled,
     grug::{
         Addr, CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
@@ -16,11 +15,12 @@ use {
 
 impl Indexer {
     pub(crate) async fn store_trades(
-        clickhouse_client: &Client,
         dex_addr: &Addr,
         ctx: &grug_app::IndexerContext,
         context: &Context,
     ) -> Result<()> {
+        let clickhouse_client = context.clickhouse_client().clone();
+
         let block = ctx
             .get::<grug_types::Block>()
             .ok_or(IndexerError::MissingBlockOrBlockOutcome)?;
