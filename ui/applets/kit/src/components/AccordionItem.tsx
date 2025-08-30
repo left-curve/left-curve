@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";

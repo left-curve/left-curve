@@ -15,7 +15,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type { PropsWithChildren, ReactElement } from "react";
 import type React from "react";

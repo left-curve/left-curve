@@ -1,12 +1,21 @@
 {
   "name": "@left-curve/foundation",
   "version": "0.1.0",
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
   "exports": {
     "./fonts/*": "./fonts/*",
     "./images/*": "./images/*",
     "./tailwind/*": "./tailwind/*",
     "./messages/*": "./messages/*",
-    "./inlang/*": "./project.inlang/*"
+    "./inlang/*": "./project.inlang/*",
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
+    }
   },
   "scripts":{
     "inlang": "inlang",

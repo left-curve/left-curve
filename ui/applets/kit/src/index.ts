@@ -1,5 +1,4 @@
+export * from "@left-curve/foundation";
+
 export * from "./components";
-export * from "./types";
-export * from "./utils";
-export * from "./providers";
-export * from "./hooks";
+export { useClickAway, useDOMRef, useMediaQuery, usePortalTarget, useTheme } from "./hooks";

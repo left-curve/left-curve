@@ -3,7 +3,7 @@ import { useControlledState } from "../hooks/useControlledState.js";
 import { Field, Checkbox as HCheckBox, Label } from "@headlessui/react";
 import { tv } from "tailwind-variants";
 
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type { VariantProps } from "tailwind-variants";
 

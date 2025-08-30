@@ -134,7 +134,7 @@ export default defineConfig({
           emitGitIgnore: false,
           emitPrettierIgnore: false,
           includeEslintDisableComment: false,
-          project: "../../config/project.inlang",
+          project: "../../foundation/project.inlang",
           strategy: ["localStorage", "preferredLanguage", "baseLocale"],
           localStorageKey: "dango.locale",
         }),

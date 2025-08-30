@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Children, cloneElement } from "react";
 import { tv } from "tailwind-variants";
 import { useControlledState } from "../hooks/useControlledState.js";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";

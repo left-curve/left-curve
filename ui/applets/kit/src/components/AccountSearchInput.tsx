@@ -7,7 +7,7 @@ import { useDOMRef } from "../hooks/useDOMRef.js";
 import { useClickAway } from "../hooks/useClickAway.js";
 
 import { capitalize, wait } from "@left-curve/dango/utils";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import { Input, type InputProps } from "./Input";
 import { Spinner } from "./Spinner";

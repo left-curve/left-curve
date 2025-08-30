@@ -3,7 +3,7 @@ import { useControlledState } from "../hooks/useControlledState.js";
 
 import { Input } from "./Input";
 
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 

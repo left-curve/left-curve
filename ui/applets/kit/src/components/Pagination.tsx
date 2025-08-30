@@ -6,7 +6,7 @@ import { IconChevronLeft } from "./icons/IconChevronLeft";
 import { IconChevronRight } from "./icons/IconChevronRight";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
