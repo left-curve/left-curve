@@ -7,7 +7,8 @@
     "dev:android": "eas build:run -p android -e development --latest && expo start --android",
     "build:ios": "eas build -p ios -e development",
     "dev:ios": "eas build:run -p ios -e development --latest && expo start --ios",
-    "dev": "expo start",
+    "dev": "pnpm dev:ios",
+    "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios"
   },
