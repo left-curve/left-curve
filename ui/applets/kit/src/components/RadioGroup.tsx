@@ -1,4 +1,4 @@
-import { useControlledState } from "../hooks/useControlledState.js";
+import { useControlledState } from "@left-curve/foundation";
 import { useId } from "react";
 
 import { createContext, twMerge } from "@left-curve/foundation";

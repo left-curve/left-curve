@@ -1,8 +1,8 @@
+import { useControlledState } from "@left-curve/foundation";
 import { usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { forwardRef, useState } from "react";
 
-import { useControlledState } from "../hooks/useControlledState.js";
 import { useDOMRef } from "../hooks/useDOMRef.js";
 import { useClickAway } from "../hooks/useClickAway.js";
 

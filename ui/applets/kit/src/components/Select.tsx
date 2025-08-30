@@ -9,7 +9,7 @@ import {
 } from "react";
 
 import { useClickAway } from "../hooks/useClickAway.js";
-import { useControlledState } from "../hooks/useControlledState.js";
+import { useControlledState } from "@left-curve/foundation";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";

@@ -1,4 +1,4 @@
-import { useControlledState } from "../hooks/useControlledState.js";
+import { useControlledState } from "@left-curve/foundation";
 
 import { Field, Checkbox as HCheckBox, Label } from "@headlessui/react";
 import { tv } from "tailwind-variants";
