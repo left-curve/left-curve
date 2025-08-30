@@ -107,6 +107,11 @@ impl Candle {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Candle {
+    #[graphql(deprecation = "Use `max_block_height` instead")]
+    async fn block_height(&self) -> u64 {
+        self.max_block_height
+    }
+
     async fn open(&self) -> BigDecimal {
         let inner_value = self.open.inner();
         let bigint = BigInt::from(*inner_value);

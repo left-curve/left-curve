@@ -130,6 +130,7 @@ type Candle {
 	interval: CandleInterval!
 	minBlockHeight: Int!
 	maxBlockHeight: Int!
+	blockHeight: Int! @deprecated(reason: "Use `max_block_height` instead")
 	open: BigDecimal!
 	high: BigDecimal!
 	low: BigDecimal!
@@ -874,6 +875,10 @@ type UserEdge {
 	cursor: String!
 }
 
+"""
+Marks an element of a GraphQL schema as no longer supported.
+"""
+directive @deprecated(reason: String = "No longer supported") on FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | ENUM_VALUE
 """
 Directs the executor to include this field or fragment only when the `if` argument is true.
 """
