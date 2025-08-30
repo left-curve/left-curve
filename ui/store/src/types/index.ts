@@ -33,12 +33,6 @@ export type {
 export type { MipdStore } from "./mipd.js";
 
 export type {
-  AbstractStorage,
-  CreateStorageParameters,
-  Storage,
-} from "./storage.js";
-
-export type {
   Config,
   ConnectionStatusType,
   CreateConfigParameters,

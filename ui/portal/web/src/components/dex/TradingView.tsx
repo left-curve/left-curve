@@ -2,7 +2,8 @@ import type React from "react";
 import { useEffect, useRef } from "react";
 import { useApp } from "~/hooks/useApp";
 import { useTheme } from "@left-curve/applets-kit";
-import { useConfig, usePublicClient, useStorage } from "@left-curve/store";
+import { useConfig, usePublicClient } from "@left-curve/store";
+import { useStorage } from "@left-curve/foundation";
 import { useQueryClient } from "@tanstack/react-query";
 
 import * as TV from "@left-curve/tradingview";

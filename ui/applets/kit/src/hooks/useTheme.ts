@@ -1,4 +1,4 @@
-import { useStorage } from "@left-curve/store";
+import { useStorage } from "@left-curve/foundation";
 import { useEffect } from "react";
 
 export type ThemesSchema = "dark" | "light" | "system";

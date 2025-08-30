@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "../query.js";
-import { createStorage } from "../storages/createStorage.js";
+import { createStorage } from "@left-curve/foundation";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { Storage } from "../types/storage.js";
+import type { Storage } from "@left-curve/foundation";
 
 export type UseStorageOptions<T = undefined> = {
   initialValue?: T | (() => T);

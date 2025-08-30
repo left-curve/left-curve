@@ -571,6 +571,9 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../sdk/dango
+      '@left-curve/foundation':
+        specifier: workspace:^
+        version: link:../foundation
       big.js:
         specifier: '>=6.0.0'
         version: 7.0.1
