@@ -1,5 +1,5 @@
-import { useTheme } from "@left-curve/applets-kit";
-import { useAccount, useAppConfig, useConfig, useSessionKey, useStorage } from "@left-curve/store";
+import { useTheme, useStorage } from "@left-curve/applets-kit";
+import { useAccount, useAppConfig, useConfig, useSessionKey } from "@left-curve/store";
 import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
 import { useNotifications } from "./hooks/useNotifications";
 

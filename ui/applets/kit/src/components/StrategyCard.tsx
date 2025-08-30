@@ -3,7 +3,7 @@ import { Button } from "../components/Button.js";
 
 import type { PairSymbols, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 type StrategyCardProps = {
   pair: PairUpdate;

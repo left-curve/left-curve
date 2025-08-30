@@ -4,7 +4,7 @@ import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-nati
 import { Shadow } from "react-native-shadow-2";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { twMerge } from "@left-curve/applets-kit";
+import { twMerge } from "@left-curve/foundation";
 import { tv } from "tailwind-variants";
 
 import React, { isValidElement } from "react";

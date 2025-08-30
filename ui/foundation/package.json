@@ -1,0 +1,42 @@
+{
+  "name": "@left-curve/foundation",
+  "version": "0.1.0",
+  "main": "./build/index.cjs",
+  "module": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "typings": "./build/index.d.ts",
+  "exports": {
+    "./fonts/*": "./fonts/*",
+    "./images/*": "./images/*",
+    "./tailwind/*": "./tailwind/*",
+    "./messages/*": "./messages/*",
+    "./inlang/*": "./project.inlang/*",
+    ".": {
+      "types": "./build/index.d.ts",
+      "import": "./build/index.js",
+      "default": "./build/index.cjs"
+    }
+  },
+  "scripts":{
+    "inlang": "inlang",
+    "machine-translate": "inlang machine translate --project ./project.inlang",
+    "ci": "pnpm lint",
+    "lint": "pnpm biome check --write ./src",
+    "lint:fix": "pnpm biome ci ./src",
+    "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
+    "clean:build": "rm -rf ./build",
+    "pre-dev": "tsc",
+    "dev": "tsc -w",
+    "build": "pnpm tsup --clean"
+  },
+  "dependencies": {
+    "@inlang/cli": "^3.0.3",
+    "tailwind-scrollbar": "^3.1.0",
+    "tailwindcss": "catalog:",
+    "tailwindcss-animate": "^1.0.7",
+    "@left-curve/dango": "workspace:^"
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^"
+  }
+}

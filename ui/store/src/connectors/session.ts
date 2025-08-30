@@ -3,12 +3,11 @@ import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/acti
 import { decodeBase64, decodeUtf8, deserializeJson } from "@left-curve/dango/encoding";
 
 import { createConnector } from "./createConnector.js";
+import { createStorage } from "@left-curve/foundation";
 
 import type { AccountTypes, SigningSession } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
-
-import { createStorage } from "../storages/createStorage.js";
-import type { Storage } from "../types/storage.js";
+import type { Storage } from "@left-curve/foundation";
 
 type SessionConnectorParameters = {
   storage?: Storage;

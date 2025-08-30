@@ -1,11 +1,10 @@
 import { createSessionSigner, createSignerClient } from "@left-curve/dango";
 import { Secp256k1 } from "@left-curve/dango/crypto";
-import { createStorage } from "../storages/createStorage.js";
+import { createStorage, useStorage } from "@left-curve/foundation";
 
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "./useAccount.js";
 import { useConfig } from "./useConfig.js";
-import useStorage from "./useStorage.js";
 
 import { encodeBase64 } from "@left-curve/dango/encoding";
 import type { SigningSession, SigningSessionInfo } from "@left-curve/dango/types";

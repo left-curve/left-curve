@@ -13,16 +13,16 @@ import { createToaster } from "./app.toaster";
 import type React from "react";
 
 import "../public/global.css";
-import "@left-curve/ui-config/fonts/ABCDiatypeRounded/normal/800.css";
-import "@left-curve/ui-config/fonts/ABCDiatypeRounded/normal/700.css";
-import "@left-curve/ui-config/fonts/ABCDiatypeRounded/normal/500.css";
-import "@left-curve/ui-config/fonts/ABCDiatypeRounded/normal/400.css";
+import "@left-curve/foundation/fonts/ABCDiatypeRounded/normal/800.css";
+import "@left-curve/foundation/fonts/ABCDiatypeRounded/normal/700.css";
+import "@left-curve/foundation/fonts/ABCDiatypeRounded/normal/500.css";
+import "@left-curve/foundation/fonts/ABCDiatypeRounded/normal/400.css";
 
-import "@left-curve/ui-config/fonts/ABCDiatypeRounded/mono/600.css";
-import "@left-curve/ui-config/fonts/ABCDiatypeRounded/mono/500.css";
+import "@left-curve/foundation/fonts/ABCDiatypeRounded/mono/600.css";
+import "@left-curve/foundation/fonts/ABCDiatypeRounded/mono/500.css";
 
-import "@left-curve/ui-config/fonts/Exposure/italic/400.css";
-import "@left-curve/ui-config/fonts/Exposure/italic/700.css";
+import "@left-curve/foundation/fonts/Exposure/italic/400.css";
+import "@left-curve/foundation/fonts/Exposure/italic/700.css";
 
 const [Toaster, toast] = createToaster((props) => <Toast {...props} />);
 
