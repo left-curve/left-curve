@@ -107,7 +107,7 @@ impl Candle {
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Candle {
-    #[graphql(deprecation = "Use `max_block_height` instead")]
+    #[graphql(deprecation = "Use `maxBlockHeight` instead")]
     async fn block_height(&self) -> u64 {
         self.max_block_height
     }
