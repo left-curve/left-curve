@@ -64,7 +64,8 @@ impl AccountSubscription {
 
         let block_range = match since_block_height {
             Some(block_height) => block_height as i64..=latest_block_height,
-            None => latest_block_height..=latest_block_height,
+            // Removing 2 blocks so we have past accounts on the first call.
+            None => latest_block_height.saturating_sub(2).max(1)..=latest_block_height,
         };
 
         if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {

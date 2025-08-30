@@ -2,8 +2,8 @@
 use clickhouse::test;
 use {
     crate::{
-        cache::CandleCache,
         entities::{pair_price::PairPrice, trade::Trade},
+        indexer::candles::cache::CandleCache,
     },
     clickhouse::Client,
     indexer_sql::pubsub::{self, PubSub},

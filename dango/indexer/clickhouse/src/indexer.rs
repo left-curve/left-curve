@@ -12,6 +12,9 @@ use {
     std::time::Instant,
 };
 
+pub mod candles;
+pub mod trades;
+
 pub struct Indexer {
     pub context: Context,
     pub runtime_handler: RuntimeHandler,
@@ -76,11 +79,30 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
+    fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+        if !self.indexing {
+            return Ok(());
+        }
+
+        self.runtime_handler.block_on(async move {
+            let candle_generator = candles::generator::CandleGenerator::new(self.context.clone());
+
+            if let Err(_err) = candle_generator.save_all_candles().await {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_err, "Failed to save candles");
+            }
+
+            Ok::<(), grug_app::IndexerError>(())
+        })
+    }
+
     fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
             return Ok(());
         }
+
+        self.wait_for_finish()?;
 
         self.indexing = false;
 
@@ -128,7 +150,6 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` work started");
 
-        let clickhouse_client = self.context.clickhouse_client().clone();
         let querier = querier.clone();
         let ctx = ctx.clone();
         let context = self.context.clone();
@@ -140,8 +161,8 @@ impl grug_app::Indexer for Indexer {
             let dex_addr = querier.as_ref().query_dex()?;
 
             try_join!(
-                Self::store_candles(&clickhouse_client, &dex_addr, &ctx, &context),
-                Self::store_trades(&clickhouse_client, &dex_addr, &ctx, &context)
+                Self::store_candles(&dex_addr, &ctx, &context),
+                Self::store_trades(&dex_addr, &ctx, &context)
             )?;
 
             #[cfg(feature = "metrics")]
@@ -227,6 +248,11 @@ pub fn init_metrics() {
     describe_counter!(
         "indexer.clickhouse.pair_prices.processed.total",
         "Total pair prices processed"
+    );
+
+    describe_counter!(
+        "indexer.clickhouse.candles.stored.total",
+        "Total candles stored"
     );
 
     describe_counter!(
