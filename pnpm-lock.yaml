@@ -165,12 +165,12 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../../sdk/dango
+      '@left-curve/foundation':
+        specifier: workspace:^
+        version: link:../../config
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store
-      '@left-curve/ui-config':
-        specifier: workspace:^
-        version: link:../../config
       '@microlink/react-json-view':
         specifier: ^1.26.2
         version: 1.26.2(@types/react@18.3.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -286,6 +286,9 @@ importers:
       '@inlang/cli':
         specifier: ^3.0.3
         version: 3.0.3
+      '@left-curve/dango':
+        specifier: workspace:^
+        version: link:../../sdk/dango
       tailwind-scrollbar:
         specifier: ^3.1.0
         version: 3.1.0(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.17))(@types/node@22.7.5)(typescript@5.6.3)))
@@ -295,6 +298,10 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.17))(@types/node@22.7.5)(typescript@5.6.3)))
+    devDependencies:
+      '@left-curve/config':
+        specifier: workspace:^
+        version: link:../../sdk/config
 
   ui/portal/app:
     dependencies:
@@ -440,15 +447,15 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../../sdk/dango
+      '@left-curve/foundation':
+        specifier: workspace:^
+        version: link:../../config
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store
       '@left-curve/tradingview':
         specifier: ^29.4.0
         version: 29.4.0
-      '@left-curve/ui-config':
-        specifier: workspace:^
-        version: link:../../config
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

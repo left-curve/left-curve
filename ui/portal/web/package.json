@@ -15,7 +15,7 @@
     "@left-curve/dango": "workspace:^",
     "@left-curve/store": "workspace:^",
     "@left-curve/tradingview": "^29.4.0",
-    "@left-curve/ui-config": "workspace:^",
+    "@left-curve/foundation": "workspace:^",
     "@monaco-editor/react": "^4.7.0",
     "@sentry/react": "^9.10.1",
     "@sentry/webpack-plugin": "^3.2.4",

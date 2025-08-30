@@ -24,7 +24,7 @@ const environment = process.env.CONFIG_ENVIRONMENT || "local";
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
 fs.copySync(
-  path.resolve(__dirname, "node_modules", "@left-curve/ui-config/images"),
+  path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
   path.resolve(__dirname, "public/images"),
   { overwrite: true },
 );
