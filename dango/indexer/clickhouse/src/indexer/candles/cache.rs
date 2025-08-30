@@ -1,6 +1,5 @@
 #[cfg(feature = "metrics")]
 use metrics::{counter, gauge, histogram};
-
 use {
     crate::{
         entities::{
@@ -231,6 +230,7 @@ impl CandleCache {
                         %interval,
                         "Found no current candle, no pair_price, no previous candle, can not create candle",
                     );
+
                     return None;
                 }
             };
@@ -437,6 +437,7 @@ impl CandleCache {
                                     key.base_denom,
                                     key.quote_denom
                                 );
+
                                 return Err(IndexerError::CandleTimeout);
                             }
 
@@ -561,6 +562,8 @@ impl CandleCache {
         Ok(())
     }
 }
+
+// ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {

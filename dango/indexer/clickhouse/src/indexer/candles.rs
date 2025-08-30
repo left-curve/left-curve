@@ -103,8 +103,6 @@ impl Indexer {
 
         candle_generator
             .add_pair_prices(block.info.height, created_at, pair_prices)
-            .await?;
-
-        Ok(())
+            .await
     }
 }

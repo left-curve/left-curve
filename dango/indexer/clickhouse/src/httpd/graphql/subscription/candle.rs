@@ -1,6 +1,5 @@
 #[cfg(feature = "metrics")]
 use grug_httpd::metrics::GaugeGuard;
-
 use {
     crate::{
         entities::{CandleInterval, candle::Candle},

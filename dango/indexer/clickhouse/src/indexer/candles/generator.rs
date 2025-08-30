@@ -1,9 +1,10 @@
-use chrono::{DateTime, Utc};
-
-use crate::{
-    context::Context,
-    entities::{candle::Candle, candle_query::MAX_ITEMS, pair_price::PairPrice},
-    error::Result,
+use {
+    crate::{
+        context::Context,
+        entities::{candle::Candle, candle_query::MAX_ITEMS, pair_price::PairPrice},
+        error::Result,
+    },
+    chrono::{DateTime, Utc},
 };
 
 /// Take care of creating candles and storing them in clickhouse when needed
