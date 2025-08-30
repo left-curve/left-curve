@@ -305,15 +305,15 @@ importers:
 
   ui/portal/app:
     dependencies:
-      '@left-curve/applets-kit':
-        specifier: workspace:*
-        version: link:../../applets/kit
       '@left-curve/config':
         specifier: workspace:*
         version: link:../../../sdk/config
       '@left-curve/dango':
         specifier: workspace:*
         version: link:../../../sdk/dango
+      '@left-curve/foundation':
+        specifier: workspace:*
+        version: link:../../foundation
       '@left-curve/store':
         specifier: workspace:*
         version: link:../../store
