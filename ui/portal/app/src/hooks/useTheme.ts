@@ -11,14 +11,14 @@ export type UseThemeReturnType = {
 };
 
 export function useTheme(): UseThemeReturnType {
-  const preferedSchema = useColorScheme();
+  const preferredSchema = useColorScheme();
 
   const [themeSchema, setThemeSchema] = useNativeStorage<ThemesSchema>("app.theme", {
     initialValue: "system",
     sync: true,
   });
 
-  const theme = themeSchema === "system" ? preferedSchema || "dark" : themeSchema;
+  const theme = themeSchema === "system" ? preferredSchema || "dark" : themeSchema;
 
   return { theme, themeSchema, setThemeSchema };
 }
