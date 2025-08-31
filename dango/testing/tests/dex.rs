@@ -6529,7 +6529,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
         bid_depth: Some(vec![
             (Udec128_24::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
-                depth_quote: Udec128_6::new(1 * 495 + 2 * 490),
+                depth_quote: Udec128_6::new(495 + 2 * 490),
             }),
             (Udec128_24::new(480), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
@@ -6551,7 +6551,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
         ask_depth: Some(vec![
             (Udec128_24::new(510), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
-                depth_quote: Udec128_6::new(1 * 505 + 2 * 510),
+                depth_quote: Udec128_6::new(505 + 2 * 510),
             }),
             (Udec128_24::new(520), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
@@ -6606,7 +6606,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
         bid_depth: Some(vec![
             (Udec128_24::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
-                depth_quote: Udec128_6::new(1 * 495 + 2 * 490),
+                depth_quote: Udec128_6::new(495 + 2 * 490),
             }),
             (Udec128_24::new(480), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
@@ -6628,7 +6628,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
         ask_depth: Some(vec![
             (Udec128_24::new(510), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
-                depth_quote: Udec128_6::new(1 * 505 + 2 * 510),
+                depth_quote: Udec128_6::new(505 + 2 * 510),
             }),
             (Udec128_24::new(520), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
@@ -6690,7 +6690,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
         bid_depth: Some(vec![
             (Udec128_24::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
-                depth_quote: Udec128_6::new(1 * 495 + 2 * 490),
+                depth_quote: Udec128_6::new(495 + 2 * 490),
             }),
             (Udec128_24::new(480), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
@@ -6712,7 +6712,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
         ask_depth: Some(vec![
             (Udec128_24::new(510), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
-                depth_quote: Udec128_6::new(1 * 505 + 2 * 510),
+                depth_quote: Udec128_6::new(505 + 2 * 510),
             }),
             (Udec128_24::new(520), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
@@ -6736,7 +6736,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
         bid_depth: Some(vec![
             (Udec128_24::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
-                depth_quote: Udec128_6::new(1 * 495 + 2 * 490),
+                depth_quote: Udec128_6::new(495 + 2 * 490),
             }),
             (Udec128_24::new(480), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
@@ -6758,7 +6758,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
         ask_depth: Some(vec![
             (Udec128_24::new(510), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
-                depth_quote: Udec128_6::new(1 * 505 + 2 * 510),
+                depth_quote: Udec128_6::new(505 + 2 * 510),
             }),
             (Udec128_24::new(520), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3),
@@ -6832,11 +6832,11 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
             Direction::Bid => {
                 // For bid orders, we need USDC (quote currency)
                 let cost = amount.checked_mul_dec_ceil(*price).unwrap();
-                required_usdc = required_usdc + cost;
+                required_usdc += cost;
             },
             Direction::Ask => {
                 // For ask orders, we need ETH (base currency)
-                required_eth = required_eth + *amount;
+                required_eth += *amount;
             },
         }
     }
