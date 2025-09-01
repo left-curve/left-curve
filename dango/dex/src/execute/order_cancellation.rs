@@ -1,18 +1,19 @@
 use {
-    crate::{
-        LIMIT_ORDERS, MARKET_ORDERS, OrderKey, PAIRS, liquidity_depth::decrease_liquidity_depths,
-    },
+    crate::{LIMIT_ORDERS, MARKET_ORDERS, OrderKey, liquidity_depth::decrease_liquidity_depths},
     anyhow::{bail, ensure},
-    dango_types::dex::{Direction, Order, OrderCanceled, OrderId, OrderKind},
+    dango_types::dex::{Direction, Order, OrderCanceled, OrderId, OrderKind, PairParams},
     grug::{
-        Addr, DecCoin, DecCoins, EventBuilder, Number, Order as IterationOrder, StdResult, Storage,
-        TransferBuilder,
+        Addr, Cache, DecCoin, DecCoins, Denom, EventBuilder, Number, Order as IterationOrder,
+        StdError, StdResult, Storage, TransferBuilder,
     },
 };
+
+pub(super) type PairCache<'a> = Cache<'a, (Denom, Denom), PairParams, StdError>;
 
 /// Cancel all orders from all users.
 pub(super) fn cancel_all_orders(
     storage: &mut dyn Storage,
+    pair_cache: &mut PairCache,
 ) -> StdResult<(EventBuilder, TransferBuilder<DecCoins<6>>)> {
     let mut events = EventBuilder::new();
     let mut refunds = TransferBuilder::<DecCoins<6>>::new();
@@ -28,6 +29,7 @@ pub(super) fn cancel_all_orders(
             order,
             &mut events,
             refunds.get_mut(order.user),
+            pair_cache,
         )?;
 
         LIMIT_ORDERS.remove(storage, order_key)?;
@@ -44,6 +46,7 @@ pub(super) fn cancel_all_orders(
             order,
             &mut events,
             refunds.get_mut(order.user),
+            pair_cache,
         )?;
 
         MARKET_ORDERS.remove(storage, (user, order_id));
@@ -58,6 +61,7 @@ pub(super) fn cancel_all_orders_from_user(
     user: Addr,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
+    pair_cache: &mut PairCache,
 ) -> StdResult<()> {
     // Cancel maker orders, meaning limit orders that are already in the book.
     for (order_key, order) in LIMIT_ORDERS
@@ -67,7 +71,14 @@ pub(super) fn cancel_all_orders_from_user(
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_order(storage, order_key.clone(), order, events, refunds)?;
+        cancel_order(
+            storage,
+            order_key.clone(),
+            order,
+            events,
+            refunds,
+            pair_cache,
+        )?;
 
         LIMIT_ORDERS.remove(storage, order_key)?;
     }
@@ -84,6 +95,7 @@ pub(super) fn cancel_all_orders_from_user(
             order,
             events,
             refunds,
+            pair_cache,
         )?;
 
         MARKET_ORDERS.remove(storage, (user, order_id));
@@ -101,6 +113,7 @@ pub(super) fn cancel_order_from_user(
     order_id: OrderId,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
+    pair_cache: &mut PairCache,
 ) -> anyhow::Result<()> {
     // We don't know whether the order is a limit or a market order.
     // First we check whether it's a limit order, which is the highest probability
@@ -111,7 +124,14 @@ pub(super) fn cancel_order_from_user(
             "limit order `{order_id}` does not belong to the sender",
         );
 
-        cancel_order(storage, order_key.clone(), order, events, refunds)?;
+        cancel_order(
+            storage,
+            order_key.clone(),
+            order,
+            events,
+            refunds,
+            pair_cache,
+        )?;
 
         LIMIT_ORDERS.remove(storage, order_key)?;
 
@@ -125,7 +145,7 @@ pub(super) fn cancel_order_from_user(
             "market order `{order_id}` does not belong to the sender"
         );
 
-        cancel_order(storage, order_key, order, events, refunds)?;
+        cancel_order(storage, order_key, order, events, refunds, pair_cache)?;
 
         MARKET_ORDERS.remove(storage, (user, order_id));
 
@@ -141,14 +161,14 @@ fn cancel_order(
     order: Order,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
+    pair_cache: &mut PairCache,
 ) -> StdResult<()> {
     let ((base_denom, quote_denom), direction, price, order_id) = order_key;
     let remaining_in_quote = order.remaining.checked_mul(price)?;
 
     // If the order is a limit order, decrease the liquidity depth.
     if order.kind == OrderKind::Limit {
-        // TODO: cache this, so there's no need to repeated query the same thing
-        let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
+        let pair = pair_cache.get_or_fetch(&(base_denom.clone(), quote_denom.clone()), None)?;
 
         decrease_liquidity_depths(
             storage,

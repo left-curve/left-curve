@@ -6,6 +6,7 @@ use {
         MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PAUSED, RESERVES,
         core::{self, PassiveLiquidityPool},
         cron,
+        execute::order_cancellation::PairCache,
     },
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
@@ -20,7 +21,8 @@ use {
     },
     grug::{
         Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero,
-        Message, MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
+        Message, MutableCtx, NonZero, QuerierExt, Response, StorageQuerier, Uint128, UniqueVec,
+        btree_map, coins,
     },
 };
 
@@ -136,6 +138,11 @@ fn batch_update_orders(
     let mut refunds = DecCoins::new();
     let mut events = EventBuilder::new();
 
+    let mut pair_cache = PairCache::new(move |(base_denom, quote_denom), _| {
+        ctx.querier
+            .query_wasm_path(ctx.contract, &PAIRS.path((base_denom, quote_denom)))
+    });
+
     match cancels {
         // Cancel selected orders.
         Some(CancelOrderRequest::Some(order_ids)) => {
@@ -146,6 +153,7 @@ fn batch_update_orders(
                     order_id,
                     &mut events,
                     &mut refunds,
+                    &mut pair_cache,
                 )?;
             }
         },
@@ -156,6 +164,7 @@ fn batch_update_orders(
                 ctx.sender,
                 &mut events,
                 &mut refunds,
+                &mut pair_cache,
             )?;
         },
         // Do nothing.
@@ -442,7 +451,12 @@ fn swap_exact_amount_out(
 }
 
 fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage)?;
+    let mut pair_cache = PairCache::new(move |(base_denom, quote_denom), _| {
+        ctx.querier
+            .query_wasm_path(ctx.contract, &PAIRS.path((base_denom, quote_denom)))
+    });
+
+    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage, &mut pair_cache)?;
 
     Ok(Response::new()
         .add_events(events)?
