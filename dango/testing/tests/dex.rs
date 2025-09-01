@@ -6915,3 +6915,92 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
                 .unwrap_or(expected_liquidity_depth_after_clearing),
         );
 }
+
+#[test]
+fn decrease_liquidity_depths_minimal_failing_test() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Register oracle price sources for ETH and USDC
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Submit new orders with user1
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![
+                    CreateLimitOrderRequest {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(117304)),
+                        price: NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
+                    },
+                    CreateLimitOrderRequest {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(117304)),
+                        price: NonZero::new_unchecked(Udec128_24::from_str("937.7344336").unwrap()),
+                    },
+                ],
+                cancels: None,
+            },
+            coins! {
+                usdc::DENOM.clone() => 411_000_000,
+            },
+        )
+        .should_succeed();
+
+    // Submit matching orders with user2
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: NonZero::new_unchecked(Uint128::new(117304 * 2)),
+                    price: NonZero::new_unchecked(
+                        Udec128_24::from_str("85248.71")
+                            .unwrap()
+                            .checked_inv()
+                            .unwrap(),
+                    ),
+                }],
+                cancels: None,
+            },
+            coins! {
+                eth::DENOM.clone() => 117304 * 2,
+            },
+        )
+        .should_succeed();
+
+    // Assert that orderbook is empty
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(BTreeMap::new());
+}
