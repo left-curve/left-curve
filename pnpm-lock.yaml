@@ -9,6 +9,9 @@ catalogs:
     '@cloudflare/workers-types':
       specifier: ^4.20250303.0
       version: 4.20250312.0
+    '@inlang/paraglide-js':
+      specifier: 2.0.0-beta.30
+      version: 2.0.0-beta.30
     '@rsbuild/core':
       specifier: ^1.3.20
       version: 1.3.20
@@ -278,6 +281,9 @@ importers:
 
   ui/portal/app:
     dependencies:
+      '@inlang/paraglide-js':
+        specifier: 'catalog:'
+        version: 2.0.0-beta.30
       '@left-curve/config':
         specifier: workspace:*
         version: link:../../../sdk/config
@@ -2620,7 +2626,6 @@ packages:
 
   '@inlang/paraglide-js@2.0.0-beta.30':
     resolution: {integrity: sha512-Pr0JZBxexZXJbQc0xi06Dgyk9t14GQCZLQ9HoWaOv25d0sXtPv/BohVohZ4uIth12p/Dtt3Gd65y0M7iXcWTjw==}
-    deprecated: v2 has been released. please upgrade.
     hasBin: true
 
   '@inlang/recommend-sherlock@0.2.1':

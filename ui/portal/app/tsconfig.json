@@ -4,6 +4,8 @@
     "strict": true,
     "paths": {
       "~/assets/*": ["./assets/*"],
+      "~/paraglide/*": ["./.paraglide/*"],
+      "~/constants": ["./constants.config.ts"],
       "~/store": ["./store.config.ts"],
       "~/*": ["./src/*"]
     }
