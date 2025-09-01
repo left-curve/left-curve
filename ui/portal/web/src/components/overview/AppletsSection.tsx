@@ -1,5 +1,5 @@
 import { useApp } from "~/hooks/useApp";
-import { useFavApplets } from "~/hooks/useFavApplets";
+import { useFavApplets } from "@left-curve/store";
 
 import { APPLETS } from "~/constants";
 

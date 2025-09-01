@@ -1,7 +1,7 @@
 import { useStorage } from "@left-curve/store";
-
-import type { AppletMetadata } from "@left-curve/applets-kit";
 import { useCallback } from "react";
+
+import type { AppletMetadata } from "../types/applets.js";
 
 export function useFavApplets() {
   const [favApplets, setFavApplets] = useStorage<string[]>("app.applets", {

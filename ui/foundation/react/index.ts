@@ -18,9 +18,7 @@ export { WizardProvider, useWizard } from "./providers/WizardProvider.js";
 /*                                    Types                                   */
 /* -------------------------------------------------------------------------- */
 
-export type { AppletMetadata } from "./types/applets.js";
 export type { PolymorphicComponent, PolymorphicRenderFunction } from "./types/polymorph.js";
-export type { AbstractStorage, CreateStorageParameters, Storage } from "./types/storage.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Utils                                   */

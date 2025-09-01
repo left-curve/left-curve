@@ -1,9 +1,8 @@
 import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
+import { useFavApplets, useSearchBar } from "@left-curve/store";
 import { useApp } from "~/hooks/useApp";
-import { useSearchBar } from "~/hooks/useSearchBar";
-import { useFavApplets } from "~/hooks/useFavApplets";
 
 import { m } from "~/paraglide/messages";
 import { APPLETS } from "~/constants";
@@ -21,9 +20,9 @@ import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { SearchItem } from "./SearchItem";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
 import type React from "react";
-import type { SearchBarResult } from "~/hooks/useSearchBar";
+import type { AppletMetadata } from "@left-curve/store/types";
+import type { SearchBarResult } from "@left-curve/store";
 
 const SearchMenu: React.FC = () => {
   const { isLg } = useMediaQuery();

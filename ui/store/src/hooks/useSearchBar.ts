@@ -5,7 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import fuzzysort from "fuzzysort";
 import { useMemo, useReducer, useState } from "react";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
+import type { AppletMetadata } from "../types/applets.js";
+
 import type {
   Account,
   Address,
@@ -14,7 +15,7 @@ import type {
   IndexedTransaction,
 } from "@left-curve/dango/types";
 
-type UseSearchBarParameters = {
+export type UseSearchBarParameters = {
   debounceMs?: number;
   applets: Record<string, AppletMetadata>;
   favApplets: string[];
