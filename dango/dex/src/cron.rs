@@ -132,7 +132,6 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             direction,
             price,
             order.remaining,
-            order.remaining.checked_mul(price)?,
             &pairs[&denoms].bucket_sizes,
         )?;
 
@@ -243,7 +242,6 @@ fn clear_orders_of_pair(
                     order_id = !order_id;
 
                     let remaining = amount.checked_into_dec()?;
-                    let remaining_in_quote = remaining.checked_mul(price)?;
 
                     increase_liquidity_depths(
                         storage,
@@ -252,7 +250,6 @@ fn clear_orders_of_pair(
                         Direction::Bid,
                         price,
                         remaining,
-                        remaining_in_quote,
                         bucket_sizes,
                     )?;
 
@@ -280,7 +277,6 @@ fn clear_orders_of_pair(
                     let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
 
                     let remaining = amount.checked_into_dec()?;
-                    let remaining_in_quote = remaining.checked_mul(price)?;
 
                     increase_liquidity_depths(
                         storage,
@@ -289,7 +285,6 @@ fn clear_orders_of_pair(
                         Direction::Bid,
                         price,
                         remaining,
-                        remaining_in_quote,
                         bucket_sizes,
                     )?;
 
@@ -628,7 +623,6 @@ fn clear_orders_of_pair(
                         order_direction,
                         order.price,
                         filled_base,
-                        filled_quote,
                         bucket_sizes,
                     )?;
 
@@ -723,6 +717,8 @@ fn clear_orders_of_pair(
             Ok::<_, StdError>(reserve)
         })?;
     }
+
+    println!("post update pool reserve");
 
     #[cfg(feature = "tracing")]
     {

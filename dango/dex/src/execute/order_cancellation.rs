@@ -178,7 +178,6 @@ fn cancel_order(
             direction,
             price,
             order.remaining,
-            remaining_in_quote,
             &pair.bucket_sizes,
         )?;
     }

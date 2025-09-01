@@ -47,9 +47,10 @@ pub fn increase_liquidity_depths(
     direction: Direction,
     price: Udec128_24,
     amount_base: Udec128_6,
-    amount_quote: Udec128_6,
     bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
 ) -> StdResult<()> {
+    let amount_quote = amount_base.checked_mul(price)?;
+
     for bucket_size in bucket_sizes {
         let bucket = get_bucket(**bucket_size, direction, price)?;
         let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
@@ -69,6 +70,8 @@ pub fn increase_liquidity_depths(
 
 /// Decrease the liquidity depths of the given bucket sizes.
 ///
+///
+///
 /// This is called under three circumstances:
 /// - in `execute::batch_update_orders`, when canceling user limit orders;
 /// - in `cron::auction`, when canceling passive orders from the previous block;
@@ -80,9 +83,10 @@ pub fn decrease_liquidity_depths(
     direction: Direction,
     price: Udec128_24,
     amount_base: Udec128_6,
-    amount_quote: Udec128_6,
     bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
 ) -> StdResult<()> {
+    let amount_quote = amount_base.checked_mul(price)?;
+
     for bucket_size in bucket_sizes {
         let bucket = get_bucket(**bucket_size, direction, price)?;
         let key = ((base_denom, quote_denom), **bucket_size, direction, bucket);
