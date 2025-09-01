@@ -16,7 +16,7 @@ import type {
 import type { AnyCoin } from "./coin.js";
 import type { Connection, Connector, ConnectorEvents, CreateConnectorFn } from "./connector.js";
 import type { MipdStore } from "./mipd.js";
-import type { Storage } from "@left-curve/foundation";
+import type { Storage } from "./storage.js";
 import type { SubscriptionStore } from "./subscriptions.js";
 
 export const ConnectionStatus = {

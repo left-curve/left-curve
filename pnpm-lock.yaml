@@ -265,6 +265,9 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../sdk/dango
+      '@left-curve/store':
+        specifier: workspace:^
+        version: link:../store
       tailwind-scrollbar:
         specifier: ^3.1.0
         version: 3.1.0(tailwindcss@3.4.13(ts-node@10.9.2(@swc/core@1.7.26(@swc/helpers@0.5.17))(@types/node@22.7.5)(typescript@5.6.3)))
@@ -550,9 +553,6 @@ importers:
       '@left-curve/dango':
         specifier: workspace:^
         version: link:../../sdk/dango
-      '@left-curve/foundation':
-        specifier: workspace:^
-        version: link:../foundation
       eventemitter3:
         specifier: ^5.0.1
         version: 5.0.1
@@ -2626,6 +2626,7 @@ packages:
 
   '@inlang/paraglide-js@2.0.0-beta.30':
     resolution: {integrity: sha512-Pr0JZBxexZXJbQc0xi06Dgyk9t14GQCZLQ9HoWaOv25d0sXtPv/BohVohZ4uIth12p/Dtt3Gd65y0M7iXcWTjw==}
+    deprecated: v2 has been released. please upgrade.
     hasBin: true
 
   '@inlang/recommend-sherlock@0.2.1':

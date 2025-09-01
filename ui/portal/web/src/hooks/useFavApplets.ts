@@ -1,4 +1,4 @@
-import { useStorage } from "@left-curve/foundation";
+import { useStorage } from "@left-curve/store";
 
 import type { AppletMetadata } from "@left-curve/applets-kit";
 import { useCallback } from "react";
