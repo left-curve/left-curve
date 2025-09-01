@@ -1,4 +1,4 @@
-import { useStorage } from "@left-curve/store";
+import { useStorage } from "./useStorage.js";
 import { useCallback } from "react";
 
 import type { AppletMetadata } from "../types/applets.js";
