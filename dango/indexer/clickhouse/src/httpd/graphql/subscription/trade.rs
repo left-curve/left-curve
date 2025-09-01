@@ -1,6 +1,7 @@
 use {
     crate::entities::trade::Trade,
     async_graphql::{futures_util::stream::Stream, *},
+    dango_types::dex::PairId,
     futures::stream,
     futures_util::stream::StreamExt,
 };
@@ -29,16 +30,19 @@ impl TradeSubscription {
             "subscription",
         ));
 
+        let pair = PairId {
+            base_denom: base_denom.parse()?,
+            quote_denom: quote_denom.parse()?,
+        };
+
         // connect to the pubsub first, to avoid missing data.
         let stream = app_ctx.trade_pubsub.subscribe().await?;
         let initial_trades = trade_cache
             .read()
             .await
-            .trades
-            .iter()
-            .filter(|trade| trade.quote_denom == quote_denom && trade.base_denom == base_denom)
+            .trades_for_pair(&pair)
             .cloned()
-            .collect::<Vec<_>>();
+            .unwrap_or_default();
 
         Ok(
             stream::iter(initial_trades).chain(stream.filter_map(move |trade| {

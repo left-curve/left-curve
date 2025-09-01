@@ -1,10 +1,12 @@
 use {
     super::pair_price::dec,
+    crate::error::IndexerError,
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    dango_types::dex::{Direction, OrderKind},
-    grug::{Udec128_6, Udec128_24},
+    dango_types::dex::{Direction, OrderKind, PairId},
+    grug::{Denom, Udec128_6, Udec128_24},
     serde::{Deserialize, Serialize},
+    std::str::FromStr,
 };
 #[cfg(feature = "async-graphql")]
 use {
@@ -72,6 +74,15 @@ pub struct Trade {
     // Used for cursor and pagination
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
     pub trade_idx: u32,
+}
+
+impl Trade {
+    pub fn pair(&self) -> Result<PairId, IndexerError> {
+        Ok(PairId {
+            base_denom: Denom::from_str(&self.base_denom)?,
+            quote_denom: Denom::from_str(&self.quote_denom)?,
+        })
+    }
 }
 
 #[cfg(feature = "async-graphql")]
