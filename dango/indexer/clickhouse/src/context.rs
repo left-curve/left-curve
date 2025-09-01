@@ -1,5 +1,7 @@
+use crate::indexer::trades::cache::TradeCache;
 #[cfg(feature = "testing")]
 use clickhouse::test;
+
 use {
     crate::{
         entities::{pair_price::PairPrice, trade::Trade},
@@ -24,6 +26,7 @@ pub struct Context {
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub trade_pubsub: Arc<dyn PubSub<Trade> + Send + Sync>,
     pub candle_cache: Arc<RwLock<CandleCache>>,
+    pub trade_cache: Arc<RwLock<TradeCache>>,
 }
 
 impl Context {
@@ -44,6 +47,7 @@ impl Context {
             pubsub,
             trade_pubsub,
             candle_cache: Default::default(),
+            trade_cache: Default::default(),
         }
     }
 
@@ -72,22 +76,29 @@ impl Context {
             pubsub,
             trade_pubsub,
             candle_cache: Default::default(),
+            trade_cache: Default::default(),
         }
     }
 
-    pub async fn preload_candle_cache(&self) -> crate::error::Result<()> {
+    pub async fn preload_cache(&self) -> crate::error::Result<()> {
         let all_pairs = PairPrice::all_pairs(self.clickhouse_client()).await?;
 
         let mut candle_cache = self.candle_cache.write().await;
-
         candle_cache
             .preload_pairs(&all_pairs, self.clickhouse_client())
-            .await
+            .await?;
+        drop(candle_cache);
+
+        let mut trade_cache = self.trade_cache.write().await;
+        trade_cache.preload(self.clickhouse_client()).await?;
+        drop(trade_cache);
+
+        Ok(())
     }
 
     #[cfg(feature = "async-graphql")]
-    pub async fn start_candle_cache(&self) -> crate::error::Result<()> {
-        self.preload_candle_cache().await
+    pub async fn start_cache(&self) -> crate::error::Result<()> {
+        self.preload_cache().await
     }
 
     #[cfg(feature = "testing")]
@@ -101,6 +112,7 @@ impl Context {
             pubsub: self.pubsub,
             trade_pubsub: self.trade_pubsub,
             candle_cache: self.candle_cache,
+            trade_cache: self.trade_cache,
         }
     }
 
@@ -126,6 +138,7 @@ impl Context {
             pubsub: self.pubsub,
             trade_pubsub: self.trade_pubsub,
             candle_cache: self.candle_cache,
+            trade_cache: self.trade_cache,
         })
     }
 

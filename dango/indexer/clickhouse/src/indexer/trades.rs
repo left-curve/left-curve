@@ -1,7 +1,7 @@
 use {
     crate::{
         context::Context,
-        entities::trade::Trade,
+        entities::{candle_query::MAX_ITEMS, trade::Trade},
         error::{IndexerError, Result},
         indexer::Indexer,
     },
@@ -12,6 +12,8 @@ use {
         FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten,
     },
 };
+
+pub mod cache;
 
 impl Indexer {
     pub(crate) async fn store_trades(
@@ -120,8 +122,8 @@ impl Indexer {
             .inserter::<Trade>("trades")?
             .with_max_rows(trades.len() as u64);
 
-        for trade in trades {
-            inserter.write(&trade).inspect_err(|_err| {
+        for trade in trades.iter() {
+            inserter.write(trade).inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write trade: {trade:#?}: {_err}");
             })?;
@@ -135,6 +137,10 @@ impl Indexer {
             #[cfg(feature = "tracing")]
             tracing::error!("Failed to end inserter for trades: {_err}");
         })?;
+
+        let mut trade_cache = context.trade_cache.write().await;
+        trade_cache.trades.insert(block.info.height, trades);
+        trade_cache.compact_keep_n(MAX_ITEMS * 2);
 
         Ok(())
     }
