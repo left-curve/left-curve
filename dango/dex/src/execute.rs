@@ -467,7 +467,7 @@ mod tests {
             constants::{dango, usdc},
             dex::{Direction, PairParams, PassiveLiquidity, RestingOrderBookState, Xyk},
         },
-        grug::{Addr, Bounded, MockContext, NumberConst, Udec128, Udec128_24},
+        grug::{Addr, Bounded, MockContext, MockQuerier, NumberConst, Udec128, Udec128_24},
         std::{collections::BTreeSet, str::FromStr},
         test_case::test_case,
     };
@@ -608,7 +608,30 @@ mod tests {
         expected_refunds: Coins,
     ) {
         let sender = Addr::mock(1);
-        let mut ctx = MockContext::new().with_sender(sender).with_funds(funds);
+        let dex_contract = Addr::mock(2);
+
+        let querier = MockQuerier::new().with_raw_contract_storage(dex_contract, |storage| {
+            // Create the dango-usdc pair.
+            // The specific parameters don't matter. We just need the pair to exist.
+            PAIRS
+                .save(storage, (&dango::DENOM, &usdc::DENOM), &PairParams {
+                    lp_denom: Denom::from_str("lp").unwrap(),
+                    pool_type: PassiveLiquidity::Xyk(Xyk {
+                        spacing: Udec128::ONE,
+                        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                        limit: 10,
+                    }),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                })
+                .unwrap();
+        });
+
+        let mut ctx = MockContext::new()
+            .with_contract(dex_contract)
+            .with_sender(sender)
+            .with_funds(funds)
+            .with_querier(querier);
 
         // Set the pause state as unpaused.
         PAUSED.save(&mut ctx.storage, &false).unwrap();
