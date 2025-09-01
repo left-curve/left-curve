@@ -1,15 +1,11 @@
-use {
-    crate::{
-        entities::{candle_query::MAX_ITEMS, trade::Trade, trade_query::TradeQueryBuilder},
-        error::Result,
-    },
-    itertools::Itertools,
-    std::collections::HashMap,
+use crate::{
+    entities::{candle_query::MAX_ITEMS, trade::Trade, trade_query::TradeQueryBuilder},
+    error::Result,
 };
 
 #[derive(Debug, Default, Eq, PartialEq)]
 pub struct TradeCache {
-    pub trades: HashMap<u64, Vec<Trade>>,
+    pub trades: Vec<Trade>,
 }
 
 impl TradeCache {
@@ -18,13 +14,7 @@ impl TradeCache {
             return;
         }
 
-        let mut keys_to_remove: Vec<u64> = self.trades.keys().cloned().collect();
-        keys_to_remove.sort();
-
-        let remove_count = self.trades.len() - n;
-        for key in keys_to_remove.into_iter().take(remove_count) {
-            self.trades.remove(&key);
-        }
+        self.trades.drain(0..self.trades.len().saturating_sub(n));
     }
 
     pub async fn preload(&mut self, clickhouse_client: &clickhouse::Client) -> Result<()> {
@@ -32,9 +22,7 @@ impl TradeCache {
             .with_limit(MAX_ITEMS)
             .fetch_all(clickhouse_client)
             .await?
-            .trades
-            .into_iter()
-            .into_group_map_by(|trade| trade.block_height);
+            .trades;
 
         Ok(())
     }

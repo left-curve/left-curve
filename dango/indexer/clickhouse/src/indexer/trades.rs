@@ -139,7 +139,7 @@ impl Indexer {
         })?;
 
         let mut trade_cache = context.trade_cache.write().await;
-        trade_cache.trades.insert(block.info.height, trades);
+        trade_cache.trades.append(&mut trades);
         trade_cache.compact_keep_n(MAX_ITEMS * 2);
 
         Ok(())
