@@ -1,5 +1,6 @@
 import { View } from "react-native";
 import { Landing } from "~/components/Landing";
+import { APPLETS, ASSETS } from "~/constants";
 
 export default function HomeScreen() {
   return (
@@ -15,7 +16,16 @@ export default function HomeScreen() {
         Set Theme
       </Button> */}
       <Landing>
-        <Landing.Header />
+        <View>
+          {Object.values(APPLETS).map((applet) => {
+            const { default: AppletImage } = ASSETS[applet.id as keyof typeof ASSETS];
+            return (
+              <View key={applet.id}>
+                <AppletImage width="40" height="40" />
+              </View>
+            );
+          })}
+        </View>
       </Landing>
     </View>
   );
