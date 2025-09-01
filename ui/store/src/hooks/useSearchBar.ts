@@ -1,12 +1,13 @@
-import { isValidAddress } from "@left-curve/dango";
-import { wait } from "@left-curve/dango/utils";
-import { useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import fuzzysort from "fuzzysort";
 import { useMemo, useReducer, useState } from "react";
+import { useConfig } from "./useConfig.js";
+import { usePublicClient } from "./usePublicClient.js";
+
+import { wait } from "@left-curve/dango/utils";
+import { isValidAddress } from "@left-curve/dango";
+import fuzzysort from "fuzzysort";
 
 import type { AppletMetadata } from "../types/applets.js";
-
 import type {
   Account,
   Address,
