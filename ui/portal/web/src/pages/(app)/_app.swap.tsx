@@ -8,7 +8,7 @@ const DEFAULT_QUOTE = "BTC";
 
 export const Route = createFileRoute("/(app)/_app/swap")({
   head: () => ({
-    meta: [{ title: `Dango | ${m["applets.transfer.title"]()}` }],
+    meta: [{ title: `Dango | ${m["applets.simple-swap.title"]()}` }],
   }),
   beforeLoad: async ({ context, search }) => {
     const { config } = context;

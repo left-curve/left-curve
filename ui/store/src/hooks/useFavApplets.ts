@@ -20,11 +20,7 @@ export function useFavApplets() {
   }, []);
 
   const removeFavApplet = useCallback((applet: AppletMetadata) => {
-    setFavApplets((prev) => {
-      const index = prev.indexOf(applet.id);
-      if (index > -1) prev.splice(index, 1);
-      return prev;
-    });
+    setFavApplets((prev) => prev.filter((id) => id !== applet.id));
   }, []);
 
   return {
