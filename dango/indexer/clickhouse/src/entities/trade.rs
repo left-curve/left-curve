@@ -1,10 +1,9 @@
 use {
     super::pair_price::dec,
-    crate::error::IndexerError,
     chrono::{DateTime, Utc},
     clickhouse::Row,
     dango_types::dex::{Direction, OrderKind, PairId},
-    grug::{Denom, Udec128_6, Udec128_24},
+    grug::{Denom, StdError, Udec128_6, Udec128_24},
     serde::{Deserialize, Serialize},
     std::str::FromStr,
 };
@@ -76,11 +75,13 @@ pub struct Trade {
     pub trade_idx: u32,
 }
 
-impl Trade {
-    pub fn pair(&self) -> Result<PairId, IndexerError> {
+impl TryFrom<&Trade> for PairId {
+    type Error = StdError;
+
+    fn try_from(trade: &Trade) -> Result<Self, Self::Error> {
         Ok(PairId {
-            base_denom: Denom::from_str(&self.base_denom)?,
-            quote_denom: Denom::from_str(&self.quote_denom)?,
+            base_denom: Denom::from_str(&trade.base_denom)?,
+            quote_denom: Denom::from_str(&trade.quote_denom)?,
         })
     }
 }

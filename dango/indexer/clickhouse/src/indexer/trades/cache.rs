@@ -19,7 +19,10 @@ impl TradeCache {
 
     pub fn add_trades(&mut self, trades: Vec<Trade>) -> Result<()> {
         for trade in trades {
-            self.trades.entry(trade.pair()?).or_default().push(trade);
+            self.trades
+                .entry((&trade).try_into()?)
+                .or_default()
+                .push(trade);
         }
 
         Ok(())
@@ -43,7 +46,7 @@ impl TradeCache {
             .try_fold(
                 HashMap::new(),
                 |mut acc: std::collections::HashMap<_, Vec<Trade>>, trade| {
-                    let pair = trade.pair()?;
+                    let pair = (&trade).try_into()?;
                     acc.entry(pair).or_default().push(trade);
                     Ok::<_, IndexerError>(acc)
                 },
