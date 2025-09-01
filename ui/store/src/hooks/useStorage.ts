@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "../query.js";
-import { createStorage } from "@left-curve/foundation";
 
 import type { Dispatch, SetStateAction } from "react";
-import type { Storage } from "@left-curve/foundation";
+import type { Storage } from "../types/storage.js";
+import { useConfig } from "./useConfig.js";
 
 export type UseStorageOptions<T = undefined> = {
   initialValue?: T | (() => T);
@@ -17,25 +17,17 @@ export function useStorage<T = undefined>(
   key: string,
   options: UseStorageOptions<T> = {},
 ): [T extends undefined ? null : T, Dispatch<SetStateAction<T>>] {
+  const { storage: defaultStorage } = useConfig();
   const [channel] = useState(new BroadcastChannel(`dango.storage.${key}`));
 
   const {
     enabled = true,
     sync = false,
     initialValue: _initialValue_,
-    storage: _storage_,
+    storage = defaultStorage,
     version: __version__ = 1,
     migrations = {},
   } = options;
-
-  const storage = (() => {
-    if (_storage_) return _storage_;
-    return createStorage({
-      key: "dango",
-      storage:
-        typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
-    });
-  })();
 
   const initialValue = (() => {
     if (typeof _initialValue_ !== "function") return _initialValue_ as T;

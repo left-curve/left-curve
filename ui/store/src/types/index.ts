@@ -33,6 +33,12 @@ export type {
 export type { MipdStore } from "./mipd.js";
 
 export type {
+  AbstractStorage,
+  CreateStorageParameters,
+  Storage,
+} from "./storage.js";
+
+export type {
   Config,
   ConnectionStatusType,
   CreateConfigParameters,
@@ -52,6 +58,8 @@ export type {
   WithAmount,
   WithBalance,
 } from "./coin.js";
+
+export type { AppletMetadata } from "./applets.js";
 
 export { ConnectionStatus } from "./store.js";
 export { ConnectorIds } from "./connector.js";

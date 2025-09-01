@@ -1,4 +1,5 @@
-import { createConfig, graphql, passkey, session, devnet } from "@left-curve/store";
+import { createConfig, graphql, passkey, devnet, createStorage } from "@left-curve/store";
+import { MMKV, Mode } from "react-native-mmkv";
 
 import type { Config } from "@left-curve/store/types";
 
@@ -65,10 +66,29 @@ const coins = {
   },
 } as const;
 
+const store = new MMKV({
+  id: "dango.global",
+  mode: Mode.MULTI_PROCESS,
+  readOnly: false,
+});
+
 export const config: Config = createConfig({
   multiInjectedProviderDiscovery: false,
   chain,
   transport: graphql(chain.urls.indexer, { batch: true }),
   coins,
+  storage: createStorage({
+    storage: {
+      getItem<T>(key: string): T | undefined {
+        return store.getString(key) as T;
+      },
+      setItem(key: string, data: string): void {
+        store.set(key, data);
+      },
+      removeItem(key: string): void {
+        store.delete(key);
+      },
+    },
+  }),
   connectors: [passkey()],
 });

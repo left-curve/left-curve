@@ -6,30 +6,18 @@ export const DEFAULT_SESSION_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
 
 export const WEBRTC_URI = import.meta.env.PUBLIC_WEBRTC_URI;
 
-export const APPLETS = Array.from(
-  { length: Object.keys(m).filter((k) => k.includes("applet")).length },
-  (_, i) => {
-    if (m[`applets.${i as 0}.id`]) {
-      return {
-        id: m[`applets.${i as 0}.id`](),
-        title: m[`applets.${i as 0}.title`](),
-        description: m[`applets.${i as 0}.description`](),
-        img: m[`applets.${i as 0}.img`](),
-        keywords: m[`applets.${i as 0}.keywords`]().split(","),
-        path: m[`applets.${i as 0}.path`](),
-      } as AppletMetadata;
-    }
-  },
-).filter((a) => {
-  if (!a) return false;
-  if ((a.id === "earn" || a.id === "devtool") && import.meta.env.CONFIG_ENVIRONMENT === "test")
-    return false;
-  return true;
-}) as AppletMetadata[];
-
-export const DEFAULT_FAV_APPLETS = APPLETS.filter(({ id }) =>
-  ["transfer", "settings", "notifications", "simple-swap", "trade", "earn"].includes(id),
-).reduce((acc, applet) => {
-  acc[applet.id] = applet;
-  return acc;
-}, Object.create({}));
+const translations = m as unknown as Record<string, () => string>;
+export const APPLETS: Record<string, AppletMetadata> = Object.keys(translations)
+  .filter((k) => /^applets\..*\.id$/.test(k))
+  .reduce((acc, key) => {
+    const [_, id] = key.split(".");
+    acc[id] = {
+      id,
+      title: translations[`applets.${id}.title`](),
+      description: translations[`applets.${id}.description`](),
+      img: translations[`applets.${id}.img`](),
+      keywords: translations[`applets.${id}.keywords`]().split(","),
+      path: translations[`applets.${id}.path`](),
+    };
+    return acc;
+  }, Object.create({}));
