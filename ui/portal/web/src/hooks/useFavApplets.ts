@@ -1,37 +1,29 @@
 import { useStorage } from "@left-curve/foundation";
 
-import { APPLETS, DEFAULT_FAV_APPLETS } from "~/constants";
-
 import type { AppletMetadata } from "@left-curve/applets-kit";
 import { useCallback } from "react";
 
 export function useFavApplets() {
-  const [favApplets, setFavApplets] = useStorage<Record<string, AppletMetadata>>("app.applets", {
-    initialValue: DEFAULT_FAV_APPLETS,
-    version: 1.5,
+  const [favApplets, setFavApplets] = useStorage<string[]>("app.applets", {
+    initialValue: ["transfer", "settings", "notifications", "simple-swap", "trade", "earn"],
+    version: 1.6,
     sync: true,
     migrations: {
-      1.1: (oldValue: Record<string, AppletMetadata>) => {
-        return Object.keys(oldValue).reduce((acc, appletId) => {
-          const applet = APPLETS.find((a) => a.id === appletId);
-          if (applet) acc[appletId] = applet;
-          return acc;
-        }, Object.create({}));
+      1.5: (_: Record<string, AppletMetadata>) => {
+        return ["transfer", "settings", "notifications", "simple-swap", "trade", "earn"];
       },
     },
   });
 
   const addFavApplet = useCallback((applet: AppletMetadata) => {
-    setFavApplets((prev) => ({
-      ...prev,
-      [applet.id]: applet,
-    }));
+    setFavApplets((prev) => [...prev, applet.id]);
   }, []);
 
   const removeFavApplet = useCallback((applet: AppletMetadata) => {
     setFavApplets((prev) => {
-      const { [applet.id]: _, ...rest } = prev;
-      return rest;
+      const index = prev.indexOf(applet.id);
+      if (index > -1) prev.splice(index, 1);
+      return prev;
     });
   }, []);
 

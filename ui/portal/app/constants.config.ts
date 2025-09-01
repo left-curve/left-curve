@@ -1,10 +1,7 @@
 import { m } from "~/paraglide/messages";
+import type { AppletMetadata } from "@left-curve/foundation";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
-
-export const DEFAULT_SESSION_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
-
-export const WEBRTC_URI = import.meta.env.PUBLIC_WEBRTC_URI;
+export const WEBRTC_URI = "wss://webrtc.dango.exchange";
 
 const translations = m as unknown as Record<string, () => string>;
 export const APPLETS: Record<string, AppletMetadata> = Object.keys(translations)
