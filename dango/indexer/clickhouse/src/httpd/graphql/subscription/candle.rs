@@ -46,20 +46,21 @@ impl CandleSubscription {
         ));
 
         let received_block_height = Arc::new(AtomicU64::new(0));
+        // connect to the pubsub first, to avoid missing data.
+        let stream = app_ctx.pubsub.subscribe().await?;
+        let initial_candle = candle_cache
+            .read()
+            .await
+            .get_last_candle(&cache_key)
+            .cloned();
 
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
-            async move {
-                Ok(candle_cache
-                    .read()
-                    .await
-                    .get_last_candle(&cache_key)
-                    .cloned())
-            }
+            async move { Ok(initial_candle) }
         })
-        .chain(app_ctx.pubsub.subscribe().await?.then(move |current_block_height| {
+        .chain(stream.then(move |current_block_height| {
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
@@ -67,7 +68,8 @@ impl CandleSubscription {
                 cache::CandleCacheKey::new(base_denom.clone(), quote_denom.clone(), interval);
             let candle_cache = app_ctx.candle_cache.clone();
 
-            let previous_block_height = received_block_height.fetch_max(current_block_height, Ordering::Release);
+            let previous_block_height =
+                received_block_height.fetch_max(current_block_height, Ordering::Release);
 
             async move {
                 if current_block_height < previous_block_height {
@@ -97,17 +99,23 @@ impl CandleSubscription {
                 };
 
                 if candle.max_block_height < current_block_height {
-                    let candle_cache = candle_cache
-                        .read()
-                        .await;
+                    let candle_cache = candle_cache.read().await;
                     let candle_cache_block_heights = candle_cache
                         .candles
                         .get(&cache_key)
-                        .map(|candles| candles.iter().map(|c| c.max_block_height).collect::<Vec<_>>())
+                        .map(|candles| {
+                            candles
+                                .iter()
+                                .map(|c| c.max_block_height)
+                                .collect::<Vec<_>>()
+                        })
                         .unwrap_or_default();
-                    let pair_prices_block_heights = candle_cache.pair_prices.keys().cloned().collect::<Vec<_>>();
+                    let pair_prices_block_heights =
+                        candle_cache.pair_prices.keys().cloned().collect::<Vec<_>>();
 
-                    let _pair_price_current_block_exists = candle_cache.pair_price_for_block(current_block_height).is_some();
+                    let _pair_price_current_block_exists = candle_cache
+                        .pair_price_for_block(current_block_height)
+                        .is_some();
 
                     drop(candle_cache);
 
@@ -141,9 +149,7 @@ impl CandleSubscription {
         }))
         .filter_map(|candle: Result<Option<Candle>>| async move {
             match candle {
-                Ok(Some(candle)) => {
-                    Some(vec![candle])
-                },
+                Ok(Some(candle)) => Some(vec![candle]),
                 Ok(None) => None,
                 Err(_err) => {
                     #[cfg(feature = "tracing")]
