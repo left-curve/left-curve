@@ -48,7 +48,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
           type: connector?.type,
         });
       }
-    }, [username]);
+    }, [username, connector]);
 
     // Initialize notifications
     const { startNotifications } = useNotifications();

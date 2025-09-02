@@ -23,7 +23,7 @@ export const Applet: React.FC<AppletProps> = ({ uri }) => {
         }}
         injectedJavaScriptBeforeContentLoaded={`
           window.dango = {
-            settings: ${JSON.stringify(settings)}
+            settings: ${JSON.stringify(settings)},
             chain: ${JSON.stringify(chain)},
             coins: ${JSON.stringify(coins.byDenom)}
           };`}
