@@ -22,6 +22,9 @@ pub(crate) async fn graphql_index(
     req: HttpRequest,
     gql_request: GraphQLBatchRequest,
 ) -> GraphQLResponse {
+    #[cfg(feature = "tracing")]
+    tracing::warn!("graphql_index CALLED");
+
     let remote_ip = req
         .connection_info()
         .realip_remote_addr()
@@ -31,7 +34,7 @@ pub(crate) async fn graphql_index(
 
     let details = HttpRequestDetails { remote_ip, peer_ip };
 
-    let request = gql_request.into_inner().data(details);
+    let request = gql_request.into_inner(); //.data(details);
 
     schema.execute_batch(request).await.into()
 }

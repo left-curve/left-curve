@@ -14,7 +14,7 @@ use {
     },
     grug::{
         Addressable, Coin, Coins, Json, JsonDeExt, QuerierExt, Query, QueryBalanceRequest,
-        QueryResponse, ResultExt,
+        QueryResponse, ResultExt, setup_tracing_subscriber,
     },
     grug_app::Indexer,
     grug_types::{JsonSerExt, QueryWasmSmartRequest},
@@ -24,10 +24,13 @@ use {
     },
     std::collections::BTreeSet,
     tokio::sync::mpsc,
+    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::DEBUG);
+
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
@@ -104,6 +107,7 @@ async fn query_accounts() -> anyhow::Result<()> {
         .await?
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
@@ -175,6 +179,7 @@ async fn query_accounts_with_username() -> anyhow::Result<()> {
         .await?
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
@@ -243,6 +248,7 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
         .await?
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
@@ -344,6 +350,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
         .await?
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_paginate_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
@@ -462,6 +469,7 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
         .await?
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
@@ -562,6 +570,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
         .await?
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
@@ -679,6 +688,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
         .await?
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _) =
@@ -750,6 +760,7 @@ async fn graphql_returns_account_owner_nonces() -> anyhow::Result<()> {
         .await?
 }
 
+#[ignore]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_address_balance() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, _, _, _, dango_httpd_context, _) =

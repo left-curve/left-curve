@@ -16,7 +16,7 @@ async-graphql            = { workspace = true }
 async-trait              = { workspace = true }
 clickhouse               = { workspace = true, features = ["test-util"] }
 dango-genesis            = { workspace = true }
-dango-httpd              = { workspace = true, features = ["metrics"] }
+dango-httpd              = { workspace = true, features = ["metrics", "tracing"] }
 dango-indexer-clickhouse = { workspace = true, features = ["async-graphql", "metrics", "testing", "tracing"] }
 dango-indexer-sql        = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 dango-proposal-preparer  = { workspace = true }
