@@ -718,8 +718,6 @@ fn clear_orders_of_pair(
         })?;
     }
 
-    println!("post update pool reserve");
-
     #[cfg(feature = "tracing")]
     {
         tracing::info!(
