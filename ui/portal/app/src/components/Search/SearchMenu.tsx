@@ -42,7 +42,7 @@ const Body: React.FC<SearchMenuProps> = ({
         title: isSearching ? "Applets" : "Favorite Applets",
         items: applets.map((applet) => (
           <Pressable
-            key={`applet-${applet.title}`}
+            key={`applet-${applet.id}`}
             className="w-full"
             onPress={() => onSelect(applet.path)}
           >
