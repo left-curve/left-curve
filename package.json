@@ -3,7 +3,7 @@
   "packageManager": "pnpm@9.0.0",
   "engines": {
     "pnpm": ">=9.0.0",
-    "node": ">=21.0.0"
+    "node": ">=23.0.0"
   },
   "scripts": {
     "turbo": "turbo",
@@ -18,6 +18,7 @@
     "dev": "turbo dev",
     "machine-translate": "pnpm -F ui-config machine-translate",
     "dev:sdk": "turbo dev -F=./sdk/**",
+    "dev:applets": "turbo dev -F=./ui/applets/**",
     "dev:portal-web": "turbo dev -F=./sdk/** -F=./ui/store -F=./ui/foundation -F @left-curve/applets-kit -F @left-curve/portal-web",
     "dev:portal-app": "turbo dev -F=./sdk/** -F=./ui/store -F=./ui/foundation -F @left-curve/portal-app",
     "build:sdk": "turbo build -F=./sdk/**",

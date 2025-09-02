@@ -15,8 +15,8 @@ export default defineConfig({
       "import.meta.env": {},
     },
   },
-  server: { port: 5080 },
-  html: { template: "public/index.html", title: "" },
+  server: { port: 5180 },
+  html: {},
   performance: {
     prefetch: {
       type: "all-assets",

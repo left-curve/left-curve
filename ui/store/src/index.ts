@@ -7,6 +7,8 @@ export {
   type DangoStoreProviderProps,
 } from "./context.js";
 
+export { DangoRemoteProvider } from "./remote.js";
+
 export { local, devnet, testnet, http, graphql } from "@left-curve/dango";
 
 /* -------------------------------------------------------------------------- */

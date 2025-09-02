@@ -7,7 +7,6 @@ import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { ToastController } from "../types/toast";
 
 export type AppState = {
-  m: Record<string, (t?: any) => string>;
   toast: ToastController;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
   config: ReturnType<typeof useAppConfig>;
@@ -32,19 +31,20 @@ export type AppState = {
     useSessionKey: boolean;
     formatNumberOptions: FormatNumberOptions;
   };
+  navigate: (to: string, options?: { replace?: boolean }) => void;
 };
 
 export const [AppContextProvider, useApp] = createContext<AppState>();
 
 export type AppProviderProps = {
   toast: ToastController;
-  translations: Record<string, (t?: any) => string>;
+  navigate: AppState["navigate"];
 };
 
 export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
   children,
   toast,
-  translations,
+  navigate,
 }) => {
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
@@ -102,8 +102,8 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
   return (
     <AppContextProvider
       value={{
-        m: translations,
         config,
+        navigate,
         subscriptions,
         isSidebarVisible,
         setSidebarVisibility,

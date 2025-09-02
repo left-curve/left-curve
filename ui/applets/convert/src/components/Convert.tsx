@@ -20,10 +20,10 @@ import {
   type useApp,
 } from "@left-curve/applets-kit";
 import HippoSvg from "@left-curve/foundation/images/characters/hippo.svg";
-import { Link } from "@tanstack/react-router";
 
 import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
 import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curve/dango/utils";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { type PropsWithChildren, useEffect, useState } from "react";
 
@@ -45,7 +45,7 @@ const SimpleSwapContainer: React.FC<
 > = ({ children, appState, ...parameters }) => {
   const state = useSimpleSwapState(parameters);
   const controllers = useInputs();
-  const { m, toast, settings, showModal } = appState;
+  const { toast, settings, showModal } = appState;
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const queryClient = useQueryClient();
@@ -118,8 +118,7 @@ const SimpleSwapContainer: React.FC<
 };
 
 const SimpleSwapHeader: React.FC = () => {
-  const { state, app } = useSimpleSwap();
-  const { m } = app;
+  const { state } = useSimpleSwap();
   const { quote, statistics } = state;
   const { tvl, apy, volume } = statistics.data;
   return (
@@ -156,7 +155,7 @@ const SimpleSwapForm: React.FC = () => {
   const { coins } = useConfig();
   const { account, isConnected } = useAccount();
   const { app, state, controllers, submission } = useSimpleSwap();
-  const { m, settings } = app;
+  const { settings } = app;
   const { data: balances } = useBalances({ address: account?.address });
   const [activeInput, setActiveInput] = useState<"base" | "quote">();
   const { getPrice } = usePrices();
@@ -374,7 +373,7 @@ const SimpleSwapForm: React.FC = () => {
 const SimpleSwapDetails: React.FC = () => {
   const { isConnected } = useAccount();
   const { app, state } = useSimpleSwap();
-  const { m, settings } = app;
+  const { settings } = app;
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
   const { data, isPending } = simulation;
@@ -428,7 +427,7 @@ const SimpleSwapTrigger: React.FC = () => {
   const { app, submission, state, controllers } = useSimpleSwap();
   const { simulation } = state;
   const { isValid } = controllers;
-  const { m } = app;
+  const { navigate } = app;
 
   return isConnected ? (
     <Button
@@ -444,7 +443,7 @@ const SimpleSwapTrigger: React.FC = () => {
       {m["dex.convert.swap"]()}
     </Button>
   ) : (
-    <Button fullWidth size="md" as={Link} to="/signin">
+    <Button fullWidth size="md" onClick={() => navigate("/signin")}>
       {m["common.signin"]()}
     </Button>
   );

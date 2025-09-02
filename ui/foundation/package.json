@@ -11,13 +11,14 @@
     "./tailwind/*": "./tailwind/*",
     "./messages/*": "./messages/*",
     "./inlang/*": "./project.inlang/*",
+    "./paraglide/*": "./paraglide/*",
     ".": {
       "types": "./build/index.d.ts",
       "import": "./build/index.js",
       "default": "./build/index.cjs"
     }
   },
-  "scripts":{
+  "scripts": {
     "inlang": "inlang",
     "machine-translate": "inlang machine translate --project ./project.inlang",
     "ci": "pnpm lint",
@@ -26,18 +27,25 @@
     "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
     "clean:build": "rm -rf ./build",
     "pre-dev": "tsc",
-    "dev": "tsc -w",
-    "build": "pnpm tsup --clean"
+    "dev": "nodemon & tsc -w",
+    "build": "node paraglide.mjs && pnpm tsup --clean"
   },
   "dependencies": {
     "@inlang/cli": "^3.0.3",
+    "@inlang/paraglide-js": "^2.2.0",
+    "@left-curve/dango": "workspace:^",
+    "@left-curve/store": "workspace:^",
+    "@rslib/core": "^0.12.4",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "catalog:",
-    "tailwindcss-animate": "^1.0.7",
-    "@left-curve/dango": "workspace:^",
-    "@left-curve/store": "workspace:^"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@left-curve/config": "workspace:^"
+    "@left-curve/config": "workspace:^",
+    "nodemon": "^3.1.10"
+  },
+  "nodemonConfig": {
+    "watch": ["build"],
+    "exec": "node paraglide.ts"
   }
 }

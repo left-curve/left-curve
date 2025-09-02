@@ -1,15 +1,9 @@
-import { AppProvider, Toast } from "@left-curve/applets-kit";
-import { RootModal } from "./components/modals/RootModal";
-
 import { DangoStoreProvider } from "@left-curve/store";
 import { captureException } from "@sentry/react";
-import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
-import { m } from "~/paraglide/messages";
-
 import { AppRouter } from "./app.router";
-import { createToaster } from "./app.toaster";
 
 import type React from "react";
 
@@ -24,8 +18,6 @@ import "@left-curve/foundation/fonts/ABCDiatypeRounded/mono/500.css";
 
 import "@left-curve/foundation/fonts/Exposure/italic/400.css";
 import "@left-curve/foundation/fonts/Exposure/italic/700.css";
-
-const [Toaster, toast] = createToaster((props) => <Toast {...props} />);
 
 const channel = new BroadcastChannel("dango.queries");
 
@@ -52,13 +44,6 @@ const queryClient = new QueryClient({
       captureException(errorMessage);
     },
   }),
-  queryCache: new QueryCache({
-    onError: (_error, query) => {
-      if (query.meta?.errorToast) {
-        toast.error(query.meta.errorToast);
-      }
-    },
-  }),
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
@@ -71,12 +56,7 @@ export const App: React.FC = () => {
   return (
     <DangoStoreProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <AppProvider toast={toast} translations={m}>
-          <AppRouter>
-            <Toaster position="bottom-center" containerStyle={{ zIndex: 99999999 }} />
-            <RootModal />
-          </AppRouter>
-        </AppProvider>
+        <AppRouter />
       </QueryClientProvider>
     </DangoStoreProvider>
   );

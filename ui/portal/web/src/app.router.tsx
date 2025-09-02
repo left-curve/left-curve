@@ -1,8 +1,11 @@
-import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { RouterProvider, createRouter, useNavigate } from "@tanstack/react-router";
 
 import { useAccount, useConfig, usePublicClient } from "@left-curve/store";
 
-import { Spinner, useTheme } from "@left-curve/applets-kit";
+import { AppProvider, Spinner, useTheme } from "@left-curve/applets-kit";
+
+import { Toast } from "@left-curve/applets-kit";
+import { RootModal } from "./components/modals/RootModal";
 
 import { routeTree } from "./app.pages";
 
@@ -11,7 +14,9 @@ import type {
   UseConfigReturnType,
   UsePublicClientReturnType,
 } from "@left-curve/store";
-import type { PropsWithChildren } from "react";
+import { createToaster } from "./app.toaster";
+
+const [Toaster, toast] = createToaster((props) => <Toast {...props} />);
 
 export const router = createRouter({
   routeTree,
@@ -38,7 +43,7 @@ export interface RouterContext {
   config: UseConfigReturnType;
 }
 
-export const AppRouter: React.FC<PropsWithChildren> = ({ children: providers }) => {
+export const AppRouter: React.FC = () => {
   const account = useAccount();
   const config = useConfig();
   const client = usePublicClient();
@@ -48,12 +53,16 @@ export const AppRouter: React.FC<PropsWithChildren> = ({ children: providers }) 
     <RouterProvider
       router={router}
       context={{ account, config, client }}
-      InnerWrap={({ children }) => (
-        <>
-          {children}
-          {providers}
-        </>
-      )}
+      InnerWrap={({ children }) => {
+        const navigate = useNavigate();
+        return (
+          <AppProvider toast={toast} navigate={(to, options) => navigate({ to, ...options })}>
+            {children}
+            <RootModal />
+            <Toaster position="bottom-center" containerStyle={{ zIndex: 99999999 }} />
+          </AppProvider>
+        );
+      }}
     />
   );
 };
