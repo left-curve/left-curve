@@ -27,10 +27,9 @@ export const FullSection: React.FC<React.PropsWithChildren<FullSectionProps>> = 
     <LinearGradient
       start={direction?.start ?? { x: 0.2, y: 0.0 }}
       end={direction?.end ?? { x: 0.9, y: 1.0 }}
-      style={{ height: SCREEN_HEIGHT, width: "100%" }}
       colors={colors}
     >
-      <View className={twMerge("flex-1 w-full flex pt-4", className)}>{children}</View>
+      <View className={twMerge("flex-1 w-full h-svh flex pt-4", className)}>{children}</View>
     </LinearGradient>
   );
 };
