@@ -7,7 +7,7 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
-    grug_httpd::routes::index::index,
+    grug_httpd::routes::{graphql, index::index},
     sentry_actix::Sentry,
     std::fmt::Display,
 };
@@ -147,7 +147,7 @@ where
         cfg.service(index)
             .service(routes::index::up)
             .service(routes::blocks::services())
-            .service(routes::graphql::graphql_route())
+            .service(graphql::graphql_route())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))
             .app_data(web::Data::new(graphql_schema.clone()));

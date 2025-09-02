@@ -19,6 +19,7 @@ impl TendermintMutation {
         #[cfg(feature = "tracing")]
         tracing::info!(
             sender = %tx.sender.to_string(),
+            tx_hash = %tx.tx_hash()?,
             username = tx
                 .data
                 .get("username")

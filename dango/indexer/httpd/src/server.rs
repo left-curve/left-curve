@@ -1,10 +1,10 @@
 use {
-    crate::{context::Context, routes::graphql},
+    crate::context::Context,
     actix_web::{
         HttpResponse,
         web::{self, ServiceConfig},
     },
-    grug_httpd::routes::index::index,
+    grug_httpd::routes::{graphql::graphql_route, index::index},
     indexer_httpd::routes,
 };
 
@@ -20,7 +20,7 @@ where
             .service(routes::index::up)
             .service(routes::index::sentry_raise)
             .service(routes::blocks::services())
-            .service(graphql::graphql_route())
+            .service(graphql_route())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(dango_httpd_context.db.clone()))
             .app_data(web::Data::new(dango_httpd_context.clone()))

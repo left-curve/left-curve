@@ -3,6 +3,7 @@ use {
     actix_web::{HttpRequest, HttpResponse, Resource, http::header, web},
     async_graphql::{Schema, http::GraphiQLSource},
     async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
+    grug_app::HttpRequestDetails,
 };
 
 pub fn graphql_route() -> Resource {
@@ -18,10 +19,19 @@ pub fn graphql_route() -> Resource {
 
 pub(crate) async fn graphql_index(
     schema: web::Data<AppSchema>,
-    _req: HttpRequest,
+    req: HttpRequest,
     gql_request: GraphQLBatchRequest,
 ) -> GraphQLResponse {
-    let request = gql_request.into_inner();
+    let remote_ip = req
+        .connection_info()
+        .realip_remote_addr()
+        .map(|ip| ip.to_string());
+
+    let peer_ip = req.connection_info().peer_addr().map(|ip| ip.to_string());
+
+    let details = HttpRequestDetails { remote_ip, peer_ip };
+
+    let request = gql_request.into_inner().data(details);
 
     schema.execute_batch(request).await.into()
 }

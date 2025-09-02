@@ -68,3 +68,9 @@ impl From<NullIndexerError> for IndexerError {
         IndexerError::Generic(err.to_string())
     }
 }
+
+#[derive(Clone)]
+pub struct HttpRequestDetails {
+    pub remote_ip: Option<String>,
+    pub peer_ip: Option<String>,
+}
