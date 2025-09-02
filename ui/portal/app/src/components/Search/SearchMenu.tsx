@@ -150,10 +150,10 @@ const Body: React.FC<SearchMenuProps> = ({
           className="w-full"
           contentContainerClassName="lg:p-1 w-full items-center gap-1"
           showsVerticalScrollIndicator
-          keyboardShouldPersistTaps="handled"
         >
           {isLoading ? (
             <View className="flex items-center justify-center w-full p-2">
+              {/* TODO: Add Spinner */}
               <GlobalText>Searching...</GlobalText>
             </View>
           ) : groups.length === 0 ? (

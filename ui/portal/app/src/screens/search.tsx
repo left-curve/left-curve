@@ -8,7 +8,7 @@ import { APPLETS } from "~/constants";
 
 export default function SearchScreen() {
   const { theme } = useTheme();
-  const { back, navigate, push, replace } = useRouter();
+  const { back, replace } = useRouter();
   const { favApplets } = useFavApplets();
 
   const { searchText, setSearchText, isLoading, isRefetching, searchResult, allNotFavApplets } =
