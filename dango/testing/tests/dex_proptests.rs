@@ -806,6 +806,7 @@ fn test_dex_actions(
                             }),
                             bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
+                            min_order_size: Uint128::ZERO,
                         },
                     })
                     .collect(),

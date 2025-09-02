@@ -31,10 +31,19 @@ pub(super) fn create_limit_order(
             )
         })?;
 
+    let amount_quote = order.amount.checked_mul_dec_ceil(*order.price)?;
+
+    ensure!(
+        amount_quote >= pair.min_order_size,
+        "order size ({}) is less than the minimum ({})",
+        amount_quote,
+        pair.min_order_size
+    );
+
     let deposit = match order.direction {
         Direction::Bid => Coin {
             denom: order.quote_denom.clone(),
-            amount: order.amount.checked_mul_dec_ceil(*order.price)?,
+            amount: amount_quote,
         },
         Direction::Ask => Coin {
             denom: order.base_denom.clone(),
@@ -106,12 +115,15 @@ pub(super) fn create_market_order(
     events: &mut EventBuilder,
     deposits: &mut Coins,
 ) -> anyhow::Result<()> {
-    ensure!(
-        PAIRS.has(storage, (&order.base_denom, &order.quote_denom)),
-        "pair not found with base `{}` and quote `{}`",
-        order.base_denom,
-        order.quote_denom
-    );
+    let pair = PAIRS
+        .may_load(storage, (&order.base_denom, &order.quote_denom))?
+        .ok_or_else(|| {
+            anyhow!(
+                "pair not found with base `{}` and quote `{}`",
+                order.base_denom,
+                order.quote_denom
+            )
+        })?;
 
     // Load the resting order book of the pair.
     // The best price available in the book, together with the order's maximum
@@ -126,7 +138,7 @@ pub(super) fn create_market_order(
             )
         })?;
 
-    let (price, deposit) = match order.direction {
+    let (price, amount_quote, deposit) = match order.direction {
         Direction::Bid => {
             let best_ask_price = resting_order_book.best_ask_price.ok_or_else(|| {
                 anyhow!(
@@ -138,10 +150,11 @@ pub(super) fn create_market_order(
 
             let one_add_max_slippage = Udec128_24::ONE.saturating_add(*order.max_slippage);
             let price = best_ask_price.saturating_mul(one_add_max_slippage);
+            let amount_quote = order.amount.checked_mul_dec_ceil(price)?;
 
-            (price, Coin {
+            (price, amount_quote, Coin {
                 denom: order.quote_denom.clone(),
-                amount: order.amount.checked_mul_dec_ceil(price)?,
+                amount: amount_quote,
             })
         },
         Direction::Ask => {
@@ -155,13 +168,21 @@ pub(super) fn create_market_order(
 
             let one_sub_max_slippage = Udec128_24::ONE.saturating_sub(*order.max_slippage);
             let price = best_bid_price.saturating_mul(one_sub_max_slippage);
+            let amount_quote = order.amount.checked_mul_dec_ceil(price)?;
 
-            (price, Coin {
+            (price, amount_quote, Coin {
                 denom: order.base_denom.clone(),
                 amount: *order.amount,
             })
         },
     };
+
+    ensure!(
+        amount_quote >= pair.min_order_size,
+        "order size ({}) is less than the minimum ({})",
+        amount_quote,
+        pair.min_order_size
+    );
 
     let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
 

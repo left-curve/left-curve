@@ -307,6 +307,7 @@
                 "params": {
                   "bucket_sizes": [],
                   "lp_denom": "dex/pool/dango/usdc",
+                  "min_order_size": "10",
                   "pool_type": {
                     "xyk": {
                       "limit": 30,
@@ -330,6 +331,7 @@
                     "100"
                   ],
                   "lp_denom": "dex/pool/btc/usdc",
+                  "min_order_size": "10",
                   "pool_type": {
                     "xyk": {
                       "limit": 30,
@@ -353,6 +355,7 @@
                     "100"
                   ],
                   "lp_denom": "dex/pool/eth/usdc",
+                  "min_order_size": "10",
                   "pool_type": {
                     "xyk": {
                       "limit": 30,
@@ -374,6 +377,7 @@
                     "10"
                   ],
                   "lp_denom": "dex/pool/sol/usdc",
+                  "min_order_size": "10",
                   "pool_type": {
                     "xyk": {
                       "limit": 30,
