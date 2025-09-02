@@ -23,6 +23,7 @@ grug-types    = { workspace = true }
 http          = { workspace = true }
 ics23         = { workspace = true, optional = true }
 prost         = { workspace = true }
+serde         = { workspace = true, features = ["derive"] }
 tendermint    = { workspace = true, optional = true }
 thiserror     = { workspace = true }
 tower         = { workspace = true, optional = true }

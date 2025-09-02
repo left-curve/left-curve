@@ -1,5 +1,6 @@
 use {
     async_graphql::*,
+    grug_app::HttpRequestDetails,
     grug_types::{BroadcastTxOutcome, Inner, JsonSerExt, Tx},
     sentry::configure_scope,
 };
@@ -15,11 +16,21 @@ impl TendermintMutation {
         #[graphql(desc = "Transaction as JSON")] tx: Tx,
     ) -> Result<BroadcastTxOutcome, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
+        let http_request_details = ctx.data::<HttpRequestDetails>()?;
+
+        app_ctx
+            .sql_context
+            .transaction_hash_details
+            .lock()
+            .map_err(|e| Error::new(format!("Failed to lock transaction_hash_details: {e}")))?
+            .insert(tx.tx_hash()?.to_string(), http_request_details.clone());
 
         #[cfg(feature = "tracing")]
         tracing::info!(
             sender = %tx.sender.to_string(),
             tx_hash = %tx.tx_hash()?,
+            remote_ip = ?http_request_details.remote_ip,
+            peer_ip = ?http_request_details.peer_ip,
             username = tx
                 .data
                 .get("username")

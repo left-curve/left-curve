@@ -3,12 +3,16 @@ use {
         event_cache::EventCacheWriter,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
     },
+    grug_app::HttpRequestDetails,
     indexer_sql_migration::{Migrator, MigratorTrait},
     sea_orm::{
         ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
         sqlx::{self},
     },
-    std::sync::Arc,
+    std::{
+        collections::HashMap,
+        sync::{Arc, Mutex},
+    },
 };
 
 #[derive(Clone)]
@@ -16,6 +20,7 @@ pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub event_cache: EventCacheWriter,
+    pub transaction_hash_details: Arc<Mutex<HashMap<String, HttpRequestDetails>>>,
 }
 
 impl Context {
@@ -43,6 +48,7 @@ impl Context {
             db: self.db.clone(),
             pubsub: new_pubsub,
             event_cache: self.event_cache.clone(),
+            transaction_hash_details: Arc::new(Mutex::new(HashMap::new())),
         })
     }
 
