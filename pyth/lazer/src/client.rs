@@ -126,6 +126,9 @@ impl PythClientLazer {
         let mut to_resubscribe = false;
         let mut last_check = Local::now();
 
+        let buffer_capacity = 1000;
+        let mut buffer = Vec::with_capacity(buffer_capacity);
+
         loop {
             // If after 1 second we haven't received data for all subscriptions,
             // try to reconnect.
@@ -163,8 +166,8 @@ impl PythClientLazer {
                 last_check = Local::now();
             }
 
-            let mut buffer = vec![];
-            let num_data_received = receiver.recv_many(&mut buffer, 100).await;
+            buffer.clear();
+            let num_data_received = receiver.recv_many(&mut buffer, buffer_capacity).await;
 
             // If the number of data received is zero, it means the channel is closed and we need to resubscribe.
             if num_data_received == 0 {
@@ -174,7 +177,7 @@ impl PythClientLazer {
                 continue;
             }
 
-            for data in buffer {
+            for data in buffer.drain(..) {
                 match data {
                     AnyResponse::Binary(update) => {
                         // We have received data for this subscription ID.
