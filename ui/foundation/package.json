@@ -26,9 +26,9 @@
     "lint:fix": "pnpm biome ci ./src",
     "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
     "clean:build": "rm -rf ./build",
-    "pre-dev": "tsc",
+    "pre-dev": "node paraglide.ts && tsc",
     "dev": "nodemon & tsc -w",
-    "build": "node paraglide.mjs && pnpm tsup --clean"
+    "build": "node paraglide.ts && pnpm tsup --clean"
   },
   "dependencies": {
     "@inlang/cli": "^3.0.3",
