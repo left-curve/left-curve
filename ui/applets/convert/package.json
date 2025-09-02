@@ -8,7 +8,7 @@
     "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
     "clean:build": "rm -rf ./build",
     "dev": "rsbuild dev",
-    "build": "rsbuild build",
+    "compile": "rsbuild build",
     "preview": "rsbuild preview"
   },
   "main": "./src/exports.ts",

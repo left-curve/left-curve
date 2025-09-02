@@ -5,7 +5,6 @@ import { DangoRemoteProvider } from "@left-curve/store";
 import { useRemoteApp, AppRemoteProvider } from "@left-curve/applets-kit";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 
-import "./global.css";
 import "@left-curve/foundation/fonts/ABCDiatypeRounded/normal/800.css";
 import "@left-curve/foundation/fonts/ABCDiatypeRounded/normal/700.css";
 import "@left-curve/foundation/fonts/ABCDiatypeRounded/normal/500.css";
@@ -16,6 +15,7 @@ import "@left-curve/foundation/fonts/ABCDiatypeRounded/mono/500.css";
 
 import "@left-curve/foundation/fonts/Exposure/italic/400.css";
 import "@left-curve/foundation/fonts/Exposure/italic/700.css";
+import "./global.css";
 
 import type React from "react";
 
