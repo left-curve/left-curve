@@ -1,6 +1,6 @@
 use {
     crate::{
-        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK, core::PairQuerier,
+        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK,
         liquidity_depth::increase_liquidity_depths,
     },
     anyhow::{anyhow, ensure},
@@ -20,9 +20,16 @@ pub(super) fn create_limit_order(
     order: CreateLimitOrderRequest,
     events: &mut EventBuilder,
     deposits: &mut Coins,
-    pair_querier: &mut PairQuerier,
 ) -> anyhow::Result<()> {
-    let pair = pair_querier.query_pair(order.base_denom.clone(), order.quote_denom.clone())?;
+    let pair = PAIRS
+        .may_load(storage, (&order.base_denom, &order.quote_denom))?
+        .ok_or_else(|| {
+            anyhow!(
+                "pair not found with base `{}` and quote `{}`",
+                order.base_denom,
+                order.quote_denom
+            )
+        })?;
 
     let deposit = match order.direction {
         Direction::Bid => Coin {

@@ -4,7 +4,7 @@ mod order_creation;
 use {
     crate::{
         MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PAUSED, RESERVES,
-        core::{self, PairQuerier, PassiveLiquidityPool},
+        core::{self, PassiveLiquidityPool},
         cron,
     },
     anyhow::{anyhow, ensure},
@@ -135,7 +135,6 @@ fn batch_update_orders(
     let mut deposits = Coins::new();
     let mut refunds = DecCoins::new();
     let mut events = EventBuilder::new();
-    let mut pair_querier = PairQuerier::new(ctx.contract, ctx.querier);
 
     match cancels {
         // Cancel selected orders.
@@ -147,7 +146,6 @@ fn batch_update_orders(
                     order_id,
                     &mut events,
                     &mut refunds,
-                    &mut pair_querier,
                 )?;
             }
         },
@@ -158,7 +156,6 @@ fn batch_update_orders(
                 ctx.sender,
                 &mut events,
                 &mut refunds,
-                &mut pair_querier,
             )?;
         },
         // Do nothing.
@@ -184,7 +181,6 @@ fn batch_update_orders(
             order,
             &mut events,
             &mut deposits,
-            &mut pair_querier,
         )?;
     }
 
@@ -446,8 +442,7 @@ fn swap_exact_amount_out(
 }
 
 fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let mut pair_querier = PairQuerier::new(ctx.contract, ctx.querier);
-    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage, &mut pair_querier)?;
+    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage)?;
 
     Ok(Response::new()
         .add_events(events)?
