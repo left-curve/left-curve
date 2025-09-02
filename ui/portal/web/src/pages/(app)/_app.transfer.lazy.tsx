@@ -1,4 +1,4 @@
-import { useInputs, useWatchEffect } from "@left-curve/applets-kit";
+import { Modals, useApp, useInputs, useWatchEffect } from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -10,7 +10,6 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import {
   AccountSearchInput,
@@ -25,7 +24,6 @@ import {
 } from "@left-curve/applets-kit";
 import type { Address } from "@left-curve/dango/types";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
-import { Modals } from "~/components/modals/RootModal";
 
 import { m } from "~/paraglide/messages";
 

@@ -1,16 +1,17 @@
 import { useAccount, useConfig, useSessionKey } from "@left-curve/store";
 import { useEffect, useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import {
   IconMobile,
   IconNetwork,
   IconTimer,
   IconUser,
+  Modals,
   Skeleton,
+  useApp,
   useMediaQuery,
 } from "@left-curve/applets-kit";
-import { Modals } from "../modals/RootModal";
+
 import { SessionCountdown } from "./SessionCountdown";
 
 import { m } from "~/paraglide/messages";

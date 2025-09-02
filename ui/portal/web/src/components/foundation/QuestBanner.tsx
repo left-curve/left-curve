@@ -1,12 +1,10 @@
-import { Button, twMerge, useMediaQuery, usePortalTarget } from "@left-curve/applets-kit";
+import { Button, twMerge, useApp, useMediaQuery, usePortalTarget } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
 import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useAccount } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-
-import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 

@@ -1,5 +1,4 @@
-import { Badge, Button, IconButton, IconClose, PairAssets } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
+import { Badge, Button, IconButton, IconClose, PairAssets, useApp } from "@left-curve/applets-kit";
 
 import { forwardRef, useImperativeHandle } from "react";
 import type { AnyCoin, WithAmount } from "@left-curve/store/types";

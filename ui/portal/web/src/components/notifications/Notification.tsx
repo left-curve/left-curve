@@ -1,5 +1,4 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useApp } from "~/hooks/useApp";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 import {
@@ -12,7 +11,7 @@ import {
 
 import { m } from "~/paraglide/messages";
 
-import { AddressVisualizer, IconClose, IconInfo, twMerge } from "@left-curve/applets-kit";
+import { AddressVisualizer, IconClose, IconInfo, twMerge, useApp } from "@left-curve/applets-kit";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";

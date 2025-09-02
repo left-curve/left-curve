@@ -8,13 +8,12 @@ import {
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";
-import { useApp } from "~/hooks/useApp";
+
 import { useNotifications } from "~/hooks/useNotifications";
 
 import { motion } from "framer-motion";
 
 import { m } from "~/paraglide/messages";
-import { Modals } from "../modals/RootModal";
 
 import {
   Button,
@@ -30,6 +29,8 @@ import {
   IconMobile,
   IconLogOut,
   createContext,
+  useApp,
+  Modals,
 } from "@left-curve/applets-kit";
 import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";

@@ -1,6 +1,5 @@
 import { useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
-import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
 
 import {
   Button,

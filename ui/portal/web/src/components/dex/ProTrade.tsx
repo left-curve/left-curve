@@ -1,8 +1,10 @@
 import {
   createContext,
   CursorPagination,
+  Modals,
   Spinner,
   twMerge,
+  useApp,
   useInputs,
   useMediaQuery,
   usePortalTarget,
@@ -10,7 +12,6 @@ import {
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
-import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 import { createPortal } from "react-dom";
@@ -19,7 +20,6 @@ import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/uti
 import { Badge, Cell, IconChevronDownFill, Table, Tabs } from "@left-curve/applets-kit";
 import { AnimatePresence, motion } from "framer-motion";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";
-import { Modals } from "../modals/RootModal";
 import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
 import { TradeButtons } from "./TradeButtons";

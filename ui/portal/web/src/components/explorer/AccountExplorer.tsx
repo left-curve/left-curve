@@ -1,9 +1,8 @@
-import { AddressVisualizer } from "@left-curve/applets-kit";
+import { AddressVisualizer, useApp } from "@left-curve/applets-kit";
 import { usePrices, usePublicClient, useQueryWithPagination } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 

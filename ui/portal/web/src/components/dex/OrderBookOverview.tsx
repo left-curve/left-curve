@@ -1,6 +1,5 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
+import { useApp, useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useRef, useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { Direction } from "@left-curve/dango/types";
 import { format } from "date-fns";

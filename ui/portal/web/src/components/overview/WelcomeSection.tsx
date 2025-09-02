@@ -1,8 +1,7 @@
-import { Button } from "@left-curve/applets-kit";
+import { Button, useApp } from "@left-curve/applets-kit";
 import { useAccount, useBalances } from "@left-curve/store";
 import { Link } from "@tanstack/react-router";
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
 import { m } from "~/paraglide/messages";
 import { ButtonLink } from "../foundation/ButtonLink";
 import { AssetsSection } from "./AssetsSection";

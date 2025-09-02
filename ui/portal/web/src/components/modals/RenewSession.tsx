@@ -1,10 +1,9 @@
 import { forwardRef, useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "~/paraglide/messages";
 
-import { Button, IconKey } from "@left-curve/applets-kit";
+import { Button, IconKey, useApp } from "@left-curve/applets-kit";
 import { useAccount, useSessionKey } from "@left-curve/store";
 
 export const RenewSession = forwardRef<undefined>(() => {

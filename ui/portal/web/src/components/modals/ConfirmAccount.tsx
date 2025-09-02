@@ -1,7 +1,6 @@
 import { forwardRef } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { Badge, Button, IconButton, IconChecked, IconClose } from "@left-curve/applets-kit";
+import { Badge, Button, IconButton, IconChecked, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { capitalize, formatUnits } from "@left-curve/dango/utils";
 import { useConfig, usePrices } from "@left-curve/store";

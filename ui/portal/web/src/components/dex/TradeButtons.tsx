@@ -3,12 +3,12 @@ import {
   IconButton,
   IconChevronRight,
   twMerge,
+  useApp,
   usePortalTarget,
 } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
-import { useApp } from "~/hooks/useApp";
 
 import { m } from "~/paraglide/messages";
 

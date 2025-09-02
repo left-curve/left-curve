@@ -13,12 +13,15 @@ export { useWatchEffect } from "./hooks/useWatch.js";
 /* -------------------------------------------------------------------------- */
 
 export { WizardProvider, useWizard } from "./providers/WizardProvider.js";
+export { AppProvider, useApp } from "./providers/AppProvider.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Types                                   */
 /* -------------------------------------------------------------------------- */
 
 export type { PolymorphicComponent, PolymorphicRenderFunction } from "./types/polymorph.js";
+export type { ToastMsg, ToastOptions, ToastProps, ToastController } from "./types/toast.js";
+export { Modals, type ModalRef, type ModalDefinition } from "./types/modals.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Utils                                   */

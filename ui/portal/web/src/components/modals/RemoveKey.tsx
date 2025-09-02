@@ -1,11 +1,9 @@
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
 
-import { useApp } from "~/hooks/useApp";
-
 import { m } from "~/paraglide/messages";
 
-import { Button, IconButton, IconClose, IconTrash } from "@left-curve/applets-kit";
+import { Button, IconButton, IconClose, IconTrash, useApp } from "@left-curve/applets-kit";
 
 import type { KeyHash } from "@left-curve/dango/types";
 interface Props {

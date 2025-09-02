@@ -1,5 +1,4 @@
-import { Button, IconButton, IconClose } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
+import { Button, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { m } from "~/paraglide/messages";

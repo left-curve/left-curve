@@ -1,4 +1,4 @@
-import { ensureErrorMessage, useInputs, useWizard } from "@left-curve/applets-kit";
+import { ensureErrorMessage, useApp, useInputs, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useConfig,
@@ -10,7 +10,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { createKeyHash } from "@left-curve/dango";

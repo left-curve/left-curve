@@ -1,8 +1,7 @@
 import { useAccount, useConnectors, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { IconButton, IconClose, IconKey } from "@left-curve/applets-kit";
+import { IconButton, IconClose, IconKey, useApp } from "@left-curve/applets-kit";
 import { AuthOptions } from "../auth/AuthOptions";
 
 import { m } from "~/paraglide/messages";

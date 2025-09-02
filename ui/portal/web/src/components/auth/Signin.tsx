@@ -3,6 +3,8 @@ import {
   ExpandOptions,
   IconPasskey,
   IconQR,
+  Modals,
+  useApp,
   useMediaQuery,
   useWizard,
 } from "@left-curve/applets-kit";
@@ -16,11 +18,9 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { Button, IconLeft, ResizerContainer } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 import { UsernamesList } from "./UsernamesList";

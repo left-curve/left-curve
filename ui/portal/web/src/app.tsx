@@ -1,4 +1,4 @@
-import { Toast } from "@left-curve/applets-kit";
+import { AppProvider, Toast } from "@left-curve/applets-kit";
 import { RootModal } from "./components/modals/RootModal";
 
 import { DangoStoreProvider } from "@left-curve/store";
@@ -6,7 +6,6 @@ import { captureException } from "@sentry/react";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
-import { AppProvider } from "./app.provider";
 import { AppRouter } from "./app.router";
 import { createToaster } from "./app.toaster";
 
@@ -71,9 +70,10 @@ export const App: React.FC = () => {
     <DangoStoreProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <AppProvider toast={toast}>
-          <AppRouter />
-          <Toaster position="bottom-center" containerStyle={{ zIndex: 99999999 }} />
-          <RootModal />
+          <AppRouter>
+            <Toaster position="bottom-center" containerStyle={{ zIndex: 99999999 }} />
+            <RootModal />
+          </AppRouter>
         </AppProvider>
       </QueryClientProvider>
     </DangoStoreProvider>

@@ -1,7 +1,6 @@
 import { useAccount, useAppConfig, usePrices } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import {
   Button,
@@ -15,6 +14,7 @@ import {
   Tabs,
   numberMask,
   twMerge,
+  useApp,
   type useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";

@@ -1,7 +1,6 @@
 import { useConfig, usePrices } from "@left-curve/store";
-import { useApp } from "~/hooks/useApp";
 
-import { PairAssets } from "@left-curve/applets-kit";
+import { PairAssets, useApp } from "@left-curve/applets-kit";
 import { twMerge } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 

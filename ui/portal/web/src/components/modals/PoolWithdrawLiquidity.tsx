@@ -1,5 +1,4 @@
-import { Button, IconAlert, IconButton, IconClose } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
+import { Button, IconAlert, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { forwardRef, useImperativeHandle } from "react";
 

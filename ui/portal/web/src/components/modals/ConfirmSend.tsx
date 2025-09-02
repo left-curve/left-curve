@@ -1,5 +1,11 @@
-import { Button, IconButton, IconClose, Skeleton, TruncateText } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
+import {
+  Button,
+  IconButton,
+  IconClose,
+  Skeleton,
+  TruncateText,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import type { Address } from "@left-curve/dango/types";
 import { formatUnits } from "@left-curve/dango/utils";

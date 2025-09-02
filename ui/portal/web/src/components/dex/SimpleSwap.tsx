@@ -8,7 +8,6 @@ import {
   useSubmitTx,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { useApp } from "~/hooks/useApp";
 
 import {
   Badge,
@@ -16,10 +15,11 @@ import {
   CoinSelector,
   IconArrowDown,
   Input,
+  Modals,
   Skeleton,
+  useApp,
 } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { Modals } from "../modals/RootModal";
 
 import { m } from "~/paraglide/messages";
 

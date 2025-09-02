@@ -1,5 +1,3 @@
-import { useApp } from "~/hooks/useApp";
-
 import {
   IconDepth,
   IconFormatNumber,
@@ -10,6 +8,7 @@ import {
   Select,
   Tab,
   Tabs,
+  useApp,
   useTheme,
 } from "@left-curve/applets-kit";
 

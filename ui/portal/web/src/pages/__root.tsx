@@ -6,11 +6,14 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useNotifications } from "../hooks/useNotifications";
+import { useAccount, useSessionKey } from "@left-curve/store";
 
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 
-import { Spinner, twMerge, useTheme } from "@left-curve/applets-kit";
+import * as Sentry from "@sentry/react";
+import { Modals, Spinner, twMerge, useApp, useTheme } from "@left-curve/applets-kit";
 import { createPortal } from "react-dom";
 
 import type { RouterContext } from "~/app.router";
@@ -30,7 +33,51 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   component: () => {
     const navigate = useNavigate();
     const { location } = useRouterState();
+    const { modal, settings, showModal } = useApp();
     const [isReady, setIsReady] = useState(false);
+
+    // Track user errors
+    const { username, connector, account, isConnected } = useAccount();
+    useEffect(() => {
+      if (!username) Sentry.setUser(null);
+      else {
+        Sentry.setUser({ username });
+        Sentry.setContext("connector", {
+          id: connector?.id,
+          name: connector?.name,
+          type: connector?.type,
+        });
+      }
+    }, [username]);
+
+    // Initialize notifications
+    const { startNotifications } = useNotifications();
+    useEffect(() => {
+      const stopNotifications = startNotifications();
+      return stopNotifications;
+    }, [account]);
+
+    // Track session key expiration
+    const { session } = useSessionKey();
+    useEffect(() => {
+      const intervalId = setInterval(() => {
+        if (
+          (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
+          isConnected &&
+          settings.useSessionKey &&
+          connector &&
+          connector.type !== "session"
+        ) {
+          if (modal.modal !== Modals.RenewSession) {
+            showModal(Modals.RenewSession);
+          }
+        }
+      }, 1000);
+      return () => {
+        clearInterval(intervalId);
+      };
+    }, [session, modal, settings.useSessionKey, connector, isConnected]);
+
     useEffect(() => {
       if (location.pathname === "/maintenance") navigate({ to: "/" });
       (async () => {

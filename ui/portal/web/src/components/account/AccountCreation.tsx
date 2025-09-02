@@ -1,4 +1,4 @@
-import { useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
+import { Modals, useApp, useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -8,7 +8,6 @@ import {
 } from "@left-curve/store";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { m } from "~/paraglide/messages";
@@ -25,7 +24,6 @@ import {
 import { ensureErrorMessage, twMerge } from "@left-curve/applets-kit";
 import { AccountType } from "@left-curve/dango/types";
 import { Link } from "@tanstack/react-router";
-import { Modals } from "../modals/RootModal";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
@@ -156,10 +154,9 @@ export const Deposit: React.FC = () => {
   const { value: fundsAmount, error } = inputs.amount || {};
 
   const navigate = useNavigate();
-  const { toast, showModal, subscriptions } = useApp();
+  const { toast, showModal, subscriptions, settings } = useApp();
   const { coins } = useConfig();
   const { username, account, refreshAccounts, changeAccount } = useAccount();
-  const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 

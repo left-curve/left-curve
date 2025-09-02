@@ -1,17 +1,12 @@
-import { useTheme } from "@left-curve/applets-kit";
-import { useAccount, useAppConfig, useConfig, useSessionKey, useStorage } from "@left-curve/store";
-import { type PropsWithChildren, createContext, useCallback, useEffect, useState } from "react";
-import { useNotifications } from "./hooks/useNotifications";
+import { useAppConfig, useConfig, useStorage } from "@left-curve/store";
+import { useCallback, useState } from "react";
+import { createContext } from "../utils/context";
 
-import * as Sentry from "@sentry/react";
-import { router } from "./app.router";
-import { Modals } from "./components/modals/RootModal";
-
-import type { ToastController } from "./app.toaster";
+import type { PropsWithChildren } from "react";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
+import type { ToastController } from "../types/toast";
 
 type AppState = {
-  router: typeof router;
   toast: ToastController;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
   config: ReturnType<typeof useAppConfig>;
@@ -38,7 +33,7 @@ type AppState = {
   };
 };
 
-export const AppContext = createContext<AppState | null>(null);
+export const [AppContextProvider, useApp] = createContext<AppState>();
 
 type AppProviderProps = {
   toast: ToastController;
@@ -51,8 +46,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
   const [isQuestBannerVisible, setQuestBannerVisibility] = useState(false);
-
-  useTheme();
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
@@ -100,52 +93,9 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   const hideModal = useCallback(() => setModal({ modal: undefined, props: {} }), []);
   const showModal = useCallback((modal: string, props = {}) => setModal({ modal, props }), []);
 
-  // Track user errors
-  const { username, connector, account, isConnected } = useAccount();
-  useEffect(() => {
-    if (!username) Sentry.setUser(null);
-    else {
-      Sentry.setUser({ username });
-      Sentry.setContext("connector", {
-        id: connector?.id,
-        name: connector?.name,
-        type: connector?.type,
-      });
-    }
-  }, [username]);
-
-  // Initialize notifications
-  const { startNotifications } = useNotifications();
-  useEffect(() => {
-    const stopNotifications = startNotifications();
-    return stopNotifications;
-  }, [account]);
-
-  // Track session key expiration
-  const { session } = useSessionKey();
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      if (
-        (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
-        isConnected &&
-        settings.useSessionKey &&
-        connector &&
-        connector.type !== "session"
-      ) {
-        if (modal.modal !== Modals.RenewSession) {
-          showModal(Modals.RenewSession);
-        }
-      }
-    }, 1000);
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [session, modal, settings.useSessionKey, connector, isConnected]);
-
   return (
-    <AppContext.Provider
+    <AppContextProvider
       value={{
-        router,
         config,
         subscriptions,
         isSidebarVisible,
@@ -167,6 +117,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
       }}
     >
       {children}
-    </AppContext.Provider>
+    </AppContextProvider>
   );
 };
