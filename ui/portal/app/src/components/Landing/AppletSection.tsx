@@ -43,7 +43,7 @@ export const AppletsSection: React.FC = () => {
   const router = useRouter();
 
   return (
-    <View className="w-full flex flex-row items-start flex-wrap gap-4">
+    <View className="w-full flex flex-row items-start flex-wrap gap-2 px-[10px]">
       {Object.values(APPLETS).map((applet) => (
         <AppletSquare key={`applets.section.${applet.id}`} applet={applet} />
       ))}
