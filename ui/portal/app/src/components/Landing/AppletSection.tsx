@@ -14,8 +14,11 @@ interface AppletSquareProps {
 
 const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
   const { push } = useRouter();
-  const AppletImage = ASSETS[applet.id as keyof typeof ASSETS].default;
   const { id, title, path } = applet;
+
+  const AppletAsset = ASSETS[applet.id as keyof typeof ASSETS];
+  const AppletImage = AppletAsset ? AppletAsset.default : null;
+
   return (
     <View key={`applets.section.${id}`} className="items-center flex-col flex gap-2 w-[96px]">
       <Pressable
