@@ -13,13 +13,13 @@ interface AppletSquareProps {
 }
 
 const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
-  const router = useRouter();
+  const { push } = useRouter();
   const AppletImage = ASSETS[applet.id as keyof typeof ASSETS].default;
   const { id, title, path } = applet;
   return (
     <View key={`applets.section.${id}`} className="items-center flex-col flex gap-2 w-[96px]">
       <Pressable
-        onPress={() => router.push(path)}
+        onPress={() => push(path)}
         accessibilityRole="button"
         accessibilityLabel={title}
         className="h-20 w-20 rounded-xl p-2.5 shadow-account-card bg-primary-red active:opacity-80 flex items-center justify-center"
@@ -40,7 +40,7 @@ const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
 };
 
 export const AppletsSection: React.FC = () => {
-  const router = useRouter();
+  const { push } = useRouter();
 
   return (
     <View className="w-full flex flex-row items-start flex-wrap gap-2 px-[10px]">
@@ -50,7 +50,7 @@ export const AppletsSection: React.FC = () => {
 
       <View className="w-[96px] flex items-center">
         <Pressable
-          onPress={() => router.push("/search")}
+          onPress={() => push("/search")}
           accessibilityRole="button"
           accessibilityLabel="Add applet"
           className="h-20 w-20 rounded-xl p-2.5 shadow shadow-account-card border border-tertiary-rice  bg-foreground-primary-rice items-center justify-center"
