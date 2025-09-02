@@ -6,7 +6,6 @@ import { Dimensions, Image, View } from "react-native";
 import { GlobalText, FullSection } from "../foundation";
 
 import type React from "react";
-import type { ScrollViewProps } from "react-native";
 
 const { height } = Dimensions.get("window");
 
@@ -23,17 +22,9 @@ cssInterop(Logo, {
   },
 });
 
-const LandingContainer: React.FC<React.PropsWithChildren<ScrollViewProps>> = ({
-  children,
-  ...rest
-}) => {
+const LandingContainer: React.FC<React.PropsWithChildren> = ({ children, ...rest }) => {
   return (
-    <View
-      className="flex-1 w-full"
-      contentContainerClassName="mx-auto flex flex-col gap-6 h-screen"
-      showsVerticalScrollIndicator={false}
-      {...rest}
-    >
+    <View className="flex-1 w-full flex flex-col gap-6 h-screen" {...rest}>
       {children}
     </View>
   );
