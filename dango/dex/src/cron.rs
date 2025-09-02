@@ -275,7 +275,6 @@ fn clear_orders_of_pair(
 
                 for (price, amount) in passive_asks {
                     let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
-
                     let remaining = amount.checked_into_dec()?;
 
                     increase_liquidity_depths(

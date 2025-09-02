@@ -135,7 +135,6 @@ fn batch_update_orders(
     let mut deposits = Coins::new();
     let mut refunds = DecCoins::new();
     let mut events = EventBuilder::new();
-
     let mut pair_querier = PairQuerier::new(ctx.contract, ctx.querier);
 
     match cancels {
@@ -448,7 +447,6 @@ fn swap_exact_amount_out(
 
 fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut pair_querier = PairQuerier::new(ctx.contract, ctx.querier);
-
     let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage, &mut pair_querier)?;
 
     Ok(Response::new()

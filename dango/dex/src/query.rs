@@ -167,8 +167,9 @@ fn query_liquidity_depth(
     let resting_order_book = RESTING_ORDER_BOOK.load(ctx.storage, (&base_denom, &quote_denom))?;
 
     // Load the liquidity depth for asks.
-    let ask_depth = if let Some(best_ask_price) = resting_order_book.best_ask_price {
-        Some(
+    let ask_depth = resting_order_book
+        .best_ask_price
+        .map(|best_ask_price| {
             DEPTHS
                 .prefix((&base_denom, &quote_denom))
                 .append(bucket_size)
@@ -187,15 +188,14 @@ fn query_liquidity_depth(
                         depth_quote,
                     }))
                 })
-                .collect::<StdResult<_>>()?,
-        )
-    } else {
-        None
-    };
+                .collect::<StdResult<_>>()
+        })
+        .transpose()?;
 
     // Load the liquidity depth for bids.
-    let bid_depth = if let Some(best_bid_price) = resting_order_book.best_bid_price {
-        Some(
+    let bid_depth = resting_order_book
+        .best_bid_price
+        .map(|best_bid_price| {
             DEPTHS
                 .prefix((&base_denom, &quote_denom))
                 .append(bucket_size)
@@ -214,11 +214,9 @@ fn query_liquidity_depth(
                         depth_quote,
                     }))
                 })
-                .collect::<StdResult<_>>()?,
-        )
-    } else {
-        None
-    };
+                .collect::<StdResult<_>>()
+        })
+        .transpose()?;
 
     Ok(LiquidityDepthResponse {
         bid_depth,
