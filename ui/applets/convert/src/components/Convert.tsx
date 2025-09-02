@@ -17,11 +17,10 @@ import {
   Input,
   Modals,
   Skeleton,
-  useApp,
+  type useApp,
 } from "@left-curve/applets-kit";
+import HippoSvg from "@left-curve/foundation/images/characters/hippo.svg";
 import { Link } from "@tanstack/react-router";
-
-import { m } from "~/paraglide/messages";
 
 import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
 import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curve/dango/utils";
@@ -36,17 +35,17 @@ const [SimpleSwapProvider, useSimpleSwap] = createContext<{
   state: ReturnType<typeof useSimpleSwapState>;
   submission: UseSubmitTxReturnType<void, Error, void, unknown>;
   controllers: ReturnType<typeof useInputs>;
+  app: ReturnType<typeof useApp>;
 }>({
   name: "SimpleSwapContext",
 });
 
-const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParameters>> = ({
-  children,
-  ...parameters
-}) => {
+const SimpleSwapContainer: React.FC<
+  PropsWithChildren<UseSimpleSwapStateParameters> & { appState: ReturnType<typeof useApp> }
+> = ({ children, appState, ...parameters }) => {
   const state = useSimpleSwapState(parameters);
   const controllers = useInputs();
-  const { toast, settings, showModal } = useApp();
+  const { m, toast, settings, showModal } = appState;
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const queryClient = useQueryClient();
@@ -112,12 +111,15 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParamete
   });
 
   return (
-    <SimpleSwapProvider value={{ state, controllers, submission }}>{children}</SimpleSwapProvider>
+    <SimpleSwapProvider value={{ app: appState, state, controllers, submission }}>
+      {children}
+    </SimpleSwapProvider>
   );
 };
 
 const SimpleSwapHeader: React.FC = () => {
-  const { state } = useSimpleSwap();
+  const { state, app } = useSimpleSwap();
+  const { m } = app;
   const { quote, statistics } = state;
   const { tvl, apy, volume } = statistics.data;
   return (
@@ -142,7 +144,7 @@ const SimpleSwapHeader: React.FC = () => {
         </div>
       </div>
       <img
-        src="/images/characters/hippo.svg"
+        src={HippoSvg}
         alt=""
         className="absolute right-[-2.8rem] top-[-0.5rem] opacity-10 select-none drag-none"
       />
@@ -151,10 +153,10 @@ const SimpleSwapHeader: React.FC = () => {
 };
 
 const SimpleSwapForm: React.FC = () => {
-  const { settings } = useApp();
   const { coins } = useConfig();
   const { account, isConnected } = useAccount();
-  const { state, controllers, submission } = useSimpleSwap();
+  const { app, state, controllers, submission } = useSimpleSwap();
+  const { m, settings } = app;
   const { data: balances } = useBalances({ address: account?.address });
   const [activeInput, setActiveInput] = useState<"base" | "quote">();
   const { getPrice } = usePrices();
@@ -371,8 +373,8 @@ const SimpleSwapForm: React.FC = () => {
 
 const SimpleSwapDetails: React.FC = () => {
   const { isConnected } = useAccount();
-  const { settings } = useApp();
-  const { state } = useSimpleSwap();
+  const { app, state } = useSimpleSwap();
+  const { m, settings } = app;
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
   const { data, isPending } = simulation;
@@ -423,9 +425,10 @@ const SimpleSwapDetails: React.FC = () => {
 
 const SimpleSwapTrigger: React.FC = () => {
   const { isConnected } = useAccount();
-  const { submission, state, controllers } = useSimpleSwap();
+  const { app, submission, state, controllers } = useSimpleSwap();
   const { simulation } = state;
   const { isValid } = controllers;
+  const { m } = app;
 
   return isConnected ? (
     <Button

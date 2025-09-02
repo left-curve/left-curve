@@ -13,7 +13,13 @@ export { useWatchEffect } from "./hooks/useWatch.js";
 /* -------------------------------------------------------------------------- */
 
 export { WizardProvider, useWizard } from "./providers/WizardProvider.js";
-export { AppProvider, useApp } from "./providers/AppProvider.js";
+
+export {
+  AppProvider,
+  useApp,
+  type AppProviderProps,
+  type AppState,
+} from "./providers/AppProvider.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Types                                   */

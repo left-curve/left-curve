@@ -6,6 +6,8 @@ import { captureException } from "@sentry/react";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
+import { m } from "~/paraglide/messages";
+
 import { AppRouter } from "./app.router";
 import { createToaster } from "./app.toaster";
 
@@ -69,7 +71,7 @@ export const App: React.FC = () => {
   return (
     <DangoStoreProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <AppProvider toast={toast}>
+        <AppProvider toast={toast} translations={m}>
           <AppRouter>
             <Toaster position="bottom-center" containerStyle={{ zIndex: 99999999 }} />
             <RootModal />

@@ -1,0 +1,44 @@
+{
+  "name": "@left-curve/applets-convert",
+  "version": "0.1.0",
+  "scripts": {
+    "ci": "pnpm lint",
+    "lint": "pnpm biome check --write ./src",
+    "lint:fix": "pnpm biome ci ./src",
+    "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
+    "clean:build": "rm -rf ./build",
+    "dev": "rsbuild dev",
+    "build": "rsbuild build",
+    "preview": "rsbuild preview"
+  },
+  "main": "./src/exports.ts",
+  "module": "./src/exports.ts",
+  "dependencies": {
+    "@left-curve/applets-kit": "workspace:^",
+    "@left-curve/dango": "workspace:^",
+    "@left-curve/foundation": "workspace:^",
+    "@left-curve/store": "workspace:^",
+    "@rsbuild/plugin-svgr": "^1.2.2"
+  },
+  "devDependencies": {
+    "@left-curve/config": "workspace:^",
+    "@rsbuild/core": "catalog:",
+    "@rsbuild/plugin-react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "autoprefixer": "catalog:",
+    "postcss": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "storybook": "^8.6.12",
+    "storybook-react-rsbuild": "^1.0.1",
+    "tailwindcss": "catalog:"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": ">=5.0.0",
+    "@tanstack/react-table": ">=8.0.0",
+    "date-fns": ">=4.0.0",
+    "react": "^18",
+    "react-dom": "^18"
+  }
+}

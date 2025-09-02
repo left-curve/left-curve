@@ -6,7 +6,8 @@ import type { PropsWithChildren } from "react";
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { ToastController } from "../types/toast";
 
-type AppState = {
+export type AppState = {
+  m: Record<string, (t?: any) => string>;
   toast: ToastController;
   subscriptions: ReturnType<typeof useConfig>["subscriptions"];
   config: ReturnType<typeof useAppConfig>;
@@ -35,11 +36,16 @@ type AppState = {
 
 export const [AppContextProvider, useApp] = createContext<AppState>();
 
-type AppProviderProps = {
+export type AppProviderProps = {
   toast: ToastController;
+  translations: Record<string, (t?: any) => string>;
 };
 
-export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ children, toast }) => {
+export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
+  children,
+  toast,
+  translations,
+}) => {
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
   const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
@@ -96,6 +102,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({ chi
   return (
     <AppContextProvider
       value={{
+        m: translations,
         config,
         subscriptions,
         isSidebarVisible,

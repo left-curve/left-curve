@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@left-curve/config/ts/react.json",
+  "compilerOptions": {
+    "outDir": "build",
+    "rootDir": "src"
+  },
+  "include": ["src"],
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../../../sdk/dango"
+    },
+    {
+      "path": "../../store"
+    },
+    {
+      "path": "../kit"
+    },
+    {
+      "path": "../../foundation"
+    }
+  ]
+}

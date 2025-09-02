@@ -8,7 +8,7 @@ import {
   useSubmitTx,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import {
@@ -42,7 +42,7 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 
 function TransferApplet() {
   const { toast } = useApp();
-  const { action } = useSearch({ strict: false });
+  const { action } = Route.useSearch();
   const navigate = useNavigate({ from: "/transfer" });
   const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
