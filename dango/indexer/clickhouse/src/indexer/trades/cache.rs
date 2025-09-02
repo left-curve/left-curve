@@ -51,6 +51,7 @@ impl TradeCache {
                     Ok::<_, IndexerError>(acc)
                 },
             )?;
+
         self.trades = trades;
 
         Ok(())

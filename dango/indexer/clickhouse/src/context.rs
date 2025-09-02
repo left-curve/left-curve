@@ -1,11 +1,9 @@
-use crate::indexer::trades::cache::TradeCache;
 #[cfg(feature = "testing")]
 use clickhouse::test;
-
 use {
     crate::{
         entities::{pair_price::PairPrice, trade::Trade},
-        indexer::candles::cache::CandleCache,
+        indexer::{candles::cache::CandleCache, trades::cache::TradeCache},
     },
     clickhouse::Client,
     indexer_sql::pubsub::{self, PubSub},
