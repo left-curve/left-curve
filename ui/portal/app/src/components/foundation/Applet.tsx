@@ -6,17 +6,17 @@ import WebView from "react-native-webview";
 import type React from "react";
 
 type AppletProps = {
-  id: string;
+  uri: string;
 };
 
-export const Applet: React.FC<AppletProps> = ({ id }) => {
+export const Applet: React.FC<AppletProps> = ({ uri }) => {
   const { settings } = useApp();
   const { chain, coins } = useConfig();
 
   return (
     <View className="flex-1 flex">
       <WebView
-        source={{ uri: "http://localhost:5180/" }}
+        source={{ uri }}
         style={{ flex: 1 }}
         onMessage={(event) => {
           console.log(event);
