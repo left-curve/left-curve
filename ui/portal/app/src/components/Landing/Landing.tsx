@@ -1,10 +1,12 @@
-import { Image, View } from "react-native";
-import { GlobalText, FullSection } from "./foundation";
+import { Dimensions, Image, ScrollView, type ScrollViewProps, View } from "react-native";
+import { GlobalText, FullSection } from "../foundation";
 
-import Logo from "~/assets/images/dango.svg";
 import { cssInterop } from "nativewind";
 
-import type { PropsWithChildren } from "react";
+import Logo from "~/assets/images/dango.svg";
+import { AppletsSection } from "./AppletSection";
+
+const { height } = Dimensions.get("window");
 
 cssInterop(Logo, {
   className: {
@@ -19,9 +21,17 @@ cssInterop(Logo, {
   },
 });
 
-const LandingContainer: React.FC<PropsWithChildren> = ({ children }) => {
+const LandingContainer: React.FC<React.PropsWithChildren<ScrollViewProps>> = ({
+  children,
+  ...rest
+}) => {
   return (
-    <View className="w-full mx-auto flex flex-col gap-6 pt-0 pb-16 flex-1 overflow-y-scroll">
+    <View
+      className="flex-1 w-full"
+      contentContainerClassName="mx-auto flex flex-col gap-6 h-screen"
+      showsVerticalScrollIndicator={false}
+      {...rest}
+    >
       {children}
     </View>
   );
@@ -29,14 +39,18 @@ const LandingContainer: React.FC<PropsWithChildren> = ({ children }) => {
 
 const Header: React.FC = () => {
   return (
-    <FullSection className="items-center justify-between">
+    <View
+      className="flex items-center justify-between w-full flex-1"
+      style={{ height: height - 100 }}
+    >
       <View className="w-full items-center">
         <Logo width={200} height={80} className="text-primary-900" />
       </View>
 
-      <View className="w-full items-center pb-[88px]">{/* Applets section */}</View>
-      {/* TODO: Scroll down arrow */}
-    </FullSection>
+      <View className="w-full pb-[4rem]">
+        <AppletsSection />
+      </View>
+    </View>
   );
 };
 
@@ -111,14 +125,9 @@ const SectionGreen: React.FC = () => {
   );
 };
 
-const SectionCommunity: React.FC = () => {
-  return null;
-};
-
 export const Landing = Object.assign(LandingContainer, {
   Header,
   SectionRice,
   SectionRed,
   SectionGreen,
-  SectionCommunity,
 });
