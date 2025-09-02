@@ -1,9 +1,11 @@
-import { useFavApplets, useSearchBar } from "@left-curve/store";
 import { useRouter } from "expo-router";
-import { TextInput, View } from "react-native";
-import { Button, IconChevronDown } from "~/components/foundation";
-import { SearchMenu } from "~/components/Search/SearchMenu";
 import { useTheme } from "~/hooks/useTheme";
+import { useFavApplets, useSearchBar } from "@left-curve/store";
+
+import { TextInput, View } from "react-native";
+import { SearchMenu } from "~/components/Search/SearchMenu";
+import { Button, IconChevronDown } from "~/components/foundation";
+
 import { APPLETS } from "~/constants";
 
 export default function SearchScreen() {

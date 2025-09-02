@@ -1,9 +1,10 @@
 import "../assets/global.css";
 
-import { install } from "react-native-quick-crypto";
-import { AppRegistry } from "react-native";
-import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 import { App } from "./app";
+import { AppRegistry } from "react-native";
+
+import { install } from "react-native-quick-crypto";
+import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 
 global.BroadcastChannel = class {
   constructor(public name: string) {}

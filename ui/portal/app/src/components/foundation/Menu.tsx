@@ -1,11 +1,13 @@
-import React from "react";
+import { useRouter } from "expo-router";
+
+import { Button } from "./Button";
+import { TextLoop } from "./TextLoop";
+import { GlobalText } from "./GlobalText";
 import { Pressable, View } from "react-native";
 import { IconSearch } from "./icons/IconSearch";
-import { GlobalText } from "./GlobalText";
-import { TextLoop } from "./TextLoop";
-import { Button } from "./Button";
 import { IconWallet } from "./icons/IconWallet";
-import { useRouter } from "expo-router";
+
+import type React from "react";
 
 export const Menu: React.FC = () => {
   const { navigate } = useRouter();

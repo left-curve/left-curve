@@ -1,8 +1,12 @@
-import { twMerge } from "@left-curve/foundation";
+import { useTheme } from "~/hooks/useTheme";
+
 import { View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useTheme } from "~/hooks/useTheme";
+
+import { twMerge } from "@left-curve/foundation";
+
 import type { PropsWithChildren } from "react";
+
 interface FullSectionProps {
   lightGradient?: string[];
   darkGradient?: string[];

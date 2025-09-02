@@ -1,6 +1,9 @@
-import React from "react";
-import { View, type ViewProps } from "react-native";
+import { View } from "react-native";
+
 import { twMerge } from "@left-curve/foundation";
+
+import type React from "react";
+import type { ViewProps } from "react-native";
 
 type SkeletonProps = {
   className?: string;

@@ -2,6 +2,7 @@ import { useFavApplets } from "@left-curve/store";
 
 import { MotiView } from "moti";
 import { View, Pressable } from "react-native";
+import { AddressVisualizer } from "../foundation/AddressVisualizer";
 import { GlobalText, IconEmptyStar, IconStar, TruncateText } from "../foundation";
 
 import { ASSETS } from "~/constants";
@@ -12,7 +13,6 @@ import EmojiFactory from "@left-curve/foundation/images/emojis/simple/protrading
 import type React from "react";
 import type { Account, Address, ContractInfo } from "@left-curve/dango/types";
 import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
-import { AddressVisualizer } from "../foundation/AddressVisualizer";
 
 const Root: React.FC<React.PropsWithChildren> = ({ children }) => <>{children}</>;
 

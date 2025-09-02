@@ -1,7 +1,8 @@
+import { Svg } from "./SvgBase";
+import { Path } from "react-native-svg";
+
 import type React from "react";
 import type { SvgProps } from "react-native-svg";
-import { Path } from "react-native-svg";
-import { Svg } from "./SvgBase";
 
 export const IconWallet: React.FC<SvgProps> = ({ ...props }) => {
   return (

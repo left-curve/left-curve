@@ -1,13 +1,14 @@
 import { useTheme } from "~/hooks/useTheme";
 
-import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
 import { Shadow } from "react-native-shadow-2";
 import { LinearGradient } from "expo-linear-gradient";
+import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { twMerge } from "@left-curve/foundation";
 import { tv } from "tailwind-variants";
+import { twMerge } from "@left-curve/foundation";
+import { cloneElement, isValidElement } from "react";
 
-import React, { isValidElement } from "react";
+import type React from "react";
 import type { VariantProps } from "tailwind-variants";
 import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 
@@ -258,7 +259,7 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   const styles = buttonVariants({ variant, size, isDisabled, radius });
   const renderIcon = (node?: ReactNode) =>
     isValidElement(node)
-      ? React.cloneElement(node as ReactElement, {
+      ? cloneElement(node as ReactElement, {
           className: twMerge(styles.icons(), classNames?.icons),
         })
       : null;
@@ -268,7 +269,7 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
 
   const childrenComponent =
     children && isValidElement(children)
-      ? React.cloneElement(children as React.ReactElement, {
+      ? cloneElement(children as ReactElement, {
           className: twMerge(styles.text(), classNames?.text),
         })
       : children;

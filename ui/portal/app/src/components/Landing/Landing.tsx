@@ -1,10 +1,12 @@
-import { Dimensions, Image, ScrollView, type ScrollViewProps, View } from "react-native";
-import { GlobalText, FullSection } from "../foundation";
-
 import { cssInterop } from "nativewind";
 
 import Logo from "~/assets/images/dango.svg";
 import { AppletsSection } from "./AppletSection";
+import { Dimensions, Image, View } from "react-native";
+import { GlobalText, FullSection } from "../foundation";
+
+import type React from "react";
+import type { ScrollViewProps } from "react-native";
 
 const { height } = Dimensions.get("window");
 

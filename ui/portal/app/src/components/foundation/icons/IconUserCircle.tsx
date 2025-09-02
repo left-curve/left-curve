@@ -1,7 +1,8 @@
+import { Svg } from "./SvgBase";
+import { Path, Rect } from "react-native-svg";
+
 import type React from "react";
 import type { SvgProps } from "react-native-svg";
-import { Rect, Path } from "react-native-svg";
-import { Svg } from "./SvgBase";
 
 export const IconUserCircle: React.FC<SvgProps> = ({ ...props }) => {
   return (

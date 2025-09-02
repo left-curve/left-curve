@@ -1,7 +1,9 @@
-import type React from "react";
 import { twMerge } from "@left-curve/foundation";
-import type { TextProps } from "react-native-svg";
+
 import { GlobalText } from "./GlobalText";
+
+import type React from "react";
+import type { TextProps } from "react-native-svg";
 
 type Props = {
   text?: string;

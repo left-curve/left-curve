@@ -1,9 +1,10 @@
+import { View, Text } from "react-native";
+
 import { tv } from "tailwind-variants";
+import { twMerge } from "@left-curve/applets-kit";
 
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
-import { View, Text } from "react-native";
-import { twMerge } from "@left-curve/applets-kit";
 
 export interface BadgeProps extends VariantProps<typeof badgeVariants> {
   text: string;

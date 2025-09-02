@@ -1,8 +1,8 @@
+import { Svg } from "./SvgBase";
 import { Path } from "react-native-svg";
 
 import type { SvgProps } from "react-native-svg";
 import type React from "react";
-import { Svg } from "./SvgBase";
 
 export const IconAlert: React.FC<SvgProps> = ({ ...props }) => {
   return (

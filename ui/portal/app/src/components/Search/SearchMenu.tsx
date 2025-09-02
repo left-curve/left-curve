@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 
-import { View, Pressable, ScrollView } from "react-native";
-import { MotiView, AnimatePresence } from "moti";
-import { GlobalText } from "../foundation";
 import { SearchItem } from "./SearchItem";
+import { GlobalText } from "../foundation";
+import { MotiView, AnimatePresence } from "moti";
+import { View, Pressable, ScrollView } from "react-native";
 
 import type React from "react";
-import type { AppletMetadata } from "@left-curve/store/types";
 import type { SearchBarResult } from "@left-curve/store";
+import type { AppletMetadata } from "@left-curve/store/types";
 
 const childAnim = {
   from: { opacity: 0, translateY: -30 },
