@@ -1,24 +1,24 @@
 use {
     grug::{Inner, Lengthy, NonEmpty, btree_map},
     pyth_client::PythClientTrait,
-    pyth_types::{LeEcdsaMessage, PayloadData},
+    pyth_types::{LeEcdsaMessage, PayloadData, PythLazerSubscriptionDetails},
     std::{collections::BTreeMap, fmt::Debug, time::Duration},
     tokio_stream::StreamExt,
 };
 
 struct VaasChecker {
-    values: BTreeMap<String, BTreeMap<&'static str, i64>>,
+    values: BTreeMap<u32, BTreeMap<&'static str, i64>>,
 }
 
 impl VaasChecker {
     pub fn new<I, P>(ids: I, _client: &P) -> Self
     where
         I: IntoIterator<Item = P::PythId>,
-        P: PythClientTrait + Debug,
+        P: PythClientTrait<PythId = PythLazerSubscriptionDetails> + Debug,
     {
         let mut values = BTreeMap::new();
         for id in ids.into_iter() {
-            values.insert(id.to_string(), btree_map! {
+            values.insert(id.id, btree_map! {
                 "price" => 0,
                 "publish_time" => 0,
                 // Set to -1 since the first iteration will increase the counter
@@ -49,10 +49,7 @@ impl VaasChecker {
 
                 let new_price = new_price.unwrap().0.into();
 
-                let element = self
-                    .values
-                    .get_mut(&price_feed.feed_id.0.to_string())
-                    .unwrap();
+                let element = self.values.get_mut(&price_feed.feed_id.0).unwrap();
 
                 // Update the price and publish time.
                 let old_price = element.insert("price", new_price).unwrap();
@@ -97,7 +94,7 @@ impl VaasChecker {
 // Test for streaming vaas.
 pub async fn test_stream<P, I>(mut client: P, ids1: I, ids2: I)
 where
-    P: PythClientTrait + Debug,
+    P: PythClientTrait<PythId = PythLazerSubscriptionDetails> + Debug,
     P::Error: Debug,
     I: IntoIterator<Item = P::PythId> + Clone + Lengthy + Send + 'static,
 {

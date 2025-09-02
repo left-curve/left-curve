@@ -157,7 +157,7 @@ impl PythClientTrait for PythClientLazerCache {
                     yield PriceUpdate::Lazer(NonEmpty::new(data).unwrap());
                 }
 
-                sleep(Duration::from_millis(500));
+                sleep(Duration::from_millis(400));
             }
         };
 

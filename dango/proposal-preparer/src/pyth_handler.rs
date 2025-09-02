@@ -12,11 +12,15 @@ use {
             atomic::{AtomicBool, Ordering},
         },
         thread,
+        time::Duration,
     },
-    tokio::runtime::Runtime,
+    tokio::{runtime::Runtime, time::sleep},
     tokio_stream::StreamExt,
     tracing::error,
 };
+
+/// Number of attempts to connect to the Pyth stream before giving up.
+const CONNECT_ATTEMPTS: usize = 3;
 
 /// Handler for the PythClient to be used in the ProposalPreparer, used to
 /// keep all code related to Pyth for PP in a single structure.
@@ -127,13 +131,28 @@ where
                 };
 
                 rt.block_on(async {
-                    let mut stream = match client.stream(ids).await {
-                        Ok(stream) => stream,
-                        Err(err) => {
-                            error!(error = err.to_string(), "Failed to create Pyth stream");
-                            keep_running.store(false, Ordering::SeqCst);
-                            return;
-                        },
+
+                    let mut attempts = 0;
+
+                    // Try to create the stream, retrying up to CONNECT_ATTEMPTS times if it fails.
+                    let mut stream = loop{
+
+                        match client.stream(ids.clone()).await {
+                            Ok(stream) => {break stream;}
+                            Err(err) => {
+                                attempts += 1;
+
+                                if attempts < CONNECT_ATTEMPTS {
+                                    error!(error = err.to_string(), "Failed to create Pyth stream; attempts: {attempts}");
+                                    sleep(Duration::from_millis(100)).await;
+                                } else {
+                                    error!("Failed to create Pyth stream after {attempts} attempts, stop retrying");
+                                    keep_running.store(false, Ordering::SeqCst);
+                                    return;
+                                }
+
+                            },
+                        };
                     };
 
                     loop {
@@ -206,6 +225,7 @@ impl QueryPythId for PythClientCore {
         pyth_ids_core(querier, oracle)
     }
 }
+
 impl QueryPythId for PythClientCoreCache {
     //  TODO: optimize this by using the raw WasmScan query.
     /// Retrieve the Pyth ids from the Oracle contract.
