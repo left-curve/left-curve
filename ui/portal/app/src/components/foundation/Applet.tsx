@@ -22,11 +22,11 @@ export const Applet: React.FC<AppletProps> = ({ id }) => {
           console.log(event);
         }}
         injectedJavaScriptBeforeContentLoaded={`
-          window.dango_settings = ${JSON.stringify(settings)};
-          window.dango_store = {
-          chain: ${JSON.stringify(chain)},
-          coins: ${JSON.stringify(coins.byDenom)}
-        };`}
+          window.dango = {
+            settings: ${JSON.stringify(settings)}
+            chain: ${JSON.stringify(chain)},
+            coins: ${JSON.stringify(coins.byDenom)}
+          };`}
       />
     </View>
   );

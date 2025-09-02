@@ -5,21 +5,24 @@ import {
   type ToastMsg,
   type ToastOptions,
 } from "@left-curve/foundation";
-import { useAppConfig, useConfig } from "@left-curve/store";
+import { useAppConfig, useConfig, type WindowDangoStore } from "@left-curve/store";
 import { useTheme } from "#hooks/useTheme.js";
 
 import { serializeJson } from "@left-curve/dango/encoding";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";
-declare global {
-  interface Window {
-    dango_settings: AppState["settings"];
-    ReactNativeWebView: {
-      postMessage: (message: string) => void;
-    };
-  }
+
+export interface WindowDangoRemoteApp extends WindowDangoStore {
+  dango: WindowDangoStore["dango"] & {
+    settings: AppState["settings"];
+  };
+  ReactNativeWebView: {
+    postMessage: (message: string) => void;
+  };
 }
+
+declare let window: WindowDangoRemoteApp;
 
 const sendMessage = window.ReactNativeWebView?.postMessage;
 
@@ -62,7 +65,7 @@ export const AppRemoteProvider: React.FC<PropsWithChildren> = ({ children }) => 
           subscriptions,
           config,
           toast,
-          settings: window.dango_settings,
+          settings: window.dango.settings,
           showModal,
           hideModal,
         } as AppState
