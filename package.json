@@ -30,6 +30,7 @@
     "portal-web": "pnpm -F portal-web",
     "portal-app": "pnpm -F portal-app",
     "dango": "pnpm -F dango",
+    "foundation": "pnpm -F foundation",
     "grug": "pnpm -F grug",
     "kit": "pnpm -F applets-kit",
     "bump": "pnpm -r 'bump'"
