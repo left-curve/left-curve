@@ -6,11 +6,13 @@ import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
 import type { Chain } from "@left-curve/dango/types";
 import type { AnyCoin } from "./types/coin.js";
 import type { RemoteResponse } from "./types/remote.js";
+import type { Connection } from "./types/connector.js";
 
 export interface WindowDangoStore extends Window {
   dango: {
     chain: Chain;
     coins: Record<string, AnyCoin>;
+    connection?: Omit<Connection, "connector">;
   };
   ReactNativeWebView: {
     postMessage: (message: string) => void;

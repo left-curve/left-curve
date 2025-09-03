@@ -3,9 +3,9 @@ import { useAccount, useConfig } from "@left-curve/store";
 import { View } from "react-native";
 import WebView, { type WebViewMessageEvent } from "react-native-webview";
 import { deserializeJson, serializeJson } from "@left-curve/dango/encoding";
+import { useCallback, useRef } from "react";
 
 import type React from "react";
-import { useCallback, useRef } from "react";
 import type { RemoteRequest } from "@left-curve/store/src/types";
 
 type AppletProps = {
@@ -15,9 +15,11 @@ type AppletProps = {
 export const Applet: React.FC<AppletProps> = ({ uri }) => {
   const webViewRef = useRef<WebView>(null);
   const { settings } = useApp();
-  const { chain, coins } = useConfig();
+  const { chain, coins, state } = useConfig();
   const { navigate, toast, showModal, hideModal } = useApp();
   const { connector } = useAccount();
+
+  const connection = state.connectors.get(state.current || "");
 
   const onMessage = useCallback(
     async (event: WebViewMessageEvent) => {
@@ -72,6 +74,11 @@ export const Applet: React.FC<AppletProps> = ({ uri }) => {
             settings: ${JSON.stringify(settings)},
             chain: ${JSON.stringify(chain)},
             coins: ${JSON.stringify(coins.byDenom)}
+            connection: ${
+              connection
+                ? serializeJson({ connection: { ...connection, connector: undefined } })
+                : "undefined"
+            }
           };`}
       />
     </View>

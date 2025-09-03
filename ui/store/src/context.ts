@@ -6,7 +6,7 @@ import { createConfig } from "./createConfig.js";
 import { graphql } from "@left-curve/dango";
 import { remote } from "./connectors/remote.js";
 
-import type { Config, State } from "./types/store.js";
+import { ConnectionStatus, type Config, type State } from "./types/store.js";
 import type { WindowDangoStore } from "./remote.js";
 
 declare let window: WindowDangoStore;
@@ -35,6 +35,7 @@ export const DangoRemoteProvider: React.FC<React.PropsWithChildren> = (parameter
   const { children } = parameters;
 
   const chain = window.dango.chain;
+  const connection = window.dango.connection;
 
   const config = createConfig({
     chain,
@@ -44,9 +45,29 @@ export const DangoRemoteProvider: React.FC<React.PropsWithChildren> = (parameter
     connectors: [remote()],
   });
 
+  const connector = config.connectors.at(0)!;
+
+  const initialState = connection
+    ? {
+        chainId: chain.id,
+        isMipdLoaded: true,
+        current: connector.uid,
+        username: connection.account!.username,
+        connectors: new Map([[connector.uid, { ...connection, connector }]]),
+        status: ConnectionStatus.Connected,
+      }
+    : {
+        chainId: chain.id,
+        isMipdLoaded: true,
+        current: null,
+        username: undefined,
+        connectors: new Map(),
+        status: ConnectionStatus.Disconnected,
+      };
+
   return createElement(
     Hydrate,
-    { config, reconnectOnMount: false },
+    { config, initialState, reconnectOnMount: false },
     createElement(DangoStoreContext.Provider, { value: config }, children),
   );
 };
