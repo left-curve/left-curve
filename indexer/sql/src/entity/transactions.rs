@@ -40,6 +40,7 @@ pub struct Model {
     pub gas_wanted: i64,
     pub gas_used: i64,
     #[sea_orm(column_type = "JsonBinary")]
+    #[graphql(skip)]
     pub http_request_details: Option<Json>,
 }
 

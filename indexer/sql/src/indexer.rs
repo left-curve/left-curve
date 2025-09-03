@@ -507,19 +507,18 @@ impl IndexerTrait for Indexer {
 
         let mut http_request_details: HashMap<String, HttpRequestDetails> = HashMap::new();
 
-        // Selectively picking the transaction details
-        for tx in block.txs.iter() {
+        let mut transaction_hash_details = self
+            .context
+            .transaction_hash_details
+            .lock()
+            .map_err(|_| grug_app::IndexerError::MutexPoisoned)?;
+        http_request_details.extend(block.txs.iter().filter_map(|tx| {
             let tx_hash = tx.1.to_string();
-            if let Some(details) = self
-                .context
-                .transaction_hash_details
-                .lock()
-                .expect("can't lock transaction_hash_details")
+            transaction_hash_details
                 .remove(&tx_hash)
-            {
-                http_request_details.insert(tx_hash, details);
-            }
-        }
+                .map(|details| (tx_hash, details))
+        }));
+        drop(transaction_hash_details);
 
         Ok(
             self.find_or_create(block_filename, block, block_outcome, |block_to_index| {

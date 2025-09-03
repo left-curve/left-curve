@@ -711,7 +711,6 @@ type Transaction {
 	errorMessage: String
 	gasWanted: Int!
 	gasUsed: Int!
-	httpRequestDetails: JSON
 	"""
 	Returns the transaction timestamp in ISO 8601 format with time zone.
 	"""

@@ -74,8 +74,6 @@ impl AccountQuery {
     ) -> Result<
         Connection<OpaqueCursor<AccountCursor>, entity::accounts::Model, EmptyFields, EmptyFields>,
     > {
-        tracing::warn!("FOOBAR");
-
         let app_ctx = ctx.data::<Context>()?;
 
         paginate_models(
