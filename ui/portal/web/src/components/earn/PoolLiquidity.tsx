@@ -1,12 +1,5 @@
-import {
-  IconArrowDown,
-  IconChevronRight,
-  numberMask,
-  Skeleton,
-  useInputs,
-} from "@left-curve/applets-kit";
+import { Modals, numberMask, Skeleton, useApp, useInputs } from "@left-curve/applets-kit";
 import { usePoolLiquidityState, usePrices } from "@left-curve/store";
-import { useApp } from "~/hooks/useApp";
 
 import {
   Badge,
@@ -22,11 +15,10 @@ import { motion } from "framer-motion";
 
 import { formatNumber } from "@left-curve/dango/utils";
 import Big from "big.js";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PairUpdate } from "@left-curve/dango/types";
 import { useEffect, type PropsWithChildren } from "react";
-import { Modals } from "../modals/RootModal";
 import { MobileTitle } from "../foundation/MobileTitle";
 
 const [PoolLiquidityProvider, usePoolLiquidity] = createContext<{

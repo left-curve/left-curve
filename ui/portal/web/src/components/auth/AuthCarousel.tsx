@@ -1,11 +1,10 @@
-import { twMerge, useTheme } from "@left-curve/applets-kit";
+import { twMerge, useApp, useTheme } from "@left-curve/applets-kit";
 
 import { Button, Carousel } from "@left-curve/applets-kit";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
 
 export const AuthCarousel: React.FC = () => {
   const { settings, changeSettings } = useApp();

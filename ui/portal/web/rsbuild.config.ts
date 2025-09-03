@@ -5,8 +5,8 @@ import fs from "fs-extra";
 import { defineConfig } from "@rsbuild/core";
 import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
+import { pluginSvgr } from "@rsbuild/plugin-svgr";
 
-import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 
@@ -66,6 +66,7 @@ export default defineConfig({
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
+      "~/images": path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
       "~/chartiq": path.resolve(__dirname, "./chartiq.config.ts"),
       "~/datafeed": path.resolve(__dirname, "./datafeed.config.ts"),
       "~": path.resolve(__dirname, "./src"),
@@ -114,7 +115,7 @@ export default defineConfig({
       },
     },
   },
-  plugins: [pluginReact()],
+  plugins: [pluginReact(), pluginSvgr()],
   tools: {
     rspack: (config, { rspack }) => {
       config.plugins ??= [];
@@ -128,15 +129,6 @@ export default defineConfig({
           sourcemaps: {
             filesToDeleteAfterUpload: ["build/**/*.map"],
           },
-        }),
-        paraglideRspackPlugin({
-          outdir: "./.paraglide",
-          emitGitIgnore: false,
-          emitPrettierIgnore: false,
-          includeEslintDisableComment: false,
-          project: "../../foundation/project.inlang",
-          strategy: ["localStorage", "preferredLanguage", "baseLocale"],
-          localStorageKey: "dango.locale",
         }),
         TanStackRouterRspack({
           routesDirectory: "./src/pages",

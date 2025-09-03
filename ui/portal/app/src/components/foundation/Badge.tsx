@@ -1,7 +1,7 @@
 import { View, Text } from "react-native";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "@left-curve/applets-kit";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";

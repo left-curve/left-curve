@@ -1,6 +1,6 @@
 import { Button } from "@left-curve/applets-kit";
 import { Link, createLazyFileRoute } from "@tanstack/react-router";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const Route = createLazyFileRoute("/(auth)/_auth/welcome")({
   component: WelcomeComponent,

@@ -1,5 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { BlockExplorer } from "~/components/explorer/BlockExplorer";
 import { MobileTitle } from "~/components/foundation/MobileTitle";

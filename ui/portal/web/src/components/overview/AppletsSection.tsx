@@ -1,9 +1,8 @@
-import { useApp } from "~/hooks/useApp";
 import { useFavApplets } from "@left-curve/store";
 
 import { APPLETS } from "~/constants";
 
-import { IconAddCross } from "@left-curve/applets-kit";
+import { IconAddCross, useApp } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
 
 export function AppletsSection() {

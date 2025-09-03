@@ -13,7 +13,7 @@ import {
 } from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { IndexedTransaction } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";

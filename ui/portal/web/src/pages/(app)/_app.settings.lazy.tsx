@@ -5,7 +5,7 @@ import { DisplaySection } from "~/components/settings/DisplaySection";
 import { KeyManagementSection } from "~/components/settings/KeyManagementSection";
 import { SessionSection } from "~/components/settings/SessionSection";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const Route = createLazyFileRoute("/(app)/_app/settings")({
   component: SettingsApplet,

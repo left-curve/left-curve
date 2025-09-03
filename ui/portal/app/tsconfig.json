@@ -6,6 +6,7 @@
       "~/assets/*": ["./assets/*"],
       "~/paraglide/*": ["./.paraglide/*"],
       "~/constants": ["./constants.config.ts"],
+      "~/storage": ["./storage.config.ts"],
       "~/store": ["./store.config.ts"],
       "~/*": ["./src/*"]
     }

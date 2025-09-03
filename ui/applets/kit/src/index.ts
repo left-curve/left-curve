@@ -7,3 +7,5 @@ export { useHasMounted } from "./hooks/useHasMounted";
 export { useMediaQuery } from "./hooks/useMediaQuery";
 export { usePortalTarget } from "./hooks/usePortalTarget";
 export { useTheme } from "./hooks/useTheme";
+
+export { AppRemoteProvider, useRemoteApp } from "./providers/AppRemoteProvider";

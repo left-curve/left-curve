@@ -4,11 +4,10 @@ import {
   useConfig,
   usePrices,
   useSigningClient,
-  useSimpleSwapState,
+  useConvertState,
   useSubmitTx,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { useApp } from "~/hooks/useApp";
 
 import {
   Badge,
@@ -16,37 +15,37 @@ import {
   CoinSelector,
   IconArrowDown,
   Input,
+  Modals,
   Skeleton,
+  type useApp,
 } from "@left-curve/applets-kit";
-import { Link } from "@tanstack/react-router";
-import { Modals } from "../modals/RootModal";
-
-import { m } from "~/paraglide/messages";
+import HippoSvg from "@left-curve/foundation/images/characters/hippo.svg";
 
 import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
 import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curve/dango/utils";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { type PropsWithChildren, useEffect, useState } from "react";
 
 import type { Address } from "@left-curve/dango/types";
-import type { UseSimpleSwapStateParameters, UseSubmitTxReturnType } from "@left-curve/store";
+import type { UseConvertStateParameters, UseSubmitTxReturnType } from "@left-curve/store";
 import type React from "react";
 
-const [SimpleSwapProvider, useSimpleSwap] = createContext<{
-  state: ReturnType<typeof useSimpleSwapState>;
+const [ConvertProvider, useConvert] = createContext<{
+  state: ReturnType<typeof useConvertState>;
   submission: UseSubmitTxReturnType<void, Error, void, unknown>;
   controllers: ReturnType<typeof useInputs>;
+  app: ReturnType<typeof useApp>;
 }>({
-  name: "SimpleSwapContext",
+  name: "ConvertContext",
 });
 
-const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParameters>> = ({
-  children,
-  ...parameters
-}) => {
-  const state = useSimpleSwapState(parameters);
+const ConvertContainer: React.FC<
+  PropsWithChildren<UseConvertStateParameters> & { appState: ReturnType<typeof useApp> }
+> = ({ children, appState, ...parameters }) => {
+  const state = useConvertState(parameters);
   const controllers = useInputs();
-  const { toast, settings, showModal } = useApp();
+  const { toast, settings, showModal } = appState;
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
   const queryClient = useQueryClient();
@@ -112,12 +111,14 @@ const SimpleSwapContainer: React.FC<PropsWithChildren<UseSimpleSwapStateParamete
   });
 
   return (
-    <SimpleSwapProvider value={{ state, controllers, submission }}>{children}</SimpleSwapProvider>
+    <ConvertProvider value={{ app: appState, state, controllers, submission }}>
+      {children}
+    </ConvertProvider>
   );
 };
 
-const SimpleSwapHeader: React.FC = () => {
-  const { state } = useSimpleSwap();
+const ConvertHeader: React.FC = () => {
+  const { state } = useConvert();
   const { quote, statistics } = state;
   const { tvl, apy, volume } = statistics.data;
   return (
@@ -142,7 +143,7 @@ const SimpleSwapHeader: React.FC = () => {
         </div>
       </div>
       <img
-        src="/images/characters/hippo.svg"
+        src={HippoSvg}
         alt=""
         className="absolute right-[-2.8rem] top-[-0.5rem] opacity-10 select-none drag-none"
       />
@@ -150,11 +151,11 @@ const SimpleSwapHeader: React.FC = () => {
   );
 };
 
-const SimpleSwapForm: React.FC = () => {
-  const { settings } = useApp();
+const ConvertForm: React.FC = () => {
   const { coins } = useConfig();
   const { account, isConnected } = useAccount();
-  const { state, controllers, submission } = useSimpleSwap();
+  const { app, state, controllers, submission } = useConvert();
+  const { settings } = app;
   const { data: balances } = useBalances({ address: account?.address });
   const [activeInput, setActiveInput] = useState<"base" | "quote">();
   const { getPrice } = usePrices();
@@ -210,7 +211,7 @@ const SimpleSwapForm: React.FC = () => {
 
   return (
     <form
-      id="simple-swap-form"
+      id="convert-form"
       className={twMerge("flex flex-col items-center relative", {
         "flex-col-reverse": direction === "reverse",
       })}
@@ -369,10 +370,10 @@ const SimpleSwapForm: React.FC = () => {
   );
 };
 
-const SimpleSwapDetails: React.FC = () => {
+const ConvertDetails: React.FC = () => {
   const { isConnected } = useAccount();
-  const { settings } = useApp();
-  const { state } = useSimpleSwap();
+  const { app, state } = useConvert();
+  const { settings } = app;
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
   const { data, isPending } = simulation;
@@ -421,18 +422,19 @@ const SimpleSwapDetails: React.FC = () => {
   );
 };
 
-const SimpleSwapTrigger: React.FC = () => {
+const ConvertTrigger: React.FC = () => {
   const { isConnected } = useAccount();
-  const { submission, state, controllers } = useSimpleSwap();
+  const { app, submission, state, controllers } = useConvert();
   const { simulation } = state;
   const { isValid } = controllers;
+  const { navigate } = app;
 
   return isConnected ? (
     <Button
       fullWidth
       size="md"
       type="submit"
-      form="simple-swap-form"
+      form="convert-form"
       isDisabled={
         Number(simulation.data?.output.amount || 0) <= 0 || simulation.isPending || !isValid
       }
@@ -441,15 +443,15 @@ const SimpleSwapTrigger: React.FC = () => {
       {m["dex.convert.swap"]()}
     </Button>
   ) : (
-    <Button fullWidth size="md" as={Link} to="/signin">
+    <Button fullWidth size="md" onClick={() => navigate("/signin")}>
       {m["common.signin"]()}
     </Button>
   );
 };
 
-export const SimpleSwap = Object.assign(SimpleSwapContainer, {
-  Header: SimpleSwapHeader,
-  Form: SimpleSwapForm,
-  Details: SimpleSwapDetails,
-  Trigger: SimpleSwapTrigger,
+export const Convert = Object.assign(ConvertContainer, {
+  Header: ConvertHeader,
+  Form: ConvertForm,
+  Details: ConvertDetails,
+  Trigger: ConvertTrigger,
 });

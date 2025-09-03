@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { Button } from "@left-curve/applets-kit";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const NotFound: React.FC = () => {
   const navigate = useNavigate();

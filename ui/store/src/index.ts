@@ -7,6 +7,8 @@ export {
   type DangoStoreProviderProps,
 } from "./context.js";
 
+export { DangoRemoteProvider, type WindowDangoStore } from "./remote.js";
+
 export { local, devnet, testnet, http, graphql } from "@left-curve/dango";
 
 /* -------------------------------------------------------------------------- */
@@ -136,9 +138,9 @@ export {
 } from "./hooks/useSubmitTx.js";
 
 export {
-  type UseSimpleSwapStateParameters,
-  useSimpleSwapState,
-} from "./hooks/useSimpleSwapState.js";
+  type UseConvertStateParameters,
+  useConvertState,
+} from "./hooks/useConvertState.js";
 
 export {
   type UseProTradeStateParameters,

@@ -13,8 +13,8 @@ import {
   TextCopy,
   TruncateText,
   twMerge,
+  useApp,
 } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
 
 export const AccountCardOptions = {
   [AccountType.Spot]: {

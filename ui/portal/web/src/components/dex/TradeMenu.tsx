@@ -1,7 +1,6 @@
 import { useAccount, useAppConfig, usePrices } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import {
   Button,
@@ -15,13 +14,14 @@ import {
   Tabs,
   numberMask,
   twMerge,
+  useApp,
   type useInputs,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { Sheet } from "react-modal-sheet";
 
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { useProTradeState } from "@left-curve/store";
 import type React from "react";

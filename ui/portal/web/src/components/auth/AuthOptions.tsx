@@ -3,7 +3,7 @@ import { useConnectors } from "@left-curve/store";
 import { motion } from "framer-motion";
 import type React from "react";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 interface Props {
   action: (method: string) => void;

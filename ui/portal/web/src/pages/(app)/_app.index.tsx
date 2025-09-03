@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Landing } from "~/components/landing/Landing";
 

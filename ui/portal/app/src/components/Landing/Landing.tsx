@@ -30,7 +30,7 @@ const LandingContainer: React.FC<React.PropsWithChildren> = ({ children, ...rest
   );
 };
 
-const Header: React.FC = () => {
+const Overview: React.FC = () => {
   return (
     <View
       className="flex items-center justify-between w-full flex-1"
@@ -119,7 +119,7 @@ const SectionGreen: React.FC = () => {
 };
 
 export const Landing = Object.assign(LandingContainer, {
-  Header,
+  Overview,
   SectionRice,
   SectionRed,
   SectionGreen,

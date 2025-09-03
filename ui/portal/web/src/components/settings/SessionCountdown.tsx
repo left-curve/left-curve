@@ -3,7 +3,7 @@ import { useSessionKey } from "@left-curve/store";
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
 

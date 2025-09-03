@@ -1,9 +1,8 @@
-import { Button, IconAlert, IconButton, IconClose } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
+import { Button, IconAlert, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { forwardRef, useImperativeHandle } from "react";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 type PoolWithdrawLiquidityProps = {
   confirmWithdrawal: () => void;
