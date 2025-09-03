@@ -4,8 +4,11 @@ import "../assets/global.css";
 
 import { App } from "./app";
 import { AppRegistry } from "react-native";
+import { createMMKVStorage } from "~/storage";
 
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
+
+global.localStorage = createMMKVStorage() as Storage;
 
 global.BroadcastChannel = class {
   constructor(public name: string) {}
@@ -13,7 +16,7 @@ global.BroadcastChannel = class {
   removeEventListener() {}
   postMessage() {}
   close() {}
-} as unknown as typeof global.BroadcastChannel;
+} as unknown as typeof BroadcastChannel;
 
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,

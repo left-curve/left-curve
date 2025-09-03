@@ -25,12 +25,6 @@
     "!typedoc.json",
     "!tsup.config.ts"
   ],
-  "imports": {
-    "#components/*": "./src/components/*",
-    "#types/*": "./src/types/*",
-    "#hooks/*": "./src/hooks/*",
-    "#utils/*": "./src/utils/*"
-  },
   "exports": {
     ".": {
       "types": "./build/index.d.ts",

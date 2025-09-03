@@ -5,7 +5,7 @@ export default function HomeScreen() {
   return (
     <View className="flex-1 flex items-center justify-center bg-surface-primary-rice w-full flex-col gap-8">
       <Landing>
-        <Landing.Header />
+        <Landing.Overview />
       </Landing>
     </View>
   );

@@ -6,7 +6,7 @@ import {
   type ToastOptions,
 } from "@left-curve/foundation";
 import { useAppConfig, useConfig, type WindowDangoStore } from "@left-curve/store";
-import { useTheme } from "#hooks/useTheme.js";
+import { useTheme } from "../hooks/useTheme";
 
 import { serializeJson } from "@left-curve/dango/encoding";
 
