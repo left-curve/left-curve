@@ -4,7 +4,6 @@ use {
     async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
 };
 
-// Generic function that works with any async_graphql::Schema
 pub fn graphql_route<Q, M, S>() -> Resource
 where
     Q: async_graphql::ObjectType + 'static,
