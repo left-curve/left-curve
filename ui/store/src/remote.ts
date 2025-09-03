@@ -34,12 +34,19 @@ export const requestRemote = async <T = unknown>(
   };
 
   return await new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      window.removeEventListener("message", receiveResponse);
+      reject(new Error("Request timed out"));
+    }, 30_000);
+
     const receiveResponse = (e: MessageEvent) => {
       const message = deserializeJson<RemoteResponse<T>>(e.data);
 
       if (!message || message.type !== "dango-remote") {
         return;
       }
+
+      clearTimeout(timeoutId);
 
       if (message.id !== id) return;
 
@@ -53,10 +60,6 @@ export const requestRemote = async <T = unknown>(
     };
 
     window.addEventListener("message", receiveResponse);
-    setTimeout(() => {
-      window.removeEventListener("message", receiveResponse);
-      reject(new Error("Request timed out"));
-    }, 30_000);
 
     window.ReactNativeWebView?.postMessage(serializeJson(message));
   });
