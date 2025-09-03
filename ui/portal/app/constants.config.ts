@@ -22,7 +22,7 @@ export const APPLETS: Record<string, AppletMetadata> = Object.keys(translations)
 
 export const ASSETS = {
   trade: require("@left-curve/foundation/images/emojis/simple/protrading.svg"),
-  "simple-swap": require("@left-curve/foundation/images/emojis/simple/swap.svg"),
+  convert: require("@left-curve/foundation/images/emojis/simple/swap.svg"),
   earn: require("@left-curve/foundation/images/emojis/simple/pig.svg"),
   transfer: require("@left-curve/foundation/images/emojis/simple/money.svg"),
   "create-account": require("@left-curve/foundation/images/emojis/simple/wizard.svg"),

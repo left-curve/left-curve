@@ -1,22 +1,22 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
-import { z } from 'zod'
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { z } from "zod";
 
-import { m } from '@left-curve/foundation/paraglide/messages.js'
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-const BASE_DENOM = 'USDC'
-const DEFAULT_QUOTE = 'BTC'
+const BASE_DENOM = "USDC";
+const DEFAULT_QUOTE = "BTC";
 
-export const Route = createFileRoute('/(app)/_app/convert')({
+export const Route = createFileRoute("/(app)/_app/convert")({
   head: () => ({
-    meta: [{ title: `Dango | ${m['applets.simple-swap.title']()}` }],
+    meta: [{ title: `Dango | ${m["applets.convert.title"]()}` }],
   }),
   beforeLoad: async ({ context, search }) => {
-    const { config } = context
-    const { coins } = config
-    const { from = BASE_DENOM, to = DEFAULT_QUOTE } = search
+    const { config } = context;
+    const { coins } = config;
+    const { from = BASE_DENOM, to = DEFAULT_QUOTE } = search;
 
-    const fromCoin = coins.bySymbol[from]
-    const toCoin = coins.bySymbol[to]
+    const fromCoin = coins.bySymbol[from];
+    const toCoin = coins.bySymbol[to];
     if (
       !fromCoin ||
       !toCoin ||
@@ -24,9 +24,9 @@ export const Route = createFileRoute('/(app)/_app/convert')({
       (to === BASE_DENOM && from === BASE_DENOM)
     ) {
       throw redirect({
-        to: '/swap',
+        to: "/convert",
         search: { from: BASE_DENOM, to: DEFAULT_QUOTE },
-      })
+      });
     }
   },
   validateSearch: z
@@ -35,4 +35,4 @@ export const Route = createFileRoute('/(app)/_app/convert')({
       to: z.string(),
     })
     .catch({ from: BASE_DENOM, to: DEFAULT_QUOTE }),
-})
+});

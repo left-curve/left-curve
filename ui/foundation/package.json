@@ -27,7 +27,7 @@
     "clean": "rm -rf ./build && rm -rf node_modules && rm -rf tsconfig.tsbuildinfo",
     "clean:build": "rm -rf ./build",
     "pre-dev": "node paraglide.ts && tsc",
-    "dev": "nodemon & tsc -w",
+    "dev": "concurrently \"nodemon\" \"tsc -w\"",
     "build": "node paraglide.ts && pnpm tsup --clean"
   },
   "dependencies": {
@@ -36,6 +36,7 @@
     "@left-curve/dango": "workspace:^",
     "@left-curve/store": "workspace:^",
     "@rslib/core": "^0.12.4",
+    "concurrently": "^9.2.1",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "catalog:",
     "tailwindcss-animate": "^1.0.7"
@@ -45,7 +46,9 @@
     "nodemon": "^3.1.10"
   },
   "nodemonConfig": {
-    "watch": ["build"],
+    "watch": [
+      "build"
+    ],
     "exec": "node paraglide.ts"
   }
 }
