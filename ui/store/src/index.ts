@@ -4,10 +4,11 @@ export { createEventBus } from "./createEventBus.js";
 export {
   DangoStoreContext,
   DangoStoreProvider,
+  DangoRemoteProvider,
   type DangoStoreProviderProps,
 } from "./context.js";
 
-export { DangoRemoteProvider, requestRemote, type WindowDangoStore } from "./remote.js";
+export { requestRemote, type WindowDangoStore } from "./remote.js";
 
 export { local, devnet, testnet, http, graphql } from "@left-curve/dango";
 
