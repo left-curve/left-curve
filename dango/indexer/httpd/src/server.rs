@@ -20,7 +20,6 @@ where
             .service(routes::index::up)
             .service(routes::index::sentry_raise)
             .service(routes::blocks::services())
-            // Use the generic GraphQL route from grug_httpd to avoid code duplication
             .service(grug_httpd::routes::graphql::generic_graphql_route::<
                 crate::graphql::query::Query,
                 indexer_httpd::graphql::mutation::Mutation,

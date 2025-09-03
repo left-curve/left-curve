@@ -4,15 +4,6 @@ use {
     async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
 };
 
-// Original function for backward compatibility - now uses the generic implementation
-pub fn graphql_route() -> Resource {
-    generic_graphql_route::<
-        crate::graphql::query::Query,
-        async_graphql::EmptyMutation,
-        async_graphql::EmptySubscription,
-    >()
-}
-
 // Generic function that works with any async_graphql::Schema
 pub fn generic_graphql_route<Q, M, S>() -> Resource
 where
