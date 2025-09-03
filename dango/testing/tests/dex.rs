@@ -6670,47 +6670,22 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
         )
         .should_succeed();
 
-    // Calculate required funds for market orders
-    let mut required_eth = Uint128::ZERO;
-    let mut required_usdc = Uint128::ZERO;
-
-    // Calculate required funds for limit orders
-    for (direction, price, amount) in &limit_orders {
-        match direction {
-            Direction::Bid => {
-                // For bid orders, we need USDC (quote currency)
-                let cost = amount.checked_mul_dec_ceil(*price).unwrap();
-                required_usdc += cost;
-            },
-            Direction::Ask => {
-                // For ask orders, we need ETH (base currency)
-                required_eth += *amount;
-            },
-        }
-    }
-
-    // Create limit order requests
-    let limit_order_requests: Vec<CreateLimitOrderRequest> = limit_orders
-        .into_iter()
-        .map(|(direction, price, amount)| CreateLimitOrderRequest {
-            base_denom: eth::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
-            direction,
-            amount: NonZero::new_unchecked(amount),
-            price: NonZero::new_unchecked(price),
-        })
-        .collect();
-
-    // Build funds for the transaction
-    let funds = match (required_eth > Uint128::ZERO, required_usdc > Uint128::ZERO) {
-        (true, true) => coins! {
-            eth::DENOM.clone() => required_eth,
-            usdc::DENOM.clone() => required_usdc,
+    // Create limit order requests and the total funds needed
+    let (funds, limit_order_requests) = limit_orders.into_iter().fold(
+        (Coins::default(), vec![]),
+        |(mut funds, mut requests), (direction, price, amount)| {
+            let (deposit, request) = create_limit_order_request(
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                direction,
+                amount,
+                price,
+            );
+            requests.push(request);
+            funds.insert_many(deposit).unwrap();
+            (funds, requests)
         },
-        (true, false) => Coins::one(eth::DENOM.clone(), required_eth).unwrap(),
-        (false, true) => Coins::one(usdc::DENOM.clone(), required_usdc).unwrap(),
-        (false, false) => Coins::new(),
-    };
+    );
 
     // Execute all orders in a single batch
     suite
@@ -6792,20 +6767,22 @@ fn decrease_liquidity_depths_minimal_failing_test() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
                 creates_limit: vec![
-                    CreateLimitOrderRequest {
-                        base_denom: eth::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(117304)),
-                        price: NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
-                    },
-                    CreateLimitOrderRequest {
-                        base_denom: eth::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(117304)),
-                        price: NonZero::new_unchecked(Udec128_24::from_str("937.7344336").unwrap()),
-                    },
+                    create_limit_order_request(
+                        eth::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Bid,
+                        Uint128::new(117304),
+                        Udec128_24::from_str("852.485845").unwrap(),
+                    )
+                    .1,
+                    create_limit_order_request(
+                        eth::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Bid,
+                        Uint128::new(117304),
+                        Udec128_24::from_str("937.7344336").unwrap(),
+                    )
+                    .1,
                 ],
                 cancels: None,
             },
@@ -6822,18 +6799,19 @@ fn decrease_liquidity_depths_minimal_failing_test() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
-                    base_denom: eth::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(117304 * 2)),
-                    price: NonZero::new_unchecked(
+                creates_limit: vec![
+                    create_limit_order_request(
+                        eth::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Ask,
+                        Uint128::new(117304 * 2),
                         Udec128_24::from_str("85248.71")
                             .unwrap()
                             .checked_inv()
                             .unwrap(),
-                    ),
-                }],
+                    )
+                    .1,
+                ],
                 cancels: None,
             },
             coins! {
@@ -6857,12 +6835,12 @@ pub fn create_limit_order_request(
     base_denom: Denom,
     quote_denom: Denom,
     direction: Direction,
-    amount: Uint128,
+    amount_base: Uint128,
     price: Udec128_24,
 ) -> (Coins, CreateLimitOrderRequest) {
     match direction {
         Direction::Bid => {
-            let amount_quote = amount.checked_mul_dec_ceil(price).unwrap();
+            let amount_quote = amount_base.checked_mul_dec_ceil(price).unwrap();
             (
                 Coins::one(quote_denom.clone(), amount_quote).unwrap(),
                 CreateLimitOrderRequest::Bid {
@@ -6873,17 +6851,14 @@ pub fn create_limit_order_request(
                 },
             )
         },
-        Direction::Ask => {
-            let amount_base = amount;
-            (
-                Coins::one(base_denom.clone(), amount_base).unwrap(),
-                CreateLimitOrderRequest::Ask {
-                    base_denom,
-                    quote_denom,
-                    amount_base: NonZero::new(amount_base).unwrap(),
-                    price: NonZero::new(price).unwrap(),
-                },
-            )
-        },
+        Direction::Ask => (
+            Coins::one(base_denom.clone(), amount_base).unwrap(),
+            CreateLimitOrderRequest::Ask {
+                base_denom,
+                quote_denom,
+                amount_base: NonZero::new(amount_base).unwrap(),
+                price: NonZero::new(price).unwrap(),
+            },
+        ),
     }
 }
