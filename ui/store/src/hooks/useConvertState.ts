@@ -11,19 +11,19 @@ import type { Coin, PairUpdate } from "@left-curve/dango/types";
 
 const BASE_DENOM = "USDC";
 
-export type UseSimpleSwapStateParameters = {
+export type UseConvertStateParameters = {
   pair: { from: string; to: string };
   onChangePair: (pair: { from: string; to: string }) => void;
 };
 
-export type SimpleSwapInfo = {
+export type ConvertInfo = {
   input: Coin;
   pair: PairUpdate;
   priceImpact: number;
   fee: number;
 };
 
-export function useSimpleSwapState(parameters: UseSimpleSwapStateParameters) {
+export function useConvertState(parameters: UseConvertStateParameters) {
   const { onChangePair } = parameters;
   const { from, to } = parameters.pair;
   const { coins } = useConfig();

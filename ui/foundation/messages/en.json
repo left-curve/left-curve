@@ -117,7 +117,7 @@
       "img": "/images/emojis/simple/swap.svg",
       "title": "Convert",
       "description": "The easiest way to trade at all sizes.",
-      "path": "/swap",
+      "path": "/convert",
       "keywords": "swap,trade,convert,exchange"
     },
     "earn": {

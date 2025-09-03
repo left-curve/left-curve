@@ -1,6 +1,6 @@
 import ReactDOM from "react-dom/client";
 import { useState } from "react";
-import { SimpleSwap } from "./components/Convert";
+import { Convert } from "./components/Convert";
 import { DangoRemoteProvider } from "@left-curve/store";
 import { useRemoteApp, AppRemoteProvider } from "@left-curve/applets-kit";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
@@ -34,12 +34,12 @@ export const ConvertApplet: React.FC = () => {
 
   return (
     <div className="w-full md:max-w-[25rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit text-primary-900">
-      <SimpleSwap pair={{ from, to }} onChangePair={onChangePair} appState={appState}>
-        <SimpleSwap.Header />
-        <SimpleSwap.Form />
-        <SimpleSwap.Details />
-        <SimpleSwap.Trigger />
-      </SimpleSwap>
+      <Convert pair={{ from, to }} onChangePair={onChangePair} appState={appState}>
+        <Convert.Header />
+        <Convert.Form />
+        <Convert.Details />
+        <Convert.Trigger />
+      </Convert>
     </div>
   );
 };

@@ -4,7 +4,7 @@ import {
   useConfig,
   usePrices,
   useSigningClient,
-  useSimpleSwapState,
+  useConvertState,
   useSubmitTx,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
@@ -28,22 +28,22 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { type PropsWithChildren, useEffect, useState } from "react";
 
 import type { Address } from "@left-curve/dango/types";
-import type { UseSimpleSwapStateParameters, UseSubmitTxReturnType } from "@left-curve/store";
+import type { UseConvertStateParameters, UseSubmitTxReturnType } from "@left-curve/store";
 import type React from "react";
 
-const [SimpleSwapProvider, useSimpleSwap] = createContext<{
-  state: ReturnType<typeof useSimpleSwapState>;
+const [ConvertProvider, useConvert] = createContext<{
+  state: ReturnType<typeof useConvertState>;
   submission: UseSubmitTxReturnType<void, Error, void, unknown>;
   controllers: ReturnType<typeof useInputs>;
   app: ReturnType<typeof useApp>;
 }>({
-  name: "SimpleSwapContext",
+  name: "ConvertContext",
 });
 
-const SimpleSwapContainer: React.FC<
-  PropsWithChildren<UseSimpleSwapStateParameters> & { appState: ReturnType<typeof useApp> }
+const ConvertContainer: React.FC<
+  PropsWithChildren<UseConvertStateParameters> & { appState: ReturnType<typeof useApp> }
 > = ({ children, appState, ...parameters }) => {
-  const state = useSimpleSwapState(parameters);
+  const state = useConvertState(parameters);
   const controllers = useInputs();
   const { toast, settings, showModal } = appState;
   const { account } = useAccount();
@@ -111,14 +111,14 @@ const SimpleSwapContainer: React.FC<
   });
 
   return (
-    <SimpleSwapProvider value={{ app: appState, state, controllers, submission }}>
+    <ConvertProvider value={{ app: appState, state, controllers, submission }}>
       {children}
-    </SimpleSwapProvider>
+    </ConvertProvider>
   );
 };
 
-const SimpleSwapHeader: React.FC = () => {
-  const { state } = useSimpleSwap();
+const ConvertHeader: React.FC = () => {
+  const { state } = useConvert();
   const { quote, statistics } = state;
   const { tvl, apy, volume } = statistics.data;
   return (
@@ -151,10 +151,10 @@ const SimpleSwapHeader: React.FC = () => {
   );
 };
 
-const SimpleSwapForm: React.FC = () => {
+const ConvertForm: React.FC = () => {
   const { coins } = useConfig();
   const { account, isConnected } = useAccount();
-  const { app, state, controllers, submission } = useSimpleSwap();
+  const { app, state, controllers, submission } = useConvert();
   const { settings } = app;
   const { data: balances } = useBalances({ address: account?.address });
   const [activeInput, setActiveInput] = useState<"base" | "quote">();
@@ -211,7 +211,7 @@ const SimpleSwapForm: React.FC = () => {
 
   return (
     <form
-      id="simple-swap-form"
+      id="convert-form"
       className={twMerge("flex flex-col items-center relative", {
         "flex-col-reverse": direction === "reverse",
       })}
@@ -370,9 +370,9 @@ const SimpleSwapForm: React.FC = () => {
   );
 };
 
-const SimpleSwapDetails: React.FC = () => {
+const ConvertDetails: React.FC = () => {
   const { isConnected } = useAccount();
-  const { app, state } = useSimpleSwap();
+  const { app, state } = useConvert();
   const { settings } = app;
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
@@ -422,9 +422,9 @@ const SimpleSwapDetails: React.FC = () => {
   );
 };
 
-const SimpleSwapTrigger: React.FC = () => {
+const ConvertTrigger: React.FC = () => {
   const { isConnected } = useAccount();
-  const { app, submission, state, controllers } = useSimpleSwap();
+  const { app, submission, state, controllers } = useConvert();
   const { simulation } = state;
   const { isValid } = controllers;
   const { navigate } = app;
@@ -434,7 +434,7 @@ const SimpleSwapTrigger: React.FC = () => {
       fullWidth
       size="md"
       type="submit"
-      form="simple-swap-form"
+      form="convert-form"
       isDisabled={
         Number(simulation.data?.output.amount || 0) <= 0 || simulation.isPending || !isValid
       }
@@ -449,9 +449,9 @@ const SimpleSwapTrigger: React.FC = () => {
   );
 };
 
-export const SimpleSwap = Object.assign(SimpleSwapContainer, {
-  Header: SimpleSwapHeader,
-  Form: SimpleSwapForm,
-  Details: SimpleSwapDetails,
-  Trigger: SimpleSwapTrigger,
+export const Convert = Object.assign(ConvertContainer, {
+  Header: ConvertHeader,
+  Form: ConvertForm,
+  Details: ConvertDetails,
+  Trigger: ConvertTrigger,
 });

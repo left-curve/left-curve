@@ -138,9 +138,9 @@ export {
 } from "./hooks/useSubmitTx.js";
 
 export {
-  type UseSimpleSwapStateParameters,
-  useSimpleSwapState,
-} from "./hooks/useSimpleSwapState.js";
+  type UseConvertStateParameters,
+  useConvertState,
+} from "./hooks/useConvertState.js";
 
 export {
   type UseProTradeStateParameters,

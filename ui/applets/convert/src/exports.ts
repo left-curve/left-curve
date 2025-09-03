@@ -1,1 +1,1 @@
-export { SimpleSwap } from "./components/Convert";
+export { Convert } from "./components/Convert";
