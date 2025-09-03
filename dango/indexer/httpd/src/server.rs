@@ -20,7 +20,7 @@ where
             .service(routes::index::up)
             .service(routes::index::sentry_raise)
             .service(routes::blocks::services())
-            .service(grug_httpd::routes::graphql::graphql_route::<
+            .service(graphql_route::<
                 crate::graphql::query::Query,
                 indexer_httpd::graphql::mutation::Mutation,
                 crate::graphql::subscription::Subscription,
