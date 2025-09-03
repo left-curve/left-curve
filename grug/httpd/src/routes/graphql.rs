@@ -5,23 +5,23 @@ use {
 };
 
 // Generic function that works with any async_graphql::Schema
-pub fn generic_graphql_route<Q, M, S>() -> Resource
+pub fn graphql_route<Q, M, S>() -> Resource
 where
     Q: async_graphql::ObjectType + 'static,
     M: async_graphql::ObjectType + 'static,
     S: async_graphql::SubscriptionType + 'static,
 {
     web::resource("/graphql")
-        .route(web::post().to(generic_graphql_index::<Q, M, S>))
+        .route(web::post().to(graphql_index::<Q, M, S>))
         .route(
             web::get()
                 .guard(actix_web::guard::Header("upgrade", "websocket"))
-                .to(generic_graphql_ws::<Q, M, S>),
+                .to(graphql_ws::<Q, M, S>),
         )
         .route(web::get().to(graphiql_playground))
 }
 
-pub async fn generic_graphql_index<Q, M, S>(
+pub async fn graphql_index<Q, M, S>(
     schema: web::Data<Schema<Q, M, S>>,
     _req: HttpRequest,
     gql_request: GraphQLBatchRequest,
@@ -50,7 +50,7 @@ pub async fn graphiql_playground() -> HttpResponse {
         .body(html)
 }
 
-pub async fn generic_graphql_ws<Q, M, S>(
+pub async fn graphql_ws<Q, M, S>(
     schema: web::Data<Schema<Q, M, S>>,
     req: HttpRequest,
     payload: web::Payload,

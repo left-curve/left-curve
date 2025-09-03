@@ -147,7 +147,7 @@ where
         cfg.service(index)
             .service(routes::index::up)
             .service(routes::blocks::services())
-            .service(grug_httpd::routes::graphql::generic_graphql_route::<
+            .service(grug_httpd::routes::graphql::graphql_route::<
                 crate::graphql::query::Query,
                 crate::graphql::mutation::Mutation,
                 crate::graphql::subscription::Subscription,
