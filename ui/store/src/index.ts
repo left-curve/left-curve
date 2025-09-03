@@ -7,7 +7,7 @@ export {
   type DangoStoreProviderProps,
 } from "./context.js";
 
-export { DangoRemoteProvider, type WindowDangoStore } from "./remote.js";
+export { DangoRemoteProvider, requestRemote, type WindowDangoStore } from "./remote.js";
 
 export { local, devnet, testnet, http, graphql } from "@left-curve/dango";
 

@@ -5,10 +5,8 @@ import {
   type ToastMsg,
   type ToastOptions,
 } from "@left-curve/foundation";
-import { useAppConfig, useConfig, type WindowDangoStore } from "@left-curve/store";
+import { requestRemote, useAppConfig, useConfig, type WindowDangoStore } from "@left-curve/store";
 import { useTheme } from "../hooks/useTheme";
-
-import { serializeJson } from "@left-curve/dango/encoding";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";
@@ -17,35 +15,26 @@ export interface WindowDangoRemoteApp extends WindowDangoStore {
   dango: WindowDangoStore["dango"] & {
     settings: AppState["settings"];
   };
-  ReactNativeWebView: {
-    postMessage: (message: string) => void;
-  };
 }
 
 declare let window: WindowDangoRemoteApp;
 
-const sendMessage = window.ReactNativeWebView?.postMessage;
-
-const showModal = (modalName: string, props?: Record<string, unknown>) => {
-  sendMessage(serializeJson({ type: "app.showModal", parameters: { modalName, props } }));
+const navigate = (to: string, options?: { replace?: boolean }) => {
+  requestRemote("navigate", to, options);
 };
 
-const hideModal = () => {
-  sendMessage(serializeJson({ type: "app.hideModal" }));
+const hideModal = () => requestRemote("hideModal");
+
+const showModal = (modalName: string, props?: Record<string, unknown>) => {
+  requestRemote("showModal", { modalName, props });
 };
 
 const toast = {
   success: (toastMsg?: ToastMsg, options?: ToastOptions) => {
-    sendMessage(serializeJson({ type: "toast.success", parameters: { toastMsg, options } }));
-    return "";
+    requestRemote<string>("toast", "success", toastMsg, options);
   },
   error: (toastMsg?: ToastMsg, options?: ToastOptions) => {
-    sendMessage(serializeJson({ type: "toast.error", parameters: { toastMsg, options } }));
-    return "";
-  },
-  loading: (toastMsg?: ToastMsg, options?: ToastOptions) => {
-    sendMessage(serializeJson({ type: "toast.loading", parameters: { toastMsg, options } }));
-    return "";
+    requestRemote<string>("toast", "error", toastMsg, options);
   },
 } as ToastController;
 
@@ -66,9 +55,10 @@ export const AppRemoteProvider: React.FC<PropsWithChildren> = ({ children }) => 
           config,
           toast,
           settings: window.dango.settings,
+          navigate,
           showModal,
           hideModal,
-        } as AppState
+        } as unknown as AppState
       }
     >
       {children}
