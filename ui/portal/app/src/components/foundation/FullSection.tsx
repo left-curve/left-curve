@@ -1,9 +1,11 @@
-import { twMerge } from "@left-curve/foundation";
-import { Dimensions, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "~/hooks/useTheme";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+import { View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+
+import { twMerge } from "@left-curve/foundation";
+
+import type { PropsWithChildren } from "react";
 
 interface FullSectionProps {
   lightGradient?: string[];
@@ -12,7 +14,7 @@ interface FullSectionProps {
   className?: string;
 }
 
-export const FullSection: React.FC<React.PropsWithChildren<FullSectionProps>> = ({
+export const FullSection: React.FC<PropsWithChildren<FullSectionProps>> = ({
   children,
   lightGradient = ["transparent", "transparent"],
   darkGradient = ["transparent", "transparent"],
@@ -27,10 +29,9 @@ export const FullSection: React.FC<React.PropsWithChildren<FullSectionProps>> = 
     <LinearGradient
       start={direction?.start ?? { x: 0.2, y: 0.0 }}
       end={direction?.end ?? { x: 0.9, y: 1.0 }}
-      style={{ height: SCREEN_HEIGHT, width: "100%" }}
       colors={colors}
     >
-      <View className={twMerge("flex-1 w-full flex pt-4", className)}>{children}</View>
+      <View className={twMerge("flex-1 w-full h-svh flex pt-4", className)}>{children}</View>
     </LinearGradient>
   );
 };

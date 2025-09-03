@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+
 import { View, Text } from "react-native";
 import { AnimatePresence, MotiView } from "moti";
+
 import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";

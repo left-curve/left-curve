@@ -1,12 +1,13 @@
-import { ExpoRoot } from "expo-router";
+import { useTheme } from "./hooks/useTheme";
+
 import { ctx } from "expo-router/_ctx";
+import { ExpoRoot } from "expo-router";
 import { DangoStoreProvider } from "@left-curve/store";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { config } from "~/store";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { twMerge } from "@left-curve/foundation";
-import { useTheme } from "./hooks/useTheme";
 
 const queryClient = new QueryClient();
 

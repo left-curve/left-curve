@@ -113,9 +113,9 @@ type SearchTransactionItemProps = {
 const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash }) => {
   return (
     <motion.div
+      key={hash}
       className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
-      key={height}
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
