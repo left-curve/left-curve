@@ -18,9 +18,6 @@ export const Applet: React.FC<AppletProps> = ({ uri }) => {
       <WebView
         source={{ uri }}
         style={{ flex: 1 }}
-        onMessage={(event) => {
-          console.log(event);
-        }}
         injectedJavaScriptBeforeContentLoaded={`
           window.dango = {
             settings: ${JSON.stringify(settings)},

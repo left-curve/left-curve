@@ -9,6 +9,8 @@ import { config } from "~/store";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { AppProvider, twMerge } from "@left-curve/foundation";
 
+import type { ToastController } from "@left-curve/foundation";
+
 const queryClient = new QueryClient();
 
 export const App: React.FC = () => {
@@ -22,7 +24,7 @@ export const App: React.FC = () => {
             const { navigate } = useRouter();
 
             return (
-              <AppProvider toast={{} as any} navigate={(to) => navigate(to)}>
+              <AppProvider toast={{} as ToastController} navigate={(to) => navigate(to)}>
                 <SafeAreaProvider>
                   <SafeAreaView
                     className={twMerge(
