@@ -1,7 +1,7 @@
 import { Button, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { useAccount, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";

@@ -12,7 +12,7 @@ import {
   useTheme,
 } from "@left-curve/applets-kit";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { getLocale, locales, setLocale } from "~/paraglide/runtime";
 
 import type { FormatNumberOptions } from "@left-curve/dango/utils";

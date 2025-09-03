@@ -7,7 +7,7 @@ import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/uti
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type { Trade } from "@left-curve/dango/types";

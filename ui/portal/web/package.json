@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@fullpage/react-fullpage": "^0.1.45",
-    "@inlang/paraglide-js": "2.0.0-beta.30",
     "@left-curve/applets-convert": "workspace:^",
     "@left-curve/applets-kit": "workspace:^",
     "@left-curve/chartiq": "^9.9.0",

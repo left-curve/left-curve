@@ -4,7 +4,7 @@ import { Button, useApp } from "@left-curve/applets-kit";
 import { ButtonLink } from "../foundation/ButtonLink";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Coins } from "@left-curve/dango/types";
 import type React from "react";

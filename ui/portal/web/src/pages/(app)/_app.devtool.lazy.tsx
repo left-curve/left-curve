@@ -2,7 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { MsgBuilder } from "~/components/devtools/MsgBuilder";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const Route = createLazyFileRoute("/(app)/_app/devtool")({
   component: DevtoolApplet,

@@ -6,7 +6,7 @@ import { Button, Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
 import type React from "react";
 import { Sheet, type SheetRef } from "react-modal-sheet";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export type ModalRef = {
   triggerOnClose: () => void;

@@ -13,7 +13,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { useConfig, usePrices, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { createPortal } from "react-dom";
 import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 

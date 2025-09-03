@@ -4,7 +4,7 @@ import { forwardRef, useImperativeHandle } from "react";
 import type { AnyCoin, WithAmount } from "@left-curve/store/types";
 import { usePrices } from "@left-curve/store";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 type PoolAddLiquidityProps = {
   confirmAddLiquidity: () => void;

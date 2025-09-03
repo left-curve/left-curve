@@ -10,7 +10,7 @@ import { AccountMenu } from "./AccountMenu";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 interface HeaderProps {
   isScrolled: boolean;

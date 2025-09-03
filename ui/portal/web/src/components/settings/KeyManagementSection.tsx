@@ -17,7 +17,7 @@ import { ConnectionStatus } from "@left-curve/store/types";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { format } from "date-fns";
 
 const KeyTranslation = {

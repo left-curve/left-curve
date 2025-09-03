@@ -14,7 +14,7 @@ import { AppletsSection } from "../overview/AppletsSection";
 
 import { decodeBase64, decodeUtf8 } from "@left-curve/dango/encoding";
 import ReactFullpage from "@fullpage/react-fullpage";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { format } from "date-fns";
 
 import type { fullpageApi } from "@fullpage/react-fullpage";

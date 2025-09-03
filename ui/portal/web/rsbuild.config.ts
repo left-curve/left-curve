@@ -7,7 +7,6 @@ import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
 import { pluginSvgr } from "@rsbuild/plugin-svgr";
 
-import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 
@@ -130,15 +129,6 @@ export default defineConfig({
           sourcemaps: {
             filesToDeleteAfterUpload: ["build/**/*.map"],
           },
-        }),
-        paraglideRspackPlugin({
-          outdir: "./.paraglide",
-          emitGitIgnore: false,
-          emitPrettierIgnore: false,
-          includeEslintDisableComment: false,
-          project: "../../foundation/project.inlang",
-          strategy: ["localStorage", "preferredLanguage", "baseLocale"],
-          localStorageKey: "dango.locale",
         }),
         TanStackRouterRspack({
           routesDirectory: "./src/pages",

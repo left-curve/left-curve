@@ -9,7 +9,7 @@ import {
   isToday,
 } from "date-fns";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { AddressVisualizer, IconClose, IconInfo, twMerge, useApp } from "@left-curve/applets-kit";
 

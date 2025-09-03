@@ -4,7 +4,7 @@ import { forwardRef } from "react";
 import { IconButton, IconClose, IconKey, useApp } from "@left-curve/applets-kit";
 import { AuthOptions } from "../auth/AuthOptions";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const AddKeyModal = forwardRef((_props, _ref) => {
   const connectors = useConnectors();

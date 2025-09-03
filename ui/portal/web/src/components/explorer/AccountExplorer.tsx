@@ -4,7 +4,7 @@ import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext } from "react";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Badge, TextCopy } from "@left-curve/applets-kit";
 import { AccountCard } from "../foundation/AccountCard";

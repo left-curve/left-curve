@@ -13,7 +13,7 @@ import { useNotifications } from "~/hooks/useNotifications";
 
 import { motion } from "framer-motion";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
   Button,

@@ -1,7 +1,7 @@
 import { forwardRef, useEffect } from "react";
 
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Button, IconKey, useApp } from "@left-curve/applets-kit";
 import { useAccount, useSessionKey } from "@left-curve/store";

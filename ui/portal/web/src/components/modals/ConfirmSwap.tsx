@@ -5,7 +5,7 @@ import { Button, IconArrowDown, IconButton, IconClose, useApp } from "@left-curv
 import { formatUnits } from "@left-curve/dango/utils";
 import { useConfig, usePrices } from "@left-curve/store";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Coin } from "@left-curve/dango/types";
 import type { ModalRef } from "./RootModal";

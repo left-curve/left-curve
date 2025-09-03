@@ -14,7 +14,7 @@ import {
 
 import { SessionCountdown } from "./SessionCountdown";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { BlockInfo } from "@left-curve/dango/types";
 import type React from "react";

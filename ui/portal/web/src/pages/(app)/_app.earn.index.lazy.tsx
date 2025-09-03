@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Earn } from "~/components/earn/Earn";
 import { MobileTitle } from "~/components/foundation/MobileTitle";

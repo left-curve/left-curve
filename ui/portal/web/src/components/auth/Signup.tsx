@@ -38,7 +38,7 @@ import { AuthOptions } from "./AuthOptions";
 
 import { AccountType } from "@left-curve/dango/types";
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Address, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";

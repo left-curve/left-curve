@@ -10,7 +10,7 @@ import { useAccount } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { useProTradeState } from "@left-curve/store";
 import type React from "react";

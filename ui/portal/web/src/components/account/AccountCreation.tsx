@@ -10,7 +10,7 @@ import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
 import { formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
   Button,

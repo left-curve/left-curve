@@ -6,7 +6,7 @@ import { View, Text, Pressable } from "react-native";
 import { APPLETS, ASSETS } from "~/constants";
 
 import type React from "react";
-import type { AppletMetadata } from "@left-curve/store/src/types";
+import type { AppletMetadata } from "@left-curve/store/types";
 
 interface AppletSquareProps {
   applet: AppletMetadata;

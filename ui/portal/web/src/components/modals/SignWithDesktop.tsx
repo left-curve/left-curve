@@ -5,7 +5,7 @@ import { Spinner, useApp } from "@left-curve/applets-kit";
 import { Scanner } from "@yudiel/react-qr-scanner";
 
 import { WEBRTC_URI } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useRouter } from "@tanstack/react-router";
 
 export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ socketId }, _ref) => {

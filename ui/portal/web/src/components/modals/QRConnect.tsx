@@ -7,7 +7,7 @@ import { forwardRef, useId, useState } from "react";
 import { IconButton, IconClose, IconMobile, QRCode, useApp } from "@left-curve/applets-kit";
 
 import { WEBRTC_URI } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { JsonValue } from "@left-curve/dango/types";
 

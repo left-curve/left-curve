@@ -15,7 +15,7 @@ import { motion } from "framer-motion";
 
 import { formatNumber } from "@left-curve/dango/utils";
 import Big from "big.js";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PairUpdate } from "@left-curve/dango/types";
 import { useEffect, type PropsWithChildren } from "react";

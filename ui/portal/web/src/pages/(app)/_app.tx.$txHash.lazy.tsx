@@ -1,4 +1,4 @@
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { TransactionExplorer } from "~/components/explorer/TransactionExplorer";

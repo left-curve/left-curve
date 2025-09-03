@@ -25,7 +25,7 @@ import {
 import type { Address } from "@left-curve/dango/types";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { isValidAddress } from "@left-curve/dango";
 import {

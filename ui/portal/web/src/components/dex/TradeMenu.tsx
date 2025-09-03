@@ -21,7 +21,7 @@ import {
 import { Sheet } from "react-modal-sheet";
 
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { useProTradeState } from "@left-curve/store";
 import type React from "react";

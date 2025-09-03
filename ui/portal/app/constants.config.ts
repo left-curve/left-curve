@@ -1,6 +1,6 @@
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { AppletMetadata } from "@left-curve/store/src/types";
+import type { AppletMetadata } from "@left-curve/store/types";
 
 export const WEBRTC_URI = "wss://webrtc.dango.exchange";
 

@@ -26,7 +26,7 @@ import { AuthOptions } from "./AuthOptions";
 import { UsernamesList } from "./UsernamesList";
 
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Hex, SigningSession, Username } from "@left-curve/dango/types";
 import type React from "react";

@@ -13,7 +13,7 @@ import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import { forwardRef, useImperativeHandle } from "react";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 type ConfirmSendProps = {
   amount: string;

@@ -2,7 +2,7 @@ import { useConfig } from "@left-curve/store";
 
 import { Button, twMerge, useApp } from "@left-curve/applets-kit";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
 

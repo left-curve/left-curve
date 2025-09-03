@@ -13,7 +13,7 @@ import {
 import { Sheet } from "react-modal-sheet";
 import { SearchTokenTable } from "./SearchTokenTable";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PopoverRef } from "@left-curve/applets-kit";
 import type { PairId } from "@left-curve/dango/types";
