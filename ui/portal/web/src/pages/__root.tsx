@@ -36,6 +36,23 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     const { modal, settings, showModal } = useApp();
     const [isReady, setIsReady] = useState(false);
 
+    useEffect(() => {
+      if (location.pathname === "/maintenance") navigate({ to: "/" });
+      (async () => {
+        try {
+          // Check chain is up
+          const response = await fetch(window.dango.urls.upUrl);
+          if (!response.ok) throw new Error("request failed");
+          const { is_running } = await response.json();
+          if (!is_running) navigate({ to: "/maintenance" });
+        } catch (_) {
+          navigate({ to: "/maintenance" });
+        } finally {
+          setIsReady(true);
+        }
+      })();
+    }, []);
+
     // Track user errors
     const { username, connector, account, isConnected } = useAccount();
     useEffect(() => {
@@ -78,27 +95,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       };
     }, [session, modal, settings.useSessionKey, connector, isConnected]);
 
-    useEffect(() => {
-      if (location.pathname === "/maintenance") navigate({ to: "/" });
-      (async () => {
-        try {
-          // Check chain is up
-          const response = await fetch(window.dango.urls.upUrl);
-          if (!response.ok) throw new Error("request failed");
-          const { is_running } = await response.json();
-          if (!is_running) navigate({ to: "/maintenance" });
-        } catch (_) {
-          navigate({ to: "/maintenance" });
-        } finally {
-          setIsReady(true);
-        }
-      })();
-    }, []);
-
     if (!isReady)
       return (
         <div className="flex h-screen w-screen items-center justify-center">
-          <Spinner size="md" color="pink" />
+          <Spinner size="lg" color="pink" />
         </div>
       );
 

@@ -47,7 +47,6 @@ export const AppRouter: React.FC = () => {
   const account = useAccount();
   const config = useConfig();
   const client = usePublicClient();
-  const _theme = useTheme();
 
   return (
     <RouterProvider
@@ -55,6 +54,7 @@ export const AppRouter: React.FC = () => {
       context={{ account, config, client }}
       InnerWrap={({ children }) => {
         const navigate = useNavigate();
+        const _theme = useTheme();
         return (
           <AppProvider toast={toast} navigate={(to, options) => navigate({ to, ...options })}>
             {children}
