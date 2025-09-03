@@ -7012,3 +7012,126 @@ fn decrease_liquidity_depths_minimal_failing_test() {
         })
         .should_succeed_and_equal(BTreeMap::new());
 }
+
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(199)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    None;
+    "bid equal to minimum order size"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    Some("order size (99) is less than the minimum (100)");
+    "bid smaller than minimum order size"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    coins! { dango::DENOM.clone() => 200 },
+    Uint128::new(100),
+    None;
+    "ask equal to minimum order size"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    coins! { dango::DENOM.clone() => 198 },
+    Uint128::new(100),
+    Some("order size (99) is less than the minimum (100)");
+    "ask smaller than minimum order size"
+)]
+fn minimum_order_size(
+    order: CreateLimitOrderRequest,
+    funds: Coins,
+    min_order_size: Uint128,
+    expected_error: Option<&str>,
+) {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Update the pair params with the minimum order size
+
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
+                            swap_fee_rate: pair_params.swap_fee_rate,
+                            pool_type: pair_params.pool_type.clone(),
+                            min_order_size,
+                        },
+                    }])),
+                    Coins::new(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Submit the order
+    match expected_error {
+        None => {
+            suite
+                .execute(
+                    &mut accounts.user1,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![],
+                        creates_limit: vec![order],
+                        cancels: None,
+                    },
+                    funds,
+                )
+                .should_succeed();
+        },
+
+        Some(error) => {
+            suite
+                .execute(
+                    &mut accounts.user1,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![],
+                        creates_limit: vec![order],
+                        cancels: None,
+                    },
+                    funds,
+                )
+                .should_fail_with_error(error);
+        },
+    }
+}
