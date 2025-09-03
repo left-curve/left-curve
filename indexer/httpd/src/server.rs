@@ -147,7 +147,8 @@ where
         cfg.service(index)
             .service(routes::index::up)
             .service(routes::blocks::services())
-            .service(routes::graphql::graphql_route())
+            // Use the generic GraphQL route from grug_httpd to avoid code duplication
+            .service(routes::graphql::generic_graphql_route())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))
             .app_data(web::Data::new(graphql_schema.clone()));
