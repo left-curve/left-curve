@@ -104,7 +104,7 @@
     ]
   },
   "applets": {
-    "0": {
+    "trade": {
       "id": "trade",
       "img": "/images/emojis/simple/protrading.svg",
       "title": "Trade",
@@ -112,7 +112,7 @@
       "path": "/trade",
       "keywords": "swap,dex,trade,pro,charts,data,trading"
     },
-    "1": {
+    "simple-swap": {
       "id": "simple-swap",
       "img": "/images/emojis/simple/swap.svg",
       "title": "Convert",
@@ -120,7 +120,7 @@
       "path": "/swap",
       "keywords": "swap,trade,convert,exchange"
     },
-    "2": {
+    "earn": {
       "id": "earn",
       "img": "/images/emojis/simple/pig.svg",
       "title": "Earn",
@@ -128,7 +128,7 @@
       "path": "/earn",
       "keywords": "earn,staking,liquidity,lending"
     },
-    "3": {
+    "transfer": {
       "id": "transfer",
       "img": "/images/emojis/simple/money.svg",
       "title": "Transfer",
@@ -136,7 +136,7 @@
       "path": "/transfer",
       "keywords": "transfer,send,receive"
     },
-    "4": {
+    "create-account": {
       "id": "create-account",
       "img": "/images/emojis/simple/wizard.svg",
       "title": "Open Subaccount",
@@ -144,7 +144,7 @@
       "path": "/account/create",
       "keywords": "account,create,register"
     },
-    "5": {
+    "settings": {
       "id": "settings",
       "img": "/images/emojis/simple/settings.svg",
       "title": "Settings",
@@ -152,7 +152,7 @@
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
-    "6": {
+    "notifications": {
       "id": "notifications",
       "img": "/images/emojis/simple/notifications.svg",
       "title": "Notifications",
@@ -160,7 +160,7 @@
       "path": "/notifications",
       "keywords": "notifications,alerts"
     },
-    "7": {
+    "devtool": {
       "id": "devtool",
       "img": "/images/emojis/simple/factory-2.svg",
       "title": "DevTool",

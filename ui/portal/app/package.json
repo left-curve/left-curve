@@ -5,14 +5,16 @@
   "scripts": {
     "build:android": "eas build -p android -e development",
     "dev:android": "eas build:run -p android -e development --latest && expo start --android",
-    "build:ios": "eas build -p ios -e development",
-    "dev:ios": "eas build:run -p ios -e development --latest && expo start --ios",
+    "build:ios": "pnpm translations && eas build -p ios -e development",
+    "dev:ios": "pnpm translations && eas build:run -p ios -e development --latest && expo start --ios",
     "dev": "pnpm dev:ios",
     "start": "expo start",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "translations": "pnpx @inlang/paraglide-js compile --project ./../../foundation/project.inlang --outdir ./.paraglide"
   },
   "dependencies": {
+    "@inlang/paraglide-js": "catalog:",
     "@left-curve/foundation": "workspace:*",
     "@left-curve/config": "workspace:*",
     "@left-curve/dango": "workspace:*",

@@ -73,6 +73,11 @@ export {
 } from "./hooks/useBalances.js";
 
 export {
+  type UseStorageOptions,
+  useStorage,
+} from "./hooks/useStorage.js";
+
+export {
   type UseConnectorClientParameters,
   type UseConnectorClientReturnType,
   useConnectorClient,
@@ -145,11 +150,26 @@ export {
   usePoolLiquidityState,
 } from "./hooks/usePoolLiquidityState.js";
 
+export {
+  useSearchBar,
+  type UseSearchBarParameters,
+  type SearchBarResult,
+} from "./hooks/useSearchBar.js";
+
+export { useFavApplets } from "./hooks/useFavApplets.js";
+
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";
 
 export { rehydrate } from "./rehydrate.js";
+
+/* -------------------------------------------------------------------------- */
+/*                                   Storage                                  */
+/* -------------------------------------------------------------------------- */
+
+export { createMemoryStorage } from "./storages/memoryStorage.js";
+export { createStorage } from "./storages/createStorage.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                 Connectors                                 */

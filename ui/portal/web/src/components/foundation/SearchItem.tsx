@@ -1,12 +1,11 @@
 import { AddressVisualizer, useMediaQuery } from "@left-curve/applets-kit";
-import { useFavApplets } from "~/hooks/useFavApplets";
+import { useFavApplets } from "@left-curve/store";
 
 import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
 import type { Account, Address, ContractInfo } from "@left-curve/dango/types";
-import type { AnyCoin, WithPrice } from "@left-curve/store/types";
+import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
 import type { MouseEvent, PropsWithChildren } from "react";
 
 const childVariants = {
@@ -23,7 +22,7 @@ type SearchAppletItemProps = AppletMetadata;
 const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
   const { id, title, description, img } = applet;
   const { favApplets, addFavApplet, removeFavApplet } = useFavApplets();
-  const isFav = favApplets[id];
+  const isFav = favApplets.includes(id);
 
   const onClickStar = (e: MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();

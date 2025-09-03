@@ -1,8 +1,9 @@
-import { IconAddCross } from "@left-curve/applets-kit";
 import { useApp } from "~/hooks/useApp";
+import { useFavApplets } from "@left-curve/store";
 
-import { useFavApplets } from "~/hooks/useFavApplets";
+import { APPLETS } from "~/constants";
 
+import { IconAddCross } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
 
 export function AppletsSection() {
@@ -11,22 +12,25 @@ export function AppletsSection() {
 
   return (
     <div className="grid grid-cols-[repeat(auto-fill,_minmax(80px,_1fr))] md:flex md:flex-wrap gap-4 md:gap-4 w-full md:min-h-fit md:justify-start">
-      {Object.values(favApplets).map((applet) => (
-        <div
-          className="md:w-[5.5rem] h-auto flex items-start justify-center [&:nth-child(6n)]:md:justify-end [&:nth-child(6n+1)]:md:justify-start"
-          key={`applets.section.${applet.title}}`}
-        >
-          <div className="flex flex-col items-center gap-2">
-            <Link
-              to={applet.path}
-              className="h-16 w-16 md:h-20 md:w-20 shadow-account-card bg-primary-red hover:bg-surface-secondary-red transition-all rounded-xl p-[10px]"
-            >
-              <img src={applet.img} alt={applet.title} className="w-full h-full" />
-            </Link>
-            <p className="text-sm font-bold text-center">{applet.title}</p>
+      {favApplets.map((appletId) => {
+        const applet = APPLETS[appletId];
+        return (
+          <div
+            className="md:w-[5.5rem] h-auto flex items-start justify-center [&:nth-child(6n)]:md:justify-end [&:nth-child(6n+1)]:md:justify-start"
+            key={`applets.section.${applet.title}}`}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <Link
+                to={applet.path}
+                className="h-16 w-16 md:h-20 md:w-20 shadow-account-card bg-primary-red hover:bg-surface-secondary-red transition-all rounded-xl p-[10px]"
+              >
+                <img src={applet.img} alt={applet.title} className="w-full h-full" />
+              </Link>
+              <p className="text-sm font-bold text-center">{applet.title}</p>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <div className="flex flex-col items-center md:items-start gap-2 md:w-[5.5rem]">
         <button

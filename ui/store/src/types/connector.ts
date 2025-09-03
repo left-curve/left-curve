@@ -10,7 +10,7 @@ import type {
 import type { Emitter, EventData } from "./emitter.js";
 
 import type { Account, Chain, Signer, SignerClient, Username } from "@left-curve/dango/types";
-import type { Storage } from "@left-curve/foundation";
+import type { Storage } from "./storage.js";
 
 export type ConnectorId = (typeof ConnectorIds)[keyof typeof ConnectorIds] | (string & {});
 

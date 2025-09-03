@@ -1,7 +1,7 @@
 use {
     crate::{
-        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK, VOLUMES,
-        VOLUMES_BY_USER,
+        DEPTHS, LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK,
+        VOLUMES, VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
     },
     dango_oracle::OracleQuerier,
@@ -9,15 +9,16 @@ use {
         DangoQuerier,
         account_factory::Username,
         dex::{
-            OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams,
-            PairUpdate, QueryMsg, ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
+            Direction, LiquidityDepth, LiquidityDepthResponse, OrderId, OrderResponse,
+            OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams, PairUpdate, QueryMsg,
+            ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
             RestingOrderBookStatesResponse, SwapRoute,
         },
     },
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
         JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult,
-        Timestamp, Udec128_6, Uint128,
+        Timestamp, Udec128_6, Udec128_24, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -128,8 +129,99 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_reflect_curve(ctx, base_denom, quote_denom, limit)?;
             res.to_json_value()
         },
+        QueryMsg::LiquidityDepth {
+            base_denom,
+            quote_denom,
+            bucket_size,
+            limit,
+        } => {
+            let res = query_liquidity_depth(
+                ctx,
+                base_denom,
+                quote_denom,
+                bucket_size,
+                limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize,
+            )?;
+            res.to_json_value()
+        },
     }
     .map_err(Into::into)
+}
+
+fn query_liquidity_depth(
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    bucket_size: Udec128_24,
+    limit: usize,
+) -> anyhow::Result<LiquidityDepthResponse> {
+    // load the pair params
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    anyhow::ensure!(
+        pair.bucket_sizes.contains(&NonZero::new(bucket_size)?),
+        "Bucket size {bucket_size} not found for pair ({base_denom}, {quote_denom})"
+    );
+
+    // Load the resting order book.
+    let resting_order_book = RESTING_ORDER_BOOK.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Load the liquidity depth for asks.
+    let ask_depth = resting_order_book
+        .best_ask_price
+        .map(|best_ask_price| {
+            DEPTHS
+                .prefix((&base_denom, &quote_denom))
+                .append(bucket_size)
+                .append(Direction::Ask)
+                .range(
+                    ctx.storage,
+                    Some(Bound::Inclusive(best_ask_price)),
+                    None,
+                    IterationOrder::Ascending,
+                )
+                .take(limit)
+                .map(|res| {
+                    let (bucket, (depth_base, depth_quote)) = res?;
+                    Ok((bucket, LiquidityDepth {
+                        depth_base,
+                        depth_quote,
+                    }))
+                })
+                .collect::<StdResult<_>>()
+        })
+        .transpose()?;
+
+    // Load the liquidity depth for bids.
+    let bid_depth = resting_order_book
+        .best_bid_price
+        .map(|best_bid_price| {
+            DEPTHS
+                .prefix((&base_denom, &quote_denom))
+                .append(bucket_size)
+                .append(Direction::Bid)
+                .range(
+                    ctx.storage,
+                    None,
+                    Some(Bound::Inclusive(best_bid_price)),
+                    IterationOrder::Descending,
+                )
+                .take(limit)
+                .map(|res| {
+                    let (bucket, (depth_base, depth_quote)) = res?;
+                    Ok((bucket, LiquidityDepth {
+                        depth_base,
+                        depth_quote,
+                    }))
+                })
+                .collect::<StdResult<_>>()
+        })
+        .transpose()?;
+
+    Ok(LiquidityDepthResponse {
+        bid_depth,
+        ask_depth,
+    })
 }
 
 fn query_paused(ctx: ImmutableCtx) -> StdResult<bool> {

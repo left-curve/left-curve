@@ -1,6 +1,9 @@
-use grug::{
-    Bounded, Denom, Udec128, ZeroExclusiveOneExclusive, ZeroExclusiveOneInclusive,
-    ZeroInclusiveOneExclusive,
+use {
+    grug::{
+        Bounded, Denom, NonZero, Udec128, Udec128_24, ZeroExclusiveOneExclusive,
+        ZeroExclusiveOneInclusive, ZeroInclusiveOneExclusive,
+    },
+    std::collections::BTreeSet,
 };
 
 /// Parameters of a trading pair.
@@ -10,6 +13,8 @@ pub struct PairParams {
     pub lp_denom: Denom,
     /// Specifies the pool type (e.g. Xyk or Geometric).
     pub pool_type: PassiveLiquidity,
+    /// Price buckets for the liquidity depth chart.
+    pub bucket_sizes: BTreeSet<NonZero<Udec128_24>>,
     /// Fee rate for instant swaps in the passive liquidity pool.
     /// For the xyk pool, this also sets the spread of the orders when the
     /// passive liquidity is reflected onto the orderbook.

@@ -1,14 +1,13 @@
-import { isValidAddress } from "@left-curve/dango";
-import { wait } from "@left-curve/dango/utils";
-import { useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import fuzzysort from "fuzzysort";
 import { useMemo, useReducer, useState } from "react";
-import { useFavApplets } from "./useFavApplets";
+import { useConfig } from "./useConfig.js";
+import { usePublicClient } from "./usePublicClient.js";
 
-import { APPLETS } from "~/constants";
+import { wait } from "@left-curve/dango/utils";
+import { isValidAddress } from "@left-curve/dango";
+import fuzzysort from "fuzzysort";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
+import type { AppletMetadata } from "../types/applets.js";
 import type {
   Account,
   Address,
@@ -17,8 +16,10 @@ import type {
   IndexedTransaction,
 } from "@left-curve/dango/types";
 
-type UseSearchBarParameters = {
+export type UseSearchBarParameters = {
   debounceMs?: number;
+  applets: Record<string, AppletMetadata>;
+  favApplets: string[];
 };
 
 export type SearchBarResult = {
@@ -29,20 +30,20 @@ export type SearchBarResult = {
   account?: Account;
 };
 
-export function useSearchBar(parameters: UseSearchBarParameters = {}) {
-  const { debounceMs = 300 } = parameters;
+export function useSearchBar(parameters: UseSearchBarParameters) {
+  const applets = Object.values(parameters.applets);
+  const { debounceMs = 300, favApplets } = parameters;
   const [searchText, setSearchText] = useState("");
-  const { favApplets } = useFavApplets();
 
   const noResult: SearchBarResult = useMemo(
     () => ({
       block: undefined,
       txs: [],
-      applets: Object.values(favApplets),
+      applets: Object.values(applets.filter((applet) => favApplets.includes(applet.id))),
       contract: undefined,
       account: undefined,
     }),
-    [favApplets],
+    [applets, favApplets],
   );
 
   const [searchResult, setSearchResult] = useReducer(
@@ -55,10 +56,10 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
   const client = usePublicClient();
 
   const allNotFavApplets = useMemo(() => {
-    return Object.values(APPLETS).filter((applet) => !favApplets[applet.id]);
-  }, [favApplets]);
+    return Object.values(applets).filter((applet) => !favApplets.includes(applet.id));
+  }, [applets, favApplets]);
 
-  const { data, ...query } = useQuery({
+  const { data: _, ...query } = useQuery({
     queryKey: ["searchBar", searchText, favApplets],
     queryFn: async ({ signal }) => {
       if (!searchText.length) {
@@ -68,7 +69,7 @@ export function useSearchBar(parameters: UseSearchBarParameters = {}) {
 
       setSearchResult({
         applets: fuzzysort
-          .go(searchText, APPLETS, {
+          .go(searchText, applets, {
             threshold: 0.5,
             all: false,
             keys: ["title", "description", (obj: AppletMetadata) => obj.keywords?.join()],

@@ -34,7 +34,8 @@
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "catalog:",
     "tailwindcss-animate": "^1.0.7",
-    "@left-curve/dango": "workspace:^"
+    "@left-curve/dango": "workspace:^",
+    "@left-curve/store": "workspace:^"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^"

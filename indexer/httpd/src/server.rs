@@ -147,7 +147,11 @@ where
         cfg.service(index)
             .service(routes::index::up)
             .service(routes::blocks::services())
-            .service(graphql::graphql_route())
+            .service(grug_httpd::routes::graphql::graphql_route::<
+                crate::graphql::query::Query,
+                crate::graphql::mutation::Mutation,
+                crate::graphql::subscription::Subscription,
+            >())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))
             .app_data(web::Data::new(graphql_schema.clone()));
