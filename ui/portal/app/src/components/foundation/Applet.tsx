@@ -59,7 +59,7 @@ export const Applet: React.FC<AppletProps> = ({ uri }) => {
           break;
       }
     },
-    [navigate, toast, showModal, hideModal],
+    [toast, connector, navigate, showModal, hideModal],
   );
 
   return (
@@ -73,7 +73,7 @@ export const Applet: React.FC<AppletProps> = ({ uri }) => {
           window.dango = {
             settings: ${JSON.stringify(settings)},
             chain: ${JSON.stringify(chain)},
-            coins: ${JSON.stringify(coins.byDenom)}
+            coins: ${JSON.stringify(coins.byDenom)},
             connection: ${
               connection
                 ? serializeJson({ connection: { ...connection, connector: undefined } })

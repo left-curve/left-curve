@@ -53,6 +53,10 @@ export const requestRemote = async <T = unknown>(
     };
 
     window.addEventListener("message", receiveResponse);
+    setTimeout(() => {
+      window.removeEventListener("message", receiveResponse);
+      reject(new Error("Request timed out"));
+    }, 30_000);
 
     window.ReactNativeWebView?.postMessage(serializeJson(message));
   });

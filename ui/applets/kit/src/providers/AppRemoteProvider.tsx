@@ -23,7 +23,9 @@ const navigate = (to: string, options?: { replace?: boolean }) => {
   requestRemote("navigate", to, options);
 };
 
-const hideModal = () => requestRemote("hideModal");
+const hideModal = () => {
+  requestRemote("hideModal");
+};
 
 const showModal = (modalName: string, props?: Record<string, unknown>) => {
   requestRemote("showModal", { modalName, props });
@@ -58,7 +60,7 @@ export const AppRemoteProvider: React.FC<PropsWithChildren> = ({ children }) => 
           navigate,
           showModal,
           hideModal,
-        } as unknown as AppState
+        } as AppState
       }
     >
       {children}
