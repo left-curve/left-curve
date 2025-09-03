@@ -281,7 +281,7 @@ fn clear_orders_of_pair(
                         storage,
                         &base_denom,
                         &quote_denom,
-                        Direction::Bid,
+                        Direction::Ask,
                         price,
                         remaining,
                         bucket_sizes,

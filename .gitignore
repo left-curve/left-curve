@@ -63,8 +63,6 @@ ui/foundation/project.inlang/*
 
 # Data used in testing
 **/testdata/
-**/proptest-regressions/
-**/*.proptest-regressions
 !pyth/client/testdata/
 
 # Network data
