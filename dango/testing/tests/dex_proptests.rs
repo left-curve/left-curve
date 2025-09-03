@@ -521,7 +521,7 @@ fn price() -> impl Strategy<Value = Udec128_24> {
     })
 }
 
-/// Proptest strategy for generating an arbitrary price between 0.00000000000000001 and 10000000000
+// Proptest strategy for generating an arbitrary price between 0.00000000000000001 and 10000000000
 // fn price() -> impl Strategy<Value = Udec128_24> {
 //     (10_000_000u128..10_000_000_000_000_000_000_000_000_000_000_000u128)
 //         .prop_map(|raw_price| Udec128_24::raw(Uint128::new(raw_price)))
