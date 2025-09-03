@@ -13,7 +13,7 @@ import {
 } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { getLocale, locales, setLocale } from "~/paraglide/runtime";
+import { getLocale, locales, setLocale } from "@left-curve/foundation/paraglide/runtime.js";
 
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
