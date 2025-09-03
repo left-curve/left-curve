@@ -8,9 +8,9 @@ use {
         constants::{atom, dango, eth, usdc, xrp},
         dex::{
             self, CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction,
-            OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
-            QueryOrdersByPairRequest, QueryOrdersRequest, QueryReserveRequest,
-            QueryRestingOrderBookStateRequest, RestingOrderBookState,
+            Geometric, OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
+            Price, QueryLiquidityDepthRequest, QueryOrdersByPairRequest, QueryOrdersRequest,
+            QueryReserveRequest, QueryRestingOrderBookStateRequest, RestingOrderBookState, Xyk,
         },
         gateway::Remote,
         oracle::{self, PrecisionlessPrice, PriceSource},
@@ -1133,10 +1133,12 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    pool_type: PassiveLiquidity::Xyk {
-                        order_spacing: Udec128::new_bps(1),
+                    pool_type: PassiveLiquidity::Xyk(Xyk {
+                        spacing: Udec128::new_bps(1),
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                    },
+                        limit: 10,
+                    }),
+                    bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }])),
@@ -1154,10 +1156,12 @@ fn only_owner_can_create_passive_pool() {
                 quote_denom: usdc::DENOM.clone(),
                 params: PairParams {
                     lp_denom: lp_denom.clone(),
-                    pool_type: PassiveLiquidity::Xyk {
-                        order_spacing: Udec128::new_bps(1),
+                    pool_type: PassiveLiquidity::Xyk(Xyk {
+                        spacing: Udec128::new_bps(1),
                         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                    },
+                        limit: 10,
+                    }),
+                    bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                 },
             }])),
@@ -1172,10 +1176,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 100,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
@@ -1189,10 +1194,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
@@ -1206,10 +1212,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
@@ -1223,10 +1230,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 100,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Geometric {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Geometric(Geometric {
+        spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
@@ -1240,10 +1248,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Geometric {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Geometric(Geometric {
+        spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
@@ -1257,10 +1266,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 50,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Geometric {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Geometric(Geometric {
+        spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
@@ -1274,10 +1284,11 @@ fn only_owner_can_create_passive_pool() {
         usdc::DENOM.clone() => 100,
     },
     Udec128::new_permille(5),
-    PassiveLiquidity::Geometric {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Geometric(Geometric {
+        spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-    },
+        limit: 10,
+    }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
@@ -1318,6 +1329,7 @@ fn provide_liquidity(
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             pool_type,
                         },
@@ -1432,11 +1444,13 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: pair_params.swap_fee_rate,
-                            pool_type: PassiveLiquidity::Geometric {
-                                order_spacing: Udec128::ONE,
+                            pool_type: PassiveLiquidity::Geometric(Geometric {
+                                spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
-                            },
+                                limit: 10,
+                            }),
                         },
                     }])),
                     Coins::new(),
@@ -1509,6 +1523,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             pool_type: pair_params.pool_type.clone(),
                         },
@@ -1900,6 +1915,7 @@ fn swap_exact_amount_in(
                                 quote_denom: quote_denom.clone(),
                                 params: PairParams {
                                     lp_denom: pair_params.lp_denom.clone(),
+                                    bucket_sizes: BTreeSet::new(),
                                     swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                                     pool_type: pair_params.pool_type.clone(),
                                 },
@@ -2370,11 +2386,13 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: pair_params.swap_fee_rate,
-                            pool_type: PassiveLiquidity::Geometric {
-                                order_spacing: Udec128::ONE,
+                            pool_type: PassiveLiquidity::Geometric(Geometric {
+                                spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
-                            },
+                                limit: 10,
+                            }),
                         },
                     }])),
                     Coins::new(),
@@ -2425,10 +2443,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
 }
 
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2450,7 +2469,12 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
         },
     ],
     btree_map! {
-        OrderId::new(!1) => (Udec128::new_percent(20100), Udec128::new(49751), Direction::Bid),
+        // Why the order ID should be `!21`? Because:
+        // - The one block where we provide liquidity, the auction generates 10
+        //   passive orders on each side of the book. They take up order IDs 1-20.
+        // - The next block, we place a new order. It gets order ID 21.
+        // - Because the order is a bid, it's bitwise NOT-ed, so `!21`.
+        OrderId::new(!21) => (Udec128::new_percent(20100), Udec128::new(49751), Direction::Bid),
     },
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
@@ -2471,10 +2495,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 one percent fee no matching orders"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2515,10 +2540,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 no fee user bid order exactly matches passive order"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2559,10 +2585,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 one percent fee user bid order partially fills passive order"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2584,7 +2611,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
         },
     ],
     btree_map! {
-        OrderId::new(!1) => (Udec128::new_percent(20300), Udec128::new(10000), Direction::Bid),
+        OrderId::new(!21) => (Udec128::new_percent(20300), Udec128::new(10000), Direction::Bid),
     },
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
@@ -2605,10 +2632,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 one percent fee user bid order fully fills passive order with amount remaining after"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2649,10 +2677,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 no fee user ask order exactly matches passive order"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2693,10 +2722,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 no fee user ask order partially fills passive order"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_permille(5),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2718,7 +2748,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
         },
     ],
     btree_map! {
-        OrderId::new(1) => (Udec128::new_percent(19900), Udec128::new(10000), Direction::Ask),
+        OrderId::new(21) => (Udec128::new_percent(19900), Udec128::new(10000), Direction::Ask),
     },
     btree_map! {
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coin_pair! {
@@ -2739,10 +2769,11 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     "xyk pool balance 1:200 tick size 1 no fee user ask order fully fills passive order with amount remaining after"
 )]
 #[test_case(
-    PassiveLiquidity::Xyk {
-        order_spacing: Udec128::ONE,
+    PassiveLiquidity::Xyk(Xyk {
+        spacing: Udec128::ONE,
         reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-    },
+        limit: 10,
+    }),
     Udec128::new_percent(1),
     coins! {
         eth::DENOM.clone() => 10000000,
@@ -2840,6 +2871,7 @@ fn curve_on_orderbook(
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
                             pool_type,
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                         },
                     }])),
@@ -2960,7 +2992,15 @@ fn curve_on_orderbook(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            assert_eq!(orders.len(), expected_orders_after_clearing.len());
+            // `expected_orders_after_clearing` contains only the expected
+            // orders from the users, so we filter off the passive pool orders.
+            assert_eq!(
+                orders
+                    .iter()
+                    .filter(|(_, order)| order.user != contracts.dex)
+                    .count(),
+                expected_orders_after_clearing.len()
+            );
             for (order_id, (price, remaining, direction)) in expected_orders_after_clearing {
                 let order = orders.get(&order_id).unwrap();
                 assert_eq!(order.price, price.convert_precision().unwrap());
@@ -5996,6 +6036,821 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
             best_ask_price: Some(Udec128_24::new(100)),
             mid_price: Some(Udec128_24::new_permille(99500)),
         });
+}
+
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(50), Uint128::new(1)),
+        (Direction::Ask, Price::new(52), Uint128::new(1)),
+    ],
+    None,
+    Price::new(1),
+    None,
+    dex::LiquidityDepthResponse {
+        bid_depth: None,
+        ask_depth: Some(vec![
+            (Udec128_24::new(52), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1),
+                depth_quote: Udec128_6::new(52),
+            }),
+        ]),
+    },
+    None;
+    "no bid depth, one ask at 52, bucket size 1"
+)]
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(50), Uint128::new(1)),
+        (Direction::Ask, Price::new(52), Uint128::new(1)),
+    ],
+    None,
+    Price::new(10),
+    None,
+    dex::LiquidityDepthResponse {
+        bid_depth: None,
+        ask_depth: Some(vec![
+            (Udec128_24::new(60), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1),
+                depth_quote: Udec128_6::new(52),
+            }),
+        ]),
+    },
+    None;
+    "no bid depth, one ask at 52, bucket size 10"
+)]
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(48), Uint128::new(1)),
+    ],
+    None,
+    Price::new(1),
+    None,
+    dex::LiquidityDepthResponse {
+        bid_depth: Some(vec![
+            (Udec128_24::new(48), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1),
+                depth_quote: Udec128_6::new(48),
+            }),
+        ]),
+        ask_depth: None,
+    },
+    None;
+    "no ask depth, one bid at 48, bucket size 1"
+)]
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(48), Uint128::new(1)),
+    ],
+    None,
+    Price::new(10),
+    None,
+    dex::LiquidityDepthResponse {
+        bid_depth: Some(vec![
+            (Udec128_24::new(40), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1),
+                depth_quote: Udec128_6::new(48),
+            }),
+        ]),
+        ask_depth: None,
+    },
+    None;
+    "no ask depth, one bid at 48, bucket size 10"
+)]
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(49), Uint128::new(1)),
+        (Direction::Bid, Price::new(48), Uint128::new(2)),
+        (Direction::Bid, Price::new(47), Uint128::new(3)),
+        (Direction::Bid, Price::new(46), Uint128::new(4)),
+        (Direction::Bid, Price::new(45), Uint128::new(5)),
+        (Direction::Bid, Price::new(44), Uint128::new(6)),
+        (Direction::Bid, Price::new(43), Uint128::new(7)),
+        (Direction::Bid, Price::new(42), Uint128::new(8)),
+        (Direction::Bid, Price::new(41), Uint128::new(9)),
+        (Direction::Bid, Price::new(40), Uint128::new(10)),
+        (Direction::Ask, Price::new(51), Uint128::new(1)),
+        (Direction::Ask, Price::new(52), Uint128::new(2)),
+        (Direction::Ask, Price::new(53), Uint128::new(3)),
+        (Direction::Ask, Price::new(54), Uint128::new(4)),
+        (Direction::Ask, Price::new(55), Uint128::new(5)),
+        (Direction::Ask, Price::new(56), Uint128::new(6)),
+        (Direction::Ask, Price::new(57), Uint128::new(7)),
+        (Direction::Ask, Price::new(58), Uint128::new(8)),
+        (Direction::Ask, Price::new(59), Uint128::new(9)),
+        (Direction::Ask, Price::new(60), Uint128::new(10)),
+    ],
+    None,
+    Price::new(10),
+    None,
+    dex::LiquidityDepthResponse {
+        bid_depth: Some(vec![
+            (Udec128_24::new(40), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(55),
+                depth_quote: Udec128_6::new(2365),
+            }),
+        ]),
+        ask_depth: Some(vec![
+            (Udec128_24::new(60), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(55),
+                depth_quote: Udec128_6::new(3135),
+            }),
+        ]),
+    },
+    None;
+    "multiple orders on both sides, bucket size 10"
+)]
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(49), Uint128::new(1)),
+        (Direction::Bid, Price::new(48), Uint128::new(2)),
+        (Direction::Bid, Price::new(47), Uint128::new(3)),
+        (Direction::Bid, Price::new(46), Uint128::new(4)),
+        (Direction::Bid, Price::new(45), Uint128::new(5)),
+        (Direction::Bid, Price::new(44), Uint128::new(6)),
+        (Direction::Bid, Price::new(43), Uint128::new(7)),
+        (Direction::Bid, Price::new(42), Uint128::new(8)),
+        (Direction::Bid, Price::new(41), Uint128::new(9)),
+        (Direction::Bid, Price::new(40), Uint128::new(10)),
+        (Direction::Ask, Price::new(51), Uint128::new(1)),
+        (Direction::Ask, Price::new(52), Uint128::new(2)),
+        (Direction::Ask, Price::new(53), Uint128::new(3)),
+        (Direction::Ask, Price::new(54), Uint128::new(4)),
+        (Direction::Ask, Price::new(55), Uint128::new(5)),
+        (Direction::Ask, Price::new(56), Uint128::new(6)),
+        (Direction::Ask, Price::new(57), Uint128::new(7)),
+        (Direction::Ask, Price::new(58), Uint128::new(8)),
+        (Direction::Ask, Price::new(59), Uint128::new(9)),
+        (Direction::Ask, Price::new(60), Uint128::new(10)),
+    ],
+    None,
+    Price::new(1),
+    None,
+    dex::LiquidityDepthResponse {
+        bid_depth: Some(vec![
+            (Udec128_24::new(49), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1),
+                depth_quote: Udec128_6::new(49),
+            }),
+            (Udec128_24::new(48), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(2),
+                depth_quote: Udec128_6::new(2 * 48),
+            }),
+            (Udec128_24::new(47), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3),
+                depth_quote: Udec128_6::new(3 * 47),
+            }),
+            (Udec128_24::new(46), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(4),
+                depth_quote: Udec128_6::new(4 * 46),
+            }),
+            (Udec128_24::new(45), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(5),
+                depth_quote: Udec128_6::new(5 * 45),
+            }),
+            (Udec128_24::new(44), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(6),
+                depth_quote: Udec128_6::new(6 * 44),
+            }),
+            (Udec128_24::new(43), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7),
+                depth_quote: Udec128_6::new(7 * 43),
+            }),
+            (Udec128_24::new(42), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(8),
+                depth_quote: Udec128_6::new(8 * 42),
+            }),
+            (Udec128_24::new(41), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9),
+                depth_quote: Udec128_6::new(9 * 41),
+            }),
+            (Udec128_24::new(40), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(10),
+                depth_quote: Udec128_6::new(10 * 40),
+            }),
+        ]),
+        ask_depth: Some(vec![
+            (Udec128_24::new(51), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1),
+                depth_quote: Udec128_6::new(51),
+            }),
+            (Udec128_24::new(52), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(2),
+                depth_quote: Udec128_6::new(2 * 52),
+            }),
+            (Udec128_24::new(53), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3),
+                depth_quote: Udec128_6::new(3 * 53),
+            }),
+            (Udec128_24::new(54), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(4),
+                depth_quote: Udec128_6::new(4 * 54),
+            }),
+            (Udec128_24::new(55), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(5),
+                depth_quote: Udec128_6::new(5 * 55),
+            }),
+            (Udec128_24::new(56), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(6),
+                depth_quote: Udec128_6::new(6 * 56),
+            }),
+            (Udec128_24::new(57), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7),
+                depth_quote: Udec128_6::new(7 * 57),
+            }),
+            (Udec128_24::new(58), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(8),
+                depth_quote: Udec128_6::new(8 * 58),
+            }),
+            (Udec128_24::new(59), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9),
+                depth_quote: Udec128_6::new(9 * 59),
+            }),
+            (Udec128_24::new(60), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(10),
+                depth_quote: Udec128_6::new(10 * 60),
+            }),
+        ]),
+    },
+    None;
+    "multiple orders on both sides, bucket size 1"
+)]
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(50), Uint128::new(1)),
+        (Direction::Bid, Price::new(49), Uint128::new(1)),
+        (Direction::Bid, Price::new(48), Uint128::new(2)),
+        (Direction::Bid, Price::new(47), Uint128::new(3)),
+        (Direction::Bid, Price::new(46), Uint128::new(4)),
+        (Direction::Bid, Price::new(45), Uint128::new(5)),
+        (Direction::Bid, Price::new(44), Uint128::new(6)),
+        (Direction::Bid, Price::new(43), Uint128::new(7)),
+        (Direction::Bid, Price::new(42), Uint128::new(8)),
+        (Direction::Bid, Price::new(41), Uint128::new(9)),
+        (Direction::Bid, Price::new(40), Uint128::new(10)),
+        (Direction::Ask, Price::new(51), Uint128::new(1)),
+        (Direction::Ask, Price::new(52), Uint128::new(2)),
+        (Direction::Ask, Price::new(53), Uint128::new(3)),
+        (Direction::Ask, Price::new(54), Uint128::new(4)),
+        (Direction::Ask, Price::new(55), Uint128::new(5)),
+        (Direction::Ask, Price::new(56), Uint128::new(6)),
+        (Direction::Ask, Price::new(57), Uint128::new(7)),
+        (Direction::Ask, Price::new(58), Uint128::new(8)),
+        (Direction::Ask, Price::new(59), Uint128::new(9)),
+        (Direction::Ask, Price::new(60), Uint128::new(10)),
+    ],
+    None,
+    Price::new(1),
+    Some(3),
+    dex::LiquidityDepthResponse {
+        bid_depth: Some(vec![
+            (Udec128_24::new(49), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1),
+                depth_quote: Udec128_6::new(49),
+            }),
+            (Udec128_24::new(48), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(2),
+                depth_quote: Udec128_6::new(2 * 48),
+            }),
+            (Udec128_24::new(47), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3),
+                depth_quote: Udec128_6::new(3 * 47),
+            }),
+        ]),
+        ask_depth: Some(vec![
+            (Udec128_24::new(51), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1),
+                depth_quote: Udec128_6::new(51),
+            }),
+            (Udec128_24::new(52), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(2),
+                depth_quote: Udec128_6::new(2 * 52),
+            }),
+            (Udec128_24::new(53), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3),
+                depth_quote: Udec128_6::new(3 * 53),
+            }),
+        ]),
+    },
+    None;
+    "multiple orders on both sides, one order per bucket, bucket size 1, limit 3"
+)]
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(500), Uint128::new(1)),
+        (Direction::Bid, Price::new(500), Uint128::new(1)),
+        (Direction::Bid, Price::new(495), Uint128::new(1)),
+        (Direction::Bid, Price::new(490), Uint128::new(2)),
+        (Direction::Bid, Price::new(485), Uint128::new(3)),
+        (Direction::Bid, Price::new(480), Uint128::new(4)),
+        (Direction::Bid, Price::new(475), Uint128::new(5)),
+        (Direction::Bid, Price::new(470), Uint128::new(6)),
+        (Direction::Bid, Price::new(465), Uint128::new(7)),
+        (Direction::Bid, Price::new(460), Uint128::new(8)),
+        (Direction::Bid, Price::new(455), Uint128::new(9)),
+        (Direction::Bid, Price::new(450), Uint128::new(10)),
+        (Direction::Ask, Price::new(505), Uint128::new(1)),
+        (Direction::Ask, Price::new(510), Uint128::new(2)),
+        (Direction::Ask, Price::new(515), Uint128::new(3)),
+        (Direction::Ask, Price::new(520), Uint128::new(4)),
+        (Direction::Ask, Price::new(525), Uint128::new(5)),
+        (Direction::Ask, Price::new(530), Uint128::new(6)),
+        (Direction::Ask, Price::new(535), Uint128::new(7)),
+        (Direction::Ask, Price::new(540), Uint128::new(8)),
+        (Direction::Ask, Price::new(545), Uint128::new(9)),
+        (Direction::Ask, Price::new(550), Uint128::new(10)),
+    ],
+    None,
+    Price::new(10),
+    None,
+    dex::LiquidityDepthResponse {
+        bid_depth: Some(vec![
+            (Udec128_24::new(490), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1 + 2),
+                depth_quote: Udec128_6::new(495 + 2 * 490),
+            }),
+            (Udec128_24::new(480), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3 + 4),
+                depth_quote: Udec128_6::new(3 * 485 + 4 * 480),
+            }),
+            (Udec128_24::new(470), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(5 + 6),
+                depth_quote: Udec128_6::new(5 * 475 + 6 * 470),
+            }),
+            (Udec128_24::new(460), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7 + 8),
+                depth_quote: Udec128_6::new(7 * 465 + 8 * 460),
+            }),
+            (Udec128_24::new(450), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9 + 10),
+                depth_quote: Udec128_6::new(9 * 455 + 10 * 450),
+            }),
+        ]),
+        ask_depth: Some(vec![
+            (Udec128_24::new(510), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1 + 2),
+                depth_quote: Udec128_6::new(505 + 2 * 510),
+            }),
+            (Udec128_24::new(520), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3 + 4),
+                depth_quote: Udec128_6::new(3 * 515 + 4 * 520),
+            }),
+            (Udec128_24::new(530), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(5 + 6),
+                depth_quote: Udec128_6::new(5 * 525 + 6 * 530),
+            }),
+            (Udec128_24::new(540), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7 + 8),
+                depth_quote: Udec128_6::new(7 * 535 + 8 * 540),
+            }),
+            (Udec128_24::new(550), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9 + 10),
+                depth_quote: Udec128_6::new(9 * 545 + 10 * 550),
+            }),
+        ]),
+    },
+    None;
+    "multiple orders on both sides, two orders per bucket, bucket size 20"
+)]
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(500), Uint128::new(1)),
+        (Direction::Bid, Price::new(500), Uint128::new(1)),
+        (Direction::Bid, Price::new(495), Uint128::new(1)),
+        (Direction::Bid, Price::new(490), Uint128::new(2)),
+        (Direction::Bid, Price::new(485), Uint128::new(3)),
+        (Direction::Bid, Price::new(480), Uint128::new(4)),
+        (Direction::Bid, Price::new(475), Uint128::new(5)),
+        (Direction::Bid, Price::new(470), Uint128::new(6)),
+        (Direction::Bid, Price::new(465), Uint128::new(7)),
+        (Direction::Bid, Price::new(460), Uint128::new(8)),
+        (Direction::Bid, Price::new(455), Uint128::new(9)),
+        (Direction::Bid, Price::new(450), Uint128::new(10)),
+        (Direction::Ask, Price::new(505), Uint128::new(1)),
+        (Direction::Ask, Price::new(510), Uint128::new(2)),
+        (Direction::Ask, Price::new(515), Uint128::new(3)),
+        (Direction::Ask, Price::new(520), Uint128::new(4)),
+        (Direction::Ask, Price::new(525), Uint128::new(5)),
+        (Direction::Ask, Price::new(530), Uint128::new(6)),
+        (Direction::Ask, Price::new(535), Uint128::new(7)),
+        (Direction::Ask, Price::new(540), Uint128::new(8)),
+        (Direction::Ask, Price::new(545), Uint128::new(9)),
+        (Direction::Ask, Price::new(550), Uint128::new(10)),
+    ],
+    Some(CancelOrderRequest::All),
+    Price::new(10),
+    None,
+    dex::LiquidityDepthResponse {
+        bid_depth: Some(vec![
+            (Udec128_24::new(490), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1 + 2),
+                depth_quote: Udec128_6::new(495 + 2 * 490),
+            }),
+            (Udec128_24::new(480), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3 + 4),
+                depth_quote: Udec128_6::new(3 * 485 + 4 * 480),
+            }),
+            (Udec128_24::new(470), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(5 + 6),
+                depth_quote: Udec128_6::new(5 * 475 + 6 * 470),
+            }),
+            (Udec128_24::new(460), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7 + 8),
+                depth_quote: Udec128_6::new(7 * 465 + 8 * 460),
+            }),
+            (Udec128_24::new(450), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9 + 10),
+                depth_quote: Udec128_6::new(9 * 455 + 10 * 450),
+            }),
+        ]),
+        ask_depth: Some(vec![
+            (Udec128_24::new(510), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1 + 2),
+                depth_quote: Udec128_6::new(505 + 2 * 510),
+            }),
+            (Udec128_24::new(520), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3 + 4),
+                depth_quote: Udec128_6::new(3 * 515 + 4 * 520),
+            }),
+            (Udec128_24::new(530), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(5 + 6),
+                depth_quote: Udec128_6::new(5 * 525 + 6 * 530),
+            }),
+            (Udec128_24::new(540), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7 + 8),
+                depth_quote: Udec128_6::new(7 * 535 + 8 * 540),
+            }),
+            (Udec128_24::new(550), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9 + 10),
+                depth_quote: Udec128_6::new(9 * 545 + 10 * 550),
+            }),
+        ]),
+    },
+    Some(dex::LiquidityDepthResponse {
+        bid_depth: None,
+        ask_depth: None,
+    });
+    "multiple orders on both sides, two orders per bucket, bucket size 20, cancel all orders"
+)]
+#[test_case(
+    vec![
+        (Direction::Ask, Price::new(500), Uint128::new(1)),
+        (Direction::Bid, Price::new(500), Uint128::new(1)),
+        (Direction::Bid, Price::new(495), Uint128::new(1)),
+        (Direction::Bid, Price::new(490), Uint128::new(2)),
+        (Direction::Bid, Price::new(485), Uint128::new(3)),
+        (Direction::Bid, Price::new(480), Uint128::new(4)),
+        (Direction::Bid, Price::new(475), Uint128::new(5)),
+        (Direction::Bid, Price::new(470), Uint128::new(6)),
+        (Direction::Bid, Price::new(465), Uint128::new(7)),
+        (Direction::Bid, Price::new(460), Uint128::new(8)),
+        (Direction::Bid, Price::new(455), Uint128::new(9)),
+        (Direction::Bid, Price::new(450), Uint128::new(10)),
+        (Direction::Ask, Price::new(505), Uint128::new(1)),
+        (Direction::Ask, Price::new(510), Uint128::new(2)),
+        (Direction::Ask, Price::new(515), Uint128::new(3)),
+        (Direction::Ask, Price::new(520), Uint128::new(4)),
+        (Direction::Ask, Price::new(525), Uint128::new(5)),
+        (Direction::Ask, Price::new(530), Uint128::new(6)),
+        (Direction::Ask, Price::new(535), Uint128::new(7)),
+        (Direction::Ask, Price::new(540), Uint128::new(8)),
+        (Direction::Ask, Price::new(545), Uint128::new(9)),
+        (Direction::Ask, Price::new(550), Uint128::new(10)),
+    ],
+    Some(CancelOrderRequest::Some(BTreeSet::from([
+        OrderId::new(!7),
+        OrderId::new(!10),
+        OrderId::new(16),
+    ]))),
+    Price::new(10),
+    None,
+    dex::LiquidityDepthResponse {
+        bid_depth: Some(vec![
+            (Udec128_24::new(490), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1 + 2),
+                depth_quote: Udec128_6::new(495 + 2 * 490),
+            }),
+            (Udec128_24::new(480), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3 + 4),
+                depth_quote: Udec128_6::new(3 * 485 + 4 * 480),
+            }),
+            (Udec128_24::new(470), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(5 + 6),
+                depth_quote: Udec128_6::new(5 * 475 + 6 * 470),
+            }),
+            (Udec128_24::new(460), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7 + 8),
+                depth_quote: Udec128_6::new(7 * 465 + 8 * 460),
+            }),
+            (Udec128_24::new(450), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9 + 10),
+                depth_quote: Udec128_6::new(9 * 455 + 10 * 450),
+            }),
+        ]),
+        ask_depth: Some(vec![
+            (Udec128_24::new(510), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1 + 2),
+                depth_quote: Udec128_6::new(505 + 2 * 510),
+            }),
+            (Udec128_24::new(520), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3 + 4),
+                depth_quote: Udec128_6::new(3 * 515 + 4 * 520),
+            }),
+            (Udec128_24::new(530), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(5 + 6),
+                depth_quote: Udec128_6::new(5 * 525 + 6 * 530),
+            }),
+            (Udec128_24::new(540), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7 + 8),
+                depth_quote: Udec128_6::new(7 * 535 + 8 * 540),
+            }),
+            (Udec128_24::new(550), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9 + 10),
+                depth_quote: Udec128_6::new(9 * 545 + 10 * 550),
+            }),
+        ]),
+    },
+    Some(    dex::LiquidityDepthResponse {
+        bid_depth: Some(vec![
+            (Udec128_24::new(490), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1 + 2),
+                depth_quote: Udec128_6::new(495 + 2 * 490),
+            }),
+            (Udec128_24::new(480), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3 + 4),
+                depth_quote: Udec128_6::new(3 * 485 + 4 * 480),
+            }),
+            (Udec128_24::new(470), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(6),
+                depth_quote: Udec128_6::new(6 * 470),
+            }),
+            (Udec128_24::new(460), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7),
+                depth_quote: Udec128_6::new(7 * 465),
+            }),
+            (Udec128_24::new(450), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9 + 10),
+                depth_quote: Udec128_6::new(9 * 455 + 10 * 450),
+            }),
+        ]),
+        ask_depth: Some(vec![
+            (Udec128_24::new(510), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(1 + 2),
+                depth_quote: Udec128_6::new(505 + 2 * 510),
+            }),
+            (Udec128_24::new(520), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(3),
+                depth_quote: Udec128_6::new(3 * 515),
+            }),
+            (Udec128_24::new(530), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(5 + 6),
+                depth_quote: Udec128_6::new(5 * 525 + 6 * 530),
+            }),
+            (Udec128_24::new(540), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(7 + 8),
+                depth_quote: Udec128_6::new(7 * 535 + 8 * 540),
+            }),
+            (Udec128_24::new(550), dex::LiquidityDepth {
+                depth_base: Udec128_6::new(9 + 10),
+                depth_quote: Udec128_6::new(9 * 545 + 10 * 550),
+            }),
+        ]),
+    });
+    "multiple orders on both sides, two orders per bucket, bucket size 20, cancel some orders"
+)]
+fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancellation(
+    limit_orders: Vec<(Direction, Price, Uint128)>, // direction, price, amount
+    cancels: Option<CancelOrderRequest>,
+    bucket_size: Udec128_24,
+    limit: Option<u32>,
+    expected_liquidity_depth_after_clearing: dex::LiquidityDepthResponse,
+    expected_liquidity_depth_after_cancellation: Option<dex::LiquidityDepthResponse>,
+) {
+    // Setup test environment
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Register oracle price sources for ETH and USDC
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                eth::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Calculate required funds for market orders
+    let mut required_eth = Uint128::ZERO;
+    let mut required_usdc = Uint128::ZERO;
+
+    // Calculate required funds for limit orders
+    for (direction, price, amount) in &limit_orders {
+        match direction {
+            Direction::Bid => {
+                // For bid orders, we need USDC (quote currency)
+                let cost = amount.checked_mul_dec_ceil(*price).unwrap();
+                required_usdc += cost;
+            },
+            Direction::Ask => {
+                // For ask orders, we need ETH (base currency)
+                required_eth += *amount;
+            },
+        }
+    }
+
+    // Create limit order requests
+    let limit_order_requests: Vec<CreateLimitOrderRequest> = limit_orders
+        .into_iter()
+        .map(|(direction, price, amount)| CreateLimitOrderRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            direction,
+            amount: NonZero::new_unchecked(amount),
+            price: NonZero::new_unchecked(price),
+        })
+        .collect();
+
+    // Build funds for the transaction
+    let funds = match (required_eth > Uint128::ZERO, required_usdc > Uint128::ZERO) {
+        (true, true) => coins! {
+            eth::DENOM.clone() => required_eth,
+            usdc::DENOM.clone() => required_usdc,
+        },
+        (true, false) => Coins::one(eth::DENOM.clone(), required_eth).unwrap(),
+        (false, true) => Coins::one(usdc::DENOM.clone(), required_usdc).unwrap(),
+        (false, false) => Coins::new(),
+    };
+
+    // Execute all orders in a single batch
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: limit_order_requests,
+                cancels: None,
+            },
+            funds,
+        )
+        .should_succeed();
+
+    // Query the liquidity depth
+    suite
+        .query_wasm_smart(contracts.dex, QueryLiquidityDepthRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            bucket_size,
+            limit,
+        })
+        .should_succeed_and_equal(expected_liquidity_depth_after_clearing.clone());
+
+    // Cancel the orders
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![],
+                cancels,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Query the liquidity depth
+    suite
+        .query_wasm_smart(contracts.dex, QueryLiquidityDepthRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            bucket_size,
+            limit,
+        })
+        .should_succeed_and_equal(
+            expected_liquidity_depth_after_cancellation
+                .unwrap_or(expected_liquidity_depth_after_clearing),
+        );
+}
+
+#[test]
+fn decrease_liquidity_depths_minimal_failing_test() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Register oracle price sources for ETH and USDC
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::ONE,
+                    precision: 6,
+                    timestamp: Timestamp::from_seconds(1730802926),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Submit new orders with user1
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![
+                    CreateLimitOrderRequest {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(117304)),
+                        price: NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
+                    },
+                    CreateLimitOrderRequest {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        direction: Direction::Bid,
+                        amount: NonZero::new_unchecked(Uint128::new(117304)),
+                        price: NonZero::new_unchecked(Udec128_24::from_str("937.7344336").unwrap()),
+                    },
+                ],
+                cancels: None,
+            },
+            coins! {
+                usdc::DENOM.clone() => 411_000_000,
+            },
+        )
+        .should_succeed();
+
+    // Submit matching orders with user2
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    direction: Direction::Ask,
+                    amount: NonZero::new_unchecked(Uint128::new(117304 * 2)),
+                    price: NonZero::new_unchecked(
+                        Udec128_24::from_str("85248.71")
+                            .unwrap()
+                            .checked_inv()
+                            .unwrap(),
+                    ),
+                }],
+                cancels: None,
+            },
+            coins! {
+                eth::DENOM.clone() => 117304 * 2,
+            },
+        )
+        .should_succeed();
+
+    // Assert that orderbook is empty
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(BTreeMap::new());
 }
 
 pub fn create_limit_order_request(

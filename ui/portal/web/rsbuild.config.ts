@@ -1,5 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fs from "fs-extra";
 
 import { defineConfig } from "@rsbuild/core";
 import { loadEnv } from "@rsbuild/core";
@@ -21,6 +22,12 @@ const { publicVars } = loadEnv();
 const environment = process.env.CONFIG_ENVIRONMENT || "local";
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
+
+fs.copySync(
+  path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
+  path.resolve(__dirname, "public/images"),
+  { overwrite: true },
+);
 
 const chain = {
   local: local,
@@ -127,7 +134,7 @@ export default defineConfig({
           emitGitIgnore: false,
           emitPrettierIgnore: false,
           includeEslintDisableComment: false,
-          project: "../../config/project.inlang",
+          project: "../../foundation/project.inlang",
           strategy: ["localStorage", "preferredLanguage", "baseLocale"],
           localStorageKey: "dango.locale",
         }),

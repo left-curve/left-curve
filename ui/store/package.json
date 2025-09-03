@@ -48,12 +48,10 @@
   "devDependencies": {
     "@left-curve/config": "workspace:^",
     "@tanstack/query-core": "^5.56.2",
-    "@types/big.js": "^6.2.2",
     "@types/use-sync-external-store": "^0.0.6"
   },
   "peerDependencies": {
     "@tanstack/query-core": ">=5.0.0",
-    "big.js": ">=6.0.0",
     "react": "^18",
     "react-dom": "^18"
   },

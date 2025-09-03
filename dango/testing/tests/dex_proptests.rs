@@ -8,7 +8,7 @@ use {
         constants::{dango, eth, sol, usdc},
         dex::{
             self, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, PairId, PairParams,
-            PairUpdate, PassiveLiquidity, SwapRoute,
+            PairUpdate, PassiveLiquidity, SwapRoute, Xyk,
         },
         gateway::Remote,
     },
@@ -21,7 +21,7 @@ use {
     hyperlane_types::constants::{ethereum, solana},
     proptest::{prelude::*, proptest, sample::select},
     std::{
-        collections::{HashMap, hash_map},
+        collections::{BTreeSet, HashMap, hash_map},
         fmt::Debug,
         str::FromStr,
     },
@@ -98,12 +98,18 @@ fn check_balances(
     // Query the open orders.
     let open_orders = suite.query_wasm_smart(contracts.dex, dex::QueryOrdersRequest {
         start_after: None,
-        limit: None,
+        limit: Some(u32::MAX),
     })?;
     println!("open orders: {open_orders:?}");
 
     let mut order_balances = Coins::new();
     for (_, order) in open_orders {
+        // Skip orders placed by the DEX contract itself, because those tokens
+        // are already accounted for by the reserves.
+        if order.user == contracts.dex {
+            continue;
+        }
+
         let (denom, amount) = match order.direction {
             Direction::Bid => {
                 let remaining_in_quote = order.remaining.checked_mul_dec_ceil(order.price)?;
@@ -816,10 +822,12 @@ fn test_dex_actions(
                                 pair.base_denom, pair.quote_denom
                             ))
                             .unwrap(),
-                            pool_type: PassiveLiquidity::Xyk {
-                                order_spacing: Udec128::new_bps(1000),
+                            pool_type: PassiveLiquidity::Xyk(Xyk {
+                                spacing: Udec128::new_bps(1000),
                                 reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
-                            },
+                                limit: 30,
+                            }),
+                            bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                         },
                     })
@@ -847,7 +855,7 @@ fn test_dex_actions(
 
 proptest! {
     #![proptest_config(ProptestConfig {
-        cases: 256,
+        cases: 128,
         max_local_rejects: 1_000_000,
         max_global_rejects: 0,
         max_shrink_iters: 32,
@@ -855,13 +863,11 @@ proptest! {
         ..ProptestConfig::default()
     })]
 
-    #[ignore = "this test takes 15+ minutes so skip it during CI"]
     #[test]
     fn dex_contract_balances_equals_open_orders_plus_passive_liquidity(dex_actions in dex_actions(5, 10)) {
         test_dex_actions(dex_actions)?;
     }
 
-    #[ignore = "this test takes 15+ minutes so skip it during CI"]
     #[test]
     fn provide_liq_and_market_order(dex_actions in provide_liquidity_and_market_order()) {
         test_dex_actions(dex_actions)?;

@@ -1,7 +1,9 @@
 use {
-    crate::{LIMIT_ORDERS, MARKET_ORDERS, OrderKey},
+    crate::{
+        LIMIT_ORDERS, MARKET_ORDERS, OrderKey, PAIRS, liquidity_depth::decrease_liquidity_depths,
+    },
     anyhow::{bail, ensure},
-    dango_types::dex::{Direction, LimitOrder, MarketOrder, OrderCanceled, OrderId, OrderKind},
+    dango_types::dex::{Direction, Order, OrderCanceled, OrderId, OrderKind},
     grug::{
         Addr, DecCoin, DecCoins, EventBuilder, Number, Order as IterationOrder, StdResult, Storage,
         TransferBuilder,
@@ -11,7 +13,7 @@ use {
 /// Cancel all orders from all users.
 pub(super) fn cancel_all_orders(
     storage: &mut dyn Storage,
-) -> StdResult<(EventBuilder, TransferBuilder<DecCoins<6>>)> {
+) -> anyhow::Result<(EventBuilder, TransferBuilder<DecCoins<6>>)> {
     let mut events = EventBuilder::new();
     let mut refunds = TransferBuilder::<DecCoins<6>>::new();
 
@@ -20,7 +22,8 @@ pub(super) fn cancel_all_orders(
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_limit_order(
+        cancel_order(
+            storage,
             order_key.clone(),
             order,
             &mut events,
@@ -35,7 +38,13 @@ pub(super) fn cancel_all_orders(
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_market_order(order_key, order, &mut events, refunds.get_mut(order.user))?;
+        cancel_order(
+            storage,
+            order_key,
+            order,
+            &mut events,
+            refunds.get_mut(order.user),
+        )?;
 
         MARKET_ORDERS.remove(storage, (user, order_id));
     }
@@ -49,7 +58,7 @@ pub(super) fn cancel_all_orders_from_user(
     user: Addr,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
-) -> StdResult<()> {
+) -> anyhow::Result<()> {
     // Cancel maker orders, meaning limit orders that are already in the book.
     for (order_key, order) in LIMIT_ORDERS
         .idx
@@ -58,7 +67,7 @@ pub(super) fn cancel_all_orders_from_user(
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_limit_order(order_key.clone(), order, events, refunds)?;
+        cancel_order(storage, order_key.clone(), order, events, refunds)?;
 
         LIMIT_ORDERS.remove(storage, order_key)?;
     }
@@ -69,7 +78,13 @@ pub(super) fn cancel_all_orders_from_user(
         .values(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_market_order((pair, direction, price, order_id), order, events, refunds)?;
+        cancel_order(
+            storage,
+            (pair, direction, price, order_id),
+            order,
+            events,
+            refunds,
+        )?;
 
         MARKET_ORDERS.remove(storage, (user, order_id));
     }
@@ -96,7 +111,7 @@ pub(super) fn cancel_order_from_user(
             "limit order `{order_id}` does not belong to the sender",
         );
 
-        cancel_limit_order(order_key.clone(), order, events, refunds)?;
+        cancel_order(storage, order_key.clone(), order, events, refunds)?;
 
         LIMIT_ORDERS.remove(storage, order_key)?;
 
@@ -110,7 +125,7 @@ pub(super) fn cancel_order_from_user(
             "market order `{order_id}` does not belong to the sender"
         );
 
-        cancel_market_order(order_key, order, events, refunds)?;
+        cancel_order(storage, order_key, order, events, refunds)?;
 
         MARKET_ORDERS.remove(storage, (user, order_id));
 
@@ -120,19 +135,36 @@ pub(super) fn cancel_order_from_user(
     bail!("order not found with ID `{order_id}`");
 }
 
-fn cancel_limit_order(
+fn cancel_order(
+    storage: &mut dyn Storage,
     order_key: OrderKey,
-    order: LimitOrder,
+    order: Order,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
-) -> StdResult<()> {
+) -> anyhow::Result<()> {
     let ((base_denom, quote_denom), direction, price, order_id) = order_key;
+    let remaining_in_quote = order.remaining.checked_mul(price)?;
+
+    // If the order is a limit order, decrease the liquidity depth.
+    if order.kind == OrderKind::Limit {
+        let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
+
+        decrease_liquidity_depths(
+            storage,
+            &base_denom,
+            &quote_denom,
+            direction,
+            price,
+            order.remaining,
+            &pair.bucket_sizes,
+        )?;
+    }
 
     // Compute the amount of tokens to be sent back to the user.
     let refund = match direction {
         Direction::Bid => DecCoin {
             denom: quote_denom,
-            amount: order.remaining.checked_mul(price)?,
+            amount: remaining_in_quote,
         },
         Direction::Ask => DecCoin {
             denom: base_denom,
@@ -144,39 +176,6 @@ fn cancel_limit_order(
         user: order.user,
         id: order_id,
         kind: OrderKind::Limit,
-        remaining: order.remaining,
-        refund: refund.clone(),
-    })?;
-
-    refunds.insert(refund)?;
-
-    Ok(())
-}
-
-fn cancel_market_order(
-    order_key: OrderKey,
-    order: MarketOrder,
-    events: &mut EventBuilder,
-    refunds: &mut DecCoins<6>,
-) -> StdResult<()> {
-    let ((base_denom, quote_denom), direction, price, order_id) = order_key;
-
-    // Compute the amount of tokens to be sent back to the user.
-    let refund = match direction {
-        Direction::Bid => DecCoin {
-            denom: quote_denom,
-            amount: order.remaining.checked_mul(price)?,
-        },
-        Direction::Ask => DecCoin {
-            denom: base_denom,
-            amount: order.remaining,
-        },
-    };
-
-    events.push(OrderCanceled {
-        user: order.user,
-        id: order_id,
-        kind: OrderKind::Market,
         remaining: order.remaining,
         refund: refund.clone(),
     })?;

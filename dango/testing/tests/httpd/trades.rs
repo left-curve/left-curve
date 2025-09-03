@@ -429,8 +429,8 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
 
                 create_tx_clone.send(1).await.unwrap();
 
-                // We should receive a total of 4 trades
-                for _ in 1..=4 {
+                // We should receive a total of 8 trades
+                for _ in 1..=8 {
                     let response =
                         parse_graphql_subscription_response::<serde_json::Value>(&mut framed, name)
                             .await?;
@@ -440,11 +440,44 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
 
                 let expected_json = serde_json::json!([
                     {
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
+                        "blockHeight": 2,
                         "direction": "bid",
                         "orderType": "limit",
+                    },
+                    {
+                        "blockHeight": 2,
+                        "direction": "ask",
+                        "orderType": "limit",
+                    },
+                    {
+                        "blockHeight": 2,
+                        "direction": "ask",
+                        "orderType": "limit",
+                    },
+                    {
+                        "blockHeight": 2,
+                        "direction": "ask",
+                        "orderType": "limit",
+                    },
+                    {
                         "blockHeight": 4,
+                        "direction": "bid",
+                        "orderType": "limit",
+                    },
+                    {
+                        "blockHeight": 4,
+                        "direction": "ask",
+                        "orderType": "limit",
+                    },
+                    {
+                        "blockHeight": 4,
+                        "direction": "ask",
+                        "orderType": "limit",
+                    },
+                    {
+                        "blockHeight": 4,
+                        "direction": "ask",
+                        "orderType": "limit",
                     },
                 ]);
 

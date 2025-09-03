@@ -1,9 +1,12 @@
 use {
-    crate::{LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK},
+    crate::{
+        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK,
+        liquidity_depth::increase_liquidity_depths,
+    },
     anyhow::{anyhow, ensure},
     dango_types::dex::{
-        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, LimitOrder, MarketOrder,
-        OrderCreated, OrderKind,
+        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, Order, OrderCreated,
+        OrderKind,
     },
     grug::{
         Addr, Coin, Coins, EventBuilder, MultiplyFraction, NonZero, Number, NumberConst, Storage,
@@ -38,7 +41,7 @@ pub(super) fn create_limit_order(
             (
                 base_denom,
                 quote_denom,
-                price,
+                *price,
                 amount_base,
                 deposit,
                 Direction::Bid,
@@ -57,7 +60,7 @@ pub(super) fn create_limit_order(
             (
                 base_denom,
                 quote_denom,
-                price,
+                *price,
                 *amount_base,
                 deposit,
                 Direction::Ask,
@@ -65,12 +68,15 @@ pub(super) fn create_limit_order(
         },
     };
 
-    ensure!(
-        PAIRS.has(storage, (&base_denom, &quote_denom)),
-        "pair not found with base `{}` and quote `{}`",
-        base_denom,
-        quote_denom
-    );
+    let pair = PAIRS
+        .may_load(storage, (&base_denom, &quote_denom))?
+        .ok_or_else(|| {
+            anyhow!(
+                "pair not found with base `{}` and quote `{}`",
+                base_denom,
+                quote_denom
+            )
+        })?;
 
     let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
 
@@ -87,23 +93,36 @@ pub(super) fn create_limit_order(
         base_denom: base_denom.clone(),
         quote_denom: quote_denom.clone(),
         direction,
-        price: Some(*price),
+        price: Some(price),
         amount: amount_base,
         deposit: deposit.clone(),
     })?;
 
     deposits.insert(deposit)?;
 
+    let remaining = amount_base.checked_into_dec()?;
+
+    increase_liquidity_depths(
+        storage,
+        &base_denom,
+        &quote_denom,
+        direction,
+        price,
+        remaining,
+        &pair.bucket_sizes,
+    )?;
+
     LIMIT_ORDERS.save(
         storage,
-        ((base_denom, quote_denom), direction, *price, order_id),
-        &LimitOrder {
+        ((base_denom, quote_denom), direction, price, order_id),
+        &Order {
             user,
             id: order_id,
-            price: *price,
+            kind: OrderKind::Limit,
+            price,
             amount: amount_base,
-            remaining: amount_base.checked_into_dec()?,
-            created_at_block_height: current_block_height,
+            remaining,
+            created_at_block_height: Some(current_block_height),
         },
     )?;
 
@@ -241,16 +260,20 @@ pub(super) fn create_market_order(
                 price,
                 order_id,
             ),
-            MarketOrder {
+            Order {
                 user,
                 id: order_id,
+                kind: OrderKind::Market,
                 price,
                 amount: amount_base,
                 remaining: amount_base.checked_into_dec()?,
-                created_at_block_height: current_block_height,
+                created_at_block_height: Some(current_block_height),
             },
         ),
     )?;
+
+    // Note: no need to change depth for market orders, since market orders are
+    // canceled at the end of the block.
 
     Ok(())
 }

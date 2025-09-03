@@ -198,7 +198,7 @@ jobs:
       # Prior to introducing coverage, we were running tests here like this:
       # - name: Run tests
       #   run: |
-      #     cargo test --all-features
+      #     cargo test --all-features # -- --test-threads=1
       #   env:
       #     RUST_BACKTRACE: 1
       #

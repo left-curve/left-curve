@@ -1,11 +1,12 @@
 use {
     crate::{
-        LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES,
+        LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS, NEXT_ORDER_ID, PAIRS, PAUSED, RESERVES,
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, fill_orders,
             match_orders,
         },
+        liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
@@ -13,22 +14,18 @@ use {
         DangoQuerier,
         account_factory::Username,
         dex::{
-            CallbackMsg, Direction, ExecuteMsg, LimitOrder, MarketOrder, Order, OrderCanceled,
-            OrderFilled, OrderId, OrderTrait, OrdersMatched, PassiveOrder, Paused, Price, ReplyMsg,
-            RestingOrderBookState,
+            CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrderId,
+            OrderKind, OrdersMatched, Paused, Price, ReplyMsg, RestingOrderBookState,
         },
         taxman::{self, FeeType},
     },
     grug::{
         Addr, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult,
-        Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
+        MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder, Response, StdError,
+        StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
         Udec128_24,
     },
-    std::{
-        collections::{BTreeMap, HashMap, hash_map::Entry},
-        iter,
-    },
+    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -36,7 +33,7 @@ const HALF: Udec128 = Udec128::new_percent(50);
 // Note: the map key is prefixed with the price, so that the orders are sorted
 // by price; the order ID is suffixed because there can be multiple orders of
 // the same price.
-type MarketOrders = BTreeMap<(Price, OrderId), MarketOrder>;
+type MarketOrders = BTreeMap<(Price, OrderId), Order>;
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -94,6 +91,11 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut fees = DecCoins::<6>::new();
     let mut fee_payments = TransferBuilder::<DecCoins<6>>::new();
 
+    // Load all existing orders and their parameters.
+    let pairs = PAIRS
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<BTreeMap<_, _>>>()?;
+
     // Collect all market orders received during this block.
     let mut market_orders = MARKET_ORDERS
         .values(ctx.storage, None, None, IterationOrder::Ascending)
@@ -115,14 +117,31 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Since market orders are immediate-or-cancel, delete them from storage.
     MARKET_ORDERS.clear(ctx.storage, None, None);
 
-    // Loop through all trading pairs. Match and clear the orders for each of them.
-    // TODO: spawn a thread for each pair to process them in parallel.
-    for (base_denom, quote_denom) in PAIRS
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
+    // Delete the passive orders left over from the previous block.
+    for ((denoms, direction, price, order_id), order) in LIMIT_ORDERS
+        .idx
+        .user
+        .prefix(app_cfg.addresses.dex)
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        let pair = (base_denom.clone(), quote_denom.clone());
-        let (market_bids, market_asks) = market_orders.remove(&pair).unwrap_or_default();
+        decrease_liquidity_depths(
+            ctx.storage,
+            &denoms.0,
+            &denoms.1,
+            direction,
+            price,
+            order.remaining,
+            &pairs[&denoms].bucket_sizes,
+        )?;
+
+        LIMIT_ORDERS.remove(ctx.storage, (denoms, direction, price, order_id))?;
+    }
+
+    // Loop through all trading pairs. Match and clear the orders for each of them.
+    // TODO: spawn a thread for each pair to process them in parallel.
+    for (denoms, pair) in pairs {
+        let (market_bids, market_asks) = market_orders.remove(&denoms).unwrap_or_default();
 
         clear_orders_of_pair(
             ctx.storage,
@@ -132,8 +151,9 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             &mut account_querier,
             app_cfg.maker_fee_rate.into_inner(),
             app_cfg.taker_fee_rate.into_inner(),
-            base_denom.clone(),
-            quote_denom.clone(),
+            denoms.0,
+            denoms.1,
+            &pair.bucket_sizes,
             market_bids,
             market_asks,
             &mut events,
@@ -191,6 +211,7 @@ fn clear_orders_of_pair(
     taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
+    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
     market_bids: MarketOrders,
     market_asks: MarketOrders,
     events: &mut EventBuilder,
@@ -200,7 +221,111 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Udec128_6>,
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
-    // ------------------------- 1. Prepare iterators --------------------------
+    // --------------------- 1. Update passive pool orders ---------------------
+
+    // Generate updated passive orders and insert them into the book.
+    //
+    // NOTE: This operation assumes the pool only generates a limited number of
+    // orders. The admin should set proper parameters so that the pool doesn't
+    // generate too many orders.
+    if let Some(reserve) = RESERVES.may_load(storage, (&base_denom, &quote_denom))? {
+        let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
+        match pair.reflect_curve(
+            oracle_querier,
+            base_denom.clone(),
+            quote_denom.clone(),
+            &reserve,
+        ) {
+            Ok((passive_bids, passive_asks)) => {
+                for (price, amount) in passive_bids {
+                    let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+                    order_id = !order_id;
+
+                    let remaining = amount.checked_into_dec()?;
+
+                    increase_liquidity_depths(
+                        storage,
+                        &base_denom,
+                        &quote_denom,
+                        Direction::Bid,
+                        price,
+                        remaining,
+                        bucket_sizes,
+                    )?;
+
+                    LIMIT_ORDERS.save(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            Direction::Bid,
+                            price,
+                            order_id,
+                        ),
+                        &Order {
+                            user: dex_addr,
+                            id: order_id,
+                            kind: OrderKind::Limit,
+                            price,
+                            amount,
+                            remaining,
+                            created_at_block_height: None,
+                        },
+                    )?;
+                }
+
+                for (price, amount) in passive_asks {
+                    let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+                    let remaining = amount.checked_into_dec()?;
+
+                    increase_liquidity_depths(
+                        storage,
+                        &base_denom,
+                        &quote_denom,
+                        Direction::Bid,
+                        price,
+                        remaining,
+                        bucket_sizes,
+                    )?;
+
+                    LIMIT_ORDERS.save(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            Direction::Ask,
+                            price,
+                            order_id,
+                        ),
+                        &Order {
+                            user: dex_addr,
+                            id: order_id,
+                            kind: OrderKind::Limit,
+                            price,
+                            amount,
+                            remaining,
+                            created_at_block_height: None,
+                        },
+                    )?;
+                }
+            },
+            // If there is an error, we simply emit a tracing log and move on.
+            // Do not bail.
+            // The most common cause of errors here is oracle downtime (that
+            // exceeds the `MAX_STALENESS` in `OracleQuerier`), which isn't a
+            // fatal error that necessitates halting of trading.
+            Err(_err) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!(
+                    %base_denom,
+                    %quote_denom,
+                    ?reserve,
+                    %_err,
+                    "!!! REFLECT CURVE FAILED !!!"
+                );
+            },
+        }
+    }
+
+    // ------------------------- 2. Prepare iterators --------------------------
 
     // Create iterators over the limit orders.
     //
@@ -215,37 +340,6 @@ fn clear_orders_of_pair(
         .append(Direction::Ask)
         .range(storage, None, None, IterationOrder::Ascending);
 
-    // Create iterators over passive orders.
-    //
-    // If the pool doesn't have passive liquidity (reserve is `None`), or if
-    // the order book reflection fails, simply use empty iterators. I.e. place
-    // no passive liquidity orders.
-    let reserve = RESERVES.may_load(storage, (&base_denom, &quote_denom))?;
-    let (passive_bids, passive_asks) = match &reserve {
-        Some(reserve) => {
-            // Create the passive liquidity orders if the pair has a pool.
-            let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
-            pair.reflect_curve(
-                oracle_querier,
-                base_denom.clone(),
-                quote_denom.clone(),
-                reserve,
-            )
-            .inspect_err(|_err| {
-                #[cfg(feature = "tracing")]
-                tracing::error!(
-                    %base_denom,
-                    %quote_denom,
-                    ?reserve,
-                    %_err,
-                    "!!! REFLECT CURVE FAILED !!!"
-                );
-            })
-            .unwrap_or_else(|_| (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _))
-        },
-        None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
-    };
-
     // Merge orders using the iterator abstraction.
     //
     // Notes:
@@ -254,16 +348,14 @@ fn clear_orders_of_pair(
     //    highest (ascending).
     // 2. The market order vectors are ordered ascendingly, so for bids we need
     //    to reverse it.
-    let mut merged_bids = nested_merged_orders(
+    let mut merged_bids = merged_orders(
         limit_bids,
         market_bids.into_iter().rev(),
-        passive_bids,
         IterationOrder::Descending,
     );
-    let mut merged_asks = nested_merged_orders(
+    let mut merged_asks = merged_orders(
         limit_asks,
         market_asks.into_iter(),
-        passive_asks,
         IterationOrder::Ascending,
     );
 
@@ -276,7 +368,7 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ---------------------------- 2. Match orders ----------------------------
+    // ---------------------------- 3. Match orders ----------------------------
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
@@ -318,7 +410,7 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ----------------------- 3. Fulfill matched orders -----------------------
+    // ----------------------- 4. Fulfill matched orders -----------------------
 
     // If matching orders were found, then we need to fill the orders. All orders
     // are filled at the clearing price.
@@ -377,10 +469,10 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ------------------- 4. Handle unmatched market orders -------------------
+    // ------------------- 5. Handle unmatched market orders -------------------
 
     if let Some((_price, order)) = unmatched_bid {
-        refund_unmatched_market_order(
+        refund_market_order(
             &base_denom,
             &quote_denom,
             Direction::Bid,
@@ -392,7 +484,7 @@ fn clear_orders_of_pair(
 
     for res in unmatched_market_bids {
         let (_price, order) = res?;
-        refund_unmatched_market_order(
+        refund_market_order(
             &base_denom,
             &quote_denom,
             Direction::Bid,
@@ -403,7 +495,7 @@ fn clear_orders_of_pair(
     }
 
     if let Some((_price, order)) = unmatched_ask {
-        refund_unmatched_market_order(
+        refund_market_order(
             &base_denom,
             &quote_denom,
             Direction::Ask,
@@ -415,7 +507,7 @@ fn clear_orders_of_pair(
 
     for res in unmatched_market_asks {
         let (_price, order) = res?;
-        refund_unmatched_market_order(
+        refund_market_order(
             &base_denom,
             &quote_denom,
             Direction::Ask,
@@ -434,7 +526,7 @@ fn clear_orders_of_pair(
         );
     }
 
-    // ----------------- 5. Save the resting order book state ------------------
+    // ----------------- 6. Save the resting order book state ------------------
 
     // Find the best bid and ask prices that remains after the auction.
     let best_bid_price = find_best_remaining_price(
@@ -484,7 +576,7 @@ fn clear_orders_of_pair(
         )
     }
 
-    // ------------------------ 6. Handle filled orders ------------------------
+    // ------------------------ 7. Handle filled orders ------------------------
 
     // Track the inflows and outflows of the dex.
     let mut inflows = DecCoins::new();
@@ -503,9 +595,9 @@ fn clear_orders_of_pair(
         clearing_price,
     } in filling_outcomes
     {
-        let (user, id) = if let Some((order_id, user)) = order.id_and_user() {
+        if order.user != dex_addr {
             fill_user_order(
-                user,
+                order.user,
                 &base_denom,
                 &quote_denom,
                 refund_base,
@@ -517,33 +609,56 @@ fn clear_orders_of_pair(
                 fee_payments,
             )?;
 
-            if let Order::Limit(limit_order) = order {
-                if limit_order.remaining.is_zero() {
-                    // Remove the order from the storage if it was fully filled
-                    LIMIT_ORDERS.remove(
+            // For limit orders, delete it from storage if fully filled, or
+            // update if partially filled.
+            // For market orders, refund the user the remaining amount, as
+            // market orders are immediate-or-cancel.
+            match order.kind {
+                OrderKind::Limit => {
+                    decrease_liquidity_depths(
                         storage,
-                        (
-                            (base_denom.clone(), quote_denom.clone()),
-                            order_direction,
-                            limit_order.price,
-                            order_id,
-                        ),
+                        &base_denom,
+                        &quote_denom,
+                        order_direction,
+                        order.price,
+                        filled_base,
+                        bucket_sizes,
                     )?;
-                } else {
-                    LIMIT_ORDERS.save(
-                        storage,
-                        (
-                            (base_denom.clone(), quote_denom.clone()),
-                            order_direction,
-                            limit_order.price,
-                            order_id,
-                        ),
-                        &limit_order,
-                    )?;
-                }
-            }
 
-            (user, Some(order_id))
+                    if order.remaining.is_zero() {
+                        LIMIT_ORDERS.remove(
+                            storage,
+                            (
+                                (base_denom.clone(), quote_denom.clone()),
+                                order_direction,
+                                order.price,
+                                order.id,
+                            ),
+                        )?;
+                    } else {
+                        LIMIT_ORDERS.save(
+                            storage,
+                            (
+                                (base_denom.clone(), quote_denom.clone()),
+                                order_direction,
+                                order.price,
+                                order.id,
+                            ),
+                            &order,
+                        )?;
+                    }
+                },
+                OrderKind::Market => {
+                    refund_market_order(
+                        &base_denom,
+                        &quote_denom,
+                        order_direction,
+                        order,
+                        events,
+                        refunds,
+                    )?;
+                },
+            }
         } else {
             fill_passive_order(
                 &base_denom,
@@ -554,15 +669,13 @@ fn clear_orders_of_pair(
                 &mut inflows,
                 &mut outflows,
             )?;
-
-            (dex_addr, None)
         };
 
         // Emit event for filled orders to be used by the frontend.
         events.push(OrderFilled {
-            user,
-            id,
-            kind: order.kind(),
+            user: order.user,
+            id: order.id,
+            kind: order.kind,
             base_denom: base_denom.clone(),
             quote_denom: quote_denom.clone(),
             direction: order_direction,
@@ -573,7 +686,7 @@ fn clear_orders_of_pair(
             fee_base,
             fee_quote,
             clearing_price,
-            cleared: order.remaining().is_zero(),
+            cleared: order.remaining.is_zero(),
         })?;
 
         // Record the order's trading volume.
@@ -583,7 +696,7 @@ fn clear_orders_of_pair(
             account_querier,
             &base_denom,
             filled_base,
-            order.user().unwrap_or(dex_addr),
+            order.user,
             volumes,
             volumes_by_username,
         )?;
@@ -618,42 +731,27 @@ fn clear_orders_of_pair(
 
 /// Merges three iterators over limit, market, ans passive orders into one iterator.
 /// It achieves this by nesting two `MergedOrders` iterators.
-fn nested_merged_orders<A, B, C>(
+fn merged_orders<A, B>(
     limit: A,
     market: B,
-    passive: C,
     iteration_order: IterationOrder,
 ) -> MergedOrders<
-    MergedOrders<
-        impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
-        impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
-    >,
-    impl Iterator<Item = StdResult<(Udec128_24, Order)>>, /* TODO: simplify this return type once trait alias is stablized: https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html */
+    impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    impl Iterator<Item = StdResult<(Udec128_24, Order)>>,
 >
 where
-    A: Iterator<Item = StdResult<((Udec128_24, OrderId), LimitOrder)>>,
-    B: Iterator<Item = ((Udec128_24, OrderId), MarketOrder)>,
-    C: Iterator<Item = (Udec128_24, PassiveOrder)>,
+    A: Iterator<Item = StdResult<((Udec128_24, OrderId), Order)>>,
+    B: Iterator<Item = ((Udec128_24, OrderId), Order)>,
 {
     // Make the three iterators return the same item type, so they can be merged.
-    let limit = limit.map(|res| res.map(|((price, _), order)| (price, Order::Limit(order))));
-    let market = market.map(|((price, _), order)| Ok((price, Order::Market(order))));
-    let passive = passive.map(|(price, order)| Ok((price, Order::Passive(order))));
+    let limit = limit.map(|res| res.map(|((price, _), order)| (price, order)));
+    let market = market.map(|((price, _), order)| Ok((price, order)));
 
-    // Merge the three iterators.
-    //
-    // The ordering of the three iterators matters! For two reasons:
-    // 1. In `MergedOrders::new(a, b, ..)`, `b` is prioritized.
-    //    We use the following priority: market > limit > passive.
-    // 2. We need to disassemble the `MergedOrders` later and retrieve the market
-    //    order iterator. Note that `Peekable<T>` can't be disassembled to take
-    //    out the inner `T`. So we need to make sure the market order iterator
-    //    is only nested once, not twice.
-    MergedOrders::new(
-        MergedOrders::new(passive, limit, iteration_order),
-        market,
-        iteration_order,
-    )
+    // Merge the two iterators.
+    // The ordering matters! In `MergedOrders::new(a, b, iteration_order)`,
+    // b is preferred over a. In our case, we make the choice to prioritize
+    // market orders over limit orders.
+    MergedOrders::new(limit, market, iteration_order)
 }
 
 /// Find the best price available on one side of the order book after the auction:
@@ -670,16 +768,21 @@ fn find_best_remaining_price<I>(
 where
     I: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
-    if let Some((price, Order::Limit(_) | Order::Passive(_))) = last_partial_matched_order {
-        return Ok(Some(price));
+    if let Some((price, order)) = last_partial_matched_order {
+        if order.kind == OrderKind::Limit {
+            return Ok(Some(price));
+        }
     }
 
-    if let Some((price, Order::Limit(_) | Order::Passive(_))) = first_unmatched_order {
-        return Ok(Some(price));
+    if let Some((price, order)) = first_unmatched_order {
+        if order.kind == OrderKind::Limit {
+            return Ok(Some(price));
+        }
     }
 
     for res in other_unmatched_orders {
-        if let (price, Order::Limit(_) | Order::Passive(_)) = res? {
+        let (price, order) = res?;
+        if order.kind == OrderKind::Limit {
             return Ok(Some(price));
         }
     }
@@ -687,7 +790,7 @@ where
     Ok(None)
 }
 
-/// Handle the `FillingOutcome` of a user order.
+/// Handle the `FillingOutcome` of a user order (limit or market).
 ///
 /// ## Returns
 ///
@@ -747,11 +850,11 @@ fn fill_passive_order(
     Ok(())
 }
 
-/// Add a refund to the `refunds` transfer builder and emit an order canceled event
-/// for an unmatched market order.
+/// Add a refund to the `refunds` transfer builder and emit an order canceled
+/// event of a market order.
 ///
 /// If the order is not a market order, then this function is a no-op.
-fn refund_unmatched_market_order(
+fn refund_market_order(
     base_denom: &Denom,
     quote_denom: &Denom,
     direction: Direction,
@@ -759,7 +862,7 @@ fn refund_unmatched_market_order(
     events: &mut EventBuilder,
     refunds: &mut TransferBuilder<DecCoins<6>>,
 ) -> StdResult<()> {
-    let Order::Market(order) = order else {
+    if order.kind != OrderKind::Market {
         // Market orders are immediate-or-cancel, so unmatched market orders are
         // to be canceled and the user refunded.
         // Unmatched limit and passive orders remain in the order book, so nothing
@@ -775,15 +878,19 @@ fn refund_unmatched_market_order(
         Direction::Ask => (base_denom.clone(), order.remaining),
     };
 
-    events.push(OrderCanceled {
-        user: order.user,
-        id: order.id,
-        kind: order.kind(),
-        remaining: order.remaining,
-        refund: (refund_denom.clone(), refund_amount).into(),
-    })?;
+    if refund_amount.is_non_zero() {
+        events.push(OrderCanceled {
+            user: order.user,
+            id: order.id,
+            kind: order.kind,
+            remaining: order.remaining,
+            refund: (refund_denom.clone(), refund_amount).into(),
+        })?;
 
-    refunds.insert(order.user, refund_denom, refund_amount)
+        refunds.insert(order.user, refund_denom, refund_amount)?;
+    }
+
+    Ok(())
 }
 
 /// Updates trading volumes for both user addresses and usernames
@@ -875,7 +982,7 @@ mod tests {
         dango_types::{
             config::{AppAddresses, AppConfig},
             constants::{dango, usdc},
-            dex::{PairParams, PassiveLiquidity},
+            dex::{Geometric, PairParams, PassiveLiquidity},
             oracle::PriceSource,
         },
         grug::{Bounded, MockContext, MockQuerier, Timestamp, Uint128},
@@ -1095,11 +1202,13 @@ mod tests {
                 (&dango::DENOM, &usdc::DENOM),
                 &PairParams {
                     lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
-                    pool_type: PassiveLiquidity::Geometric {
-                        order_spacing: Udec128::ZERO,
+                    pool_type: PassiveLiquidity::Geometric(Geometric {
+                        spacing: Udec128::ZERO,
                         ratio: Bounded::new_unchecked(Udec128::ONE),
-                    },
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                        limit: 10,
+                    }),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::from_str("0.001").unwrap()),
                 },
             )
             .unwrap();
@@ -1118,13 +1227,14 @@ mod tests {
                             price,
                             id,
                         ),
-                        MarketOrder {
+                        Order {
                             user: MOCK_USER,
                             id,
+                            kind: OrderKind::Market,
                             price,
                             amount,
                             remaining: amount.checked_into_dec().unwrap(),
-                            created_at_block_height: MOCK_BLOCK_HEIGHT,
+                            created_at_block_height: Some(MOCK_BLOCK_HEIGHT),
                         },
                     ),
                 )
@@ -1143,13 +1253,14 @@ mod tests {
                         price,
                         id,
                     ),
-                    &LimitOrder {
+                    &Order {
                         user: MOCK_USER,
                         id,
+                        kind: OrderKind::Limit,
                         price,
                         amount,
                         remaining: amount.checked_into_dec().unwrap(),
-                        created_at_block_height: MOCK_BLOCK_HEIGHT,
+                        created_at_block_height: Some(MOCK_BLOCK_HEIGHT),
                     },
                 )
                 .unwrap();

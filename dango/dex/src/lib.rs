@@ -1,6 +1,7 @@
 pub mod core;
 mod cron;
 mod execute;
+pub mod liquidity_depth;
 mod query;
 mod state;
 

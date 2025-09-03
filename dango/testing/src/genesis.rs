@@ -14,17 +14,18 @@ use {
         auth::Key,
         bank::Metadata,
         constants::{
-            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
+            FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, PYTH_PRICE_SOURCES, TEN, atom, bch,
+            bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
         },
-        dex::{PairParams, PairUpdate, PassiveLiquidity},
+        dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
         gateway::{Remote, WithdrawalFee},
         lending::InterestRateModel,
         taxman,
     },
     grug::{
         Addressable, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Udec128, Uint128, btree_map,
-        btree_set, coins,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NonZero, NumberConst, Udec128, Uint128,
+        btree_map, btree_set, coins,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -34,7 +35,7 @@ use {
         isms::multisig::ValidatorSet,
     },
     pyth_types::constants::GUARDIAN_SETS,
-    std::str::FromStr,
+    std::{collections::BTreeSet, str::FromStr},
 };
 
 /// Describing a data that has a preset value for testing purposes.
@@ -340,10 +341,12 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk {
-                            order_spacing: Udec128::ONE,
+                        pool_type: PassiveLiquidity::Xyk(Xyk {
+                            spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                        },
+                            limit: 30,
+                        }),
+                        bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
                 },
@@ -352,9 +355,18 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk {
-                            order_spacing: Udec128::ONE,
+                        pool_type: PassiveLiquidity::Xyk(Xyk {
+                            spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                            limit: 30,
+                        }),
+                        bucket_sizes: btree_set! {
+                            NonZero::new_unchecked(ONE_HUNDREDTH),
+                            NonZero::new_unchecked(ONE_TENTH),
+                            NonZero::new_unchecked(ONE),
+                            NonZero::new_unchecked(TEN),
+                            NonZero::new_unchecked(FIFTY),
+                            NonZero::new_unchecked(ONE_HUNDRED),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
@@ -364,9 +376,18 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk {
-                            order_spacing: Udec128::ONE,
+                        pool_type: PassiveLiquidity::Xyk(Xyk {
+                            spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                            limit: 30,
+                        }),
+                        bucket_sizes: btree_set! {
+                            NonZero::new_unchecked(ONE_HUNDREDTH),
+                            NonZero::new_unchecked(ONE_TENTH),
+                            NonZero::new_unchecked(ONE),
+                            NonZero::new_unchecked(TEN),
+                            NonZero::new_unchecked(FIFTY),
+                            NonZero::new_unchecked(ONE_HUNDRED),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },
@@ -376,9 +397,16 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk {
-                            order_spacing: Udec128::ONE,
+                        pool_type: PassiveLiquidity::Xyk(Xyk {
+                            spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                            limit: 30,
+                        }),
+                        bucket_sizes: btree_set! {
+                            NonZero::new_unchecked(ONE_HUNDREDTH),
+                            NonZero::new_unchecked(ONE_TENTH),
+                            NonZero::new_unchecked(ONE),
+                            NonZero::new_unchecked(TEN),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
                     },

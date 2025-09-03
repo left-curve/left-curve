@@ -150,6 +150,14 @@ export {
   usePoolLiquidityState,
 } from "./hooks/usePoolLiquidityState.js";
 
+export {
+  useSearchBar,
+  type UseSearchBarParameters,
+  type SearchBarResult,
+} from "./hooks/useSearchBar.js";
+
+export { useFavApplets } from "./hooks/useFavApplets.js";
+
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";

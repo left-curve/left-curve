@@ -42,6 +42,7 @@ target/
 **/build
 !ui/portal/app/.eas/build/
 !ui/portal/web/**/*.pdf
+ui/portal/web/public/images
 **/.turbo
 
 # SDK
@@ -56,9 +57,9 @@ sdk/docs
 *storybook.log
 app.pages.ts
 next-env.d.ts
-ui/config/project.inlang/*
-!ui/config/project.inlang/settings.json
-!ui/config/project.inlang/project_id
+ui/foundation/project.inlang/*
+!ui/foundation/project.inlang/settings.json
+!ui/foundation/project.inlang/project_id
 
 # Data used in testing
 **/testdata/

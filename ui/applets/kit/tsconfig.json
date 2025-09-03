@@ -13,6 +13,9 @@
     },
     {
       "path": "../../store"
+    },
+    {
+      "path": "../../foundation"
     }
   ]
 }

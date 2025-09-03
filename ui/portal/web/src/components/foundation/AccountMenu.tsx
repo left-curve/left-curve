@@ -194,7 +194,7 @@ const Desktop: React.FC = () => {
       )}
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
-        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-secondary-gray">
+        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-secondary-gray overflow-hidden">
           <Menu />
         </div>
       </div>
@@ -274,7 +274,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
       </div>
       <motion.div
         key={activeTab}
-        className="flex flex-col w-full overflow-y-scroll scrollbar-none pb-4 h-full max-h-[calc(100svh-20rem)]"
+        className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full max-h-[calc(100svh-20rem)]"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -291,15 +291,9 @@ export const WalletTab: React.FC = () => {
   const balances = Object.entries(context.balances);
 
   return (
-    <div className="flex flex-col w-full items-center">
+    <div className="flex flex-col w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none pb-10">
       {balances.length > 0 ? (
-        <div className="flex flex-col w-full gap-4 items-center">
-          <div className="flex flex-col w-full gap-2">
-            {balances.map(([denom, amount]) => (
-              <AssetCard key={denom} coin={{ denom, amount }} />
-            ))}
-          </div>
-        </div>
+        balances.map(([denom, amount]) => <AssetCard key={denom} coin={{ denom, amount }} />)
       ) : (
         <div className="px-4">
           <EmptyPlaceholder component={m["accountMenu.noWalletCoins"]()} className="p-4" />

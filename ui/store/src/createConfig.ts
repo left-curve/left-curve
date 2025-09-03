@@ -137,8 +137,6 @@ export function createConfig<
 
     const addresses = plainObject(appConfig.addresses) as Flatten<AppConfig["addresses"]>;
 
-    console.log("addresses interal", addresses);
-
     _appConfig = {
       ...appConfig,
       addresses: {

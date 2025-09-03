@@ -1,26 +1,15 @@
-import Svg, { Path } from "react-native-svg";
+import { Path } from "react-native-svg";
 
 import type { SvgProps } from "react-native-svg";
 import type React from "react";
+import { Svg } from "./SvgBase";
 
-export const IconAddCross: React.FC<SvgProps & { size?: number }> = ({
-  color = "#2E2521",
-  size = 24,
-  width,
-  height,
-  ...props
-}) => {
+export const IconAddCross: React.FC<SvgProps> = ({ ...props }) => {
   return (
-    <Svg
-      width={size || width || 24}
-      height={size || height || 24}
-      viewBox="0 0 48 48"
-      fill="none"
-      {...props}
-    >
+    <Svg width={24} height={24} viewBox="0 0 48 48" fill="none" {...props}>
       <Path
         d="M24 12v24M36 24H12"
-        stroke={color}
+        stroke="currentColor"
         strokeWidth={3.5}
         strokeLinecap="round"
         strokeLinejoin="round"

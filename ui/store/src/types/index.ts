@@ -59,5 +59,7 @@ export type {
   WithBalance,
 } from "./coin.js";
 
+export type { AppletMetadata } from "./applets.js";
+
 export { ConnectionStatus } from "./store.js";
 export { ConnectorIds } from "./connector.js";
