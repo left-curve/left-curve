@@ -12,6 +12,7 @@ use {
         Addressable, BalanceChange, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded,
         Part, QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
     },
+    std::collections::BTreeSet,
 };
 
 #[test]
@@ -449,6 +450,67 @@ fn query_namespace_owners_works() {
         .should_succeed_and_equal(btree_map! {
             Part::new_unchecked("dex") => contracts.dex,
             Part::new_unchecked("bridge") => contracts.gateway,
+        });
+}
+
+#[test]
+fn query_metadatas_works() {
+    let (suite, _, _, contracts, _) = setup_test_naive(Default::default());
+
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|metadatas| {
+            metadatas.keys().collect::<BTreeSet<_>>()
+                == BTreeSet::from([
+                    &Denom::new_unchecked(["bridge", "atom"]),
+                    &Denom::new_unchecked(["bridge", "bch"]),
+                    &Denom::new_unchecked(["bridge", "bnb"]),
+                    &Denom::new_unchecked(["bridge", "btc"]),
+                    &Denom::new_unchecked(["bridge", "doge"]),
+                    &Denom::new_unchecked(["bridge", "eth"]),
+                    &Denom::new_unchecked(["bridge", "ltc"]),
+                    &Denom::new_unchecked(["bridge", "sol"]),
+                    &Denom::new_unchecked(["bridge", "usdc"]),
+                    &Denom::new_unchecked(["bridge", "xrp"]),
+                    &Denom::new_unchecked(["dango"]),
+                ])
+        });
+
+    // Start after btc
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
+            start_after: Some(Denom::new_unchecked(["bridge", "btc"])),
+            limit: None,
+        })
+        .should_succeed_and(|metadatas| {
+            metadatas.keys().collect::<BTreeSet<_>>()
+                == BTreeSet::from([
+                    &Denom::new_unchecked(["bridge", "doge"]),
+                    &Denom::new_unchecked(["bridge", "eth"]),
+                    &Denom::new_unchecked(["bridge", "ltc"]),
+                    &Denom::new_unchecked(["bridge", "sol"]),
+                    &Denom::new_unchecked(["bridge", "usdc"]),
+                    &Denom::new_unchecked(["bridge", "xrp"]),
+                    &Denom::new_unchecked(["dango"]),
+                ])
+        });
+
+    // Limit 3
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
+            start_after: None,
+            limit: Some(3),
+        })
+        .should_succeed_and(|metadatas| {
+            metadatas.keys().collect::<BTreeSet<_>>()
+                == BTreeSet::from([
+                    &Denom::new_unchecked(["bridge", "atom"]),
+                    &Denom::new_unchecked(["bridge", "bch"]),
+                    &Denom::new_unchecked(["bridge", "bnb"]),
+                ])
         });
 }
 
