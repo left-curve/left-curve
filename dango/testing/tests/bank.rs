@@ -6,11 +6,11 @@ use {
             QueryOrphanedTransfersBySenderRequest, QueryOrphanedTransfersRequest, Received, Sent,
             TransferOrphaned,
         },
-        constants::{dango, usdc},
+        constants::{dango, eth, usdc},
     },
     grug::{
         Addressable, BalanceChange, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded,
-        Part, QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
+        Part, QuerierExt, ResultExt, SearchEvent, Uint128, addr, btree_map, coins,
     },
     std::collections::BTreeSet,
 };
@@ -566,4 +566,33 @@ fn top_level_denom_cannot_be_minted_or_burned_by_non_chain_owner() {
         .should_fail_with_error(
             "only chain owner can mint, burn, or set metadata of top-level denoms",
         );
+}
+
+#[test]
+fn query_supplies_works() {
+    let (suite, ..) = setup_test_naive(Default::default());
+
+    let supplies = suite.query_supplies(None, None).unwrap();
+
+    assert_eq!(supplies, coins! {
+        dango::DENOM.clone() => Uint128::from(1000900000000000000),
+        usdc::DENOM.clone() => Uint128::from(1000000000000),
+        eth::DENOM.clone() => Uint128::from(20000000200000000000),
+    });
+
+    // Start after eth
+    let supplies = suite
+        .query_supplies(Some(eth::DENOM.clone()), None)
+        .unwrap();
+    assert_eq!(supplies, coins! {
+        usdc::DENOM.clone() => Uint128::from(1000000000000),
+        dango::DENOM.clone() => Uint128::from(1000900000000000000),
+    });
+
+    // Limit 2
+    let supplies = suite.query_supplies(None, Some(2)).unwrap();
+    assert_eq!(supplies, coins! {
+        usdc::DENOM.clone() => Uint128::from(1000000000000),
+        eth::DENOM.clone() => Uint128::from(20000000200000000000),
+    });
 }

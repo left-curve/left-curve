@@ -672,4 +672,12 @@ where
     pub fn balances(&mut self) -> BalanceTracker<'_, DB, VM, PP, ID> {
         BalanceTracker { suite: self }
     }
+
+    pub fn query_supplies(
+        &self,
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    ) -> StdResult<Coins> {
+        <Self as QuerierExt>::query_supplies(self, start_after, limit)
+    }
 }
