@@ -1,4 +1,3 @@
-import { useConfig } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -23,6 +22,7 @@ type OrderNotificationProps = {
   kind: OrderTypes;
   base: AnyCoin;
   quote: AnyCoin;
+  title: string;
   details: {
     price: string;
     amount: string;
@@ -31,7 +31,7 @@ type OrderNotificationProps = {
 };
 
 export const OrderNotification: React.FC<OrderNotificationProps> = (parameters) => {
-  const { txHash, blockHeight, kind, base, quote, details } = parameters;
+  const { title, txHash, blockHeight, kind, base, quote, details } = parameters;
   const isLimit = kind === OrderType.Limit;
   const Icon = isLimit ? IconLimitOrder : IconMarketOrder;
 
@@ -78,7 +78,7 @@ export const OrderNotification: React.FC<OrderNotificationProps> = (parameters) 
 
       <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
         <div className="flex items-center gap-2 diatype-m-medium text-secondary-700 capitalize">
-          <span>{m["notifications.notification.orderCreated.title"]({ orderType: kind })}</span>
+          <span>{title}</span>
           <Badge text="Spot" />
         </div>
 
