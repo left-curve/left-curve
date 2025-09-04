@@ -414,6 +414,45 @@ fn set_namespace_owner_works() {
 }
 
 #[test]
+fn query_namespace_owners_works() {
+    let (suite, _, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Query namespace owners. Should succeed.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map! {
+            Part::new_unchecked("dex") => contracts.dex,
+            Part::new_unchecked("lending") => contracts.lending,
+            Part::new_unchecked("bridge") => contracts.gateway,
+        });
+
+    // Query namespace owners with start_after. Should succeed.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
+            start_after: Some(Part::new_unchecked("bridge")),
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map! {
+            Part::new_unchecked("lending") => contracts.lending,
+            Part::new_unchecked("dex") => contracts.dex,
+        });
+
+    // Query namespace owners with limit. Should succeed.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
+            start_after: None,
+            limit: Some(2),
+        })
+        .should_succeed_and_equal(btree_map! {
+            Part::new_unchecked("dex") => contracts.dex,
+            Part::new_unchecked("bridge") => contracts.gateway,
+        });
+}
+
+#[test]
 fn force_transfer_can_only_be_called_by_taxman() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
