@@ -348,6 +348,7 @@ impl Preset for DexOption {
                         }),
                         bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO, /* TODO: for mainnet, a minimum of $10 is sensible */
                     },
                 },
                 PairUpdate {
@@ -369,6 +370,7 @@ impl Preset for DexOption {
                             NonZero::new_unchecked(ONE_HUNDRED),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -390,6 +392,7 @@ impl Preset for DexOption {
                             NonZero::new_unchecked(ONE_HUNDRED),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -409,6 +412,7 @@ impl Preset for DexOption {
                             NonZero::new_unchecked(TEN),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
             ],
