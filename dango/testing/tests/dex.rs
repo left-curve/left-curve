@@ -7178,6 +7178,34 @@ fn limit_order_minimum_order_size(
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "bid smaller than minimum order size no slippage"
 )]
+#[test_case( 
+    // This test case is equal to the above test case 
+    // 'bid smaller than minimum order size no slippage'
+    // but with slippage accounted order size is large
+    // enough and so it should succeed, whereas the above
+    // test case should fail. It is important that these
+    // two tests remain equal except for the slippage
+    // and expected error.
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        max_slippage: Bounded::new_unchecked(Udec128::new_percent(1)),
+    },
+    coins! { dango::DENOM.clone() => 200 },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    None;
+    "bid smaller than minimum order size but larger with slippage accounted for"
+)]
 #[test_case(
     CreateLimitOrderRequest {
         base_denom: dango::DENOM.clone(),
@@ -7198,6 +7226,34 @@ fn limit_order_minimum_order_size(
     Uint128::new(100),
     None;
     "ask equal to minimum order size no slippage"
+)]
+#[test_case(
+    // This test case is equal to the above test case 
+    // 'ask equal to minimum order size no slippage'
+    // but with slippage accounted order size is smaller
+    // enough and so it should fail, whereas the above
+    // test case should succeed. It is important that these
+    // two tests remain equal except for the slippage
+    // and expected error.
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(199)),
+        max_slippage: Bounded::new_unchecked(Udec128::new_percent(1)),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    coins! { dango::DENOM.clone() => 199 },
+    Uint128::new(100),
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
+    "ask equal to minimum order size but smaller with slippage accounted for"
 )]
 #[test_case(
     CreateLimitOrderRequest {
