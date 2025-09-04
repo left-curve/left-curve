@@ -7178,7 +7178,7 @@ fn limit_order_minimum_order_size(
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "bid smaller than minimum order size no slippage"
 )]
-#[test_case( 
+#[test_case(
     // This test case is equal to the above test case 
     // 'bid smaller than minimum order size no slippage'
     // but with slippage accounted order size is large
