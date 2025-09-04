@@ -62,7 +62,6 @@ export default defineConfig({
     aliasStrategy: "prefer-alias",
     alias: {
       // Order matters
-      "~/paraglide": path.resolve(__dirname, "./.paraglide"),
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
