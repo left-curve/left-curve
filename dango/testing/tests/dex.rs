@@ -7044,10 +7044,10 @@ fn decrease_liquidity_depths_minimal_failing_test() {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
         direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(200)),
+        amount: NonZero::new_unchecked(Uint128::new(199)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
-    coins! { dango::DENOM.clone() => 200 },
+    coins! { dango::DENOM.clone() => 199 },
     Uint128::new(100),
     None;
     "ask equal to minimum order size"
@@ -7065,7 +7065,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "ask smaller than minimum order size"
 )]
-fn minimum_order_size(
+fn limit_order_minimum_order_size(
     order: CreateLimitOrderRequest,
     funds: Coins,
     min_order_size: Uint128,
@@ -7130,6 +7130,172 @@ fn minimum_order_size(
                         cancels: None,
                     },
                     funds,
+                )
+                .should_fail_with_error(error);
+        },
+    }
+}
+
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(199)),
+        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+    },
+    coins! { dango::DENOM.clone() => 200 },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    None;
+    "bid equal to minimum order size no slippage"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+    },
+    coins! { dango::DENOM.clone() => 200 },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
+    "bid smaller than minimum order size no slippage"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(199)),
+        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    coins! { dango::DENOM.clone() => 199 },
+    Uint128::new(100),
+    None;
+    "ask equal to minimum order size no slippage"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    coins! { dango::DENOM.clone() => 198 },
+    Uint128::new(100),
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
+    "ask smaller than minimum order size no slippage"
+)]
+fn market_order_minimum_order_size(
+    limit_order: CreateLimitOrderRequest,
+    market_order: CreateMarketOrderRequest,
+    limit_order_funds: Coins,
+    market_order_funds: Coins,
+    min_order_size: Uint128,
+    expected_error: Option<&str>,
+) {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Update the pair params with the minimum order size
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            min_order_size,
+                            ..pair_params.clone()
+                        },
+                    }])),
+                    Coins::new(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Submit the limit order to create a resting order book
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![limit_order],
+                cancels: None,
+            },
+            limit_order_funds,
+        )
+        .should_succeed();
+
+    // Submit the order
+    match expected_error {
+        None => {
+            suite
+                .execute(
+                    &mut accounts.user1,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![market_order],
+                        creates_limit: vec![],
+                        cancels: None,
+                    },
+                    market_order_funds,
+                )
+                .should_succeed();
+        },
+        Some(error) => {
+            suite
+                .execute(
+                    &mut accounts.user1,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![market_order],
+                        creates_limit: vec![],
+                        cancels: None,
+                    },
+                    market_order_funds,
                 )
                 .should_fail_with_error(error);
         },
