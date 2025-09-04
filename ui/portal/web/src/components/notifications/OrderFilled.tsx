@@ -1,8 +1,7 @@
 import { useConfig } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
-import { useApp } from "~/hooks/useApp";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
 import { OrderType, Direction } from "@left-curve/dango/types";
 
@@ -12,6 +11,7 @@ import {
   IconMarketOrder,
   PairAssets,
   twMerge,
+  useApp,
 } from "@left-curve/applets-kit";
 
 import type { Notification } from "~/hooks/useNotifications";

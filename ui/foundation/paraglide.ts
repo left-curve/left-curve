@@ -1,6 +1,7 @@
 import { compile } from "@inlang/paraglide-js";
 
 (() => {
+  console.log("Compiling Paraglide project...");
   compile({
     project: "./project.inlang",
     outdir: "paraglide",

@@ -1,9 +1,8 @@
-import { useApp } from "~/hooks/useApp";
 import { useNavigate } from "@tanstack/react-router";
 
-import { AddressVisualizer, Badge, IconNewAccount } from "@left-curve/applets-kit";
+import { AddressVisualizer, Badge, IconNewAccount, useApp } from "@left-curve/applets-kit";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
 import type { Notification } from "~/hooks/useNotifications";
