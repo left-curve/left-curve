@@ -6,7 +6,7 @@ import type {
   Signer,
   SubscriptionCallbacks,
   Transport,
-} from "#types/index.js";
+} from "../../../types/index.js";
 
 export type EventsByAddressesSubscriptionParameters = SubscriptionCallbacks<{
   eventByAddresses: IndexedEvent[];
