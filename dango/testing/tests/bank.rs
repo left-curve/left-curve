@@ -313,7 +313,7 @@ fn set_namespace_owner_can_only_be_called_by_owner() {
 }
 
 #[test]
-fn set_metadata_can_only_be_called_by_non_namespace_owner_and_set_namespace_owner_works() {
+fn set_metadata_can_only_be_called_by_non_namespace_owner() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     // Attempt to set metadata as non-namespace owner. Should fail.
@@ -377,6 +377,40 @@ fn set_metadata_can_only_be_called_by_non_namespace_owner_and_set_namespace_owne
             description: None,
             decimals: 6,
         });
+}
+
+#[test]
+fn set_namespace_owner_works() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Query namespace owner of testing. Should fail because it's not set.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnerRequest {
+            namespace: Part::new_unchecked("testing"),
+        })
+        .should_fail_with_error(
+            "msg: data not found! type: grug_types::encoded_bytes::EncodedBytes",
+        );
+
+    // Set user1 as namespace owner of testing
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.bank,
+            &bank::ExecuteMsg::SetNamespaceOwner {
+                namespace: Part::new_unchecked("testing"),
+                owner: accounts.user1.address(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Query namespace owner of testing. Should succeed.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnerRequest {
+            namespace: Part::new_unchecked("testing"),
+        })
+        .should_succeed_and_equal(accounts.user1.address());
 }
 
 #[test]
