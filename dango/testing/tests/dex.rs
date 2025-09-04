@@ -7036,7 +7036,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
     },
     coins! { usdc::DENOM.clone() => 100 },
     Uint128::new(100),
-    Some("order size (99) is less than the minimum (100)");
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "bid smaller than minimum order size"
 )]
 #[test_case(
@@ -7062,7 +7062,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
     },
     coins! { dango::DENOM.clone() => 198 },
     Uint128::new(100),
-    Some("order size (99) is less than the minimum (100)");
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "ask smaller than minimum order size"
 )]
 fn minimum_order_size(

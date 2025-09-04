@@ -35,9 +35,11 @@ pub(super) fn create_limit_order(
 
     ensure!(
         amount_quote >= pair.min_order_size,
-        "order size ({}) is less than the minimum ({})",
+        "order size ({} {}) is less than the minimum ({} {})",
         amount_quote,
-        pair.min_order_size
+        order.quote_denom,
+        pair.min_order_size,
+        order.quote_denom
     );
 
     let deposit = match order.direction {
@@ -179,9 +181,11 @@ pub(super) fn create_market_order(
 
     ensure!(
         amount_quote >= pair.min_order_size,
-        "order size ({}) is less than the minimum ({})",
+        "order size ({} {}) is less than the minimum ({} {})",
         amount_quote,
-        pair.min_order_size
+        order.quote_denom,
+        pair.min_order_size,
+        order.quote_denom
     );
 
     let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
