@@ -1,13 +1,14 @@
 import { useTheme } from "~/hooks/useTheme";
 
-import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
 import { Shadow } from "react-native-shadow-2";
 import { LinearGradient } from "expo-linear-gradient";
+import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { twMerge } from "@left-curve/foundation";
 import { tv } from "tailwind-variants";
+import { twMerge } from "@left-curve/foundation";
+import { cloneElement, isValidElement } from "react";
 
-import React, { isValidElement } from "react";
+import type React from "react";
 import type { VariantProps } from "tailwind-variants";
 import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 
@@ -97,7 +98,7 @@ const buttonVariants = tv({
         text: "exposure-sm-italic",
       },
       md: {
-        base: "h-[40px] py-[10px] px-3",
+        base: "h-[40px] py-[8px] px-3",
         icons: "",
         text: "exposure-sm-italic text-md",
       },
@@ -258,7 +259,7 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   const styles = buttonVariants({ variant, size, isDisabled, radius });
   const renderIcon = (node?: ReactNode) =>
     isValidElement(node)
-      ? React.cloneElement(node as ReactElement, {
+      ? cloneElement(node as ReactElement, {
           className: twMerge(styles.icons(), classNames?.icons),
         })
       : null;
@@ -268,14 +269,18 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
 
   const childrenComponent =
     children && isValidElement(children)
-      ? React.cloneElement(children as React.ReactElement, {
+      ? cloneElement(children as ReactElement, {
           className: twMerge(styles.text(), classNames?.text),
         })
       : children;
 
   return (
     <ButtonShadow radius={radius} variant={variant}>
-      <Pressable disabled={isDisabled || isLoading} onPress={onPress}>
+      <Pressable
+        disabled={isDisabled || isLoading}
+        onPress={onPress}
+        className={twMerge("flex flex-row items-center justify-center", classNames?.base)}
+      >
         {isLoading ? (
           <ActivityIndicator color="white" size="small" />
         ) : (

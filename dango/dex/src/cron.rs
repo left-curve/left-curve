@@ -281,7 +281,7 @@ fn clear_orders_of_pair(
                         storage,
                         &base_denom,
                         &quote_denom,
-                        Direction::Bid,
+                        Direction::Ask,
                         price,
                         remaining,
                         bucket_sizes,
@@ -1209,6 +1209,7 @@ mod tests {
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::from_str("0.001").unwrap()),
+                    min_order_size: Uint128::ZERO,
                 },
             )
             .unwrap();

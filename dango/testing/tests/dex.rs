@@ -1140,6 +1140,7 @@ fn only_owner_can_create_passive_pool() {
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
+                    min_order_size: Uint128::ZERO,
                 },
             }])),
             Coins::new(),
@@ -1163,6 +1164,7 @@ fn only_owner_can_create_passive_pool() {
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
+                    min_order_size: Uint128::ZERO,
                 },
             }])),
             Coins::new(),
@@ -1332,6 +1334,7 @@ fn provide_liquidity(
                             bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             pool_type,
+                            min_order_size: Uint128::ZERO,
                         },
                     }])),
                     Coins::new(),
@@ -1451,6 +1454,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
                                 limit: 10,
                             }),
+                            min_order_size: Uint128::ZERO,
                         },
                     }])),
                     Coins::new(),
@@ -1526,6 +1530,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                             bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
                             pool_type: pair_params.pool_type.clone(),
+                            min_order_size: Uint128::ZERO,
                         },
                     }])),
                     Coins::new(),
@@ -1918,6 +1923,7 @@ fn swap_exact_amount_in(
                                     bucket_sizes: BTreeSet::new(),
                                     swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
                                     pool_type: pair_params.pool_type.clone(),
+                                    min_order_size: Uint128::ZERO,
                                 },
                             },
                         ])),
@@ -2393,6 +2399,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
                                 limit: 10,
                             }),
+                            min_order_size: Uint128::ZERO,
                         },
                     }])),
                     Coins::new(),
@@ -2873,6 +2880,7 @@ fn curve_on_orderbook(
                             pool_type,
                             bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
+                            min_order_size: Uint128::ZERO,
                         },
                     }])),
                     pool_liquidity.clone(),
@@ -6829,6 +6837,404 @@ fn decrease_liquidity_depths_minimal_failing_test() {
             limit: None,
         })
         .should_succeed_and_equal(BTreeMap::new());
+}
+
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(199)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    None;
+    "bid equal to minimum order size"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
+    "bid smaller than minimum order size"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(199)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    coins! { dango::DENOM.clone() => 199 },
+    Uint128::new(100),
+    None;
+    "ask equal to minimum order size"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    coins! { dango::DENOM.clone() => 198 },
+    Uint128::new(100),
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
+    "ask smaller than minimum order size"
+)]
+fn limit_order_minimum_order_size(
+    order: CreateLimitOrderRequest,
+    funds: Coins,
+    min_order_size: Uint128,
+    expected_error: Option<&str>,
+) {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Update the pair params with the minimum order size
+
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: pair_params.lp_denom.clone(),
+                            bucket_sizes: BTreeSet::new(),
+                            swap_fee_rate: pair_params.swap_fee_rate,
+                            pool_type: pair_params.pool_type.clone(),
+                            min_order_size,
+                        },
+                    }])),
+                    Coins::new(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Submit the order
+    match expected_error {
+        None => {
+            suite
+                .execute(
+                    &mut accounts.user1,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![],
+                        creates_limit: vec![order],
+                        cancels: None,
+                    },
+                    funds,
+                )
+                .should_succeed();
+        },
+
+        Some(error) => {
+            suite
+                .execute(
+                    &mut accounts.user1,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![],
+                        creates_limit: vec![order],
+                        cancels: None,
+                    },
+                    funds,
+                )
+                .should_fail_with_error(error);
+        },
+    }
+}
+
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(199)),
+        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+    },
+    coins! { dango::DENOM.clone() => 200 },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    None;
+    "bid equal to minimum order size no slippage"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+    },
+    coins! { dango::DENOM.clone() => 200 },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
+    "bid smaller than minimum order size no slippage"
+)]
+#[test_case(
+    // This test case is equal to the above test case
+    // 'bid smaller than minimum order size no slippage'
+    // but with slippage accounted order size is large
+    // enough and so it should succeed, whereas the above
+    // test case should fail. It is important that these
+    // two tests remain equal except for the slippage
+    // and expected error.
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        max_slippage: Bounded::new_unchecked(Udec128::new_percent(1)),
+    },
+    coins! { dango::DENOM.clone() => 200 },
+    coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
+    None;
+    "bid smaller than minimum order size but larger with slippage accounted for"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(199)),
+        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    coins! { dango::DENOM.clone() => 199 },
+    Uint128::new(100),
+    None;
+    "ask equal to minimum order size no slippage"
+)]
+#[test_case(
+    // This test case is equal to the above test case
+    // 'ask equal to minimum order size no slippage'
+    // but with slippage accounted order size is smaller
+    // enough and so it should fail, whereas the above
+    // test case should succeed. It is important that these
+    // two tests remain equal except for the slippage
+    // and expected error.
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(199)),
+        max_slippage: Bounded::new_unchecked(Udec128::new_percent(1)),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    coins! { dango::DENOM.clone() => 199 },
+    Uint128::new(100),
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
+    "ask equal to minimum order size but smaller with slippage accounted for"
+)]
+#[test_case(
+    CreateLimitOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Bid,
+        amount: NonZero::new_unchecked(Uint128::new(200)),
+        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+    },
+    CreateMarketOrderRequest {
+        base_denom: dango::DENOM.clone(),
+        quote_denom: usdc::DENOM.clone(),
+        direction: Direction::Ask,
+        amount: NonZero::new_unchecked(Uint128::new(198)),
+        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+    },
+    coins! { usdc::DENOM.clone() => 100 },
+    coins! { dango::DENOM.clone() => 198 },
+    Uint128::new(100),
+    Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
+    "ask smaller than minimum order size no slippage"
+)]
+fn market_order_minimum_order_size(
+    limit_order: CreateLimitOrderRequest,
+    market_order: CreateMarketOrderRequest,
+    limit_order_funds: Coins,
+    market_order_funds: Coins,
+    min_order_size: Uint128,
+    expected_error: Option<&str>,
+) {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Update the pair params with the minimum order size
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and(|pair_params: &PairParams| {
+            suite
+                .execute(
+                    &mut accounts.owner,
+                    contracts.dex,
+                    &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            min_order_size,
+                            ..pair_params.clone()
+                        },
+                    }])),
+                    Coins::new(),
+                )
+                .should_succeed();
+            true
+        });
+
+    // Submit the limit order to create a resting order book
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![limit_order],
+                cancels: None,
+            },
+            limit_order_funds,
+        )
+        .should_succeed();
+
+    // Submit the order
+    match expected_error {
+        None => {
+            suite
+                .execute(
+                    &mut accounts.user1,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![market_order],
+                        creates_limit: vec![],
+                        cancels: None,
+                    },
+                    market_order_funds,
+                )
+                .should_succeed();
+        },
+        Some(error) => {
+            suite
+                .execute(
+                    &mut accounts.user1,
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![market_order],
+                        creates_limit: vec![],
+                        cancels: None,
+                    },
+                    market_order_funds,
+                )
+                .should_fail_with_error(error);
+        },
+    }
+}
+
+#[test]
+fn orders_cannot_be_created_for_non_existing_pair() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Submit limit order
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: eth::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    price: NonZero::new_unchecked(Udec128_24::new(1)),
+                }],
+                cancels: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "pair not found with base `{}` and quote `{}`",
+            dango::DENOM.clone(),
+            eth::DENOM.clone()
+        ));
+
+    // Submit the market order
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: eth::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                }],
+                creates_limit: vec![],
+                cancels: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "pair not found with base `{}` and quote `{}`",
+            dango::DENOM.clone(),
+            eth::DENOM.clone()
+        ));
 }
 
 pub fn create_limit_order_request(

@@ -27,6 +27,7 @@ export const ConnectorTypes = {
   EIP1193: "eip1193",
   Passkey: "passkey",
   Session: "session",
+  Remote: "remote",
 } as const;
 
 export type Connection = {

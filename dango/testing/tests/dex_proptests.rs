@@ -5,7 +5,9 @@ use {
         setup_test_naive,
     },
     dango_types::{
-        constants::{dango, eth, sol, usdc},
+        constants::{
+            FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, TEN, dango, eth, sol, usdc,
+        },
         dex::{
             self, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, PairId, PairParams,
             PairUpdate, PassiveLiquidity, SwapRoute, Xyk,
@@ -276,12 +278,15 @@ impl DexAction {
 
                 assert!(
                     block_outcome
+                        .tx_outcomes
+                        .iter()
+                        .all(|tx_outcome| tx_outcome.result.is_ok())
+                );
+                assert!(
+                    block_outcome
                         .cron_outcomes
-                        .first()
-                        .unwrap()
-                        .cron_event
-                        .as_result()
-                        .is_ok()
+                        .iter()
+                        .all(|cron_outcome| cron_outcome.cron_event.as_result().is_ok())
                 );
             },
             DexAction::CreateMarketOrder {
@@ -290,11 +295,35 @@ impl DexAction {
                 direction,
                 amount,
             } => {
+                let max_slippage = Bounded::<Udec128, ZeroInclusiveOneExclusive>::new(
+                    Udec128::from_str("0.999999").unwrap(),
+                )
+                .unwrap();
+
+                // Query resting order book
+                let resting_order_book = suite
+                    .query_wasm_smart(contracts.dex, dex::QueryRestingOrderBookStateRequest {
+                        base_denom: base_denom.clone(),
+                        quote_denom: quote_denom.clone(),
+                    })
+                    .unwrap();
+                println!("resting order book: {resting_order_book:?}");
+
                 let (deposit, request) = match direction {
-                    Direction::Bid => (
+                    Direction::Bid => {
+                        if resting_order_book.best_ask_price.is_none() {
+                            return Ok(());
+                        }
+                        let best_ask_price = resting_order_book.best_ask_price.unwrap();
+
+                        let one_add_max_slippage = Udec128_24::ONE.saturating_add(*max_slippage);
+                        let price = best_ask_price.saturating_mul(one_add_max_slippage);
+
+                        (
                         Coin {
-                            denom: quote_denom.clone(),
-                            amount: *amount,
+                                denom: quote_denom.clone(),
+                                amount: amount.checked_mul_dec_ceil(price)?,
+                        }
                         },
                         CreateMarketOrderRequest::Bid {
                             base_denom: base_denom.clone(),
@@ -303,10 +332,16 @@ impl DexAction {
                             max_slippage: Bounded::new_unchecked(Udec128::MAX),
                         },
                     ),
-                    Direction::Ask => (
+                    Direction::Ask => {
+                        if resting_order_book.best_bid_price.is_none() {
+                            return Ok(());
+                        }
+
+                        (
                         Coin {
-                            denom: base_denom.clone(),
-                            amount: *amount,
+                                denom: base_denom.clone(),
+                                amount: *amount,
+                        }
                         },
                         CreateMarketOrderRequest::Ask {
                             base_denom: base_denom.clone(),
@@ -338,12 +373,15 @@ impl DexAction {
 
                 assert!(
                     block_outcome
+                        .tx_outcomes
+                        .iter()
+                        .all(|tx_outcome| tx_outcome.result.is_ok())
+                );
+                assert!(
+                    block_outcome
                         .cron_outcomes
-                        .first()
-                        .unwrap()
-                        .cron_event
-                        .as_result()
-                        .is_ok()
+                        .iter()
+                        .all(|cron_outcome| cron_outcome.cron_event.as_result().is_ok())
                 );
             },
             DexAction::ProvideLiquidity {
@@ -505,6 +543,12 @@ fn price() -> impl Strategy<Value = Udec128_24> {
     })
 }
 
+// Proptest strategy for generating an arbitrary price between 0.00000000000000001 and 10000000000
+// fn price() -> impl Strategy<Value = Udec128_24> {
+//     (10_000_000u128..10_000_000_000_000_000_000_000_000_000_000_000u128)
+//         .prop_map(|raw_price| Udec128_24::raw(Uint128::new(raw_price)))
+// }
+
 /// Proptest strategy for generating a SwapRoute
 ///
 /// A SwapRoute can contain 1 or 2 unique pairs. For 2-pair routes, they must be chainable
@@ -551,6 +595,18 @@ fn market_order_with_pair_id(pair_id: PairId) -> impl Strategy<Value = DexAction
     })
 }
 
+fn limit_order() -> impl Strategy<Value = DexAction> {
+    (price(), pair_id(), direction(), amount()).prop_map(
+        move |(price, pair_id, direction, amount)| DexAction::CreateLimitOrder {
+            base_denom: pair_id.base_denom,
+            quote_denom: pair_id.quote_denom,
+            direction,
+            amount,
+            price,
+        },
+    )
+}
+
 /// Proptest strategy for generating a MarketOrder action
 fn market_order() -> impl Strategy<Value = DexAction> {
     (pair_id()).prop_flat_map(market_order_with_pair_id)
@@ -579,17 +635,7 @@ fn provide_liquidity_and_market_order() -> impl Strategy<Value = Vec<DexAction>>
 /// Proptest strategy for generating a DexAction
 fn dex_action() -> impl Strategy<Value = DexAction> {
     prop_oneof![
-        (price(), pair_id(), direction(), amount()).prop_map(
-            move |(price, pair_id, direction, amount)| {
-                DexAction::CreateLimitOrder {
-                    base_denom: pair_id.base_denom,
-                    quote_denom: pair_id.quote_denom,
-                    direction,
-                    amount,
-                    price,
-                }
-            }
-        ),
+        limit_order(),
         market_order(),
         provide_liquidity(),
         (pair_id(), 1u128..95u128).prop_map(move |(pair_id, fraction)| {
@@ -805,6 +851,15 @@ fn test_dex_actions(
             .should_succeed();
     }
 
+    let bucket_sizes: BTreeSet<NonZero<Udec128_24>> = btree_set! {
+        NonZero::new_unchecked(ONE_HUNDREDTH),
+        NonZero::new_unchecked(ONE_TENTH),
+        NonZero::new_unchecked(ONE),
+        NonZero::new_unchecked(TEN),
+        NonZero::new_unchecked(FIFTY),
+        NonZero::new_unchecked(ONE_HUNDRED),
+    };
+
     // Create pairs
     suite
         .execute(
@@ -827,8 +882,9 @@ fn test_dex_actions(
                                 reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
                                 limit: 30,
                             }),
-                            bucket_sizes: BTreeSet::new(),
+                            bucket_sizes: bucket_sizes.clone(),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
+                            min_order_size: Uint128::ZERO,
                         },
                     })
                     .collect(),
@@ -845,6 +901,11 @@ fn test_dex_actions(
     for action in dex_actions {
         // Execute the action.
         action.execute(&mut suite, &mut accounts, &contracts)?;
+
+        // First ensure dex is not paused after executing the last action.
+        suite
+            .query_wasm_smart(contracts.dex, dex::QueryPausedRequest {})
+            .should_succeed_and_equal(false);
 
         // Check balances.
         check_balances(&suite, &contracts)?;

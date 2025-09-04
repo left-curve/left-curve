@@ -1,4 +1,4 @@
-import { useInputs, useWatchEffect } from "@left-curve/applets-kit";
+import { Modals, useApp, useInputs, useWatchEffect } from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -8,9 +8,8 @@ import {
   useSubmitTx,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import {
   AccountSearchInput,
@@ -25,9 +24,8 @@ import {
 } from "@left-curve/applets-kit";
 import type { Address } from "@left-curve/dango/types";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
-import { Modals } from "~/components/modals/RootModal";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { isValidAddress } from "@left-curve/dango";
 import {
@@ -44,7 +42,7 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 
 function TransferApplet() {
   const { toast } = useApp();
-  const { action } = useSearch({ strict: false });
+  const { action } = Route.useSearch();
   const navigate = useNavigate({ from: "/transfer" });
   const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;

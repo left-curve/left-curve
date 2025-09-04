@@ -1,8 +1,8 @@
+import { Svg } from "./SvgBase";
 import { Path } from "react-native-svg";
 
-import type { SvgProps } from "react-native-svg";
 import type React from "react";
-import { Svg } from "./SvgBase";
+import type { SvgProps } from "react-native-svg";
 
 export const IconAddCross: React.FC<SvgProps> = ({ ...props }) => {
   return (

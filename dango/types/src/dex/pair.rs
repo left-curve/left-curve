@@ -1,6 +1,6 @@
 use {
     grug::{
-        Bounded, Denom, NonZero, Udec128, Udec128_24, ZeroExclusiveOneExclusive,
+        Bounded, Denom, NonZero, Udec128, Udec128_24, Uint128, ZeroExclusiveOneExclusive,
         ZeroExclusiveOneInclusive, ZeroInclusiveOneExclusive,
     },
     std::collections::BTreeSet,
@@ -19,7 +19,8 @@ pub struct PairParams {
     /// For the xyk pool, this also sets the spread of the orders when the
     /// passive liquidity is reflected onto the orderbook.
     pub swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
-    // TODO: minimum order size
+    /// Minimum order size, defined _in the quote asset_.
+    pub min_order_size: Uint128,
 }
 
 #[grug::derive(Serde, Borsh)]

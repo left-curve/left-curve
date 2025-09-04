@@ -1,8 +1,7 @@
-import { twMerge, useMediaQuery } from "@left-curve/applets-kit";
+import { twMerge, useApp, useMediaQuery } from "@left-curve/applets-kit";
 import { useAccount, useBalances, usePrices } from "@left-curve/store";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
-import { useApp } from "~/hooks/useApp";
 import { AccountCard } from "../foundation/AccountCard";
 import { AssetsSection } from "./AssetsSection";
 
@@ -28,10 +27,9 @@ interface Props {
 
 export const SwippeableAccountCard: React.FC<Props> = ({ cardVisible, setCardVisible }) => {
   const { account, isConnected } = useAccount();
-  const { setSidebarVisibility } = useApp();
+  const { setSidebarVisibility, settings } = useApp();
   const [direction, setDirection] = useState(0);
   const { data: balances = {} } = useBalances({ address: account?.address });
-  const { settings } = useApp();
   const { formatNumberOptions } = settings;
   const { calculateBalance } = usePrices({ defaultFormatOptions: formatNumberOptions });
   const totalBalance = calculateBalance(balances, {

@@ -1,8 +1,7 @@
 import { useRef } from "react";
-import { useApp } from "~/hooks/useApp";
 import { useAccount } from "@left-curve/store";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useMediaQuery } from "@left-curve/applets-kit";
+import { useApp, useMediaQuery } from "@left-curve/applets-kit";
 
 import { Button, IconButton, IconWallet, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
@@ -11,7 +10,7 @@ import { AccountMenu } from "./AccountMenu";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 interface HeaderProps {
   isScrolled: boolean;

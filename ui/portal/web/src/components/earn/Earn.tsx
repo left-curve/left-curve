@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import { uid } from "@left-curve/dango/utils";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Cell, Table } from "@left-curve/applets-kit";
 import { EmptyPlaceholder } from "../foundation/EmptyPlaceholder";

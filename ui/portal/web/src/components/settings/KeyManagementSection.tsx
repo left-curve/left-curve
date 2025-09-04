@@ -2,10 +2,12 @@ import {
   Button,
   IconAddCross,
   IconTrash,
+  Modals,
   Spinner,
   TextCopy,
   TruncateText,
   twMerge,
+  useApp,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { decodeBase64, encodeHex } from "@left-curve/dango/encoding";
@@ -14,9 +16,8 @@ import { useAccount, useSigningClient } from "@left-curve/store";
 import { ConnectionStatus } from "@left-curve/store/types";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
-import { Modals } from "../modals/RootModal";
+
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { format } from "date-fns";
 
 const KeyTranslation = {

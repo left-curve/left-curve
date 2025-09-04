@@ -7,6 +7,7 @@ export default function AppLayout() {
     <View className="flex-1 bg-surface-primary-rice">
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="convert" options={{ headerShown: false }} />
       </Stack>
       <Menu />
     </View>

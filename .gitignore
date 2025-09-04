@@ -58,13 +58,12 @@ sdk/docs
 app.pages.ts
 next-env.d.ts
 ui/foundation/project.inlang/*
+ui/foundation/paraglide/*
 !ui/foundation/project.inlang/settings.json
 !ui/foundation/project.inlang/project_id
 
 # Data used in testing
 **/testdata/
-**/proptest-regressions/
-**/*.proptest-regressions
 !pyth/client/testdata/
 
 # Network data

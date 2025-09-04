@@ -1,6 +1,6 @@
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { AppletMetadata } from "@left-curve/store/src/types";
+import type { AppletMetadata } from "@left-curve/store/types";
 
 export const WEBRTC_URI = "wss://webrtc.dango.exchange";
 
@@ -22,7 +22,7 @@ export const APPLETS: Record<string, AppletMetadata> = Object.keys(translations)
 
 export const ASSETS = {
   trade: require("@left-curve/foundation/images/emojis/simple/protrading.svg"),
-  "simple-swap": require("@left-curve/foundation/images/emojis/simple/swap.svg"),
+  convert: require("@left-curve/foundation/images/emojis/simple/swap.svg"),
   earn: require("@left-curve/foundation/images/emojis/simple/pig.svg"),
   transfer: require("@left-curve/foundation/images/emojis/simple/money.svg"),
   "create-account": require("@left-curve/foundation/images/emojis/simple/wizard.svg"),

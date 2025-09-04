@@ -1,16 +1,18 @@
 import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { SimpleSwap } from "~/components/dex/SimpleSwap";
+import { Convert } from "@left-curve/applets-convert";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
+import { useApp } from "@left-curve/foundation";
 
-export const Route = createLazyFileRoute("/(app)/_app/swap")({
-  component: SwapApplet,
+export const Route = createLazyFileRoute("/(app)/_app/convert")({
+  component: ConvertApplet,
 });
 
-function SwapApplet() {
+function ConvertApplet() {
   const navigate = useNavigate();
+  const app = useApp();
   const { from, to } = Route.useSearch();
 
   const onChangePair = (pair: { from: string; to: string }) => {
@@ -20,12 +22,12 @@ function SwapApplet() {
   return (
     <div className="w-full md:max-w-[25rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit">
       <MobileTitle title={m["dex.convert.title"]()} />
-      <SimpleSwap pair={{ from, to }} onChangePair={onChangePair}>
-        <SimpleSwap.Header />
-        <SimpleSwap.Form />
-        <SimpleSwap.Details />
-        <SimpleSwap.Trigger />
-      </SimpleSwap>
+      <Convert pair={{ from, to }} onChangePair={onChangePair} appState={app}>
+        <Convert.Header />
+        <Convert.Form />
+        <Convert.Details />
+        <Convert.Trigger />
+      </Convert>
     </div>
   );
 }

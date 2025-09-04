@@ -5,13 +5,11 @@ import type { AppletMetadata } from "../types/applets.js";
 
 export function useFavApplets() {
   const [favApplets, setFavApplets] = useStorage<string[]>("app.applets", {
-    initialValue: ["transfer", "settings", "notifications", "simple-swap", "trade", "earn"],
+    initialValue: ["transfer", "settings", "notifications", "convert", "trade", "earn"],
     version: 1.6,
     sync: true,
     migrations: {
-      1.5: (_: Record<string, AppletMetadata>) => {
-        return ["transfer", "settings", "notifications", "simple-swap", "trade", "earn"];
-      },
+      "*": () => ["transfer", "settings", "notifications", "convert", "trade", "earn"],
     },
   });
 
