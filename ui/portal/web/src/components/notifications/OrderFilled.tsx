@@ -2,6 +2,7 @@ import { useConfig } from "@left-curve/store";
 import { Direction } from "@left-curve/dango/types";
 
 import { OrderNotification } from "./OrderNotification";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Notification } from "~/hooks/useNotifications";
 import type React from "react";
@@ -43,6 +44,7 @@ export const NotificationOrderFilled: React.FC<NotificationOrderFilledProps> = (
 
   return (
     <OrderNotification
+      title={m["notifications.notification.orderFilled.title"]({ orderType: kind })}
       details={{ price: clearing_price, amount: opInfo.amount, coin: deposit }}
       base={base}
       quote={quote}

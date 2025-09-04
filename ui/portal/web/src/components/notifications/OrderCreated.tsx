@@ -1,5 +1,7 @@
 import { useConfig } from "@left-curve/store";
 
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+
 import { OrderNotification } from "./OrderNotification";
 
 import type { Notification } from "~/hooks/useNotifications";
@@ -22,6 +24,7 @@ export const NotificationOrderCreated: React.FC<NotificationOrderCreatedProps> =
 
   return (
     <OrderNotification
+      title={m["notifications.notification.orderCreated.title"]({ orderType: kind })}
       details={{ price, amount: depositInfo.amount, coin: deposit }}
       base={base}
       quote={quote}

@@ -2,6 +2,7 @@ import { useConfig } from "@left-curve/store";
 
 import { Decimal } from "@left-curve/dango/utils";
 import { Direction } from "@left-curve/dango/types";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { OrderNotification } from "./OrderNotification";
 
@@ -36,6 +37,7 @@ export const NotificationOrderCanceled: React.FC<NotificationOrderCanceledProps>
 
   return (
     <OrderNotification
+      title={m["notifications.notification.orderCanceled.title"]({ orderType: kind })}
       details={{ price, amount: opInfo.amount, coin: deposit }}
       base={base}
       quote={quote}
