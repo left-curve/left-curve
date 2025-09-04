@@ -1,4 +1,4 @@
-import { useAccount, useConfig, useStorage } from "@left-curve/store";
+import { useAccount, useConfig, usePublicClient, useStorage } from "@left-curve/store";
 import { useCallback, useMemo } from "react";
 
 import { uid } from "@left-curve/dango/utils";
@@ -12,9 +12,12 @@ import type {
   OrderCanceledEvent,
   OrderCreatedEvent,
   OrderFilledEvent,
+  OrderResponse,
+  OrderTypes,
   UID,
   Username,
 } from "@left-curve/dango/types";
+import { useQueryClient } from "@tanstack/react-query";
 
 export type Notifications = {
   transfer: {
@@ -29,7 +32,7 @@ export type Notifications = {
     accountIndex: number;
   };
   orderCreated: OrderCreatedEvent;
-  orderCanceled: OrderCanceledEvent;
+  orderCanceled: OrderResponse & { kind: OrderTypes };
   orderFilled: OrderFilledEvent;
 };
 
@@ -51,6 +54,8 @@ type UseNotificationsParameters = {
 
 export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const { limit = 5, page = 1 } = parameters;
+  const queryClient = useQueryClient();
+  const publicClient = usePublicClient();
 
   const { username = "", accounts, account } = useAccount();
   const { subscriptions } = useConfig();
@@ -164,13 +169,13 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     const addresses = accounts?.map(({ address }) => address) || [];
     const unsubscribeEvents = subscriptions.subscribe("eventsByAddresses", {
       params: { addresses },
-      listener: (events) => {
-        const notifications = events.reduce((acc, event) => {
+      listener: async (events) => {
+        for (const event of events) {
           const { data: eventData, blockHeight, createdAt, transaction } = event;
-          if (!("contract_event" in eventData)) return acc;
+          if (!("contract_event" in eventData)) continue;
           const { type, data } = eventData.contract_event;
 
-          const notification = (() => {
+          const notification = await (async () => {
             switch (type) {
               case "sent":
               case "received": {
@@ -184,6 +189,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
 
                 if (isSent && !userAddresses.includes(user as Address)) return;
                 if (!isSent && !userAddresses.includes(user as Address)) return;
+                if (!Object.keys(coins).length) return;
 
                 const notification = {
                   coins,
@@ -201,32 +207,26 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
                 return { data: data as OrderCreatedEvent, type: "orderCreated" as const };
               }
               case "order_canceled": {
-                return { data: data as OrderCanceledEvent, type: "orderCanceled" as const };
+                const { id, kind } = data as OrderCanceledEvent;
+                const notification = await queryClient.fetchQuery({
+                  queryKey: ["order", id],
+                  queryFn: () => publicClient.getOrder({ orderId: id, height: blockHeight - 2 }),
+                });
+                console.log(notification);
+
+                return { data: { ...notification, kind }, type: "orderCanceled" as const };
               }
             }
           })();
 
-          if (notification) {
-            acc.push({
-              id: uid(),
-              data: notification.data,
-              type: notification.type,
-              txHash: transaction?.hash,
-              blockHeight,
-              createdAt,
-            });
-          }
+          if (!notification) continue;
 
-          return acc;
-        }, [] as Notification[]);
-
-        for (const { blockHeight, createdAt, txHash, type, data } of notifications) {
           addNotification({
             id: uid(),
-            type,
-            data,
+            data: notification.data,
+            type: notification.type,
+            txHash: transaction?.hash,
             seen: false,
-            txHash,
             blockHeight,
             createdAt,
           });
