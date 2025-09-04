@@ -397,3 +397,38 @@ fn force_transfer_can_only_be_called_by_taxman() {
         )
         .should_fail_with_error("you don't have the right, O you don't have the right");
 }
+
+#[test]
+fn top_level_denom_cannot_be_minted_or_burned_by_non_chain_owner() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Attempt to mint as non-owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::Mint {
+                to: accounts.user2.address(),
+                coins: coins! { dango::DENOM.clone() => 100 },
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(
+            "only chain owner can mint, burn, or set metadata of top-level denoms",
+        );
+
+    // Attempt to burn as non-owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::Burn {
+                from: accounts.user2.address(),
+                coins: coins! { dango::DENOM.clone() => 100 },
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(
+            "only chain owner can mint, burn, or set metadata of top-level denoms",
+        );
+}
