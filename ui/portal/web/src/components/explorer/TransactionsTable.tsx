@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Cell, CursorPagination, Table } from "@left-curve/applets-kit";
 

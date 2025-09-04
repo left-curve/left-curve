@@ -4,7 +4,7 @@ import type { Address } from "@left-curve/dango/types";
 import { ContractExplorer } from "~/components/explorer/ContractExplorer";
 
 import { MobileTitle } from "~/components/foundation/MobileTitle";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const Route = createLazyFileRoute("/(app)/_app/contract/$address")({
   component: ContractExplorerApplet,

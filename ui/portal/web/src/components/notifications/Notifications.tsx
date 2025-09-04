@@ -13,7 +13,7 @@ import { capitalize } from "@left-curve/dango/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { Notification } from "./Notification";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
 import type { NotificationProps } from "./Notification";

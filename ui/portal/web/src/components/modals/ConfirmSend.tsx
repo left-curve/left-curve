@@ -1,5 +1,11 @@
-import { Button, IconButton, IconClose, Skeleton, TruncateText } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
+import {
+  Button,
+  IconButton,
+  IconClose,
+  Skeleton,
+  TruncateText,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import type { Address } from "@left-curve/dango/types";
 import { formatUnits } from "@left-curve/dango/utils";
@@ -7,7 +13,7 @@ import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import { forwardRef, useImperativeHandle } from "react";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 type ConfirmSendProps = {
   amount: string;

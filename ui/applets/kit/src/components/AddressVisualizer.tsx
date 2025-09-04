@@ -1,15 +1,10 @@
 /** biome-ignore-all lint/suspicious/noTemplateCurlyInString: it uses template literals for URL replacement */
 
-import {
-  useAccount,
-  useAppConfig,
-  useConfig,
-  usePublicClient,
-  useStorage,
-} from "@left-curve/store";
+import { useAccount, useAppConfig, useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
+import { useStorage } from "@left-curve/store";
 
 import { TruncateResponsive } from "./TruncateResponsive";
 import { IconLink } from "./icons/IconLink";

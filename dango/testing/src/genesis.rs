@@ -14,7 +14,8 @@ use {
         auth::Key,
         bank::Metadata,
         constants::{
-            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
+            FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, PYTH_PRICE_SOURCES, TEN, atom, bch,
+            bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
         },
         dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
         gateway::{Remote, TokenOrigin, WithdrawalFee},
@@ -23,8 +24,8 @@ use {
     },
     grug::{
         Addressable, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Udec128, Uint128, btree_map,
-        btree_set, coins,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NonZero, NumberConst, Udec128, Uint128,
+        btree_map, btree_set, coins,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -34,7 +35,7 @@ use {
         isms::multisig::ValidatorSet,
     },
     pyth_types::constants::GUARDIAN_SETS,
-    std::str::FromStr,
+    std::{collections::BTreeSet, str::FromStr},
 };
 
 /// Describing a data that has a preset value for testing purposes.
@@ -345,7 +346,9 @@ impl Preset for DexOption {
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                             limit: 30,
                         }),
+                        bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO, /* TODO: for mainnet, a minimum of $10 is sensible */
                     },
                 },
                 PairUpdate {
@@ -358,7 +361,16 @@ impl Preset for DexOption {
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                             limit: 30,
                         }),
+                        bucket_sizes: btree_set! {
+                            NonZero::new_unchecked(ONE_HUNDREDTH),
+                            NonZero::new_unchecked(ONE_TENTH),
+                            NonZero::new_unchecked(ONE),
+                            NonZero::new_unchecked(TEN),
+                            NonZero::new_unchecked(FIFTY),
+                            NonZero::new_unchecked(ONE_HUNDRED),
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -371,7 +383,16 @@ impl Preset for DexOption {
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                             limit: 30,
                         }),
+                        bucket_sizes: btree_set! {
+                            NonZero::new_unchecked(ONE_HUNDREDTH),
+                            NonZero::new_unchecked(ONE_TENTH),
+                            NonZero::new_unchecked(ONE),
+                            NonZero::new_unchecked(TEN),
+                            NonZero::new_unchecked(FIFTY),
+                            NonZero::new_unchecked(ONE_HUNDRED),
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -384,7 +405,14 @@ impl Preset for DexOption {
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
                             limit: 30,
                         }),
+                        bucket_sizes: btree_set! {
+                            NonZero::new_unchecked(ONE_HUNDREDTH),
+                            NonZero::new_unchecked(ONE_TENTH),
+                            NonZero::new_unchecked(ONE),
+                            NonZero::new_unchecked(TEN),
+                        },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
             ],

@@ -135,13 +135,10 @@ impl CandleQueryBuilder {
         &self,
         clickhouse_client: &clickhouse::Client,
     ) -> Result<u64, crate::error::IndexerError> {
-        let query = format!(
-            r#"SELECT
-                maxMerge(block_height) as block_height
-               FROM {}
-               WHERE quote_denom = ? AND base_denom = ?"#,
-            self.interval.table_name()
-        );
+        let query = r#"SELECT
+                maxMerge(max_block_height) as max_block_height
+               FROM candles
+               WHERE quote_denom = ? AND base_denom = ?"#;
 
         #[derive(Row, Deserialize)]
         struct BlockHeight {
@@ -149,7 +146,7 @@ impl CandleQueryBuilder {
         }
 
         let result: BlockHeight = clickhouse_client
-            .query(&query)
+            .query(query)
             .bind(self.quote_denom.clone())
             .bind(self.base_denom.clone())
             .fetch_one()
@@ -159,30 +156,32 @@ impl CandleQueryBuilder {
     }
 
     fn query_string(&self) -> (String, Vec<String>, bool) {
-        let interval_str = self.interval.to_string();
         let mut has_previous_page = false;
 
-        let mut query = format!(
-            r#"
+        let mut query = r#"
               SELECT
                 quote_denom,
                 base_denom,
                 time_start,
-                argMinMerge(open) AS open,
-                maxMerge(high) AS high,
-                minMerge(low) AS low,
-                argMaxMerge(close) AS close,
-                sumMerge(volume_base) AS volume_base,
-                sumMerge(volume_quote) AS volume_quote,
-                maxMerge(block_height) AS block_height,
-                '{interval_str}' AS interval
-              FROM {}
-              WHERE quote_denom = ? AND base_denom = ?
-            "#,
-            self.interval.table_name()
-        );
+                open,
+                high,
+                low,
+                close,
+                volume_base,
+                volume_quote,
+                min_block_height,
+                max_block_height,
+                interval
+              FROM candles FINAL
+              WHERE quote_denom = ? AND base_denom = ? AND interval = ?
+            "#
+        .to_string();
 
-        let mut params: Vec<String> = vec![self.quote_denom.clone(), self.base_denom.clone()];
+        let mut params: Vec<String> = vec![
+            self.quote_denom.clone(),
+            self.base_denom.clone(),
+            self.interval.to_string(),
+        ];
 
         if let Some(earlier_than) = self.earlier_than {
             query.push_str(" AND time_start <= toDateTime64(?, 6)");
@@ -200,7 +199,6 @@ impl CandleQueryBuilder {
             has_previous_page = true;
         }
 
-        query.push_str(" GROUP BY quote_denom, base_denom, time_start");
         query.push_str(" ORDER BY time_start DESC");
         if let Some(limit) = self.limit {
             query.push_str(&format!(" LIMIT {}", limit + 1));

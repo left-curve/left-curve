@@ -305,7 +305,9 @@
               {
                 "base_denom": "dango",
                 "params": {
+                  "bucket_sizes": [],
                   "lp_denom": "dex/pool/dango/usdc",
+                  "min_order_size": "0",
                   "pool_type": {
                     "xyk": {
                       "limit": 30,
@@ -320,7 +322,16 @@
               {
                 "base_denom": "bridge/btc",
                 "params": {
+                  "bucket_sizes": [
+                    "0.01",
+                    "0.1",
+                    "1",
+                    "10",
+                    "50",
+                    "100"
+                  ],
                   "lp_denom": "dex/pool/btc/usdc",
+                  "min_order_size": "0",
                   "pool_type": {
                     "xyk": {
                       "limit": 30,
@@ -335,7 +346,16 @@
               {
                 "base_denom": "bridge/eth",
                 "params": {
+                  "bucket_sizes": [
+                    "0.01",
+                    "0.1",
+                    "1",
+                    "10",
+                    "50",
+                    "100"
+                  ],
                   "lp_denom": "dex/pool/eth/usdc",
+                  "min_order_size": "0",
                   "pool_type": {
                     "xyk": {
                       "limit": 30,
@@ -350,7 +370,14 @@
               {
                 "base_denom": "bridge/sol",
                 "params": {
+                  "bucket_sizes": [
+                    "0.01",
+                    "0.1",
+                    "1",
+                    "10"
+                  ],
                   "lp_denom": "dex/pool/sol/usdc",
+                  "min_order_size": "0",
                   "pool_type": {
                     "xyk": {
                       "limit": 30,

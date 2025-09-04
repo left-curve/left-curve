@@ -1,6 +1,5 @@
 import { useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
-import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
 
 import {
   Button,
@@ -15,7 +14,7 @@ import { AppletsSection } from "../overview/AppletsSection";
 
 import { decodeBase64, decodeUtf8 } from "@left-curve/dango/encoding";
 import ReactFullpage from "@fullpage/react-fullpage";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { format } from "date-fns";
 
 import type { fullpageApi } from "@fullpage/react-fullpage";
@@ -63,7 +62,7 @@ const Header: React.FC = () => {
 
   return (
     <div className="section min-h-svh flex items-center justify-center relative w-full">
-      <div className="min-h-[calc(100svh-5svh)] mx-auto pb-[22svh] p-4 md:p-0 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
+      <div className="min-h-[calc(100svh-5svh)] mx-auto pb-[20svh] p-4 lg:p-0 w-full flex flex-col gap-6 relative flex-1 items-center justify-between lg:items-center lg:justify-center lg:gap-16 lg:pb-60">
         <img
           src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
           alt="Dango"

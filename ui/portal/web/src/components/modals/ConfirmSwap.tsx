@@ -1,12 +1,11 @@
 import { forwardRef, useImperativeHandle } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { Button, IconArrowDown, IconButton, IconClose } from "@left-curve/applets-kit";
+import { Button, IconArrowDown, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { formatUnits } from "@left-curve/dango/utils";
 import { useConfig, usePrices } from "@left-curve/store";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Coin } from "@left-curve/dango/types";
 import type { ModalRef } from "./RootModal";

@@ -14,7 +14,7 @@ import {
 import { HeaderExplorer } from "./HeaderExplorer";
 import { TransactionsTable } from "./TransactionsTable";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { IndexedBlock } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";

@@ -1,16 +1,22 @@
-import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { RouterProvider, createRouter, useNavigate } from "@tanstack/react-router";
 
 import { useAccount, useConfig, usePublicClient } from "@left-curve/store";
 
-import { Spinner } from "@left-curve/applets-kit";
+import { AppProvider, Spinner, useTheme } from "@left-curve/applets-kit";
+
+import { Toast } from "@left-curve/applets-kit";
+import { RootModal } from "./components/modals/RootModal";
+
+import { routeTree } from "./app.pages";
 
 import type {
   UseAccountReturnType,
   UseConfigReturnType,
   UsePublicClientReturnType,
 } from "@left-curve/store";
+import { createToaster } from "./app.toaster";
 
-import { routeTree } from "./app.pages";
+const [Toaster, toast] = createToaster((props) => <Toast {...props} />);
 
 export const router = createRouter({
   routeTree,
@@ -42,5 +48,21 @@ export const AppRouter: React.FC = () => {
   const config = useConfig();
   const client = usePublicClient();
 
-  return <RouterProvider router={router} context={{ account, config, client }} />;
+  return (
+    <RouterProvider
+      router={router}
+      context={{ account, config, client }}
+      InnerWrap={({ children }) => {
+        const navigate = useNavigate();
+        const _theme = useTheme();
+        return (
+          <AppProvider toast={toast} navigate={(to, options) => navigate({ to, ...options })}>
+            {children}
+            <RootModal />
+            <Toaster position="bottom-center" containerStyle={{ zIndex: 99999999 }} />
+          </AppProvider>
+        );
+      }}
+    />
+  );
 };

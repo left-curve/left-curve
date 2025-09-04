@@ -6,6 +6,7 @@ use {
             FillingOutcome, MatchingOutcome, MergedOrders, PassiveLiquidityPool, fill_orders,
             match_orders,
         },
+        liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
@@ -20,11 +21,11 @@ use {
     },
     grug::{
         Addr, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
-        MutableCtx, Number, NumberConst, Order as IterationOrder, Response, StdError, StdResult,
-        Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
+        MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder, Response, StdError,
+        StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
         Udec128_24,
     },
-    std::collections::{BTreeMap, HashMap, hash_map::Entry},
+    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
@@ -90,6 +91,11 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     let mut fees = DecCoins::<6>::new();
     let mut fee_payments = TransferBuilder::<DecCoins<6>>::new();
 
+    // Load all existing orders and their parameters.
+    let pairs = PAIRS
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<BTreeMap<_, _>>>()?;
+
     // Collect all market orders received during this block.
     let mut market_orders = MARKET_ORDERS
         .values(ctx.storage, None, None, IterationOrder::Ascending)
@@ -112,24 +118,30 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     MARKET_ORDERS.clear(ctx.storage, None, None);
 
     // Delete the passive orders left over from the previous block.
-    for order_key in LIMIT_ORDERS
+    for ((denoms, direction, price, order_id), order) in LIMIT_ORDERS
         .idx
         .user
         .prefix(app_cfg.addresses.dex)
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        LIMIT_ORDERS.remove(ctx.storage, order_key)?;
+        decrease_liquidity_depths(
+            ctx.storage,
+            &denoms.0,
+            &denoms.1,
+            direction,
+            price,
+            order.remaining,
+            &pairs[&denoms].bucket_sizes,
+        )?;
+
+        LIMIT_ORDERS.remove(ctx.storage, (denoms, direction, price, order_id))?;
     }
 
     // Loop through all trading pairs. Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
-    for (base_denom, quote_denom) in PAIRS
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?
-    {
-        let pair = (base_denom.clone(), quote_denom.clone());
-        let (market_bids, market_asks) = market_orders.remove(&pair).unwrap_or_default();
+    for (denoms, pair) in pairs {
+        let (market_bids, market_asks) = market_orders.remove(&denoms).unwrap_or_default();
 
         clear_orders_of_pair(
             ctx.storage,
@@ -139,8 +151,9 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             &mut account_querier,
             app_cfg.maker_fee_rate.into_inner(),
             app_cfg.taker_fee_rate.into_inner(),
-            base_denom.clone(),
-            quote_denom.clone(),
+            denoms.0,
+            denoms.1,
+            &pair.bucket_sizes,
             market_bids,
             market_asks,
             &mut events,
@@ -198,6 +211,7 @@ fn clear_orders_of_pair(
     taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
+    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
     market_bids: MarketOrders,
     market_asks: MarketOrders,
     events: &mut EventBuilder,
@@ -227,6 +241,18 @@ fn clear_orders_of_pair(
                     let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
                     order_id = !order_id;
 
+                    let remaining = amount.checked_into_dec()?;
+
+                    increase_liquidity_depths(
+                        storage,
+                        &base_denom,
+                        &quote_denom,
+                        Direction::Bid,
+                        price,
+                        remaining,
+                        bucket_sizes,
+                    )?;
+
                     LIMIT_ORDERS.save(
                         storage,
                         (
@@ -241,7 +267,7 @@ fn clear_orders_of_pair(
                             kind: OrderKind::Limit,
                             price,
                             amount,
-                            remaining: amount.checked_into_dec()?,
+                            remaining,
                             created_at_block_height: None,
                         },
                     )?;
@@ -249,6 +275,17 @@ fn clear_orders_of_pair(
 
                 for (price, amount) in passive_asks {
                     let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+                    let remaining = amount.checked_into_dec()?;
+
+                    increase_liquidity_depths(
+                        storage,
+                        &base_denom,
+                        &quote_denom,
+                        Direction::Ask,
+                        price,
+                        remaining,
+                        bucket_sizes,
+                    )?;
 
                     LIMIT_ORDERS.save(
                         storage,
@@ -264,7 +301,7 @@ fn clear_orders_of_pair(
                             kind: OrderKind::Limit,
                             price,
                             amount,
-                            remaining: amount.checked_into_dec()?,
+                            remaining,
                             created_at_block_height: None,
                         },
                     )?;
@@ -311,12 +348,12 @@ fn clear_orders_of_pair(
     //    highest (ascending).
     // 2. The market order vectors are ordered ascendingly, so for bids we need
     //    to reverse it.
-    let mut merged_bids = nested_merged_orders(
+    let mut merged_bids = merged_orders(
         limit_bids,
         market_bids.into_iter().rev(),
         IterationOrder::Descending,
     );
-    let mut merged_asks = nested_merged_orders(
+    let mut merged_asks = merged_orders(
         limit_asks,
         market_asks.into_iter(),
         IterationOrder::Ascending,
@@ -577,28 +614,39 @@ fn clear_orders_of_pair(
             // For market orders, refund the user the remaining amount, as
             // market orders are immediate-or-cancel.
             match order.kind {
-                OrderKind::Limit if order.remaining.is_zero() => {
-                    LIMIT_ORDERS.remove(
-                        storage,
-                        (
-                            (base_denom.clone(), quote_denom.clone()),
-                            order_direction,
-                            order.price,
-                            order.id,
-                        ),
-                    )?;
-                },
                 OrderKind::Limit => {
-                    LIMIT_ORDERS.save(
+                    decrease_liquidity_depths(
                         storage,
-                        (
-                            (base_denom.clone(), quote_denom.clone()),
-                            order_direction,
-                            order.price,
-                            order.id,
-                        ),
-                        &order,
+                        &base_denom,
+                        &quote_denom,
+                        order_direction,
+                        order.price,
+                        filled_base,
+                        bucket_sizes,
                     )?;
+
+                    if order.remaining.is_zero() {
+                        LIMIT_ORDERS.remove(
+                            storage,
+                            (
+                                (base_denom.clone(), quote_denom.clone()),
+                                order_direction,
+                                order.price,
+                                order.id,
+                            ),
+                        )?;
+                    } else {
+                        LIMIT_ORDERS.save(
+                            storage,
+                            (
+                                (base_denom.clone(), quote_denom.clone()),
+                                order_direction,
+                                order.price,
+                                order.id,
+                            ),
+                            &order,
+                        )?;
+                    }
                 },
                 OrderKind::Market => {
                     refund_market_order(
@@ -683,7 +731,7 @@ fn clear_orders_of_pair(
 
 /// Merges three iterators over limit, market, ans passive orders into one iterator.
 /// It achieves this by nesting two `MergedOrders` iterators.
-fn nested_merged_orders<A, B>(
+fn merged_orders<A, B>(
     limit: A,
     market: B,
     iteration_order: IterationOrder,
@@ -1159,7 +1207,9 @@ mod tests {
                         ratio: Bounded::new_unchecked(Udec128::ONE),
                         limit: 10,
                     }),
-                    swap_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::from_str("0.001").unwrap()),
+                    min_order_size: Uint128::ZERO,
                 },
             )
             .unwrap();

@@ -1,11 +1,11 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 import { z } from "zod";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const Route = createFileRoute("/(app)/_app/trade/$pairSymbols")({
   head: () => ({
-    meta: [{ title: `Dango | ${m["applets.0.title"]()}` }],
+    meta: [{ title: `Dango | ${m["applets.trade.title"]()}` }],
   }),
   beforeLoad: async ({ context, params }) => {
     const { client, config } = context;

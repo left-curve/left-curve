@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronLeftCarousel } from "./icons/IconChevronLeftCarousel";
 import { IconChevronRightCarousel } from "./icons/IconChevronRightCarousel";
 
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 

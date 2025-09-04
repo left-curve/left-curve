@@ -3,15 +3,19 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "~/*": ["./src/*"],
-      "~/store": ["./store.config.ts"]
+      "~/assets/*": ["./assets/*"],
+      "~/paraglide/*": ["./.paraglide/*"],
+      "~/constants": ["./constants.config.ts"],
+      "~/storage": ["./storage.config.ts"],
+      "~/store": ["./store.config.ts"],
+      "~/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts", "../../config/tailwind/config.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts", "../../foundation/tailwind/config.ts"],
   "exclude": ["node_modules"],
   "references": [
     {
-      "path": "../../applets/kit"
+      "path": "../../foundation"
     },
     {
       "path": "../../../sdk/dango"

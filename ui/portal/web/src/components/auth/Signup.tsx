@@ -1,4 +1,4 @@
-import { ensureErrorMessage, useInputs, useWizard } from "@left-curve/applets-kit";
+import { ensureErrorMessage, useApp, useInputs, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useConfig,
@@ -10,7 +10,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { computeAddress, createAccountSalt } from "@left-curve/dango";
 import { createKeyHash } from "@left-curve/dango";
@@ -39,7 +38,7 @@ import { AuthOptions } from "./AuthOptions";
 
 import { AccountType } from "@left-curve/dango/types";
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Address, Hex, Key } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "@left-curve/store/types";

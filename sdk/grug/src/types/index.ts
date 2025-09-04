@@ -152,7 +152,7 @@ export type {
   HttpClientOptions,
 } from "./http.js";
 
-export {
+export type {
   Block,
   BlockId,
   BlockIdFlags,
@@ -184,7 +184,7 @@ export {
   QueryAbciResponse,
 } from "./cometbft.js";
 
-export {
+export type {
   SignatureOutcome,
   RawSignature,
   SignDoc,

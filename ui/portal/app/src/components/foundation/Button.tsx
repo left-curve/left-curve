@@ -1,36 +1,16 @@
 import { useTheme } from "~/hooks/useTheme";
 
-import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
 import { Shadow } from "react-native-shadow-2";
 import { LinearGradient } from "expo-linear-gradient";
+import { Pressable, Text, ActivityIndicator, StyleSheet, View } from "react-native";
 
-import { twMerge } from "@left-curve/applets-kit";
 import { tv } from "tailwind-variants";
+import { twMerge } from "@left-curve/foundation";
+import { cloneElement, isValidElement } from "react";
 
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
-import type { PropsWithChildren } from "react";
-
-export const iconColors = {
-  light: {
-    primary: "#FFFCF6",
-    secondary: "#918CC6",
-    tertiary: "#FFFCF6",
-    "tertiary-red": "#ED4561",
-    utility: "#9C4D21",
-    link: "#918CC6",
-    disabled: "#ACA9A7",
-  },
-  dark: {
-    primary: "#2D2C2A",
-    secondary: "#CBCBE7",
-    tertiary: "#2D2C2A",
-    "tertiary-red": "#FCCFD4",
-    utility: "#E3BD66",
-    link: "#CBCBE7",
-    disabled: "#807D78",
-  },
-} as const;
+import type { PropsWithChildren, ReactElement, ReactNode } from "react";
 
 export const radiusSizes = {
   none: 0,
@@ -48,30 +28,94 @@ export const radiusSizes = {
 };
 
 const buttonVariants = tv({
-  base: "flex items-center justify-center overflow-hidden rounded-full transition-all duration-200",
+  slots: {
+    base: "flex items-center justify-center overflow-hidden gap-2 rounded-full transition-all duration-200",
+    icons: "",
+    text: "",
+  },
   variants: {
     variant: {
-      primary: "bg-red-bean-400",
-      secondary: "bg-primary-blue",
-      tertiary: "bg-button-green",
-      "tertiary-red": "bg-surface-primary-red",
-      utility: "bg-surface-quaternary-rice rounded-md",
-      link: "bg-transparent",
-    },
-    size: {
-      xs: "h-[25px] py-1 px-[6px] exposure-xs-italic text-xs gap-[2px]",
-      sm: "h-[32px] py-[6px] px-2 exposure-sm-italic gap-[2px]",
-      md: "h-[40px] py-[10px] px-3 exposure-sm-italic text-md gap-[4px]",
-      lg: "h-[44px] py-[11px] px-3 exposure-m-italic text-lg gap-[4px]",
-      xl: "h-[56px] py-[14px] px-4 exposure-l-italic text-h4 gap-[6px]",
+      primary: {
+        base: "bg-red-bean-400",
+        icons: "text-surface-primary-rice",
+        text: "text-surface-primary-rice",
+      },
+      secondary: {
+        base: "bg-primary-blue",
+        icons: "text-secondary-blue",
+        text: "text-secondary-blue",
+      },
+      tertiary: {
+        base: "bg-button-green",
+        icons: "text-surface-primary-rice",
+        text: "text-surface-primary-rice",
+      },
+      "tertiary-red": {
+        base: "bg-surface-primary-red",
+        icons: "text-tertiary-red",
+        text: "text-tertiary-red",
+      },
+      utility: {
+        base: "bg-surface-quaternary-rice !rounded-md",
+        icons: "text-secondary-rice",
+        text: "text-secondary-rice",
+      },
+      link: {
+        base: "bg-transparent",
+        icons: "text-secondary-blue",
+        text: "text-secondary-blue",
+      },
     },
     radius: {
-      none: "rounded-none",
-      sm: "rounded-sm",
-      md: "rounded-md",
-      lg: "rounded-lg",
-      xl: "rounded-xl",
-      full: "rounded-full",
+      none: {
+        base: "rounded-none",
+      },
+      sm: {
+        base: "rounded-sm",
+      },
+      md: {
+        base: "rounded-md",
+      },
+      lg: {
+        base: "rounded-lg",
+      },
+      xl: {
+        base: "rounded-xl",
+      },
+      full: {
+        base: "rounded-full",
+      },
+    },
+    size: {
+      xs: {
+        base: "h-[25px] py-1 px-[6px]",
+        icons: "",
+        text: "exposure-xs-italic text-xs",
+      },
+      sm: {
+        base: "h-[32px] py-[6px] px-2",
+        icons: "",
+        text: "exposure-sm-italic",
+      },
+      md: {
+        base: "h-[40px] py-[8px] px-3",
+        icons: "",
+        text: "exposure-sm-italic text-md",
+      },
+      lg: {
+        base: "h-[44px] py-[11px] px-3",
+        icons: "",
+        text: "exposure-m-italic text-lg",
+      },
+      xl: {
+        base: "h-[56px] py-[14px] px-4",
+        icons: "",
+        text: "exposure-l-italic text-h4",
+      },
+      icon: {
+        base: "p-[10px] h-[44px] w-[44px]",
+        icons: "h-8 w-8",
+      },
     },
     isDisabled: {
       true: "bg-surface-disabled-gray opacity-50",
@@ -83,48 +127,6 @@ const buttonVariants = tv({
     isDisabled: false,
   },
 });
-
-const textVariants = tv({
-  base: "exposure-sm-italic",
-  variants: {
-    variant: {
-      primary: "text-surface-primary-rice",
-      secondary: "text-secondary-blue",
-      tertiary: "text-surface-primary-rice",
-      "tertiary-red": "text-tertiary-red",
-      utility: "text-secondary-rice",
-      link: "text-secondary-blue",
-    },
-    isDisabled: {
-      true: "text-foreground-disabled-gray",
-    },
-    size: {
-      xs: "exposure-xs-italic text-xs",
-      sm: "exposure-sm-italic",
-      md: "exposure-sm-italic text-md",
-      lg: "exposure-m-italic text-lg",
-      xl: "exposure-l-italic text-h4",
-    },
-  },
-  defaultVariants: {
-    variant: "primary",
-    size: "md",
-  },
-});
-
-interface ButtonTextProps extends VariantProps<typeof textVariants> {
-  children: React.ReactNode;
-  isDisabled?: boolean;
-}
-
-const ButtonText: React.FC<PropsWithChildren<ButtonTextProps>> = ({
-  children,
-  variant,
-  size,
-  isDisabled,
-}) => {
-  return <Text className={textVariants({ variant, size, isDisabled })}>{children}</Text>;
-};
 
 const ButtonShadow: React.FC<PropsWithChildren<Pick<ButtonProps, "radius" | "variant">>> = ({
   children,
@@ -228,13 +230,18 @@ const ButtonShadow: React.FC<PropsWithChildren<Pick<ButtonProps, "radius" | "var
     </Shadow>
   );
 };
-
 export interface ButtonProps extends VariantProps<typeof buttonVariants> {
   isLoading?: boolean;
   isDisabled?: boolean;
   onPress?: () => void;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  className?: string;
+  classNames?: {
+    base?: string;
+    icons?: string;
+    text?: string;
+  };
 }
 
 export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
@@ -247,21 +254,50 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
   radius = "full",
   leftIcon,
   rightIcon,
+  classNames,
 }) => {
   const styles = buttonVariants({ variant, size, isDisabled, radius });
+  const renderIcon = (node?: ReactNode) =>
+    isValidElement(node)
+      ? cloneElement(node as ReactElement, {
+          className: twMerge(styles.icons(), classNames?.icons),
+        })
+      : null;
+
+  const styledLeftIcon = renderIcon(leftIcon);
+  const styledRightIcon = renderIcon(rightIcon);
+
+  const childrenComponent =
+    children && isValidElement(children)
+      ? cloneElement(children as ReactElement, {
+          className: twMerge(styles.text(), classNames?.text),
+        })
+      : children;
 
   return (
     <ButtonShadow radius={radius} variant={variant}>
-      <Pressable className={twMerge(styles)} disabled={isDisabled || isLoading} onPress={onPress}>
+      <Pressable
+        disabled={isDisabled || isLoading}
+        onPress={onPress}
+        className={twMerge("flex flex-row items-center justify-center", classNames?.base)}
+      >
         {isLoading ? (
           <ActivityIndicator color="white" size="small" />
         ) : (
-          <View className="flex flex-row items-center gap-2 justify-center">
-            {leftIcon}
-            <ButtonText variant={variant} size={size} isDisabled={isDisabled}>
-              {children}
-            </ButtonText>
-            {rightIcon}
+          <View
+            className={twMerge(
+              "flex flex-row items-center justify-center",
+              styles.base(),
+              classNames?.base,
+            )}
+          >
+            {styledLeftIcon}
+
+            {children ? (
+              <Text className={twMerge(styles.text(), classNames?.text)}>{childrenComponent}</Text>
+            ) : null}
+
+            {styledRightIcon}
           </View>
         )}
       </Pressable>

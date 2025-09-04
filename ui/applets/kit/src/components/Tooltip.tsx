@@ -1,10 +1,11 @@
-import type React from "react";
+import { useControlledState } from "@left-curve/foundation";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { tv, type VariantProps } from "tailwind-variants";
-import { useControlledState } from "../hooks/useControlledState.js";
 import { type ReactNode, useRef, useState, type PropsWithChildren, useEffect } from "react";
-import { twMerge } from "../utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
+
+import type React from "react";
 
 type TooltipPlacement = "top" | "bottom" | "left" | "right" | "auto";
 

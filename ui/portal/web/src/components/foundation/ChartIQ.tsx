@@ -4,12 +4,11 @@ import "@left-curve/chartiq/js/standard";
 import "@left-curve/chartiq/js/componentUI";
 import "@left-curve/chartiq/js/addOns";
 
-import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { CIQ } from "@left-curve/chartiq/js/components";
 import { useConfig, usePublicClient, useStorage } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { createChartIQConfig, createChartIQDataFeed } from "~/chartiq";
-import { useApp } from "~/hooks/useApp";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Decimal, formatNumber } from "@left-curve/dango/utils";

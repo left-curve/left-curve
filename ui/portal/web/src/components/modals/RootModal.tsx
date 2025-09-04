@@ -1,32 +1,12 @@
 import { AnimatePresence } from "framer-motion";
 import { motion } from "framer-motion";
 import { Suspense, lazy, useMemo, useRef } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { Button, useMediaQuery } from "@left-curve/applets-kit";
+import { Button, Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
 import type React from "react";
 import { Sheet, type SheetRef } from "react-modal-sheet";
 
-import { m } from "~/paraglide/messages";
-
-export const Modals = {
-  AddKey: "add-key",
-  RemoveKey: "remove-key",
-  QRConnect: "qr-connect",
-  ConfirmSend: "confirm-send",
-  ConfirmAccount: "confirm-account",
-  SignWithDesktop: "sign-with-desktop",
-  ConfirmSwap: "confirm-swap",
-  RenewSession: "renew-session",
-  ProTradeCloseAll: "pro-trade-close-all",
-  ProTradeCloseOrder: "pro-trade-close-order",
-  ProTradeLimitClose: "pro-trade-limit-close",
-  ProSwapMarketClose: "pro-swap-market-close",
-  ProSwapEditTPSL: "pro-edit-tpsl",
-  ProSwapEditedSL: "pro-edited-sl",
-  PoolAddLiquidity: "pool-add-liquidity",
-  PoolWithdrawLiquidity: "pool-withdraw-liquidity",
-};
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export type ModalRef = {
   triggerOnClose: () => void;

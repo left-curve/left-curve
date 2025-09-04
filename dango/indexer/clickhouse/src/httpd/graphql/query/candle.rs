@@ -1,8 +1,8 @@
 use {
     crate::{
-        cache,
         context::Context,
         entities::{CandleInterval, candle::Candle, candle_query::CandleQueryBuilder},
+        indexer::candles::cache,
     },
     async_graphql::{types::connection::*, *},
     chrono::{DateTime, Utc},

@@ -3,6 +3,8 @@ import {
   ExpandOptions,
   IconPasskey,
   IconQR,
+  Modals,
+  useApp,
   useMediaQuery,
   useWizard,
 } from "@left-curve/applets-kit";
@@ -16,17 +18,15 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { Button, IconLeft, ResizerContainer } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 import { UsernamesList } from "./UsernamesList";
 
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Hex, SigningSession, Username } from "@left-curve/dango/types";
 import type React from "react";

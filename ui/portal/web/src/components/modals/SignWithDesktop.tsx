@@ -1,15 +1,16 @@
 import { useSigninWithDesktop } from "@left-curve/store";
 import { forwardRef, useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { Spinner } from "@left-curve/applets-kit";
+import { Spinner, useApp } from "@left-curve/applets-kit";
 import { Scanner } from "@yudiel/react-qr-scanner";
 
 import { WEBRTC_URI } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { useRouter } from "@tanstack/react-router";
 
 export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ socketId }, _ref) => {
-  const { router, toast, hideModal } = useApp();
+  const { toast, hideModal } = useApp();
+  const { navigate } = useRouter();
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
     url: WEBRTC_URI,
@@ -22,7 +23,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
     },
     mutation: {
       onSuccess: () => {
-        router.navigate({ to: "/" });
+        navigate({ to: "/" });
         hideModal();
       },
     },

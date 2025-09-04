@@ -4,7 +4,7 @@ import { Notifications } from "~/components/notifications/Notifications";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
 
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const Route = createLazyFileRoute("/(app)/_app/notifications")({
   component: NotificationApplet,
