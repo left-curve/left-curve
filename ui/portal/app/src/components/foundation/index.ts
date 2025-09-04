@@ -10,6 +10,8 @@ export { Menu } from "./Menu";
 export { TruncateText } from "./TruncateText";
 export { Skeleton } from "./Skeleton";
 export { Badge } from "./Badge";
+export { AccountCard } from "../AccountMenu/AccountCard";
+export { TextCopy } from "./TextCopy";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -23,3 +25,9 @@ export { IconEmptyStar } from "./icons/IconEmptyStar";
 export { IconChevronDown } from "./icons/IconChevronDown";
 export { IconLink } from "./icons/IconLink";
 export { IconUserCircle } from "./icons/IconUserCircle";
+export { IconSwitch } from "./icons/IconSwitch";
+export { IconLogOut } from "./icons/IconLogOut";
+export { IconClose } from "./icons/IconClose";
+export { IconChevronDownFill } from "./icons/IconChevronDownFill";
+export { IconCopyCheck } from "./icons/IconCopyCheck";
+export { IconCopyNoCheck } from "./icons/IconCopyNoCheck";

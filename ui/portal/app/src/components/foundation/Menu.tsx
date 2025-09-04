@@ -34,7 +34,7 @@ export const Menu: React.FC = () => {
         <Button
           variant="utility"
           size="icon"
-          onPress={() => navigate("/signin")}
+          onPress={() => navigate("/account-menu")}
           leftIcon={<IconWallet />}
         />
       </View>

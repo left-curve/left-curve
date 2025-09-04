@@ -98,7 +98,7 @@ const buttonVariants = tv({
         text: "exposure-sm-italic",
       },
       md: {
-        base: "h-[40px] py-[10px] px-3",
+        base: "h-[40px] py-[8px] px-3",
         icons: "",
         text: "exposure-sm-italic text-md",
       },
@@ -276,7 +276,11 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
 
   return (
     <ButtonShadow radius={radius} variant={variant}>
-      <Pressable disabled={isDisabled || isLoading} onPress={onPress}>
+      <Pressable
+        disabled={isDisabled || isLoading}
+        onPress={onPress}
+        className={twMerge("flex flex-row items-center justify-center", classNames?.base)}
+      >
         {isLoading ? (
           <ActivityIndicator color="white" size="small" />
         ) : (

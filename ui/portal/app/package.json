@@ -13,15 +13,16 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
-    "@left-curve/foundation": "workspace:*",
     "@left-curve/config": "workspace:*",
     "@left-curve/dango": "workspace:*",
+    "@left-curve/foundation": "workspace:*",
     "@left-curve/store": "workspace:*",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@tanstack/react-query": "catalog:",
     "babel-plugin-module-resolver": "^5.0.2",
     "expo": "~52.0.47",
     "expo-camera": "~16.0.14",
+    "expo-clipboard": "~7.0.1",
     "expo-constants": "~17.0.8",
     "expo-font": "~13.0.4",
     "expo-haptics": "~14.0.1",
