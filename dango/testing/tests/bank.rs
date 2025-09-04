@@ -378,3 +378,22 @@ fn set_metadata_can_only_be_called_by_non_namespace_owner_and_set_namespace_owne
             decimals: 6,
         });
 }
+
+#[test]
+fn force_transfer_can_only_be_called_by_taxman() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Attempt to force transfer as non-taxman. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::ForceTransfer {
+                from: accounts.user2.address(),
+                to: accounts.user3.address(),
+                coins: coins! { dango::DENOM.clone() => 100 },
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("you don't have the right, O you don't have the right");
+}
