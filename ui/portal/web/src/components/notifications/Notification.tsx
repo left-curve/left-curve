@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { useNotifications } from "~/hooks/useNotifications";
+import { useNotifications, type Notifications } from "~/hooks/useNotifications";
 
 import {
   differenceInDays,
@@ -39,35 +39,32 @@ const formatNotificationTimestamp = (timestamp: Date): string => {
   return format(timestamp, "MM/dd");
 };
 
-const notifications = {
-  transfer: {
-    component: lazy(() =>
-      import("./Transfer").then(({ NotificationTransfer }) => ({
-        default: NotificationTransfer,
-      })),
-    ),
-  },
-  account: {
-    component: lazy(() =>
-      import("./NewAccount").then(({ NotificationNewAccount }) => ({
-        default: NotificationNewAccount,
-      })),
-    ),
-  },
-  orderCreated: {
-    component: lazy(() =>
-      import("./OrderCreated").then(({ NotificationOrderCreated }) => ({
-        default: NotificationOrderCreated,
-      })),
-    ),
-  },
-  orderFilled: {
-    component: lazy(() =>
-      import("./OrderFilled").then(({ NotificationOrderFilled }) => ({
-        default: NotificationOrderFilled,
-      })),
-    ),
-  },
+const notifications: Record<keyof Notifications, React.FC<NotificationProps>> = {
+  transfer: lazy(() =>
+    import("./Transfer").then(({ NotificationTransfer }) => ({
+      default: NotificationTransfer,
+    })),
+  ),
+  account: lazy(() =>
+    import("./NewAccount").then(({ NotificationNewAccount }) => ({
+      default: NotificationNewAccount,
+    })),
+  ),
+  orderCreated: lazy(() =>
+    import("./OrderCreated").then(({ NotificationOrderCreated }) => ({
+      default: NotificationOrderCreated,
+    })),
+  ),
+  orderFilled: lazy(() =>
+    import("./OrderFilled").then(({ NotificationOrderFilled }) => ({
+      default: NotificationOrderFilled,
+    })),
+  ),
+  orderCanceled: lazy(() =>
+    import("./OrderCanceled").then(({ NotificationOrderCanceled }) => ({
+      default: NotificationOrderCanceled,
+    })),
+  ),
 };
 
 export type NotificationProps = {
@@ -78,8 +75,7 @@ export const Notification: React.FC<NotificationProps> = ({ notification }) => {
   const { deleteNotification } = useNotifications();
   const { id, createdAt, type } = notification;
 
-  const NotificationCard = notifications[type as keyof typeof notifications]
-    ?.component as React.FC<NotificationProps>;
+  const NotificationCard = notifications[type as keyof typeof notifications];
 
   return (
     <Suspense>
