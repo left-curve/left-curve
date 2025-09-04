@@ -7135,3 +7135,56 @@ fn minimum_order_size(
         },
     }
 }
+
+#[test]
+fn orders_cannot_be_created_for_non_existing_pair() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Submit limit order
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![CreateLimitOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: eth::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    price: NonZero::new_unchecked(Udec128_24::new(1)),
+                }],
+                cancels: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "pair not found with base `{}` and quote `{}`",
+            dango::DENOM.clone(),
+            eth::DENOM.clone()
+        ));
+
+    // Submit the market order
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![CreateMarketOrderRequest {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: eth::DENOM.clone(),
+                    direction: Direction::Bid,
+                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                }],
+                creates_limit: vec![],
+                cancels: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "pair not found with base `{}` and quote `{}`",
+            dango::DENOM.clone(),
+            eth::DENOM.clone()
+        ));
+}
