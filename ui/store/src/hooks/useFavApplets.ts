@@ -8,6 +8,9 @@ export function useFavApplets() {
     initialValue: ["transfer", "settings", "notifications", "convert", "trade", "earn"],
     version: 1.6,
     sync: true,
+    migrations: {
+      "*": () => ["transfer", "settings", "notifications", "convert", "trade", "earn"],
+    },
   });
 
   const addFavApplet = useCallback((applet: AppletMetadata) => {

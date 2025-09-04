@@ -10,7 +10,7 @@ export type UseStorageOptions<T = undefined> = {
   storage?: Storage;
   version?: number;
   enabled?: boolean;
-  migrations?: Record<number, (data: any) => T>;
+  migrations?: Record<number | string, (data: any) => T>;
   sync?: boolean;
 };
 export function useStorage<T = undefined>(
@@ -63,9 +63,20 @@ export function useStorage<T = undefined>(
         return returnValue;
       }
 
-      const migration = migrations[version];
+      const migration = migrations["*"];
 
-      if (!migration) {
+      if (migration) {
+        const migratedValue = migration(value);
+        storage.setItem(key, {
+          version: __version__,
+          value: migratedValue,
+        });
+        return migratedValue;
+      }
+
+      const versionMigration = migrations[version];
+
+      if (!versionMigration) {
         storage.setItem(key, {
           version: __version__,
           value: initialValue,
@@ -73,7 +84,7 @@ export function useStorage<T = undefined>(
         return returnValue;
       }
 
-      const migratedValue = migration(value);
+      const migratedValue = versionMigration(value);
 
       storage.setItem(key, {
         version: __version__,
