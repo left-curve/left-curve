@@ -16,8 +16,9 @@ use {
     },
     grug::{
         Addressable, Bounded, Coin, Coins, Dec, Dec128_24, Denom, Inner, Int, IsZero, MaxLength,
-        Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt, ResultExt, Signed,
-        Signer, Udec128, Udec128_24, Uint128, UniqueVec, btree_map, coins,
+        Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt,
+        Signed, Signer, Udec128, Udec128_24, Uint128, UniqueVec, ZeroInclusiveOneExclusive,
+        btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -274,7 +275,7 @@ impl DexAction {
                     .unwrap();
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
-                // println!("block outcome: {block_outcome:?}");
+                println!("block outcome: {block_outcome:?}");
 
                 assert!(
                     block_outcome
@@ -318,38 +319,39 @@ impl DexAction {
 
                         let one_add_max_slippage = Udec128_24::ONE.saturating_add(*max_slippage);
                         let price = best_ask_price.saturating_mul(one_add_max_slippage);
+                        let amount_quote = amount.checked_mul_dec_ceil(price)?;
 
                         (
-                        Coin {
+                            Coin {
                                 denom: quote_denom.clone(),
-                                amount: amount.checked_mul_dec_ceil(price)?,
-                        }
-                        },
-                        CreateMarketOrderRequest::Bid {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            amount_quote: NonZero::new(*amount).unwrap(),
-                            max_slippage: Bounded::new_unchecked(Udec128::MAX),
-                        },
-                    ),
+                                amount: amount_quote,
+                            },
+                            CreateMarketOrderRequest::Bid {
+                                base_denom: base_denom.clone(),
+                                quote_denom: quote_denom.clone(),
+                                amount_quote: NonZero::new(amount_quote)?,
+                                max_slippage,
+                            },
+                        )
+                    },
                     Direction::Ask => {
                         if resting_order_book.best_bid_price.is_none() {
                             return Ok(());
                         }
 
                         (
-                        Coin {
+                            Coin {
                                 denom: base_denom.clone(),
                                 amount: *amount,
-                        }
-                        },
-                        CreateMarketOrderRequest::Ask {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            amount_base: NonZero::new(*amount).unwrap(),
-                            max_slippage: Bounded::new_unchecked(Udec128::MAX),
-                        },
-                    ),
+                            },
+                            CreateMarketOrderRequest::Ask {
+                                base_denom: base_denom.clone(),
+                                quote_denom: quote_denom.clone(),
+                                amount_base: NonZero::new(*amount).unwrap(),
+                                max_slippage,
+                            },
+                        )
+                    },
                 };
 
                 let msg = Message::execute(
@@ -369,14 +371,16 @@ impl DexAction {
                     .unwrap();
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
-                // println!("block outcome: {block_outcome:?}");
+                println!("block outcome: {block_outcome:?}");
 
-                assert!(
-                    block_outcome
-                        .tx_outcomes
-                        .iter()
-                        .all(|tx_outcome| tx_outcome.result.is_ok())
-                );
+                assert!(block_outcome.tx_outcomes.iter().all(|tx_outcome| {
+                    if tx_outcome.result.is_err() {
+                        println!("{tx_outcome:#?}");
+                        false
+                    } else {
+                        true
+                    }
+                }));
                 assert!(
                     block_outcome
                         .cron_outcomes
