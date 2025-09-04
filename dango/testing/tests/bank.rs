@@ -2,15 +2,15 @@ use {
     dango_testing::setup_test_naive,
     dango_types::{
         bank::{
-            OrphanedTransferResponseItem, QueryOrphanedTransfersByRecipientRequest,
+            self, OrphanedTransferResponseItem, QueryOrphanedTransfersByRecipientRequest,
             QueryOrphanedTransfersBySenderRequest, QueryOrphanedTransfersRequest, Received, Sent,
             TransferOrphaned,
         },
         constants::{dango, usdc},
     },
     grug::{
-        Addressable, BalanceChange, CheckedContractEvent, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, addr, btree_map, coins,
+        Addressable, BalanceChange, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded,
+        Part, QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
     },
 };
 
@@ -279,4 +279,102 @@ where
 
     // If `b` is left empty, then all elements are matched.
     b.is_empty()
+}
+
+#[test]
+fn set_namespace_owner_can_only_be_called_by_owner() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Attempt to set namespace owner as non-owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::SetNamespaceOwner {
+                namespace: Part::new_unchecked("test"),
+                owner: accounts.user2.address(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("you don't have the right, O you don't have the right");
+
+    // Attempt to set namespace owner as owner. Should succeed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.bank,
+            &bank::ExecuteMsg::SetNamespaceOwner {
+                namespace: Part::new_unchecked("test"),
+                owner: accounts.user2.address(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+#[test]
+fn set_metadata_can_only_be_called_by_non_namespace_owner_and_set_namespace_owner_works() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Attempt to set metadata as non-namespace owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::SetMetadata {
+                denom: Denom::new_unchecked(["testing", "test"]),
+                metadata: bank::Metadata {
+                    name: LengthBounded::new_unchecked("Very testy token".to_string()),
+                    symbol: LengthBounded::new_unchecked("TESTY".to_string()),
+                    description: None,
+                    decimals: 6,
+                },
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("sender does not own the namespace `testing`");
+
+    // Set user1 as namespace owner of testing
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.bank,
+            &bank::ExecuteMsg::SetNamespaceOwner {
+                namespace: Part::new_unchecked("testing"),
+                owner: accounts.user1.address(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Attempt to set metadata as user1. Should succeed.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::SetMetadata {
+                denom: Denom::new_unchecked(["testing", "test"]),
+
+                metadata: bank::Metadata {
+                    name: LengthBounded::new_unchecked("Very testy token".to_string()),
+                    symbol: LengthBounded::new_unchecked("TESTY".to_string()),
+                    description: None,
+                    decimals: 6,
+                },
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Assert metadata is set correctly
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryMetadataRequest {
+            denom: Denom::new_unchecked(["testing", "test"]),
+        })
+        .should_succeed_and_equal(bank::Metadata {
+            name: LengthBounded::new_unchecked("Very testy token".to_string()),
+            symbol: LengthBounded::new_unchecked("TESTY".to_string()),
+            description: None,
+            decimals: 6,
+        });
 }
