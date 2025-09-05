@@ -134,6 +134,15 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.NotificationSpotActionOrder]: {
+    component: lazy(() =>
+      import("./notifications/NotificationSpotActionOrder").then(
+        ({ NotificationSpotActionOrder }) => ({
+          default: NotificationSpotActionOrder,
+        }),
+      ),
+    ),
+  },
 };
 
 type ModalDefinition = {
