@@ -16,6 +16,7 @@ import {
   IconArrowDown,
   Input,
   Modals,
+  Range,
   Skeleton,
   type useApp,
 } from "@left-curve/applets-kit";
@@ -237,7 +238,7 @@ const ConvertForm: React.FC = () => {
         label={isReverse ? m["dex.convert.youGet"]() : m["dex.convert.youSwap"]()}
         classNames={{
           base: "z-20",
-          inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px]",
+          inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
           inputParent: "h-[34px] h3-bold",
           input: "!h3-bold",
         }}
@@ -251,36 +252,75 @@ const ConvertForm: React.FC = () => {
           </div>
         }
         insideBottomComponent={
-          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular pl-4">
-            <div className="flex items-center gap-2">
-              <p>
-                {baseBalance} {base.symbol}
-              </p>
-              {isReverse ? null : (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                  onClick={() => {
-                    setActiveInput("base");
-                    setValue("base", baseBalance);
-                  }}
-                >
-                  {m["common.max"]()}
-                </Button>
-              )}
+          <div className="flex flex-col w-full gap-2 pl-4">
+            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular">
+              <div className="flex items-center gap-2">
+                <p>
+                  {baseBalance} {base.symbol}
+                </p>
+              </div>
+              <div>
+                {simulation.isPending && activeInput !== "base" ? (
+                  <Skeleton className="w-14 h-4" />
+                ) : (
+                  getPrice(baseAmount, base.denom, {
+                    format: true,
+                    formatOptions: formatNumberOptions,
+                  })
+                )}
+              </div>
             </div>
-            <div>
-              {simulation.isPending && activeInput !== "base" ? (
-                <Skeleton className="w-14 h-4" />
-              ) : (
-                getPrice(baseAmount, base.denom, {
-                  format: true,
-                  formatOptions: formatNumberOptions,
-                })
-              )}
-            </div>
+            {isReverse ? null : (
+              <div className="flex flex-col gap-4">
+                <Range
+                  minValue={0}
+                  maxValue={Number(baseBalance)}
+                  step={0.1}
+                  value={Number(baseAmount)}
+                  onChange={(value) => setValue("base", String(value))}
+                  classNames={{ inputWrapper: "px-0" }}
+                  showPercentage
+                />
+                <div className="w-full flex gap-4 justify-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    onClick={() => {
+                      setActiveInput("base");
+                      setValue("base", String(Number(baseBalance) * 0.25));
+                    }}
+                  >
+                    25%
+                  </Button>{" "}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    onClick={() => {
+                      setActiveInput("base");
+                      setValue("base", String(Number(baseBalance) * 0.5));
+                    }}
+                  >
+                    50%
+                  </Button>{" "}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    onClick={() => {
+                      setActiveInput("base");
+                      setValue("base", baseBalance);
+                    }}
+                  >
+                    {m["common.max"]()}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         }
       />
@@ -314,7 +354,7 @@ const ConvertForm: React.FC = () => {
         })}
         classNames={{
           base: "z-20",
-          inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px]",
+          inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
           inputParent: "h-[34px] h3-bold",
           input: "!h3-bold",
         }}
@@ -333,36 +373,75 @@ const ConvertForm: React.FC = () => {
           )
         }
         insideBottomComponent={
-          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular pl-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col w-full gap-2 pl-4">
+            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular">
+              <div className="flex items-center gap-2">
               <p>
                 {quoteBalance} {quote.symbol}
               </p>
-              {isReverse ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="xs"
-                  className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-                  onClick={() => {
-                    setActiveInput("quote");
-                    setValue("quote", quoteBalance);
-                  }}
-                >
-                  {m["common.max"]()}
-                </Button>
-              ) : null}
+              </div>
+              <div>
+                {simulation.isPending && activeInput !== "quote" ? (
+                  <Skeleton className="w-14 h-4" />
+                ) : (
+                  getPrice(quoteAmount, quote.denom, {
+                    format: true,
+                    formatOptions: formatNumberOptions,
+                  })
+                )}
+              </div>
             </div>
-            <div>
-              {simulation.isPending && activeInput !== "quote" ? (
-                <Skeleton className="w-14 h-4" />
-              ) : (
-                getPrice(quoteAmount, quote.denom, {
-                  format: true,
-                  formatOptions: formatNumberOptions,
-                })
-              )}
-            </div>
+            {isReverse ? (
+              <div className="flex flex-col gap-4">
+                <Range
+                  minValue={0}
+                  maxValue={Number(quoteBalance)}
+                  step={0.1}
+                  value={Number(quoteAmount)}
+                  onChange={(value) => setValue("quote", String(value))}
+                  classNames={{ inputWrapper: "px-0" }}
+                  showPercentage
+                />
+                <div className="w-full flex gap-4 justify-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    onClick={() => {
+                      setActiveInput("quote");
+                      setValue("quote", String(Number(quoteBalance) * 0.25));
+                    }}
+                  >
+                    25%
+                  </Button>{" "}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    onClick={() => {
+                      setActiveInput("quote");
+                      setValue("quote", String(Number(quoteBalance) * 0.5));
+                    }}
+                  >
+                    50%
+                  </Button>{" "}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="xs"
+                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    onClick={() => {
+                      setActiveInput("quote");
+                      setValue("quote", quoteBalance);
+                    }}
+                  >
+                    {m["common.max"]()}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
         }
       />

@@ -34,9 +34,11 @@ export type RangeProps = {
   label?: string | ReactNode;
   isDisabled?: boolean;
   showSteps?: boolean | StepObject[];
+  showPercentage?: boolean;
   classNames?: {
     base?: string;
     input?: string;
+    inputWrapper?: string;
   };
   withInput?: boolean;
   inputEndContent?: ReactNode;
@@ -55,6 +57,7 @@ export const Range: React.FC<RangeProps> = ({
   classNames,
   withInput = false,
   inputEndContent,
+  showPercentage = false,
 }) => {
   const [value, setValue] = useControlledState(controlledValue, onChange, () => {
     const initial = defaultValue !== undefined ? defaultValue : minValue;
@@ -198,7 +201,13 @@ export const Range: React.FC<RangeProps> = ({
       {label && <div className="text-tertiary-500 exposure-xs-italic">{label}</div>}
 
       <div className="flex items-center gap-3">
-        <div className="flex flex-col flex-1 px-[10px]">
+        <div
+          className={twMerge(
+            "flex flex-col flex-1",
+            { "mt-4": showPercentage },
+            classNames?.inputWrapper,
+          )}
+        >
           <div
             ref={sliderRef}
             className={twMerge(
@@ -215,6 +224,7 @@ export const Range: React.FC<RangeProps> = ({
               )}
               style={{ width: `${currentPercentage}%` }}
             />
+
             <div
               className={twMerge(
                 "absolute top-1/2 w-4 h-4 rounded-full shadow-md focus:outline-none focus:border-red-bean-600",
@@ -223,7 +233,7 @@ export const Range: React.FC<RangeProps> = ({
                   : "bg-white border-2 border-red-bean-500 cursor-grab active:cursor-grabbing",
               )}
               style={{
-                left: `calc(${currentPercentage}% - 10px)`,
+                left: `calc(${currentPercentage}% - ${currentPercentage < 2 ? "0px" : "16px"})`,
                 transform: "translateY(-50%)",
               }}
               tabIndex={isDisabled ? -1 : 0}
@@ -242,7 +252,13 @@ export const Range: React.FC<RangeProps> = ({
                 if (!isDisabled) setIsDragging(true);
               }}
               onKeyDown={handleThumbKeyDown}
-            />
+            >
+              {showPercentage && (
+                <p className="absolute -top-5 text-tertiary-500 exposure-xs-italic select-none">
+                  {currentPercentage.toFixed(0)}%
+                </p>
+              )}
+            </div>
           </div>
           {showSteps && stepsToDisplay.length > 0 && (
             <div className="flex justify-between mt-2 px-1">
