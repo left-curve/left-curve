@@ -11,8 +11,8 @@
     "compile": "rsbuild build",
     "preview": "rsbuild preview"
   },
-  "main": "./src/exports.ts",
-  "module": "./src/exports.ts",
+  "main": "./exports.ts",
+  "module": "./exports.ts",
   "dependencies": {
     "@left-curve/applets-kit": "workspace:^",
     "@left-curve/dango": "workspace:^",
