@@ -562,6 +562,15 @@
             }
           }
         ]
+      },
+      "modal":{
+        "received": "Received",
+        "sent": "Sent ",
+        "in":"In",
+        "from":"From",
+        "fee": "Fee",
+        "time":"Time",
+        "transaction":"Transaction"
       }
     }
   },

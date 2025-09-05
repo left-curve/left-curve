@@ -118,6 +118,15 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.NotificationSentAndReceived]: {
+    component: lazy(() =>
+      import("./notifications/NotificationSentAndReceived").then(
+        ({ NotificationSentAndReceived }) => ({
+          default: NotificationSentAndReceived,
+        }),
+      ),
+    ),
+  },
 };
 
 type ModalDefinition = {
