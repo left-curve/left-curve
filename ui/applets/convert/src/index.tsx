@@ -1,6 +1,6 @@
 import ReactDOM from "react-dom/client";
 import { useState } from "react";
-import { Convert } from "./components/Convert";
+import { Convert } from "./applet";
 import { DangoRemoteProvider } from "@left-curve/store";
 import { useRemoteApp, AppRemoteProvider } from "@left-curve/applets-kit";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
