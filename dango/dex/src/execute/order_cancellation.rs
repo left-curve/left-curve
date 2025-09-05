@@ -163,11 +163,11 @@ fn cancel_order(
     // Compute the amount of tokens to be sent back to the user.
     let refund = match direction {
         Direction::Bid => DecCoin {
-            denom: quote_denom,
+            denom: quote_denom.clone(),
             amount: remaining_in_quote,
         },
         Direction::Ask => DecCoin {
-            denom: base_denom,
+            denom: base_denom.clone(),
             amount: order.remaining,
         },
     };
@@ -178,6 +178,11 @@ fn cancel_order(
         kind: OrderKind::Limit,
         remaining: order.remaining,
         refund: refund.clone(),
+        base_denom,
+        quote_denom,
+        direction,
+        price,
+        amount: order.amount,
     })?;
 
     refunds.insert(refund)?;
