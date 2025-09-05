@@ -127,6 +127,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       ),
     ),
   },
+  [Modals.NotificationSwapped]: {
+    component: lazy(() =>
+      import("./notifications/NotificationSwapped").then(({ NotificationSwapped }) => ({
+        default: NotificationSwapped,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {

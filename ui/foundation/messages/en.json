@@ -564,6 +564,7 @@
         ]
       },
       "modal":{
+        "swapped": "Swapped",
         "received": "Received",
         "sent": "Sent ",
         "in":"In",

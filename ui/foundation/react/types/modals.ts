@@ -16,6 +16,7 @@ export const Modals = {
   PoolAddLiquidity: "pool-add-liquidity",
   PoolWithdrawLiquidity: "pool-withdraw-liquidity",
   NotificationSentAndReceived: "notification-sent-and-received",
+  NotificationSwapped: "notification-swapped",
 };
 
 export type ModalRef = {
