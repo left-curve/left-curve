@@ -66,6 +66,11 @@ export type OrderCanceledEvent = {
   kind: OrderTypes;
   user: Address;
   remaining: string;
+  direction: Directions;
+  base_denom: Denom;
+  quote_denom: Denom;
+  price: string;
+  amount: string;
   refund: {
     amount: string;
     denom: Denom;
@@ -86,6 +91,7 @@ export type OrderFilledEvent = {
   fee_base: string;
   fee_quote: string;
   clearing_price: string;
+  remaining: string;
   cleared: boolean;
 };
 

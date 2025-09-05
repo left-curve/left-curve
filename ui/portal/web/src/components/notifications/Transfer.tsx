@@ -57,7 +57,7 @@ export const NotificationTransfer: React.FC<NotificationTransferProps> = ({ noti
         <span className="diatype-m-medium text-secondary-700">
           {m["notifications.notification.transfer.title"]({ action: type })}
         </span>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {Object.entries(coins).map(([denom, amount]) => {
             const coin = getCoinInfo(denom);
             return (

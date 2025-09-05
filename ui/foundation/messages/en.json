@@ -553,13 +553,26 @@
         "title": "Account created"
       },
       "orderCreated": {
-        "title": "Created {orderType} order"
+        "title": "Order created",
+        "description": "{orderType} {action} in ",
+        "atPrice": "at price "
       },
       "orderCanceled": {
         "title": "Canceled {orderType} order"
       },
       "orderFilled": {
-        "title": "Filled {orderType} order"
+        "title": "Order {isFullfilled}",
+        "remaining": "remaining",
+        "isFullfilled": [
+          {
+            "declarations": ["input isFullfilled"],
+            "selectors": ["isFullfilled"],
+            "match": {
+              "isFullfilled=true": "fulfilled",
+              "isFullfilled=false": "partially fulfilled"
+            }
+          }
+        ]
       }
     }
   },
