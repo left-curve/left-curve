@@ -79,11 +79,11 @@ export const Notification: React.FC<NotificationProps> = ({ notification }) => {
 
   return (
     <Suspense>
-      <div className="flex items-end justify-between gap-2 p-2 rounded-lg hover:bg-surface-quaternary-rice max-w-full group">
+      <div className="flex relative items-end justify-between gap-2 p-2 rounded-lg hover:bg-surface-secondary-rice max-w-full group">
         <NotificationCard notification={notification} />
-        <div className="flex flex-col diatype-sm-medium text-tertiary-500 min-w-fit items-center relative">
+        <div className="flex flex-col diatype-sm-medium text-tertiary-500 min-w-fit items-center">
           <IconClose
-            className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-[-26px] remove-notification"
+            className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-1 remove-notification"
             onClick={() => deleteNotification(id)}
           />
           <p>{formatNotificationTimestamp(new Date(createdAt))}</p>
