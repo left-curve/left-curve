@@ -545,7 +545,9 @@
         "atPrice": "at price "
       },
       "orderCanceled": {
-        "title": "Canceled {orderType} order"
+        "title": "Order canceled",
+        "description": "{orderType} {action} in ",
+        "atPrice": "at price "
       },
       "orderFilled": {
         "title": "Order {isFullfilled}",
