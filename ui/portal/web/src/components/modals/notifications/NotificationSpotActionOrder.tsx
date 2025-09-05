@@ -155,7 +155,7 @@ export const NotificationSpotActionOrder = forwardRef<NotificationSpotActionOrde
               {orderDetails.timeUpdated && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
-                    {m["notifications.notification.modal.timeCanceled"]()}
+                    {m["notifications.notification.modal.timeUpdated"]()}
                   </p>
                   <div className="flex items-center gap-1">
                     <p>August 14, 2025 10:15 AM</p>
