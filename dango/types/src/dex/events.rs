@@ -26,12 +26,19 @@ pub struct OrderCanceled {
     pub user: Addr,
     pub id: OrderId,
     pub kind: OrderKind,
-    /// Amount that remains unfilled at the time of cancelation.
-    ///
-    /// This can be either denominated in the base or the quote asset, depending
-    /// on order type.
+    /// Amount that remains unfilled at the time of cancelation, denominated in the base asset.
     pub remaining: Udec128_6,
     pub refund: DecCoin<6>,
+    /// The base denom of the order.
+    pub base_denom: Denom,
+    /// The quote denom of the order.
+    pub quote_denom: Denom,
+    /// The direction of the order.
+    pub direction: Direction,
+    /// The order's limit price, measured in quote asset per base asset.
+    pub price: Udec128_24,
+    /// The order's total size, measured in the _base asset_.
+    pub amount: Uint128,
 }
 
 #[grug::derive(Serde)]

@@ -885,6 +885,11 @@ fn refund_market_order(
             kind: order.kind,
             remaining: order.remaining,
             refund: (refund_denom.clone(), refund_amount).into(),
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            direction,
+            price: order.price,
+            amount: order.amount,
         })?;
 
         refunds.insert(order.user, refund_denom, refund_amount)?;
