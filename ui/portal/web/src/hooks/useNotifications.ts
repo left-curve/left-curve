@@ -1,4 +1,4 @@
-import { useAccount, useConfig, usePublicClient, useStorage } from "@left-curve/store";
+import { useAccount, useConfig, useStorage } from "@left-curve/store";
 import { useCallback, useMemo } from "react";
 
 import { uid } from "@left-curve/dango/utils";
@@ -12,12 +12,9 @@ import type {
   OrderCanceledEvent,
   OrderCreatedEvent,
   OrderFilledEvent,
-  OrderResponse,
-  OrderTypes,
   UID,
   Username,
 } from "@left-curve/dango/types";
-import { useQueryClient } from "@tanstack/react-query";
 
 export type Notifications = {
   transfer: {
@@ -32,7 +29,7 @@ export type Notifications = {
     accountIndex: number;
   };
   orderCreated: OrderCreatedEvent;
-  orderCanceled: OrderResponse & { kind: OrderTypes };
+  orderCanceled: OrderCanceledEvent;
   orderFilled: OrderFilledEvent;
 };
 
@@ -49,14 +46,10 @@ export type Notification<key extends keyof Notifications = keyof Notifications> 
 
 type UseNotificationsParameters = {
   limit?: number;
-  page?: number;
 };
 
 export function useNotifications(parameters: UseNotificationsParameters = {}) {
-  const { limit = 5, page = 1 } = parameters;
-  const queryClient = useQueryClient();
-  const publicClient = usePublicClient();
-
+  const { limit = 5 } = parameters;
   const { username = "", accounts, account } = useAccount();
   const { subscriptions } = useConfig();
   const userAddresses = useMemo(() => (accounts ? accounts.map((a) => a.address) : []), [accounts]);
@@ -77,6 +70,8 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     () => (allNotifications[username] || []).filter((n) => !n.isHidden),
     [allNotifications, username],
   );
+
+  const totalNotifications = userNotification.length;
 
   const addNotification = useCallback(
     (notification: Notification) => {
@@ -110,14 +105,12 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     [username],
   );
 
-  const totalNotifications = userNotification.length;
   const hasNotifications = totalNotifications > 0;
 
   const notifications: Record<string, Notification[]> = useMemo(() => {
-    const current = (page - 1) * limit;
     return [...userNotification]
       .reverse()
-      .slice(current, current + limit)
+      .slice(0, limit)
       .sort((a, b) => +b.createdAt - +a.createdAt)
       .reduce((acc, notification) => {
         const dateKey = isToday(notification.createdAt)
@@ -130,7 +123,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
         acc[dateKey].push(notification);
         return acc;
       }, Object.create({}));
-  }, [userNotification, limit, page]);
+  }, [userNotification, limit]);
 
   const startNotifications = useCallback(() => {
     if (!account || !username) return;
@@ -169,13 +162,13 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     const addresses = accounts?.map(({ address }) => address) || [];
     const unsubscribeEvents = subscriptions.subscribe("eventsByAddresses", {
       params: { addresses },
-      listener: async (events) => {
+      listener: (events) => {
         for (const event of events) {
           const { data: eventData, blockHeight, createdAt, transaction } = event;
           if (!("contract_event" in eventData)) continue;
           const { type, data } = eventData.contract_event;
 
-          const notification = await (async () => {
+          const notification = (() => {
             switch (type) {
               case "sent":
               case "received": {
@@ -207,14 +200,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
                 return { data: data as OrderCreatedEvent, type: "orderCreated" as const };
               }
               case "order_canceled": {
-                const { id, kind } = data as OrderCanceledEvent;
-                const notification = await queryClient.fetchQuery({
-                  queryKey: ["order", id],
-                  queryFn: () => publicClient.getOrder({ orderId: id, height: blockHeight - 2 }),
-                });
-                console.log(notification);
-
-                return { data: { ...notification, kind }, type: "orderCanceled" as const };
+                return { data: data as OrderCanceledEvent, type: "orderCanceled" as const };
               }
             }
           })();
