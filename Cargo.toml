@@ -103,7 +103,7 @@ async-std                   = { version = "1", features = ["attributes", "tokio1
 async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
-axum                        = "0.8"
+axum                        = { version = "0.8", features = ["ws"] }
 base64                      = "0.22"
 bigdecimal                  = "0.4"
 bip32                       = "0.5"

@@ -28,7 +28,7 @@ use {
         time::Duration,
     },
     tokio::{sync::mpsc::Receiver, time::sleep},
-    tracing::{error, info, warn},
+    tracing::{debug, error, info, warn},
     url::Url,
 };
 
@@ -84,6 +84,10 @@ impl PythClientLazer {
     // Ignore the error here and analyze the data received from the stream: in case
     // we don't receive any data for a subscription, we will resubscribe.
     async fn connect(client: &mut PythLazerClient, subscribe_requests: Vec<SubscribeRequest>) {
+        info!(
+            "Sending subscription with {} requests",
+            subscribe_requests.len()
+        );
         for subscription in subscribe_requests {
             let _ = client.subscribe(subscription).await;
         }
@@ -176,6 +180,8 @@ impl PythClientLazer {
                 to_resubscribe = true;
                 continue;
             }
+
+            debug!("Received {} messages from Pyth Lazer", num_data_received);
 
             for data in buffer.drain(..) {
                 match data {
@@ -346,7 +352,8 @@ impl PythClientTrait for PythClientLazer {
 
         // Build the new client and subscribe to the price feeds.
         let builder = PythLazerClientBuilder::new(self.access_token.clone())
-            .with_endpoints(self.endpoints.clone());
+            .with_endpoints(self.endpoints.clone())
+            .with_timeout(Duration::from_secs(2));
 
         let mut client = builder.build()?;
         let mut receiver = client.start().await?;
