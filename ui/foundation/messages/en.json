@@ -575,6 +575,28 @@
             }
           }
         ]
+      },
+      "modal":{
+        "spotOrderAction": "{status} order",
+        "spotOrderBuy":"Limit ∙ Buy",
+        "spotOrderSell":"Market ∙ Sell",
+        "swapped": "Swapped",
+        "received": "Received",
+        "sent": "Sent ",
+        "in":"In",
+        "from":"From",
+        "fee": "Fee",
+        "time":"Time",
+        "transaction":"Transaction",
+        "amount": "Amount",
+        "tokenReceived": "Token Received",
+        "limitPrice": "Limit Price",
+        "id": "ID",
+        "timeCreated": "Time Created",
+        "timeCanceled": "Time Canceled",
+        "timeUpdated": "Time Updated",
+        "filledAmount": "Filled/Amount",
+        "averagePrice": "Avg./Price"
       }
     }
   },
