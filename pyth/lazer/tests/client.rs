@@ -195,36 +195,12 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         guard.recv().await
     };
 
-    let (subscription_id, price_ids, print_info) = match first {
+    // Read the subscription request.
+    let (subscription_id, price_ids) = match first {
         Some(Ok(Message::Text(txt))) => match serde_json::from_str::<SubscriptionRequest>(&txt) {
             Ok(request) => match request {
                 SubscriptionRequest::Subscribe(sub) => {
-                    // Check if this is a reconnection attempts or just a duplicate connection.
-                    let mut connections = state.connections.lock().await;
-                    let mut print_info = true;
-
-                    // Duplicate connection, do not count it.
-                    if connections.contains(&sub.subscription_id) {
-                        // Reject any duplicate connection in case the server keep alive
-                        // in order to have a clean test.
-                        if state.keep_connection_alive {
-                            return;
-                        }
-                        print_info = false;
-                    } else {
-                        // New connection.
-                        info!("Client sent ids {:#?}", sub.params.price_feed_ids);
-                        connections.push(sub.subscription_id);
-
-                        let mut reconnection_attempts = state.reconnection_attempts.lock().await;
-                        *reconnection_attempts += 1;
-                    }
-
-                    (
-                        sub.subscription_id,
-                        sub.params.price_feed_ids.clone(),
-                        print_info,
-                    )
+                    (sub.subscription_id, sub.params.price_feed_ids.clone())
                 },
                 _ => {
                     error!("received unexpected request {request:#?}");
@@ -238,6 +214,30 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
             return;
         },
     };
+
+    // Check if this is a reconnection attempts or just a duplicate connection.
+    let mut print_info = true;
+    {
+        let mut connections = state.connections.lock().await;
+
+        // Duplicate connection, do not count it.
+        if connections.contains(&subscription_id) {
+            // Reject any duplicate connection in case the server keep alive
+            // in order to have a clean test.
+            if state.keep_connection_alive {
+                return;
+            }
+            print_info = false;
+        } else {
+            // New connection.
+            info!("Client sent ids {:#?}", price_ids);
+            connections.push(subscription_id);
+
+            // Increment the number of reconnection attempts.
+            let mut reconnection_attempts = state.reconnection_attempts.lock().await;
+            *reconnection_attempts += 1;
+        }
+    }
 
     // Start a client cache in order to read the data from file.
     let mut pyth_client_cache = match PythClientLazerCache::new(
