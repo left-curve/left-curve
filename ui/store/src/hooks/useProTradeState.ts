@@ -230,6 +230,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         history.refetch();
         controllers.reset();
         queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
+        setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
       },
     },
   });
