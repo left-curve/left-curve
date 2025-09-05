@@ -305,29 +305,12 @@ export const WalletTab: React.FC = () => {
 };
 
 export const NotificationsTab: React.FC = () => {
-  const navigate = useNavigate();
-  const { setSidebarVisibility } = useApp();
-
-  const { totalNotifications } = useNotifications({});
+  const { totalNotifications } = useNotifications();
 
   return (
     <div className="pb-[2.5rem] flex flex-col">
       {totalNotifications > 0 ? (
-        <>
-          <Notifications
-            className="max-h-[41rem] overflow-y-scroll scrollbar-none"
-            maxNotifications={5}
-          />
-          <div className="p-4 flex items-center justify-center">
-            <Button
-              variant="link"
-              className="py-0 h-fit"
-              onClick={() => [navigate({ to: "/notifications" }), setSidebarVisibility(false)]}
-            >
-              {m["common.viewAll"]()}
-            </Button>
-          </div>
-        </>
+        <Notifications className="max-h-[41rem] overflow-y-scroll scrollbar-none" />
       ) : (
         <div className="px-4">
           <EmptyPlaceholder

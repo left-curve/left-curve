@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { useNotifications } from "~/hooks/useNotifications";
 
-import {
-  Pagination,
-  ResizerContainer,
-  twMerge,
-  useMediaQuery,
-  useWatchEffect,
-} from "@left-curve/applets-kit";
-import { capitalize } from "@left-curve/dango/utils";
+import { ResizerContainer, Spinner, twMerge, useInfiniteScroll } from "@left-curve/applets-kit";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Notification } from "./Notification";
@@ -16,25 +9,25 @@ import { Notification } from "./Notification";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
-import type { NotificationProps } from "./Notification";
 
 type NotificationsProps = {
   className?: string;
-  maxNotifications?: number;
-  withPagination?: boolean;
+  notificationsPerCall?: number;
 };
 
 export const Notifications: React.FC<NotificationsProps> = (props) => {
-  const { className, maxNotifications = 5, withPagination } = props;
-  const [currentPage, setCurrentPage] = useState(1);
-  const { isMd } = useMediaQuery();
+  const { className, notificationsPerCall = 5 } = props;
 
+  const [notificationsVisible, setNotificationsVisible] = useState(notificationsPerCall);
   const { notifications, hasNotifications, totalNotifications } = useNotifications({
-    limit: maxNotifications,
-    page: currentPage,
+    limit: notificationsVisible,
   });
 
-  useWatchEffect(maxNotifications, () => setCurrentPage(1));
+  const hasMoreNotifications = notificationsVisible < totalNotifications;
+
+  const { loadMoreRef } = useInfiniteScroll(() => {
+    setNotificationsVisible((prev) => Math.min(prev + notificationsPerCall, totalNotifications));
+  }, hasMoreNotifications);
 
   if (!hasNotifications) {
     return (
@@ -54,21 +47,11 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
 
   return (
     <div className="flex flex-col gap-6">
-      {hasNotifications && withPagination ? (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={Math.ceil(totalNotifications / maxNotifications)}
-          onPageChange={setCurrentPage}
-          variant={isMd ? "default" : "text"}
-          labelPage={m["pagination.page"]()}
-          labelOf={m["pagination.of"]()}
-        />
-      ) : null}
       <ResizerContainer
         layoutId="notifications"
         className={twMerge("bg-transparent py-1 px-1 rounded-xl", className)}
       >
-        <AnimatePresence key={currentPage} mode="wait">
+        <AnimatePresence mode="wait">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -79,15 +62,17 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
               <motion.div key={dateKey}>
                 <p className="text-sm text-tertiary-500 mx-2 my-1">{dateKey}</p>
                 <div className="flex flex-col gap-2 max-w-full">
-                  {n.map((notification) => {
-                    const NotificationCard = Notification[
-                      capitalize(notification.type) as keyof typeof Notification
-                    ] as React.FC<NotificationProps>;
-                    return <NotificationCard key={notification.id} notification={notification} />;
-                  })}
+                  {n.map((notification) => (
+                    <Notification key={notification.id} notification={notification} />
+                  ))}
                 </div>
               </motion.div>
             ))}
+            {hasMoreNotifications ? (
+              <div ref={loadMoreRef} className="flex justify-center py-2">
+                <Spinner color="pink" />
+              </div>
+            ) : null}
           </motion.div>
         </AnimatePresence>
       </ResizerContainer>

@@ -72,7 +72,10 @@ import {
   queryTrades,
 } from "./queries/trades.js";
 
+import { getOrder, type GetOrderParameters, type GetOrderReturnType } from "./queries/getOrder.js";
+
 export type DexQueryActions = {
+  getOrder: (args: GetOrderParameters) => GetOrderReturnType;
   getPairs: (args?: GetPairsParameters) => GetPairsReturnType;
   getPair: (args: GetPairParameters) => GetPairReturnType;
   ordersByUser: (args: OrdersByUserParameters) => OrdersByUserReturnType;
@@ -93,6 +96,7 @@ export function dexQueryActions<transport extends Transport = Transport>(
   client: Client<transport>,
 ): DexQueryActions {
   return {
+    getOrder: (args) => getOrder(client, args),
     getPairs: (args) => getPairs(client, args),
     getPair: (args) => getPair(client, args),
     ordersByUser: (args) => ordersByUser(client, args),

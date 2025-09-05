@@ -47,7 +47,7 @@
   },
   "nodemonConfig": {
     "watch": [
-      "build"
+      "messages"
     ],
     "exec": "node paraglide.ts"
   }

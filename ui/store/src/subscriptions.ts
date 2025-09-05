@@ -77,6 +77,20 @@ const blockSubscriptionExecutor: SubscriptionExecutor<"block"> = ({ client, getL
   return unsubscribe;
 };
 
+const eventsByAddressesSubscriptionExecutor: SubscriptionExecutor<"eventsByAddresses"> = ({
+  client,
+  params,
+  getListeners,
+}) => {
+  return client.eventsByAddressesSubscription({
+    ...params,
+    next: ({ eventByAddresses }) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(eventByAddresses));
+    },
+  });
+};
+
 const transferSubscriptionExecutor: SubscriptionExecutor<"transfer"> = ({
   client,
   params,
@@ -144,6 +158,7 @@ const SubscriptionExecutors = {
   account: accountSubscriptionExecutor,
   block: blockSubscriptionExecutor,
   candles: candlesSubscriptionExecutor,
+  eventsByAddresses: eventsByAddressesSubscriptionExecutor,
   submitTx: submitTxSubscriptionExecutor,
   trades: tradesSubscriptionExecutor,
   transfer: transferSubscriptionExecutor,
