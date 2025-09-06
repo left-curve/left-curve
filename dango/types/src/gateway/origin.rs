@@ -1,6 +1,7 @@
 use {
     crate::gateway::NAMESPACE,
     grug::{Denom, Part},
+    std::slice,
 };
 
 #[grug::derive(Serde)]
@@ -19,6 +20,6 @@ pub trait Traceable {
 impl Traceable for Denom {
     /// Returns `true` if the denom is a remote denom (i.e. starts with the `bridge` namespace).
     fn is_remote(&self) -> bool {
-        self.starts_with(&[NAMESPACE.clone()])
+        self.starts_with(slice::from_ref(&NAMESPACE))
     }
 }
