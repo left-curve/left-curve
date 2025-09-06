@@ -1,5 +1,5 @@
 use {
-    crate::dex::{Direction, OrderId, OrderKind, PairId},
+    crate::dex::{Direction, OrderId, PairId, TimeInForce},
     grug::{Addr, Coin, DecCoin, Denom, Udec128_6, Udec128_24, Uint128},
 };
 
@@ -8,7 +8,7 @@ use {
 pub struct OrderCreated {
     pub user: Addr,
     pub id: OrderId,
-    pub kind: OrderKind,
+    pub time_in_force: TimeInForce,
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
@@ -25,7 +25,7 @@ pub struct OrderCreated {
 pub struct OrderCanceled {
     pub user: Addr,
     pub id: OrderId,
-    pub kind: OrderKind,
+    pub time_in_force: TimeInForce,
     /// Amount that remains unfilled at the time of cancelation, denominated in the base asset.
     pub remaining: Udec128_6,
     pub refund: DecCoin<6>,
@@ -58,7 +58,7 @@ pub struct OrdersMatched {
 pub struct OrderFilled {
     pub user: Addr,
     pub id: OrderId,
-    pub kind: OrderKind,
+    pub time_in_force: TimeInForce,
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,

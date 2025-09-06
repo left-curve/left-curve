@@ -56,10 +56,16 @@ pub type OrderId = Uint64;
 #[grug::derive(Borsh, Serde)]
 #[derive(Copy, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
-#[cfg_attr(feature = "async-graphql", graphql(rename_items = "lowercase"))]
-pub enum OrderKind {
-    Limit,
-    Market,
+#[cfg_attr(feature = "async-graphql", graphql(rename_items = "snake_case"))]
+pub enum TimeInForce {
+    /// If the order is not fully filled in the first auction, its remaining
+    /// portion is persisted in the order book, and is available to be matched
+    /// again in future auctions, where it becomes a maker order (an order is
+    /// a taker in its first auction).
+    GoodTilCanceled,
+    /// If the order is not fully filled in the first auction,  the order is
+    /// canceled, and the remaining portion refunded to the user.
+    ImmediateOrCancel,
 }
 
 #[grug::derive(Borsh, Serde)]
@@ -69,8 +75,8 @@ pub struct Order {
     pub user: Addr,
     /// The order's identifier.
     pub id: OrderId,
-    /// The order's kind (limit or market).
-    pub kind: OrderKind,
+    /// The order's time-in-force.
+    pub time_in_force: TimeInForce,
     /// The order's limit price, measured in quote asset per base asset.
     pub price: Udec128_24,
     /// The order's total size, measured in the _base asset_.
