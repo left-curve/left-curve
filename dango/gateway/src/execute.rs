@@ -4,7 +4,7 @@ use {
     dango_types::{
         bank,
         gateway::{
-            Addr32, BridgeDenom, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, RateLimit, Remote,
+            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, RateLimit, Remote, Traceable,
             WithdrawalFee,
             bridge::{self, BridgeMsg},
         },

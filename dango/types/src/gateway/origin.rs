@@ -12,11 +12,11 @@ pub enum Origin {
     Native(Denom),
 }
 
-pub trait BridgeDenom {
+pub trait Traceable {
     fn is_remote(&self) -> bool;
 }
 
-impl BridgeDenom for Denom {
+impl Traceable for Denom {
     /// Returns `true` if the denom is a remote denom (i.e. starts with the `bridge` namespace).
     fn is_remote(&self) -> bool {
         self.starts_with(&[NAMESPACE.clone()])
