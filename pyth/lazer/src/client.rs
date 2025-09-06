@@ -265,6 +265,7 @@ impl PythClientLazer {
         received_data: &mut Vec<AnyResponse>,
         subscription_ids: &Vec<u64>,
         subscriptions_data: &mut HashMap<u64, pyth_types::LeEcdsaMessage>,
+        last_data_received: &mut HashMap<u64, chrono::DateTime<Local>>,
     ) {
         for data in received_data.drain(..) {
             match data {
@@ -275,6 +276,9 @@ impl PythClientLazer {
                             "Received update for a different subscription ID: {}. Expected: {:?}",
                             update.subscription_id.0, subscription_ids
                         );
+                    } else {
+                        // Update the last time we received data for this subscription ID.
+                        last_data_received.insert(update.subscription_id.0, Local::now());
                     }
 
                     // Analyze the messages received.
@@ -367,16 +371,40 @@ impl PythClientTrait for PythClientLazer {
         let buffer_capacity = 1000;
         let mut buffer = Vec::with_capacity(buffer_capacity);
 
+        // Flag to indicate if we need to resubscribe.
+        let mut to_resubscribe = false;
+
+        // Keep track of the last time we received data for each subscription ID.
+        let mut last_data_received = subscription_ids
+            .iter()
+            .map(|id| (*id, Local::now()))
+            .collect::<HashMap<_, _>>();
+
         // Create the stream.
         let stream = stream! {
             loop {
+
+                if to_resubscribe {
+                    to_resubscribe = false;
+
+                    match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await{
+                        Ok(()) => {},
+                        Err(err) => {
+                            // If the subscription fails, wait for a while and try again.
+                            // Next iteration, the recv_many will return 0 and we will try to reconnect again.
+                            error!("Failed to reconnect: {}", err.to_string());
+                            sleep(Duration::from_millis(200)).await;
+                        },
+                    }
+                }
+
                 // Clear the buffer.
                 buffer.clear();
 
                 tokio::select! {
                     // The server is not sending any more data.
                     // Log the error and keep running, since the client will handle reconnection.
-                    _ = tokio::time::sleep(tokio::time::Duration::from_millis(500)) => {
+                    _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {
 
                         // Check if the streaming has to be closed.
                         if !keep_running.load(Ordering::Relaxed) {
@@ -384,7 +412,7 @@ impl PythClientTrait for PythClientLazer {
                             break;
                         }
 
-                        warn!("No new data received for 500ms");
+                        warn!("No new data received for 1s");
                     },
 
                     // Read next data from stream.
@@ -398,27 +426,22 @@ impl PythClientTrait for PythClientLazer {
 
                         // Connection closed, try to reconnect.
                         if data_count == 0 {
-                            error!("Pyth Lazer connection closed. Start reconnecting");
-
-                            match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await{
-                                Ok(()) => {
-                                    info!("Reconnected successfully");
-                                },
-                                Err(err) => {
-                                    // If the subscription fails, wait for a while and try again.
-                                    // Next iteration, the recv_many will return 0 and we will try to reconnect again.
-                                    error!("Failed to reconnect: {}", err.to_string());
-                                    sleep(Duration::from_millis(200)).await;
-                                },
-                            }
-
+                            error!("Pyth Lazer connection closed");
+                            to_resubscribe = true;
                             continue;
                         };
 
-                        // TODO: Ensure all subscriptions are receiving data each x iterations.
-
                         // Analyze the data received.
-                        Self::analyze_data(&mut buffer, &subscription_ids, &mut subscriptions_data);
+                        Self::analyze_data(&mut buffer, &subscription_ids, &mut subscriptions_data, &mut last_data_received);
+
+                        // Check if we haven't received data for some subscriptions for more than 5 seconds.
+                        let now = Local::now();
+                        for (id, last_time) in last_data_received.iter() {
+                            if now - *last_time > TimeDelta::seconds(3) {
+                                to_resubscribe = true;
+                                warn!("No data received for subscription ID {id} for more than 3 seconds");
+                            }
+                        }
 
                         // Yield the current data.
                         if !subscriptions_data.is_empty(){
