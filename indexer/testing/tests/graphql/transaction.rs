@@ -1,6 +1,7 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
+    grug_testing::setup_tracing_subscriber,
     grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
     indexer_sql::entity::{self},
     indexer_testing::{
@@ -13,6 +14,7 @@ use {
     serde_json::json,
     std::str::FromStr,
     tokio::sync::mpsc,
+    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -324,6 +326,109 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
 
                 assert_that!(response.data.first().unwrap().block_height).is_equal_to(3);
                 assert_that!(response.data).has_length(1);
+
+                Ok::<(), anyhow::Error>(())
+            })
+            .await
+        })
+        .await?
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::WARN);
+
+    let port = get_mock_socket_addr();
+
+    let (sx, rx) = tokio::sync::oneshot::channel();
+
+    // Run server in separate thread with its own runtime
+    std::thread::spawn(move || {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(async {
+            tracing::info!("Starting mock HTTP server on port {port}");
+
+            if let Err(error) = dango_mock_httpd::run_with_callback(
+                port,
+                BlockCreation::OnBroadcast,
+                None,
+                TestOption::default(),
+                GenesisOption::preset_test(),
+                true,
+                None,
+                |accounts, _, _, _| {
+                    sx.send(accounts).unwrap();
+                },
+            )
+            .await
+            {
+                println!("Error running mock HTTP server: {error}");
+            }
+        });
+    });
+
+    let accounts = rx.await?;
+
+    wait_for_server_ready(port).await?;
+
+    // Ok((
+    //     HttpClient::new(format!("http://localhost:{port}"))?,
+    //     accounts,
+    // ))
+
+    let tx = accounts.user1.sign_transaction(
+        NonEmpty::new_unchecked(vec![Message::transfer(
+            accounts.user2.address.into_inner(),
+            Coins::one(usdc::DENOM.clone(), 100)?,
+        )?]),
+        MOCK_CHAIN_ID,
+        1000000,
+    )?;
+
+    // TODO: connect to the http port and broadcast the tx
+
+    return Ok(());
+
+    let (httpd_context, _client, ..) = create_block().await?;
+
+    let graphql_query = r#"
+      query Transactions {
+        transactions {
+          nodes {
+            httpRequestDetails
+          }
+        }
+      }
+    "#;
+
+    let request_body = GraphQLCustomRequest {
+        name: "transactions",
+        query: graphql_query,
+        variables: Default::default(),
+    };
+
+    let local_set = tokio::task::LocalSet::new();
+
+    local_set
+        .run_until(async {
+            tokio::task::spawn_local(async {
+                let app = build_app_service(httpd_context);
+
+                let response =
+                    call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
+
+                println!("RESPONSE: {:#?}", response);
+
+                // let expected = json!({
+                //     "blockHeight": 1,
+                //     "transactions": [
+                //         {
+                //             "blockHeight": 1,
+                //         }
+                //     ]
+                // });
+
+                // assert_json_include!(actual: response.data, expected: expected);
 
                 Ok::<(), anyhow::Error>(())
             })

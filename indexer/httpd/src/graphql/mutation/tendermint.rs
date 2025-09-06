@@ -18,6 +18,8 @@ impl TendermintMutation {
         let app_ctx = ctx.data::<crate::context::Context>()?;
         let http_request_details = ctx.data::<HttpRequestDetails>()?;
 
+        tracing::warn!("1 http_request_details: {:?}", http_request_details);
+
         app_ctx
             .sql_context
             .transaction_hash_details
