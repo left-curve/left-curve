@@ -12,10 +12,7 @@ pub struct OrderCreated {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    /// `None` for market orders.
-    pub price: Option<Udec128_24>,
-    /// Amount denominated in the base asset for limit orders and market SELL orders.
-    /// Amount denominated in the quote asset for market BUY orders.
+    pub price: Udec128_24,
     pub amount: Uint128,
     pub deposit: Coin,
 }

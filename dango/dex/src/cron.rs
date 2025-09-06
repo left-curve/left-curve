@@ -11,8 +11,8 @@ use {
         DangoQuerier,
         account_factory::Username,
         dex::{
-            CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrderId,
-            OrdersMatched, Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
+            CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
+            Paused, ReplyMsg, RestingOrderBookState, TimeInForce,
         },
         taxman::{self, FeeType},
     },
@@ -26,11 +26,6 @@ use {
 };
 
 const HALF: Udec128 = Udec128::new_percent(50);
-
-// Note: the map key is prefixed with the price, so that the orders are sorted
-// by price; the order ID is suffixed because there can be multiple orders of
-// the same price.
-type MarketOrders = BTreeMap<(Price, OrderId), Order>;
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -833,7 +828,7 @@ mod tests {
         dango_types::{
             config::{AppAddresses, AppConfig},
             constants::{dango, usdc},
-            dex::{Geometric, PairParams, PassiveLiquidity},
+            dex::{Geometric, OrderId, PairParams, PassiveLiquidity, Price},
             oracle::PriceSource,
         },
         grug::{Bounded, MockContext, MockQuerier, Timestamp, Uint128},
