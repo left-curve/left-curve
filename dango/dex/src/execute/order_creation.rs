@@ -38,8 +38,7 @@ pub(super) fn create_order(
             Direction::Bid => {
                 let best_ask_price = RESTING_ORDER_BOOK
                     .may_load(storage, (&order.base_denom, &order.quote_denom))?
-                    .map(|book| book.best_ask_price)
-                    .flatten()
+                    .and_then(|book| book.best_ask_price)
                     .ok_or_else(|| {
                         anyhow!(
                             "best ask price isn't available for base: {}, quote: {}",
@@ -53,8 +52,7 @@ pub(super) fn create_order(
             Direction::Ask => {
                 let best_bid_price = RESTING_ORDER_BOOK
                     .may_load(storage, (&order.base_denom, &order.quote_denom))?
-                    .map(|book| book.best_bid_price)
-                    .flatten()
+                    .and_then(|book| book.best_bid_price)
                     .ok_or_else(|| {
                         anyhow!(
                             "best bid price isn't available for base: {}, quote: {}",
