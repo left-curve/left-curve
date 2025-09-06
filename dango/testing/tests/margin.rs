@@ -733,11 +733,10 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
             contracts.dex,
             &dango_types::dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: dango_types::dex::Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new(Uint128::new(100_000_000)).unwrap(),
                     price: NonZero::new_unchecked(Udec128_24::ONE),
                 }],
                 cancels: None,

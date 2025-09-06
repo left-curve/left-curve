@@ -47,11 +47,10 @@ fn cannot_submit_order_with_zero_amount() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::ZERO), // incorrect!
+                    amount_quote: NonZero::new_unchecked(Uint128::ZERO), // incorrect!
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -66,11 +65,10 @@ fn cannot_submit_order_with_zero_amount() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates_market: vec![CreateMarketOrderRequest {
+                creates_market: vec![CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::ZERO), // incorrect!
+                    amount_quote: NonZero::new_unchecked(Uint128::ZERO), // incorrect!
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 }],
                 creates_limit: vec![],
@@ -91,11 +89,10 @@ fn cannot_submit_orders_in_non_existing_pairs() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Bid {
                     base_denom: atom::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -395,25 +392,19 @@ fn dex_works(
             let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
-            let funds = match direction {
-                Direction::Bid => {
-                    let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(usdc::DENOM.clone(), quote_amount).unwrap()
-                },
-                Direction::Ask => Coins::one(dango::DENOM.clone(), amount).unwrap(),
-            };
+            let (funds, request) = create_limit_order_request(
+                dango::DENOM.clone(),
+                usdc::DENOM.clone(),
+                direction,
+                amount,
+                price,
+            );
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                    creates_limit: vec![request],
                     cancels: None,
                 },
                 funds,
@@ -456,11 +447,10 @@ fn dex_works(
 }
 
 #[test_case(
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(100)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     None,
@@ -480,11 +470,10 @@ fn dex_works(
     "one submission no cancellations"
 )]
 #[test_case(
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(100)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
@@ -495,18 +484,16 @@ fn dex_works(
 )]
 #[test_case(
     vec![
-        CreateLimitOrderRequest {
+        CreateLimitOrderRequest::Bid {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
-            direction: Direction::Bid,
-            amount: NonZero::new_unchecked(Uint128::new(100)),
+            amount_quote: NonZero::new_unchecked(Uint128::new(100)),
             price: NonZero::new_unchecked(Udec128_24::new(1)),
         },
-        CreateLimitOrderRequest {
+        CreateLimitOrderRequest::Bid {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
-            direction: Direction::Bid,
-            amount: NonZero::new_unchecked(Uint128::new(100)),
+            amount_quote: NonZero::new_unchecked(Uint128::new(100)),
             price: NonZero::new_unchecked(Udec128_24::new(1)),
         },
     ],
@@ -528,18 +515,16 @@ fn dex_works(
 )]
 #[test_case(
     vec![
-        CreateLimitOrderRequest {
+        CreateLimitOrderRequest::Bid {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
-            direction: Direction::Bid,
-            amount: NonZero::new_unchecked(Uint128::new(100)),
+            amount_quote: NonZero::new_unchecked(Uint128::new(100)),
             price: NonZero::new_unchecked(Udec128_24::new(1)),
         },
-        CreateLimitOrderRequest {
+        CreateLimitOrderRequest::Bid {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
-            direction: Direction::Bid,
-            amount: NonZero::new_unchecked(Uint128::new(100)),
+            amount_quote: NonZero::new_unchecked(Uint128::new(100)),
             price: NonZero::new_unchecked(Udec128_24::new(1)),
         },
     ],
@@ -551,18 +536,16 @@ fn dex_works(
 )]
 #[test_case(
     vec![
-        CreateLimitOrderRequest {
+        CreateLimitOrderRequest::Bid {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
-            direction: Direction::Bid,
-            amount: NonZero::new_unchecked(Uint128::new(100)),
+            amount_quote: NonZero::new_unchecked(Uint128::new(100)),
             price: NonZero::new_unchecked(Udec128_24::new(1)),
         },
-        CreateLimitOrderRequest {
+        CreateLimitOrderRequest::Bid {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
-            direction: Direction::Bid,
-            amount: NonZero::new_unchecked(Uint128::new(100)),
+            amount_quote: NonZero::new_unchecked(Uint128::new(100)),
             price: NonZero::new_unchecked(Udec128_24::new(1)),
         },
     ],
@@ -574,18 +557,16 @@ fn dex_works(
 )]
 #[test_case(
     vec![
-        CreateLimitOrderRequest {
+        CreateLimitOrderRequest::Bid {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
-            direction: Direction::Bid,
-            amount: NonZero::new_unchecked(Uint128::new(100)),
+            amount_quote: NonZero::new_unchecked(Uint128::new(100)),
             price: NonZero::new_unchecked(Udec128_24::new(1)),
         },
-        CreateLimitOrderRequest {
+        CreateLimitOrderRequest::Bid {
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
-            direction: Direction::Bid,
-            amount: NonZero::new_unchecked(Uint128::new(100)),
+            amount_quote: NonZero::new_unchecked(Uint128::new(100)),
             price: NonZero::new_unchecked(Udec128_24::new(1)),
         },
     ],
@@ -662,20 +643,18 @@ fn submit_and_cancel_orders(
 }
 
 #[test_case(
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(100)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(100)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     Coins::new(),
@@ -694,20 +673,18 @@ fn submit_and_cancel_orders(
     "submit one order then cancel it and submit it again"
 )]
 #[test_case(
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(100)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(50)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(50)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     Coins::new(),
@@ -726,20 +703,18 @@ fn submit_and_cancel_orders(
     "submit one order then cancel it and place a new order using half of the funds"
 )]
 #[test_case(
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(100)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(200)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(200)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     coins! { usdc::DENOM.clone() => 100 },
@@ -758,20 +733,18 @@ fn submit_and_cancel_orders(
     "submit one order then cancel it and place a new order using more funds"
 )]
 #[test_case(
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(100)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(200)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(200)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     Coins::new(),
@@ -791,20 +764,18 @@ fn submit_and_cancel_orders(
     "submit one order then cancel it and place a new order with insufficient funds"
 )]
 #[test_case(
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(100)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     coins! { usdc::DENOM.clone() => 100 },
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
-    vec![CreateLimitOrderRequest {
+    vec![CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(150)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(150)),
         price: NonZero::new_unchecked(Udec128_24::new(1)),
     }],
     coins! { usdc::DENOM.clone() => 100 },
@@ -901,11 +872,10 @@ fn submit_and_cancel_order_in_same_block() {
         contracts.dex,
         &dex::ExecuteMsg::BatchUpdateOrders {
             creates_market: vec![],
-            creates_limit: vec![CreateLimitOrderRequest {
+            creates_limit: vec![CreateLimitOrderRequest::Bid {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
+                amount_quote: NonZero::new_unchecked(Uint128::new(100)),
                 price: NonZero::new_unchecked(Udec128_24::new(1)),
             }],
             cancels: None,
@@ -1062,7 +1032,7 @@ fn query_orders_by_pair(
 ) {
     // For this test, we need some ETH and USDC for user1.
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
-        bridge_ops: |accounts| {
+        bridge_ops: Box::new(move |accounts| {
             vec![
                 BridgeOp {
                     remote: Remote::Warp {
@@ -1081,7 +1051,7 @@ fn query_orders_by_pair(
                     recipient: accounts.user1.address(),
                 },
             ]
-        },
+        }),
         ..Default::default()
     });
 
@@ -1092,25 +1062,14 @@ fn query_orders_by_pair(
             let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
-            let funds = match direction {
-                Direction::Bid => {
-                    let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(quote_denom.clone(), quote_amount).unwrap()
-                },
-                Direction::Ask => Coins::one(base_denom.clone(), amount).unwrap(),
-            };
+            let (funds, request) =
+                create_limit_order_request(base_denom, quote_denom, direction, amount, price);
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom,
-                        quote_denom,
-                        direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                    creates_limit: vec![request],
                     cancels: None,
                 },
                 funds,
@@ -2503,11 +2462,10 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     },
     vec![
         vec![
-            CreateLimitOrderRequest {
+            CreateLimitOrderRequest::Bid {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::from(49751)),
+                amount_quote: NonZero::new_unchecked(Uint128::from(49751 * 201)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(20100)),
             },
         ],
@@ -2556,11 +2514,10 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     },
     vec![
         vec![
-            CreateLimitOrderRequest {
+            CreateLimitOrderRequest::Bid {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::from(49751)),
+                amount_quote: NonZero::new_unchecked(Uint128::from(49751 * 201)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(20100)),
             },
         ],
@@ -2602,11 +2559,10 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     },
     vec![
         vec![
-            CreateLimitOrderRequest {
+            CreateLimitOrderRequest::Bid {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::from(47783)),
+                amount_quote: NonZero::new_unchecked(Uint128::from(47783 * 202)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(20200)),
             },
         ],
@@ -2648,11 +2604,10 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     },
     vec![
         vec![
-            CreateLimitOrderRequest {
+            CreateLimitOrderRequest::Bid {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::from(157784)),
+                amount_quote: NonZero::new_unchecked(Uint128::from(157784 * 203)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(20300)),
             },
         ],
@@ -2696,11 +2651,10 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     },
     vec![
         vec![
-            CreateLimitOrderRequest {
+            CreateLimitOrderRequest::Ask {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::from(50251)),
+                amount_base: NonZero::new_unchecked(Uint128::from(50251)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(19900)),
             },
         ],
@@ -2742,11 +2696,10 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     },
     vec![
         vec![
-            CreateLimitOrderRequest {
+            CreateLimitOrderRequest::Ask {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::from(30000)),
+                amount_base: NonZero::new_unchecked(Uint128::from(30000)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(19900)),
             },
         ],
@@ -2788,11 +2741,10 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     },
     vec![
         vec![
-            CreateLimitOrderRequest {
+            CreateLimitOrderRequest::Ask {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::from(60251)),
+                amount_base: NonZero::new_unchecked(Uint128::from(60251)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(19900)),
             },
         ],
@@ -2836,20 +2788,18 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
     },
     vec![
         vec![
-            CreateLimitOrderRequest {
+            CreateLimitOrderRequest::Ask {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::from(162284)),
+                amount_base: NonZero::new_unchecked(Uint128::from(162284)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(19800)),
             },
         ],
         vec![
-            CreateLimitOrderRequest {
+            CreateLimitOrderRequest::Bid {
                 base_denom: eth::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::from(157784)),
+                quote_denom: usdc::DENOM.clone(),
+                amount_quote: NonZero::new_unchecked(Uint128::from(157784 * 202)),
                 price: NonZero::new_unchecked(Udec128_24::new_percent(20200)),
             },
         ],
@@ -2859,7 +2809,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
             eth::DENOM.clone() => 162284,
         },
         coins! {
-            usdc::DENOM.clone() => 157784 * 203,
+            usdc::DENOM.clone() => 157784 * 202,
         },
     ],
     BTreeMap::new(),
@@ -3190,11 +3140,10 @@ fn volume_tracking_works() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -3210,11 +3159,10 @@ fn volume_tracking_works() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -3281,11 +3229,10 @@ fn volume_tracking_works() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -3301,11 +3248,10 @@ fn volume_tracking_works() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -3465,25 +3411,22 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
                 creates_limit: vec![
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Bid {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                        amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                         price: NonZero::new_unchecked(Udec128_24::new(1)),
                     },
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Bid {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                        amount_quote: NonZero::new_unchecked(Uint128::new(101_000_000)),
                         price: NonZero::new_unchecked(Udec128_24::from_str("1.01").unwrap()),
                     },
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Bid {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(117304)),
+                        amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                         price: NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
                     },
                 ],
@@ -3501,18 +3444,16 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
                 creates_limit: vec![
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Ask {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(200_000_000)),
+                        amount_base: NonZero::new_unchecked(Uint128::new(200_000_000)),
                         price: NonZero::new_unchecked(Udec128_24::new(1)),
                     },
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Ask {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(117304)),
+                        amount_base: NonZero::new_unchecked(Uint128::new(117304)),
                         price: NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
                     },
                 ],
@@ -3582,32 +3523,28 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
                 creates_limit: vec![
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Bid {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                        amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                         price: NonZero::new_unchecked(Udec128_24::new(1)),
                     },
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Bid {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                        amount_quote: NonZero::new_unchecked(Uint128::new(101_000_000)),
                         price: NonZero::new_unchecked(Udec128_24::from_str("1.01").unwrap()),
                     },
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Bid {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(117304)),
+                        amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                         price: NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
                     },
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Bid {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(117304)),
+                        amount_quote: NonZero::new_unchecked(Uint128::new(110_000_000)),
                         price: NonZero::new_unchecked(Udec128_24::from_str("937.7344336").unwrap()),
                     },
                 ],
@@ -3627,18 +3564,16 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
                 creates_limit: vec![
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Ask {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(300_000_000)),
+                        amount_base: NonZero::new_unchecked(Uint128::new(300_000_000)),
                         price: NonZero::new_unchecked(Udec128_24::new(1)),
                     },
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Ask {
                         base_denom: eth::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(117304 * 2)),
+                        amount_base: NonZero::new_unchecked(Uint128::new(117304 * 2)),
                         price: NonZero::new_unchecked(
                             Udec128_24::from_str("85248.71")
                                 .unwrap()
@@ -3724,11 +3659,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -3740,11 +3674,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -3776,11 +3709,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -3792,11 +3724,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -3828,11 +3759,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -3844,11 +3774,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -3877,11 +3806,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(200_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(2)),
                 },
             ],
@@ -3893,11 +3821,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -3926,11 +3853,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -3942,11 +3868,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -3975,11 +3900,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(2)),
                 },
             ],
@@ -3991,11 +3915,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(200_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4024,11 +3947,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4040,11 +3962,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4075,11 +3996,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(2)),
                 },
             ],
@@ -4091,11 +4011,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(200_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4126,11 +4045,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4142,11 +4060,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4177,11 +4094,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(300_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(2)),
                 },
             ],
@@ -4193,11 +4109,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4228,11 +4143,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4244,11 +4158,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4277,11 +4190,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4291,11 +4203,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new_percent(105)),
                 },
             ],
@@ -4307,11 +4218,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(157_500_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::new_percent(5)),
                 },
             ],
@@ -4346,11 +4256,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4360,11 +4269,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(50_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
                 },
             ],
@@ -4376,11 +4284,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::new_percent(50)),
                 },
             ],
@@ -4415,11 +4322,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4431,11 +4337,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(99_500_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
@@ -4445,11 +4350,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(30_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(59_700_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
@@ -4485,11 +4389,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4501,11 +4404,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(50_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
@@ -4515,11 +4417,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(30_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(30_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::new_percent(99)),
                 },
             ],
@@ -4555,11 +4456,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4571,11 +4471,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4604,11 +4503,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(50_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(2)),
                 },
             ],
@@ -4620,11 +4518,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4653,11 +4550,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4669,11 +4565,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4702,11 +4597,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(200_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(2)),
                 },
             ],
@@ -4718,11 +4612,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4751,11 +4644,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4767,11 +4659,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4801,11 +4692,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4817,11 +4707,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(150_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(150_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4851,11 +4740,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4867,18 +4755,16 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(50_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(50_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4907,11 +4793,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4923,18 +4808,16 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(50_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(50_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(50_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4963,11 +4846,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -4979,11 +4861,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -4993,18 +4874,16 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -5037,11 +4916,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -5053,11 +4931,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -5067,18 +4944,16 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -5111,11 +4986,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(110_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(110_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -5127,11 +5001,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -5141,18 +5014,16 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -5185,11 +5056,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateLimitOrderRequest {
+                CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(110_000_000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(110_000_000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 },
             ],
@@ -5201,11 +5071,10 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     vec![
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -5215,18 +5084,16 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
         ),
         (
             vec![
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
-                CreateMarketOrderRequest {
+                CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100_000_000)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
             ],
@@ -5416,21 +5283,19 @@ fn market_order_clearing(
 }
 
 #[test_case(
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Bid {
         base_denom: eth::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(500000)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(50)),
         price: NonZero::new_unchecked(Udec128_24::new_bps(1)),
     },
     coins! {
         usdc::DENOM.clone() => 50,
     },
-    CreateMarketOrderRequest {
+    CreateMarketOrderRequest::Ask {
         base_denom: eth::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(9999)),
+        amount_base: NonZero::new_unchecked(Uint128::new(9999)),
         max_slippage: Bounded::new_unchecked(Udec128::new_percent(8)),
     },
     coins! {
@@ -5447,32 +5312,30 @@ fn market_order_clearing(
     ; "limit bid matched with market ask market size limiting factor market order does not get refunded"
 )]
 #[test_case(
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Bid {
         base_denom: eth::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(9999)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(1)),
         price: NonZero::new_unchecked(Udec128_24::new_bps(1)),
     },
     coins! {
         usdc::DENOM.clone() => 1,
     },
-    CreateMarketOrderRequest {
+    CreateMarketOrderRequest::Ask {
         base_denom: eth::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(500000)),
+        amount_base: NonZero::new_unchecked(Uint128::new(500000)),
         max_slippage: Bounded::new_unchecked(Udec128::new_percent(8)),
     },
     coins! {
         eth::DENOM.clone() => 500000,
     },
     btree_map! {
-        eth::DENOM.clone() => BalanceChange::Increased(9974),
+        eth::DENOM.clone() => BalanceChange::Increased(9975),
         usdc::DENOM.clone() => BalanceChange::Decreased(1),
     },
     btree_map! {
-        eth::DENOM.clone() => BalanceChange::Decreased(9999),
+        eth::DENOM.clone() => BalanceChange::Decreased(10000),
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     }
     ; "limit bid matched with market ask limit size too small market order is consumed with zero output"
@@ -5561,11 +5424,10 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Ask {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                    amount_base: NonZero::new_unchecked(Uint128::new(1000000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -5583,11 +5445,10 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(1000000)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -5689,11 +5550,10 @@ fn market_orders_are_sorted_by_price_ascending() {
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
                     creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
+                    creates_limit: vec![CreateLimitOrderRequest::Ask {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                        amount_base: NonZero::new_unchecked(Uint128::new(1000000)),
                         price: NonZero::new_unchecked(Udec128_24::new(1)),
                     }],
                     cancels: None,
@@ -5714,11 +5574,10 @@ fn market_orders_are_sorted_by_price_ascending() {
                         Message::execute(
                             contracts.dex,
                             &dex::ExecuteMsg::BatchUpdateOrders {
-                                creates_market: vec![CreateMarketOrderRequest {
+                                creates_market: vec![CreateMarketOrderRequest::Bid {
                                     base_denom: dango::DENOM.clone(),
                                     quote_denom: usdc::DENOM.clone(),
-                                    direction: Direction::Bid,
-                                    amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                                    amount_quote: NonZero::new_unchecked(Uint128::new(1000000)),
                                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                                 }],
                                 creates_limit: vec![],
@@ -5740,11 +5599,10 @@ fn market_orders_are_sorted_by_price_ascending() {
                         Message::execute(
                             contracts.dex,
                             &dex::ExecuteMsg::BatchUpdateOrders {
-                                creates_market: vec![CreateMarketOrderRequest {
+                                creates_market: vec![CreateMarketOrderRequest::Bid {
                                     base_denom: dango::DENOM.clone(),
                                     quote_denom: usdc::DENOM.clone(),
-                                    direction: Direction::Bid,
-                                    amount: NonZero::new_unchecked(Uint128::new(1050000)),
+                                    amount_quote: NonZero::new_unchecked(Uint128::new(1050000)),
                                     max_slippage: Bounded::new_unchecked(Udec128::new_percent(5)),
                                 }],
                                 creates_limit: vec![],
@@ -5825,18 +5683,16 @@ fn refund_left_over_market_bid() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
                 creates_limit: vec![
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Ask {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(2)),
+                        amount_base: NonZero::new_unchecked(Uint128::new(2)),
                         price: NonZero::new_unchecked(Udec128_24::new(100)),
                     },
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Bid {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(1)),
+                        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
                         price: NonZero::new_unchecked(Udec128_24::new(100)),
                     },
                 ],
@@ -5880,11 +5736,10 @@ fn refund_left_over_market_bid() {
                             contracts.dex,
                             &dex::ExecuteMsg::BatchUpdateOrders {
                                 creates_market: vec![],
-                                creates_limit: vec![CreateLimitOrderRequest {
+                                creates_limit: vec![CreateLimitOrderRequest::Bid {
                                     base_denom: dango::DENOM.clone(),
                                     quote_denom: usdc::DENOM.clone(),
-                                    direction: Direction::Bid,
-                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    amount_quote: NonZero::new_unchecked(Uint128::new(101)),
                                     price: NonZero::new_unchecked(Udec128_24::new(101)),
                                 }],
                                 cancels: None,
@@ -5906,11 +5761,10 @@ fn refund_left_over_market_bid() {
                         Message::execute(
                             contracts.dex,
                             &dex::ExecuteMsg::BatchUpdateOrders {
-                                creates_market: vec![CreateMarketOrderRequest {
+                                creates_market: vec![CreateMarketOrderRequest::Bid {
                                     base_denom: dango::DENOM.clone(),
                                     quote_denom: usdc::DENOM.clone(),
-                                    direction: Direction::Bid,
-                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    amount_quote: NonZero::new_unchecked(Uint128::new(101)),
                                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                                 }],
                                 creates_limit: vec![],
@@ -5987,18 +5841,16 @@ fn refund_left_over_market_ask() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
                 creates_limit: vec![
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Bid {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(2)),
+                        amount_quote: NonZero::new_unchecked(Uint128::new(200)),
                         price: NonZero::new_unchecked(Udec128_24::new(100)),
                     },
-                    CreateLimitOrderRequest {
+                    CreateLimitOrderRequest::Ask {
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(1)),
+                        amount_base: NonZero::new_unchecked(Uint128::new(1)),
                         price: NonZero::new_unchecked(Udec128_24::new(100)),
                     },
                 ],
@@ -6042,11 +5894,10 @@ fn refund_left_over_market_ask() {
                             contracts.dex,
                             &dex::ExecuteMsg::BatchUpdateOrders {
                                 creates_market: vec![],
-                                creates_limit: vec![CreateLimitOrderRequest {
+                                creates_limit: vec![CreateLimitOrderRequest::Ask {
                                     base_denom: dango::DENOM.clone(),
                                     quote_denom: usdc::DENOM.clone(),
-                                    direction: Direction::Ask,
-                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    amount_base: NonZero::new_unchecked(Uint128::new(1)),
                                     price: NonZero::new_unchecked(Udec128_24::new(99)),
                                 }],
                                 cancels: None,
@@ -6068,11 +5919,10 @@ fn refund_left_over_market_ask() {
                         Message::execute(
                             contracts.dex,
                             &dex::ExecuteMsg::BatchUpdateOrders {
-                                creates_market: vec![CreateMarketOrderRequest {
+                                creates_market: vec![CreateMarketOrderRequest::Ask {
                                     base_denom: dango::DENOM.clone(),
                                     quote_denom: usdc::DENOM.clone(),
-                                    direction: Direction::Ask,
-                                    amount: NonZero::new_unchecked(Uint128::new(1)),
+                                    amount_base: NonZero::new_unchecked(Uint128::new(1)),
                                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                                 }],
                                 creates_limit: vec![],
@@ -6129,11 +5979,10 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
                         contracts.dex,
                         &dex::ExecuteMsg::BatchUpdateOrders {
                             creates_market: vec![],
-                            creates_limit: vec![CreateLimitOrderRequest {
+                            creates_limit: vec![CreateLimitOrderRequest::Ask {
                                 base_denom: dango::DENOM.clone(),
                                 quote_denom: usdc::DENOM.clone(),
-                                direction: Direction::Ask,
-                                amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                                amount_base: NonZero::new_unchecked(Uint128::new(1000000)),
                                 price: NonZero::new_unchecked(Udec128_24::new(100)),
                             }],
                             cancels: None,
@@ -6156,11 +6005,10 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
                         contracts.dex,
                         &dex::ExecuteMsg::BatchUpdateOrders {
                             creates_market: vec![],
-                            creates_limit: vec![CreateLimitOrderRequest {
+                            creates_limit: vec![CreateLimitOrderRequest::Bid {
                                 base_denom: dango::DENOM.clone(),
                                 quote_denom: usdc::DENOM.clone(),
-                                direction: Direction::Bid,
-                                amount: NonZero::new_unchecked(Uint128::new(1000000)),
+                                amount_quote: NonZero::new_unchecked(Uint128::new(1000000 * 99)),
                                 price: NonZero::new_unchecked(Udec128_24::new(99)),
                             }],
                             cancels: None,
@@ -6830,47 +6678,22 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
         )
         .should_succeed();
 
-    // Calculate required funds for market orders
-    let mut required_eth = Uint128::ZERO;
-    let mut required_usdc = Uint128::ZERO;
-
-    // Calculate required funds for limit orders
-    for (direction, price, amount) in &limit_orders {
-        match direction {
-            Direction::Bid => {
-                // For bid orders, we need USDC (quote currency)
-                let cost = amount.checked_mul_dec_ceil(*price).unwrap();
-                required_usdc += cost;
-            },
-            Direction::Ask => {
-                // For ask orders, we need ETH (base currency)
-                required_eth += *amount;
-            },
-        }
-    }
-
-    // Create limit order requests
-    let limit_order_requests: Vec<CreateLimitOrderRequest> = limit_orders
-        .into_iter()
-        .map(|(direction, price, amount)| CreateLimitOrderRequest {
-            base_denom: eth::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
-            direction,
-            amount: NonZero::new_unchecked(amount),
-            price: NonZero::new_unchecked(price),
-        })
-        .collect();
-
-    // Build funds for the transaction
-    let funds = match (required_eth > Uint128::ZERO, required_usdc > Uint128::ZERO) {
-        (true, true) => coins! {
-            eth::DENOM.clone() => required_eth,
-            usdc::DENOM.clone() => required_usdc,
+    // Create limit order requests and the total funds needed
+    let (funds, limit_order_requests) = limit_orders.into_iter().fold(
+        (Coins::default(), vec![]),
+        |(mut funds, mut requests), (direction, price, amount)| {
+            let (deposit, request) = create_limit_order_request(
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                direction,
+                amount,
+                price,
+            );
+            requests.push(request);
+            funds.insert_many(deposit).unwrap();
+            (funds, requests)
         },
-        (true, false) => Coins::one(eth::DENOM.clone(), required_eth).unwrap(),
-        (false, true) => Coins::one(usdc::DENOM.clone(), required_usdc).unwrap(),
-        (false, false) => Coins::new(),
-    };
+    );
 
     // Execute all orders in a single batch
     suite
@@ -6952,20 +6775,22 @@ fn decrease_liquidity_depths_minimal_failing_test() {
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
                 creates_limit: vec![
-                    CreateLimitOrderRequest {
-                        base_denom: eth::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(117304)),
-                        price: NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
-                    },
-                    CreateLimitOrderRequest {
-                        base_denom: eth::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(117304)),
-                        price: NonZero::new_unchecked(Udec128_24::from_str("937.7344336").unwrap()),
-                    },
+                    create_limit_order_request(
+                        eth::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Bid,
+                        Uint128::new(117304),
+                        Udec128_24::from_str("852.485845").unwrap(),
+                    )
+                    .1,
+                    create_limit_order_request(
+                        eth::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Bid,
+                        Uint128::new(117304),
+                        Udec128_24::from_str("937.7344336").unwrap(),
+                    )
+                    .1,
                 ],
                 cancels: None,
             },
@@ -6982,18 +6807,19 @@ fn decrease_liquidity_depths_minimal_failing_test() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
-                    base_denom: eth::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(117304 * 2)),
-                    price: NonZero::new_unchecked(
+                creates_limit: vec![
+                    create_limit_order_request(
+                        eth::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Ask,
+                        Uint128::new(117304 * 2),
                         Udec128_24::from_str("85248.71")
                             .unwrap()
                             .checked_inv()
                             .unwrap(),
-                    ),
-                }],
+                    )
+                    .1,
+                ],
                 cancels: None,
             },
             coins! {
@@ -7014,11 +6840,10 @@ fn decrease_liquidity_depths_minimal_failing_test() {
 }
 
 #[test_case(
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(199)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
     coins! { usdc::DENOM.clone() => 100 },
@@ -7027,24 +6852,22 @@ fn decrease_liquidity_depths_minimal_failing_test() {
     "bid equal to minimum order size"
 )]
 #[test_case(
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(198)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(99)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
-    coins! { usdc::DENOM.clone() => 100 },
+    coins! { usdc::DENOM.clone() => 99 },
     Uint128::new(100),
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "bid smaller than minimum order size"
 )]
 #[test_case(
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Ask {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(199)),
+        amount_base: NonZero::new_unchecked(Uint128::new(199)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
     coins! { dango::DENOM.clone() => 199 },
@@ -7053,11 +6876,10 @@ fn decrease_liquidity_depths_minimal_failing_test() {
     "ask equal to minimum order size"
 )]
 #[test_case(
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Ask {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(198)),
+        amount_base: NonZero::new_unchecked(Uint128::new(198)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
     coins! { dango::DENOM.clone() => 198 },
@@ -7137,18 +6959,16 @@ fn limit_order_minimum_order_size(
 }
 
 #[test_case(
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Ask {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(200)),
+        amount_base: NonZero::new_unchecked(Uint128::new(200)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
-    CreateMarketOrderRequest {
+    CreateMarketOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(199)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         max_slippage: Bounded::new_unchecked(Udec128::ZERO),
     },
     coins! { dango::DENOM.clone() => 200 },
@@ -7158,67 +6978,63 @@ fn limit_order_minimum_order_size(
     "bid equal to minimum order size no slippage"
 )]
 #[test_case(
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Ask {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(200)),
+        amount_base: NonZero::new_unchecked(Uint128::new(200)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
-    CreateMarketOrderRequest {
+    CreateMarketOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(198)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(99)),
         max_slippage: Bounded::new_unchecked(Udec128::ZERO),
     },
     coins! { dango::DENOM.clone() => 200 },
-    coins! { usdc::DENOM.clone() => 100 },
+    coins! { usdc::DENOM.clone() => 99 },
     Uint128::new(100),
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "bid smaller than minimum order size no slippage"
 )]
+// TODO: This test doesn't make sense because the slippage is not considered in market order buy.
+// The quote amount will be always equal to the input.
+// #[test_case(
+//     // This test case is equal to the above test case
+//     // 'bid smaller than minimum order size no slippage'
+//     // but with slippage accounted order size is large
+//     // enough and so it should succeed, whereas the above
+//     // test case should fail. It is important that these
+//     // two tests remain equal except for the slippage
+//     // and expected error.
+//     CreateLimitOrderRequest::Ask {
+//         base_denom: dango::DENOM.clone(),
+//         quote_denom: usdc::DENOM.clone(),
+//         amount_base: NonZero::new_unchecked(Uint128::new(200)),
+//         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
+//     },
+//     CreateMarketOrderRequest::Bid {
+//         base_denom: dango::DENOM.clone(),
+//         quote_denom: usdc::DENOM.clone(),
+//         amount_quote: NonZero::new_unchecked(Uint128::new(99)),
+//         max_slippage: Bounded::new_unchecked(Udec128::new_percent(1)),
+//     },
+//     coins! { dango::DENOM.clone() => 200 },
+//     coins! { usdc::DENOM.clone() => 99 },
+//     Uint128::new(100),
+//     None;
+//     "bid smaller than minimum order size but larger with slippage accounted for"
+// )]
 #[test_case(
-    // This test case is equal to the above test case 
-    // 'bid smaller than minimum order size no slippage'
-    // but with slippage accounted order size is large
-    // enough and so it should succeed, whereas the above
-    // test case should fail. It is important that these
-    // two tests remain equal except for the slippage
-    // and expected error.
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(200)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
-    CreateMarketOrderRequest {
+    CreateMarketOrderRequest::Ask {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(198)),
-        max_slippage: Bounded::new_unchecked(Udec128::new_percent(1)),
-    },
-    coins! { dango::DENOM.clone() => 200 },
-    coins! { usdc::DENOM.clone() => 100 },
-    Uint128::new(100),
-    None;
-    "bid smaller than minimum order size but larger with slippage accounted for"
-)]
-#[test_case(
-    CreateLimitOrderRequest {
-        base_denom: dango::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(200)),
-        price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
-    },
-    CreateMarketOrderRequest {
-        base_denom: dango::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(199)),
+        amount_base: NonZero::new_unchecked(Uint128::new(199)),
         max_slippage: Bounded::new_unchecked(Udec128::ZERO),
     },
     coins! { usdc::DENOM.clone() => 100 },
@@ -7228,25 +7044,23 @@ fn limit_order_minimum_order_size(
     "ask equal to minimum order size no slippage"
 )]
 #[test_case(
-    // This test case is equal to the above test case 
+    // This test case is equal to the above test case
     // 'ask equal to minimum order size no slippage'
     // but with slippage accounted order size is smaller
     // enough and so it should fail, whereas the above
     // test case should succeed. It is important that these
     // two tests remain equal except for the slippage
     // and expected error.
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(200)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
-    CreateMarketOrderRequest {
+    CreateMarketOrderRequest::Ask {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(199)),
+        amount_base: NonZero::new_unchecked(Uint128::new(199)),
         max_slippage: Bounded::new_unchecked(Udec128::new_percent(1)),
     },
     coins! { usdc::DENOM.clone() => 100 },
@@ -7256,18 +7070,16 @@ fn limit_order_minimum_order_size(
     "ask equal to minimum order size but smaller with slippage accounted for"
 )]
 #[test_case(
-    CreateLimitOrderRequest {
+    CreateLimitOrderRequest::Bid {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Bid,
-        amount: NonZero::new_unchecked(Uint128::new(200)),
+        amount_quote: NonZero::new_unchecked(Uint128::new(100)),
         price: NonZero::new_unchecked(Udec128_24::new_percent(50)),
     },
-    CreateMarketOrderRequest {
+    CreateMarketOrderRequest::Ask {
         base_denom: dango::DENOM.clone(),
         quote_denom: usdc::DENOM.clone(),
-        direction: Direction::Ask,
-        amount: NonZero::new_unchecked(Uint128::new(198)),
+        amount_base: NonZero::new_unchecked(Uint128::new(198)),
         max_slippage: Bounded::new_unchecked(Udec128::ZERO),
     },
     coins! { usdc::DENOM.clone() => 100 },
@@ -7369,11 +7181,10 @@ fn orders_cannot_be_created_for_non_existing_pair() {
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
+                creates_limit: vec![CreateLimitOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: eth::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100)),
                     price: NonZero::new_unchecked(Udec128_24::new(1)),
                 }],
                 cancels: None,
@@ -7392,11 +7203,10 @@ fn orders_cannot_be_created_for_non_existing_pair() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates_market: vec![CreateMarketOrderRequest {
+                creates_market: vec![CreateMarketOrderRequest::Bid {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: eth::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
+                    amount_quote: NonZero::new_unchecked(Uint128::new(100)),
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 }],
                 creates_limit: vec![],
@@ -7409,4 +7219,36 @@ fn orders_cannot_be_created_for_non_existing_pair() {
             dango::DENOM.clone(),
             eth::DENOM.clone()
         ));
+}
+
+pub fn create_limit_order_request(
+    base_denom: Denom,
+    quote_denom: Denom,
+    direction: Direction,
+    amount_base: Uint128,
+    price: Udec128_24,
+) -> (Coins, CreateLimitOrderRequest) {
+    match direction {
+        Direction::Bid => {
+            let amount_quote = amount_base.checked_mul_dec_ceil(price).unwrap();
+            (
+                Coins::one(quote_denom.clone(), amount_quote).unwrap(),
+                CreateLimitOrderRequest::Bid {
+                    base_denom,
+                    quote_denom,
+                    amount_quote: NonZero::new(amount_quote).unwrap(),
+                    price: NonZero::new(price).unwrap(),
+                },
+            )
+        },
+        Direction::Ask => (
+            Coins::one(base_denom.clone(), amount_base).unwrap(),
+            CreateLimitOrderRequest::Ask {
+                base_denom,
+                quote_denom,
+                amount_base: NonZero::new(amount_base).unwrap(),
+                price: NonZero::new(price).unwrap(),
+            },
+        ),
+    }
 }

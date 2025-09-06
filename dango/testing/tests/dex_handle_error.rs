@@ -118,18 +118,16 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
                     &dex::ExecuteMsg::BatchUpdateOrders {
                         creates_market: vec![],
                         creates_limit: vec![
-                            CreateLimitOrderRequest {
+                            CreateLimitOrderRequest::Bid {
                                 base_denom: dango::DENOM.clone(),
                                 quote_denom: usdc::DENOM.clone(),
-                                direction: Direction::Bid,
-                                amount: NonZero::new_unchecked(Uint128::new(3)),
+                                amount_quote: NonZero::new_unchecked(Uint128::new(300)),
                                 price: NonZero::new_unchecked(Udec128_24::new(100)),
                             },
-                            CreateLimitOrderRequest {
+                            CreateLimitOrderRequest::Ask {
                                 base_denom: dango::DENOM.clone(),
                                 quote_denom: usdc::DENOM.clone(),
-                                direction: Direction::Ask,
-                                amount: NonZero::new_unchecked(Uint128::new(3)),
+                                amount_base: NonZero::new_unchecked(Uint128::new(3)),
                                 price: NonZero::new_unchecked(Udec128_24::new(100)),
                             },
                         ],

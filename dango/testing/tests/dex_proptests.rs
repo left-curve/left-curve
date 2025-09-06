@@ -15,10 +15,10 @@ use {
         gateway::Remote,
     },
     grug::{
-        Addressable, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero, MaxLength, Message,
-        MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt, Signed,
-        Signer, Udec128, Udec128_24, Uint128, UniqueVec, ZeroInclusiveOneExclusive, btree_map,
-        btree_set, coins,
+        Addressable, Bounded, Coin, Coins, Dec, Dec128_24, Denom, Inner, Int, IsZero, MaxLength,
+        Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt,
+        Signed, Signer, Udec128, Udec128_24, Uint128, UniqueVec, ZeroInclusiveOneExclusive,
+        btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -228,28 +228,41 @@ impl DexAction {
                 amount,
                 price,
             } => {
-                let deposit = match direction {
-                    Direction::Bid => Coin {
-                        denom: quote_denom.clone(),
-                        amount: amount.checked_mul_dec_ceil(*price)?,
+                let (deposit, request) = match direction {
+                    Direction::Bid => {
+                        let amount_quote = amount.checked_mul_dec_floor(*price)?;
+                        (
+                            Coin {
+                                denom: quote_denom.clone(),
+                                amount: amount_quote,
+                            },
+                            CreateLimitOrderRequest::Bid {
+                                base_denom: base_denom.clone(),
+                                quote_denom: quote_denom.clone(),
+                                amount_quote: NonZero::new(amount_quote)?,
+                                price: NonZero::new(*price)?,
+                            },
+                        )
                     },
-                    Direction::Ask => Coin {
-                        denom: base_denom.clone(),
-                        amount: *amount,
-                    },
+                    Direction::Ask => (
+                        Coin {
+                            denom: base_denom.clone(),
+                            amount: *amount,
+                        },
+                        CreateLimitOrderRequest::Ask {
+                            base_denom: base_denom.clone(),
+                            quote_denom: quote_denom.clone(),
+                            amount_base: NonZero::new(*amount)?,
+                            price: NonZero::new(*price)?,
+                        },
+                    ),
                 };
 
                 let msg = Message::execute(
                     contracts.dex,
                     &dex::ExecuteMsg::BatchUpdateOrders {
                         creates_market: vec![],
-                        creates_limit: vec![CreateLimitOrderRequest {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            direction: *direction,
-                            amount: NonZero::new(*amount)?,
-                            price: NonZero::new(*price)?,
-                        }],
+                        creates_limit: vec![request],
                         cancels: None,
                     },
                     Coins::one(deposit.denom, deposit.amount)?,
@@ -262,7 +275,7 @@ impl DexAction {
                     .unwrap();
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
-                // println!("block outcome: {block_outcome:?}");
+                println!("block outcome: {block_outcome:?}");
 
                 assert!(
                     block_outcome
@@ -297,7 +310,7 @@ impl DexAction {
                     .unwrap();
                 println!("resting order book: {resting_order_book:?}");
 
-                let deposit = match direction {
+                let (deposit, request) = match direction {
                     Direction::Bid => {
                         if resting_order_book.best_ask_price.is_none() {
                             return Ok(());
@@ -306,34 +319,45 @@ impl DexAction {
 
                         let one_add_max_slippage = Udec128_24::ONE.saturating_add(*max_slippage);
                         let price = best_ask_price.saturating_mul(one_add_max_slippage);
+                        let amount_quote = amount.checked_mul_dec_ceil(price)?;
 
-                        Coin {
-                            denom: quote_denom.clone(),
-                            amount: amount.checked_mul_dec_ceil(price)?,
-                        }
+                        (
+                            Coin {
+                                denom: quote_denom.clone(),
+                                amount: amount_quote,
+                            },
+                            CreateMarketOrderRequest::Bid {
+                                base_denom: base_denom.clone(),
+                                quote_denom: quote_denom.clone(),
+                                amount_quote: NonZero::new(amount_quote)?,
+                                max_slippage,
+                            },
+                        )
                     },
                     Direction::Ask => {
                         if resting_order_book.best_bid_price.is_none() {
                             return Ok(());
                         }
 
-                        Coin {
-                            denom: base_denom.clone(),
-                            amount: *amount,
-                        }
+                        (
+                            Coin {
+                                denom: base_denom.clone(),
+                                amount: *amount,
+                            },
+                            CreateMarketOrderRequest::Ask {
+                                base_denom: base_denom.clone(),
+                                quote_denom: quote_denom.clone(),
+                                amount_base: NonZero::new(*amount).unwrap(),
+                                max_slippage,
+                            },
+                        )
                     },
                 };
 
                 let msg = Message::execute(
                     contracts.dex,
                     &dex::ExecuteMsg::BatchUpdateOrders {
-                        creates_market: vec![CreateMarketOrderRequest {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            direction: *direction,
-                            amount: NonZero::new(*amount).unwrap(),
-                            max_slippage,
-                        }],
+                        creates_market: vec![request],
                         creates_limit: vec![],
                         cancels: None,
                     },
@@ -347,14 +371,16 @@ impl DexAction {
                     .unwrap();
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
-                // println!("block outcome: {block_outcome:?}");
+                println!("block outcome: {block_outcome:?}");
 
-                assert!(
-                    block_outcome
-                        .tx_outcomes
-                        .iter()
-                        .all(|tx_outcome| tx_outcome.result.is_ok())
-                );
+                assert!(block_outcome.tx_outcomes.iter().all(|tx_outcome| {
+                    if tx_outcome.result.is_err() {
+                        println!("{tx_outcome:#?}");
+                        false
+                    } else {
+                        true
+                    }
+                }));
                 assert!(
                     block_outcome
                         .cron_outcomes
@@ -769,7 +795,7 @@ fn test_dex_actions(
     dex_actions: Vec<DexAction>,
 ) -> Result<(TestSuite<NaiveProposalPreparer>, TestAccounts, Contracts), TestCaseError> {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
-        bridge_ops: |accounts| {
+        bridge_ops: Box::new(|accounts| {
             vec![
                 BridgeOp {
                     remote: Remote::Warp {
@@ -796,7 +822,7 @@ fn test_dex_actions(
                     recipient: accounts.user1.address(),
                 },
             ]
-        },
+        }),
         ..Default::default()
     });
 
@@ -953,4 +979,161 @@ fn xyk_liquidity_should_not_reduce_to_zero_by_market_order() {
             reserve.amount_of(&eth::DENOM).unwrap().is_non_zero()
                 && reserve.amount_of(&usdc::DENOM).unwrap().is_non_zero()
         });
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig {
+        cases: 256,
+        max_shrink_iters: 0,
+        ..ProptestConfig::default()
+    })]
+
+    #[test]
+    fn order_creation((amount_quote, price) in (0..(u128::MAX / 10_u128.pow(6))).prop_flat_map(|amount_quote|
+        {
+            // Define a range for the price to avoid overflow in conversion.
+            let free = u128::MAX / 10_u128.pow(6) - amount_quote;
+            let min = 10_u128.pow(24).saturating_sub(free);
+            let max = 10_u128.pow(24).saturating_add(free);
+            (Just(amount_quote), min..max)
+        }))
+    {
+        test_order_creation(amount_quote, price)?;
+    }
+}
+
+fn test_order_creation(amount_quote: u128, price: u128) -> Result<(), TestCaseError> {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
+        bridge_ops: Box::new(move |accounts| {
+            vec![
+                BridgeOp {
+                    remote: Remote::Warp {
+                        domain: ethereum::DOMAIN,
+                        contract: ethereum::USDC_WARP,
+                    },
+                    amount: Uint128::new(amount_quote),
+                    recipient: accounts.user1.address(),
+                },
+                BridgeOp {
+                    remote: Remote::Warp {
+                        domain: ethereum::DOMAIN,
+                        contract: ethereum::WETH_WARP,
+                    },
+                    amount: Uint128::new(123),
+                    recipient: accounts.user2.address(),
+                },
+            ]
+        }),
+        ..Default::default()
+    });
+
+    prop_assert_eq!(
+        suite.query_balance(&accounts.user1, usdc::DENOM.clone())?,
+        Uint128::new(amount_quote)
+    );
+
+    // Limit order
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![dex::CreateLimitOrderRequest::Bid {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    amount_quote: NonZero::new_unchecked(Int::new(amount_quote)),
+                    price: NonZero::new_unchecked(Dec::raw(Int::new(price))),
+                }],
+                cancels: None,
+            },
+            coins! {
+                usdc::DENOM.clone() => Uint128::new(amount_quote),
+            },
+        )
+        .result
+        .map_err(TestCaseError::fail)?;
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![],
+                cancels: Some(dex::CancelOrderRequest::All),
+            },
+            Coins::default(),
+        )
+        .result
+        .map_err(TestCaseError::fail)?;
+
+    prop_assert_eq!(
+        suite.query_balance(&accounts.user1, usdc::DENOM.clone())?,
+        Uint128::new(amount_quote)
+    );
+
+    // Market order
+    suite
+        .execute(
+            &mut accounts.user2,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates_market: vec![],
+                creates_limit: vec![dex::CreateLimitOrderRequest::Ask {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    amount_base: NonZero::new_unchecked(Int::new(123)),
+                    price: NonZero::new_unchecked(Dec::raw(Int::new(price))),
+                }],
+                cancels: None,
+            },
+            coins! {
+                eth::DENOM.clone() => Uint128::new(123),
+            },
+        )
+        .result
+        .map_err(TestCaseError::fail)?;
+
+    suite
+        .send_messages(
+            &mut accounts.user1,
+            NonEmpty::new_unchecked(vec![
+                Message::execute(
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![dex::CreateMarketOrderRequest::Bid {
+                            base_denom: eth::DENOM.clone(),
+                            quote_denom: usdc::DENOM.clone(),
+                            amount_quote: NonZero::new_unchecked(Int::new(amount_quote)),
+                            max_slippage: Bounded::new_unchecked(Dec::ZERO),
+                        }],
+                        creates_limit: vec![],
+                        cancels: None,
+                    },
+                    coins! {
+                        usdc::DENOM.clone() => Uint128::new(amount_quote),
+                    },
+                )?,
+                Message::execute(
+                    contracts.dex,
+                    &dex::ExecuteMsg::BatchUpdateOrders {
+                        creates_market: vec![],
+                        creates_limit: vec![],
+                        cancels: Some(dex::CancelOrderRequest::All),
+                    },
+                    Coins::default(),
+                )?,
+            ]),
+        )
+        .result
+        .map_err(TestCaseError::fail)?;
+
+    prop_assert_eq!(
+        suite.query_balance(&accounts.user1, usdc::DENOM.clone())?,
+        Uint128::new(amount_quote)
+    );
+
+    Ok(())
 }
