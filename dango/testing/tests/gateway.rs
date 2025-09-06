@@ -372,7 +372,7 @@ fn native_denom() {
                     },
                     recipient: Addr::mock(124).into(),
                 },
-                coins![dango::DENOM.clone() => 100],
+                coins! { dango::DENOM.clone() => 100 },
             )
             .should_succeed();
     }
