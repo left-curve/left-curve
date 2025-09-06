@@ -635,42 +635,6 @@ fn clear_orders_of_pair(
     Ok(())
 }
 
-/// Find the best price available on one side of the order book after the auction:
-/// - if the last order that was matched was only partially matched, and it's
-///   a limit order, then it's the best; otherwise,
-/// - if there's a left over bid, and it's a limit order, then it's the best;
-///   otherwise,
-/// - the first unmatched limit order is the best.
-fn find_best_remaining_price<I>(
-    last_partial_matched_order: Option<(Udec128_24, Order)>,
-    first_unmatched_order: Option<(Udec128_24, Order)>,
-    other_unmatched_orders: &mut I,
-) -> StdResult<Option<Udec128_24>>
-where
-    I: Iterator<Item = StdResult<(Udec128_24, Order)>>,
-{
-    if let Some((price, order)) = last_partial_matched_order {
-        if order.time_in_force == TimeInForce::GoodTilCanceled {
-            return Ok(Some(price));
-        }
-    }
-
-    if let Some((price, order)) = first_unmatched_order {
-        if order.time_in_force == TimeInForce::GoodTilCanceled {
-            return Ok(Some(price));
-        }
-    }
-
-    for res in other_unmatched_orders {
-        let (price, order) = res?;
-        if order.time_in_force == TimeInForce::GoodTilCanceled {
-            return Ok(Some(price));
-        }
-    }
-
-    Ok(None)
-}
-
 /// Handle the `FillingOutcome` of a user order (limit or market).
 ///
 /// ## Returns
