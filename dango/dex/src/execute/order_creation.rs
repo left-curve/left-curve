@@ -1,6 +1,6 @@
 use {
     crate::{
-        LIMIT_ORDERS, MARKET_ORDERS, NEXT_ORDER_ID, PAIRS, RESTING_ORDER_BOOK,
+        NEXT_ORDER_ID, ORDERS, PAIRS, RESTING_ORDER_BOOK,
         liquidity_depth::increase_liquidity_depths,
     },
     anyhow::{anyhow, ensure},

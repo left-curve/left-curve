@@ -209,7 +209,7 @@ fn clear_orders_of_pair(
             Ok((passive_bids, passive_asks)) => {
                 for (price, amount) in passive_bids {
                     let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
-                    order_id = !order_id;
+                    order_id = !order_id; // See the docs of the `OrderId` type on why we invert this.
 
                     let remaining = amount.checked_into_dec()?;
 
