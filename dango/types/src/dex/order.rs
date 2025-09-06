@@ -63,7 +63,7 @@ pub enum TimeInForce {
     /// again in future auctions, where it becomes a maker order (an order is
     /// a taker in its first auction).
     GoodTilCanceled,
-    /// If the order is not fully filled in the first auction,  the order is
+    /// If the order is not fully filled in the first auction, the order is
     /// canceled, and the remaining portion refunded to the user.
     ImmediateOrCancel,
 }

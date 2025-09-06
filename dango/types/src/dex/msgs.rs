@@ -37,6 +37,15 @@ pub struct CreateOrderRequest {
     pub time_in_force: TimeInForce,
 }
 
+impl CreateOrderRequest {
+    pub fn direction(&self) -> Direction {
+        match self.amount {
+            AmountOption::Bid { .. } => Direction::Bid,
+            AmountOption::Ask { .. } => Direction::Ask,
+        }
+    }
+}
+
 #[grug::derive(Serde)]
 pub enum PriceOption {
     /// The order is to have the specified limit price.

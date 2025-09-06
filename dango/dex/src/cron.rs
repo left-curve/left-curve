@@ -15,7 +15,7 @@ use {
         account_factory::Username,
         dex::{
             CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrderId,
-            OrderKind, OrdersMatched, Paused, Price, ReplyMsg, RestingOrderBookState,
+            OrdersMatched, Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
         },
         taxman::{self, FeeType},
     },
@@ -264,7 +264,7 @@ fn clear_orders_of_pair(
                         &Order {
                             user: dex_addr,
                             id: order_id,
-                            kind: OrderKind::Limit,
+                            time_in_force: TimeInForce::GoodTilCanceled,
                             price,
                             amount,
                             remaining,
@@ -298,7 +298,7 @@ fn clear_orders_of_pair(
                         &Order {
                             user: dex_addr,
                             id: order_id,
-                            kind: OrderKind::Limit,
+                            time_in_force: TimeInForce::GoodTilCanceled,
                             price,
                             amount,
                             remaining,
@@ -613,8 +613,8 @@ fn clear_orders_of_pair(
             // update if partially filled.
             // For market orders, refund the user the remaining amount, as
             // market orders are immediate-or-cancel.
-            match order.kind {
-                OrderKind::Limit => {
+            match order.time_in_force {
+                TimeInForce::GoodTilCanceled => {
                     decrease_liquidity_depths(
                         storage,
                         &base_denom,
@@ -648,7 +648,7 @@ fn clear_orders_of_pair(
                         )?;
                     }
                 },
-                OrderKind::Market => {
+                TimeInForce::ImmediateOrCancel => {
                     refund_market_order(
                         &base_denom,
                         &quote_denom,
@@ -675,7 +675,7 @@ fn clear_orders_of_pair(
         events.push(OrderFilled {
             user: order.user,
             id: order.id,
-            kind: order.kind,
+            time_in_force: order.time_in_force,
             base_denom: base_denom.clone(),
             quote_denom: quote_denom.clone(),
             direction: order_direction,
@@ -769,20 +769,20 @@ where
     I: Iterator<Item = StdResult<(Udec128_24, Order)>>,
 {
     if let Some((price, order)) = last_partial_matched_order {
-        if order.kind == OrderKind::Limit {
+        if order.time_in_force == TimeInForce::GoodTilCanceled {
             return Ok(Some(price));
         }
     }
 
     if let Some((price, order)) = first_unmatched_order {
-        if order.kind == OrderKind::Limit {
+        if order.time_in_force == TimeInForce::GoodTilCanceled {
             return Ok(Some(price));
         }
     }
 
     for res in other_unmatched_orders {
         let (price, order) = res?;
-        if order.kind == OrderKind::Limit {
+        if order.time_in_force == TimeInForce::GoodTilCanceled {
             return Ok(Some(price));
         }
     }
@@ -862,11 +862,9 @@ fn refund_market_order(
     events: &mut EventBuilder,
     refunds: &mut TransferBuilder<DecCoins<6>>,
 ) -> StdResult<()> {
-    if order.kind != OrderKind::Market {
-        // Market orders are immediate-or-cancel, so unmatched market orders are
-        // to be canceled and the user refunded.
-        // Unmatched limit and passive orders remain in the order book, so nothing
-        // to do.
+    if order.time_in_force != TimeInForce::ImmediateOrCancel {
+        // Unmathced IOC orders are to be refunded back to users.
+        // Unmatched GTC orders remain in the book, so nothing to do.
         return Ok(());
     };
 
@@ -882,7 +880,7 @@ fn refund_market_order(
         events.push(OrderCanceled {
             user: order.user,
             id: order.id,
-            kind: order.kind,
+            time_in_force: order.time_in_force,
             remaining: order.remaining,
             refund: (refund_denom.clone(), refund_amount).into(),
             base_denom: base_denom.clone(),
@@ -1236,7 +1234,7 @@ mod tests {
                         Order {
                             user: MOCK_USER,
                             id,
-                            kind: OrderKind::Market,
+                            time_in_force: TimeInForce::ImmediateOrCancel,
                             price,
                             amount,
                             remaining: amount.checked_into_dec().unwrap(),
@@ -1262,7 +1260,7 @@ mod tests {
                     &Order {
                         user: MOCK_USER,
                         id,
-                        kind: OrderKind::Limit,
+                        time_in_force: TimeInForce::GoodTilCanceled,
                         price,
                         amount,
                         remaining: amount.checked_into_dec().unwrap(),
