@@ -6,10 +6,10 @@ use {
 #[grug::derive(Serde)]
 #[derive(PartialOrd, Ord)]
 pub enum Origin {
+    /// Token is issued natively on Dango.
+    Local(Denom),
     /// The token was received through a remote chain.
     Remote(Part),
-    /// Token is native on Dango.
-    Native(Denom),
 }
 
 pub trait Traceable {

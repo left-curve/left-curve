@@ -61,15 +61,16 @@ fn _set_routes(
 ) -> anyhow::Result<()> {
     for (origin, bridge, remote) in routes {
         let denom = match origin {
-            Origin::Remote(part) => Denom::from_parts([NAMESPACE.clone(), part])?,
-            Origin::Native(denom) => {
+            Origin::Local(denom) => {
                 ensure!(
                     !denom.is_remote(),
                     "native denom must not start with `{}` namespace",
                     NAMESPACE.as_ref()
                 );
+
                 denom
             },
+            Origin::Remote(part) => Denom::from_parts([NAMESPACE.clone(), part])?,
         };
 
         ROUTES.save(storage, (bridge, remote), &denom)?;

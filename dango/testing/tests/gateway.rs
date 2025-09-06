@@ -307,7 +307,7 @@ fn native_denom() {
                 &mut accounts.owner,
                 contracts.gateway,
                 &gateway::ExecuteMsg::SetRoutes(btree_set!((
-                    Origin::Native(dango::DENOM.clone(),),
+                    Origin::Local(dango::DENOM.clone(),),
                     contracts.warp,
                     Remote::Warp {
                         domain: remote_domain,
