@@ -64,8 +64,9 @@ fn _set_routes(
             Origin::Local(denom) => {
                 ensure!(
                     !denom.is_remote(),
-                    "native denom must not start with `{}` namespace",
-                    NAMESPACE.as_ref()
+                    "local denom must not start with `{}` namespace: `{}`",
+                    NAMESPACE.as_ref(),
+                    denom
                 );
 
                 denom
@@ -141,6 +142,7 @@ fn receive_remote(
     if denom.is_remote() {
         RESERVES.may_update(ctx.storage, (ctx.sender, remote), |maybe_reserve| {
             let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
+
             Ok::<_, StdError>(reserve.checked_add(amount)?)
         })?;
     }
