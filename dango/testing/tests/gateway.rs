@@ -2,7 +2,7 @@ use {
     dango_testing::{HyperlaneTestSuite, TestOption, TestSuite, setup_test},
     dango_types::{
         constants::{dango, usdc},
-        gateway::{self, RateLimit, Remote, TokenOrigin},
+        gateway::{self, Origin, RateLimit, Remote},
     },
     grug::{
         Addr, BalanceChange, Coin, Coins, Duration, MathError, QuerierExt, ResultExt, Udec128,
@@ -307,7 +307,7 @@ fn native_denom() {
                 &mut accounts.owner,
                 contracts.gateway,
                 &gateway::ExecuteMsg::SetRoutes(btree_set!((
-                    TokenOrigin::Native(dango::DENOM.clone(),),
+                    Origin::Native(dango::DENOM.clone(),),
                     contracts.warp,
                     Remote::Warp {
                         domain: remote_domain,

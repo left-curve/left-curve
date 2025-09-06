@@ -1,6 +1,6 @@
 use {
-    super::{Addr32, RateLimit, Remote},
-    grug::{Addr, Denom, Part, Uint128},
+    super::{Addr32, Origin, RateLimit, Remote},
+    grug::{Addr, Denom, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -11,18 +11,9 @@ pub struct WithdrawalFee {
     pub fee: Uint128,
 }
 
-#[derive(PartialOrd, Ord)]
-#[grug::derive(Serde)]
-pub enum TokenOrigin {
-    /// The token was received through a remote chain.
-    Remote(Part),
-    /// Token is native on Dango.
-    Native(Denom),
-}
-
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub routes: BTreeSet<(TokenOrigin, Addr, Remote)>,
+    pub routes: BTreeSet<(Origin, Addr, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub withdrawal_fees: Vec<WithdrawalFee>,
 }
@@ -35,7 +26,7 @@ pub enum ExecuteMsg {
     ///
     /// Not that this is append-only, meaning you can't change or remove an
     /// existing route.
-    SetRoutes(BTreeSet<(TokenOrigin, Addr, Remote)>),
+    SetRoutes(BTreeSet<(Origin, Addr, Remote)>),
     /// Set rate limit for the routes.
     SetRateLimits(BTreeMap<Denom, RateLimit>),
     /// Set withdrawal fees for the denoms.

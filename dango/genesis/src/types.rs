@@ -5,7 +5,7 @@ use {
         bank,
         config::Hyperlane,
         dex::PairUpdate,
-        gateway::{RateLimit, Remote, TokenOrigin, WithdrawalFee},
+        gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         lending::InterestRateModel,
         oracle::PriceSource,
         taxman,
@@ -101,7 +101,7 @@ pub struct DexOption {
 pub struct GatewayOption {
     // Note: these are only the Hyperlane Warp routes. No need to specify the
     // bitcoin bridge route here.
-    pub warp_routes: BTreeSet<(TokenOrigin, Remote)>,
+    pub warp_routes: BTreeSet<(Origin, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub rate_limit_refresh_period: Duration,
     pub withdrawal_fees: Vec<WithdrawalFee>,

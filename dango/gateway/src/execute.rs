@@ -4,8 +4,8 @@ use {
     dango_types::{
         bank,
         gateway::{
-            Addr32, BridgeDenom, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote,
-            TokenOrigin, WithdrawalFee,
+            Addr32, BridgeDenom, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, RateLimit, Remote,
+            WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
@@ -43,7 +43,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
 
 fn set_routes(
     ctx: MutableCtx,
-    routes: BTreeSet<(TokenOrigin, Addr, Remote)>,
+    routes: BTreeSet<(Origin, Addr, Remote)>,
 ) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
@@ -57,12 +57,12 @@ fn set_routes(
 
 fn _set_routes(
     storage: &mut dyn Storage,
-    routes: BTreeSet<(TokenOrigin, Addr, Remote)>,
+    routes: BTreeSet<(Origin, Addr, Remote)>,
 ) -> anyhow::Result<()> {
     for (origin, bridge, remote) in routes {
         let denom = match origin {
-            TokenOrigin::Remote(part) => Denom::from_parts([NAMESPACE.clone(), part])?,
-            TokenOrigin::Native(denom) => {
+            Origin::Remote(part) => Denom::from_parts([NAMESPACE.clone(), part])?,
+            Origin::Native(denom) => {
                 ensure!(
                     !denom.is_remote(),
                     "native denom must not start with `{}` namespace",

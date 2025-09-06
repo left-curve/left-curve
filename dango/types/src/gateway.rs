@@ -14,14 +14,14 @@
 //! - withdraw rate limit.
 
 pub mod bridge;
-mod denom;
 mod msgs;
+mod origin;
 mod remote;
 
 pub use {
-    denom::*,
     hyperlane_types::{Addr32, mailbox::Domain},
     msgs::*,
+    origin::*,
     remote::*,
 };
 
