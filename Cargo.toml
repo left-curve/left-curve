@@ -58,6 +58,7 @@ members = [
   "indexer/sql-migration",
   "indexer/testing",
   "pyth/client",
+  "pyth/lazer",
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",
@@ -102,7 +103,7 @@ async-std                   = { version = "1", features = ["attributes", "tokio1
 async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
-axum                        = "0.8"
+axum                        = { version = "0.8", features = ["ws"] }
 base64                      = "0.22"
 bigdecimal                  = "0.4"
 bip32                       = "0.5"
@@ -152,6 +153,8 @@ proc-macro2                 = "1"
 prometheus                  = "0.13"
 proptest                    = "1"
 prost                       = "0.13"
+pyth-lazer-client           = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-lazer-client" }
+pyth-lazer-protocol         = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-lazer-protocol" }
 pyth-sdk                    = "0.8"
 pythnet-sdk                 = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                       = "1"
@@ -255,6 +258,7 @@ indexer-sql                 = { path = "indexer/sql" }
 indexer-sql-migration       = { path = "indexer/sql-migration" }
 indexer-testing             = { path = "indexer/testing" }
 pyth-client                 = { path = "pyth/client" }
+pyth-lazer                  = { path = "pyth/lazer" }
 pyth-types                  = { path = "pyth/types" }
 
 [workspace.dependencies.async-graphql]

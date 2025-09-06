@@ -10,8 +10,8 @@ use {
     },
     common_function::{test_latest_vaas, test_stream},
     futures::stream::{self, Stream},
-    grug::{JsonSerExt, NonEmpty},
-    pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    grug::{Inner, JsonSerExt, NonEmpty},
+    pyth_client::{PythClientCore, PythClientCoreCache, PythClientTrait},
     pyth_types::{
         LatestVaaBinaryResponse, LatestVaaResponse,
         constants::{ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_URL},
@@ -36,14 +36,14 @@ use {
 #[ignore = "rely on network calls"]
 #[test]
 fn latest_vaas_network() {
-    let pyth_client = PythClient::new(PYTH_URL).unwrap();
+    let pyth_client = PythClientCore::new(PYTH_URL).unwrap();
     test_latest_vaas(pyth_client, vec![BTC_USD_ID, ETH_USD_ID]);
 }
 
 #[ignore = "rely on network calls"]
 #[tokio::test]
 async fn test_sse_stream() {
-    let client = PythClient::new(PYTH_URL).unwrap();
+    let client = PythClientCore::new(PYTH_URL).unwrap();
     test_stream(client, vec![BTC_USD_ID, ETH_USD_ID], vec![
         ATOM_USD_ID,
         BNB_USD_ID,
@@ -57,7 +57,7 @@ async fn test_client_reconnection() {
     let mut rng = rand::thread_rng();
     let port = rng.gen_range(15000..16000);
 
-    let mut client = PythClient::new(format!("http://127.0.0.1:{port}")).unwrap();
+    let mut client = PythClientCore::new(format!("http://127.0.0.1:{port}")).unwrap();
     let mut stream = client
         .stream(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
         .await
@@ -109,16 +109,19 @@ async fn start_server(port: u16) {
 async fn sse_handler(
     State(counter): State<Arc<AtomicUsize>>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let pyth_client_cache = PythClientCache::new(PYTH_URL).unwrap();
+    let pyth_client_cache = PythClientCoreCache::new(PYTH_URL).unwrap();
 
     // Create the data to send to the client.
     let mut values = vec![];
     for _ in 0..3 {
         let latest_vaas = pyth_client_cache
-            .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
+            .get_latest_price_update(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
             .unwrap();
+
         let data = LatestVaaResponse {
-            binary: LatestVaaBinaryResponse { data: latest_vaas },
+            binary: LatestVaaBinaryResponse {
+                data: latest_vaas.try_into_core().unwrap().into_inner(),
+            },
         };
 
         match data.to_json_value() {
