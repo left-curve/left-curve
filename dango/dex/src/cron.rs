@@ -570,6 +570,16 @@ fn clear_orders_of_pair(
         .values(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
+        ORDERS.remove(
+            storage,
+            (
+                (base_denom.clone(), quote_denom.clone()),
+                order.direction,
+                order.price,
+                order.id,
+            ),
+        )?;
+
         refund_market_order(&base_denom, &quote_denom, order, events, refunds)?;
     }
 
