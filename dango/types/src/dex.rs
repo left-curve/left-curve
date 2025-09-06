@@ -4,8 +4,9 @@ mod msgs;
 mod order;
 mod pair;
 mod price;
+mod time_in_force;
 
-pub use {direction::*, events::*, msgs::*, order::*, pair::*, price::*};
+pub use {direction::*, events::*, msgs::*, order::*, pair::*, price::*, time_in_force::*};
 
 use {grug::Part, std::sync::LazyLock};
 

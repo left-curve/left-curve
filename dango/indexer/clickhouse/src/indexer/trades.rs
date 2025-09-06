@@ -86,7 +86,7 @@ impl Indexer {
                         quote_denom: order_filled.quote_denom.to_string(),
                         base_denom: order_filled.base_denom.to_string(),
                         direction: order_filled.direction,
-                        order_type: order_filled.kind,
+                        time_in_force: order_filled.time_in_force,
                         filled_base: order_filled.filled_base,
                         filled_quote: order_filled.filled_quote,
                         refund_base: order_filled.refund_base,

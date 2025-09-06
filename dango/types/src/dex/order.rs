@@ -1,4 +1,7 @@
-use grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64, Uint128};
+use {
+    crate::dex::{Direction, TimeInForce},
+    grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64, Uint128},
+};
 
 /// Numerical identifier of an order (limit or market).
 ///
@@ -18,12 +21,12 @@ use grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64,
 /// direction | price | order_id
 /// ```
 ///
-/// - For bids, we iterate all orders prefixed with `Direction::Bid`, _ascendingly_.
-/// - For asks, we iterate all orders prefixed with `Direction::Ask`, _descendingly_.
+/// - For bids, we iterate all orders prefixed with `Direction::Bid`, _descendingly_.
+/// - For asks, we iterate all orders prefixed with `Direction::Ask`, _ascendingly_.
 ///
 /// In each case, price-time priority is respected.
 ///
-/// See `dango_dex::state::LimitOrderKey` for details.
+/// See `dango_dex::state::OrderKey` for details.
 ///
 /// Note that this assumes `order_id` never exceeds `u64::MAX / 2`, which is a
 /// safe assumption. If we accept 1 million orders per second, it would take
@@ -48,19 +51,10 @@ use grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64,
 /// The value is off by 1, because `9007199254740993` is bigger than `2^53 - 1`
 /// and thus can't be represented without losing precision.
 ///
-/// Since order IDs for asks are counted from top down, they necessarily exceed
+/// Since order IDs for bids are counted from top down, they necessarily exceed
 /// `2^53 - 1`. To accurately represent these order IDs, instead of `u64`, we
 /// use `grug::Uint64`, which is serialized as JSON strings.
 pub type OrderId = Uint64;
-
-#[grug::derive(Borsh, Serde)]
-#[derive(Copy, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
-#[cfg_attr(feature = "async-graphql", graphql(rename_items = "lowercase"))]
-pub enum OrderKind {
-    Limit,
-    Market,
-}
 
 #[grug::derive(Borsh, Serde)]
 #[derive(Copy)]
@@ -69,8 +63,10 @@ pub struct Order {
     pub user: Addr,
     /// The order's identifier.
     pub id: OrderId,
-    /// The order's kind (limit or market).
-    pub kind: OrderKind,
+    /// The order's direction.
+    pub direction: Direction,
+    /// The order's time-in-force.
+    pub time_in_force: TimeInForce,
     /// The order's limit price, measured in quote asset per base asset.
     pub price: Udec128_24,
     /// The order's total size, measured in the _base asset_.

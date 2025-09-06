@@ -12,9 +12,8 @@ use {
     dango_types::{
         DangoQuerier, bank,
         dex::{
-            CallbackMsg, CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest,
-            ExecuteMsg, InstantiateMsg, LP_NAMESPACE, NAMESPACE, OwnerMsg, PairId, PairUpdate,
-            Paused, Swapped, Unpaused,
+            CallbackMsg, CancelOrderRequest, CreateOrderRequest, ExecuteMsg, InstantiateMsg,
+            LP_NAMESPACE, NAMESPACE, OwnerMsg, PairId, PairUpdate, Paused, Swapped, Unpaused,
         },
         taxman::{self, FeeType},
     },
@@ -58,11 +57,9 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
                 CallbackMsg::Auction {} => cron::auction(ctx),
             }
         },
-        ExecuteMsg::BatchUpdateOrders {
-            creates_market,
-            creates_limit,
-            cancels,
-        } => batch_update_orders(ctx, creates_market, creates_limit, cancels),
+        ExecuteMsg::BatchUpdateOrders { creates, cancels } => {
+            batch_update_orders(ctx, creates, cancels)
+        },
         ExecuteMsg::ProvideLiquidity {
             base_denom,
             quote_denom,
@@ -122,8 +119,7 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
 
 fn batch_update_orders(
     mut ctx: MutableCtx,
-    creates_market: Vec<CreateMarketOrderRequest>,
-    creates_limit: Vec<CreateLimitOrderRequest>,
+    creates: Vec<CreateOrderRequest>,
     cancels: Option<CancelOrderRequest>,
 ) -> anyhow::Result<Response> {
     // Creating or canceling orders is not allowed when the contract is paused.
@@ -162,19 +158,8 @@ fn batch_update_orders(
         None => {},
     };
 
-    for order in creates_market {
-        order_creation::create_market_order(
-            ctx.storage,
-            ctx.block.height,
-            ctx.sender,
-            order,
-            &mut events,
-            &mut deposits,
-        )?;
-    }
-
-    for order in creates_limit {
-        order_creation::create_limit_order(
+    for order in creates {
+        order_creation::create_order(
             ctx.storage,
             ctx.block.height,
             ctx.sender,
@@ -458,7 +443,10 @@ mod tests {
         crate::RESTING_ORDER_BOOK,
         dango_types::{
             constants::{dango, usdc},
-            dex::{Direction, PairParams, PassiveLiquidity, RestingOrderBookState, Xyk},
+            dex::{
+                AmountOption, PairParams, PassiveLiquidity, PriceOption, RestingOrderBookState,
+                TimeInForce, Xyk,
+            },
         },
         grug::{Addr, Bounded, MockContext, MockQuerier, NumberConst, Udec128, Udec128_24},
         std::{collections::BTreeSet, str::FromStr},
@@ -470,13 +458,14 @@ mod tests {
     #[test_case(
         None,
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![],
-            creates_limit: vec![CreateLimitOrderRequest {
+            creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
-                price: NonZero::new_unchecked(Udec128_24::new(2)),
+                price: PriceOption::Fixed(NonZero::new_unchecked(Udec128_24::new(2))),
+                amount: AmountOption::Bid {
+                    quote: NonZero::new_unchecked(Uint128::new(200)),
+                },
+                time_in_force: TimeInForce::GoodTilCanceled,
             }],
             cancels: None,
         },
@@ -487,13 +476,14 @@ mod tests {
     #[test_case(
         None,
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![],
-            creates_limit: vec![CreateLimitOrderRequest {
+            creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
-                price: NonZero::new_unchecked(Udec128_24::new(2)),
+                price: PriceOption::Fixed(NonZero::new_unchecked(Udec128_24::new(2))),
+                amount: AmountOption::Ask {
+                    base: NonZero::new_unchecked(Uint128::new(100)),
+                },
+                time_in_force: TimeInForce::GoodTilCanceled,
             }],
             cancels: None,
         },
@@ -508,14 +498,17 @@ mod tests {
             mid_price: Some(Udec128_24::new(100)),
         }),
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![CreateMarketOrderRequest {
+            creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::new(1)),
-                max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                price: PriceOption::BestAvailable {
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                },
+                amount: AmountOption::Bid {
+                    quote: NonZero::new_unchecked(Uint128::new(100)),
+                },
+                time_in_force: TimeInForce::ImmediateOrCancel,
             }],
-            creates_limit: vec![],
             cancels: None,
         },
         coins! { usdc::DENOM.clone() => 300 },
@@ -529,14 +522,17 @@ mod tests {
             mid_price: Some(Udec128_24::new(100)),
         }),
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![CreateMarketOrderRequest {
+            creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
-                max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                price: PriceOption::BestAvailable {
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                },
+                amount: AmountOption::Ask {
+                    base: NonZero::new_unchecked(Uint128::new(100)),
+                },
+                time_in_force: TimeInForce::ImmediateOrCancel,
             }],
-            creates_limit: vec![],
             cancels: None,
         },
         coins! { dango::DENOM.clone() => 300 },
@@ -550,36 +546,48 @@ mod tests {
             mid_price: Some(Udec128_24::new(100)),
         }),
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![
-                CreateMarketOrderRequest {
+            creates: vec![
+                // two market orders
+                CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(1)),
-                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                    price: PriceOption::BestAvailable {
+                        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                    },
+                    amount: AmountOption::Bid {
+                        quote: NonZero::new_unchecked(Uint128::new(100)),
+                    },
+                    time_in_force: TimeInForce::ImmediateOrCancel,
                 },
-                CreateMarketOrderRequest {
+                CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
-                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                    price: PriceOption::BestAvailable {
+                        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                    },
+                    amount: AmountOption::Ask {
+                        base: NonZero::new_unchecked(Uint128::new(100)),
+                    },
+                    time_in_force: TimeInForce::ImmediateOrCancel,
                 },
-            ],
-            creates_limit: vec![
-                CreateLimitOrderRequest {
+                // two limit orders
+                CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
-                    price: NonZero::new_unchecked(Udec128_24::new(2)),
+                    price: PriceOption::Fixed(NonZero::new_unchecked(Udec128_24::new(2))),
+                    amount: AmountOption::Bid {
+                        quote: NonZero::new_unchecked(Uint128::new(200)),
+                    },
+                    time_in_force: TimeInForce::GoodTilCanceled,
                 },
-                CreateLimitOrderRequest {
+                CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
-                    price: NonZero::new_unchecked(Udec128_24::new(2)),
+                    price: PriceOption::Fixed(NonZero::new_unchecked(Udec128_24::new(2))),
+                    amount: AmountOption::Ask {
+                        base: NonZero::new_unchecked(Uint128::new(100)),
+                    },
+                    time_in_force: TimeInForce::GoodTilCanceled,
                 },
             ],
             cancels: None,
