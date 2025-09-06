@@ -24,10 +24,9 @@ use {
 /// non-USDC quoted pairs, the maximum route length can be adjusted.
 pub type SwapRoute = MaxLength<UniqueVec<PairId>, 2>;
 
+pub type MaxSlippage = Bounded<Udec128, ZeroInclusiveOneExclusive>;
+
 /// A request to create a new order.
-///
-/// - Limit orders typically use `PriceOption::Fixed` + `TimeInForce::GoodTilCanceled`.
-/// - Market orders typically use `PriceOption::BestAvailable` + `TimeInForce::ImmediateOrCancel`.
 #[grug::derive(Serde)]
 pub struct CreateOrderRequest {
     pub base_denom: Denom,
@@ -38,6 +37,40 @@ pub struct CreateOrderRequest {
 }
 
 impl CreateOrderRequest {
+    /// Create an order with `PriceOption::Fixed` and `TimeInForce::GoodTilCanceled`.
+    pub fn new_limit(
+        base_denom: Denom,
+        quote_denom: Denom,
+        direction: Direction,
+        price: NonZero<Udec128_24>,
+        amount: NonZero<Uint128>, // Quote asset amount for bids; base asset amount for asks.
+    ) -> Self {
+        Self {
+            base_denom,
+            quote_denom,
+            price: PriceOption::Fixed(price),
+            amount: AmountOption::new(direction, amount),
+            time_in_force: TimeInForce::GoodTilCanceled,
+        }
+    }
+
+    /// Create an order with `PriceOption::BestAvailable` and `TimeInForce::ImmediateOrCancel`.
+    pub fn new_market(
+        base_denom: Denom,
+        quote_denom: Denom,
+        direction: Direction,
+        max_slippage: MaxSlippage,
+        amount: NonZero<Uint128>, // Quote asset amount for bids; base asset amount for asks.
+    ) -> Self {
+        Self {
+            base_denom,
+            quote_denom,
+            price: PriceOption::BestAvailable { max_slippage },
+            amount: AmountOption::new(direction, amount),
+            time_in_force: TimeInForce::ImmediateOrCancel,
+        }
+    }
+
     /// Return the order's direction.
     pub fn direction(&self) -> Direction {
         match self.amount {
@@ -86,7 +119,7 @@ pub enum PriceOption {
         ///   ```math
         ///   p_best * (1 - max_slippage)
         ///   ```
-        max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+        max_slippage: MaxSlippage,
     },
 }
 
@@ -104,6 +137,15 @@ pub enum AmountOption {
     /// To create ask (SELL) orders, the user must send a non-zero amount the
     /// base asset.
     Ask { base: NonZero<Uint128> },
+}
+
+impl AmountOption {
+    pub fn new(direction: Direction, amount: NonZero<Uint128>) -> Self {
+        match direction {
+            Direction::Bid => Self::Bid { quote: amount },
+            Direction::Ask => Self::Ask { base: amount },
+        }
+    }
 }
 
 #[grug::derive(Serde)]

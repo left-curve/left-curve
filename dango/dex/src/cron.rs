@@ -486,7 +486,7 @@ fn clear_orders_of_pair(
                     }
                 },
                 TimeInForce::ImmediateOrCancel => {
-                    refund_market_order(&base_denom, &quote_denom, order, events, refunds)?;
+                    refund_order(&base_denom, &quote_denom, order, events, refunds)?;
                     // Unlike GTC orders, we don't update the `ORDERS` map here for IOC orders.
                     // This is done later, in step 5. "cancel IOC orders".
                     // There, we delete all IOC orders from the `ORDERS` map, regardless it has
@@ -580,7 +580,7 @@ fn clear_orders_of_pair(
             ),
         )?;
 
-        refund_market_order(&base_denom, &quote_denom, order, events, refunds)?;
+        refund_order(&base_denom, &quote_denom, order, events, refunds)?;
     }
 
     #[cfg(feature = "tracing")]
@@ -708,18 +708,20 @@ fn fill_passive_order(
 /// event of a market order.
 ///
 /// If the order is not a market order, then this function is a no-op.
-fn refund_market_order(
+fn refund_order(
     base_denom: &Denom,
     quote_denom: &Denom,
     order: Order,
     events: &mut EventBuilder,
     refunds: &mut TransferBuilder<DecCoins<6>>,
 ) -> StdResult<()> {
-    if order.time_in_force != TimeInForce::ImmediateOrCancel {
-        // Unmathced IOC orders are to be refunded back to users.
-        // Unmatched GTC orders remain in the book, so nothing to do.
-        return Ok(());
-    };
+    // This function is only intended to be called to when IOC orders are to be
+    // automatically canceled.
+    debug_assert_eq!(
+        order.time_in_force,
+        TimeInForce::ImmediateOrCancel,
+        "`refund_order` function called for an order that isn't IOC: {order:?}"
+    );
 
     let (refund_denom, refund_amount) = match order.direction {
         Direction::Bid => {
