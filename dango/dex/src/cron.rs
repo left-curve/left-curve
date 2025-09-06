@@ -346,9 +346,9 @@ fn clear_orders_of_pair(
         );
     }
 
-    // Drop the iterators, which contains immutable references to the storage,
-    // so that we can write to storage later. The Rust compiler isn't smart
-    // enough to do this on its own.
+    // Drop the iterators, which hold immutable references to the storage,
+    // so that we can write to storage later.
+    // The Rust compiler isn't smart enough to do this on its own.
     drop(bid_iter);
     drop(ask_iter);
 
