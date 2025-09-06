@@ -9,8 +9,8 @@ use {
             FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, TEN, dango, eth, sol, usdc,
         },
         dex::{
-            self, CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, PairId, PairParams,
-            PairUpdate, PassiveLiquidity, SwapRoute, Xyk,
+            self, CreateOrderRequest, Direction, PairId, PairParams, PairUpdate, PassiveLiquidity,
+            SwapRoute, Xyk,
         },
         gateway::Remote,
     },
@@ -242,14 +242,13 @@ impl DexAction {
                 let msg = Message::execute(
                     contracts.dex,
                     &dex::ExecuteMsg::BatchUpdateOrders {
-                        creates_market: vec![],
-                        creates_limit: vec![CreateLimitOrderRequest {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            direction: *direction,
-                            amount: NonZero::new(*amount)?,
-                            price: NonZero::new(*price)?,
-                        }],
+                        creates: vec![CreateOrderRequest::new_limit(
+                            base_denom.clone(),
+                            quote_denom.clone(),
+                            *direction,
+                            NonZero::new(*price)?,
+                            NonZero::new(*amount)?,
+                        )],
                         cancels: None,
                     },
                     Coins::one(deposit.denom, deposit.amount)?,
@@ -327,14 +326,13 @@ impl DexAction {
                 let msg = Message::execute(
                     contracts.dex,
                     &dex::ExecuteMsg::BatchUpdateOrders {
-                        creates_market: vec![CreateMarketOrderRequest {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                            direction: *direction,
-                            amount: NonZero::new(*amount).unwrap(),
+                        creates: vec![CreateOrderRequest::new_market(
+                            base_denom.clone(),
+                            quote_denom.clone(),
+                            *direction,
                             max_slippage,
-                        }],
-                        creates_limit: vec![],
+                            NonZero::new(*amount).unwrap(),
+                        )],
                         cancels: None,
                     },
                     Coins::one(deposit.denom, deposit.amount).unwrap(),
