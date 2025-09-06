@@ -1,13 +1,18 @@
 use {
     dango_testing::{HyperlaneTestSuite, TestOption, TestSuite, setup_test},
     dango_types::{
-        constants::usdc,
-        gateway::{self, RateLimit, Remote},
+        constants::{dango, usdc},
+        gateway::{self, Origin, RateLimit, Remote},
     },
-    grug::{Addr, BalanceChange, Coin, Coins, Duration, QuerierExt, ResultExt, Udec128, btree_map},
+    grug::{
+        Addr, BalanceChange, Coin, Coins, Duration, MathError, QuerierExt, ResultExt, Udec128,
+        btree_map, btree_set, coins,
+    },
+    hyperlane_testing::MockValidatorSet,
     hyperlane_types::{
         Addr32,
         constants::{ethereum, solana},
+        isms,
     },
 };
 
@@ -283,6 +288,116 @@ fn rate_limit() {
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("insufficient reserve!");
+}
+
+#[test]
+fn native_denom() {
+    let (mut suite, mut accounts, _, contracts, mut valset) = setup_test(TestOption {
+        bridge_ops: |_| vec![],
+        ..TestOption::default()
+    });
+
+    let remote_domain = 123;
+    let remote_warp = Addr::mock(123);
+
+    // Register a native denom in the gateway
+    {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.gateway,
+                &gateway::ExecuteMsg::SetRoutes(btree_set!((
+                    Origin::Local(dango::DENOM.clone(),),
+                    contracts.warp,
+                    Remote::Warp {
+                        domain: remote_domain,
+                        contract: remote_warp.into(),
+                    }
+                ))),
+                Coins::default(),
+            )
+            .should_succeed();
+    }
+
+    // Register the validator set for the remote domain.
+    {
+        let validator_set = MockValidatorSet::new_preset(remote_domain);
+
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.hyperlane.ism,
+                &isms::multisig::ExecuteMsg::SetValidators {
+                    domain: remote_domain,
+                    threshold: 2,
+                    validators: validator_set.validator_addresses(),
+                },
+                Coins::default(),
+            )
+            .should_succeed();
+
+        valset.insert(remote_domain, validator_set);
+    }
+
+    let mut suite = HyperlaneTestSuite::new(suite, valset, &contracts);
+
+    // Try receive a warp transfer.
+    // This should fail because the gateway should not have any reserve for the native denom.
+    {
+        suite
+            .receive_warp_transfer(
+                &mut accounts.user3,
+                remote_domain,
+                remote_warp.into(),
+                &accounts.user2,
+                100,
+            )
+            .should_fail_with_error(MathError::overflow_sub(0_u128, 100_u128));
+    }
+
+    suite
+        .balances()
+        .record_many([&accounts.user1, &accounts.user2]);
+
+    // Send some tokens with user1 to the remote domain.
+    {
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.gateway,
+                &gateway::ExecuteMsg::TransferRemote {
+                    remote: Remote::Warp {
+                        domain: remote_domain,
+                        contract: remote_warp.into(),
+                    },
+                    recipient: Addr::mock(124).into(),
+                },
+                coins! { dango::DENOM.clone() => 100 },
+            )
+            .should_succeed();
+    }
+
+    // Try to receive the tokens back to user2.
+    {
+        suite
+            .receive_warp_transfer(
+                &mut accounts.user3,
+                remote_domain,
+                remote_warp.into(),
+                &accounts.user2,
+                100,
+            )
+            .should_succeed();
+    }
+
+    // check the balances.
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Decreased(100),
+    });
+
+    suite.balances().should_change(&accounts.user2, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Increased(100),
+    });
 }
 
 fn advance_to_next_day(suite: &mut TestSuite) {

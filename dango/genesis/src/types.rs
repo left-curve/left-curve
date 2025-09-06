@@ -5,12 +5,12 @@ use {
         bank,
         config::Hyperlane,
         dex::PairUpdate,
-        gateway::{RateLimit, Remote, WithdrawalFee},
+        gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         lending::InterestRateModel,
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Part, Uint128},
+    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::{BTreeMap, BTreeSet},
@@ -101,7 +101,7 @@ pub struct DexOption {
 pub struct GatewayOption {
     // Note: these are only the Hyperlane Warp routes. No need to specify the
     // bitcoin bridge route here.
-    pub warp_routes: BTreeSet<(Part, Remote)>,
+    pub warp_routes: BTreeSet<(Origin, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub rate_limit_refresh_period: Duration,
     pub withdrawal_fees: Vec<WithdrawalFee>,

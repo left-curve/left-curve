@@ -18,7 +18,7 @@ use {
             bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
         },
         dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
-        gateway::{Remote, WithdrawalFee},
+        gateway::{Origin, Remote, WithdrawalFee},
         lending::InterestRateModel,
         taxman,
     },
@@ -424,43 +424,43 @@ impl Preset for GatewayOption {
     fn preset_test() -> Self {
         GatewayOption {
             warp_routes: btree_set! {
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: arbitrum::DOMAIN,
                     contract: arbitrum::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: base::DOMAIN,
                     contract: base::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: optimism::DOMAIN,
                     contract: optimism::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: arbitrum::DOMAIN,
                     contract: arbitrum::WETH_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: base::DOMAIN,
                     contract: base::WETH_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::WETH_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: optimism::DOMAIN,
                     contract: optimism::WETH_WARP,
                 }),
-                (sol::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(sol::SUBDENOM.clone()), Remote::Warp {
                     domain: solana::DOMAIN,
                     contract: solana::SOL_WARP,
                 }),
