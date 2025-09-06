@@ -492,6 +492,10 @@ fn clear_orders_of_pair(
                 },
                 TimeInForce::ImmediateOrCancel => {
                     refund_market_order(&base_denom, &quote_denom, order, events, refunds)?;
+                    // Unlike GTC orders, we don't update the `ORDERS` map here for IOC orders.
+                    // This is done later, in step 5. "cancel IOC orders".
+                    // There, we delete all IOC orders from the `ORDERS` map, regardless it has
+                    // been matched or not.
                 },
             }
         } else {
