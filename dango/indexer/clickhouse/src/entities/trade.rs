@@ -31,7 +31,7 @@ pub struct Trade {
     #[serde(with = "direction")]
     pub direction: Direction,
 
-    #[serde(with = "order_type")]
+    #[serde(with = "time_in_force")]
     #[cfg_attr(feature = "async-graphql", graphql(name = "timeInForce"))]
     pub time_in_force: TimeInForce,
 
@@ -173,7 +173,7 @@ pub mod direction {
     }
 }
 
-pub mod order_type {
+pub mod time_in_force {
     use {
         dango_types::dex::TimeInForce,
         serde::{
