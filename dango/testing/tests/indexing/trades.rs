@@ -5,7 +5,7 @@ use {
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction},
+        dex::{self, CreateOrderRequest, Direction},
     },
     grug::{
         Coins, Message, MultiplyFraction, NonEmpty, NonZero, ResultExt, Signer, StdResult,
@@ -80,14 +80,13 @@ async fn create_pair_prices(
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                    creates: vec![CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
                         direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                        NonZero::new_unchecked(price),
+                        NonZero::new_unchecked(amount),
+                    )],
                     cancels: None,
                 },
                 funds,

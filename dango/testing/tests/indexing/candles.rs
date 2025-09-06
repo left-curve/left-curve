@@ -12,7 +12,7 @@ use {
     },
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction},
+        dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
     grug::{
@@ -79,14 +79,13 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                    creates: vec![CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
                         direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                        NonZero::new_unchecked(price),
+                        NonZero::new_unchecked(amount),
+                    )],
                     cancels: None,
                 },
                 funds,
@@ -392,22 +391,21 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                 &mut accounts.user1,
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![
-                        CreateLimitOrderRequest {
-                            base_denom: dango::DENOM.clone(),
-                            quote_denom: usdc::DENOM.clone(),
-                            direction: Direction::Ask,
-                            amount: NonZero::new_unchecked(amount),
-                            price: NonZero::new_unchecked(price),
-                        },
-                        CreateLimitOrderRequest {
-                            base_denom: dango::DENOM.clone(),
-                            quote_denom: usdc::DENOM.clone(),
-                            direction: Direction::Bid,
-                            amount: NonZero::new_unchecked(amount),
-                            price: NonZero::new_unchecked(price),
-                        },
+                    creates: vec![
+                        CreateOrderRequest::new_limit(
+                            dango::DENOM.clone(),
+                            usdc::DENOM.clone(),
+                            Direction::Ask,
+                            NonZero::new_unchecked(price),
+                            NonZero::new_unchecked(amount),
+                        ),
+                        CreateOrderRequest::new_limit(
+                            dango::DENOM.clone(),
+                            usdc::DENOM.clone(),
+                            Direction::Bid,
+                            NonZero::new_unchecked(price),
+                            NonZero::new_unchecked(amount),
+                        ),
                     ],
                     cancels: None,
                 },
@@ -609,26 +607,25 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates_market: vec![],
-                creates_limit: vec![
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(20000000000000)),
-                        price: NonZero::new_unchecked(
+                creates: vec![
+                    CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Ask,
+                        NonZero::new_unchecked(
                             Udec128_24::from_str("0.000000003836916198").unwrap(),
                         ),
-                    },
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(20000000000000)),
-                        price: NonZero::new_unchecked(
+                        NonZero::new_unchecked(Uint128::new(20000000000000)),
+                    ),
+                    CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Bid,
+                        NonZero::new_unchecked(
                             Udec128_24::from_str("0.000000003836916198").unwrap(),
                         ),
-                    },
+                        NonZero::new_unchecked(Uint128::new(20000000000000)),
+                    ),
                 ],
                 cancels: None,
             },
@@ -700,14 +697,13 @@ async fn create_pair_prices(
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                    creates: vec![CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
                         direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                        NonZero::new_unchecked(price),
+                        NonZero::new_unchecked(amount),
+                    )],
                     cancels: None,
                 },
                 funds,
