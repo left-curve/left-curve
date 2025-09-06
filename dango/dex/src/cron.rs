@@ -421,7 +421,6 @@ fn clear_orders_of_pair(
 
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
-        order_direction,
         order,
         filled_base,
         filled_quote,
@@ -448,15 +447,15 @@ fn clear_orders_of_pair(
 
             // For limit orders, delete it from storage if fully filled, or
             // update if partially filled.
-            // For market orders, refund the user the remaining amount, as
-            // market orders are immediate-or-cancel.
+            // For market orders, delete it from storage, and refund the user
+            // the remaining amount, as market orders are immediate-or-cancel.
             match order.time_in_force {
                 TimeInForce::GoodTilCanceled => {
                     decrease_liquidity_depths(
                         storage,
                         &base_denom,
                         &quote_denom,
-                        order_direction,
+                        order.direction,
                         order.price,
                         filled_base,
                         bucket_sizes,
@@ -467,7 +466,7 @@ fn clear_orders_of_pair(
                             storage,
                             (
                                 (base_denom.clone(), quote_denom.clone()),
-                                order_direction,
+                                order.direction,
                                 order.price,
                                 order.id,
                             ),
@@ -477,7 +476,7 @@ fn clear_orders_of_pair(
                             storage,
                             (
                                 (base_denom.clone(), quote_denom.clone()),
-                                order_direction,
+                                order.direction,
                                 order.price,
                                 order.id,
                             ),
@@ -487,17 +486,23 @@ fn clear_orders_of_pair(
                 },
                 TimeInForce::ImmediateOrCancel => {
                     refund_order(&base_denom, &quote_denom, order, events, refunds)?;
-                    // Unlike GTC orders, we don't update the `ORDERS` map here for IOC orders.
-                    // This is done later, in step 5. "cancel IOC orders".
-                    // There, we delete all IOC orders from the `ORDERS` map, regardless it has
-                    // been matched or not.
+
+                    ORDERS.remove(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            order.direction,
+                            order.price,
+                            order.id,
+                        ),
+                    )?;
                 },
             }
         } else {
             fill_passive_order(
                 &base_denom,
                 &quote_denom,
-                order_direction,
+                order.direction,
                 filled_base,
                 filled_quote,
                 &mut inflows,
@@ -512,7 +517,7 @@ fn clear_orders_of_pair(
             time_in_force: order.time_in_force,
             base_denom: base_denom.clone(),
             quote_denom: quote_denom.clone(),
-            direction: order_direction,
+            direction: order.direction,
             filled_base,
             filled_quote,
             refund_base,
