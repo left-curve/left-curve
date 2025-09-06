@@ -120,7 +120,7 @@ fn cancel_order(
     events.push(OrderCanceled {
         user: order.user,
         id: order_id,
-        time_in_force: TimeInForce::GoodTilCanceled,
+        time_in_force: order.time_in_force,
         remaining: order.remaining,
         refund: refund.clone(),
         base_denom,
