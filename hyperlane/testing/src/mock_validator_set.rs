@@ -1,6 +1,5 @@
 use {
     crate::constants::{MOCK_HYPERLANE_REMOTE_MERKLE_TREE, MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS},
-    eth_utils::derive_address,
     grug::{Addr, Hash256, HashExt, HexBinary, HexByteArray, Inner, Shared, hash_map},
     hyperlane_types::{
         Addr32, IncrementalMerkleTree,
@@ -125,7 +124,7 @@ impl MockValidatorSet {
     pub fn validator_addresses(&self) -> BTreeSet<HexByteArray<20>> {
         self.validators
             .iter()
-            .map(|sk| HexByteArray::from_inner(derive_address(sk.verifying_key())))
+            .map(|sk| HexByteArray::from_inner(eth_utils::derive_address(sk.verifying_key())))
             .collect()
     }
 
