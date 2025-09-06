@@ -380,11 +380,6 @@ ISO 8601 combined date and time without timezone.
 """
 scalar NaiveDateTime
 
-enum OrderKind {
-	limit
-	market
-}
-
 """
 Information about pagination in a connection
 """
@@ -650,12 +645,27 @@ type Subscription {
 	trades(baseDenom: String!, quoteDenom: String!): Trade!
 }
 
+enum TimeInForce {
+	"""
+	If the order is not fully filled in the first auction, its remaining
+	portion is persisted in the order book, and is available to be matched
+	again in future auctions, where it becomes a maker order (an order is
+	a taker in its first auction).
+	"""
+	good_til_canceled
+	"""
+	If the order is not fully filled in the first auction, the order is
+	canceled, and the remaining portion refunded to the user.
+	"""
+	immediate_or_cancel
+}
+
 type Trade {
 	addr: String!
 	quoteDenom: String!
 	baseDenom: String!
 	direction: Direction!
-	orderType: OrderKind!
+	timeInForce: TimeInForce!
 	blockHeight: Int!
 	"""
 	Returns the block timestamp in ISO 8601 format with time zone.
