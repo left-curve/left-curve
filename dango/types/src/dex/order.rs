@@ -1,4 +1,7 @@
-use grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64, Uint128};
+use {
+    crate::dex::{Direction, TimeInForce},
+    grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64, Uint128},
+};
 
 /// Numerical identifier of an order (limit or market).
 ///
@@ -54,27 +57,14 @@ use grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64,
 pub type OrderId = Uint64;
 
 #[grug::derive(Borsh, Serde)]
-#[derive(Copy, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
-#[cfg_attr(feature = "async-graphql", graphql(rename_items = "snake_case"))]
-pub enum TimeInForce {
-    /// If the order is not fully filled in the first auction, its remaining
-    /// portion is persisted in the order book, and is available to be matched
-    /// again in future auctions, where it becomes a maker order (an order is
-    /// a taker in its first auction).
-    GoodTilCanceled,
-    /// If the order is not fully filled in the first auction, the order is
-    /// canceled, and the remaining portion refunded to the user.
-    ImmediateOrCancel,
-}
-
-#[grug::derive(Borsh, Serde)]
 #[derive(Copy)]
 pub struct Order {
     /// The user who created the order.
     pub user: Addr,
     /// The order's identifier.
     pub id: OrderId,
+    /// The order's direction.
+    pub direction: Direction,
     /// The order's time-in-force.
     pub time_in_force: TimeInForce,
     /// The order's limit price, measured in quote asset per base asset.

@@ -4,20 +4,17 @@ use {
         liquidity_depth::increase_liquidity_depths,
     },
     anyhow::{anyhow, ensure},
-    dango_types::dex::{
-        CreateLimitOrderRequest, CreateMarketOrderRequest, Direction, Order, OrderCreated,
-        OrderKind,
-    },
+    dango_types::dex::{CreateOrderRequest, Direction, Order, OrderCreated},
     grug::{
         Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, Storage, Udec128_24,
     },
 };
 
-pub(super) fn create_limit_order(
+pub(super) fn create_order(
     storage: &mut dyn Storage,
     current_block_height: u64,
     user: Addr,
-    order: CreateLimitOrderRequest,
+    order: CreateOrderRequest,
     events: &mut EventBuilder,
     deposits: &mut Coins,
 ) -> anyhow::Result<()> {
