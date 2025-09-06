@@ -3,15 +3,18 @@ use grug::{PrimaryKey, RawKey, StdError, StdResult};
 #[grug::derive(Borsh, Serde)]
 #[derive(Copy, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
-#[cfg_attr(feature = "async-graphql", graphql(rename_items = "snake_case"))]
 pub enum TimeInForce {
     /// If the order is not fully filled in the first auction, its remaining
     /// portion is persisted in the order book, and is available to be matched
     /// again in future auctions, where it becomes a maker order (an order is
     /// a taker in its first auction).
+    #[serde(rename = "GTC")]
+    #[cfg_attr(feature = "async-graphql", graphql(name = "GTC"))]
     GoodTilCanceled,
     /// If the order is not fully filled in the first auction, the order is
     /// canceled, and the remaining portion refunded to the user.
+    #[serde(rename = "IOC")]
+    #[cfg_attr(feature = "async-graphql", graphql(name = "IOC"))]
     ImmediateOrCancel,
 }
 

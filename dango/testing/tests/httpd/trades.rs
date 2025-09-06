@@ -39,7 +39,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             direction
-            orderType
+            timeInForce
             filledBase
             filledQuote
             refundBase
@@ -50,7 +50,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
             createdAt
             blockHeight
           }
-          edges { node { addr quoteDenom baseDenom direction orderType filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
+          edges { node { addr quoteDenom baseDenom direction timeInForce filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -85,7 +85,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "5",
                         "filledQuote": "137.5",
                         "refundBase": "0",
@@ -97,7 +97,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
@@ -109,7 +109,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
@@ -121,7 +121,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "bid",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "25",
                         "filledQuote": "687.5",
                         "refundBase": "24.9",
@@ -155,7 +155,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             direction
-            orderType
+            timeInForce
             filledBase
             filledQuote
             refundBase
@@ -166,7 +166,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
             createdAt
             blockHeight
           }
-          edges { node { addr quoteDenom baseDenom direction orderType filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
+          edges { node { addr quoteDenom baseDenom direction timeInForce filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -219,7 +219,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "5",
                         "filledQuote": "137.5",
                         "refundBase": "0",
@@ -231,7 +231,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
@@ -243,7 +243,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
@@ -255,7 +255,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "bid",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "25",
                         "filledQuote": "687.5",
                         "refundBase": "24.9",
@@ -370,7 +370,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             direction
-            orderType
+            timeInForce
             filledBase
             filledQuote
             refundBase
@@ -442,42 +442,42 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
                     {
                         "blockHeight": 2,
                         "direction": "bid",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 2,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 2,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 2,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 4,
                         "direction": "bid",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 4,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 4,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 4,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                 ]);
 
