@@ -6,12 +6,12 @@ use {
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction},
+        dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
     grug::{
-        Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
-        Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
+        Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
+        ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
     indexer_testing::{
@@ -39,7 +39,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             direction
-            orderType
+            timeInForce
             filledBase
             filledQuote
             refundBase
@@ -50,7 +50,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
             createdAt
             blockHeight
           }
-          edges { node { addr quoteDenom baseDenom direction orderType filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
+          edges { node { addr quoteDenom baseDenom direction timeInForce filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -85,7 +85,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "5",
                         "filledQuote": "137.5",
                         "refundBase": "0",
@@ -97,7 +97,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
@@ -109,7 +109,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
@@ -121,7 +121,7 @@ async fn query_all_trades() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "bid",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "25",
                         "filledQuote": "687.5",
                         "refundBase": "24.9",
@@ -155,7 +155,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             direction
-            orderType
+            timeInForce
             filledBase
             filledQuote
             refundBase
@@ -166,7 +166,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
             createdAt
             blockHeight
           }
-          edges { node { addr quoteDenom baseDenom direction orderType filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
+          edges { node { addr quoteDenom baseDenom direction timeInForce filledBase filledQuote refundBase refundQuote feeBase feeQuote clearingPrice createdAt blockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -219,7 +219,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "5",
                         "filledQuote": "137.5",
                         "refundBase": "0",
@@ -231,7 +231,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
@@ -243,7 +243,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "10",
                         "filledQuote": "275",
                         "refundBase": "0",
@@ -255,7 +255,7 @@ async fn query_all_trades_with_pagination() -> anyhow::Result<()> {
                         "quoteDenom": "bridge/usdc",
                         "clearingPrice": "27.5",
                         "direction": "bid",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                         "filledBase": "25",
                         "filledQuote": "687.5",
                         "refundBase": "24.9",
@@ -370,7 +370,7 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             direction
-            orderType
+            timeInForce
             filledBase
             filledQuote
             refundBase
@@ -442,42 +442,42 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
                     {
                         "blockHeight": 2,
                         "direction": "bid",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 2,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 2,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 2,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 4,
                         "direction": "bid",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 4,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 4,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                     {
                         "blockHeight": 4,
                         "direction": "ask",
-                        "orderType": "limit",
+                        "timeInForce": "GTC",
                     },
                 ]);
 
@@ -529,28 +529,27 @@ async fn create_pair_prices(
             let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
-            let funds = match direction {
+            let fund = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(usdc::DENOM.clone(), quote_amount).unwrap()
+                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
                 },
-                Direction::Ask => Coins::one(dango::DENOM.clone(), amount).unwrap(),
+                Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
             };
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                    creates: vec![CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
                         direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                        NonZero::new_unchecked(price),
+                        NonZero::new_unchecked(fund.amount),
+                    )],
                     cancels: None,
                 },
-                funds,
+                Coins::from(fund),
             )?;
 
             signer.sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)

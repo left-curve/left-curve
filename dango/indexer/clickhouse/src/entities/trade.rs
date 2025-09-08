@@ -2,7 +2,7 @@ use {
     super::pair_price::dec,
     chrono::{DateTime, Utc},
     clickhouse::Row,
-    dango_types::dex::{Direction, OrderKind, PairId},
+    dango_types::dex::{Direction, PairId, TimeInForce},
     grug::{Denom, StdError, Udec128_6, Udec128_24},
     serde::{Deserialize, Serialize},
     std::str::FromStr,
@@ -31,9 +31,9 @@ pub struct Trade {
     #[serde(with = "direction")]
     pub direction: Direction,
 
-    #[serde(with = "order_type")]
-    #[cfg_attr(feature = "async-graphql", graphql(name = "orderType"))]
-    pub order_type: OrderKind,
+    #[serde(with = "time_in_force")]
+    #[cfg_attr(feature = "async-graphql", graphql(name = "timeInForce"))]
+    pub time_in_force: TimeInForce,
 
     #[serde(with = "dec")]
     #[cfg_attr(feature = "async-graphql", graphql(skip))]
@@ -173,9 +173,9 @@ pub mod direction {
     }
 }
 
-pub mod order_type {
+pub mod time_in_force {
     use {
-        super::OrderKind,
+        dango_types::dex::TimeInForce,
         serde::{
             Deserialize,
             de::{self, Deserializer},
@@ -183,26 +183,26 @@ pub mod order_type {
         },
     };
 
-    pub fn serialize<S>(order_type: &OrderKind, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(time_in_force: &TimeInForce, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let val: u8 = match order_type {
-            OrderKind::Limit => 0,
-            OrderKind::Market => 1,
+        let val: u8 = match time_in_force {
+            TimeInForce::GoodTilCanceled => 0,
+            TimeInForce::ImmediateOrCancel => 1,
         };
         val.serialize(serializer)
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<OrderKind, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<TimeInForce, D::Error>
     where
         D: Deserializer<'de>,
     {
         let val = u8::deserialize(deserializer)?;
         match val {
-            0 => Ok(OrderKind::Limit),
-            1 => Ok(OrderKind::Market),
-            _ => Err(de::Error::custom(format!("Invalid order type: {val}"))),
+            0 => Ok(TimeInForce::GoodTilCanceled),
+            1 => Ok(TimeInForce::ImmediateOrCancel),
+            _ => Err(de::Error::custom(format!("invalid time-in-force: {val}"))),
         }
     }
 }

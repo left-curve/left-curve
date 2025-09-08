@@ -380,11 +380,6 @@ ISO 8601 combined date and time without timezone.
 """
 scalar NaiveDateTime
 
-enum OrderKind {
-	limit
-	market
-}
-
 """
 Information about pagination in a connection
 """
@@ -650,12 +645,28 @@ type Subscription {
 	trades(baseDenom: String!, quoteDenom: String!): Trade!
 }
 
+enum TimeInForce {
+	"""
+	Good-Til-Canceled (GTC): indicates that if the order is not fully filled
+	in the first auction, its remaining portion is to be persisted in the
+	order book, and made available for future auctions, where it becomes a
+	maker order (an order is a taker in its first auction).
+	"""
+	GTC
+	"""
+	Immediate-Or-Cancel (IOC): indicates that if the order is not fully
+	filled in the first auction, it is to be canceled, and the remaining
+	portion refunded to the user.
+	"""
+	IOC
+}
+
 type Trade {
 	addr: String!
 	quoteDenom: String!
 	baseDenom: String!
 	direction: Direction!
-	orderType: OrderKind!
+	timeInForce: TimeInForce!
 	blockHeight: Int!
 	"""
 	Returns the block timestamp in ISO 8601 format with time zone.

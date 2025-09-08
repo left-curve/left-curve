@@ -1,11 +1,10 @@
 use {
-    dango_types::dex::{Direction, Order},
+    dango_types::dex::Order,
     grug::{IsZero, Number, NumberConst, StdResult, Udec128, Udec128_6, Udec128_24},
 };
 
 #[derive(Debug)]
 pub struct FillingOutcome {
-    pub order_direction: Direction,
     /// The order with the `filled` amount updated.
     pub order: Order,
     /// Amount this order was filled for, in base asset.
@@ -101,7 +100,6 @@ fn fill_bids(
         let refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
 
         outcome.push(FillingOutcome {
-            order_direction: Direction::Bid,
             order,
             filled_base,
             filled_quote,
@@ -164,7 +162,6 @@ fn fill_asks(
         let refund_quote = filled_quote.checked_sub(fee_quote)?;
 
         outcome.push(FillingOutcome {
-            order_direction: Direction::Ask,
             order,
             filled_base,
             filled_quote,
