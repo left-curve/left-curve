@@ -1,8 +1,6 @@
 use {
     crate::{Indexer, IndexerError, IndexerResult, QuerierProvider},
-    borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{Block, BlockOutcome},
-    serde::{Deserialize, Serialize},
     std::{
         convert::Infallible,
         fmt::{self, Display},
@@ -69,10 +67,4 @@ impl From<NullIndexerError> for IndexerError {
     fn from(err: NullIndexerError) -> Self {
         IndexerError::Generic(err.to_string())
     }
-}
-
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq)]
-pub struct HttpRequestDetails {
-    pub remote_ip: Option<String>,
-    pub peer_ip: Option<String>,
 }

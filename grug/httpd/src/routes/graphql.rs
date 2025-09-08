@@ -2,7 +2,7 @@ use {
     actix_web::{HttpRequest, HttpResponse, Resource, http::header, web},
     async_graphql::{Schema, http::GraphiQLSource},
     async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
-    grug_app::HttpRequestDetails,
+    grug_types::HttpRequestDetails,
 };
 
 pub fn graphql_route<Q, M, S>() -> Resource
@@ -38,7 +38,7 @@ where
 
     let peer_ip = req.connection_info().peer_addr().map(|ip| ip.to_string());
 
-    let details = HttpRequestDetails { remote_ip, peer_ip };
+    let details = HttpRequestDetails::new(remote_ip, peer_ip);
 
     let request = gql_request.into_inner().data(details);
 

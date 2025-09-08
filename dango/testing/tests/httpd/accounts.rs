@@ -373,8 +373,9 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
             accountType
             createdAt
             createdBlockHeight
+            createdTxHash
           }
-          edges { node { id address accountIndex accountType createdAt createdBlockHeight } cursor }
+          edges { node { id address accountIndex accountType createdAt createdBlockHeight createdTxHash } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -482,6 +483,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
             accountType
             createdAt
             createdBlockHeight
+            createdTxHash
             users { username }
         }
       }

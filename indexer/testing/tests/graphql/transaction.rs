@@ -6,7 +6,6 @@ use {
     dango_testing::{Preset, TestOption},
     dango_types::constants::usdc,
     grug::{BlockCreation, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, Signer},
-    grug_testing::setup_tracing_subscriber,
     grug_types::{BroadcastClient, BroadcastClientExt, Denom, GasOption},
     indexer_client::HttpClient,
     indexer_sql::entity,
@@ -21,7 +20,6 @@ use {
     serde_json::json,
     std::str::FromStr,
     tokio::sync::mpsc,
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -343,8 +341,6 @@ async fn graphql_subscribe_to_transactions() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::WARN);
-
     let port = get_mock_socket_addr();
 
     let (sx, rx) = tokio::sync::oneshot::channel();

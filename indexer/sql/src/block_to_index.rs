@@ -4,8 +4,7 @@ use {metrics::counter, std::time::Instant};
 use {
     crate::{active_model::Models, entity, error, event_cache::EventCacheWriter},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_app::HttpRequestDetails,
-    grug_types::{Block, BlockOutcome},
+    grug_types::{Block, BlockOutcome, HttpRequestDetails},
     indexer_disk_saver::persistence::DiskPersistence,
     itertools::Itertools,
     sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},

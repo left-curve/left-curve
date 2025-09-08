@@ -3,7 +3,7 @@ use {
         event_cache::EventCacheWriter,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
     },
-    grug_app::HttpRequestDetails,
+    grug_types::HttpRequestDetails,
     indexer_sql_migration::{Migrator, MigratorTrait},
     sea_orm::{
         ConnectOptions, ConnectionTrait, Database, DatabaseConnection,

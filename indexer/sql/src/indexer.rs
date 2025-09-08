@@ -7,8 +7,10 @@ use {
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    grug_app::{HttpRequestDetails, Indexer as IndexerTrait, LAST_FINALIZED_BLOCK},
-    grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
+    grug_app::{Indexer as IndexerTrait, LAST_FINALIZED_BLOCK},
+    grug_types::{
+        Block, BlockOutcome, Defined, HttpRequestDetails, MaybeDefined, Storage, Undefined,
+    },
     sea_orm::DatabaseConnection,
     std::{
         collections::HashMap,
