@@ -520,6 +520,11 @@ impl IndexerTrait for Indexer {
                 .remove(&tx_hash)
                 .map(|details| (tx_hash, details))
         }));
+
+        #[cfg(feature = "metrics")]
+        metrics::gauge!("indexer.http_request_details.total")
+            .set(transaction_hash_details.len() as f64);
+
         drop(transaction_hash_details);
 
         Ok(

@@ -1,6 +1,6 @@
 use {
     crate::active_model,
-    metrics::{describe_counter, describe_histogram},
+    metrics::{describe_counter, describe_gauge, describe_histogram},
 };
 
 pub fn init_indexer_metrics() {
@@ -31,6 +31,10 @@ pub fn init_indexer_metrics() {
     describe_histogram!(
         "indexer.block_save.duration",
         "Block save duration in seconds"
+    );
+    describe_gauge!(
+        "indexer.http_request_details.total",
+        "Total http_request_details in memory"
     );
 
     active_model::init_metrics();
