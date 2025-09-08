@@ -485,7 +485,7 @@ fn clear_orders_of_pair(
                     }
                 },
                 TimeInForce::ImmediateOrCancel => {
-                    refund_order(&base_denom, &quote_denom, order, events, refunds)?;
+                    refund_ioc_order(&base_denom, &quote_denom, order, events, refunds)?;
 
                     ORDERS.remove(
                         storage,
@@ -585,7 +585,7 @@ fn clear_orders_of_pair(
             ),
         )?;
 
-        refund_order(&base_denom, &quote_denom, order, events, refunds)?;
+        refund_ioc_order(&base_denom, &quote_denom, order, events, refunds)?;
     }
 
     #[cfg(feature = "tracing")]
@@ -709,11 +709,11 @@ fn fill_passive_order(
     Ok(())
 }
 
-/// Add a refund to the `refunds` transfer builder and emit an order canceled
-/// event of a market order.
+/// Given an immediate-or-cancel (IOC) order, add the appropriate amount of
+/// refund to `refunds`, and add an `OrderCanceled` event to `events`.
 ///
-/// If the order is not a market order, then this function is a no-op.
-fn refund_order(
+/// In debug mode, panic if the order is not IOC.
+fn refund_ioc_order(
     base_denom: &Denom,
     quote_denom: &Denom,
     order: Order,
