@@ -1,11 +1,24 @@
-import { Badge, IconButton, IconClose, IconLink, TextCopy, useApp } from "@left-curve/applets-kit";
-import { forwardRef, Ref } from "react";
+import {
+  Badge,
+  IconButton,
+  IconClose,
+  IconLink,
+  PairAssets,
+  TextCopy,
+  twMerge,
+  useApp,
+} from "@left-curve/applets-kit";
+import { forwardRef } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import type { AnyCoin } from "@left-curve/store/types";
 
 type NotificationSpotActionOrderProps = {
   status: "created" | "canceled" | "fulfilled";
   action: "buy" | "sell";
-  orderDetails: {
+  base: AnyCoin;
+  quote: AnyCoin;
+  order: {
+    type: "limit" | "market";
     amount?: string;
     id: string;
     timeCreated: string;
@@ -19,8 +32,9 @@ type NotificationSpotActionOrderProps = {
   };
 };
 
-export const NotificationSpotActionOrder = forwardRef<NotificationSpotActionOrderProps, any>(
-  ({ status, action, orderDetails }, ref) => {
+export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpotActionOrderProps>(
+  ({ status, action, base, quote, order }, _) => {
+    const { type, amount, limitPrice } = order;
     const { hideModal } = useApp();
 
     return (
@@ -39,43 +53,41 @@ export const NotificationSpotActionOrder = forwardRef<NotificationSpotActionOrde
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1 items-center">
               <div className="flex gap-2 items-center justify-center">
-                <div className="flex">
-                  <img
-                    src="https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/bitcoin/images/btc.svg"
-                    alt="BTC"
-                    className="h-8 w-8"
-                  />
-                  <img
-                    src="https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg"
-                    alt="USDC"
-                    className="h-8 w-8 -ml-4"
-                  />
-                </div>
-                <p className="h4-bold text-secondary-700">BTC/USDC</p>
+                <PairAssets assets={[base, quote]} />
+                <p className="h4-bold text-secondary-700">
+                  {base.symbol}-{quote.symbol}
+                </p>
                 <IconLink className="text-tertiary-500 h-4 w-4" />
               </div>
               <div className="flex gap-2 diatype-sm-medium">
-                <p className={action === "buy" ? "text-status-success" : "text-status-fail"}>
+                <p
+                  className={twMerge(
+                    "capitalize",
+                    action === "buy" ? "text-status-success" : "text-status-fail",
+                  )}
+                >
                   {action === "buy"
-                    ? m["notifications.notification.modal.spotOrderBuy"]()
-                    : m["notifications.notification.modal.spotOrderSell"]()}
+                    ? m["notifications.notification.modal.spotOrderBuy"]({ orderType: type })
+                    : m["notifications.notification.modal.spotOrderSell"]({ orderType: type })}
                 </p>
                 <Badge text="Spot" color="blue" size="s" />
               </div>
             </div>
             <span className="w-full h-[1px] bg-secondary-gray my-2" />
             <div className="flex flex-col gap-2 w-full">
-              {orderDetails.amount && (
+              {amount && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.amount"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>0.000123 BTC</p>
+                    <p>
+                      {amount} {base.symbol}
+                    </p>
                   </div>
                 </div>
               )}
-              {orderDetails.filledAmount && (
+              {order.filledAmount && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.filledAmount"]()}
@@ -85,7 +97,7 @@ export const NotificationSpotActionOrder = forwardRef<NotificationSpotActionOrde
                   </div>
                 </div>
               )}
-              {orderDetails.tokenReceived && (
+              {order.tokenReceived && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.tokenReceived"]()}
@@ -95,17 +107,19 @@ export const NotificationSpotActionOrder = forwardRef<NotificationSpotActionOrde
                   </div>
                 </div>
               )}
-              {orderDetails.limitPrice && (
+              {limitPrice && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.limitPrice"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>123.45 ETH</p>
+                    <p>
+                      {limitPrice} {quote.symbol}
+                    </p>
                   </div>
                 </div>
               )}
-              {orderDetails.averagePrice && (
+              {order.averagePrice && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.averagePrice"]()}
@@ -115,7 +129,7 @@ export const NotificationSpotActionOrder = forwardRef<NotificationSpotActionOrde
                   </div>
                 </div>
               )}
-              {orderDetails.fee && (
+              {order.fee && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.fee"]()}
@@ -142,7 +156,7 @@ export const NotificationSpotActionOrder = forwardRef<NotificationSpotActionOrde
                   <p>August 14, 2025 10:15 AM</p>
                 </div>
               </div>
-              {orderDetails.timeCanceled && (
+              {order.timeCanceled && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.timeCanceled"]()}
@@ -152,7 +166,7 @@ export const NotificationSpotActionOrder = forwardRef<NotificationSpotActionOrde
                   </div>
                 </div>
               )}
-              {orderDetails.timeUpdated && (
+              {order.timeUpdated && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.timeUpdated"]()}

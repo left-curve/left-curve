@@ -11,12 +11,13 @@ type OrderNotificationProps = {
   txHash?: string;
   blockHeight?: number;
   kind: OrderTypes;
+  onClick?: () => void;
 };
 
 export const OrderNotification: React.FC<PropsWithChildren<OrderNotificationProps>> = (
   parameters,
 ) => {
-  const { txHash, blockHeight, kind, children } = parameters;
+  const { onClick, kind, children } = parameters;
   const isLimit = kind === OrderType.Limit;
   const Icon = isLimit ? IconLimitOrder : IconMarketOrder;
 
@@ -36,7 +37,7 @@ export const OrderNotification: React.FC<PropsWithChildren<OrderNotificationProp
         if (element.closest(".address-visualizer") || element.closest(".remove-notification")) {
           return;
         }
-        onNavigate(txHash ? `/tx/${txHash}` : `/block/${blockHeight}`);
+        onClick?.();
       }}
     >
       <div
