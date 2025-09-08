@@ -437,6 +437,7 @@ fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
+// qlty-ignore: similar-code
 mod tests {
     use {
         super::*,
