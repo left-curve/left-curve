@@ -90,7 +90,7 @@ impl CandleSubscription {
 
                 let Some(candle) = last_candle else {
                     #[cfg(feature = "tracing")]
-                    tracing::warn!(
+                    tracing::info!(
                         previous_block_height,
                         current_block_height,
                         "No current candle, expected if chain started"

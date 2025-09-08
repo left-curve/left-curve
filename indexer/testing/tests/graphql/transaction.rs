@@ -389,18 +389,17 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
 
     client.broadcast_tx(tx).await?;
 
-    let transaction = entity::transactions::Entity::find()
+    let http_request_details = entity::transactions::Entity::find()
         .one(&indexer_context.db)
         .await
         .expect("Can't fetch transaction")
-        .expect("No transaction found");
+        .expect("No transaction found")
+        .http_request_details
+        .expect("Can't find http_request_details");
 
-    assert_that!(
-        transaction
-            .http_request_details
-            .expect("Can't find http_request_details")
-    )
-    .is_equal_to(json!({
+    assert_json_include!(
+        actual: http_request_details,
+        expected: json!({
         "peer_ip": "127.0.0.1",
         "remote_ip": "127.0.0.1"
     }));
