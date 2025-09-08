@@ -7143,13 +7143,13 @@ fn limit_order_minimum_order_size(
         usdc::DENOM.clone(),
         Direction::Bid,
         Bounded::new_unchecked(Udec128::ZERO),
-        // User only needs to deposit 99 uusdc to create this order, which is
-        // smaller than the minimum, hence should be rejected.
-        // Even if user send 100 (more than necessary, and satisfies the minimum)
-        // the contract needs to still properly reject the order.
-        NonZero::new_unchecked(Uint128::new(100)),
+        NonZero::new_unchecked(Uint128::new(99)),
     ),
     coins! { dango::DENOM.clone() => 200 },
+    // User only needs to deposit 99 uusdc to create this order, which is
+    // smaller than the minimum, hence should be rejected.
+    // Even if user send 100 (more than necessary, and satisfies the minimum)
+    // the contract needs to still properly reject the order.
     coins! { usdc::DENOM.clone() => 100 },
     Uint128::new(100),
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
