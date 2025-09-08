@@ -943,7 +943,7 @@ fn submit_and_cancel_order_in_same_block() {
 
     // Check that the user balance has changed only by the gas fees
     suite.balances().should_change(&accounts.user1, btree_map! {
-        dango::DENOM.clone() => BalanceChange::Unchanged
+        usdc::DENOM.clone() => BalanceChange::Unchanged
     });
 
     // Check that order does not exist
@@ -7377,4 +7377,45 @@ fn orders_cannot_be_created_for_non_existing_pair() {
             dango::DENOM.clone(),
             eth::DENOM.clone()
         ));
+}
+
+#[test]
+fn create_and_cancel_order_with_remainder() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    suite.balances().record(&accounts.user1);
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateOrderRequest::new_limit(
+                    eth::DENOM.clone(),
+                    usdc::DENOM.clone(),
+                    Direction::Bid,
+                    NonZero::new_unchecked(Udec128_24::new(100)),
+                    NonZero::new_unchecked(Uint128::new(150)),
+                )],
+                cancels: None,
+            },
+            Coins::one(usdc::DENOM.clone(), 150).unwrap(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![],
+                cancels: Some(CancelOrderRequest::All),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        usdc::DENOM.clone() => BalanceChange::Unchanged,
+    });
 }
