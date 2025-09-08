@@ -35,7 +35,7 @@ pub(super) fn create_order(
 
     // Determine the order's price.
     let price = match order.price {
-        PriceOption::BestAvailable { max_slippage } => match direction {
+        PriceOption::Market { max_slippage } => match direction {
             Direction::Bid => {
                 let best_ask_price = RESTING_ORDER_BOOK
                     .may_load(storage, (&order.base_denom, &order.quote_denom))?
@@ -65,7 +65,7 @@ pub(super) fn create_order(
                 best_bid_price.saturating_mul(one_sub_max_slippage)
             },
         },
-        PriceOption::Fixed(price) => *price,
+        PriceOption::Limit(price) => *price,
     };
 
     // Determine the order's size (in both base and quote asset) and the deposit

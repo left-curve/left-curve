@@ -37,7 +37,7 @@ pub struct CreateOrderRequest {
 }
 
 impl CreateOrderRequest {
-    /// Create an order with `PriceOption::Fixed` and `TimeInForce::GoodTilCanceled`.
+    /// Create an order with `PriceOption::Limit` and `TimeInForce::GoodTilCanceled`.
     pub fn new_limit(
         base_denom: Denom,
         quote_denom: Denom,
@@ -48,13 +48,13 @@ impl CreateOrderRequest {
         Self {
             base_denom,
             quote_denom,
-            price: PriceOption::Fixed(price),
+            price: PriceOption::Limit(price),
             amount: AmountOption::new(direction, amount),
             time_in_force: TimeInForce::GoodTilCanceled,
         }
     }
 
-    /// Create an order with `PriceOption::BestAvailable` and `TimeInForce::ImmediateOrCancel`.
+    /// Create an order with `PriceOption::Market` and `TimeInForce::ImmediateOrCancel`.
     pub fn new_market(
         base_denom: Denom,
         quote_denom: Denom,
@@ -65,7 +65,7 @@ impl CreateOrderRequest {
         Self {
             base_denom,
             quote_denom,
-            price: PriceOption::BestAvailable { max_slippage },
+            price: PriceOption::Market { max_slippage },
             amount: AmountOption::new(direction, amount),
             time_in_force: TimeInForce::ImmediateOrCancel,
         }
@@ -83,13 +83,13 @@ impl CreateOrderRequest {
 #[grug::derive(Serde)]
 pub enum PriceOption {
     /// The order is to have the specified limit price.
-    Fixed(NonZero<Udec128_24>),
+    Limit(NonZero<Udec128_24>),
     /// The order's limit price is to be determined by the best available price
     /// in the resting order book and the specified maximum slippage.
     ///
     /// If best available price doesn't exist (i.e. that side of the order book
     /// is empty), order creation fails.
-    BestAvailable {
+    Market {
         /// - For a BUY order, suppose the best (lowest) SELL price in the
         ///   resting order book is `p_best`, the order's limit price will be
         ///   calculated as:

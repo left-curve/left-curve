@@ -462,7 +462,7 @@ mod tests {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                price: PriceOption::Fixed(NonZero::new_unchecked(Udec128_24::new(2))),
+                price: PriceOption::Limit(NonZero::new_unchecked(Udec128_24::new(2))),
                 amount: AmountOption::Bid {
                     quote: NonZero::new_unchecked(Uint128::new(200)),
                 },
@@ -480,7 +480,7 @@ mod tests {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                price: PriceOption::Fixed(NonZero::new_unchecked(Udec128_24::new(2))),
+                price: PriceOption::Limit(NonZero::new_unchecked(Udec128_24::new(2))),
                 amount: AmountOption::Ask {
                     base: NonZero::new_unchecked(Uint128::new(100)),
                 },
@@ -502,7 +502,7 @@ mod tests {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                price: PriceOption::BestAvailable {
+                price: PriceOption::Market {
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 amount: AmountOption::Bid {
@@ -526,7 +526,7 @@ mod tests {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                price: PriceOption::BestAvailable {
+                price: PriceOption::Market {
                     max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                 },
                 amount: AmountOption::Ask {
@@ -552,7 +552,7 @@ mod tests {
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    price: PriceOption::BestAvailable {
+                    price: PriceOption::Market {
                         max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                     },
                     amount: AmountOption::Bid {
@@ -563,7 +563,7 @@ mod tests {
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    price: PriceOption::BestAvailable {
+                    price: PriceOption::Market {
                         max_slippage: Bounded::new_unchecked(Udec128::ZERO),
                     },
                     amount: AmountOption::Ask {
@@ -575,7 +575,7 @@ mod tests {
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    price: PriceOption::Fixed(NonZero::new_unchecked(Udec128_24::new(2))),
+                    price: PriceOption::Limit(NonZero::new_unchecked(Udec128_24::new(2))),
                     amount: AmountOption::Bid {
                         quote: NonZero::new_unchecked(Uint128::new(200)),
                     },
@@ -584,7 +584,7 @@ mod tests {
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    price: PriceOption::Fixed(NonZero::new_unchecked(Udec128_24::new(2))),
+                    price: PriceOption::Limit(NonZero::new_unchecked(Udec128_24::new(2))),
                     amount: AmountOption::Ask {
                         base: NonZero::new_unchecked(Uint128::new(100)),
                     },
