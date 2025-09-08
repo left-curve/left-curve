@@ -7,7 +7,9 @@ use {
     dango_types::dex::{
         AmountOption, CreateOrderRequest, Direction, Order, OrderCreated, PriceOption, TimeInForce,
     },
-    grug::{Addr, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, Storage, Udec128_24},
+    grug::{
+        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, Storage, Udec128_24,
+    },
 };
 
 pub(super) fn create_order(
@@ -30,7 +32,6 @@ pub(super) fn create_order(
         })?;
 
     let direction = order.direction();
-    let deposit = order.deposit();
 
     // Determine the order's price.
     let price = match order.price {
@@ -67,15 +68,33 @@ pub(super) fn create_order(
         PriceOption::Fixed(price) => *price,
     };
 
-    // Determine the order's size.
-    let (amount, amount_in_quote) = match order.amount {
+    // Determine the order's size (in both base and quote asset) and the deposit
+    // amount necessary for creating this order.
+    let (amount, amount_in_quote, deposit) = match order.amount {
         AmountOption::Bid { quote } => {
             let amount = quote.checked_div_dec_floor(price)?;
-            (amount, *quote)
+            // Recompute the quote asset amount. This is to deal with rounding errors.
+            // Consider this situation: the user deposits 150 quote asset to
+            // create a BUY order at price 100. The order's amount (in base) is
+            // computed as: floor(150 / 100) = 1. However, to create an order
+            // of amount 1 and price 100, only 1 * 100 = 100 quote asset is needed.
+            // The user should be refunded of the excess 50 deposited.
+            let amount_in_quote = amount.checked_mul_dec_ceil(price)?;
+            let deposit = Coin {
+                denom: order.quote_denom.clone(),
+                amount: amount_in_quote,
+            };
+
+            (amount, amount_in_quote, deposit)
         },
         AmountOption::Ask { base } => {
             let amount_in_quote = base.checked_mul_dec_floor(price)?;
-            (*base, amount_in_quote)
+            let deposit = Coin {
+                denom: order.base_denom.clone(),
+                amount: *base,
+            };
+
+            (*base, amount_in_quote, deposit)
         },
     };
 

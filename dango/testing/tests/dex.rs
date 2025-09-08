@@ -7143,7 +7143,11 @@ fn limit_order_minimum_order_size(
         usdc::DENOM.clone(),
         Direction::Bid,
         Bounded::new_unchecked(Udec128::ZERO),
-        NonZero::new_unchecked(Uint128::new(99)), // 198 * 0.5
+        // User only needs to deposit 99 uusdc to create this order, which is
+        // smaller than the minimum, hence should be rejected.
+        // Even if user send 100 (more than necessary, and satisfies the minimum)
+        // the contract needs to still properly reject the order.
+        NonZero::new_unchecked(Uint128::new(100)),
     ),
     coins! { dango::DENOM.clone() => 200 },
     coins! { usdc::DENOM.clone() => 100 },
@@ -7379,6 +7383,16 @@ fn orders_cannot_be_created_for_non_existing_pair() {
         ));
 }
 
+/// Ensure that if user creates an order and then immediately cancels it, the
+/// user should get back the original deposit amount. If handled incorrectly,
+/// the user may get back less due to rounding.
+///
+/// In this test case, the user creates a limit BUY order at price 100 with
+/// quote asset amount 150. The order's size will be: floor(150 / 100) = 1.
+/// The DEX contract should understand that this should only require a deposit
+/// of 1 * 100 = 100 quote asset deposit, and refund the excess 50, at the time
+/// of order creation. Then, if the user cancels the order, he gets the remaining
+/// 100 back.
 #[test]
 fn create_and_cancel_order_with_remainder() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());

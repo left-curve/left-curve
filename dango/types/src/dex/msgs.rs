@@ -78,20 +78,6 @@ impl CreateOrderRequest {
             AmountOption::Ask { .. } => Direction::Ask,
         }
     }
-
-    /// Return the amount of coin needs to be deposited in order to create this order.
-    pub fn deposit(&self) -> Coin {
-        match self.amount {
-            AmountOption::Bid { quote } => Coin {
-                denom: self.quote_denom.clone(),
-                amount: *quote,
-            },
-            AmountOption::Ask { base } => Coin {
-                denom: self.base_denom.clone(),
-                amount: *base,
-            },
-        }
-    }
 }
 
 #[grug::derive(Serde)]
