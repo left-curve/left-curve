@@ -532,7 +532,10 @@ impl IndexerTrait for Indexer {
                 #[cfg(feature = "tracing")]
                 tracing::debug!(block_height = block.info.height, "`index_block` started");
 
-                block_to_index.http_request_details = http_request_details;
+                #[cfg(feature = "http-request-details")]
+                {
+                    block_to_index.http_request_details = http_request_details;
+                }
 
                 ctx.insert(block_to_index.clone());
 

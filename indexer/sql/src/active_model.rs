@@ -68,7 +68,8 @@ impl Models {
                 let transaction_id = Uuid::new_v4();
 
                 let sender = tx.sender.to_string();
-                let new_transaction = entity::transactions::ActiveModel {
+                #[allow(unused_mut)]
+                let mut new_transaction = entity::transactions::ActiveModel {
                     id: Set(transaction_id),
                     transaction_idx: Set(transaction_idx as i32),
                     transaction_type: Set(FlatCategory::Tx),
@@ -82,12 +83,17 @@ impl Models {
                     data: Set(tx.data.clone().into_inner()),
                     sender: Set(sender.clone()),
                     credential: Set(tx.credential.clone().into_inner()),
-                    http_request_details: Set(block_to_index
+                    http_request_details: Set(None),
+                };
+
+                #[cfg(feature = "http-request-details")]
+                {
+                    new_transaction.http_request_details = Set(block_to_index
                         .http_request_details
                         .get(&tx_hash.to_string())
                         .and_then(|d| d.to_json_value().ok())
-                        .map(|v| v.into_inner())),
-                };
+                        .map(|v| v.into_inner()));
+                }
 
                 transactions.push(new_transaction);
 

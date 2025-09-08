@@ -21,7 +21,7 @@ grug-types     = { workspace = true }
 grug-vm-rust   = { workspace = true }
 indexer-hooked = { workspace = true, features = ["tracing"] }
 indexer-httpd  = { workspace = true, features = ["testing", "tracing"] }
-indexer-sql    = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
+indexer-sql    = { workspace = true, features = ["async-graphql", "http-request-details", "testing", "tracing"] }
 sea-orm        = { workspace = true }
 serde          = { workspace = true }
 serde_json     = { workspace = true }

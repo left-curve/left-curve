@@ -7,7 +7,8 @@ use {
 pub struct HttpRequestDetails {
     pub remote_ip: Option<String>,
     pub peer_ip: Option<String>,
-    pub created_at: i64, // Unix timestamp
+    // For when I need to clean up old requests
+    // pub created_at: i64, // Unix timestamp
 }
 
 impl HttpRequestDetails {
@@ -15,7 +16,7 @@ impl HttpRequestDetails {
         Self {
             remote_ip,
             peer_ip,
-            created_at: chrono::Utc::now().timestamp(),
+            // created_at: chrono::Utc::now().timestamp(),
         }
     }
 }
