@@ -1,6 +1,6 @@
 import { useConfig } from "@left-curve/store";
 
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { Direction, OrderType } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -18,15 +18,17 @@ export const NotificationOrderCanceled: React.FC<NotificationOrderCanceledProps>
   notification,
 }) => {
   const { getCoinInfo } = useConfig();
-  const { blockHeight, txHash } = notification;
-  const { quote_denom, base_denom, price, kind, direction } = notification.data;
-  const { settings } = useApp();
+  const { createdAt } = notification;
+  const { id, quote_denom, base_denom, price, kind, direction, amount, refund, remaining } =
+    notification.data;
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const isLimit = kind === OrderType.Limit;
 
   const base = getCoinInfo(base_denom);
   const quote = getCoinInfo(quote_denom);
+  const refundCoins = getCoinInfo(refund.denom);
 
   const at = isLimit
     ? formatNumber(
@@ -37,8 +39,35 @@ export const NotificationOrderCanceled: React.FC<NotificationOrderCanceledProps>
       ).slice(0, 7)
     : null;
 
+  const filled = Decimal(amount).minus(remaining).toFixed();
+
   return (
-    <OrderNotification kind={kind} txHash={txHash} blockHeight={blockHeight}>
+    <OrderNotification
+      kind={kind}
+      onClick={() =>
+        showModal("notification-spot-action-order", {
+          base,
+          quote,
+          action: direction === "ask" ? "sell" : "buy",
+          status: "canceled",
+          order: {
+            id,
+            type: kind,
+            timeCanceled: createdAt,
+            filledAmount: formatNumber(formatUnits(filled, base.decimals), {
+              ...formatNumberOptions,
+            }),
+            tokenReceived: `${formatNumber(formatUnits(refund.amount, refundCoins.decimals), {
+              ...formatNumberOptions,
+            })} ${refundCoins.symbol}`,
+            limitPrice: at,
+            amount: formatNumber(formatUnits(amount, base.decimals), {
+              ...formatNumberOptions,
+            }),
+          },
+        })
+      }
+    >
       <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
         {m["notifications.notification.orderCanceled.title"]()}
       </p>

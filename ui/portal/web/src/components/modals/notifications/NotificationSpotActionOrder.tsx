@@ -11,6 +11,7 @@ import {
 import { forwardRef } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { AnyCoin } from "@left-curve/store/types";
+import { format } from "date-fns";
 
 type NotificationSpotActionOrderProps = {
   status: "created" | "canceled" | "fulfilled";
@@ -34,7 +35,7 @@ type NotificationSpotActionOrderProps = {
 
 export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpotActionOrderProps>(
   ({ status, action, base, quote, order }, _) => {
-    const { type, amount, limitPrice } = order;
+    const { id, type, amount, limitPrice, tokenReceived, timeCreated, timeCanceled } = order;
     const { hideModal } = useApp();
 
     return (
@@ -93,17 +94,19 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
                     {m["notifications.notification.modal.filledAmount"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>0.000123 / 0.000123 BTC</p>
+                    <p>
+                      {order.filledAmount} / {amount} {base.symbol}
+                    </p>
                   </div>
                 </div>
               )}
-              {order.tokenReceived && (
+              {tokenReceived && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.tokenReceived"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>0.000123 BTC</p>
+                    <p>{tokenReceived}</p>
                   </div>
                 </div>
               )}
@@ -144,25 +147,27 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
                   {m["notifications.notification.modal.id"]()}
                 </p>
                 <div className="flex items-center gap-1">
-                  <p>331364</p>
-                  <TextCopy copyText="331364" className="h-4 w-4" />
+                  <p>{id}</p>
+                  <TextCopy copyText={id} className="h-4 w-4" />
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500">
-                  {m["notifications.notification.modal.timeCreated"]()}
-                </p>
-                <div className="flex items-center gap-1">
-                  <p>August 14, 2025 10:15 AM</p>
+              {timeCreated ? (
+                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
+                  <p className="diatype-sm-regular text-tertiary-500">
+                    {m["notifications.notification.modal.timeCreated"]()}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <p>{format(timeCreated, "dd/MM/yyyy hh:mm a")}</p>
+                  </div>
                 </div>
-              </div>
-              {order.timeCanceled && (
+              ) : null}
+              {timeCanceled && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
                     {m["notifications.notification.modal.timeCanceled"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>August 14, 2025 10:15 AM</p>
+                    <p>{format(timeCanceled, "dd/MM/yyyy hh:mm a")}</p>
                   </div>
                 </div>
               )}
