@@ -23,6 +23,17 @@ pub struct Context {
     pub transaction_hash_details: Arc<Mutex<HashMap<String, HttpRequestDetails>>>,
 }
 
+impl std::fmt::Debug for Context {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Context")
+            .field("db", &self.db)
+            .field("pubsub", &"<PubSub trait object>")
+            .field("event_cache", &"<EventCacheWriter>")
+            .field("transaction_hash_details", &self.transaction_hash_details)
+            .finish()
+    }
+}
+
 impl Context {
     /// Create a new context with the same database connection but a separate pubsub instance
     /// This allows independent indexers to share the DB connection pool but have their own pubsub

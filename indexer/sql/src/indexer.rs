@@ -520,8 +520,6 @@ impl IndexerTrait for Indexer {
         }));
         drop(transaction_hash_details);
 
-        tracing::warn!("2 http_request_details: {:?}", http_request_details);
-
         Ok(
             self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
                 #[cfg(feature = "tracing")]

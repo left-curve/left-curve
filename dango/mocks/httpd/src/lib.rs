@@ -35,7 +35,7 @@ pub async fn run(
         genesis_opt,
         keep_blocks,
         database_url,
-        |_, _, _, _| {},
+        |_, _, _, _, _| {},
     )
     .await
 }
@@ -51,7 +51,14 @@ pub async fn run_with_callback<C>(
     callback: C,
 ) -> Result<(), Error>
 where
-    C: FnOnce(TestAccounts, Codes<ContractWrapper>, Contracts, MockValidatorSets) + Send + Sync,
+    C: FnOnce(
+            TestAccounts,
+            Codes<ContractWrapper>,
+            Contracts,
+            MockValidatorSets,
+            indexer_sql::context::Context,
+        ) + Send
+        + Sync,
 {
     let indexer = indexer_sql::IndexerBuilder::default();
 
@@ -92,6 +99,8 @@ where
         dango_context.clone(),
     );
 
+    let indexer_context_callback = indexer.context.clone();
+
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
@@ -105,7 +114,13 @@ where
         genesis_opt,
     );
 
-    callback(test, codes, contracts, mock_validator_sets);
+    callback(
+        test,
+        codes,
+        contracts,
+        mock_validator_sets,
+        indexer_context_callback,
+    );
 
     let suite = Arc::new(Mutex::new(suite));
 

@@ -33,5 +33,11 @@ assert-json-diff = { workspace = true }
 assertor         = { workspace = true }
 base64           = { workspace = true }
 chrono           = { workspace = true }
+dango-genesis    = { workspace = true }
+dango-mock-httpd = { workspace = true }
+dango-testing    = { workspace = true }
+dango-types      = { workspace = true }
+grug             = { workspace = true }
 grug-storage     = { workspace = true }
+indexer-client   = { workspace = true }
 itertools        = { workspace = true }

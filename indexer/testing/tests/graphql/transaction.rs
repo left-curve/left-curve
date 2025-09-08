@@ -1,9 +1,15 @@
 use {
     assert_json_diff::assert_json_include,
     assertor::*,
+    dango_genesis::GenesisOption,
+    dango_mock_httpd::{get_mock_socket_addr, wait_for_server_ready},
+    dango_testing::{Preset, TestOption},
+    dango_types::constants::usdc,
+    grug::{BlockCreation, Coins, MOCK_CHAIN_ID, Message, NonEmpty, ResultExt, Signer},
     grug_testing::setup_tracing_subscriber,
-    grug_types::{BroadcastClientExt, Coins, Denom, GasOption, Message, ResultExt},
-    indexer_sql::entity::{self},
+    grug_types::{BroadcastClient, BroadcastClientExt, Denom, GasOption},
+    indexer_client::HttpClient,
+    indexer_sql::entity,
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse,
         block::{create_block, create_blocks},
@@ -11,6 +17,7 @@ use {
         graphql::paginate_models,
         parse_graphql_subscription_response,
     },
+    sea_orm::EntityTrait,
     serde_json::json,
     std::str::FromStr,
     tokio::sync::mpsc,
@@ -341,6 +348,7 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
     let port = get_mock_socket_addr();
 
     let (sx, rx) = tokio::sync::oneshot::channel();
+    let (sx2, rx2) = tokio::sync::oneshot::channel();
 
     // Run server in separate thread with its own runtime
     std::thread::spawn(move || {
@@ -356,8 +364,9 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
                 GenesisOption::preset_test(),
                 true,
                 None,
-                |accounts, _, _, _| {
+                |accounts, _, _, _, indexer_context| {
                     sx.send(accounts).unwrap();
+                    sx2.send(indexer_context).unwrap();
                 },
             )
             .await
@@ -367,14 +376,11 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
         });
     });
 
-    let accounts = rx.await?;
+    let mut accounts = rx.await?;
+    let indexer_context = rx2.await?;
+    let client = HttpClient::new(format!("http://localhost:{port}"))?;
 
     wait_for_server_ready(port).await?;
-
-    // Ok((
-    //     HttpClient::new(format!("http://localhost:{port}"))?,
-    //     accounts,
-    // ))
 
     let tx = accounts.user1.sign_transaction(
         NonEmpty::new_unchecked(vec![Message::transfer(
@@ -385,54 +391,23 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
         1000000,
     )?;
 
-    // TODO: connect to the http port and broadcast the tx
+    client.broadcast_tx(tx).await?;
 
-    return Ok(());
+    let transaction = entity::transactions::Entity::find()
+        .one(&indexer_context.db)
+        .await
+        .expect("Can't fetch transaction")
+        .expect("No transaction found");
 
-    let (httpd_context, _client, ..) = create_block().await?;
+    assert_that!(
+        transaction
+            .http_request_details
+            .expect("Can't find http_request_details")
+    )
+    .is_equal_to(json!({
+        "peer_ip": "127.0.0.1",
+        "remote_ip": "127.0.0.1"
+    }));
 
-    let graphql_query = r#"
-      query Transactions {
-        transactions {
-          nodes {
-            httpRequestDetails
-          }
-        }
-      }
-    "#;
-
-    let request_body = GraphQLCustomRequest {
-        name: "transactions",
-        query: graphql_query,
-        variables: Default::default(),
-    };
-
-    let local_set = tokio::task::LocalSet::new();
-
-    local_set
-        .run_until(async {
-            tokio::task::spawn_local(async {
-                let app = build_app_service(httpd_context);
-
-                let response =
-                    call_graphql::<serde_json::Value, _, _, _>(app, request_body).await?;
-
-                println!("RESPONSE: {:#?}", response);
-
-                // let expected = json!({
-                //     "blockHeight": 1,
-                //     "transactions": [
-                //         {
-                //             "blockHeight": 1,
-                //         }
-                //     ]
-                // });
-
-                // assert_json_include!(actual: response.data, expected: expected);
-
-                Ok::<(), anyhow::Error>(())
-            })
-            .await
-        })
-        .await?
+    Ok(())
 }
