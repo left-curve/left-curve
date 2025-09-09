@@ -521,6 +521,8 @@ impl IndexerTrait for Indexer {
                 .map(|details| (tx_hash, details))
         }));
 
+        transaction_hash_details.clean();
+
         #[cfg(feature = "metrics")]
         metrics::gauge!("indexer.http_request_details.total")
             .set(transaction_hash_details.len() as f64);

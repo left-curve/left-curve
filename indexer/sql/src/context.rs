@@ -1,18 +1,15 @@
 use {
     crate::{
         event_cache::EventCacheWriter,
+        http_request_details::HttpRequestDetailsCache,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
     },
-    grug_types::HttpRequestDetails,
     indexer_sql_migration::{Migrator, MigratorTrait},
     sea_orm::{
         ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
         sqlx::{self},
     },
-    std::{
-        collections::HashMap,
-        sync::{Arc, Mutex},
-    },
+    std::sync::{Arc, Mutex},
 };
 
 #[derive(Clone)]
@@ -20,7 +17,7 @@ pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub event_cache: EventCacheWriter,
-    pub transaction_hash_details: Arc<Mutex<HashMap<String, HttpRequestDetails>>>,
+    pub transaction_hash_details: Arc<Mutex<HttpRequestDetailsCache>>,
 }
 
 impl std::fmt::Debug for Context {
@@ -59,7 +56,7 @@ impl Context {
             db: self.db.clone(),
             pubsub: new_pubsub,
             event_cache: self.event_cache.clone(),
-            transaction_hash_details: Arc::new(Mutex::new(HashMap::new())),
+            transaction_hash_details: Arc::new(Mutex::new(HttpRequestDetailsCache::default())),
         })
     }
 

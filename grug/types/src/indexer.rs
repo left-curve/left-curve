@@ -1,6 +1,7 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
+    std::time::{SystemTime, UNIX_EPOCH},
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq)]
@@ -8,7 +9,8 @@ pub struct HttpRequestDetails {
     pub remote_ip: Option<String>,
     pub peer_ip: Option<String>,
     // For when I need to clean up old requests
-    // pub created_at: i64, // Unix timestamp
+    // Unix timestamp because I can't borsh serialize a DateTime
+    pub created_at: u64,
 }
 
 impl HttpRequestDetails {
@@ -16,7 +18,10 @@ impl HttpRequestDetails {
         Self {
             remote_ip,
             peer_ip,
-            // created_at: chrono::Utc::now().timestamp(),
+            created_at: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
         }
     }
 }
