@@ -39,6 +39,12 @@ pub struct Model {
     pub error_message: Option<String>,
     pub gas_wanted: i64,
     pub gas_used: i64,
+    #[sea_orm(column_type = "JsonBinary")]
+    #[cfg_attr(
+        all(feature = "async-graphql", not(feature = "testing")),
+        graphql(skip)
+    )]
+    pub http_request_details: Option<Json>,
 }
 
 #[cfg(feature = "async-graphql")]

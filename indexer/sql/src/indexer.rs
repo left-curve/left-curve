@@ -8,7 +8,9 @@ use {
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
     grug_app::{Indexer as IndexerTrait, LAST_FINALIZED_BLOCK},
-    grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
+    grug_types::{
+        Block, BlockOutcome, Defined, HttpRequestDetails, MaybeDefined, Storage, Undefined,
+    },
     sea_orm::DatabaseConnection,
     std::{
         collections::HashMap,
@@ -170,6 +172,7 @@ where
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
+            transaction_hash_details: Default::default(),
         };
 
         match self.pubsub {
@@ -214,6 +217,7 @@ where
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
+            transaction_hash_details: Default::default(),
         };
 
         match self.pubsub {
@@ -503,10 +507,37 @@ impl IndexerTrait for Indexer {
 
         let block_filename = self.indexer_path.block_path(block.info.height);
 
+        let mut http_request_details: HashMap<String, HttpRequestDetails> = HashMap::new();
+
+        let mut transaction_hash_details = self
+            .context
+            .transaction_hash_details
+            .lock()
+            .map_err(|_| grug_app::IndexerError::MutexPoisoned)?;
+        http_request_details.extend(block.txs.iter().filter_map(|tx| {
+            let tx_hash = tx.1.to_string();
+            transaction_hash_details
+                .remove(&tx_hash)
+                .map(|details| (tx_hash, details))
+        }));
+
+        transaction_hash_details.clean();
+
+        #[cfg(feature = "metrics")]
+        metrics::gauge!("indexer.http_request_details.total")
+            .set(transaction_hash_details.len() as f64);
+
+        drop(transaction_hash_details);
+
         Ok(
             self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
                 #[cfg(feature = "tracing")]
                 tracing::debug!(block_height = block.info.height, "`index_block` started");
+
+                #[cfg(feature = "http-request-details")]
+                {
+                    block_to_index.http_request_details = http_request_details;
+                }
 
                 ctx.insert(block_to_index.clone());
 

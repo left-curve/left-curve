@@ -40,7 +40,7 @@ hex                         = { workspace = true }
 home                        = { workspace = true }
 indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd               = { workspace = true, features = ["metrics", "tracing"] }
-indexer-sql                 = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
+indexer-sql                 = { workspace = true, features = ["async-graphql", "http-request-details", "metrics", "tracing"] }
 metrics-exporter-prometheus = { workspace = true }
 pyth-client                 = { workspace = true, optional = true }
 pyth-types                  = { workspace = true, optional = true }

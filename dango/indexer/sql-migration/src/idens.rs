@@ -37,6 +37,7 @@ pub enum Account {
     Address,
     CreatedBlockHeight,
     CreatedAt,
+    CreatedTxHash,
 }
 
 #[derive(DeriveIden)]
