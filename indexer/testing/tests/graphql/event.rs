@@ -382,9 +382,6 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
                 )
                 .await
                 .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
 
         Ok::<(), anyhow::Error>(())

@@ -4774,7 +4774,6 @@ dependencies = [
  "http 1.3.1",
  "ics23",
  "prost",
- "serde",
  "tendermint",
  "thiserror 2.0.12",
  "tower",

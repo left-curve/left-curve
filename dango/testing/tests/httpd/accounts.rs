@@ -508,9 +508,6 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                 &codes,
                 &format!("foo{idx}"),
             );
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -620,9 +617,6 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
             // Create a new account with the original user
             let _test_account2 =
                 add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });

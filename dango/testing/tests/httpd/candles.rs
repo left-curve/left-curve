@@ -254,9 +254,6 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
             let mut suite_guard = suite_clone.lock().await;
 
             create_pair_prices(&mut suite_guard, &mut accounts, &contracts).await?;
-
-            // Enabling this here will cause the test to hang
-            // suite_guard.app.indexer.wait_for_finish()?;
         }
 
         Ok::<(), anyhow::Error>(())
@@ -458,9 +455,6 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                     NonEmpty::new_unchecked(msgs),
                 )
                 .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite_guard.app.indexer.wait_for_finish();
         }
 
         Ok::<(), anyhow::Error>(())

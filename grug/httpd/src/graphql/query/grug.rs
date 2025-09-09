@@ -4,37 +4,47 @@ use {
     grug_types::{Binary, Inner, QueryResponse, TxOutcome},
     std::str::FromStr,
 };
+#[cfg(feature = "metrics")]
+use {metrics::histogram, std::time::Instant};
 
 #[derive(Default, Debug)]
 pub struct GrugQuery {}
 
-#[Object]
 impl GrugQuery {
-    async fn query_app(
-        &self,
-        ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Request as JSON")] request: grug_types::Query,
+    pub async fn _query_app(
+        app_ctx: &crate::context::Context,
+        request: grug_types::Query,
         height: Option<u64>,
     ) -> Result<QueryResponse, Error> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
 
-        Ok(app_ctx.grug_app.query_app(request, height).await?)
+        let result = app_ctx.grug_app.query_app(request, height).await?;
+
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.query_app.duration").record(start.elapsed().as_secs_f64());
+
+        Ok(result)
     }
 
-    async fn query_store(
-        &self,
-        ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Key as B64 string")] key: String,
+    pub async fn _query_store(
+        app_ctx: &crate::context::Context,
+        key: String,
         height: Option<u64>,
-        #[graphql(default = false)] prove: bool,
+        prove: bool,
     ) -> Result<Store, Error> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
         let key = Binary::from_str(&key)?;
+
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
 
         let (value, proof) = app_ctx
             .grug_app
             .query_store(key.inner(), height, prove)
             .await?;
+
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.query_store.duration").record(start.elapsed().as_secs_f64());
 
         let value = if let Some(value) = value {
             Binary::from(value).to_string()
@@ -48,15 +58,51 @@ impl GrugQuery {
         })
     }
 
-    async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
+    pub async fn _query_status(app_ctx: &crate::context::Context) -> Result<Status, Error> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
 
         let status = Status {
             block: app_ctx.grug_app.last_finalized_block().await?.into(),
             chain_id: app_ctx.grug_app.chain_id().await?,
         };
 
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.query_status.duration").record(start.elapsed().as_secs_f64());
+
         Ok(status)
+    }
+}
+
+#[Object]
+impl GrugQuery {
+    async fn query_app(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        #[graphql(desc = "Request as JSON")] request: grug_types::Query,
+        height: Option<u64>,
+    ) -> Result<QueryResponse, Error> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+
+        Self::_query_app(app_ctx, request, height).await
+    }
+
+    async fn query_store(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        #[graphql(desc = "Key as B64 string")] key: String,
+        height: Option<u64>,
+        #[graphql(default = false)] prove: bool,
+    ) -> Result<Store, Error> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+
+        Self::_query_store(app_ctx, key, height, prove).await
+    }
+
+    async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+
+        Self::_query_status(app_ctx).await
     }
 
     async fn simulate(
