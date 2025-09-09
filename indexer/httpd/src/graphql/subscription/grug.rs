@@ -21,7 +21,7 @@ impl GrugSubscription {
         #[graphql(desc = "Request as JSON")] request: grug_types::Query,
         #[graphql(
             default = 10,
-            desc = "Receive updates every N blocks (e.g., 10 = update every 10th block from the latest)"
+            desc = "Receive updates every N blocks from the initial block height when subscription starts"
         )]
         block_interval: u64,
     ) -> Result<impl Stream<Item = Result<QueryResponse, Error>> + 'a> {
@@ -77,7 +77,7 @@ impl GrugSubscription {
         #[graphql(default = false)] prove: bool,
         #[graphql(
             default = 10,
-            desc = "Receive updates every N blocks (e.g., 10 = update every 10th block from the latest)"
+            desc = "Receive updates every N blocks from the initial block height when subscription starts"
         )]
         block_interval: u64,
     ) -> Result<impl Stream<Item = Result<Store, Error>> + 'a> {
@@ -132,7 +132,7 @@ impl GrugSubscription {
         ctx: &async_graphql::Context<'a>,
         #[graphql(
             default = 10,
-            desc = "Receive updates every N blocks (e.g., 10 = update every 10th block from the latest)"
+            desc = "Receive updates every N blocks from the initial block height when subscription starts"
         )]
         block_interval: u64,
     ) -> Result<impl Stream<Item = Result<Status, Error>> + 'a> {

@@ -650,7 +650,7 @@ type Subscription {
 		"""
 		request: GrugQueryInput!,
 		"""
-		Receive updates every N blocks (e.g., 10 = update every 10th block from the latest)
+		Receive updates every N blocks from the initial block height when subscription starts
 		"""
 		blockInterval: Int! = 10
 	): JSON!
@@ -658,9 +658,18 @@ type Subscription {
 		"""
 		Key as B64 string
 		"""
-		key: String!,		prove: Boolean! = false
+		key: String!,		prove: Boolean! = false,
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
 	): Store!
-	queryStatus: Status!
+	queryStatus(
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): Status!
 }
 
 enum TimeInForce {
