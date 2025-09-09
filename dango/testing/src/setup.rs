@@ -120,7 +120,7 @@ pub fn setup_test_lazer(
         RustVm::new(),
         ProposalPreparer::new_with_lazer(
             Some(NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap()),
-            Some(LAZER_ACCESS_TOKEN_TEST),
+            LAZER_ACCESS_TOKEN_TEST,
         ),
         NullIndexer,
         RustVm::genesis_codes(),

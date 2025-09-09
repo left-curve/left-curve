@@ -137,7 +137,7 @@ traces_sample_rate = 1.0
 
 # PythLazer endpoints. This is a Vec<String>.
 # It's possible to omit this field renaming it to _endpoints.
-endpoints = {{ pyth_endpoints }}
+endpoints = ["wss://pyth-lazer-0.dourolabs.app/v1/stream"]
 
 # PythLazer access token.
 access_token = {{ pyth_access_token }}

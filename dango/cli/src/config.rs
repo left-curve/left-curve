@@ -132,5 +132,5 @@ impl Default for TransactionsConfig {
 #[derive(Serialize, Deserialize, Default)]
 pub struct PythLazerConfig {
     pub endpoints: Option<NonEmpty<Vec<String>>>,
-    pub access_token: Option<String>,
+    pub access_token: String,
 }
