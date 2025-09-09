@@ -6,7 +6,6 @@ use {
         types::{status::Status, store::Store},
     },
     grug_types::QueryResponse,
-    indexer_sql::entity::blocks::latest_block_height,
 };
 #[cfg(feature = "metrics")]
 use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
@@ -35,11 +34,9 @@ impl GrugSubscription {
             "subscription",
         ));
 
-        let latest_block_height =
-            latest_block_height(&app_ctx.db).await?.unwrap_or_default() as u64;
-
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response = GrugQuery::_query_app(&app_ctx.base, request.clone(), None).await;
+        let latest_block_height = app_ctx.base.grug_app.last_finalized_block().await?.height;
 
         Ok(once({
             #[cfg(feature = "metrics")]
@@ -49,8 +46,11 @@ impl GrugSubscription {
         })
         .chain(
             stream
-                .scan(latest_block_height, move |start_block, block_height| {
-                    let result = if (block_height - *start_block) % block_interval == 0 {
+                .scan(latest_block_height, move |last_processed, block_height| {
+                    let result = if block_height > *last_processed
+                        && (block_height - latest_block_height) % block_interval == 0
+                    {
+                        *last_processed = block_height;
                         Some(Some(block_height))
                     } else {
                         Some(None)
@@ -90,12 +90,10 @@ impl GrugSubscription {
             "subscription",
         ));
 
-        let latest_block_height =
-            latest_block_height(&app_ctx.db).await?.unwrap_or_default() as u64;
-
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response =
             GrugQuery::_query_store(&app_ctx.base, key.clone(), None, prove).await;
+        let latest_block_height = app_ctx.base.grug_app.last_finalized_block().await?.height;
 
         Ok(once({
             #[cfg(feature = "metrics")]
@@ -105,8 +103,11 @@ impl GrugSubscription {
         })
         .chain(
             stream
-                .scan(latest_block_height, move |start_block, block_height| {
-                    let result = if (block_height - *start_block) % block_interval == 0 {
+                .scan(latest_block_height, move |last_processed, block_height| {
+                    let result = if block_height > *last_processed
+                        && (block_height - latest_block_height) % block_interval == 0
+                    {
+                        *last_processed = block_height;
                         Some(Some(block_height))
                     } else {
                         Some(None)
@@ -144,11 +145,9 @@ impl GrugSubscription {
             "subscription",
         ));
 
-        let latest_block_height =
-            latest_block_height(&app_ctx.db).await?.unwrap_or_default() as u64;
-
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response = GrugQuery::_query_status(&app_ctx.base).await;
+        let latest_block_height = app_ctx.base.grug_app.last_finalized_block().await?.height;
 
         Ok(once({
             #[cfg(feature = "metrics")]
@@ -158,8 +157,11 @@ impl GrugSubscription {
         })
         .chain(
             stream
-                .scan(latest_block_height, move |start_block, block_height| {
-                    let result = if (block_height - *start_block) % block_interval == 0 {
+                .scan(latest_block_height, move |last_processed, block_height| {
+                    let result = if block_height > *last_processed
+                        && (block_height - latest_block_height) % block_interval == 0
+                    {
+                        *last_processed = block_height;
                         Some(Some(block_height))
                     } else {
                         Some(None)
