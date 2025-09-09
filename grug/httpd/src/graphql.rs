@@ -1,6 +1,7 @@
 use {crate::context::Context, async_graphql::Schema};
 
 pub mod query;
+// pub mod subscription;
 pub mod types;
 
 pub(crate) type AppSchema =

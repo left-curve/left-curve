@@ -1,10 +1,11 @@
 use {
-    async_graphql::*, block::BlockSubscription, event::EventSubscription,
+    async_graphql::*, block::BlockSubscription, event::EventSubscription, grug::GrugSubscription,
     message::MessageSubscription, transaction::TransactionSubscription,
 };
 
 pub mod block;
 pub mod event;
+pub mod grug;
 pub mod message;
 pub mod transaction;
 
@@ -16,4 +17,5 @@ pub struct Subscription(
     TransactionSubscription,
     MessageSubscription,
     EventSubscription,
+    GrugSubscription,
 );

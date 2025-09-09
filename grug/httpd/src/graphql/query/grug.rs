@@ -8,27 +8,21 @@ use {
 #[derive(Default, Debug)]
 pub struct GrugQuery {}
 
-#[Object]
 impl GrugQuery {
-    async fn query_app(
-        &self,
-        ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Request as JSON")] request: grug_types::Query,
+    pub async fn _query_app(
+        app_ctx: &crate::context::Context,
+        request: grug_types::Query,
         height: Option<u64>,
     ) -> Result<QueryResponse, Error> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
-
         Ok(app_ctx.grug_app.query_app(request, height).await?)
     }
 
-    async fn query_store(
-        &self,
-        ctx: &async_graphql::Context<'_>,
-        #[graphql(desc = "Key as B64 string")] key: String,
+    pub async fn _query_store(
+        app_ctx: &crate::context::Context,
+        key: String,
         height: Option<u64>,
-        #[graphql(default = false)] prove: bool,
+        prove: bool,
     ) -> Result<Store, Error> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
         let key = Binary::from_str(&key)?;
 
         let (value, proof) = app_ctx
@@ -48,15 +42,45 @@ impl GrugQuery {
         })
     }
 
-    async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {
-        let app_ctx = ctx.data::<crate::context::Context>()?;
-
+    pub async fn _query_status(app_ctx: &crate::context::Context) -> Result<Status, Error> {
         let status = Status {
             block: app_ctx.grug_app.last_finalized_block().await?.into(),
             chain_id: app_ctx.grug_app.chain_id().await?,
         };
 
         Ok(status)
+    }
+}
+
+#[Object]
+impl GrugQuery {
+    async fn query_app(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        #[graphql(desc = "Request as JSON")] request: grug_types::Query,
+        height: Option<u64>,
+    ) -> Result<QueryResponse, Error> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+
+        Self::_query_app(app_ctx, request, height).await
+    }
+
+    async fn query_store(
+        &self,
+        ctx: &async_graphql::Context<'_>,
+        #[graphql(desc = "Key as B64 string")] key: String,
+        height: Option<u64>,
+        #[graphql(default = false)] prove: bool,
+    ) -> Result<Store, Error> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+
+        Self::_query_store(app_ctx, key, height, prove).await
+    }
+
+    async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {
+        let app_ctx = ctx.data::<crate::context::Context>()?;
+
+        Self::_query_status(app_ctx).await
     }
 
     async fn simulate(
