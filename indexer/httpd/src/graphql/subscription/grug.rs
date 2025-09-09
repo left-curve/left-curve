@@ -6,6 +6,7 @@ use {
         types::{status::Status, store::Store},
     },
     grug_types::QueryResponse,
+    indexer_sql::entity::blocks::latest_block_height,
 };
 #[cfg(feature = "metrics")]
 use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
@@ -19,6 +20,11 @@ impl GrugSubscription {
         &self,
         ctx: &async_graphql::Context<'a>,
         #[graphql(desc = "Request as JSON")] request: grug_types::Query,
+        #[graphql(
+            default = 10,
+            desc = "Receive updates every N blocks (e.g., 10 = update every 10th block from the latest)"
+        )]
+        block_interval: u64,
     ) -> Result<impl Stream<Item = Result<QueryResponse, Error>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
@@ -29,6 +35,9 @@ impl GrugSubscription {
             "subscription",
         ));
 
+        let latest_block_height =
+            latest_block_height(&app_ctx.db).await?.unwrap_or_default() as u64;
+
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response = GrugQuery::_query_app(&app_ctx.base, request.clone(), None).await;
 
@@ -38,13 +47,27 @@ impl GrugSubscription {
 
             async { initial_response }
         })
-        .chain(stream.then(move |block_height| {
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
-            let request = request.clone();
+        .chain(
+            stream
+                .scan(latest_block_height, move |start_block, block_height| {
+                    let result = if (block_height - *start_block) % block_interval == 0 {
+                        Some(Some(block_height))
+                    } else {
+                        Some(None)
+                    };
+                    futures::future::ready(result)
+                })
+                .filter_map(|opt_height| async move { opt_height })
+                .then(move |block_height| {
+                    #[cfg(feature = "metrics")]
+                    let _guard = gauge_guard.clone();
+                    let request = request.clone();
 
-            async move { GrugQuery::_query_app(&app_ctx.base, request, Some(block_height)).await }
-        })))
+                    async move {
+                        GrugQuery::_query_app(&app_ctx.base, request, Some(block_height)).await
+                    }
+                }),
+        ))
     }
 
     async fn query_store<'a>(
@@ -52,6 +75,11 @@ impl GrugSubscription {
         ctx: &async_graphql::Context<'a>,
         #[graphql(desc = "Key as B64 string")] key: String,
         #[graphql(default = false)] prove: bool,
+        #[graphql(
+            default = 10,
+            desc = "Receive updates every N blocks (e.g., 10 = update every 10th block from the latest)"
+        )]
+        block_interval: u64,
     ) -> Result<impl Stream<Item = Result<Store, Error>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
@@ -61,6 +89,9 @@ impl GrugSubscription {
             "query_store",
             "subscription",
         ));
+
+        let latest_block_height =
+            latest_block_height(&app_ctx.db).await?.unwrap_or_default() as u64;
 
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response =
@@ -73,21 +104,36 @@ impl GrugSubscription {
             async { initial_response }
         })
         .chain(
-            stream.then(move |block_height| {
-                #[cfg(feature = "metrics")]
-                let _guard = gauge_guard.clone();
-                let key = key.clone();
+            stream
+                .scan(latest_block_height, move |start_block, block_height| {
+                    let result = if (block_height - *start_block) % block_interval == 0 {
+                        Some(Some(block_height))
+                    } else {
+                        Some(None)
+                    };
+                    futures::future::ready(result)
+                })
+                .filter_map(|opt_height| async move { opt_height })
+                .then(move |block_height| {
+                    #[cfg(feature = "metrics")]
+                    let _guard = gauge_guard.clone();
+                    let key = key.clone();
 
-                async move {
-                    GrugQuery::_query_store(&app_ctx.base, key, Some(block_height), prove).await
-                }
-            }),
+                    async move {
+                        GrugQuery::_query_store(&app_ctx.base, key, Some(block_height), prove).await
+                    }
+                }),
         ))
     }
 
     async fn query_status<'a>(
         &self,
         ctx: &async_graphql::Context<'a>,
+        #[graphql(
+            default = 10,
+            desc = "Receive updates every N blocks (e.g., 10 = update every 10th block from the latest)"
+        )]
+        block_interval: u64,
     ) -> Result<impl Stream<Item = Result<Status, Error>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
@@ -98,6 +144,9 @@ impl GrugSubscription {
             "subscription",
         ));
 
+        let latest_block_height =
+            latest_block_height(&app_ctx.db).await?.unwrap_or_default() as u64;
+
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response = GrugQuery::_query_status(&app_ctx.base).await;
 
@@ -107,11 +156,23 @@ impl GrugSubscription {
 
             async { initial_response }
         })
-        .chain(stream.then(move |_| {
-            #[cfg(feature = "metrics")]
-            let _guard = gauge_guard.clone();
+        .chain(
+            stream
+                .scan(latest_block_height, move |start_block, block_height| {
+                    let result = if (block_height - *start_block) % block_interval == 0 {
+                        Some(Some(block_height))
+                    } else {
+                        Some(None)
+                    };
+                    futures::future::ready(result)
+                })
+                .filter_map(|opt_height| async move { opt_height })
+                .then(move |_| {
+                    #[cfg(feature = "metrics")]
+                    let _guard = gauge_guard.clone();
 
-            async { GrugQuery::_query_status(&app_ctx.base).await }
-        })))
+                    async { GrugQuery::_query_status(&app_ctx.base).await }
+                }),
+        ))
     }
 }

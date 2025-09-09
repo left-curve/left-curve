@@ -63,8 +63,8 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
     let (httpd_context, client, mut accounts) = create_block().await?;
 
     let graphql_query = r#"
-      subscription QueryApp($request: String!) {
-        queryApp(request: $request)
+      subscription QueryApp($request: String!, $block_interval: Int!) {
+        queryApp(request: $request, blockInterval: $block_interval)
       }
     "#;
 
@@ -76,6 +76,7 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
 
     let variables = json!({
         "request": body_request,
+        "block_interval": 1,
     })
     .as_object()
     .unwrap()

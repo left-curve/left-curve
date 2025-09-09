@@ -647,7 +647,11 @@ type Subscription {
 		"""
 		Request as JSON
 		"""
-		request: GrugQueryInput!
+		request: GrugQueryInput!,
+		"""
+		Receive updates every N blocks (e.g., 10 = update every 10th block from the latest)
+		"""
+		blockInterval: Int! = 10
 	): JSON!
 	queryStore(
 		"""
