@@ -30,13 +30,13 @@ impl GrugSubscription {
         ));
 
         let stream = app_ctx.pubsub.subscribe().await?;
+        let initial_response = GrugQuery::_query_app(&app_ctx.base, request.clone(), None).await;
 
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
-            let request = request.clone();
 
-            async { GrugQuery::_query_app(&app_ctx.base, request, None).await }
+            async { initial_response }
         })
         .chain(stream.then(move |block_height| {
             #[cfg(feature = "metrics")]
@@ -64,13 +64,14 @@ impl GrugSubscription {
         ));
 
         let stream = app_ctx.pubsub.subscribe().await?;
+        let initial_response =
+            GrugQuery::_query_store(&app_ctx.base, key.clone(), None, prove).await;
 
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
-            let key = key.clone();
 
-            async move { GrugQuery::_query_store(&app_ctx.base, key, None, prove).await }
+            async { initial_response }
         })
         .chain(
             stream.then(move |block_height| {
@@ -99,18 +100,19 @@ impl GrugSubscription {
         ));
 
         let stream = app_ctx.pubsub.subscribe().await?;
+        let initial_response = GrugQuery::_query_status(&app_ctx.base).await;
 
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
-            async move { GrugQuery::_query_status(&app_ctx.base).await }
+            async { initial_response }
         })
         .chain(stream.then(move |_| {
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
-            async move { GrugQuery::_query_status(&app_ctx.base).await }
+            async { GrugQuery::_query_status(&app_ctx.base).await }
         })))
     }
 }

@@ -4,6 +4,8 @@ use {
     grug_types::{Binary, Inner, QueryResponse, TxOutcome},
     std::str::FromStr,
 };
+#[cfg(feature = "metrics")]
+use {metrics::histogram, std::time::Instant};
 
 #[derive(Default, Debug)]
 pub struct GrugQuery {}
@@ -14,7 +16,15 @@ impl GrugQuery {
         request: grug_types::Query,
         height: Option<u64>,
     ) -> Result<QueryResponse, Error> {
-        Ok(app_ctx.grug_app.query_app(request, height).await?)
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        let result = app_ctx.grug_app.query_app(request, height).await?;
+
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.query_app.duration").record(start.elapsed().as_secs_f64());
+
+        Ok(result)
     }
 
     pub async fn _query_store(
@@ -25,10 +35,16 @@ impl GrugQuery {
     ) -> Result<Store, Error> {
         let key = Binary::from_str(&key)?;
 
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
         let (value, proof) = app_ctx
             .grug_app
             .query_store(key.inner(), height, prove)
             .await?;
+
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.query_store.duration").record(start.elapsed().as_secs_f64());
 
         let value = if let Some(value) = value {
             Binary::from(value).to_string()
@@ -43,10 +59,16 @@ impl GrugQuery {
     }
 
     pub async fn _query_status(app_ctx: &crate::context::Context) -> Result<Status, Error> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
         let status = Status {
             block: app_ctx.grug_app.last_finalized_block().await?.into(),
             chain_id: app_ctx.grug_app.chain_id().await?,
         };
+
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.query_status.duration").record(start.elapsed().as_secs_f64());
 
         Ok(status)
     }
