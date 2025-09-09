@@ -382,7 +382,6 @@ async fn graphql_subscribe_to_events() -> anyhow::Result<()> {
                 )
                 .await
                 .should_succeed();
-
         }
 
         Ok::<(), anyhow::Error>(())

@@ -643,6 +643,19 @@ type Subscription {
 	Get all trades, this will not include past trades but only new ones since you subscribed.
 	"""
 	trades(baseDenom: String!, quoteDenom: String!): Trade!
+	queryApp(
+		"""
+		Request as JSON
+		"""
+		request: GrugQueryInput!
+	): JSON!
+	queryStore(
+		"""
+		Key as B64 string
+		"""
+		key: String!,		prove: Boolean! = false
+	): Store!
+	queryStatus: Status!
 }
 
 enum TimeInForce {
