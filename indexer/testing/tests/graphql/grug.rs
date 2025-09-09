@@ -1,4 +1,5 @@
 use {
+    assert_json_diff::assert_json_eq,
     assertor::*,
     grug_types::{
         BroadcastClientExt, Coins, Denom, GasOption, Inner, Json, JsonSerExt, Message, Query,
@@ -103,9 +104,6 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                 )
                 .await
                 .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
 
         Ok::<(), anyhow::Error>(())
@@ -124,8 +122,10 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                 let response =
                     parse_graphql_subscription_response::<Json>(&mut framed, name).await?;
 
-                assert_that!(response.data.into_inner())
-                    .is_equal_to(json!({"balance": {"amount": "0", "denom": "ugrug"}}));
+                assert_json_eq!(
+                    response.data.into_inner(),
+                    json!({"balance": {"amount": "0", "denom": "ugrug"}})
+                );
 
                 crate_block_tx.send(2).await?;
 
@@ -133,8 +133,10 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                 let response =
                     parse_graphql_subscription_response::<Json>(&mut framed, name).await?;
 
-                assert_that!(response.data.into_inner())
-                    .is_equal_to(json!({"balance": {"amount": "2000", "denom": "ugrug"}}));
+                assert_json_eq!(
+                    response.data.into_inner(),
+                    json!({"balance": {"amount": "2000", "denom": "ugrug"}})
+                );
 
                 crate_block_tx.send(3).await?;
 
@@ -142,8 +144,10 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
                 let response =
                     parse_graphql_subscription_response::<Json>(&mut framed, name).await?;
 
-                assert_that!(response.data.into_inner())
-                    .is_equal_to(json!({"balance": {"amount": "4000", "denom": "ugrug"}}));
+                assert_json_eq!(
+                    response.data.into_inner(),
+                    json!({"balance": {"amount": "4000", "denom": "ugrug"}})
+                );
 
                 Ok::<(), anyhow::Error>(())
             })

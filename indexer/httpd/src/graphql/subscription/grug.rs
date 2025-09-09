@@ -45,7 +45,6 @@ impl GrugSubscription {
 
             async move { GrugQuery::_query_app(&app_ctx.base, request, Some(block_height)).await }
         })))
-        // .filter_map(|query_response| async move { query_response.ok() }))
     }
 
     async fn query_store<'a>(

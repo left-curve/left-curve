@@ -407,9 +407,6 @@ async fn graphql_subscribe_to_trades() -> anyhow::Result<()> {
             let mut suite_guard = suite_clone.lock().await;
 
             create_pair_prices(&mut suite_guard, &mut accounts, &contracts).await?;
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish()?;
         }
 
         Ok::<(), anyhow::Error>(())
