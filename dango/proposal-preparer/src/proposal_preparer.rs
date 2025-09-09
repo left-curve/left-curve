@@ -71,7 +71,7 @@ impl ProposalPreparer<PythClientCoreCache> {
 }
 
 impl ProposalPreparer<PythClientLazer> {
-    pub fn new_with_lazer<V, U, T>(endpoints: Option<NonEmpty<V>>, access_token: T) -> Self
+    pub fn new_with_lazer<V, U, T>(endpoints: V, access_token: T) -> Self
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
@@ -82,17 +82,17 @@ impl ProposalPreparer<PythClientLazer> {
 
         let mut client = None;
 
-        if let Some(endpoints) = endpoints {
-            if access_token.to_string().is_empty() {
-                warn!("Access token for Pyth Lazer is empty, oracle feeding will be disabled");
-            }
-
-            client = Some(Mutex::new(PythHandler::new_with_lazer(
-                endpoints,
-                access_token,
-            )))
+        if access_token.to_string().is_empty() {
+            warn!("Access token for Pyth Lazer is empty, oracle feeding will be disabled");
         } else {
-            warn!("Endpoints for Pyth Lazer not provided, oracle feeding will be disabled");
+            if endpoints.length() == 0 {
+                warn!("Endpoints for Pyth Lazer not provided, oracle feeding will be disabled");
+            } else {
+                client = Some(Mutex::new(PythHandler::new_with_lazer(
+                    NonEmpty::new(endpoints).unwrap(),
+                    access_token,
+                )))
+            }
         }
 
         Self {

@@ -1,7 +1,4 @@
-use {
-    grug::NonEmpty,
-    serde::{Deserialize, Serialize},
-};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -131,6 +128,6 @@ impl Default for TransactionsConfig {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct PythLazerConfig {
-    pub endpoints: Option<NonEmpty<Vec<String>>>,
+    pub endpoints: Vec<String>,
     pub access_token: String,
 }
