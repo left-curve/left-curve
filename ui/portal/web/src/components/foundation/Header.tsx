@@ -29,7 +29,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const isProSwap = location.pathname.includes("trade");
 
   const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
-  const isTestnet = import.meta.env.CONFIG_ENVIRONMENT === "test";
 
   return (
     <header
@@ -42,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
       )}
     >
       {isLg ? <div id="quest-banner" /> : null}
-      {isTestnet ? <TestnetBanner /> : null}
+      <TestnetBanner />
 
       <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">

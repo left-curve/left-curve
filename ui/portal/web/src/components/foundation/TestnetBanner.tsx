@@ -9,16 +9,12 @@ import { motion } from "framer-motion";
 
 export const TestnetBanner: React.FC = () => {
   const [testBannerVisibility, setTestBannerVisibility] = useState(true);
-  const text = m["common.testnet.advice"]();
+  const env = import.meta.env.CONFIG_ENVIRONMENT;
 
-  if (!testBannerVisibility) return null;
+  const showBanner = ["test", "dev"].includes(env);
+  const text = m["common.advice"]({ environment: m["common.environment"]({ environment: env }) });
 
-  const item = (
-    <div className="flex gap-10 items-center text-gray-700 diatype-sm-heavy ml-10">
-      <span>{text}</span>
-      <span>•</span>
-    </div>
-  );
+  if (!testBannerVisibility || !showBanner) return null;
 
   return (
     <motion.div
@@ -26,7 +22,16 @@ export const TestnetBanner: React.FC = () => {
       transition={{ duration: 0.2 }}
       className="h-9 w-full fixed lg:relative top-0  bg-[url('./images/warning-banner.svg')] bg- flex items-center justify-center"
     >
-      <Marquee className="w-full bg-[#F7CF74] h-fit p-0 uppercase gap-10" item={item} speed={50} />
+      <Marquee
+        className="w-full bg-[#F7CF74] h-fit p-0 uppercase gap-10"
+        item={
+          <div className="flex gap-10 items-center text-gray-700 diatype-sm-heavy ml-10">
+            <span>{text}</span>
+            <span>•</span>
+          </div>
+        }
+        speed={50}
+      />
       <button
         type="button"
         className="absolute right-3 top-[7px] h-6 w-6 z-10 rounded-full bg-foreground-primary-red border border-secondary-700 flex items-center justify-center"

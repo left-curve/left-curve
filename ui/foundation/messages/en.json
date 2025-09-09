@@ -29,6 +29,18 @@
     "motto": "Dango–the one app for everything DeFi",
     "notWalletDetected": "No wallet detected",
     "overview": "Overview",
+    "advice":"You are using {environment}",
+    "environment": [
+      {
+        "declarations": ["input environment"],
+        "selectors": ["environment"],
+        "match": {
+          "environment=dev": "devnet",
+          "environment=test": "testnet"
+        }
+      }
+    ],
+    "devnet":{"advice":"you are using devnet"},
     "testnet": {
       "advice":"you are using testnet",
       "title": "Message from the founder",
