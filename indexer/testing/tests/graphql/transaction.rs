@@ -18,7 +18,7 @@ use {
     },
     sea_orm::EntityTrait,
     serde_json::json,
-    std::str::FromStr,
+    std::{str::FromStr, time::Duration},
     tokio::sync::mpsc,
 };
 
@@ -388,6 +388,22 @@ async fn transactions_stores_httpd_details() -> anyhow::Result<()> {
     )?;
 
     client.broadcast_tx(tx).await?;
+
+    // Transaction indexer is fully async and there is no way to know when it's finished
+    for _ in 1..=30 {
+        match entity::transactions::Entity::find()
+            .one(&indexer_context.db)
+            .await
+            .expect("Can't fetch transaction")
+        {
+            Some(_) => {
+                break;
+            },
+            None => {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+            },
+        }
+    }
 
     let http_request_details = entity::transactions::Entity::find()
         .one(&indexer_context.db)
