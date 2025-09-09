@@ -68,13 +68,15 @@ impl MessageSubscription {
             "subscription",
         ));
 
+        let stream = app_ctx.pubsub.subscribe().await?;
+
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
             async move { Self::get_messages(app_ctx, block_range).await }
         })
-        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+        .chain(stream.then(move |block_height| {
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
