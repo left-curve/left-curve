@@ -1,15 +1,11 @@
-import { useNavigate } from "@tanstack/react-router";
-
 import { OrderType, type OrderTypes } from "@left-curve/dango/types";
 
-import { IconLimitOrder, IconMarketOrder, twMerge, useApp } from "@left-curve/applets-kit";
+import { IconLimitOrder, IconMarketOrder, twMerge } from "@left-curve/applets-kit";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
 
 type OrderNotificationProps = {
-  txHash?: string;
-  blockHeight?: number;
   kind: OrderTypes;
   onClick?: () => void;
 };
@@ -20,14 +16,6 @@ export const OrderNotification: React.FC<PropsWithChildren<OrderNotificationProp
   const { onClick, kind, children } = parameters;
   const isLimit = kind === OrderType.Limit;
   const Icon = isLimit ? IconLimitOrder : IconMarketOrder;
-
-  const navigate = useNavigate();
-  const { setNotificationMenuVisibility } = useApp();
-
-  const onNavigate = (url: string) => {
-    setNotificationMenuVisibility(false);
-    navigate({ to: url });
-  };
 
   return (
     <div

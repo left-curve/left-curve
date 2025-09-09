@@ -178,10 +178,11 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
 
 const Desktop: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
-  const { setSidebarVisibility, isSidebarVisible, isQuestBannerVisible } = useApp();
+  const { setSidebarVisibility, isSidebarVisible, isQuestBannerVisible, modal } = useApp();
 
   useClickAway(menuRef, (e) => {
-    if (e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) return;
+    if ((e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) || modal)
+      return;
     setSidebarVisibility(false);
   });
 

@@ -49,7 +49,7 @@ export const NotificationTransfer: React.FC<NotificationTransferProps> = ({ noti
         onNavigate(txHash ? `/tx/${txHash}` : `/block/${blockHeight}`);
       }}
     >
-      <div className="flex items-center justify-center bg-quaternary-rice w-7 h-7 rounded-sm">
+      <div className="flex items-center justify-center bg-quaternary-rice min-w-7 min-h-7 w-7 h-7 rounded-sm">
         <Icon className={twMerge(isSent ? "text-red-bean-600" : "text-brand-green")} />
       </div>
 
@@ -78,7 +78,7 @@ export const NotificationTransfer: React.FC<NotificationTransferProps> = ({ noti
                     <img
                       src={coin.logoURI}
                       alt={coin.symbol}
-                      className="w-5 h-5 select-none drag-none"
+                      className="w-5 h-5 min-w-5 min-h-5 select-none drag-none"
                       loading="lazy"
                     />
                   )}

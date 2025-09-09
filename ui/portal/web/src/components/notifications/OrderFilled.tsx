@@ -1,10 +1,16 @@
-import { useConfig } from "@left-curve/store";
+import { useConfig, usePrices } from "@left-curve/store";
 import { Direction, OrderType } from "@left-curve/dango/types";
 
 import { OrderNotification } from "./OrderNotification";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { twMerge, useApp } from "@left-curve/foundation";
-import { Decimal, formatNumber } from "@left-curve/dango/utils";
+import {
+  calculateFees,
+  calculatePrice,
+  Decimal,
+  formatNumber,
+  formatUnits,
+} from "@left-curve/dango/utils";
 import { PairAssets } from "@left-curve/applets-kit";
 
 import type { Notification } from "~/hooks/useNotifications";
@@ -18,25 +24,45 @@ export const NotificationOrderFilled: React.FC<NotificationOrderFilledProps> = (
   notification,
 }) => {
   const { getCoinInfo } = useConfig();
-  const { blockHeight, txHash } = notification;
-  const { quote_denom, base_denom, clearing_price, remaining, kind, direction, cleared } =
-    notification.data;
-  const { settings } = useApp();
+  const { createdAt, blockHeight } = notification;
+  const {
+    id,
+    quote_denom,
+    base_denom,
+    clearing_price,
+    remaining,
+    kind,
+    direction,
+    cleared,
+    fee_base,
+    fee_quote,
+    filled_base,
+    filled_quote,
+    refund_base,
+    refund_quote,
+  } = notification.data;
+  const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
+  const { getPrice } = usePrices();
 
   const isLimit = kind === OrderType.Limit;
 
   const base = getCoinInfo(base_denom);
   const quote = getCoinInfo(quote_denom);
 
-  const at = isLimit
-    ? formatNumber(
-        Decimal(clearing_price)
-          .times(Decimal(10).pow(base.decimals - quote.decimals))
-          .toFixed(),
-        { ...formatNumberOptions, minSignificantDigits: 8, maxSignificantDigits: 8 },
-      ).slice(0, 7)
-    : null;
+  const fee = calculateFees(
+    { amount: fee_base, decimals: base.decimals, price: getPrice(1, base.denom) },
+    { amount: fee_quote, decimals: quote.decimals, price: getPrice(1, quote.denom) },
+    formatNumberOptions,
+  );
+
+  const averagePrice = calculatePrice(
+    clearing_price,
+    { base: base.decimals, quote: quote.decimals },
+    formatNumberOptions,
+  );
+
+  const limitPrice = null;
 
   const width = cleared
     ? null
@@ -46,8 +72,33 @@ export const NotificationOrderFilled: React.FC<NotificationOrderFilledProps> = (
         maxSignificantDigits: 8,
       }).slice(0, 7);
 
+  const filled =
+    direction === Direction.Buy ? filled_base : Decimal(filled_quote).div(clearing_price).toFixed();
   return (
-    <OrderNotification kind={kind} txHash={txHash} blockHeight={blockHeight}>
+    <OrderNotification
+      kind={kind}
+      onClick={() =>
+        showModal("notification-spot-action-order", {
+          base,
+          quote,
+          blockHeight,
+          action: direction === "ask" ? "sell" : "buy",
+          status: cleared ? "fulfilled" : "partially fulfilled",
+          order: {
+            id,
+            fee,
+            averagePrice,
+            type: kind,
+            timeCreated: createdAt,
+            filled: formatNumber(formatUnits(filled, base.decimals), formatNumberOptions),
+            refund: [
+              { ...base, amount: refund_base },
+              { ...quote, amount: refund_quote },
+            ],
+          },
+        })
+      }
+    >
       <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
         {m["notifications.notification.orderFilled.title"]({
           isFullfilled: m["notifications.notification.orderFilled.isFullfilled"]({
@@ -74,11 +125,11 @@ export const NotificationOrderFilled: React.FC<NotificationOrderFilledProps> = (
         <span className="diatype-m-bold">
           {base.symbol}-{quote.symbol}
         </span>
-        {at ? (
+        {limitPrice ? (
           <>
             <span>{m["notifications.notification.orderCreated.atPrice"]()}</span>
             <span className="diatype-m-bold">
-              {at} {quote.symbol}
+              {limitPrice} {quote.symbol}
             </span>
           </>
         ) : null}

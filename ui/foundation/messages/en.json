@@ -577,7 +577,8 @@
         ]
       },
       "modal": {
-        "spotOrderAction": "{status} order",
+        "blockHeight": "Block Height",
+        "spotOrderAction": "Order {status}",
         "spotOrderBuy": "{orderType} ∙ Buy",
         "spotOrderSell": "{orderType} ∙ Sell",
         "swapped": "Swapped",
@@ -595,8 +596,8 @@
         "timeCreated": "Time Created",
         "timeCanceled": "Time Canceled",
         "timeUpdated": "Time Updated",
-        "filledAmount": "Filled/Amount",
-        "averagePrice": "Avg./Price"
+        "filledAmount": "Filled / Amount",
+        "averagePrice": "Avg / Price"
       }
     }
   },

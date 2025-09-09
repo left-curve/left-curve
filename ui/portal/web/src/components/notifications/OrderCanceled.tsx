@@ -1,6 +1,6 @@
 import { useConfig } from "@left-curve/store";
 
-import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { Direction, OrderType } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -18,7 +18,7 @@ export const NotificationOrderCanceled: React.FC<NotificationOrderCanceledProps>
   notification,
 }) => {
   const { getCoinInfo } = useConfig();
-  const { createdAt } = notification;
+  const { createdAt, blockHeight } = notification;
   const { id, quote_denom, base_denom, price, kind, direction, amount, refund, remaining } =
     notification.data;
   const { settings, showModal } = useApp();
@@ -28,15 +28,10 @@ export const NotificationOrderCanceled: React.FC<NotificationOrderCanceledProps>
 
   const base = getCoinInfo(base_denom);
   const quote = getCoinInfo(quote_denom);
-  const refundCoins = getCoinInfo(refund.denom);
+  const refundCoin = getCoinInfo(refund.denom);
 
-  const at = isLimit
-    ? formatNumber(
-        Decimal(price)
-          .times(Decimal(10).pow(base.decimals - quote.decimals))
-          .toFixed(),
-        { ...formatNumberOptions, minSignificantDigits: 8, maxSignificantDigits: 8 },
-      ).slice(0, 7)
+  const limitPrice = isLimit
+    ? calculatePrice(price, { base: base.decimals, quote: quote.decimals }, formatNumberOptions)
     : null;
 
   const filled = Decimal(amount).minus(remaining).toFixed();
@@ -48,22 +43,17 @@ export const NotificationOrderCanceled: React.FC<NotificationOrderCanceledProps>
         showModal("notification-spot-action-order", {
           base,
           quote,
+          blockHeight,
           action: direction === "ask" ? "sell" : "buy",
           status: "canceled",
           order: {
             id,
+            limitPrice,
             type: kind,
             timeCanceled: createdAt,
-            filledAmount: formatNumber(formatUnits(filled, base.decimals), {
-              ...formatNumberOptions,
-            }),
-            tokenReceived: `${formatNumber(formatUnits(refund.amount, refundCoins.decimals), {
-              ...formatNumberOptions,
-            })} ${refundCoins.symbol}`,
-            limitPrice: at,
-            amount: formatNumber(formatUnits(amount, base.decimals), {
-              ...formatNumberOptions,
-            }),
+            filledAmount: formatNumber(formatUnits(filled, base.decimals), formatNumberOptions),
+            refund: [{ ...refundCoin, amount: refund.amount }],
+            amount: formatNumber(formatUnits(amount, base.decimals), formatNumberOptions),
           },
         })
       }
@@ -90,11 +80,11 @@ export const NotificationOrderCanceled: React.FC<NotificationOrderCanceledProps>
         <span className="diatype-m-bold">
           {base.symbol}-{quote.symbol}
         </span>
-        {at ? (
+        {limitPrice ? (
           <>
             <span>{m["notifications.notification.orderCreated.atPrice"]()}</span>
             <span className="diatype-m-bold">
-              {at} {quote.symbol}
+              {limitPrice} {quote.symbol}
             </span>
           </>
         ) : null}

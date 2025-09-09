@@ -149,6 +149,8 @@ export type {
   TimeInForceOptions,
 } from "./dex.js";
 
+export type { WithPrice } from "./utils.js";
+
 export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";
 
 export type { DataChannelConfig, DataChannelMessage } from "./webrtrc.js";
