@@ -1,5 +1,5 @@
 import { useConfig } from "@left-curve/store";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -8,6 +8,7 @@ import {
   AddressVisualizer,
   IconReceived,
   IconSent,
+  Modals,
   PairAssets,
   twMerge,
   useApp,
@@ -21,10 +22,10 @@ type NotificationTransferProps = {
 };
 
 export const NotificationTransfer: React.FC<NotificationTransferProps> = ({ notification }) => {
-  const navigate = useNavigate();
-  const { settings, setNotificationMenuVisibility } = useApp();
+  const { settings, showModal, setNotificationMenuVisibility } = useApp();
+  const { navigate } = useRouter();
   const { getCoinInfo } = useConfig();
-  const { blockHeight, txHash } = notification;
+  const { blockHeight, txHash, createdAt } = notification;
   const { coins, type, fromAddress, toAddress } = notification.data;
   const { formatNumberOptions } = settings;
   const isSent = type === "sent";
@@ -38,6 +39,7 @@ export const NotificationTransfer: React.FC<NotificationTransferProps> = ({ noti
     setNotificationMenuVisibility(false);
     navigate({ to: url });
   };
+
   return (
     <div
       className="flex items-start gap-2 max-w-full overflow-hidden cursor-pointer"
@@ -46,7 +48,15 @@ export const NotificationTransfer: React.FC<NotificationTransferProps> = ({ noti
         if (element.closest(".address-visualizer") || element.closest(".remove-notification")) {
           return;
         }
-        onNavigate(txHash ? `/tx/${txHash}` : `/block/${blockHeight}`);
+        showModal(Modals.NotificationSentAndReceived, {
+          blockHeight,
+          txHash,
+          coins,
+          action: type,
+          from: originAddress,
+          to: targetAddress,
+          time: createdAt,
+        });
       }}
     >
       <div className="flex items-center justify-center bg-quaternary-rice min-w-7 min-h-7 w-7 h-7 rounded-sm">

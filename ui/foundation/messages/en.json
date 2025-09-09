@@ -588,7 +588,6 @@
         "from": "From",
         "fee": "Fee",
         "time": "Time",
-        "transaction": "Transaction",
         "amount": "Amount",
         "tokenReceived": "Token Received",
         "limitPrice": "Limit Price",
@@ -597,8 +596,19 @@
         "timeCanceled": "Time Canceled",
         "timeUpdated": "Time Updated",
         "filledAmount": "Filled / Amount",
-        "averagePrice": "Avg / Price"
-      }
+        "averagePrice": "Avg / Price",
+        "transaction": "Transaction"
+      },
+      "link": [
+        {
+          "declarations": ["input link"],
+          "selectors": ["link"],
+          "match": {
+            "link=txHash": "Transaction",
+            "link=blockHeight": "BlockHeight"
+          }
+        }
+      ]
     }
   },
   "sendAndReceive": {
