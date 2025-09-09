@@ -2,6 +2,7 @@ pub mod core;
 mod cron;
 mod execute;
 pub mod liquidity_depth;
+mod metrics;
 mod query;
 mod state;
 
