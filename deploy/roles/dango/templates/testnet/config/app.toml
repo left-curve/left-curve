@@ -122,3 +122,16 @@ sample_rate = 1.0
 
 # Traces sample rate for Sentry.
 traces_sample_rate = 1.0
+
+################################################################################
+###                            Pyth Configuration                            ###
+################################################################################
+
+[pyth]
+
+# PythLazer endpoints. This is a Vec<String>.
+# It's possible to omit this field renaming it to _endpoints.
+endpoints = {{ pyth_endpoints }}
+
+# PythLazer access token.
+access_token = {{ pyth_access_token }}

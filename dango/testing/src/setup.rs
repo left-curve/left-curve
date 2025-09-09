@@ -10,8 +10,8 @@ use {
         warp,
     },
     grug::{
-        Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, Message, TendermintRpcClient,
-        Uint128,
+        Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, Message, NonEmpty,
+        TendermintRpcClient, Uint128,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk_lite::DiskDbLite,
@@ -24,6 +24,7 @@ use {
     indexer_hooked::HookedIndexer,
     pyth_client::PythClientCoreCache,
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
+    pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST},
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
 };
@@ -117,7 +118,10 @@ pub fn setup_test_lazer(
     setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
-        ProposalPreparer::new_with_lazer(),
+        ProposalPreparer::new_with_lazer(
+            Some(NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap()),
+            Some(LAZER_ACCESS_TOKEN_TEST),
+        ),
         NullIndexer,
         RustVm::genesis_codes(),
         test_opt,

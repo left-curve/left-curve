@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    grug::NonEmpty,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -11,6 +14,7 @@ pub struct Config {
     pub sentry: SentryConfig,
     pub log_level: String,
     pub log_format: LogFormat,
+    pub pyth: PythLazerConfig,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -123,4 +127,10 @@ impl Default for TransactionsConfig {
             gas_adjustment: 1.4,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct PythLazerConfig {
+    pub endpoints: Option<NonEmpty<Vec<String>>>,
+    pub access_token: Option<String>,
 }

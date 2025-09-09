@@ -1,13 +1,17 @@
 use {
     crate::{QueryPythId, pyth_handler::PythHandler},
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
-    grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
+    grug::{
+        Coins, Json, JsonSerExt, Lengthy, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError,
+        Tx,
+    },
     prost::bytes::Bytes,
     pyth_client::{PythClientCore, PythClientCoreCache, PythClientTrait},
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
     pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
+    reqwest::IntoUrl,
     std::{fmt::Debug, sync::Mutex},
-    tracing::error,
+    tracing::{error, warn},
 };
 #[cfg(feature = "metrics")]
 use {
@@ -67,17 +71,29 @@ impl ProposalPreparer<PythClientCoreCache> {
 }
 
 impl ProposalPreparer<PythClientLazer> {
-    pub fn new_with_lazer() -> Self {
+    pub fn new_with_lazer<V, U, T>(endpoints: Option<NonEmpty<V>>, access_token: Option<T>) -> Self
+    where
+        V: IntoIterator<Item = U> + Lengthy,
+        U: IntoUrl,
+        T: ToString,
+    {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new_with_lazer(
-            NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
-            LAZER_ACCESS_TOKEN_TEST,
-        );
+        let client = if let (Some(endpoints), Some(access_token)) = (endpoints, access_token) {
+            Some(Mutex::new(PythHandler::new_with_lazer(
+                endpoints,
+                access_token,
+            )))
+        } else {
+            warn!(
+                "Endpoints or access token for Pyth Lazer not provided, oracle feeding will be disabled"
+            );
+            None
+        };
 
         Self {
-            pyth_handler: Some(Mutex::new(client)),
+            pyth_handler: client,
         }
     }
 }
@@ -115,6 +131,11 @@ where
         let start = Instant::now();
 
         let cfg: AppConfig = querier.query_app_config()?;
+
+        // Check if the PythHandler is initialized.
+        if self.pyth_handler.is_none() {
+            return Ok(txs);
+        }
 
         // Should we find a way to start and connect the PythClientPPHandler at startup?
         // How to know which ids should be used?
