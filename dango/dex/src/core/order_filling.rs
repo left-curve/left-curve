@@ -1,11 +1,10 @@
 use {
-    dango_types::dex::{Direction, Order, OrderTrait},
+    dango_types::dex::Order,
     grug::{IsZero, Number, NumberConst, StdResult, Udec128, Udec128_6, Udec128_24},
 };
 
 #[derive(Debug)]
 pub struct FillingOutcome {
-    pub order_direction: Direction,
     /// The order with the `filled` amount updated.
     pub order: Order,
     /// Amount this order was filled for, in base asset.
@@ -72,7 +71,7 @@ fn fill_bids(
         // Compute how much of the order can be filled.
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
-        let filled_base = *order.remaining().min(&volume);
+        let filled_base = order.remaining.min(volume);
         let filled_quote = filled_base.checked_mul(clearing_price)?;
 
         // Deduct the amount filled from the order and the volume.
@@ -83,7 +82,7 @@ fn fill_bids(
         // - if it's a passive order, it's not charged any fee;
         // - if it was created at a previous block height, then it's charged the maker fee rate;
         // - otherwise, it's charged the taker fee rate.
-        let fee_rate = match order.created_at_block_height() {
+        let fee_rate = match order.created_at_block_height {
             None => Udec128::ZERO,
             Some(block_height) if block_height < current_block_height => maker_fee_rate,
             Some(_) => taker_fee_rate,
@@ -98,17 +97,9 @@ fn fill_bids(
         // For quote, in case the order is filled at a price better than the
         // limit price, refund the unused deposit.
         let refund_base = filled_base.checked_sub(fee_base)?;
-        let mut refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
-
-        // For market orders, refund the remaining (unfilled) amount, as market
-        // orders are immediate-or-cancel.
-        if let Order::Market(market_order) = order {
-            let remaining_in_quote = market_order.remaining.checked_mul(market_order.price)?;
-            refund_quote.checked_add_assign(remaining_in_quote)?;
-        }
+        let refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
 
         outcome.push(FillingOutcome {
-            order_direction: Direction::Bid,
             order,
             filled_base,
             filled_quote,
@@ -142,7 +133,7 @@ fn fill_asks(
         // Compute how much of the order can be filled.
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
-        let filled_base = *order.remaining().min(&volume);
+        let filled_base = order.remaining.min(volume);
         let filled_quote = filled_base.checked_mul(clearing_price)?;
 
         // Deduct the amount filled from the order and the volume.
@@ -154,7 +145,7 @@ fn fill_asks(
         // - if it's a passive order, it's not charged any fee;
         // - if it was created at a previous block height, then it's charged the maker fee rate;
         // - otherwise, it's charged the taker fee rate.
-        let fee_rate = match order.created_at_block_height() {
+        let fee_rate = match order.created_at_block_height {
             None => Udec128::ZERO,
             Some(block_height) if block_height < current_block_height => maker_fee_rate,
             Some(_) => taker_fee_rate,
@@ -167,17 +158,10 @@ fn fill_asks(
         // Determine the refund amounts.
         // For base, since limit orders are good-till-canceled, no need to refund.
         // For quote, it's the filled amount minus the fee.
-        let mut refund_base = Udec128_6::ZERO;
+        let refund_base = Udec128_6::ZERO;
         let refund_quote = filled_quote.checked_sub(fee_quote)?;
 
-        // For market orders, refund the remaining (unfilled) amount, as market
-        // orders are immediate-or-cancel.
-        if let Order::Market(market_order) = order {
-            refund_base.checked_add_assign(market_order.remaining)?;
-        }
-
         outcome.push(FillingOutcome {
-            order_direction: Direction::Ask,
             order,
             filled_base,
             filled_quote,

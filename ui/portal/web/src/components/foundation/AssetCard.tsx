@@ -1,7 +1,6 @@
 import { useConfig, usePrices } from "@left-curve/store";
-import { useApp } from "~/hooks/useApp";
 
-import { PairAssets } from "@left-curve/applets-kit";
+import { PairAssets, useApp } from "@left-curve/applets-kit";
 import { twMerge } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
@@ -25,7 +24,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
   const price = getPrice(humanAmount, coin.denom, { format: true });
 
   return (
-    <motion.div layout="position" className="flex flex-col p-4">
+    <motion.div layout="position" className="flex flex-col p-4 w-full">
       <div className={twMerge("flex items-center justify-between transition-all")}>
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">

@@ -1,10 +1,10 @@
-import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
+import { twMerge, useApp, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { useApp } from "~/hooks/useApp";
-import { useSearchBar } from "~/hooks/useSearchBar";
+import { useFavApplets, useSearchBar } from "@left-curve/store";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { APPLETS } from "~/constants";
 
 import {
   IconButton,
@@ -19,16 +19,28 @@ import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { SearchItem } from "./SearchItem";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
 import type React from "react";
-import type { SearchBarResult } from "~/hooks/useSearchBar";
+import type { AppletMetadata } from "@left-curve/store/types";
+import type { SearchBarResult } from "@left-curve/store";
 
 const SearchMenu: React.FC = () => {
   const { isLg } = useMediaQuery();
   const location = useLocation();
+  const { favApplets } = useFavApplets();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
   const { searchText, setSearchText, isLoading, searchResult, allNotFavApplets, isRefetching } =
-    useSearchBar();
+    useSearchBar({
+      applets: Object.fromEntries(
+        Object.entries(APPLETS).filter(
+          ([appletId]) =>
+            !(
+              (appletId === "earn" || appletId === "devtool") &&
+              import.meta.env.CONFIG_ENVIRONMENT === "test"
+            ),
+        ),
+      ),
+      favApplets,
+    });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -87,7 +99,7 @@ const SearchMenu: React.FC = () => {
             !isLg && isSearchBarVisible
               ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-surface-primary-rice p-4 gap-4"
               : "",
-            isLg && location.pathname === "/" ? "lg:top-0":"lg:top-[-22px]"
+            isLg && location.pathname === "/" ? "lg:top-0" : "lg:top-[-22px]",
           )}
         >
           <div className="w-full gap-[10px] lg:gap-0 flex items-center">

@@ -4,8 +4,11 @@ export { createEventBus } from "./createEventBus.js";
 export {
   DangoStoreContext,
   DangoStoreProvider,
+  DangoRemoteProvider,
   type DangoStoreProviderProps,
 } from "./context.js";
+
+export { requestRemote, type WindowDangoStore } from "./remote.js";
 
 export { local, devnet, testnet, http, graphql } from "@left-curve/dango";
 
@@ -136,9 +139,9 @@ export {
 } from "./hooks/useSubmitTx.js";
 
 export {
-  type UseSimpleSwapStateParameters,
-  useSimpleSwapState,
-} from "./hooks/useSimpleSwapState.js";
+  type UseConvertStateParameters,
+  useConvertState,
+} from "./hooks/useConvertState.js";
 
 export {
   type UseProTradeStateParameters,
@@ -149,6 +152,14 @@ export {
   type UsePoolLiquidityStateParameters,
   usePoolLiquidityState,
 } from "./hooks/usePoolLiquidityState.js";
+
+export {
+  useSearchBar,
+  type UseSearchBarParameters,
+  type SearchBarResult,
+} from "./hooks/useSearchBar.js";
+
+export { useFavApplets } from "./hooks/useFavApplets.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
@@ -172,6 +183,7 @@ export { passkey } from "./connectors/passkey.js";
 export { eip1193 } from "./connectors/eip1193.js";
 export { eip6963 } from "./connectors/eip6963.js";
 export { session } from "./connectors/session.js";
+export { remote } from "./connectors/remote.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Actions                                  */

@@ -56,6 +56,8 @@ async fn index_account_creations() -> anyhow::Result<()> {
     assert_that!(public_key.key_hash).is_equal_to(user.first_key_hash().to_string());
     assert_that!(public_key.public_key).is_equal_to(user.first_key().to_string());
 
+    assert_that!(accounts[0].created_tx_hash.len()).is_at_least(60);
+
     Ok(())
 }
 

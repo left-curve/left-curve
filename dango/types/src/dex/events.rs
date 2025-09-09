@@ -1,5 +1,5 @@
 use {
-    crate::dex::{Direction, OrderId, OrderKind, PairId},
+    crate::dex::{Direction, OrderId, PairId, TimeInForce},
     grug::{Addr, Coin, DecCoin, Denom, Udec128_6, Udec128_24, Uint128},
 };
 
@@ -8,14 +8,11 @@ use {
 pub struct OrderCreated {
     pub user: Addr,
     pub id: OrderId,
-    pub kind: OrderKind,
+    pub time_in_force: TimeInForce,
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    /// `None` for market orders.
-    pub price: Option<Udec128_24>,
-    /// Amount denominated in the base asset for limit orders and market SELL orders.
-    /// Amount denominated in the quote asset for market BUY orders.
+    pub price: Udec128_24,
     pub amount: Uint128,
     pub deposit: Coin,
 }
@@ -25,13 +22,20 @@ pub struct OrderCreated {
 pub struct OrderCanceled {
     pub user: Addr,
     pub id: OrderId,
-    pub kind: OrderKind,
-    /// Amount that remains unfilled at the time of cancelation.
-    ///
-    /// This can be either denominated in the base or the quote asset, depending
-    /// on order type.
+    pub time_in_force: TimeInForce,
+    /// Amount that remains unfilled at the time of cancelation, denominated in the base asset.
     pub remaining: Udec128_6,
     pub refund: DecCoin<6>,
+    /// The base denom of the order.
+    pub base_denom: Denom,
+    /// The quote denom of the order.
+    pub quote_denom: Denom,
+    /// The direction of the order.
+    pub direction: Direction,
+    /// The order's limit price, measured in quote asset per base asset.
+    pub price: Udec128_24,
+    /// The order's total size, measured in the _base asset_.
+    pub amount: Uint128,
 }
 
 #[grug::derive(Serde)]
@@ -50,9 +54,8 @@ pub struct OrdersMatched {
 #[grug::event("order_filled")]
 pub struct OrderFilled {
     pub user: Addr,
-    // `None` if the order is from the passive liquidity pool.
-    pub id: Option<OrderId>,
-    pub kind: OrderKind,
+    pub id: OrderId,
+    pub time_in_force: TimeInForce,
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,

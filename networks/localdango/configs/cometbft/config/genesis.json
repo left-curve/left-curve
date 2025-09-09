@@ -305,11 +305,14 @@
               {
                 "base_denom": "dango",
                 "params": {
+                  "bucket_sizes": [],
                   "lp_denom": "dex/pool/dango/usdc",
+                  "min_order_size": "0",
                   "pool_type": {
                     "xyk": {
-                      "order_spacing": "1",
-                      "reserve_ratio": "0"
+                      "limit": 30,
+                      "reserve_ratio": "0",
+                      "spacing": "1"
                     }
                   },
                   "swap_fee_rate": "0.003"
@@ -319,11 +322,21 @@
               {
                 "base_denom": "bridge/btc",
                 "params": {
+                  "bucket_sizes": [
+                    "0.01",
+                    "0.1",
+                    "1",
+                    "10",
+                    "50",
+                    "100"
+                  ],
                   "lp_denom": "dex/pool/btc/usdc",
+                  "min_order_size": "0",
                   "pool_type": {
                     "xyk": {
-                      "order_spacing": "1",
-                      "reserve_ratio": "0"
+                      "limit": 30,
+                      "reserve_ratio": "0",
+                      "spacing": "1"
                     }
                   },
                   "swap_fee_rate": "0.003"
@@ -333,11 +346,21 @@
               {
                 "base_denom": "bridge/eth",
                 "params": {
+                  "bucket_sizes": [
+                    "0.01",
+                    "0.1",
+                    "1",
+                    "10",
+                    "50",
+                    "100"
+                  ],
                   "lp_denom": "dex/pool/eth/usdc",
+                  "min_order_size": "0",
                   "pool_type": {
                     "xyk": {
-                      "order_spacing": "1",
-                      "reserve_ratio": "0"
+                      "limit": 30,
+                      "reserve_ratio": "0",
+                      "spacing": "1"
                     }
                   },
                   "swap_fee_rate": "0.003"
@@ -347,11 +370,19 @@
               {
                 "base_denom": "bridge/sol",
                 "params": {
+                  "bucket_sizes": [
+                    "0.01",
+                    "0.1",
+                    "1",
+                    "10"
+                  ],
                   "lp_denom": "dex/pool/sol/usdc",
+                  "min_order_size": "0",
                   "pool_type": {
                     "xyk": {
-                      "order_spacing": "1",
-                      "reserve_ratio": "0"
+                      "limit": 30,
+                      "reserve_ratio": "0",
+                      "spacing": "1"
                     }
                   },
                   "swap_fee_rate": "0.003"
@@ -404,7 +435,9 @@
             },
             "routes": [
               [
-                "eth",
+                {
+                  "remote": "eth"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -414,7 +447,9 @@
                 }
               ],
               [
-                "eth",
+                {
+                  "remote": "eth"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -424,7 +459,9 @@
                 }
               ],
               [
-                "eth",
+                {
+                  "remote": "eth"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -434,7 +471,9 @@
                 }
               ],
               [
-                "eth",
+                {
+                  "remote": "eth"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -444,7 +483,9 @@
                 }
               ],
               [
-                "sol",
+                {
+                  "remote": "sol"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -454,7 +495,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -464,7 +507,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -474,7 +519,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -484,7 +531,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {
@@ -494,7 +543,9 @@
                 }
               ],
               [
-                "usdc",
+                {
+                  "remote": "usdc"
+                },
                 "0xdf86ce97839bc44fabb32f67f1da8f76885131a2",
                 {
                   "warp": {

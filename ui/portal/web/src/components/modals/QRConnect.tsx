@@ -3,12 +3,11 @@ import { Actions } from "@left-curve/dango/utils";
 import { useAccount, useConnectorClient, useDataChannel } from "@left-curve/store";
 import { captureException } from "@sentry/react";
 import { forwardRef, useId, useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
+import { IconButton, IconClose, IconMobile, QRCode, useApp } from "@left-curve/applets-kit";
 
 import { WEBRTC_URI } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { JsonValue } from "@left-curve/dango/types";
 
@@ -20,10 +19,9 @@ export const QRConnect = forwardRef((_props, _ref) => {
     key: id,
   });
 
-  const { toast } = useApp();
+  const { toast, hideModal } = useApp();
   const { data: signingClient } = useConnectorClient();
   const { username } = useAccount();
-  const { hideModal } = useApp();
 
   dataChannel?.subscribe(async (msg) => {
     if (!signingClient || isLoadingCredential) return;

@@ -4,7 +4,7 @@ use {
     dango_types::{
         constants::{dango, usdc},
         dex::{
-            self, CreateLimitOrderRequest, Direction, OrderId, OrdersByPairResponse,
+            self, CreateOrderRequest, Direction, OrderId, OrdersByPairResponse,
             QueryOrdersByPairRequest, QueryPausedRequest,
         },
     },
@@ -116,22 +116,21 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
                 Message::execute(
                     contracts.dex,
                     &dex::ExecuteMsg::BatchUpdateOrders {
-                        creates_market: vec![],
-                        creates_limit: vec![
-                            CreateLimitOrderRequest {
-                                base_denom: dango::DENOM.clone(),
-                                quote_denom: usdc::DENOM.clone(),
-                                direction: Direction::Bid,
-                                amount: NonZero::new_unchecked(Uint128::new(3)),
-                                price: NonZero::new_unchecked(Udec128_24::new(100)),
-                            },
-                            CreateLimitOrderRequest {
-                                base_denom: dango::DENOM.clone(),
-                                quote_denom: usdc::DENOM.clone(),
-                                direction: Direction::Ask,
-                                amount: NonZero::new_unchecked(Uint128::new(3)),
-                                price: NonZero::new_unchecked(Udec128_24::new(100)),
-                            },
+                        creates: vec![
+                            CreateOrderRequest::new_limit(
+                                dango::DENOM.clone(),
+                                usdc::DENOM.clone(),
+                                Direction::Bid,
+                                NonZero::new_unchecked(Udec128_24::new(100)),
+                                NonZero::new_unchecked(Uint128::new(300)), // 100 * 3
+                            ),
+                            CreateOrderRequest::new_limit(
+                                dango::DENOM.clone(),
+                                usdc::DENOM.clone(),
+                                Direction::Ask,
+                                NonZero::new_unchecked(Udec128_24::new(100)),
+                                NonZero::new_unchecked(Uint128::new(3)),
+                            ),
                         ],
                         cancels: None,
                     },

@@ -4,15 +4,15 @@ use {
     dango_types::{
         bank,
         gateway::{
-            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, RateLimit, Remote, WithdrawalFee,
+            Addr32, ExecuteMsg, InstantiateMsg, NAMESPACE, Origin, RateLimit, Remote, Traceable,
+            WithdrawalFee,
             bridge::{self, BridgeMsg},
         },
         taxman::{self, FeeType},
     },
     grug::{
         Addr, Coins, Denom, Inner, Message, MultiplyFraction, MutableCtx, Number, NumberConst,
-        Part, QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map,
-        coins,
+        QuerierExt, Response, StdError, StdResult, Storage, SudoCtx, Uint128, btree_map, coins,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -41,7 +41,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-fn set_routes(ctx: MutableCtx, routes: BTreeSet<(Part, Addr, Remote)>) -> anyhow::Result<Response> {
+fn set_routes(
+    ctx: MutableCtx,
+    routes: BTreeSet<(Origin, Addr, Remote)>,
+) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()?,
         "only the owner can set routes"
@@ -52,9 +55,24 @@ fn set_routes(ctx: MutableCtx, routes: BTreeSet<(Part, Addr, Remote)>) -> anyhow
     Ok(Response::new())
 }
 
-fn _set_routes(storage: &mut dyn Storage, routes: BTreeSet<(Part, Addr, Remote)>) -> StdResult<()> {
-    for (part, bridge, remote) in routes {
-        let denom = Denom::from_parts([NAMESPACE.clone(), part])?;
+fn _set_routes(
+    storage: &mut dyn Storage,
+    routes: BTreeSet<(Origin, Addr, Remote)>,
+) -> anyhow::Result<()> {
+    for (origin, bridge, remote) in routes {
+        let denom = match origin {
+            Origin::Local(denom) => {
+                ensure!(
+                    !denom.is_remote(),
+                    "local denom must not start with `{}` namespace: `{}`",
+                    NAMESPACE.as_ref(),
+                    denom
+                );
+
+                denom
+            },
+            Origin::Remote(part) => Denom::from_parts([NAMESPACE.clone(), part])?,
+        };
 
         ROUTES.save(storage, (bridge, remote), &denom)?;
         REVERSE_ROUTES.save(storage, (&denom, remote), &bridge)?;
@@ -120,20 +138,27 @@ fn receive_remote(
     // Find the alloyed denom of the given bridge contract and remote.
     let denom = ROUTES.load(ctx.storage, (ctx.sender, remote))?;
 
-    // Increase the reserve.
-    RESERVES.may_update(ctx.storage, (ctx.sender, remote), |maybe_reserve| {
-        let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
-        Ok::<_, StdError>(reserve.checked_add(amount)?)
-    })?;
+    // Increase the reserve only if the denom is remote.
+    if denom.is_remote() {
+        RESERVES.may_update(ctx.storage, (ctx.sender, remote), |maybe_reserve| {
+            let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
+
+            Ok::<_, StdError>(reserve.checked_add(amount)?)
+        })?;
+    }
 
     // Increase the outbound quota.
-    OUTBOUND_QUOTAS.may_update(ctx.storage, &denom, |maybe_quota| {
-        let quota = maybe_quota.unwrap_or(Uint128::ZERO);
-        Ok::<_, StdError>(quota.checked_add(amount)?)
+    OUTBOUND_QUOTAS.may_modify(ctx.storage, &denom, |maybe_quota| {
+        let Some(quota) = maybe_quota else {
+            return Ok(None);
+        };
+
+        Ok::<_, StdError>(Some(quota.checked_add(amount)?))
     })?;
 
-    // Mint the alloyed token to the recipient.
-    Ok(Response::new().add_message({
+    // Mint the alloyed token to the recipient (if the token is not native on Dango).
+    // Otherwise, transfer the token to the recipient.
+    Ok(Response::new().add_message(if denom.is_remote() {
         let bank = ctx.querier.query_bank()?;
         Message::execute(
             bank,
@@ -143,6 +168,8 @@ fn receive_remote(
             },
             Coins::new(),
         )?
+    } else {
+        Message::transfer(recipient, coins! { denom => amount })?
     }))
 }
 
@@ -166,36 +193,42 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
         })?;
     }
 
-    // Reduce the reserve.
-    RESERVES.may_update(ctx.storage, (bridge, remote), |maybe_reserve| {
-        let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
-        reserve.checked_sub(coin.amount).map_err(|_| {
-            anyhow!(
-                "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
-                bridge,
-                remote,
-                reserve,
-                coin.amount
-            )
-        })
-    })?;
+    // Reduce the reserve only if the denom is remote.
+    if coin.denom.is_remote() {
+        RESERVES.may_update(ctx.storage, (bridge, remote), |maybe_reserve| {
+            let reserve = maybe_reserve.unwrap_or(Uint128::ZERO);
+            reserve.checked_sub(coin.amount).map_err(|_| {
+                anyhow!(
+                    "insufficient reserve! bridge: {}, remote: {:?}, reserve: {}, amount: {}",
+                    bridge,
+                    remote,
+                    reserve,
+                    coin.amount
+                )
+            })
+        })?;
+    }
 
     // Reduce the outbound quota.
-    OUTBOUND_QUOTAS.may_update(ctx.storage, &coin.denom, |maybe_quota| {
-        let quota = maybe_quota.unwrap_or(Uint128::ZERO);
-        quota.checked_sub(coin.amount).map_err(|_| {
+    OUTBOUND_QUOTAS.may_modify(ctx.storage, &coin.denom, |maybe_quota| {
+        let Some(quota) = maybe_quota else {
+            return Ok(None);
+        };
+
+        Some(quota.checked_sub(coin.amount).map_err(|_| {
             anyhow!(
                 "insufficient outbound quota! denom: {}, amount: {}",
                 coin.denom,
                 coin.amount
             )
-        })
+        }))
+        .transpose()
     })?;
 
     let (bank, taxman) = ctx.querier.query_bank_and_taxman()?;
 
     // 1. Call the bridge contract to make the remote transfer.
-    // 2. Burn the alloyed token to be transferred.
+    // 2. Burn the alloyed token to be transferred (only if the token is not native on Dango).
     // 3. Pay fee to the taxman.
     Ok(Response::new()
         .add_message(Message::execute(
@@ -207,14 +240,18 @@ fn transfer_remote(ctx: MutableCtx, remote: Remote, recipient: Addr32) -> anyhow
             }),
             Coins::new(),
         )?)
-        .add_message(Message::execute(
-            bank,
-            &bank::ExecuteMsg::Burn {
-                from: ctx.contract,
-                coins: coin.clone().into(),
-            },
-            Coins::new(),
-        )?)
+        .may_add_message(if coin.denom.is_remote() {
+            Some(Message::execute(
+                bank,
+                &bank::ExecuteMsg::Burn {
+                    from: ctx.contract,
+                    coins: coin.clone().into(),
+                },
+                Coins::new(),
+            )?)
+        } else {
+            None
+        })
         .may_add_message(if let Some(fee) = maybe_fee {
             Some(Message::execute(
                 taxman,

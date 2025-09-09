@@ -285,7 +285,7 @@ impl StartCmd {
 
         dango_httpd_context
             .indexer_clickhouse_context
-            .start_candle_cache()
+            .start_cache()
             .await?;
 
         dango_httpd::server::run_server(

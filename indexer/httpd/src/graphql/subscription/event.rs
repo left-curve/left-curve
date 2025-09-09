@@ -232,6 +232,8 @@ impl EventSubscription {
             "subscription",
         ));
 
+        let stream = app_ctx.pubsub.subscribe().await?;
+
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
@@ -239,7 +241,7 @@ impl EventSubscription {
 
             async move { Self::query_events(&app_ctx.db, block_range, _query).await }
         })
-        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+        .chain(stream.then(move |block_height| {
             let query = query.clone();
 
             #[cfg(feature = "metrics")]
@@ -309,6 +311,7 @@ impl EventSubscription {
         ));
 
         let addresses = Arc::new(addresses);
+        let stream = app_ctx.pubsub.subscribe().await?;
 
         Ok(once({
             #[cfg(feature = "metrics")]
@@ -328,7 +331,7 @@ impl EventSubscription {
                     .await
             }
         })
-        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+        .chain(stream.then(move |block_height| {
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 

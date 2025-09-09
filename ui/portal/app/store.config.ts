@@ -1,6 +1,7 @@
-import { createConfig, graphql, passkey, session, devnet } from "@left-curve/store";
+import { createConfig, graphql, passkey, devnet, createStorage } from "@left-curve/store";
 
 import type { Config } from "@left-curve/store/types";
+import { createMMKVStorage } from "./storage.config";
 
 const chain = devnet;
 
@@ -70,5 +71,6 @@ export const config: Config = createConfig({
   chain,
   transport: graphql(chain.urls.indexer, { batch: true }),
   coins,
+  storage: createStorage({ storage: createMMKVStorage() }),
   connectors: [passkey()],
 });

@@ -1,7 +1,7 @@
-import { Direction } from "#types/dex.js";
+import { Direction } from "../types/dex.js";
 import { Decimal } from "@left-curve/sdk/utils";
 
-import type { Trade } from "#types/dex.js";
+import type { Trade } from "../types/dex.js";
 
 export function calculateTradeSize(trade: Trade, decimals: number) {
   if (trade.direction === Direction.Buy) {

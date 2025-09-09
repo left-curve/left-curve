@@ -1,6 +1,5 @@
-import { useMediaQuery } from "@left-curve/applets-kit";
-import { useEffect, useState } from "react";
-import { useApp } from "~/hooks/useApp";
+import { useApp, useMediaQuery } from "@left-curve/applets-kit";
+import { useEffect, useRef, useState } from "react";
 
 import { Direction } from "@left-curve/dango/types";
 import { format } from "date-fns";
@@ -8,7 +7,7 @@ import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/uti
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
 import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type { Trade } from "@left-curve/dango/types";
@@ -182,18 +181,35 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
   const { formatNumberOptions } = settings;
   const [trades, setTrades] = useState<Trade[]>([]);
 
+  const subscriptionRef = useRef<{
+    unsubscribe: ReturnType<typeof subscriptions.subscribe>;
+    pairSybol: string;
+  } | null>(null);
+
   useEffect(() => {
+    const pairSybol = `${base.symbol}-${quote.symbol}`;
+    const shouldSubscribe = subscriptionRef.current?.pairSybol !== pairSybol;
+    if (!shouldSubscribe) return;
     const unsubscribe = subscriptions.subscribe("trades", {
       params: {
         baseDenom: base.denom,
         quoteDenom: quote.denom,
       },
-      listener: ({ trades: trade }) => setTrades((prev) => [trade, ...prev].slice(0, 25)),
+      listener: ({ trades: trade }) => {
+        try {
+          setTrades((prev) => [trade, ...prev].slice(0, 25));
+        } catch (err) {
+          console.error(err);
+        }
+      },
     });
 
+    subscriptionRef.current = { unsubscribe, pairSybol };
+
     return () => {
+      if (shouldSubscribe) return;
       setTrades([]);
-      unsubscribe();
+      subscriptionRef.current?.unsubscribe();
     };
   }, [base, quote]);
 
@@ -205,12 +221,10 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
-        {trades.map((trade) => {
-          const sizeAmount = calculateTradeSize(trade, base.decimals).toFixed(7);
-
+        {trades.map((trade, index) => {
           return (
             <div
-              key={`${trade.addr}-${trade.createdAt}-${trade.direction}`}
+              key={`${trade.addr}-${trade.createdAt}-${index}`}
               className={
                 "grid grid-cols-3 diatype-xs-medium text-secondary-700 w-full cursor-pointer group relative"
               }
@@ -225,15 +239,15 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
                   Decimal(trade.clearingPrice)
                     .times(Decimal(10).pow(base.decimals - quote.decimals))
                     .toFixed(),
-                  { ...formatNumberOptions, maxSignificantDigits: 10, maxFractionDigits: 5 },
-                )}
+                  { ...formatNumberOptions, minSignificantDigits: 8, maxSignificantDigits: 8 },
+                ).slice(0, 10)}
               </p>
               <p className="text-end z-10">
-                {formatNumber(sizeAmount, {
+                {formatNumber(calculateTradeSize(trade, base.decimals).toFixed(7), {
                   ...formatNumberOptions,
                   maxSignificantDigits: 10,
                   maxFractionDigits: 5,
-                })}
+                }).slice(0, 7)}
               </p>
 
               <div className="flex gap-1 items-center justify-end z-10">

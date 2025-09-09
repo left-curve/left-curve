@@ -145,7 +145,11 @@ where
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(routes::index::index)
             .service(routes::index::up)
-            .service(routes::graphql::graphql_route())
+            .service(routes::graphql::graphql_route::<
+                crate::graphql::query::Query,
+                async_graphql::EmptyMutation,
+                async_graphql::EmptySubscription,
+            >())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))
             .app_data(web::Data::new(graphql_schema.clone()));

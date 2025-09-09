@@ -12,11 +12,11 @@ use {
     },
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction},
+        dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
     grug::{
-        BlockInfo, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero,
+        BlockInfo, Coin, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero,
         NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24,
         Uint128, btree_map, coins,
     },
@@ -68,28 +68,27 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
             let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
-            let funds = match direction {
+            let fund = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(usdc::DENOM.clone(), quote_amount).unwrap()
+                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
                 },
-                Direction::Ask => Coins::one(dango::DENOM.clone(), amount).unwrap(),
+                Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
             };
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                    creates: vec![CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
                         direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                        NonZero::new_unchecked(price),
+                        NonZero::new_unchecked(fund.amount),
+                    )],
                     cancels: None,
                 },
-                funds,
+                Coins::from(fund),
             )?;
 
             signer.sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
@@ -119,7 +118,7 @@ async fn index_candles_with_mocked_clickhouse() -> anyhow::Result<()> {
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.close_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
+    assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
 
     Ok(())
 }
@@ -144,14 +143,14 @@ async fn index_candles_with_real_clickhouse() -> anyhow::Result<()> {
     // Manual asserts so if clearing price changes, it doesn't break this test.
     assert_that!(pair_price.quote_denom).is_equal_to("bridge/usdc".to_string());
     assert_that!(pair_price.base_denom).is_equal_to("dango".to_string());
-    assert_that!(pair_price.close_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
+    assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
     assert_that!(pair_price.volume_base)
         .is_equal_to::<Udec128_6>(Udec128_6::from_str("25.0").unwrap());
     assert_that!(pair_price.volume_quote)
         .is_equal_to::<Udec128_6>(Udec128_6::from_str("687.5").unwrap());
 
     // Makes sure we get correct precision: 27.4 without specific number, since this can change.
-    assert_that!(pair_price.close_price.to_string().len()).is_equal_to(4);
+    assert_that!(pair_price.clearing_price.to_string().len()).is_equal_to(4);
 
     let candle_query_builder = CandleQueryBuilder::new(
         CandleInterval::OneMinute,
@@ -215,14 +214,15 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
             .naive_utc(),
     );
 
-    assert_that!(candle.open).is_equal_to(pair_prices.last().unwrap().open_price);
+    assert_that!(candle.open).is_equal_to(pair_prices.last().unwrap().clearing_price);
 
     assert_that!(candle.high)
-        .is_equal_to(pair_prices.iter().map(|p| p.highest_price).max().unwrap());
+        .is_equal_to(pair_prices.iter().map(|p| p.clearing_price).max().unwrap());
 
-    assert_that!(candle.low).is_equal_to(pair_prices.iter().map(|p| p.lowest_price).min().unwrap());
+    assert_that!(candle.low)
+        .is_equal_to(pair_prices.iter().map(|p| p.clearing_price).min().unwrap());
 
-    assert_that!(candle.close).is_equal_to(pair_prices.first().unwrap().close_price);
+    assert_that!(candle.close).is_equal_to(pair_prices.first().unwrap().clearing_price);
 
     assert_that!(candle.volume_base)
         .is_equal_to(pair_prices.iter().map(|p| p.volume_base).sum::<Udec128_6>());
@@ -310,7 +310,8 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_base: Udec128_6::new(75),
             volume_quote: Udec128_6::new(1875),
             interval: CandleInterval::OneSecond,
-            block_height: 10,
+            min_block_height: 8,
+            max_block_height: 10,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -323,7 +324,8 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_base: Udec128_6::new(100),
             volume_quote: Udec128_6::new(2500),
             interval: CandleInterval::OneSecond,
-            block_height: 7,
+            min_block_height: 4,
+            max_block_height: 7,
         },
         Candle {
             base_denom: "dango".to_string(),
@@ -336,7 +338,8 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
             volume_base: Udec128_6::new(75),
             volume_quote: Udec128_6::from_str("1937.5").unwrap(),
             interval: CandleInterval::OneSecond,
-            block_height: 3,
+            min_block_height: 1,
+            max_block_height: 3,
         },
     ]);
 
@@ -388,22 +391,21 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                 &mut accounts.user1,
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![
-                        CreateLimitOrderRequest {
-                            base_denom: dango::DENOM.clone(),
-                            quote_denom: usdc::DENOM.clone(),
-                            direction: Direction::Ask,
-                            amount: NonZero::new_unchecked(amount),
-                            price: NonZero::new_unchecked(price),
-                        },
-                        CreateLimitOrderRequest {
-                            base_denom: dango::DENOM.clone(),
-                            quote_denom: usdc::DENOM.clone(),
-                            direction: Direction::Bid,
-                            amount: NonZero::new_unchecked(amount),
-                            price: NonZero::new_unchecked(price),
-                        },
+                    creates: vec![
+                        CreateOrderRequest::new_limit(
+                            dango::DENOM.clone(),
+                            usdc::DENOM.clone(),
+                            Direction::Ask,
+                            NonZero::new_unchecked(price),
+                            NonZero::new_unchecked(amount),
+                        ),
+                        CreateOrderRequest::new_limit(
+                            dango::DENOM.clone(),
+                            usdc::DENOM.clone(),
+                            Direction::Bid,
+                            NonZero::new_unchecked(price),
+                            NonZero::new_unchecked(amount.checked_mul_dec_ceil(price).unwrap()),
+                        ),
                     ],
                     cancels: None,
                 },
@@ -605,26 +607,25 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::BatchUpdateOrders {
-                creates_market: vec![],
-                creates_limit: vec![
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Ask,
-                        amount: NonZero::new_unchecked(Uint128::new(20000000000000)),
-                        price: NonZero::new_unchecked(
+                creates: vec![
+                    CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Ask,
+                        NonZero::new_unchecked(
                             Udec128_24::from_str("0.000000003836916198").unwrap(),
                         ),
-                    },
-                    CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
-                        direction: Direction::Bid,
-                        amount: NonZero::new_unchecked(Uint128::new(20000000000000)),
-                        price: NonZero::new_unchecked(
+                        NonZero::new_unchecked(Uint128::new(20000000000000)),
+                    ),
+                    CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Bid,
+                        NonZero::new_unchecked(
                             Udec128_24::from_str("0.000000003836916198").unwrap(),
                         ),
-                    },
+                        NonZero::new_unchecked(Uint128::new(200_000)),
+                    ),
                 ],
                 cancels: None,
             },
@@ -645,7 +646,7 @@ async fn index_pair_prices_with_small_amounts() -> anyhow::Result<()> {
         .await?
         .expect("Pair price should be found");
 
-    assert_that!(pair_price.close_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
+    assert_that!(pair_price.clearing_price).is_greater_than::<Udec128_24>(Udec128_24::ZERO);
 
     Ok(())
 }
@@ -685,28 +686,27 @@ async fn create_pair_prices(
             let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
-            let funds = match direction {
+            let fund = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(usdc::DENOM.clone(), quote_amount).unwrap()
+                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
                 },
-                Direction::Ask => Coins::one(dango::DENOM.clone(), amount).unwrap(),
+                Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
             };
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                    creates: vec![CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
                         direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                        NonZero::new_unchecked(price),
+                        NonZero::new_unchecked(fund.amount),
+                    )],
                     cancels: None,
                 },
-                funds,
+                Coins::from(fund),
             )?;
 
             signer.sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)

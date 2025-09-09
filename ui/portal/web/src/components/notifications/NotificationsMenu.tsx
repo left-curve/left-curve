@@ -1,9 +1,8 @@
-import { Button, twMerge, useClickAway } from "@left-curve/applets-kit";
+import { Button, twMerge, useApp, useClickAway } from "@left-curve/applets-kit";
 import { useRef } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { useNavigate } from "@tanstack/react-router";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { Notifications } from "./Notifications";
 
 import type React from "react";

@@ -1,12 +1,12 @@
 use {
     crate::{
-        entities::CandleInterval,
+        entities::{CandleInterval, pair_price::PairPrice},
         error::{IndexerError, Result},
     },
     chrono::{DateTime, Utc},
     clickhouse::Row,
     dango_types::dex::PairId,
-    grug::{Denom, Udec128_6, Udec128_24},
+    grug::{Denom, NumberConst, Udec128_6, Udec128_24},
     serde::{Deserialize, Serialize},
     std::str::FromStr,
 };
@@ -19,7 +19,7 @@ use {
     grug::Timestamp,
 };
 
-#[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Clone)]
+#[derive(Debug, Row, Serialize, Deserialize, Eq, PartialEq, Hash, Clone)]
 #[cfg_attr(feature = "async-graphql", derive(SimpleObject))]
 #[cfg_attr(feature = "async-graphql", graphql(complex))]
 pub struct Candle {
@@ -47,12 +47,71 @@ pub struct Candle {
     #[serde(with = "super::pair_price::dec")]
     pub volume_quote: Udec128_6,
     pub interval: CandleInterval,
-    pub block_height: u64,
+    pub min_block_height: u64,
+    pub max_block_height: u64,
+}
+
+impl Candle {
+    /// Creates a new candle from a pair price.
+    pub fn new_with_pair_price(
+        pair_price: PairPrice,
+        interval: CandleInterval,
+        time_start: DateTime<Utc>,
+        block_height: u64,
+    ) -> Self {
+        Candle {
+            quote_denom: pair_price.quote_denom,
+            base_denom: pair_price.base_denom,
+            time_start,
+            open: pair_price.clearing_price,
+            high: pair_price.clearing_price,
+            low: pair_price.clearing_price,
+            close: pair_price.clearing_price,
+            volume_base: pair_price.volume_base,
+            volume_quote: pair_price.volume_quote,
+            interval,
+            max_block_height: block_height,
+            min_block_height: block_height,
+        }
+    }
+
+    /// Creates a new candle from a previous candle.
+    pub fn new_with_previous_candle(
+        previous_candle: &Candle,
+        interval: CandleInterval,
+        time_start: DateTime<Utc>,
+        block_height: u64,
+    ) -> Self {
+        Candle {
+            quote_denom: previous_candle.quote_denom.clone(),
+            base_denom: previous_candle.base_denom.clone(),
+            time_start,
+            open: previous_candle.close,
+            high: previous_candle.close,
+            low: previous_candle.close,
+            close: previous_candle.close,
+            volume_base: Udec128_6::ZERO,
+            volume_quote: Udec128_6::ZERO,
+            interval,
+            max_block_height: block_height,
+            min_block_height: block_height,
+        }
+    }
+
+    pub fn set_high_low(&mut self, price: Udec128_24) {
+        self.high = self.high.max(price);
+        self.low = self.low.min(price);
+    }
 }
 
 #[cfg(feature = "async-graphql")]
 #[ComplexObject]
 impl Candle {
+    #[graphql(deprecation = "Use `maxBlockHeight` instead")]
+    async fn block_height(&self) -> u64 {
+        self.max_block_height
+    }
+
     async fn open(&self) -> BigDecimal {
         let inner_value = self.open.inner();
         let bigint = BigInt::from(*inner_value);
@@ -112,21 +171,28 @@ impl Candle {
 }
 
 impl Candle {
+    /// NOTE: this should not be called too often, it can take some time.
+    pub async fn optimize_table(clickhouse_client: &clickhouse::Client) -> Result<()> {
+        Ok(clickhouse_client
+            .query("OPTIMIZE TABLE candles FINAL")
+            .execute()
+            .await?)
+    }
+
     /// Returns all existing pairs for a given interval and an optional block height.
     pub async fn existing_pairs(
         interval: CandleInterval,
         clickhouse_client: &clickhouse::Client,
         block_height: Option<u64>,
     ) -> Result<Vec<PairId>> {
-        let mut query = format!(
-            "SELECT DISTINCT base_denom, quote_denom FROM {}",
-            interval.table_name()
-        );
+        let mut query =
+            "SELECT DISTINCT base_denom, quote_denom FROM candles WHERE interval = ?".to_string();
 
         let mut params: Vec<String> = Vec::new();
+        params.push(interval.to_string());
 
         if let Some(block_height) = block_height {
-            query.push_str(" WHERE finalizeAggregation(block_height) = ?");
+            query.push_str(" AND block_height = ?");
             params.push(block_height.to_string());
         }
 
@@ -174,15 +240,13 @@ impl Candle {
         clickhouse_client: &clickhouse::Client,
         pair: PairId,
     ) -> Result<Option<u64>> {
-        let query = format!(
-            "SELECT max(finalizeAggregation(block_height)) FROM {} WHERE (quote_denom = ? AND base_denom = ?)",
-            interval.table_name()
-        );
+        let query = "SELECT max(block_height) FROM candles WHERE (quote_denom = ? AND base_denom = ? AND interval = ?)";
 
         let last_block_height: Option<u64> = clickhouse_client
-            .query(&query)
+            .query(query)
             .bind(pair.quote_denom)
             .bind(pair.base_denom)
+            .bind(interval)
             .fetch_optional()
             .await?;
 

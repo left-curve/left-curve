@@ -2,27 +2,26 @@ use {
     crate::build_actix_app,
     assert_json_diff::assert_json_include,
     dango_genesis::Contracts,
-    dango_indexer_clickhouse::{cache::CandleCache, entities::pair_price::PairPrice},
+    dango_indexer_clickhouse::{
+        entities::pair_price::PairPrice, indexer::candles::cache::CandleCache,
+    },
     dango_testing::{TestAccounts, TestOption, TestSuiteWithIndexer, setup_test_with_indexer},
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction},
+        dex::{self, CreateOrderRequest, Direction},
         oracle::{self, PriceSource},
     },
     grug::{
-        Addressable, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, ResultExt,
-        Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
+        Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
+        ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
     },
     grug_app::Indexer,
     indexer_testing::{
         GraphQLCustomRequest, PaginatedResponse, call_paginated_graphql, call_ws_graphql_stream,
         parse_graphql_subscription_response,
     },
-    std::{collections::HashMap, sync::Arc, time::Duration},
-    tokio::{
-        sync::{Mutex, mpsc},
-        time::sleep,
-    },
+    std::{collections::HashMap, sync::Arc},
+    tokio::sync::{Mutex, mpsc},
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -31,6 +30,8 @@ async fn query_candles() -> anyhow::Result<()> {
         setup_test_with_indexer(TestOption::default()).await;
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
+
+    suite.app.indexer.wait_for_finish()?;
 
     let graphql_query = r#"
       query Candles($base_denom: String!, $quote_denom: String!, $interval: String) {
@@ -46,9 +47,10 @@ async fn query_candles() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             interval
-            blockHeight
+            minBlockHeight
+            maxBlockHeight
           }
-          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom blockHeight }  cursor }
+          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom minBlockHeight maxBlockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -85,15 +87,6 @@ async fn query_candles() -> anyhow::Result<()> {
                         .into_iter()
                         .map(|e| e.node)
                         .collect::<Vec<_>>();
-
-                    // I have to use a loop because the candles are filled up
-                    // through async materialized views and it can take a few
-                    // milliseconds.
-                    if !received_candles.is_empty() {
-                        break;
-                    }
-
-                    sleep(Duration::from_millis(100)).await;
                 }
 
                 let expected_candle = serde_json::json!({
@@ -125,6 +118,8 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
 
     create_pair_prices(&mut suite, &mut accounts, &contracts).await?;
 
+    suite.app.indexer.wait_for_finish()?;
+
     let graphql_query = r#"
       query Candles($base_denom: String!, $quote_denom: String!, $interval: String, $earlierThan: DateTime) {
       candles(baseDenom: $base_denom, quoteDenom: $quote_denom, interval: $interval, earlierThan: $earlierThan) {
@@ -139,9 +134,10 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
             quoteDenom
             baseDenom
             interval
-            blockHeight
+            minBlockHeight
+            maxBlockHeight
           }
-          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom blockHeight }  cursor }
+          edges { node { timeStart open high low close volumeBase volumeQuote interval baseDenom quoteDenom minBlockHeight maxBlockHeight }  cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -179,15 +175,6 @@ async fn query_candles_with_dates() -> anyhow::Result<()> {
                         .into_iter()
                         .map(|e| e.node)
                         .collect::<Vec<_>>();
-
-                    // I have to use a loop because the candles are filled up
-                    // through async materialized views and it can take a few
-                    // milliseconds.
-                    if !received_candles.is_empty() {
-                        break;
-                    }
-
-                    sleep(Duration::from_millis(100)).await;
                 }
 
                 let expected_candle = serde_json::json!({
@@ -237,7 +224,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
               quoteDenom
               baseDenom
               interval
-              blockHeight
+              minBlockHeight
+              maxBlockHeight
           }
       }
     "#;
@@ -266,9 +254,6 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
             let mut suite_guard = suite_clone.lock().await;
 
             create_pair_prices(&mut suite_guard, &mut accounts, &contracts).await?;
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish()?;
         }
 
         Ok::<(), anyhow::Error>(())
@@ -302,7 +287,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                     "open": "27.5",
                     "volumeBase": "50",
                     "volumeQuote": "1312.5",
-                    "blockHeight": 4,
+                    "minBlockHeight": 2,
+                    "maxBlockHeight": 4,
                 }]);
 
                 assert_json_include!(actual: response.data, expected: expected_json);
@@ -322,7 +308,7 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                         .data
                         .first()
                         .unwrap()
-                        .get("blockHeight")
+                        .get("maxBlockHeight")
                         .and_then(|v| v.as_u64())
                         .unwrap()
                         < 6
@@ -338,7 +324,8 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
                         "high": "27.5",
                         "low": "25",
                         "open": "27.5",
-                        "blockHeight": 6,
+                        "minBlockHeight": 2,
+                        "maxBlockHeight": 6,
                         "volumeBase": "75",
                         "volumeQuote": "1937.5",
                     }]);
@@ -391,7 +378,10 @@ async fn graphql_subscribe_to_candles() -> anyhow::Result<()> {
     // println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
 
+    drop(old_cache);
+
     let mut suite_guard = suite.lock().await;
+
     suite_guard
         .app
         .indexer
@@ -423,7 +413,8 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
               quoteDenom
               baseDenom
               interval
-              blockHeight
+              minBlockHeight
+              maxBlockHeight
           }
       }
     "#;
@@ -447,7 +438,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
     // Can't call this from LocalSet so using channels instead.
     // Creating a block without creating a candle (no new pair prices).
-    let (crate_block_tx, mut rx) = mpsc::channel::<u32>(1);
+    let (create_block_tx, mut rx) = mpsc::channel::<u32>(1);
     tokio::spawn(async move {
         while let Some(_idx) = rx.recv().await {
             let msgs = vec![Message::transfer(
@@ -464,15 +455,12 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                     NonEmpty::new_unchecked(msgs),
                 )
                 .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
 
         Ok::<(), anyhow::Error>(())
     });
 
-    let crate_block_tx_clone = crate_block_tx.clone();
+    let create_block_tx_clone = create_block_tx.clone();
     let context = dango_httpd_context.clone();
 
     local_set
@@ -493,7 +481,7 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
                 let expected_json = serde_json::json!([{
                     "baseDenom": "dango",
                     "quoteDenom": "bridge/usdc",
-                    "blockHeight": 2,
+                    "maxBlockHeight": 2,
                     "close": "27.5",
                     "high": "27.5",
                     "interval": "ONE_MINUTE",
@@ -505,46 +493,29 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
 
                 assert_json_include!(actual: response.data, expected: expected_json);
 
-                crate_block_tx_clone.send(2).await.unwrap();
+                create_block_tx_clone.send(2).await.unwrap();
 
-                loop {
-                    // 2nd response
-                    let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
-                        &mut framed,
-                        name,
-                    )
-                    .await?;
+                // 2nd response
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
-                    // This because blocks aren't indexed in order
-                    if response
-                        .data
-                        .first()
-                        .unwrap()
-                        .get("blockHeight")
-                        .and_then(|v| v.as_u64())
-                        .unwrap()
-                        < 3
-                    {
-                        continue;
-                    }
+                let expected_json = serde_json::json!([{
+                    "baseDenom": "dango",
+                    "quoteDenom": "bridge/usdc",
+                    "maxBlockHeight": 3,
+                    "close": "27.5",
+                    "high": "27.5",
+                    "interval": "ONE_MINUTE",
+                    "low": "27.5",
+                    "open": "27.5",
+                    "volumeBase": "25",
+                    "volumeQuote": "687.5",
+                }]);
 
-                    let expected_json = serde_json::json!([{
-                        "baseDenom": "dango",
-                        "quoteDenom": "bridge/usdc",
-                        "blockHeight": 3,
-                        "close": "27.5",
-                        "high": "27.5",
-                        "interval": "ONE_MINUTE",
-                        "low": "27.5",
-                        "open": "27.5",
-                        "volumeBase": "25",
-                        "volumeQuote": "687.5",
-                    }]);
-
-                    assert_json_include!(actual: response.data, expected: expected_json);
-
-                    break;
-                }
+                assert_json_include!(actual: response.data, expected: expected_json);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -588,6 +559,8 @@ async fn graphql_subscribe_to_candles_on_no_new_pair_prices() -> anyhow::Result<
     // println!("Cache : {:#?}", old_cache.candles);
     // println!("Cache from clickhouse: {:#?}", cache.candles);
     assert_eq!(cache.candles, old_cache.candles);
+
+    drop(old_cache);
 
     let mut suite_guard = suite.lock().await;
     suite_guard
@@ -636,28 +609,27 @@ async fn create_pair_prices(
             let price = Udec128_24::new(price);
             let amount = Uint128::new(amount);
 
-            let funds = match direction {
+            let fund = match direction {
                 Direction::Bid => {
                     let quote_amount = amount.checked_mul_dec_ceil(price).unwrap();
-                    Coins::one(usdc::DENOM.clone(), quote_amount).unwrap()
+                    Coin::new(usdc::DENOM.clone(), quote_amount).unwrap()
                 },
-                Direction::Ask => Coins::one(dango::DENOM.clone(), amount).unwrap(),
+                Direction::Ask => Coin::new(dango::DENOM.clone(), amount).unwrap(),
             };
 
             let msg = Message::execute(
                 contracts.dex,
                 &dex::ExecuteMsg::BatchUpdateOrders {
-                    creates_market: vec![],
-                    creates_limit: vec![CreateLimitOrderRequest {
-                        base_denom: dango::DENOM.clone(),
-                        quote_denom: usdc::DENOM.clone(),
+                    creates: vec![CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
                         direction,
-                        amount: NonZero::new_unchecked(amount),
-                        price: NonZero::new_unchecked(price),
-                    }],
+                        NonZero::new_unchecked(price),
+                        NonZero::new_unchecked(fund.amount),
+                    )],
                     cancels: None,
                 },
-                funds,
+                Coins::from(fund),
             )?;
 
             signer.sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)

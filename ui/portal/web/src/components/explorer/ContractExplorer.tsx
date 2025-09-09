@@ -1,11 +1,10 @@
 import { useConfig, usePrices, usePublicClient, useQueryWithPagination } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { Badge, TextCopy } from "@left-curve/applets-kit";
+import { Badge, TextCopy, useApp } from "@left-curve/applets-kit";
 import { ContractCard } from "../foundation/ContractCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";

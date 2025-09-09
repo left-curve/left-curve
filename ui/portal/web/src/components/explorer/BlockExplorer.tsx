@@ -14,7 +14,7 @@ import {
 import { HeaderExplorer } from "./HeaderExplorer";
 import { TransactionsTable } from "./TransactionsTable";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { IndexedBlock } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -260,7 +260,7 @@ const BlockDetails: React.FC = () => {
   const { transactions, createdAt, blockHeight, hash } = data.searchBlock;
 
   return (
-    <div className="flex flex-col rounded-md p-4 bg-surface-secondary-rice shadow-account-card text-secondary-700 relative overflow-hidden diatype-sm-medium">
+    <div className="flex flex-col rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-secondary-700 relative overflow-hidden diatype-sm-medium">
       <div className="overflow-y-auto scrollbar-none w-full gap-4 flex flex-col">
         <h1 className="h4-bold text-primary-900">
           {m["explorer.block.details.blockDetails"]({ height: `#${blockHeight}` })}

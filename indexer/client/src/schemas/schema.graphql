@@ -3,6 +3,7 @@ type Account {
 	address: String!
 	accountType: AccountType!
 	createdBlockHeight: Int!
+	createdTxHash: String!
 	"""
 	Returns the account creation timestamp in ISO 8601 format with time zone.
 	"""
@@ -128,7 +129,9 @@ type Candle {
 	quoteDenom: String!
 	baseDenom: String!
 	interval: CandleInterval!
-	blockHeight: Int!
+	minBlockHeight: Int!
+	maxBlockHeight: Int!
+	blockHeight: Int! @deprecated(reason: "Use `maxBlockHeight` instead")
 	open: BigDecimal!
 	high: BigDecimal!
 	low: BigDecimal!
@@ -377,12 +380,6 @@ ISO 8601 combined date and time without timezone.
 * `2015-07-01T08:59:60.123`,
 """
 scalar NaiveDateTime
-
-enum OrderKind {
-	limit
-	market
-	passive
-}
 
 """
 Information about pagination in a connection
@@ -647,6 +644,48 @@ type Subscription {
 	Get all trades, this will not include past trades but only new ones since you subscribed.
 	"""
 	trades(baseDenom: String!, quoteDenom: String!): Trade!
+	queryApp(
+		"""
+		Request as JSON
+		"""
+		request: GrugQueryInput!,
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): JSON!
+	queryStore(
+		"""
+		Key as B64 string
+		"""
+		key: String!,		prove: Boolean! = false,
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): Store!
+	queryStatus(
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): Status!
+}
+
+enum TimeInForce {
+	"""
+	Good-Til-Canceled (GTC): indicates that if the order is not fully filled
+	in the first auction, its remaining portion is to be persisted in the
+	order book, and made available for future auctions, where it becomes a
+	maker order (an order is a taker in its first auction).
+	"""
+	GTC
+	"""
+	Immediate-Or-Cancel (IOC): indicates that if the order is not fully
+	filled in the first auction, it is to be canceled, and the remaining
+	portion refunded to the user.
+	"""
+	IOC
 }
 
 type Trade {
@@ -654,7 +693,7 @@ type Trade {
 	quoteDenom: String!
 	baseDenom: String!
 	direction: Direction!
-	orderType: OrderKind!
+	timeInForce: TimeInForce!
 	blockHeight: Int!
 	"""
 	Returns the block timestamp in ISO 8601 format with time zone.
@@ -874,6 +913,10 @@ type UserEdge {
 	cursor: String!
 }
 
+"""
+Marks an element of a GraphQL schema as no longer supported.
+"""
+directive @deprecated(reason: String = "No longer supported") on FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | ENUM_VALUE
 """
 Directs the executor to include this field or fragment only when the `if` argument is true.
 """

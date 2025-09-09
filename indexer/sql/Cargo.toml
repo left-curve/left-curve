@@ -13,10 +13,11 @@ version       = { workspace = true }
 path = "src/lib.rs"
 
 [features]
-async-graphql = ["dep:async-graphql", "grug-types/async-graphql"]
-metrics       = ["dep:metrics"]
-testing       = []
-tracing       = ["dep:tracing"]
+async-graphql        = ["dep:async-graphql", "grug-types/async-graphql"]
+http-request-details = []
+metrics              = ["dep:metrics"]
+testing              = []
+tracing              = ["dep:tracing"]
 
 [dependencies]
 anyhow                = { workspace = true }

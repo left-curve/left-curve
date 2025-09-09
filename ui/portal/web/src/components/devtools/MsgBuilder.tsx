@@ -4,6 +4,7 @@ import {
   JsonVisualizer,
   ResizerContainer,
   Tabs,
+  useApp,
   useTheme,
 } from "@left-curve/applets-kit";
 import {
@@ -17,8 +18,7 @@ import { Editor } from "@monaco-editor/react";
 import { useMutation } from "@tanstack/react-query";
 
 import { useState, type PropsWithChildren } from "react";
-import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 type MsgBuilderProps = {
   currentTab: "execute" | "query";

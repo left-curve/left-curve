@@ -271,7 +271,7 @@ pub async fn setup_test_with_indexer(
         GenesisOption::preset_test(),
     );
 
-    clickhouse_context.start_candle_cache().await.unwrap();
+    clickhouse_context.start_cache().await.unwrap();
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 

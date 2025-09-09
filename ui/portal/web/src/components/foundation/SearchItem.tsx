@@ -1,12 +1,11 @@
 import { AddressVisualizer, useMediaQuery } from "@left-curve/applets-kit";
-import { useFavApplets } from "~/hooks/useFavApplets";
+import { useFavApplets } from "@left-curve/store";
 
 import { IconEmptyStar, IconStar, TruncateText } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
 import type { Account, Address, ContractInfo } from "@left-curve/dango/types";
-import type { AnyCoin, WithPrice } from "@left-curve/store/types";
+import type { AnyCoin, AppletMetadata, WithPrice } from "@left-curve/store/types";
 import type { MouseEvent, PropsWithChildren } from "react";
 
 const childVariants = {
@@ -23,7 +22,7 @@ type SearchAppletItemProps = AppletMetadata;
 const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
   const { id, title, description, img } = applet;
   const { favApplets, addFavApplet, removeFavApplet } = useFavApplets();
-  const isFav = favApplets[id];
+  const isFav = favApplets.includes(id);
 
   const onClickStar = (e: MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -114,9 +113,9 @@ type SearchTransactionItemProps = {
 const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash }) => {
   return (
     <motion.div
+      key={hash}
       className="w-full p-2 min-h-[74px] flex items-start justify-between hover:bg-surface-tertiary-rice rounded-xs group-data-[selected=true]:bg-surface-tertiary-rice cursor-pointer"
       variants={childVariants}
-      key={height}
     >
       <div className="flex items-center gap-4">
         <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">

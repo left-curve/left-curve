@@ -5,7 +5,7 @@ export const Route = createFileRoute("/maintenance")({
   component: MaintenanceApplet,
 });
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 function MaintenanceApplet() {
   const { theme } = useTheme();

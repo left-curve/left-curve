@@ -156,12 +156,19 @@ where
         F: FnOnce(Option<T>) -> Result<Option<T>, E>,
         E: From<StdError>,
     {
-        let maybe_data = action(self.may_load(storage)?)?;
+        let maybe_current = self.may_load(storage)?;
+        let was_present = maybe_current.is_some();
 
-        if let Some(data) = &maybe_data {
-            self.save(storage, data)?;
-        } else {
-            self.remove(storage);
+        let maybe_data = action(maybe_current)?;
+
+        match (&maybe_data, was_present) {
+            (Some(data), _) => {
+                self.save(storage, data)?;
+            },
+            (None, true) => {
+                self.remove(storage);
+            },
+            (None, false) => {},
         }
 
         Ok(maybe_data)

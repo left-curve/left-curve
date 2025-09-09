@@ -1,7 +1,7 @@
 use {
     crate::{
         account_factory::Username,
-        dex::{Direction, OrderId, PairParams, PairUpdate, PassiveOrder, RestingOrderBookState},
+        dex::{Direction, OrderId, PairParams, PairUpdate, RestingOrderBookState, TimeInForce},
     },
     grug::{
         Addr, Bounded, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6,
@@ -24,72 +24,114 @@ use {
 /// non-USDC quoted pairs, the maximum route length can be adjusted.
 pub type SwapRoute = MaxLength<UniqueVec<PairId>, 2>;
 
-/// A request to create a new limit order.
-///
-/// When creating a new limit order, the trader must send appropriate amount of
-/// funds along with the message:
-///
-/// - For SELL orders, must send `base_denom` of `amount` amount.
-///
-/// - For BUY orders, must send `quote_denom` of the amount calculated as:
-///
-///   ```plain
-///   ceil(amount * price)
-///   ```
+pub type MaxSlippage = Bounded<Udec128, ZeroInclusiveOneExclusive>;
+
+/// A request to create a new order.
 #[grug::derive(Serde)]
-pub struct CreateLimitOrderRequest {
+pub struct CreateOrderRequest {
     pub base_denom: Denom,
     pub quote_denom: Denom,
-    pub direction: Direction,
-    /// The amount of _base asset_ to trade.
-    ///
-    /// The frontend UI may allow user to choose the amount in terms of the
-    /// quote asset, and convert it to the base asset amount behind the scene:
-    ///
-    /// ```plain
-    /// base_asset_amount = floor(quote_asset_amount / price)
-    /// ```
-    pub amount: NonZero<Uint128>,
-    /// The limit price measured _in the quote asset_, i.e. how many units of
-    /// quote asset is equal in value to 1 unit of base asset.
-    ///
-    /// Note: price must be non-zero, otherwise we get "division by zero" error
-    /// which causes cronjob to fail.
-    pub price: NonZero<Udec128_24>,
+    pub price: PriceOption,
+    pub amount: AmountOption,
+    pub time_in_force: TimeInForce,
+}
+
+impl CreateOrderRequest {
+    /// Create an order with `PriceOption::Limit` and `TimeInForce::GoodTilCanceled`.
+    pub fn new_limit(
+        base_denom: Denom,
+        quote_denom: Denom,
+        direction: Direction,
+        price: NonZero<Udec128_24>,
+        amount: NonZero<Uint128>, // Quote asset amount for bids; base asset amount for asks.
+    ) -> Self {
+        Self {
+            base_denom,
+            quote_denom,
+            price: PriceOption::Limit(price),
+            amount: AmountOption::new(direction, amount),
+            time_in_force: TimeInForce::GoodTilCanceled,
+        }
+    }
+
+    /// Create an order with `PriceOption::Market` and `TimeInForce::ImmediateOrCancel`.
+    pub fn new_market(
+        base_denom: Denom,
+        quote_denom: Denom,
+        direction: Direction,
+        max_slippage: MaxSlippage,
+        amount: NonZero<Uint128>, // Quote asset amount for bids; base asset amount for asks.
+    ) -> Self {
+        Self {
+            base_denom,
+            quote_denom,
+            price: PriceOption::Market { max_slippage },
+            amount: AmountOption::new(direction, amount),
+            time_in_force: TimeInForce::ImmediateOrCancel,
+        }
+    }
+
+    /// Return the order's direction.
+    pub fn direction(&self) -> Direction {
+        match self.amount {
+            AmountOption::Bid { .. } => Direction::Bid,
+            AmountOption::Ask { .. } => Direction::Ask,
+        }
+    }
 }
 
 #[grug::derive(Serde)]
-pub struct CreateMarketOrderRequest {
-    pub base_denom: Denom,
-    pub quote_denom: Denom,
-    pub direction: Direction,
-    /// Amount is specified in the base asset for both BUY and SELL orders.
-    pub amount: NonZero<Uint128>,
-    /// The maximum slippage percentage.
+pub enum PriceOption {
+    /// The order is to have the specified limit price.
+    Limit(NonZero<Udec128_24>),
+    /// The order's limit price is to be determined by the best available price
+    /// in the resting order book and the specified maximum slippage.
     ///
-    /// This parameter works as follow:
+    /// If best available price doesn't exist (i.e. that side of the order book
+    /// is empty), order creation fails.
+    Market {
+        /// - For a BUY order, suppose the best (lowest) SELL price in the
+        ///   resting order book is `p_best`, the order's limit price will be
+        ///   calculated as:
+        ///
+        ///   ```math
+        ///   p_best * (1 + max_slippage)
+        ///   ```
+        ///
+        /// - For a SELL order, suppose the best (highest) BUY price in the
+        ///   resting order book is `p_best`, the order's limit price will be
+        ///   calculated as:
+        ///
+        ///   ```math
+        ///   p_best * (1 - max_slippage)
+        ///   ```
+        max_slippage: MaxSlippage,
+    },
+}
+
+#[grug::derive(Serde)]
+pub enum AmountOption {
+    /// To create buy (BUY) orders, the user must send a non-zero amount the
+    /// quote asset. Additionally, the order's size, computed as
     ///
-    /// - For a market BUY order, suppose the best (lowest) SELL price in the
-    ///   resting order book is `p_best`, then the market order's _average
-    ///   execution price_ can't be worse than:
+    /// ```math
+    /// floor(quote_amount / price)
+    /// ```
     ///
-    ///   ```math
-    ///   p_best * (1 + max_slippage)
-    ///   ```
-    ///
-    /// - For a market SELL order, suppose the best (highest) BUY price in the
-    ///   resting order book is `p_best`, then the market order's _average
-    ///   execution price_ can't be worse than:
-    ///
-    ///   ```math
-    ///   p_best * (1 - max_slippage)
-    ///   ```
-    ///
-    /// Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
-    /// enough liquidity in the resting order book to fully fill the market
-    /// order under its max slippage, it's filled as much as possible, with the
-    /// unfilled portion is canceled.
-    pub max_slippage: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    /// must also be non zero.
+    Bid { quote: NonZero<Uint128> },
+    /// To create ask (SELL) orders, the user must send a non-zero amount the
+    /// base asset.
+    Ask { base: NonZero<Uint128> },
+}
+
+impl AmountOption {
+    pub fn new(direction: Direction, amount: NonZero<Uint128>) -> Self {
+        match direction {
+            Direction::Bid => Self::Bid { quote: amount },
+            Direction::Ask => Self::Ask { base: amount },
+        }
+    }
 }
 
 #[grug::derive(Serde)]
@@ -111,8 +153,7 @@ pub enum ExecuteMsg {
     Callback(CallbackMsg),
     /// Create or cancel multiple limit orders in one batch.
     BatchUpdateOrders {
-        creates_market: Vec<CreateMarketOrderRequest>,
-        creates_limit: Vec<CreateLimitOrderRequest>,
+        creates: Vec<CreateOrderRequest>,
         cancels: Option<CancelOrderRequest>,
     },
     /// Provide passive liquidity to a pair. Unbalanced liquidity provision is
@@ -166,7 +207,7 @@ pub enum OwnerMsg {
 
 #[grug::derive(Serde)]
 pub enum CallbackMsg {
-    /// perform the batch auction; called during `cron_execute`
+    /// perform the batch auction; called during `cron_execute`.
     Auction {},
 }
 
@@ -177,7 +218,7 @@ pub enum ReplyMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
-    /// Returns whether tracing is paused.
+    /// Returns whether trading is paused.
     #[returns(bool)]
     Paused {},
     /// Query the parameters of a single trading pair.
@@ -284,12 +325,19 @@ pub enum QueryMsg {
         output: NonZero<Coin>,
     },
     /// Returns the orders generated by the passive liquidity pool.
-    #[returns(BTreeMap<Udec128_24, PassiveOrder>)]
+    #[returns(ReflectCurveResponse)]
     ReflectCurve {
         base_denom: Denom,
         quote_denom: Denom,
-        direction: Direction,
         /// Up to how many orders to return.
+        limit: Option<u32>,
+    },
+    /// Returns the liquidity depth of a pair.
+    #[returns(LiquidityDepthResponse)]
+    LiquidityDepth {
+        base_denom: Denom,
+        quote_denom: Denom,
+        bucket_size: Udec128_24,
         limit: Option<u32>,
     },
 }
@@ -348,4 +396,25 @@ pub struct OrdersByUserResponse {
     pub price: Udec128_24,
     pub amount: Uint128,
     pub remaining: Udec128_6,
+}
+
+/// Response type of the `QueryMsg::ReflectCurve` query.
+#[grug::derive(Serde)]
+pub struct ReflectCurveResponse {
+    pub bids: BTreeMap<Udec128_24, Uint128>, // price => amount in base asset
+    pub asks: BTreeMap<Udec128_24, Uint128>, // price => amount in base asset
+}
+
+/// Response type of the `QueryMsg::LiquidityDepth` query.
+#[grug::derive(Serde)]
+pub struct LiquidityDepth {
+    pub depth_base: Udec128_6,
+    pub depth_quote: Udec128_6,
+}
+
+/// Response type of the `QueryMsg::LiquidityDepth` query.
+#[grug::derive(Serde)]
+pub struct LiquidityDepthResponse {
+    pub bid_depth: Option<Vec<(Udec128_24, LiquidityDepth)>>,
+    pub ask_depth: Option<Vec<(Udec128_24, LiquidityDepth)>>,
 }
