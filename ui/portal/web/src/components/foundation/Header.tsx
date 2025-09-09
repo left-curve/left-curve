@@ -11,6 +11,7 @@ import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { TestnetBanner } from "./TestnetBanner";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -40,6 +41,8 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
       )}
     >
       {isLg ? <div id="quest-banner" /> : null}
+      <TestnetBanner />
+
       <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img

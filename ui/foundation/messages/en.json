@@ -29,7 +29,20 @@
     "motto": "Dango–the one app for everything DeFi",
     "notWalletDetected": "No wallet detected",
     "overview": "Overview",
+    "advice":"You are using {environment}",
+    "environment": [
+      {
+        "declarations": ["input environment"],
+        "selectors": ["environment"],
+        "match": {
+          "environment=dev": "devnet",
+          "environment=test": "testnet"
+        }
+      }
+    ],
+    "devnet":{"advice":"you are using devnet"},
     "testnet": {
+      "advice":"you are using testnet",
       "title": "Message from the founder",
       "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
     },
