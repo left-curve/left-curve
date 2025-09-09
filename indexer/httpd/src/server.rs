@@ -7,7 +7,7 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
-    grug_httpd::routes::index::index,
+    grug_httpd::routes::{graphql::graphql_route, index::index},
     sentry_actix::Sentry,
     std::fmt::Display,
 };
@@ -147,7 +147,7 @@ where
         cfg.service(index)
             .service(routes::index::up)
             .service(routes::blocks::services())
-            .service(grug_httpd::routes::graphql::graphql_route::<
+            .service(graphql_route::<
                 crate::graphql::query::Query,
                 crate::graphql::mutation::Mutation,
                 crate::graphql::subscription::Subscription,

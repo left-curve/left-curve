@@ -2,6 +2,7 @@ use {
     actix_web::{HttpRequest, HttpResponse, Resource, http::header, web},
     async_graphql::{Schema, http::GraphiQLSource},
     async_graphql_actix_web::{GraphQLBatchRequest, GraphQLResponse, GraphQLSubscription},
+    grug_types::HttpRequestDetails,
 };
 
 pub fn graphql_route<Q, M, S>() -> Resource
@@ -22,7 +23,7 @@ where
 
 pub async fn graphql_index<Q, M, S>(
     schema: web::Data<Schema<Q, M, S>>,
-    _req: HttpRequest,
+    req: HttpRequest,
     gql_request: GraphQLBatchRequest,
 ) -> GraphQLResponse
 where
@@ -30,7 +31,17 @@ where
     M: async_graphql::ObjectType + 'static,
     S: async_graphql::SubscriptionType + 'static,
 {
-    let request = gql_request.into_inner();
+    let remote_ip = req
+        .connection_info()
+        .realip_remote_addr()
+        .map(|ip| ip.to_string());
+
+    let peer_ip = req.connection_info().peer_addr().map(|ip| ip.to_string());
+
+    let details = HttpRequestDetails::new(remote_ip, peer_ip);
+
+    let request = gql_request.into_inner().data(details);
+
     schema.execute_batch(request).await.into()
 }
 

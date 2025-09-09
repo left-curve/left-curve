@@ -3,6 +3,7 @@ type Account {
 	address: String!
 	accountType: AccountType!
 	createdBlockHeight: Int!
+	createdTxHash: String!
 	"""
 	Returns the account creation timestamp in ISO 8601 format with time zone.
 	"""

@@ -8,6 +8,7 @@ use {
 
 #[derive(Clone)]
 pub struct Context {
+    pub sql_context: indexer_sql::Context,
     pub base: BaseContext,
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
@@ -24,6 +25,7 @@ impl Context {
         indexer_path: IndexerPath,
     ) -> Self {
         Self {
+            sql_context: ctx.clone(),
             base: BaseContext::new(grug_app),
             db: ctx.db,
             pubsub: ctx.pubsub,
