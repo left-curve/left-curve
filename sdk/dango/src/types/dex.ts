@@ -168,8 +168,7 @@ export type DexExecuteMsg =
    * Create or cancel multiple limit orders in one batch. */
   | {
       batchUpdateOrders: {
-        createsMarket: CreateMarketOrderRequest[];
-        createsLimit: CreateLimitOrderRequest[];
+        creates: CreateOrderRequest[];
         cancels: Option<CancelOrderRequest>;
       };
     }
@@ -280,63 +279,67 @@ export type PairUpdate = {
 
 export type CancelOrderRequest = "all" | { some: OrderId[] };
 
-export type CreateLimitOrderRequest = {
+export type CreateOrderRequest = {
   baseDenom: Denom;
   quoteDenom: Denom;
-  direction: Directions;
-  /** The amount of _base asset_ to trade.
-   *
-   * The frontend UI may allow user to choose the amount in terms of the
-   * quote asset, and convert it to the base asset amount behind the scene:
-   *
-   * ```plain
-   * base_asset_amount = floor(quote_asset_amount / price)
-   * ```
-   */
-  amount: string;
-  /** The limit price measured _in the quote asset_, i.e. how many units of
-   * quote asset is equal in value to 1 unit of base asset.
-   */
-  price: string;
+  price: PriceOption;
+  amount: AmountOption;
+  timeInForce: TimeInForceOptions;
 };
 
-export type CreateMarketOrderRequest = {
-  baseDenom: Denom;
-  quoteDenom: Denom;
-  direction: Directions;
+export type PriceOption =
+  /** The order is to have the specified limit price. */
+  | { limit: string }
+  | {
+      /**
+       * The order's limit price is to be determined by the best available price
+       * in the resting order book and the specified maximum slippage.
+       * If best available price doesn't exist (i.e. that side of the order book
+       * is empty), order creation fails.
+       */
+      market: {
+        /**
+         * - For a BUY order, suppose the best (lowest) SELL price in the
+         *   resting order book is `p_best`, the order's limit price will be
+         *   calculated as:
+         *
+         *   ```math
+         *   p_best * (1 + max_slippage)
+         *   ```
+         *
+         * - For a SELL order, suppose the best (highest) BUY price in the
+         *   resting order book is `p_best`, the order's limit price will be
+         *   calculated as:
+         *
+         *   ```math
+         *   p_best * (1 - max_slippage)
+         *   ```
+         */
+        maxSlippage: string;
+      };
+    };
+
+export type AmountOption =
   /**
-   * For BUY orders, the amount of quote asset; for SELL orders, that of the
-   * base asset.
+   * To create buy (BUY) orders, the user must send a non-zero amount the
+   * quote asset. Additionally, the order's size, computed as
+   *
+   * ```math
+   * floor(quote_amount / price)
+   * ```
+   *
+   * must also be non zero.
    */
-  amount: string;
-  /**
-   * The maximum slippage percentage.
-   *
-   * This parameter works as follow:
-   *
-   * - For a market BUY order, suppose the best (lowest) SELL price in the
-   *   resting order book is `p_best`, then the market order's _average
-   *   execution price_ can't be worse than:
-   *
-   *   ```math
-   *   p_best * (1 + max_slippage)
-   *   ```
-   *
-   * - For a market SELL order, suppose the best (highest) BUY price in the
-   *   resting order book is `p_best`, then the market order's _average
-   *   execution price_ can't be worse than:
-   *
-   *   ```math
-   *   p_best * (1 - max_slippage)
-   *   ```
-   *
-   * Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
-   * enough liquidity in the resting order book to fully fill the market
-   * order under its max slippage, it's filled as much as possible, with the
-   * unfilled portion is canceled.
-   */
-  maxSlippage: string;
+  | { bid: { quote: string } }
+  /** To create ask (SELL) orders, the user must send a non-zero amount the base asset. */
+  | { ask: { base: string } };
+
+export const TimeInForceOption = {
+  GoodTilCanceled: "GTC",
+  ImmediateOrCancel: "IOC",
 };
+
+export type TimeInForceOptions = (typeof TimeInForceOption)[keyof typeof TimeInForceOption];
 
 export const CandleInterval = {
   OneSecond: "ONE_SECOND",
