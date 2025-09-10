@@ -221,8 +221,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
           sender: account.address,
           creates: [order],
           funds: {
-            [availableCoin.denom]:
-              operation === "market" ? Decimal(amount).mulCeil(1).toFixed(0) : amount,
+            [availableCoin.denom]: amount,
           },
         });
       },
