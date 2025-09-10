@@ -33,6 +33,12 @@ import {
   type TradesSubscriptionReturnType,
 } from "./subscriptions/trades.js";
 
+import {
+  queryAppSubscription,
+  type QueryAppSubscriptionParameters,
+  type QueryAppSubscriptionReturnType,
+} from "./subscriptions/queryApp.js";
+
 export type IndexerActions = {
   accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
   blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
@@ -40,6 +46,7 @@ export type IndexerActions = {
   searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
   tradesSubscription: (args: TradesSubscriptionParameters) => TradesSubscriptionReturnType;
   transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
+  queryAppSubscription: (args: QueryAppSubscriptionParameters) => QueryAppSubscriptionReturnType;
   queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
 };
 
@@ -53,6 +60,7 @@ export function indexerActions<transport extends Transport = Transport>(
     searchTxs: (args) => searchTxs(client, args),
     tradesSubscription: (args) => tradesSubscription(client, args),
     transferSubscription: (args) => transferSubscription(client, args),
+    queryAppSubscription: (args) => queryAppSubscription(client, args),
     queryBlock: (args) => queryBlock(client, args),
   };
 }
