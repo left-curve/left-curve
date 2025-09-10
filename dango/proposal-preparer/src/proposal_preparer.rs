@@ -84,15 +84,13 @@ impl ProposalPreparer<PythClientLazer> {
 
         if access_token.to_string().is_empty() {
             warn!("Access token for Pyth Lazer is empty, oracle feeding will be disabled");
+        } else if endpoints.length() == 0 {
+            warn!("Endpoints for Pyth Lazer not provided, oracle feeding will be disabled");
         } else {
-            if endpoints.length() == 0 {
-                warn!("Endpoints for Pyth Lazer not provided, oracle feeding will be disabled");
-            } else {
-                client = Some(Mutex::new(PythHandler::new_with_lazer(
-                    NonEmpty::new(endpoints).unwrap(),
-                    access_token,
-                )))
-            }
+            client = Some(Mutex::new(PythHandler::new_with_lazer(
+                NonEmpty::new(endpoints).unwrap(),
+                access_token,
+            )))
         }
 
         Self {
