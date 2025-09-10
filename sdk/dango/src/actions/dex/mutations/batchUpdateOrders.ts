@@ -64,8 +64,9 @@ export async function batchUpdateOrders<transport extends Transport>(
         { name: "time_in_force", type: "string" },
       ],
       AmountOption: [isBuy ? { name: "bid", type: "Bid" } : { name: "ask", type: "Ask" }],
-      Bid: [{ name: "quote", type: "string" }],
-      Ask: [{ name: "base", type: "string" }],
+      ...(isBuy
+        ? { Bid: [{ name: "quote", type: "string" }] }
+        : { Ask: [{ name: "base", type: "string" }] }),
       PriceOption: [
         isLimit ? { name: "limit", type: "string" } : { name: "market", type: "Market" },
       ],
