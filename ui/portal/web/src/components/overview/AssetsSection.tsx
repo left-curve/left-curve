@@ -1,7 +1,7 @@
 import { useConfig } from "@left-curve/store";
 
 import { Button, useApp } from "@left-curve/applets-kit";
-import { ButtonLink } from "../foundation/ButtonLink";
+import { Link } from "@tanstack/react-router";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -58,18 +58,12 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
         })}
       </div>
       <div className="lg:self-end gap-4 items-center justify-center w-full lg:max-w-[256px] hidden lg:flex lg:mt-1">
-        <ButtonLink fullWidth size="md" to="/transfer" search={{ action: "receive" }}>
+        <Button as={Link} fullWidth size="md" to="/transfer?action=receive" search>
           {m["common.fund"]()}
-        </ButtonLink>
-        <ButtonLink
-          fullWidth
-          variant="secondary"
-          size="md"
-          to="/transfer"
-          search={{ action: "send" }}
-        >
+        </Button>
+        <Button as={Link} fullWidth variant="secondary" size="md" to="/transfer?action=send" search>
           {m["common.send"]()}
-        </ButtonLink>
+        </Button>
       </div>
     </div>
   );

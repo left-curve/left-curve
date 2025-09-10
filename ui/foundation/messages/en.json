@@ -22,6 +22,9 @@
     "switch": "Switch",
     "hi": "Hi",
     "to": "To",
+    "for": "for",
+    "at": "at",
+    "width": "width",
     "error": "Error",
     "confirm": "Confirm",
     "signinWithDesktop": "Sign in with Desktop",
@@ -547,8 +550,65 @@
         }
       },
       "account": {
-        "title": "{accountType} Account Created"
-      }
+        "title": "Account created"
+      },
+      "orderCreated": {
+        "title": "Order created",
+        "description": "{orderType} {action} in ",
+        "atPrice": "at price "
+      },
+      "orderCanceled": {
+        "title": "Order canceled",
+        "description": "{orderType} {action} in ",
+        "atPrice": "at price "
+      },
+      "orderFilled": {
+        "title": "Order {isFullfilled}",
+        "remaining": "remaining",
+        "isFullfilled": [
+          {
+            "declarations": ["input isFullfilled"],
+            "selectors": ["isFullfilled"],
+            "match": {
+              "isFullfilled=true": "fulfilled",
+              "isFullfilled=false": "partially fulfilled"
+            }
+          }
+        ]
+      },
+      "modal": {
+        "blockHeight": "Block Height",
+        "spotOrderAction": "Order {status}",
+        "spotOrderBuy": "{orderType} ∙ Buy",
+        "spotOrderSell": "{orderType} ∙ Sell",
+        "swapped": "Swapped",
+        "received": "Received",
+        "sent": "Sent ",
+        "in": "In",
+        "from": "From",
+        "fee": "Fee",
+        "time": "Time",
+        "amount": "Amount",
+        "tokenReceived": "Token Received",
+        "limitPrice": "Limit Price",
+        "id": "ID",
+        "timeCreated": "Time Created",
+        "timeCanceled": "Time Canceled",
+        "timeUpdated": "Time Updated",
+        "filledAmount": "Filled / Amount",
+        "averagePrice": "Avg / Price",
+        "transaction": "Transaction"
+      },
+      "link": [
+        {
+          "declarations": ["input link"],
+          "selectors": ["link"],
+          "match": {
+            "link=txHash": "Transaction",
+            "link=blockHeight": "BlockHeight"
+          }
+        }
+      ]
     }
   },
   "sendAndReceive": {

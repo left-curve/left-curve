@@ -1,9 +1,11 @@
 import type {
+  Address,
   Candle,
   CandleIntervals,
   Denom,
   IndexedAccountEvent,
   IndexedBlock,
+  IndexedEvent,
   IndexedTransferEvent,
   PublicClient,
   QueryRequest,
@@ -26,6 +28,11 @@ export type SubscriptionSchema = [
     key: "account";
     params: { username: Username; sinceBlockHeight?: number };
     listener: (event: { accounts: IndexedAccountEvent[] }) => void;
+  },
+  {
+    key: "eventsByAddresses";
+    params: { addresses: Address[]; sinceBlockHeight?: number };
+    listener: (events: IndexedEvent[]) => void;
   },
   {
     key: "candles";

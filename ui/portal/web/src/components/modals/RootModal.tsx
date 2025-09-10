@@ -118,6 +118,31 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.NotificationSentAndReceived]: {
+    component: lazy(() =>
+      import("./notifications/NotificationSentAndReceived").then(
+        ({ NotificationSentAndReceived }) => ({
+          default: NotificationSentAndReceived,
+        }),
+      ),
+    ),
+  },
+  [Modals.NotificationSwapped]: {
+    component: lazy(() =>
+      import("./notifications/NotificationSwapped").then(({ NotificationSwapped }) => ({
+        default: NotificationSwapped,
+      })),
+    ),
+  },
+  [Modals.NotificationSpotActionOrder]: {
+    component: lazy(() =>
+      import("./notifications/NotificationSpotActionOrder").then(
+        ({ NotificationSpotActionOrder }) => ({
+          default: NotificationSpotActionOrder,
+        }),
+      ),
+    ),
+  },
 };
 
 type ModalDefinition = {

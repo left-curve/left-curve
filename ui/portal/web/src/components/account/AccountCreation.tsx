@@ -9,7 +9,7 @@ import {
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
@@ -187,15 +187,14 @@ export const Deposit: React.FC = () => {
       invalidateKeys: [["quests", account?.username]],
       mutationFn: async () => {
         if (!signingClient) throw new Error("error: no signing client");
+        const funds = fundsAmount || "0";
 
-        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals);
+        const parsedAmount = parseUnits(funds, coinInfo.decimals);
 
         await signingClient.registerAccount({
           sender: account!.address,
           config: { [accountType as "spot"]: { owner: account!.username } },
-          funds: {
-            "bridge/usdc": parsedAmount.toString(),
-          },
+          ...(Decimal(funds).gt(0) ? { funds: { "bridge/usdc": parsedAmount.toString() } } : {}),
         });
 
         await refreshAccounts?.();

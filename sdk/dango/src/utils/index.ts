@@ -22,7 +22,7 @@ export {
   parseUnits,
 } from "./formatters.js";
 
-export { calculateTradeSize } from "./dex.js";
+export { calculateTradeSize, calculateFees, calculatePrice } from "./dex.js";
 
 export { Actions } from "./actions.js";
 

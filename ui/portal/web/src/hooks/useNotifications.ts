@@ -4,17 +4,23 @@ import { useCallback, useMemo } from "react";
 import { uid } from "@left-curve/dango/utils";
 import { format, isToday } from "date-fns";
 
-import type { AccountTypes, Address, Hex, UID, Username } from "@left-curve/dango/types";
-import type { AnyCoin } from "@left-curve/store/types";
+import type {
+  AccountTypes,
+  Address,
+  Coins,
+  Hex,
+  OrderCanceledEvent,
+  OrderCreatedEvent,
+  OrderFilledEvent,
+  UID,
+  Username,
+} from "@left-curve/dango/types";
 
 export type Notifications = {
   transfer: {
-    createdAt: string;
-    amount: string;
-    coin: AnyCoin;
+    coins: Coins;
     fromAddress: Address;
     toAddress: Address;
-    txHash: Hex;
     type: "received" | "sent";
   };
   account: {
@@ -22,36 +28,41 @@ export type Notifications = {
     accountType: AccountTypes;
     accountIndex: number;
   };
+  orderCreated: OrderCreatedEvent;
+  orderCanceled: OrderCanceledEvent;
+  orderFilled: OrderFilledEvent;
 };
 
 export type Notification<key extends keyof Notifications = keyof Notifications> = {
   id: UID;
-  type: string;
+  type: key;
   data: Notifications[key];
   blockHeight: number;
+  seen?: boolean;
   isHidden?: boolean;
+  txHash?: Hex;
   createdAt: string;
 };
 
 type UseNotificationsParameters = {
   limit?: number;
-  page?: number;
 };
 
 export function useNotifications(parameters: UseNotificationsParameters = {}) {
-  const { limit = 5, page = 1 } = parameters;
-
+  const { limit = 5 } = parameters;
   const { username = "", accounts, account } = useAccount();
-  const { getCoinInfo, subscriptions } = useConfig();
+  const { subscriptions } = useConfig();
+  const userAddresses = useMemo(() => (accounts ? accounts.map((a) => a.address) : []), [accounts]);
 
   const [allNotifications, setAllNotifications] = useStorage<Record<Username, Notification[]>>(
     "app.notifications",
     {
       enabled: Boolean(username),
       initialValue: {},
-      version: 0.2,
+      version: 0.3,
       migrations: {
         0.1: (notifications: Notification[]) => ({ [username]: notifications }),
+        0.2: () => ({}),
       },
     },
   );
@@ -60,6 +71,8 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     () => (allNotifications[username] || []).filter((n) => !n.isHidden),
     [allNotifications, username],
   );
+
+  const totalNotifications = userNotification.length;
 
   const addNotification = useCallback(
     (notification: Notification) => {
@@ -93,14 +106,12 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     [username],
   );
 
-  const totalNotifications = userNotification.length;
   const hasNotifications = totalNotifications > 0;
 
   const notifications: Record<string, Notification[]> = useMemo(() => {
-    const current = (page - 1) * limit;
     return [...userNotification]
       .reverse()
-      .slice(current, current + limit)
+      .slice(0, limit)
       .sort((a, b) => +b.createdAt - +a.createdAt)
       .reduce((acc, notification) => {
         const dateKey = isToday(notification.createdAt)
@@ -113,7 +124,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
         acc[dateKey].push(notification);
         return acc;
       }, Object.create({}));
-  }, [userNotification, limit, page]);
+  }, [userNotification, limit]);
 
   const startNotifications = useCallback(() => {
     if (!account || !username) return;
@@ -141,6 +152,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
             id: uid(),
             type: "account",
             data: notification,
+            seen: false,
             blockHeight: createdBlockHeight,
             createdAt,
           });
@@ -148,29 +160,60 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
       },
     });
 
-    const unsubscribeTransfer = subscriptions.subscribe("transfer", {
-      params: { username },
-      listener: ({ transfers }) => {
-        for (const transfer of transfers) {
-          const { fromAddress, toAddress, amount, denom, blockHeight, createdAt, txHash } =
-            transfer;
+    const addresses = accounts?.map(({ address }) => address) || [];
+    const unsubscribeEvents = subscriptions.subscribe("eventsByAddresses", {
+      params: { addresses },
+      listener: (events) => {
+        for (const event of events) {
+          const { data: eventData, blockHeight, createdAt, transaction } = event;
+          if (!("contract_event" in eventData)) continue;
+          const { type, data } = eventData.contract_event;
 
-          const coin = getCoinInfo(denom);
+          const notification = (() => {
+            switch (type) {
+              case "sent":
+              case "received": {
+                const isSent = type === "sent";
+                const { to, from, user, coins } = data as {
+                  to?: Address;
+                  from?: Address;
+                  user: Address;
+                  coins: Record<string, string>;
+                };
 
-          const notification = {
-            createdAt,
-            amount,
-            txHash,
-            coin,
-            fromAddress,
-            toAddress,
-            type: fromAddress === account.address ? "sent" : "received",
-          } as const;
+                if (isSent && !userAddresses.includes(user as Address)) return;
+                if (!isSent && !userAddresses.includes(user as Address)) return;
+                if (!Object.keys(coins).length) return;
+
+                const notification = {
+                  coins,
+                  fromAddress: from || user,
+                  toAddress: to || user,
+                  type,
+                };
+
+                return { data: notification, type: "transfer" as const };
+              }
+              case "order_filled": {
+                return { data: data as OrderFilledEvent, type: "orderFilled" as const };
+              }
+              case "order_created": {
+                return { data: data as OrderCreatedEvent, type: "orderCreated" as const };
+              }
+              case "order_canceled": {
+                return { data: data as OrderCanceledEvent, type: "orderCanceled" as const };
+              }
+            }
+          })();
+
+          if (!notification) continue;
 
           addNotification({
             id: uid(),
-            type: "transfer",
-            data: notification,
+            data: notification.data,
+            type: notification.type,
+            txHash: transaction?.hash,
+            seen: false,
             blockHeight,
             createdAt,
           });
@@ -179,10 +222,10 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     });
 
     return () => {
-      unsubscribeTransfer();
+      unsubscribeEvents();
       unsubscribeAccount();
     };
-  }, [addNotification, userNotification, username, accounts, account]);
+  }, [addNotification, userNotification, username, accounts, account, userAddresses]);
 
   return {
     startNotifications,
