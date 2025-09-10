@@ -11,7 +11,7 @@ export const TestnetBanner: React.FC = () => {
   const [testBannerVisibility, setTestBannerVisibility] = useState(true);
   const env = import.meta.env.CONFIG_ENVIRONMENT;
 
-  const showBanner = ["test", "dev"].includes(env);
+  const showBanner = ["dev"].includes(env);
   const text = m["common.advice"]({ environment: m["common.environment"]({ environment: env }) });
 
   if (!testBannerVisibility || !showBanner) return null;
