@@ -1,7 +1,7 @@
 use {
     crate::{
-        MAX_ORACLE_STALENESS, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK,
-        VOLUMES, VOLUMES_BY_USER,
+        MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
+        RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders},
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
@@ -17,10 +17,10 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
-        MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder, Response, StdError,
-        StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
-        Udec128_24,
+        Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        Response, StdError, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder,
+        Udec128, Udec128_6, Udec128_24,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
@@ -135,12 +135,42 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Save the updated volumes.
     for (address, volume) in volumes {
         VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
-        // TODO: purge volume data that are too old.
+
+        // Purge volume data that are too old.
+        let keys = VOLUMES
+            .prefix(&address)
+            .keys(
+                ctx.storage,
+                None,
+                Some(Bound::Exclusive(
+                    ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE), // saturating_sub because tests sometimes use small timestamps
+                )),
+                IterationOrder::Ascending,
+            )
+            .collect::<StdResult<Vec<_>>>()?;
+        for timestamp in keys {
+            VOLUMES.remove(ctx.storage, (&address, timestamp));
+        }
     }
 
     for (username, volume) in volumes_by_username {
         VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
-        // TODO: purge volume data that are too old.
+
+        // Purge volume data that are too old.
+        let keys = VOLUMES_BY_USER
+            .prefix(&username)
+            .keys(
+                ctx.storage,
+                None,
+                Some(Bound::Exclusive(
+                    ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE), // saturating_sub because tests sometimes use small timestamps
+                )),
+                IterationOrder::Ascending,
+            )
+            .collect::<StdResult<Vec<_>>>()?;
+        for timestamp in keys {
+            VOLUMES_BY_USER.remove(ctx.storage, (&username, timestamp));
+        }
     }
 
     // Round refunds and fee to integer amounts. Round _down_ in both cases.
