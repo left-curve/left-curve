@@ -124,14 +124,16 @@ export type {
   PairParams,
   PairUpdate,
   CancelOrderRequest,
-  CreateLimitOrderRequest,
-  CreateMarketOrderRequest,
+  CreateOrderRequest,
+  PriceOption,
+  AmountOption,
   GetDexExecuteMsg,
   GetDexQueryMsg,
   OrderId,
   Candle,
   CandleIntervals,
   Trade,
+  TimeInForceOptions,
 } from "./dex.js";
 
 export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";
@@ -146,4 +148,4 @@ export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
 
-export { Direction, CandleInterval } from "./dex.js";
+export { Direction, CandleInterval, TimeInForceOption } from "./dex.js";
