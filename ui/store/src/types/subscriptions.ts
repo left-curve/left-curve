@@ -6,6 +6,7 @@ import type {
   IndexedBlock,
   IndexedTransferEvent,
   PublicClient,
+  QueryRequest,
   Trade,
   Username,
 } from "@left-curve/dango/types";
@@ -55,6 +56,14 @@ export type SubscriptionSchema = [
       data?: T;
     }) => void;
   },
+  {
+    key: "queryApp";
+    params: {
+      request: QueryRequest;
+      interval?: number;
+    };
+    listener: <T>(event: T) => void;
+  },
 ];
 
 export type SubscriptionKey = SubscriptionSchema[number]["key"];
@@ -81,5 +90,8 @@ export type SubscriptionEvent<K extends SubscriptionKey> = Parameters<
 
 export type SubscriptionStore = {
   subscribe: <K extends SubscriptionKey>(key: K, args: SubscribeArguments<K>) => () => void;
-  emit: <K extends SubscriptionKey>(key: K, event: SubscriptionEvent<K>) => void;
+  emit: <K extends SubscriptionKey>(
+    { key, params }: { key: K; params?: GetSubscriptionDef<K>["params"] },
+    event: SubscriptionEvent<K>,
+  ) => void;
 };

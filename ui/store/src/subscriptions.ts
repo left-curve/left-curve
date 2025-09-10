@@ -9,36 +9,37 @@ import type {
 } from "./types/subscriptions.js";
 
 export function subscriptionsStore(client: PublicClient) {
-  const activeExecutors: Map<SubscriptionKey, () => void> = new Map();
-  const listeners = new Map<SubscriptionKey, Set<(...args: any[]) => void>>();
+  const activeExecutors: Map<string, () => void> = new Map();
+  const listeners = new Map<string, Set<(...args: any[]) => void>>();
 
   const subscribe = <K extends SubscriptionKey>(
     key: K,
     { params, listener }: SubscribeArguments<K>,
   ): (() => void) => {
-    if (activeExecutors.has(key)) {
-      const currentListeners = listeners.get(key) || new Set();
+    const saveKey = JSON.stringify({ key, params });
+    if (activeExecutors.has(saveKey)) {
+      const currentListeners = listeners.get(saveKey) || new Set();
       currentListeners.add(listener);
-      listeners.set(key, currentListeners);
-      return () => unsubscribe(key, listener);
+      listeners.set(saveKey, currentListeners);
+      return () => unsubscribe(saveKey, listener);
     }
 
-    listeners.set(key, new Set([listener]));
+    listeners.set(saveKey, new Set([listener]));
 
     const executor = SubscriptionExecutors[key as keyof typeof SubscriptionExecutors];
 
     const executorUnsubscribeFn = executor({
       client,
       params,
-      getListeners: () => listeners.get(key),
+      getListeners: () => listeners.get(saveKey),
     } as never);
 
-    activeExecutors.set(key, executorUnsubscribeFn);
-    return () => unsubscribe(key, listener);
+    activeExecutors.set(saveKey, executorUnsubscribeFn);
+    return () => unsubscribe(saveKey, listener);
   };
 
   const unsubscribe = <K extends SubscriptionKey>(
-    key: K,
+    key: string,
     listener: GetSubscriptionDef<K>["listener"],
   ): void => {
     if (!activeExecutors.has(key)) return;
@@ -54,8 +55,12 @@ export function subscriptionsStore(client: PublicClient) {
     }
   };
 
-  const emit = <K extends SubscriptionKey>(key: K, event: SubscriptionEvent<K>): void => {
-    const currentListeners = listeners.get(key);
+  const emit = <K extends SubscriptionKey>(
+    { key, params }: { key: K; params?: GetSubscriptionDef<K>["params"] },
+    event: SubscriptionEvent<K>,
+  ): void => {
+    const saveKey = JSON.stringify({ key, params });
+    const currentListeners = listeners.get(saveKey);
     if (currentListeners) {
       currentListeners.forEach((listener) => listener(event));
     }
@@ -140,6 +145,20 @@ const submitTxSubscriptionExecutor: SubscriptionExecutor<"submitTx"> = () => {
   return () => {};
 };
 
+const queryAppSubscriptionExecutor: SubscriptionExecutor<"queryApp"> = ({
+  client,
+  params,
+  getListeners,
+}) => {
+  return client.queryAppSubscription({
+    ...params,
+    next: (event) => {
+      const currentListeners = getListeners();
+      currentListeners.forEach((listener) => listener(event));
+    },
+  });
+};
+
 const SubscriptionExecutors = {
   account: accountSubscriptionExecutor,
   block: blockSubscriptionExecutor,
@@ -147,4 +166,5 @@ const SubscriptionExecutors = {
   submitTx: submitTxSubscriptionExecutor,
   trades: tradesSubscriptionExecutor,
   transfer: transferSubscriptionExecutor,
+  queryApp: queryAppSubscriptionExecutor,
 };
