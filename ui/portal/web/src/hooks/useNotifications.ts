@@ -59,9 +59,10 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
     {
       enabled: Boolean(username),
       initialValue: {},
-      version: 0.2,
+      version: 0.3,
       migrations: {
         0.1: (notifications: Notification[]) => ({ [username]: notifications }),
+        0.2: () => ({}),
       },
     },
   );
