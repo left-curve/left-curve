@@ -238,7 +238,6 @@ impl PassiveLiquidityPool for PairParams {
             // and use into_next() to avoid overflows.
             // Otherwise the fee rate could be 0 even if very low amount of tokens are deposited even unbalance.
             // Since we don't have gas price, this can be an attack vector.
-            // TODO: This is a temporary fix, we should find a better solution.
             abs_diff(a.checked_mul(reserve_b)?, b.checked_mul(reserve_a)?)
                 .checked_div(deposit_value.checked_add(reserve_value)?)?
                 .checked_mul(self.swap_fee_rate.into_next())?
