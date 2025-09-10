@@ -355,7 +355,6 @@ export const CandleInterval = {
 export const OrderType = {
   Limit: "limit",
   Market: "market",
-  Passive: "passive",
 } as const;
 
 export type OrderTypes = (typeof OrderType)[keyof typeof OrderType];

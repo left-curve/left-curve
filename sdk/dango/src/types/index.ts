@@ -147,6 +147,7 @@ export type {
   CandleIntervals,
   Trade,
   TimeInForceOptions,
+  OrderTypes,
 } from "./dex.js";
 
 export type { WithPrice } from "./utils.js";
@@ -163,4 +164,4 @@ export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
 
-export { Direction, CandleInterval, TimeInForceOption } from "./dex.js";
+export { Direction, CandleInterval, TimeInForceOption, OrderType } from "./dex.js";
