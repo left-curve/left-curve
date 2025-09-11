@@ -23,8 +23,7 @@ use {
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
     pyth_client::PythClientCoreCache,
-    pyth_lazer::{PythClientLazer, PythClientLazerCache},
-    pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST},
+    pyth_lazer::PythClientLazerCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
 };
@@ -78,7 +77,7 @@ pub type TestSuiteWithIndexer<
     ID = HookedIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` with PythCore, and
 /// `ContractWrapper` codes.
 ///
 /// Used for running regular tests.
@@ -102,35 +101,11 @@ pub fn setup_test(
     )
 }
 
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` with PythLazer, and
 /// `ContractWrapper` codes.
 ///
 /// Used for running regular tests.
 pub fn setup_test_lazer(
-    test_opt: TestOption,
-) -> (
-    TestSuite<ProposalPreparer<PythClientLazer>>,
-    TestAccounts,
-    Codes<ContractWrapper>,
-    Contracts,
-    MockValidatorSets,
-) {
-    setup_suite_with_db_and_vm(
-        MemDb::new(),
-        RustVm::new(),
-        ProposalPreparer::new_with_lazer(LAZER_ENDPOINTS_TEST, LAZER_ACCESS_TOKEN_TEST),
-        NullIndexer,
-        RustVm::genesis_codes(),
-        test_opt,
-        GenesisOption::preset_test(),
-    )
-}
-
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
-/// `ContractWrapper` codes.
-///
-/// Used for running regular tests.
-pub fn setup_test_lazer_cache(
     test_opt: TestOption,
 ) -> (
     TestSuite<ProposalPreparer<PythClientLazerCache>>,

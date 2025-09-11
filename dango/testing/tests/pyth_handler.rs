@@ -1,6 +1,6 @@
 use {
     dango_proposal_preparer::{PythHandler, QueryPythId},
-    dango_testing::setup_test,
+    dango_testing::{setup_test, setup_test_lazer},
     dango_types::{
         constants::btc,
         oracle::{ExecuteMsg, InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
@@ -9,7 +9,7 @@ use {
     pyth_client::{PythClientCoreCache, PythClientTrait},
     pyth_types::{
         Channel,
-        constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
+        constants::{LAZER_ENDPOINTS_TEST, PYTH_URL},
     },
     std::{thread::sleep, time::Duration},
 };
@@ -132,7 +132,7 @@ where
 
 #[test]
 fn handler_lazer() {
-    let (mut suite, mut accounts, codes, contracts, _) = setup_test(Default::default());
+    let (mut suite, mut accounts, codes, contracts, _) = setup_test_lazer(Default::default());
 
     // Oracle from the setup_test has some PythIds already uploaded.
     let oracle = contracts.oracle;
@@ -169,9 +169,9 @@ fn handler_lazer() {
         .should_succeed();
 
     let querier = QuerierWrapper::new(&suite);
-    let mut handler = PythHandler::new_with_lazer(
+    let mut handler = PythHandler::new_with_lazer_cache(
         NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
-        LAZER_ACCESS_TOKEN_TEST,
+        "lazer_token",
     );
 
     // Start the handler with oracle.

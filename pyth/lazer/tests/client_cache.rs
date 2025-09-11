@@ -9,18 +9,16 @@ use {
         LeEcdsaMessage,
         constants::{
             ATOM_USD_ID_LAZER, BTC_USD_ID_LAZER, DOGE_USD_ID_LAZER, ETH_USD_ID_LAZER,
-            LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, LAZER_ID_ALL,
+            LAZER_ENDPOINTS_TEST, LAZER_ID_ALL,
         },
     },
 };
 
 #[tokio::test]
 async fn test_lazer_stream() {
-    let client = PythClientLazerCache::new(
-        NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
-        LAZER_ACCESS_TOKEN_TEST,
-    )
-    .unwrap();
+    let client =
+        PythClientLazerCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer-token")
+            .unwrap();
     test_stream(client, vec![BTC_USD_ID_LAZER, DOGE_USD_ID_LAZER], vec![
         ETH_USD_ID_LAZER,
         ATOM_USD_ID_LAZER,
@@ -35,11 +33,9 @@ async fn test_lazer_stream() {
 fn create_cache() {
     let update_ids = LAZER_ID_ALL;
 
-    let mut client = PythClientLazerCache::new(
-        NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
-        LAZER_ACCESS_TOKEN_TEST,
-    )
-    .unwrap();
+    let mut client =
+        PythClientLazerCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer-token")
+            .unwrap();
     client.load_or_retrieve_data(NonEmpty::new_unchecked(update_ids.clone()));
 
     for id in update_ids {

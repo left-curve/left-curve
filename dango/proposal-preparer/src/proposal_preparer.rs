@@ -8,7 +8,7 @@ use {
     prost::bytes::Bytes,
     pyth_client::{PythClientCore, PythClientCoreCache, PythClientTrait},
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
-    pyth_types::constants::{LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, PYTH_URL},
+    pyth_types::constants::{LAZER_ENDPOINTS_TEST, PYTH_URL},
     reqwest::IntoUrl,
     std::{fmt::Debug, sync::Mutex},
     tracing::{error, warn},
@@ -106,7 +106,7 @@ impl ProposalPreparer<PythClientLazerCache> {
 
         let client = PythHandler::new_with_lazer_cache(
             NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
-            LAZER_ACCESS_TOKEN_TEST,
+            "lazer_token",
         );
 
         Self {

@@ -135,4 +135,4 @@ endpoints = ["wss://pyth-lazer-0.dourolabs.app/v1/stream"]
 
 # PythLazer access token.
 # If the string is empty, PythLazer oracle is disabled.
-access_token = "gr6DS1uhFL7dUrcrboueU4ykRk2XhOfT3GO-demo"
+access_token = ""

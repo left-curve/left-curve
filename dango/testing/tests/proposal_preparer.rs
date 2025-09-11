@@ -1,7 +1,7 @@
 use {
     dango_oracle::PRICES,
     dango_proposal_preparer::{ProposalPreparer, QueryPythId},
-    dango_testing::{TestSuite, setup_test, setup_test_lazer_cache},
+    dango_testing::{TestSuite, setup_test, setup_test_lazer},
     dango_types::{
         constants::btc,
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
@@ -15,10 +15,7 @@ use {
     pyth_lazer::PythClientLazerCache,
     pyth_types::{
         Channel, FixedRate, PythId, PythLazerSubscriptionDetails,
-        constants::{
-            BTC_USD_ID_LAZER, LAZER_ACCESS_TOKEN_TEST, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER,
-            PYTH_URL,
-        },
+        constants::{BTC_USD_ID_LAZER, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER, PYTH_URL},
     },
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -186,7 +183,7 @@ fn proposal_pyth_lazer() {
     // cache files are not present the thread will not wait for client to retrieve
     // and save them. The test will end before the client is able to finish.
     {
-        let (suite, _, _, contracts, _) = setup_test_lazer_cache(Default::default());
+        let (suite, _, _, contracts, _) = setup_test_lazer(Default::default());
 
         // Retrieve all PythIds from the oracle.
         let mut pyth_ids = suite
@@ -208,17 +205,14 @@ fn proposal_pyth_lazer() {
         pyth_ids.push(NOT_USED_ID_LAZER);
 
         // Ensure to have the cache files for all the ids.
-        PythClientLazerCache::new(
-            NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
-            LAZER_ACCESS_TOKEN_TEST,
-        )
-        .unwrap()
-        .load_or_retrieve_data(NonEmpty::new_unchecked(pyth_ids));
+        PythClientLazerCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer_token")
+            .unwrap()
+            .load_or_retrieve_data(NonEmpty::new_unchecked(pyth_ids));
     }
 
     setup_tracing_subscriber(Level::INFO);
 
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_lazer_cache(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_lazer(Default::default());
 
     let current_time = suite.block.timestamp;
 
