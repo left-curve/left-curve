@@ -3,7 +3,7 @@ use {
     std::sync::Once,
 };
 
-const ONCE_METRICS_INITIALIZED: Once = Once::new();
+static ONCE_METRICS_INITIALIZED: Once = Once::new();
 
 pub const TOTAL_TRADES_LABEL: &str = "dango.contract.dex.total_trades";
 pub const VOLUME_PER_TRADE_LABEL: &str = "dango.contract.dex.volume_per_trade";
