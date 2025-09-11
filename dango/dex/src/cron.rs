@@ -422,7 +422,7 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     let mut metric_volume: HashMap<(&Denom, &Denom, &Denom), grug::Uint128> = HashMap::new();
     #[cfg(feature = "metrics")]
-    metrics::counter!("dex.total_trades").increment(filling_outcomes.len() as u64);
+    metrics::counter!(crate::metrics::TOTAL_TRADES_LABEL).increment(filling_outcomes.len() as u64);
 
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
@@ -551,10 +551,27 @@ fn clear_orders_of_pair(
                 .entry((&base_denom, &quote_denom, &base_denom))
                 .or_insert(grug::Int::ZERO)
                 .checked_add_assign(filled_base.into_int_floor())?;
+
             metric_volume
                 .entry((&base_denom, &quote_denom, &quote_denom))
                 .or_insert(grug::Int::ZERO)
                 .checked_add_assign(filled_quote.into_int_floor())?;
+
+            metrics::histogram!(
+                crate::metrics::VOLUME_PER_TRADE_LABEL,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "token" => base_denom.to_string(),
+            )
+            .record(filled_base.into_inner() as f64);
+
+            metrics::histogram!(
+                crate::metrics::VOLUME_PER_TRADE_LABEL,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "token" => quote_denom.to_string(),
+            )
+            .record(filled_quote.into_inner() as f64);
         }
     }
 
@@ -562,7 +579,7 @@ fn clear_orders_of_pair(
     {
         for ((bd, qd, token), amount) in metric_volume {
             metrics::histogram!(
-                "dex.block.volume",
+                crate::metrics::VOLUME_PER_BLOCK_LABEL,
                 "base_denom" => bd.to_string(),
                 "quote_denom" => qd.to_string(),
                 "token" => token.to_string(),
