@@ -34,12 +34,14 @@ use {
     tracing::{Level, error, info},
 };
 
+const TOKEN: &str = "inser_lazer_token_here";
+
 #[ignore = "rely on network calls"]
 #[tokio::test]
 async fn test_lazer_stream() {
     setup_tracing_subscriber(Level::INFO);
     let client =
-        PythClientLazer::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer-token").unwrap();
+        PythClientLazer::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN).unwrap();
     test_stream(client, vec![BTC_USD_ID_LAZER, DOGE_USD_ID_LAZER], vec![
         ETH_USD_ID_LAZER,
         ATOM_USD_ID_LAZER,
@@ -237,16 +239,14 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     }
 
     // Start a client cache in order to read the data from file.
-    let mut pyth_client_cache = match PythClientLazerCache::new(
-        NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
-        "lazer-token",
-    ) {
-        Ok(client) => client,
-        Err(err) => {
-            error!("Error creating PythClientLazerCache: {err}");
-            return;
-        },
-    };
+    let mut pyth_client_cache =
+        match PythClientLazerCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN) {
+            Ok(client) => client,
+            Err(err) => {
+                error!("Error creating PythClientLazerCache: {err}");
+                return;
+            },
+        };
 
     let subscriptions = price_ids
         .into_iter()

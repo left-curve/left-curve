@@ -132,11 +132,12 @@ impl PythClientLazer {
 
         let buffer_capacity = 1000;
         let mut buffer = Vec::with_capacity(buffer_capacity);
+        let timeout = Duration::from_secs(3);
 
         loop {
-            // If after 1 second we haven't received data for all subscriptions,
+            // If after few seconds we haven't received data for all subscriptions,
             // try to reconnect.
-            if Local::now() - last_check > TimeDelta::seconds(1) {
+            if Local::now() - last_check > TimeDelta::seconds(2) {
                 warn!("Not all subscriptions received data");
                 to_resubscribe = true;
             }
@@ -170,18 +171,25 @@ impl PythClientLazer {
                 last_check = Local::now();
             }
 
+            // Retrieve the data.
             buffer.clear();
-            let num_data_received = receiver.recv_many(&mut buffer, buffer_capacity).await;
+            // Retrieve the data. If no data is received, try to resubscribe.
+            let Some(data_count) =
+                Self::retrieve_data(receiver, &mut buffer, buffer_capacity, timeout).await
+            else {
+                to_resubscribe = true;
+                continue;
+            };
 
             // If the number of data received is zero, it means the channel is closed and we need to resubscribe.
-            if num_data_received == 0 {
+            if data_count == 0 {
                 // No data received, continue to the next iteration to check for resubscription.
                 error!("Pyth Lazer connection closed");
                 to_resubscribe = true;
                 continue;
             }
 
-            debug!("Received {} messages from Pyth Lazer", num_data_received);
+            debug!("Received {} messages from Pyth Lazer", data_count);
 
             for data in buffer.drain(..) {
                 match data {
@@ -311,6 +319,29 @@ impl PythClientLazer {
             }
         }
     }
+
+    /// Retrieve data from the Pyth Lazer client.
+    /// If no data is received within the timeout, log a warning and return None.
+    /// If data is received, return the number of data received.
+    async fn retrieve_data(
+        receiver: &mut Receiver<AnyResponse>,
+        buffer: &mut Vec<AnyResponse>,
+        buffer_capacity: usize,
+        timeout: Duration,
+    ) -> Option<usize> {
+        tokio::select! {
+            // The server is not sending any more data.
+            _ = tokio::time::sleep(timeout) => {
+                warn!("No new data received for {} milliseconds", timeout.as_millis());
+                None
+            },
+
+            // Read next data from stream.
+            data_count = receiver.recv_many(buffer, buffer_capacity) => {
+                Some(data_count)
+            }
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -370,6 +401,7 @@ impl PythClientTrait for PythClientLazer {
         // Create the buffer to pull data from the receiver.
         let buffer_capacity = 1000;
         let mut buffer = Vec::with_capacity(buffer_capacity);
+        let timeout = Duration::from_millis(500);
 
         // Flag to indicate if we need to resubscribe.
         let mut to_resubscribe = false;
@@ -383,84 +415,81 @@ impl PythClientTrait for PythClientLazer {
         // Create the stream.
         let stream = stream! {
             loop {
+                // Check if the streaming has to be closed.
+                if !keep_running.load(Ordering::Acquire) {
+                    info!("Pyth Lazer connection closed");
+                    break;
+                }
 
+                // Check if we need to resubscribe.
                 if to_resubscribe {
                     to_resubscribe = false;
 
-                    match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await{
+                    match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await
+                    {
                         Ok(()) => {},
                         Err(err) => {
                             // If the subscription fails, wait for a while and try again.
-                            // Next iteration, the recv_many will return 0 and we will try to reconnect again.
                             error!("Failed to reconnect: {}", err.to_string());
                             sleep(Duration::from_millis(200)).await;
+                            continue;
                         },
                     }
                 }
 
-                // Clear the buffer.
+                // Retrieve the data. If no data is received, try to resubscribe.
                 buffer.clear();
+                let Some(data_count) =
+                    Self::retrieve_data(&mut receiver, &mut buffer, buffer_capacity, timeout).await
+                else {
+                    to_resubscribe = true;
+                    continue;
+                };
 
-                tokio::select! {
-                    // The server is not sending any more data.
-                    // Log the error and keep running, since the client will handle reconnection.
-                    _ = tokio::time::sleep(tokio::time::Duration::from_secs(1)) => {
+                // Connection closed, try to reconnect.
+                if data_count == 0 {
+                    error!("Pyth Lazer connection closed");
+                    to_resubscribe = true;
+                    continue;
+                };
 
-                        // Check if the streaming has to be closed.
-                        if !keep_running.load(Ordering::Relaxed) {
-                            info!("Pyth Lazer connection closed");
-                            break;
-                        }
+                // Analyze the data received.
+                Self::analyze_data(
+                    &mut buffer,
+                    &subscription_ids,
+                    &mut subscriptions_data,
+                    &mut last_data_received,
+                );
 
-                        warn!("No new data received for 1s");
-                    },
-
-                    // Read next data from stream.
-                    data_count = receiver.recv_many(&mut buffer, buffer_capacity) => {
-
-                        // Check if the streaming has to be closed.
-                        if !keep_running.load(Ordering::Acquire) {
-                            info!("Pyth Lazer connection closed");
-                            break;
-                        }
-
-                        // Connection closed, try to reconnect.
-                        if data_count == 0 {
-                            error!("Pyth Lazer connection closed");
-                            to_resubscribe = true;
-                            continue;
-                        };
-
-                        // Analyze the data received.
-                        Self::analyze_data(&mut buffer, &subscription_ids, &mut subscriptions_data, &mut last_data_received);
-
-                        // Check if we haven't received data for some subscriptions for more than 5 seconds.
-                        let now = Local::now();
-                        for (id, last_time) in last_data_received.iter() {
-                            if now - *last_time > TimeDelta::seconds(3) {
-                                to_resubscribe = true;
-                                warn!("No data received for subscription ID {id} for more than 3 seconds");
-                            }
-                        }
-
-                        // Yield the current data.
-                        if !subscriptions_data.is_empty(){
-                            let send_data = subscriptions_data.clone();
-                            yield PriceUpdate::Lazer(NonEmpty::new_unchecked(send_data.into_values().collect::<Vec<_>>()));
-                        }
+                // Check if we haven't received data for some subscriptions for more than 3 seconds.
+                let now = Local::now();
+                for (id, last_time) in last_data_received.iter() {
+                    if now - *last_time > TimeDelta::seconds(3) {
+                        to_resubscribe = true;
+                        warn!("No data received for subscription ID {id} for more than 3 seconds");
                     }
+                }
+
+                // Yield the current data.
+                if !subscriptions_data.is_empty() {
+                    let send_data = subscriptions_data.clone();
+                    yield PriceUpdate::Lazer(NonEmpty::new_unchecked(
+                        send_data.into_values().collect::<Vec<_>>(),
+                    ));
                 }
             }
 
             // If the code reaches here, it means the stream needs to be closed.
             for id in subscription_ids {
                 match client.unsubscribe(SubscriptionId(id)).await {
-                    Ok(_) => {info!("Unsubscribed stream id {} successfully", id);},
-                    Err(e) => {error!("Failed to unsubscribe stream id {}: {:?}", id, e);},
+                    Ok(_) => {
+                        info!("Unsubscribed stream id {} successfully", id);
+                    },
+                    Err(e) => {
+                        error!("Failed to unsubscribe stream id {}: {:?}", id, e);
+                    },
                 };
             }
-
-
         };
 
         Ok(Box::pin(stream))
