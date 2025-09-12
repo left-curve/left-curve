@@ -625,6 +625,7 @@ where
         QuerierWrapper::new(self)
     }
 
+    /// Return a `Storage` object representing the storage of a given contract.
     pub fn contract_storage(&self, address: Addr) -> StorageProvider
     where
         <DB as grug_app::Db>::Error: std::fmt::Debug,
