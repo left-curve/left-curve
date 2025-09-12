@@ -146,5 +146,5 @@ export function formatUnits(value: bigint | number | string, decimals: number): 
  * @returns The parsed number.
  */
 export function parseUnits(value: string, decimals: number): string {
-  return Decimal(value).times(Decimal(10).pow(decimals)).toFixed();
+  return Decimal(value).times(Decimal(10).pow(decimals)).toFixed(0);
 }

@@ -75,26 +75,26 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
             <span className="w-full h-[1px] bg-secondary-gray my-2" />
             <div className="flex flex-col gap-2 w-full">
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500">
-                  {m["notifications.notification.modal.in"]()}
+                <p className="diatype-sm-regular text-tertiary-500 capitalize">
+                  {m["notifications.notification.transfer.direction.first"]({ direction: action })}
                 </p>
                 <div className="flex items-center gap-1">
                   <AddressVisualizer
                     classNames={{ container: "address-visualizer" }}
-                    address={to}
+                    address={from}
                     withIcon
                     onClick={navigate}
                   />
                 </div>
               </div>
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500">
-                  {m["notifications.notification.modal.from"]()}
+                <p className="diatype-sm-regular text-tertiary-500 capitalize">
+                  {m["notifications.notification.transfer.direction.second"]({ direction: action })}
                 </p>
                 <div className="flex items-center gap-1">
                   <AddressVisualizer
                     classNames={{ container: "address-visualizer" }}
-                    address={from}
+                    address={to}
                     withIcon
                     onClick={navigate}
                   />
@@ -119,7 +119,7 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
                   onClick={() => navigate(txHash ? `/tx/${txHash}` : `/block/${blockHeight}`)}
                 >
                   {txHash ? <TruncateText text={txHash} /> : <p>{blockHeight}</p>}
-                  <IconLink className="text-tertiary-500 h-4 w-4" />
+                  <IconLink className="h-4 w-4" />
                 </div>
               </div>
             </div>

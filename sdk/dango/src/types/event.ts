@@ -1,5 +1,5 @@
 import type { Address, Coins, Denom, Hex, Json, UID } from "@left-curve/sdk/types";
-import type { Directions, OrderId, OrderTypes } from "./dex.js";
+import type { Directions, OrderId, TimeInForceOptions } from "./dex.js";
 
 export type IndexedEvent = {
   id: UID;
@@ -55,7 +55,7 @@ export type OrderCreatedEvent = {
   };
   direction: Directions;
   id: OrderId;
-  kind: OrderTypes;
+  time_in_force: TimeInForceOptions;
   price: string;
   quote_denom: Denom;
   user: Address;
@@ -63,7 +63,7 @@ export type OrderCreatedEvent = {
 
 export type OrderCanceledEvent = {
   id: OrderId;
-  kind: OrderTypes;
+  time_in_force: TimeInForceOptions;
   user: Address;
   remaining: string;
   direction: Directions;
@@ -80,7 +80,7 @@ export type OrderCanceledEvent = {
 export type OrderFilledEvent = {
   user: Address;
   id: OrderId;
-  kind: OrderTypes;
+  time_in_force: TimeInForceOptions;
   base_denom: Denom;
   quote_denom: Denom;
   direction: Directions;
