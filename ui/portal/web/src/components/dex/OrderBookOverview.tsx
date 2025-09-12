@@ -1,5 +1,6 @@
 import { useApp, useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "@tanstack/react-router";
 
 import { Direction } from "@left-curve/dango/types";
 import { format } from "date-fns";
@@ -177,6 +178,7 @@ type LiveTradesProps = {
 };
 
 const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
+  const { navigate } = useRouter();
   const { subscriptions, settings } = useApp();
   const { formatNumberOptions } = settings;
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -225,6 +227,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
           return (
             <div
               key={`${trade.addr}-${trade.createdAt}-${index}`}
+              onClick={() => navigate({ to: `/block/${trade.blockHeight}` })}
               className={
                 "grid grid-cols-3 diatype-xs-medium text-secondary-700 w-full cursor-pointer group relative"
               }
