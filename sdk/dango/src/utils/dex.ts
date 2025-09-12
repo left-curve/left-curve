@@ -13,10 +13,10 @@ export function formatOrderId(id: string) {
 
 export function calculateTradeSize(trade: Trade, decimals: number) {
   if (trade.direction === Direction.Buy) {
-    return Decimal(trade.refundBase).div(Decimal(10).pow(decimals));
+    return Decimal(trade.filledBase).div(Decimal(10).pow(decimals));
   }
 
-  return Decimal(trade.refundQuote).div(trade.clearingPrice).div(Decimal(10).pow(decimals));
+  return Decimal(trade.filledQuote).div(trade.clearingPrice).div(Decimal(10).pow(decimals));
 }
 
 export function calculateFees(

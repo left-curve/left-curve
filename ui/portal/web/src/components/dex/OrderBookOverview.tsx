@@ -246,7 +246,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
                 ).slice(0, 10)}
               </p>
               <p className="text-end z-10">
-                {formatNumber(calculateTradeSize(trade, base.decimals).toFixed(7), {
+                {formatNumber(calculateTradeSize(trade, base.decimals).toFixed(), {
                   ...formatNumberOptions,
                   maxSignificantDigits: 10,
                   maxFractionDigits: 5,
