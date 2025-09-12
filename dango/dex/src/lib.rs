@@ -5,6 +5,9 @@ pub mod liquidity_depth;
 mod query;
 mod state;
 
+#[cfg(feature = "metrics")]
+pub mod metrics;
+
 pub use {cron::*, execute::*, query::*, state::*};
 
 /// If an oracle price is older than this, it is not used for the logics in this contract.

@@ -25,6 +25,11 @@ use {
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    {
+        crate::metrics::init_metrics();
+    }
+
     PAUSED.save(ctx.storage, &false)?;
     batch_update_pairs(ctx, msg.pairs)
 }

@@ -419,6 +419,11 @@ fn clear_orders_of_pair(
     let mut inflows = DecCoins::new();
     let mut outflows = DecCoins::new();
 
+    #[cfg(feature = "metrics")]
+    let mut metric_volume: HashMap<(&Denom, &Denom, &Denom), grug::Uint128> = HashMap::new();
+    #[cfg(feature = "metrics")]
+    metrics::counter!(crate::metrics::TOTAL_TRADES_LABEL).increment(filling_outcomes.len() as u64);
+
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order,
@@ -539,6 +544,48 @@ fn clear_orders_of_pair(
             volumes,
             volumes_by_username,
         )?;
+
+        #[cfg(feature = "metrics")]
+        {
+            metric_volume
+                .entry((&base_denom, &quote_denom, &base_denom))
+                .or_insert(grug::Int::ZERO)
+                .checked_add_assign(filled_base.into_int_floor())?;
+
+            metric_volume
+                .entry((&base_denom, &quote_denom, &quote_denom))
+                .or_insert(grug::Int::ZERO)
+                .checked_add_assign(filled_quote.into_int_floor())?;
+
+            metrics::histogram!(
+                crate::metrics::VOLUME_PER_TRADE_LABEL,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "token" => base_denom.to_string(),
+            )
+            .record(filled_base.into_inner() as f64);
+
+            metrics::histogram!(
+                crate::metrics::VOLUME_PER_TRADE_LABEL,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "token" => quote_denom.to_string(),
+            )
+            .record(filled_quote.into_inner() as f64);
+        }
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        for ((bd, qd, token), amount) in metric_volume {
+            metrics::histogram!(
+                crate::metrics::VOLUME_PER_BLOCK_LABEL,
+                "base_denom" => bd.to_string(),
+                "quote_denom" => qd.to_string(),
+                "token" => token.to_string(),
+            )
+            .record(amount.into_inner() as f64);
+        }
     }
 
     // Update the pool reserve.
