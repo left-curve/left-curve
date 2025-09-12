@@ -1,5 +1,6 @@
 import { useConfig } from "@left-curve/store";
 
+import { forwardRef, useImperativeHandle } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { OrderNotification } from "./OrderNotification";
@@ -8,36 +9,33 @@ import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types
 import { calculatePrice, formatNumber, formatUnits } from "@left-curve/dango/utils";
 
 import type { Notification } from "~/hooks/useNotifications";
-import type React from "react";
+import type { NotificationRef } from "./Notification";
 
 type NotificationOrderCreatedProps = {
   notification: Notification<"orderCreated">;
 };
 
-export const NotificationOrderCreated: React.FC<NotificationOrderCreatedProps> = ({
-  notification,
-}) => {
-  const { getCoinInfo } = useConfig();
-  const { blockHeight, createdAt } = notification;
-  const { id, quote_denom, base_denom, price, time_in_force, direction, amount } =
-    notification.data;
-  const { settings, showModal } = useApp();
-  const { formatNumberOptions } = settings;
+export const NotificationOrderCreated = forwardRef<NotificationRef, NotificationOrderCreatedProps>(
+  ({ notification }, ref) => {
+    const { getCoinInfo } = useConfig();
+    const { blockHeight, createdAt } = notification;
+    const { id, quote_denom, base_denom, price, time_in_force, direction, amount } =
+      notification.data;
+    const { settings, showModal } = useApp();
+    const { formatNumberOptions } = settings;
 
-  const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
-  const isLimit = kind === OrderType.Limit;
+    const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
+    const isLimit = kind === OrderType.Limit;
 
-  const base = getCoinInfo(base_denom);
-  const quote = getCoinInfo(quote_denom);
+    const base = getCoinInfo(base_denom);
+    const quote = getCoinInfo(quote_denom);
 
-  const limitPrice = isLimit
-    ? calculatePrice(price, { base: base.decimals, quote: quote.decimals }, formatNumberOptions)
-    : null;
+    const limitPrice = isLimit
+      ? calculatePrice(price, { base: base.decimals, quote: quote.decimals }, formatNumberOptions)
+      : null;
 
-  return (
-    <OrderNotification
-      kind={kind}
-      onClick={() =>
+    useImperativeHandle(ref, () => ({
+      onClick: () =>
         showModal("notification-spot-action-order", {
           base,
           quote,
@@ -51,40 +49,45 @@ export const NotificationOrderCreated: React.FC<NotificationOrderCreatedProps> =
             limitPrice,
             amount: formatNumber(formatUnits(amount, base.decimals), formatNumberOptions),
           },
-        })
-      }
-    >
-      <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
-        {m["notifications.notification.orderCreated.title"]()}
-      </p>
+        }),
+    }));
 
-      <div className={twMerge("flex-wrap flex items-center gap-1")}>
-        <span>{m["dex.protrade.orderType"]({ orderType: kind })}</span>
-        <span
-          className={twMerge(
-            "uppercase diatype-m-bold",
-            direction === Direction.Buy ? "text-status-success" : "text-status-fail",
-          )}
-        >
-          {m["dex.protrade.spot.direction"]({ direction })}
-        </span>
-        <PairAssets
-          assets={[base, quote]}
-          className="w-5 h-5 min-w-5 min-h-5"
-          mL={(i) => `${-i / 2}rem`}
-        />
-        <span className="diatype-m-bold">
-          {base.symbol}-{quote.symbol}
-        </span>
-        {limitPrice ? (
-          <>
-            <span>{m["notifications.notification.orderCreated.atPrice"]()}</span>
-            <span className="diatype-m-bold">
-              {limitPrice} {quote.symbol}
+    return (
+      <OrderNotification kind={kind}>
+        <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
+          {m["notifications.notification.orderCreated.title"]()}
+        </p>
+
+        <div className="flex flex-col items-start">
+          <div className="flex gap-1">
+            <span>{m["dex.protrade.orderType"]({ orderType: kind })}</span>
+            <span
+              className={twMerge(
+                "uppercase diatype-m-bold",
+                direction === Direction.Buy ? "text-status-success" : "text-status-fail",
+              )}
+            >
+              {m["dex.protrade.spot.direction"]({ direction })}
             </span>
-          </>
-        ) : null}
-      </div>
-    </OrderNotification>
-  );
-};
+            <PairAssets
+              assets={[base, quote]}
+              className="w-5 h-5 min-w-5 min-h-5"
+              mL={(i) => `${-i / 2}rem`}
+            />
+            <span className="diatype-m-bold">
+              {base.symbol}-{quote.symbol}
+            </span>
+          </div>
+          {limitPrice ? (
+            <div className="flex gap-1">
+              <span>{m["notifications.notification.orderCreated.atPrice"]()}</span>
+              <span className="diatype-m-bold">
+                {limitPrice} {quote.symbol}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </OrderNotification>
+    );
+  },
+);

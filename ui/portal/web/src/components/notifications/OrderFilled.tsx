@@ -4,6 +4,7 @@ import { Direction, TimeInForceOption } from "@left-curve/dango/types";
 import { OrderNotification } from "./OrderNotification";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { twMerge, useApp } from "@left-curve/foundation";
+import { forwardRef, useImperativeHandle } from "react";
 import {
   calculateFees,
   calculatePrice,
@@ -14,70 +15,70 @@ import {
 import { PairAssets } from "@left-curve/applets-kit";
 
 import type { Notification } from "~/hooks/useNotifications";
-import type React from "react";
+import type { NotificationRef } from "./Notification";
 
 type NotificationOrderFilledProps = {
   notification: Notification<"orderFilled">;
 };
 
-export const NotificationOrderFilled: React.FC<NotificationOrderFilledProps> = ({
-  notification,
-}) => {
-  const { getCoinInfo } = useConfig();
-  const { createdAt, blockHeight } = notification;
-  const {
-    id,
-    quote_denom,
-    base_denom,
-    clearing_price,
-    remaining,
-    time_in_force,
-    direction,
-    cleared,
-    fee_base,
-    fee_quote,
-    filled_base,
-    filled_quote,
-    refund_base,
-    refund_quote,
-  } = notification.data;
-  const { settings, showModal } = useApp();
-  const { formatNumberOptions } = settings;
-  const { getPrice } = usePrices();
+export const NotificationOrderFilled = forwardRef<NotificationRef, NotificationOrderFilledProps>(
+  ({ notification }, ref) => {
+    const { getCoinInfo } = useConfig();
+    const { createdAt, blockHeight } = notification;
+    const {
+      id,
+      quote_denom,
+      base_denom,
+      clearing_price,
+      remaining,
+      time_in_force,
+      direction,
+      cleared,
+      fee_base,
+      fee_quote,
+      filled_base,
+      filled_quote,
+      refund_base,
+      refund_quote,
+    } = notification.data;
+    const { settings, showModal } = useApp();
+    const { formatNumberOptions } = settings;
+    const { getPrice } = usePrices();
 
-  const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
+    const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
 
-  const base = getCoinInfo(base_denom);
-  const quote = getCoinInfo(quote_denom);
+    const base = getCoinInfo(base_denom);
+    const quote = getCoinInfo(quote_denom);
 
-  const fee = calculateFees(
-    { amount: fee_base, decimals: base.decimals, price: getPrice(1, base.denom) },
-    { amount: fee_quote, decimals: quote.decimals, price: getPrice(1, quote.denom) },
-    formatNumberOptions,
-  );
+    const fee = calculateFees(
+      { amount: fee_base, decimals: base.decimals, price: getPrice(1, base.denom) },
+      { amount: fee_quote, decimals: quote.decimals, price: getPrice(1, quote.denom) },
+      formatNumberOptions,
+    );
 
-  const averagePrice = calculatePrice(
-    clearing_price,
-    { base: base.decimals, quote: quote.decimals },
-    formatNumberOptions,
-  );
+    const averagePrice = calculatePrice(
+      clearing_price,
+      { base: base.decimals, quote: quote.decimals },
+      formatNumberOptions,
+    );
 
-  const limitPrice = null;
+    const limitPrice = null;
 
-  const width = cleared
-    ? null
-    : formatNumber(remaining, {
-        ...formatNumberOptions,
-        minSignificantDigits: 8,
-        maxSignificantDigits: 8,
-      }).slice(0, 7);
+    const width = cleared
+      ? null
+      : formatNumber(remaining, {
+          ...formatNumberOptions,
+          minSignificantDigits: 8,
+          maxSignificantDigits: 8,
+        }).slice(0, 7);
 
-  const filled =
-    direction === Direction.Buy ? filled_base : Decimal(filled_quote).div(clearing_price).toFixed();
-  return (
-    <OrderNotification
-      kind={kind}
-      onClick={() =>
+    const filled =
+      direction === Direction.Buy
+        ? filled_base
+        : Decimal(filled_quote).div(clearing_price).toFixed();
+
+    useImperativeHandle(ref, () => ({
+      onClick: () =>
         showModal("notification-spot-action-order", {
           base,
           quote,
@@ -96,53 +97,58 @@ export const NotificationOrderFilled: React.FC<NotificationOrderFilledProps> = (
               { ...quote, amount: refund_quote },
             ],
           },
-        })
-      }
-    >
-      <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
-        {m["notifications.notification.orderFilled.title"]({
-          isFullfilled: m["notifications.notification.orderFilled.isFullfilled"]({
-            isFullfilled: String(cleared),
-          }),
-        })}
-      </p>
+        }),
+    }));
 
-      <div className={twMerge("flex-wrap flex items-center gap-1")}>
-        <span>{m["dex.protrade.orderType"]({ orderType: kind })}</span>
-        <span
-          className={twMerge(
-            "uppercase diatype-m-bold",
-            direction === Direction.Buy ? "text-status-success" : "text-status-fail",
-          )}
-        >
-          {m["dex.protrade.spot.direction"]({ direction })}
-        </span>
-        <PairAssets
-          assets={[base, quote]}
-          className="w-5 h-5 min-w-5 min-h-5"
-          mL={(i) => `${-i / 2}rem`}
-        />
-        <span className="diatype-m-bold">
-          {base.symbol}-{quote.symbol}
-        </span>
-        {limitPrice ? (
-          <>
-            <span>{m["notifications.notification.orderCreated.atPrice"]()}</span>
-            <span className="diatype-m-bold">
-              {limitPrice} {quote.symbol}
+    return (
+      <OrderNotification kind={kind}>
+        <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
+          {m["notifications.notification.orderFilled.title"]({
+            isFullfilled: m["notifications.notification.orderFilled.isFullfilled"]({
+              isFullfilled: String(cleared),
+            }),
+          })}
+        </p>
+
+        <div className="flex flex-col items-start">
+          <div className="flex gap-1">
+            <span>{m["dex.protrade.orderType"]({ orderType: kind })}</span>
+            <span
+              className={twMerge(
+                "uppercase diatype-m-bold",
+                direction === Direction.Buy ? "text-status-success" : "text-status-fail",
+              )}
+            >
+              {m["dex.protrade.spot.direction"]({ direction })}
             </span>
-          </>
-        ) : null}
-        {!cleared ? (
-          <>
-            <span>{m["common.width"]()}</span>
+            <PairAssets
+              assets={[base, quote]}
+              className="w-5 h-5 min-w-5 min-h-5"
+              mL={(i) => `${-i / 2}rem`}
+            />
             <span className="diatype-m-bold">
-              {width} {base.symbol}
+              {base.symbol}-{quote.symbol}
             </span>
-            <span>{m["notifications.notification.orderFilled.remaining"]()}</span>
-          </>
-        ) : null}
-      </div>
-    </OrderNotification>
-  );
-};
+            {limitPrice ? (
+              <>
+                <span>{m["notifications.notification.orderCreated.atPrice"]()}</span>
+                <span className="diatype-m-bold">
+                  {limitPrice} {quote.symbol}
+                </span>
+              </>
+            ) : null}
+          </div>
+          {!cleared ? (
+            <div className="flex gap-1">
+              <span>{m["common.width"]()}</span>
+              <span className="diatype-m-bold">
+                {width} {base.symbol}
+              </span>
+              <span>{m["notifications.notification.orderFilled.remaining"]()}</span>
+            </div>
+          ) : null}
+        </div>
+      </OrderNotification>
+    );
+  },
+);
