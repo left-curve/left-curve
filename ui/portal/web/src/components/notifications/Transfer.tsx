@@ -100,7 +100,7 @@ export const NotificationTransfer = forwardRef<NotificationRef, NotificationTran
               );
             })}
           </div>
-          <div className="flex flex-col diatype-m-medium text-tertiary-500 flex-wrap items-star gap-1">
+          <div className="flex flex-col diatype-m-medium text-tertiary-500 items-start gap-1">
             <div className="flex flex-wrap items-center gap-1">
               <span>
                 {m["notifications.notification.transfer.direction.first"]({ direction: type })}
