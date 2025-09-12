@@ -148,6 +148,7 @@ export type {
   Trade,
   TimeInForceOptions,
   OrderTypes,
+  RestingOrderBookState,
 } from "./dex.js";
 
 export type { WithPrice } from "./utils.js";

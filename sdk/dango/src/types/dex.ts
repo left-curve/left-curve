@@ -394,3 +394,9 @@ export type Trade = {
   feeQuote: string;
   clearingPrice: string;
 };
+
+export type RestingOrderBookState = {
+  bestBidPrice: Option<string>;
+  bestAskPrice: Option<string>;
+  midPrice: Option<string>;
+};

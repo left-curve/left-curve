@@ -166,9 +166,9 @@ const queryAppSubscriptionExecutor: SubscriptionExecutor<"queryApp"> = ({
 }) => {
   return client.queryAppSubscription({
     ...params,
-    next: (event) => {
+    next: ({ queryApp }) => {
       const currentListeners = getListeners();
-      currentListeners.forEach((listener) => listener(event));
+      currentListeners.forEach((listener) => listener(queryApp));
     },
   });
 };
