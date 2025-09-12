@@ -20,6 +20,7 @@ services:
     #   - "traefik.http.routers.dashboard.service=api@internal"
     networks:
       - traefik-net
+      - monitoring
     command:
       - --api.dashboard=true
       - --api.insecure=true
@@ -54,3 +55,5 @@ services:
 networks:
   traefik-net:
     driver: bridge
+  monitoring:
+    external: true
