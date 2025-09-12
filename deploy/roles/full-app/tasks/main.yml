@@ -152,7 +152,7 @@
     url: "https://api.github.com/repos/left-curve/left-curve/deployments"
     method: POST
     headers:
-      Authorization: "token {{ github_token }}"
+      Authorization: "token {{ ghcr_token }}"
       Accept: "application/vnd.github.v3+json"
     body_format: json
     body:
@@ -174,7 +174,7 @@
     url: "https://api.github.com/repos/left-curve/left-curve/deployments/{{ item.json.id }}/statuses"
     method: POST
     headers:
-      Authorization: "token {{ github_token }}"
+      Authorization: "token {{ ghcr_token }}"
       Accept: "application/vnd.github.v3+json"
     body_format: json
     body:
