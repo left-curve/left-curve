@@ -135,6 +135,7 @@
     project_name: "{{ deployment_name }}"
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
     pull: always
+    recreate: always
   when: skip_port_discovery | default(false)
 
 - name: Update Traefik dynamic config
@@ -146,39 +147,80 @@
     owner: "{{ deploy_user }}"
   when: traefik_enabled
 
-- name: Create GitHub deployment
+- name: Create GitHub deployments
   uri:
-    url: "https://api.github.com/repos/left-curve/left-curve/deployments"
+    url: "https://api.github.com/repos/{{ github_repo }}/deployments"
     method: POST
     headers:
-      Authorization: "token {{ ghcr_token }}"
+      Authorization: "token {{ github_token }}"
       Accept: "application/vnd.github.v3+json"
     body_format: json
     body:
-      ref: "{{ ansible_env.GITHUB_SHA | default(github_sha) }}"
-      environment: "pr-{{ github_pr_number }}"
-      description: "PR {{ github_pr_number }} preview deployment"
+      ref: "{{ github_sha }}"
+      environment: "pr-{{ github_pr_number }}-{{ item.name }}"
+      description: "{{ item.description }} for PR {{ github_pr_number }}"
       auto_merge: false
       required_contexts: []
     status_code: [200, 201]
-  register: deployment_result
+  register: deployment_results
+  loop:
+    - { name: "frontend", description: "Frontend", url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}" }
+    - { name: "api", description: "Dango API", url: "http://{{ tailscale_ip }}:{{ dango_port }}" }
+    - { name: "faucet", description: "Faucet", url: "http://{{ tailscale_ip }}:{{ faucet_port }}" }
   when: github_pr_number is defined
 
-- name: Create deployment status
+- name: Set deployment statuses
   uri:
-    url: "https://api.github.com/repos/left-curve/left-curve/deployments/{{ deployment_result.json.id }}/statuses"
+    url: "https://api.github.com/repos/{{ github_repo }}/deployments/{{ item.json.id }}/statuses"
     method: POST
     headers:
-      Authorization: "token {{ ghcr_token }}"
+      Authorization: "token {{ github_token }}"
       Accept: "application/vnd.github.v3+json"
     body_format: json
     body:
       state: "success"
-      target_url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
-      environment_url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
-      description: Preview ready - Frontend, API, Faucet deployed
+      target_url: "{{ deployment_results.results[ansible_loop.index0].item.url }}"
+      description: "{{ deployment_results.results[ansible_loop.index0].item.description }} ready"
+      environment_url: "{{ deployment_results.results[ansible_loop.index0].item.url }}"
     status_code: [200, 201]
-  when: github_pr_number is defined and deployment_result.json.id is defined
+  loop: "{{ deployment_results.results }}"
+  loop_control:
+    extended: true
+  when: github_pr_number is defined and deployment_results.results is defined
+
+# - name: Create GitHub deployment
+#   uri:
+#     url: "https://api.github.com/repos/left-curve/left-curve/deployments"
+#     method: POST
+#     headers:
+#       Authorization: "token {{ ghcr_token }}"
+#       Accept: "application/vnd.github.v3+json"
+#     body_format: json
+#     body:
+#       ref: "{{ ansible_env.GITHUB_SHA | default(github_sha) }}"
+#       environment: "pr-{{ github_pr_number }}"
+#       description: "PR {{ github_pr_number }} preview deployment"
+#       auto_merge: false
+#       required_contexts: []
+#     status_code: [200, 201]
+#   register: deployment_result
+#   when: github_pr_number is defined
+#
+# - name: Create deployment status
+#   uri:
+#     url: "https://api.github.com/repos/left-curve/left-curve/deployments/{{ deployment_result.json.id }}/statuses"
+#     method: POST
+#     headers:
+#       Authorization: "token {{ ghcr_token }}"
+#       Accept: "application/vnd.github.v3+json"
+#     body_format: json
+#     body:
+#       state: "success"
+#       target_url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
+#       environment_url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
+#       description: Preview ready - Frontend, API, Faucet deployed
+#     status_code: [200, 201]
+#   when: github_pr_number is defined and deployment_result.json.id is defined
 
 - name: Add deployment summary to GitHub
   shell: |
@@ -196,7 +238,7 @@
     EOF
   environment:
     GITHUB_STEP_SUMMARY: "{{ ansible_env.GITHUB_STEP_SUMMARY | default('/dev/null') }}"
-  when: github_pr_number is defined and ansible_env.GITHUB_STEP_SUMMARY is defined
+  when: github_pr_number is defined
 
 - name: Display URLs
   debug:
