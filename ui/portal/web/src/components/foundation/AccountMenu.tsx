@@ -181,7 +181,10 @@ const Desktop: React.FC = () => {
   const { setSidebarVisibility, isSidebarVisible, isQuestBannerVisible, modal } = useApp();
 
   useClickAway(menuRef, (e) => {
-    if ((e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) || modal)
+    if (
+      (e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) ||
+      modal.modal
+    )
       return;
     setSidebarVisibility(false);
   });
