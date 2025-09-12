@@ -132,6 +132,9 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         )?;
     }
 
+    // Calculate the timestamp of MAX_VOLUME_AGE ago, saturating_sub because tests sometimes use small timestamps
+    let max_volume_age_timestamp = ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE);
+
     // Save the updated volumes.
     for (address, volume) in volumes {
         VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
@@ -142,14 +145,25 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             .keys(
                 ctx.storage,
                 None,
-                Some(Bound::Exclusive(
-                    ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE), // saturating_sub because tests sometimes use small timestamps
-                )),
+                Some(Bound::Inclusive(max_volume_age_timestamp)),
                 IterationOrder::Ascending,
             )
             .collect::<StdResult<Vec<_>>>()?;
-        for timestamp in keys {
-            VOLUMES.remove(ctx.storage, (&address, timestamp));
+        let last_key = keys.last();
+        for timestamp in &keys {
+            if Some(timestamp) == last_key {
+                // Store the last stored cumulative volume at the timestamp of MAX_VOLUME_AGE ago,
+                // so that the volume can be queried since that timestamp.
+                let volume = VOLUMES.load(ctx.storage, (&address, *timestamp))?;
+                VOLUMES.save(ctx.storage, (&address, max_volume_age_timestamp), &volume)?;
+
+                // If the last key is not the timestamp of MAX_VOLUME_AGE ago, remove also that key.
+                if timestamp != &max_volume_age_timestamp {
+                    VOLUMES.remove(ctx.storage, (&address, *timestamp));
+                }
+            } else {
+                VOLUMES.remove(ctx.storage, (&address, *timestamp));
+            }
         }
     }
 
@@ -162,14 +176,29 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
             .keys(
                 ctx.storage,
                 None,
-                Some(Bound::Exclusive(
-                    ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE), // saturating_sub because tests sometimes use small timestamps
-                )),
+                Some(Bound::Inclusive(max_volume_age_timestamp)),
                 IterationOrder::Ascending,
             )
             .collect::<StdResult<Vec<_>>>()?;
-        for timestamp in keys {
-            VOLUMES_BY_USER.remove(ctx.storage, (&username, timestamp));
+        let last_key = keys.last();
+        for timestamp in &keys {
+            if Some(timestamp) == last_key {
+                // Store the last stored cumulative volume at the timestamp of MAX_VOLUME_AGE ago,
+                // so that the volume can be queried since that timestamp.
+                let volume = VOLUMES_BY_USER.load(ctx.storage, (&username, *timestamp))?;
+                VOLUMES_BY_USER.save(
+                    ctx.storage,
+                    (&username, max_volume_age_timestamp),
+                    &volume,
+                )?;
+
+                // If the last key is not the timestamp of MAX_VOLUME_AGE ago, remove also that key.
+                if timestamp != &max_volume_age_timestamp {
+                    VOLUMES_BY_USER.remove(ctx.storage, (&username, *timestamp));
+                }
+            } else {
+                VOLUMES_BY_USER.remove(ctx.storage, (&username, *timestamp));
+            }
         }
     }
 

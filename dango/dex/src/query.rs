@@ -1,7 +1,7 @@
 use {
     crate::{
-        DEPTHS, MAX_ORACLE_STALENESS, ORDERS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK, VOLUMES,
-        VOLUMES_BY_USER,
+        DEPTHS, MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, ORDERS, PAIRS, PAUSED, RESERVES,
+        RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
     },
     dango_oracle::OracleQuerier,
@@ -431,7 +431,19 @@ fn query_orders_by_user(
 }
 
 #[inline]
-fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Udec128_6> {
+fn query_volume(
+    ctx: ImmutableCtx,
+    user: Addr,
+    since: Option<Timestamp>,
+) -> anyhow::Result<Udec128_6> {
+    // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
+    if let Some(since) = since {
+        anyhow::ensure!(
+            ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE) <= since,
+            "cannot query volume since timestamp that is more than MAX_VOLUME_AGE ago"
+        );
+    }
+
     let volume_now = VOLUMES
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
@@ -462,7 +474,15 @@ fn query_volume_by_user(
     ctx: ImmutableCtx,
     user: Username,
     since: Option<Timestamp>,
-) -> StdResult<Udec128_6> {
+) -> anyhow::Result<Udec128_6> {
+    // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
+    if let Some(since) = since {
+        anyhow::ensure!(
+            ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE) <= since,
+            "cannot query volume since timestamp that is more than MAX_VOLUME_AGE ago"
+        );
+    }
+
     let volume_now = VOLUMES_BY_USER
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
