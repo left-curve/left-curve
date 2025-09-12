@@ -1,3 +1,10 @@
+- name: Abort if password is empty
+  assert:
+    that:
+      - clickhouse_password is defined
+      - clickhouse_password | length > 0
+    fail_msg: "CLICKHOUSE_PASSWORD must be set and non-empty, aborting deployment."
+
 - name: Create deployment directory
   file:
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/{{ item }}"
@@ -79,6 +86,8 @@
   community.docker.docker_compose_v2:
     project_name: "{{ deployment_name }}"
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    wait: true
+    wait_timeout: 300
 
 - name: Get frontend assigned ports
   shell: |
@@ -112,6 +121,15 @@
         - **Dango**: http://{{ tailscale_ip }}:{{ dango_port }}
         - **Faucet**: http://{{ tailscale_ip }}:{{ faucet_port }}
   when: github_pr_number is defined
+
+- name: Update Traefik dynamic config
+  become: true
+  become_user: root
+  template:
+    src: traefik-services.yml
+    dest: "{{ traefik_dir }}/config/{{ dango_network }}.yml"
+    owner: "{{ deploy_user }}"
+  when: traefik_enabled
 
 - name: Display URLs (manual deploy)
   debug:

@@ -2,11 +2,12 @@
   become: true
   become_user: "{{ deploy_user }}"
   vars:
+    traefik_dir: "{{ ansible_env.HOME }}/traefik"
     tailscale_iface: tailscale0
     tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
     dango_image_tag: "{{ lookup('pipe','git rev-parse HEAD') }}"
     ghcr_user: "{{ lookup('env','GITHUB_USER') }}"
-    ghcr_token: "{{ lookup('env','GITHUB_TOKEN') }}"
+    ghcr_token: "{{ lookup('env','GITHUB_TOKEN_READ_PACKAGE') }}"
     timestamp: "{{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}{{ ansible_date_time.second }}"
     deployment_name: "{% if pr_name is defined and pr_name != '' %}{{ pr_name }}-{% endif %}{{ timestamp }}"
     COMETBFT_NODE_KEY: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_NODE_KEY') }}"
@@ -22,6 +23,11 @@
     quest_port: 0
     faucet_port: 0
     dango_frontend_port: 0
+    cometbft_p2p_port: 26656
+    cometbft_rpc_port: 26657
+    cometbft_metrics_port: 26660
+    cometbft_abci_port: 26658
+    traefik_enabled: false
   collections:
     - community.docker
     - community.clickhouse

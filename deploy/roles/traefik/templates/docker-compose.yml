@@ -1,0 +1,56 @@
+services:
+  traefik:
+    image: traefik:v3.5
+    ports:
+      # traefik dashboard
+      - "{{ tailscale_ip }}:8888:8888"
+      # devnet
+      - "8080:8080"
+      - "8081:8081"
+      - "8082:8082"
+      - "26656:26656"
+      # - "{{ tailscale_ip }}:26657:26657"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - "{{ traefik_dir }}/config:/config:ro"
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.dashboard.rule=Host(`{{ tailscale_ip }}`)"
+    #   - "traefik.http.routers.dashboard.entrypoints=dashboard"
+    #   - "traefik.http.routers.dashboard.service=api@internal"
+    networks:
+      - traefik-net
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      # - --entrypoints.web=false
+      # - --entrypoints.websecure=false
+      - --ping=true
+      - --providers.docker=true
+      - --providers.file.directory=/config
+      - --providers.file.watch=true
+      - --entrypoints.traefik.address=:8888
+      - --entrypoints.devnet-dango.address=:8080
+      - --entrypoints.devnet-frontend.address=:8081
+      - --entrypoints.devnet-faucet_bot.address=:8082
+      - --entrypoints.devnet-cometbft_p2p.address=:26656
+      # - --entrypoints.devnet-cometbft.address=:26657
+      # Metrics
+      - --metrics.prometheus=true
+      # Tracing
+      - --tracing=false
+      # Logs
+      - --accesslog=true
+      - --accesslog.format=json
+      - --log.level=INFO
+      - --log.format=json
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping", "--entrypoints.traefik.address=:8888"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+networks:
+  traefik-net:
+    driver: bridge

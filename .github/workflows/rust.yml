@@ -547,6 +547,15 @@ jobs:
             -e "dango_db_password=$DANGO_DB_PASSWORD" \
             -e '{"dango_networks":["devnet"]}'
           ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e faucet_version=latest
+      # - name: Deploy services
+      #   uses: chrnorm/deployment-action@releases/v1
+      #   with:
+      #     environment: production
+      #     deployment-url: https://app.example.com
+      #     description: |
+      #       Frontend: https://app.example.com
+      #       API: https://api.example.com:8080
+      #       Admin: https://admin.example.com:9090
 
   localdango:
     timeout-minutes: 5
