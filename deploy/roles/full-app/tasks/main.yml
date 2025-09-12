@@ -148,7 +148,7 @@
 
 - name: Create GitHub deployment
   uri:
-    url: "https://api.github.com/repos/{{ github_repo }}/deployments"
+    url: "https://api.github.com/repos/left-curve/left-curve/deployments"
     method: POST
     headers:
       Authorization: "token {{ github_token }}"
@@ -165,7 +165,7 @@
 
 - name: Create deployment status
   uri:
-    url: "https://api.github.com/repos/{{ github_repo }}/deployments/{{ deployment_result.json.id }}/statuses"
+    url: "https://api.github.com/repos/left-curve/left-curve/deployments/{{ deployment_result.json.id }}/statuses"
     method: POST
     headers:
       Authorization: "token {{ github_token }}"
