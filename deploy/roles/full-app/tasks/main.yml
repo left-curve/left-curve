@@ -160,6 +160,7 @@
       description: "PR {{ github_pr_number }} preview deployment"
       auto_merge: false
       required_contexts: []
+    status_code: [200, 201]
   register: deployment_result
   when: github_pr_number is defined
 
@@ -180,6 +181,7 @@
         • Dango API: http://{{ tailscale_ip }}:{{ dango_port }}
         • Faucet: http://{{ tailscale_ip }}:{{ faucet_port }}
       environment_url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
+    status_code: [200, 201]
   when: github_pr_number is defined and deployment_result.json.id is defined
 
 - name: Display URLs (manual deploy)
