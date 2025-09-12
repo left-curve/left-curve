@@ -75,8 +75,8 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
             <span className="w-full h-[1px] bg-secondary-gray my-2" />
             <div className="flex flex-col gap-2 w-full">
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500">
-                  {m["notifications.notification.modal.from"]()}
+                <p className="diatype-sm-regular text-tertiary-500 capitalize">
+                  {m["notifications.notification.transfer.direction.first"]({ direction: action })}
                 </p>
                 <div className="flex items-center gap-1">
                   <AddressVisualizer
@@ -88,8 +88,8 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
                 </div>
               </div>
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500">
-                  {m["notifications.notification.modal.to"]()}
+                <p className="diatype-sm-regular text-tertiary-500 capitalize">
+                  {m["notifications.notification.transfer.direction.second"]({ direction: action })}
                 </p>
                 <div className="flex items-center gap-1">
                   <AddressVisualizer
