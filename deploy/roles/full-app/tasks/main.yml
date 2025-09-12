@@ -175,16 +175,30 @@
     body:
       state: "success"
       target_url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
-      description: |
-        Preview deployment ready:
-        • Frontend: http://{{ tailscale_ip }}:{{ dango_frontend_port }}
-        • Dango API: http://{{ tailscale_ip }}:{{ dango_port }}
-        • Faucet: http://{{ tailscale_ip }}:{{ faucet_port }}
       environment_url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
+      description: Preview ready - Frontend, API, Faucet deployed
     status_code: [200, 201]
   when: github_pr_number is defined and deployment_result.json.id is defined
 
-- name: Display URLs (manual deploy)
+- name: Add deployment summary to GitHub
+  shell: |
+    cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+    # 🚀 PR Deployment Summary
+    | Name | Result |
+    | ---- | ------ |
+    | **PR Number:** | `{{ github_pr_number }}` |
+    | **Status:** | ✅ Deployed successfully! |
+    | **Frontend:** | [http://{{ tailscale_ip }}:{{ dango_frontend_port }}](http://{{ tailscale_ip }}:{{ dango_frontend_port }}) |
+    | **Dango API:** | [http://{{ tailscale_ip }}:{{ dango_port }}](http://{{ tailscale_ip }}:{{ dango_port }}) |
+    | **Faucet:** | [http://{{ tailscale_ip }}:{{ faucet_port }}](http://{{ tailscale_ip }}:{{ faucet_port }}) |
+    | **Environment:** | `{{ deployment_name }}` |
+    | **Commit:** | `{{ github_sha }}` |
+    EOF
+  environment:
+    GITHUB_STEP_SUMMARY: "{{ ansible_env.GITHUB_STEP_SUMMARY | default('/dev/null') }}"
+  when: github_pr_number is defined and ansible_env.GITHUB_STEP_SUMMARY is defined
+
+- name: Display URLs
   debug:
     msg:
       - "🚀 Preview Deploy Ready!"
