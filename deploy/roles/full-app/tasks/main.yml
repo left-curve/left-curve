@@ -122,6 +122,42 @@
         - **Faucet**: http://{{ tailscale_ip }}:{{ faucet_port }}
   when: github_pr_number is defined
 
+- name: Create GitHub deployment
+  uri:
+    url: "https://api.github.com/repos/{{ github_repo }}/deployments"
+    method: POST
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      ref: "{{ ansible_env.GITHUB_SHA | default(github_sha) }}"
+      environment: "pr-{{ github_pr_number }}"
+      description: "PR {{ github_pr_number }} preview deployment"
+      auto_merge: false
+      required_contexts: []
+  register: deployment_result
+  when: github_pr_number is defined
+
+- name: Create deployment status
+  uri:
+    url: "https://api.github.com/repos/{{ github_repo }}/deployments/{{ deployment_result.json.id }}/statuses"
+    method: POST
+    headers:
+      Authorization: "token {{ github_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      state: "success"
+      target_url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
+      description: |
+        Preview deployment ready:
+        • Frontend: http://{{ tailscale_ip }}:{{ dango_frontend_port }}
+        • Dango API: http://{{ tailscale_ip }}:{{ dango_port }}
+        • Faucet: http://{{ tailscale_ip }}:{{ faucet_port }}
+      environment_url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
+  when: github_pr_number is defined and deployment_result.json.id is defined
+
 - name: Update Traefik dynamic config
   become: true
   become_user: root
