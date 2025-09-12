@@ -5,6 +5,12 @@ import type { Trade } from "../types/dex.js";
 import type { WithAmount, WithDecimals, WithPrice } from "../types/utils.js";
 import { formatNumber, type FormatNumberOptions, formatUnits, parseUnits } from "./formatters.js";
 
+export function formatOrderId(id: string) {
+  return Decimal(id).gte("9223372036854775807")
+    ? Decimal("18446744073709551615").minus(id).toString()
+    : id;
+}
+
 export function calculateTradeSize(trade: Trade, decimals: number) {
   if (trade.direction === Direction.Buy) {
     return Decimal(trade.refundBase).div(Decimal(10).pow(decimals));
