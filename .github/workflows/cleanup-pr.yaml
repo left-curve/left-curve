@@ -1,0 +1,53 @@
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup-deployment:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete PR deployment
+        run: |
+          # Get deployment ID
+          DEPLOYMENT_ID=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/deployments?environment=pr-${{ github.event.pull_request.number }}" \
+            | jq -r '.[0].id')
+
+          # Set to inactive
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/deployments/$DEPLOYMENT_ID/statuses" \
+            -d '{"state":"inactive","description":"PR closed - deployment deactivated"}'
+
+      - name: Delete PR container images
+        run: |
+          # Get PR commits to find all related image tags
+          PR_COMMITS=$(curl -s \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits" \
+            | jq -r '.[].sha')
+
+          # Delete pr-X-latest tag
+          curl -X DELETE \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango/versions" \
+            -d '{"names":["pr-${{ github.event.pull_request.number }}-latest"]}'
+
+          # Delete commit-specific images for this PR
+          for commit in $PR_COMMITS; do
+            echo "Deleting image for commit: $commit"
+            curl -X DELETE \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango/versions" \
+              -d "{\"names\":[\"$commit\", \"$commit-amd64\", \"$commit-arm64\"]}"
+          done
+
+      - name: Cleanup actual containers
+        run: |
+          ansible-playbook delete-full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
