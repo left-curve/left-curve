@@ -51,7 +51,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
     changeSizeCoin,
     sizeCoin,
     availableCoin,
-    orderAmount,
+    amount,
     maxSizeAmount,
     baseCoin,
     quoteCoin,
@@ -61,14 +61,14 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
 
   const navigate = useNavigate();
 
-  const amount = inputs.size?.value || "0";
+  const size = inputs.size?.value || "0";
 
   const priceAmount = inputs.price?.value || "0";
 
   const rangeValue = useMemo(() => {
     if (maxSizeAmount === 0) return 0;
-    return Math.min(100, (+amount / maxSizeAmount) * 100);
-  }, [maxSizeAmount, amount]);
+    return Math.min(100, (+size / maxSizeAmount) * 100);
+  }, [maxSizeAmount, size]);
 
   return (
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
@@ -150,7 +150,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               fullWidth
               size="md"
               isDisabled={
-                Decimal(amount).lte(0) || (operation === "limit" && Decimal(priceAmount).lte(0))
+                Decimal(size).lte(0) || (operation === "limit" && Decimal(priceAmount).lte(0))
               }
               isLoading={submission.isPending}
               onClick={() => submission.mutateAsync()}
@@ -174,7 +174,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               {m["dex.protrade.spot.orderValue"]()}
             </p>
             <p className="diatype-xs-medium text-secondary-700">
-              {getPrice(amount, sizeCoin.denom, { format: true })}
+              {getPrice(size, sizeCoin.denom, { format: true })}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
@@ -182,13 +182,13 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               <span>{m["dex.protrade.spot.orderSize"]()}</span>
             </p>
             <p className="diatype-xs-medium text-secondary-700">
-              {formatNumber(orderAmount.quoteAmount, { ...formatNumberOptions })} {quoteCoin.symbol}
+              {formatNumber(amount.quote, formatNumberOptions)} {quoteCoin.symbol}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
             <p className="diatype-xs-regular text-tertiary-500" />
             <p className="diatype-xs-medium text-secondary-700">
-              {formatNumber(orderAmount.baseAmount, { ...formatNumberOptions })} {baseCoin.symbol}
+              {formatNumber(amount.base, formatNumberOptions)} {baseCoin.symbol}
             </p>
           </div>
           {operation === "market" ? (
