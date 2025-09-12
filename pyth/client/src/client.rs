@@ -107,31 +107,43 @@ impl PythClient {
             )));
 
             // Check if the connection is open.
-            match es.next().await {
-                Some(event_result) => match event_result {
-                    Ok(_) => {
-                        info!("Pyth SSE connection open");
-
-                        return es;
-                    },
-                    Err(err) => {
-                        error!(
-                            err = err.to_string(),
-                            "Failed to connect. Reconnecting in {} seconds",
-                            current_sleep.as_secs()
-                        );
-                    },
-                },
-
-                // This point should never be reached since the `EventSource` return None
-                // only if the connection is closed with `close()`.
-                // This check is made in case the `EventSource` logic changes in the future.
-                None => {
+            tokio::select! {
+                // Timeout after 3 seconds.
+                _ = sleep(Duration::from_secs(3)) => {
                     error!(
-                        "Received None. Reconnecting in {} seconds",
+                        "Timeout while reconnecting. Reconnecting in {} seconds",
                         current_sleep.as_secs()
                     );
                 },
+
+                data = es.next() => {
+                    match data {
+                        Some(event_result) => match event_result {
+                            Ok(_) => {
+                                info!("Pyth SSE connection open");
+
+                                return es;
+                            },
+                            Err(err) => {
+                                error!(
+                                    err = err.to_string(),
+                                    "Failed to connect. Reconnecting in {} seconds",
+                                    current_sleep.as_secs()
+                                );
+                            },
+                        },
+
+                        // This point should never be reached since the `EventSource` return None
+                        // only if the connection is closed with `close()`.
+                        // This check is made in case the `EventSource` logic changes in the future.
+                        None => {
+                            error!(
+                                "Received None. Reconnecting in {} seconds",
+                                current_sleep.as_secs()
+                            );
+                        },
+                    }
+                }
             }
 
             // The connection is not open correctly: close it and wait before retrying.
