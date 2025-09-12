@@ -4,6 +4,7 @@ use {
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
     },
+    anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
@@ -438,9 +439,9 @@ fn query_volume(
 ) -> anyhow::Result<Udec128_6> {
     // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
     if let Some(since) = since {
-        anyhow::ensure!(
+        ensure!(
             ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE) <= since,
-            "cannot query volume since timestamp that is more than MAX_VOLUME_AGE ago"
+            "the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago"
         );
     }
 
@@ -477,9 +478,9 @@ fn query_volume_by_user(
 ) -> anyhow::Result<Udec128_6> {
     // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
     if let Some(since) = since {
-        anyhow::ensure!(
+        ensure!(
             ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE) <= since,
-            "cannot query volume since timestamp that is more than MAX_VOLUME_AGE ago"
+            "the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago"
         );
     }
 

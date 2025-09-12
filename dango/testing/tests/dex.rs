@@ -3094,6 +3094,7 @@ fn submit_standard_order(
         Direction::Bid => Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
         Direction::Ask => Coins::one(dango::DENOM.clone(), 100_000_000).unwrap(),
     };
+
     suite
         .execute(
             user,
@@ -3553,9 +3554,7 @@ fn volume_tracking_works() {
             user: user1_addr_1.address(),
             since: Some(timestamp_after_second_trade),
         })
-        .should_fail_with_error(
-            "cannot query volume since timestamp that is more than MAX_VOLUME_AGE ago",
-        );
+        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
 
     // Query the volume for user2 address 1 since timestamp after second trade,
     // should fail as time is more than MAX_VOLUME_AGE ago.
@@ -3564,9 +3563,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.address(),
             since: Some(timestamp_after_second_trade),
         })
-        .should_fail_with_error(
-            "cannot query volume since timestamp that is more than MAX_VOLUME_AGE ago",
-        );
+        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
 
     // Query the volume for username user1 since timestamp after second trade,
     // should fail as time is more than MAX_VOLUME_AGE ago.
@@ -3575,9 +3572,7 @@ fn volume_tracking_works() {
             user: user1_addr_1.username.clone(),
             since: Some(timestamp_after_second_trade),
         })
-        .should_fail_with_error(
-            "cannot query volume since timestamp that is more than MAX_VOLUME_AGE ago",
-        );
+        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
 
     // Query the volume for username user2 since timestamp after second trade,
     // should fail as time is more than MAX_VOLUME_AGE ago.
@@ -3586,9 +3581,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.username.clone(),
             since: Some(timestamp_after_second_trade),
         })
-        .should_fail_with_error(
-            "cannot query volume since timestamp that is more than MAX_VOLUME_AGE ago",
-        );
+        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
 }
 
 #[test]
