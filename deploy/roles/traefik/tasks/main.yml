@@ -1,27 +1,19 @@
-- name: Deploy Traefik
+- name: Ensure config dir exists
+  file:
+    path: "{{ traefik_dir }}/config"
+    state: directory
+    mode: '0755'
+
+- name: Generate docker-compose.yml
+  become: true
+  become_user: root
+  template:
+    src: docker-compose.yml
+    dest: "{{ traefik_dir }}"
+    owner: "{{ deploy_user }}"
+
+- name: Deploy all
   community.docker.docker_compose_v2:
-    project_name: traefik
-    definition:
-      services:
-        traefik:
-          image: traefik:v3.5
-          ports:
-            - "{{ tailscale_ip }}:8888:8888"
-            # devnet
-            - "8080:8080"
-            - "26656:26656"
-            - "{{ tailscale_ip }}:26657:26657"
-          labels:
-            - "traefik.enable=true"
-            - "traefik.http.routers.dashboard.rule=Host(`{{ tailscale_ip }}`)"
-            - "traefik.http.routers.dashboard.entrypoints=dashboard"
-            - "traefik.http.routers.dashboard.service=api@internal"
-          volumes:
-            - /var/run/docker.sock:/var/run/docker.sock
-          command:
-            - --api.dashboard=true
-            - --providers.docker=true
-            - --entrypoints.dashboard.address=:8888
-            - --entrypoints.devnet-dango.address=:8080
-            - --entrypoints.devnet-cometbftp2p.address=:26656
-            - --entrypoints.devnet-cometbft.address=:26657
+    project_src: "{{ traefik_dir }}"
+    wait: true
+    wait_timeout: 300

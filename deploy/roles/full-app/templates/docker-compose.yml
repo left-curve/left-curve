@@ -58,6 +58,9 @@ services:
         condition: service_healthy
     ports:
       - "{{ tailscale_ip }}:${DANGO_PORT:-0}:8080"
+    networks:
+      - default
+      - traefik-net
     volumes:
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/dango:/root/.dango/config"
     environment:
@@ -81,6 +84,9 @@ services:
         condition: service_healthy
     ports:
       - "{{ tailscale_ip }}:${DANGO_FRONTEND_PORT:-0}:80"
+    networks:
+      - default
+      - traefik-net
     environment:
       INDEXER_URL: ${INDEXER_URL}
       FAUCET_URL: ${FAUCET_URL}
@@ -102,6 +108,9 @@ services:
         condition: service_healthy
     ports:
       - "{{ tailscale_ip }}:${FAUCET_PORT:-0}:8082"
+    networks:
+      - default
+      - traefik-net
     environment:
       - HOME=/app
     tty: true
@@ -120,9 +129,12 @@ services:
       - dango
     volumes:
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:/root/.cometbft/config"
+    networks:
+      - default
+      - traefik-net
     tty: true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:{{ cometbft_rpc_port }}/health"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -133,3 +145,7 @@ services:
       printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
       exec cometbft start
       "
+
+networks:
+  traefik-net:
+    driver: bridge
