@@ -169,9 +169,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   }, [orderBookState, operation, sizeCoin, pairId, sizeValue, priceValue]);
 
   useEffect(() => {
+    let unsubscribe: () => void;
     (async () => {
       const { addresses } = await getAppConfig();
-      subscriptions.subscribe("queryApp", {
+      unsubscribe = subscriptions.subscribe("queryApp", {
         params: {
           request: snakeCaseJsonSerialization({
             wasmSmart: {
@@ -192,6 +193,9 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         },
       });
     })();
+    return () => {
+      unsubscribe?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -220,7 +224,9 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
             : parseUnits(amount.quote, quoteCoin.decimals);
 
         const price: PriceOption =
-          operation === "market" ? { market: { maxSlippage: "0.001" } } : { limit: parsedAmount };
+          operation === "market"
+            ? { market: { maxSlippage: "0.001" } }
+            : { limit: parseUnits(priceValue, baseCoin.decimals - quoteCoin.decimals) };
 
         const order: CreateOrderRequest = {
           baseDenom,
