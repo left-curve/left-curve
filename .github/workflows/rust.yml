@@ -501,7 +501,7 @@ jobs:
     if: github.event_name == 'pull_request'
     permissions:
       packages: read
-    needs: [backend-push-manifest]
+    needs: [frontend-push-manifest, backend-push-manifest]
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
