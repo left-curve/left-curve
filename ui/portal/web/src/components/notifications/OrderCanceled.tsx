@@ -1,7 +1,7 @@
 import { useConfig } from "@left-curve/store";
 
 import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { Direction, OrderType } from "@left-curve/dango/types";
+import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { OrderNotification } from "./OrderNotification";
@@ -19,11 +19,21 @@ export const NotificationOrderCanceled: React.FC<NotificationOrderCanceledProps>
 }) => {
   const { getCoinInfo } = useConfig();
   const { createdAt, blockHeight } = notification;
-  const { id, quote_denom, base_denom, price, kind, direction, amount, refund, remaining } =
-    notification.data;
+  const {
+    id,
+    quote_denom,
+    base_denom,
+    price,
+    time_in_force,
+    direction,
+    amount,
+    refund,
+    remaining,
+  } = notification.data;
   const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
+  const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
   const isLimit = kind === OrderType.Limit;
 
   const base = getCoinInfo(base_denom);

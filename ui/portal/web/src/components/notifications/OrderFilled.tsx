@@ -1,5 +1,5 @@
 import { useConfig, usePrices } from "@left-curve/store";
-import { Direction, OrderType } from "@left-curve/dango/types";
+import { Direction, TimeInForceOption } from "@left-curve/dango/types";
 
 import { OrderNotification } from "./OrderNotification";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -31,7 +31,7 @@ export const NotificationOrderFilled: React.FC<NotificationOrderFilledProps> = (
     base_denom,
     clearing_price,
     remaining,
-    kind,
+    time_in_force,
     direction,
     cleared,
     fee_base,
@@ -45,7 +45,7 @@ export const NotificationOrderFilled: React.FC<NotificationOrderFilledProps> = (
   const { formatNumberOptions } = settings;
   const { getPrice } = usePrices();
 
-  const isLimit = kind === OrderType.Limit;
+  const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
 
   const base = getCoinInfo(base_denom);
   const quote = getCoinInfo(quote_denom);

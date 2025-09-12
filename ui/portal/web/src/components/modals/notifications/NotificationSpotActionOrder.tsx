@@ -15,7 +15,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { format } from "date-fns";
 
 import type { AnyCoin, WithAmount } from "@left-curve/store/types";
-import { formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { formatNumber, formatOrderId, formatUnits } from "@left-curve/dango/utils";
 
 type NotificationSpotActionOrderProps = {
   status: "created" | "canceled" | "fulfilled";
@@ -42,8 +42,10 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
   ({ status, action, base, quote, order, blockHeight }, _) => {
     const { id, type, amount, limitPrice, refund, timeCreated, timeCanceled, fee, averagePrice } =
       order;
+
     const { hideModal, setSidebarVisibility, settings } = useApp();
     const { formatNumberOptions } = settings;
+    const orderId = formatOrderId(id);
     const { navigate: _navigate_ } = useRouter();
 
     const navigate = (parameters: Parameters<typeof _navigate_>[0]) => {
@@ -190,8 +192,8 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
                   {m["notifications.notification.modal.id"]()}
                 </p>
                 <div className="flex items-center gap-1">
-                  <p>{id}</p>
-                  <TextCopy copyText={id} className="h-4 w-4" />
+                  <p>{orderId}</p>
+                  <TextCopy copyText={orderId} className="h-4 w-4" />
                 </div>
               </div>
               {timeCreated ? (
