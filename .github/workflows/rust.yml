@@ -557,7 +557,7 @@ jobs:
       #       API: https://api.example.com:8080
       #       Admin: https://admin.example.com:9090
 
-  deploy-dango:
+  deploy-main:
     if: github.ref == 'refs/heads/main'
     permissions:
       packages: read
