@@ -11,6 +11,7 @@ pub struct Config {
     pub sentry: SentryConfig,
     pub log_level: String,
     pub log_format: LogFormat,
+    pub pyth: PythLazerConfig,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -123,4 +124,10 @@ impl Default for TransactionsConfig {
             gas_adjustment: 1.4,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct PythLazerConfig {
+    pub endpoints: Vec<String>,
+    pub access_token: String,
 }
