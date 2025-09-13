@@ -9,6 +9,7 @@ import type {
   IndexedTransferEvent,
   PublicClient,
   QueryRequest,
+  QueryResponse,
   Trade,
   Username,
 } from "@left-curve/dango/types";
@@ -69,7 +70,7 @@ export type SubscriptionSchema = [
       request: QueryRequest;
       interval?: number;
     };
-    listener: <T>(event: T) => void;
+    listener: (event: QueryResponse) => void;
   },
 ];
 

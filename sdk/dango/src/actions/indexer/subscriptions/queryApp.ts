@@ -1,15 +1,15 @@
 import type {
   Chain,
   Client,
-  Json,
   QueryRequest,
+  QueryResponse,
   Signer,
   SubscriptionCallbacks,
   Transport,
 } from "../../../types/index.js";
 
-export type QueryAppSubscriptionParameters<T = Json> = SubscriptionCallbacks<{
-  QueryApp: T;
+export type QueryAppSubscriptionParameters = SubscriptionCallbacks<{
+  queryApp: QueryResponse;
 }> & {
   request: QueryRequest;
   interval?: number;
