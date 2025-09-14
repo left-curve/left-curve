@@ -128,7 +128,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
   if (!account) return null;
 
   return (
-    <div className="w-full flex items-center flex-col gap-6 relative md:pt-4">
+    <div className="w-full flex items-center flex-col gap-6 relative md:pt-4 flex-1 h-full">
       <div className="flex flex-col w-full items-center gap-5">
         {backAllowed ? (
           <div className="w-full flex gap-2">
@@ -236,7 +236,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const [activeTab, setActiveTab] = useState("wallet");
 
   return (
-    <div className="flex flex-col w-full gap-6 items-center">
+    <div className="flex flex-col w-full gap-6 items-center h-full">
       <div className="md:self-end flex gap-2 items-center justify-center w-full px-4">
         <Button
           fullWidth
@@ -279,7 +279,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
       </div>
       <motion.div
         key={activeTab}
-        className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full max-h-[calc(100svh-20rem)]"
+        className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -296,7 +296,7 @@ export const WalletTab: React.FC = () => {
   const balances = Object.entries(context.balances);
 
   return (
-    <div className="flex flex-col w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none pb-10">
+    <div className="flex flex-col w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none">
       {balances.length > 0 ? (
         balances.map(([denom, amount]) => <AssetCard key={denom} coin={{ denom, amount }} />)
       ) : (
@@ -312,9 +312,9 @@ export const NotificationsTab: React.FC = () => {
   const { totalNotifications } = useNotifications();
 
   return (
-    <div className="pb-[2.5rem] flex flex-col">
+    <div className="flex flex-col pb-[12rem]">
       {totalNotifications > 0 ? (
-        <Notifications className="max-h-[41rem] overflow-y-scroll scrollbar-none" />
+        <Notifications className="overflow-y-scroll scrollbar-none" />
       ) : (
         <div className="px-4">
           <EmptyPlaceholder
