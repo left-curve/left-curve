@@ -17,7 +17,7 @@ export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) =>
     <div className="flex flex-col gap-4">
       <Range
         minValue={0}
-        maxValue={Number(amount)}
+        maxValue={Number(balance)}
         step={0.1}
         value={Number(amount)}
         onChange={(value) => {
