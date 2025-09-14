@@ -222,7 +222,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
         <p className="text-end">{m["dex.protrade.history.size"]({ symbol: base.symbol })}</p>
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
       </div>
-      <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
+      <div className="relative flex-1 w-full flex flex-col gap-1 items-center tabular-nums lining-nums">
         {trades.map((trade, index) => {
           return (
             <div
