@@ -11,15 +11,15 @@ use {
         account_factory::Username,
         dex::{
             Direction, LiquidityDepth, LiquidityDepthResponse, OrderId, OrderResponse,
-            OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams, PairUpdate, QueryMsg,
-            ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
+            OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams, PairUpdate, Price,
+            QueryMsg, ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
             RestingOrderBookStatesResponse, SwapRoute,
         },
     },
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
         JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult,
-        Timestamp, Udec128_6, Udec128_24, Uint128,
+        Timestamp, Udec128_6, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -153,7 +153,7 @@ fn query_liquidity_depth(
     ctx: ImmutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
-    bucket_size: Udec128_24,
+    bucket_size: Price,
     limit: usize,
 ) -> anyhow::Result<LiquidityDepthResponse> {
     // load the pair params

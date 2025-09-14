@@ -1,6 +1,6 @@
 use {
-    crate::dex::{Direction, OrderId, PairId, TimeInForce},
-    grug::{Addr, Coin, DecCoin, Denom, Udec128_6, Udec128_24, Uint128},
+    crate::dex::{Direction, OrderId, PairId, Price, TimeInForce},
+    grug::{Addr, Coin, DecCoin, Denom, Udec128_6, Uint128},
 };
 
 #[grug::derive(Serde)]
@@ -12,7 +12,7 @@ pub struct OrderCreated {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    pub price: Udec128_24,
+    pub price: Price,
     pub amount: Uint128,
     pub deposit: Coin,
 }
@@ -33,7 +33,7 @@ pub struct OrderCanceled {
     /// The direction of the order.
     pub direction: Direction,
     /// The order's limit price, measured in quote asset per base asset.
-    pub price: Udec128_24,
+    pub price: Price,
     /// The order's total size, measured in the _base asset_.
     pub amount: Uint128,
 }
@@ -45,7 +45,7 @@ pub struct OrderCanceled {
 pub struct OrdersMatched {
     pub base_denom: Denom,
     pub quote_denom: Denom,
-    pub clearing_price: Udec128_24,
+    pub clearing_price: Price,
     /// Amount matched denominated in the base asset.
     pub volume: Udec128_6,
 }
@@ -66,7 +66,7 @@ pub struct OrderFilled {
     pub fee_base: Udec128_6,
     pub fee_quote: Udec128_6,
     /// The price at which the order was executed.
-    pub clearing_price: Udec128_24,
+    pub clearing_price: Price,
     /// Whether the order was _completed_ filled and cleared from the book.
     pub cleared: bool,
 }

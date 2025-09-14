@@ -1,10 +1,10 @@
 use {
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
-    dango_types::dex::Geometric,
+    dango_types::dex::{Geometric, Price},
     grug::{
         Bounded, Coin, CoinPair, Denom, IsZero, MultiplyFraction, Number, NumberConst, Udec128,
-        Udec128_24, Uint128, ZeroExclusiveOneExclusive,
+        Uint128, ZeroExclusiveOneExclusive,
     },
     std::{cmp, iter},
 };
@@ -26,7 +26,7 @@ pub fn add_subsequent_liquidity(
     oracle_querier: &mut OracleQuerier,
     reserve: &mut CoinPair,
     deposit: CoinPair,
-) -> anyhow::Result<Udec128_24> {
+) -> anyhow::Result<Price> {
     let deposit_value = oracle_value(oracle_querier, &deposit)?;
     let reserve_value = oracle_value(oracle_querier, reserve)?;
 
@@ -73,7 +73,7 @@ pub fn swap_exact_amount_in(
 // NOTE: Always round down (floor) the output amount; always round up (ceil) the input amount.
 fn bid_exact_amount_in(
     bid_amount_in_quote: Uint128,
-    passive_asks: Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
+    passive_asks: Box<dyn Iterator<Item = (Price, Uint128)>>,
 ) -> anyhow::Result<Uint128> {
     let mut remaining_bid_in_quote = bid_amount_in_quote.checked_into_dec::<6>()?;
     let mut output_amount = Udec128::ZERO;
@@ -99,7 +99,7 @@ fn bid_exact_amount_in(
 
 fn ask_exact_amount_in(
     ask_amount: Uint128,
-    passive_bids: Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
+    passive_bids: Box<dyn Iterator<Item = (Price, Uint128)>>,
 ) -> anyhow::Result<Uint128> {
     let mut remaining_ask = ask_amount.checked_into_dec::<6>()?;
     let mut output_amount_in_quote = Udec128::ZERO;
@@ -162,7 +162,7 @@ pub fn swap_exact_amount_out(
 
 fn bid_exact_amount_out(
     bid_amount: Uint128,
-    passive_asks: Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
+    passive_asks: Box<dyn Iterator<Item = (Price, Uint128)>>,
 ) -> anyhow::Result<Uint128> {
     let mut remaining_bid = bid_amount.checked_into_dec::<6>()?;
     let mut input_amount = Udec128::ZERO;
@@ -184,7 +184,7 @@ fn bid_exact_amount_out(
 
 fn ask_exact_amount_out(
     ask_amount_in_quote: Uint128,
-    passive_bids: Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
+    passive_bids: Box<dyn Iterator<Item = (Price, Uint128)>>,
 ) -> anyhow::Result<Uint128> {
     let mut remaining_ask_in_quote = ask_amount_in_quote.checked_into_dec::<6>()?;
     let mut input_amount = Udec128::ZERO;
@@ -217,8 +217,8 @@ pub fn reflect_curve(
     params: Geometric,
     swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 ) -> anyhow::Result<(
-    Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
-    Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
+    Box<dyn Iterator<Item = (Price, Uint128)>>,
+    Box<dyn Iterator<Item = (Price, Uint128)>>,
 )> {
     // Compute the price of the base asset denominated in the quote asset.
     // We will place orders above and below this price.
@@ -229,10 +229,10 @@ pub fn reflect_curve(
     let marginal_price = {
         const PRECISION: Uint128 = Uint128::new(1_000_000);
 
-        let base_price: Udec128_24 = oracle_querier
+        let base_price: Price = oracle_querier
             .query_price(base_denom, None)?
             .value_of_unit_amount(PRECISION)?;
-        let quote_price: Udec128_24 = oracle_querier
+        let quote_price: Price = oracle_querier
             .query_price(quote_denom, None)?
             .value_of_unit_amount(PRECISION)?;
 
@@ -292,17 +292,14 @@ pub fn reflect_curve(
     Ok((Box::new(bids), Box::new(asks)))
 }
 
-fn oracle_value(
-    oracle_querier: &mut OracleQuerier,
-    coin_pair: &CoinPair,
-) -> anyhow::Result<Udec128_24> {
+fn oracle_value(oracle_querier: &mut OracleQuerier, coin_pair: &CoinPair) -> anyhow::Result<Price> {
     let first = coin_pair.first();
     let first_price = oracle_querier.query_price(first.denom, None)?;
     let first_value = first_price.value_of_unit_amount(*first.amount)?;
 
     let second = coin_pair.second();
     let second_price = oracle_querier.query_price(second.denom, None)?;
-    let second_value: Udec128_24 = second_price.value_of_unit_amount(*second.amount)?;
+    let second_value: Price = second_price.value_of_unit_amount(*second.amount)?;
 
     Ok(first_value.checked_add(second_value)?)
 }

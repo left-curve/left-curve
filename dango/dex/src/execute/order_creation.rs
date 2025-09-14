@@ -5,11 +5,10 @@ use {
     },
     anyhow::{anyhow, ensure},
     dango_types::dex::{
-        AmountOption, CreateOrderRequest, Direction, Order, OrderCreated, PriceOption, TimeInForce,
+        AmountOption, CreateOrderRequest, Direction, Order, OrderCreated, Price, PriceOption,
+        TimeInForce,
     },
-    grug::{
-        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, Storage, Udec128_24,
-    },
+    grug::{Addr, Coin, Coins, EventBuilder, MultiplyFraction, Number, NumberConst, Storage},
 };
 
 pub(super) fn create_order(
@@ -47,7 +46,7 @@ pub(super) fn create_order(
                             order.quote_denom
                         )
                     })?;
-                let one_add_max_slippage = Udec128_24::ONE.saturating_add(*max_slippage);
+                let one_add_max_slippage = Price::ONE.saturating_add(*max_slippage);
                 best_ask_price.saturating_mul(one_add_max_slippage)
             },
             Direction::Ask => {
@@ -61,7 +60,7 @@ pub(super) fn create_order(
                             order.quote_denom
                         )
                     })?;
-                let one_sub_max_slippage = Udec128_24::ONE.saturating_sub(*max_slippage);
+                let one_sub_max_slippage = Price::ONE.saturating_sub(*max_slippage);
                 best_bid_price.saturating_mul(one_sub_max_slippage)
             },
         },

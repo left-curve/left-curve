@@ -1,11 +1,13 @@
 use {
     crate::{
         account_factory::Username,
-        dex::{Direction, OrderId, PairParams, PairUpdate, RestingOrderBookState, TimeInForce},
+        dex::{
+            Direction, OrderId, PairParams, PairUpdate, Price, RestingOrderBookState, TimeInForce,
+        },
     },
     grug::{
         Addr, Bounded, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6,
-        Udec128_24, Uint128, UniqueVec, ZeroInclusiveOneExclusive,
+        Uint128, UniqueVec, ZeroInclusiveOneExclusive,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -42,7 +44,7 @@ impl CreateOrderRequest {
         base_denom: Denom,
         quote_denom: Denom,
         direction: Direction,
-        price: NonZero<Udec128_24>,
+        price: NonZero<Price>,
         amount: NonZero<Uint128>, // Quote asset amount for bids; base asset amount for asks.
     ) -> Self {
         Self {
@@ -83,7 +85,7 @@ impl CreateOrderRequest {
 #[grug::derive(Serde)]
 pub enum PriceOption {
     /// The order is to have the specified limit price.
-    Limit(NonZero<Udec128_24>),
+    Limit(NonZero<Price>),
     /// The order's limit price is to be determined by the best available price
     /// in the resting order book and the specified maximum slippage.
     ///
@@ -337,7 +339,7 @@ pub enum QueryMsg {
     LiquidityDepth {
         base_denom: Denom,
         quote_denom: Denom,
-        bucket_size: Udec128_24,
+        bucket_size: Price,
         limit: Option<u32>,
     },
 }
@@ -372,7 +374,7 @@ pub struct OrderResponse {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    pub price: Udec128_24,
+    pub price: Price,
     pub amount: Uint128,
     pub remaining: Udec128_6,
 }
@@ -382,7 +384,7 @@ pub struct OrderResponse {
 pub struct OrdersByPairResponse {
     pub user: Addr,
     pub direction: Direction,
-    pub price: Udec128_24,
+    pub price: Price,
     pub amount: Uint128,
     pub remaining: Udec128_6,
 }
@@ -393,7 +395,7 @@ pub struct OrdersByUserResponse {
     pub base_denom: Denom,
     pub quote_denom: Denom,
     pub direction: Direction,
-    pub price: Udec128_24,
+    pub price: Price,
     pub amount: Uint128,
     pub remaining: Udec128_6,
 }
@@ -401,8 +403,8 @@ pub struct OrdersByUserResponse {
 /// Response type of the `QueryMsg::ReflectCurve` query.
 #[grug::derive(Serde)]
 pub struct ReflectCurveResponse {
-    pub bids: BTreeMap<Udec128_24, Uint128>, // price => amount in base asset
-    pub asks: BTreeMap<Udec128_24, Uint128>, // price => amount in base asset
+    pub bids: BTreeMap<Price, Uint128>, // price => amount in base asset
+    pub asks: BTreeMap<Price, Uint128>, // price => amount in base asset
 }
 
 /// Response type of the `QueryMsg::LiquidityDepth` query.
@@ -415,6 +417,6 @@ pub struct LiquidityDepth {
 /// Response type of the `QueryMsg::LiquidityDepth` query.
 #[grug::derive(Serde)]
 pub struct LiquidityDepthResponse {
-    pub bid_depth: Option<Vec<(Udec128_24, LiquidityDepth)>>,
-    pub ask_depth: Option<Vec<(Udec128_24, LiquidityDepth)>>,
+    pub bid_depth: Option<Vec<(Price, LiquidityDepth)>>,
+    pub ask_depth: Option<Vec<(Price, LiquidityDepth)>>,
 }

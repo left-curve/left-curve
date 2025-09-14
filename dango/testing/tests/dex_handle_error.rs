@@ -4,14 +4,14 @@ use {
     dango_types::{
         constants::{dango, usdc},
         dex::{
-            self, CreateOrderRequest, Direction, OrderId, OrdersByPairResponse,
+            self, CreateOrderRequest, Direction, OrderId, OrdersByPairResponse, Price,
             QueryOrdersByPairRequest, QueryPausedRequest,
         },
     },
     grug::{
         Addr, Addressable, ContractBuilder, ContractWrapper, Empty, HashExt, Message, NonEmpty,
-        NonZero, QuerierExt, Response, ResultExt, Signer, StdResult, SudoCtx, Udec128_6,
-        Udec128_24, Uint128, btree_map, coins,
+        NonZero, QuerierExt, Response, ResultExt, Signer, StdResult, SudoCtx, Udec128_6, Uint128,
+        btree_map, coins,
     },
     test_case::test_case,
 };
@@ -121,14 +121,14 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
                                 dango::DENOM.clone(),
                                 usdc::DENOM.clone(),
                                 Direction::Bid,
-                                NonZero::new_unchecked(Udec128_24::new(100)),
+                                NonZero::new_unchecked(Price::new(100)),
                                 NonZero::new_unchecked(Uint128::new(300)), // 100 * 3
                             ),
                             CreateOrderRequest::new_limit(
                                 dango::DENOM.clone(),
                                 usdc::DENOM.clone(),
                                 Direction::Ask,
-                                NonZero::new_unchecked(Udec128_24::new(100)),
+                                NonZero::new_unchecked(Price::new(100)),
                                 NonZero::new_unchecked(Uint128::new(3)),
                             ),
                         ],
@@ -169,14 +169,14 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
             OrderId::new(!1) => OrdersByPairResponse {
                 user: accounts.owner.address(),
                 direction: Direction::Bid,
-                price: Udec128_24::new(100),
+                price: Price::new(100),
                 amount: Uint128::new(3),
                 remaining: Udec128_6::new(3),
             },
             OrderId::new(2) => OrdersByPairResponse {
                 user: accounts.owner.address(),
                 direction: Direction::Ask,
-                price: Udec128_24::new(100),
+                price: Price::new(100),
                 amount: Uint128::new(3),
                 remaining: Udec128_6::new(3),
             },
