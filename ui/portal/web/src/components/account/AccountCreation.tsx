@@ -9,7 +9,7 @@ import {
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { Decimal, formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
+import { Decimal, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
@@ -150,13 +150,13 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
 export const Deposit: React.FC = () => {
   const { previousStep, data } = useWizard<{ accountType: AccountTypes }>();
   const { register, inputs } = useInputs();
+  const navigate = useNavigate();
 
   const { value: fundsAmount, error } = inputs.amount || {};
 
-  const navigate = useNavigate();
   const { toast, showModal, subscriptions, settings } = useApp();
   const { coins } = useConfig();
-  const { username, account, refreshAccounts, changeAccount } = useAccount();
+  const { username, account } = useAccount();
   const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 
@@ -196,11 +196,6 @@ export const Deposit: React.FC = () => {
           config: { [accountType as "spot"]: { owner: account!.username } },
           ...(Decimal(funds).gt(0) ? { funds: { "bridge/usdc": parsedAmount.toString() } } : {}),
         });
-
-        await refreshAccounts?.();
-      },
-      onSuccess: () => {
-        navigate({ to: "/" });
       },
     },
   });
@@ -213,16 +208,14 @@ export const Deposit: React.FC = () => {
         const account = accounts.at(0)!;
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
 
-        await wait(300);
-
         showModal(Modals.ConfirmAccount, {
+          navigate,
           amount: parsedAmount,
+          accountAddress: account.address,
           accountType: account.accountType,
           accountName: `${username} #${account.accountIndex}`,
           denom: "bridge/usdc",
         });
-
-        changeAccount?.(account.address);
       },
     });
   }, [subscriptions, username, fundsAmount, coinInfo]);
@@ -262,7 +255,9 @@ export const Deposit: React.FC = () => {
             <p>{m["common.available"]()}</p>
             <p className="flex gap-1">
               <span>{coinInfo.symbol}</span>
-              <span>{formatNumber(humanBalance, formatNumberOptions)}</span>
+              <span>
+                {formatNumber(humanBalance, { ...formatNumberOptions, maxSignificantDigits: 6 })}
+              </span>
             </p>
           </div>
         }
