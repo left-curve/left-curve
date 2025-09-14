@@ -20,7 +20,7 @@ export const TestnetBanner: React.FC = () => {
     <motion.div
       exit={{ transform: "scaleY(0)", height: 0, opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="h-9 w-full relative top-0  bg-[url('./images/warning-banner.svg')] flex items-center justify-center"
+      className="min-h-9 h-9 w-full relative top-0  bg-[url('./images/warning-banner.svg')] flex items-center justify-center"
     >
       <Marquee
         className="w-full bg-[#F7CF74] h-fit p-0 uppercase gap-10"

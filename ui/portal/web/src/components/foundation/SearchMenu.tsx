@@ -97,7 +97,7 @@ const SearchMenu: React.FC = () => {
           className={twMerge(
             "flex-col bg-surface-secondary-rice rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative flex-1 lg:shadow-account-card transition-all duration-300",
             !isLg && isSearchBarVisible
-              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-surface-primary-rice p-4 gap-4"
+              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-surface-primary-rice p-4 gap-4 rounded-none"
               : "",
             isLg && location.pathname === "/" ? "lg:top-0" : "lg:top-[-22px]",
           )}
