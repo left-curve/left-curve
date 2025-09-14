@@ -229,6 +229,8 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
             maxSignificantDigits: 10,
             maxFractionDigits: 5,
           }).slice(0, 7);
+
+          const isAmountTooSmall = Decimal(size).lt(0.00001);
           return (
             <div
               key={`${trade.addr}-${trade.createdAt}-${index}`}
@@ -251,8 +253,8 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
                 ).slice(0, 10)}
               </p>
               <p className="text-end z-10 flex gap-1 justify-end">
-                {+size < 0.00001 ? <span>{"<"}</span> : null}
-                {+size < 0.00001 ? "0.00001" : size}
+                {isAmountTooSmall ? <span>{"<"}</span> : null}
+                {isAmountTooSmall ? "0.00001" : size}
               </p>
 
               <div className="flex gap-1 items-center justify-end z-10">
