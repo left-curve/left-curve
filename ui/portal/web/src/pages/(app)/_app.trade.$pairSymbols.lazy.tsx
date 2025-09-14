@@ -6,6 +6,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ProTrade } from "~/components/dex/ProTrade";
 
 import type { PairId } from "@left-curve/dango/types";
+import { useLayoutEffect, useState } from "react";
 
 export const Route = createLazyFileRoute("/(app)/_app/trade/$pairSymbols")({
   component: ProTradeApplet,
@@ -16,6 +17,21 @@ function ProTradeApplet() {
   const { coins } = useConfig();
   const { pairSymbols } = Route.useParams();
   const { action = "buy", order_type = "market" } = Route.useSearch();
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const headerEl = document.querySelector<HTMLElement>("header");
+    if (!headerEl) return;
+
+    setHeaderHeight(headerEl.offsetHeight);
+
+    const observer = new ResizeObserver(([entry]) => {
+      setHeaderHeight(entry.contentRect.height);
+    });
+
+    observer.observe(headerEl);
+    return () => observer.disconnect();
+  }, []);
 
   const onChangePairId = ({ baseDenom, quoteDenom }: PairId) => {
     const baseSymbol = coins.byDenom[baseDenom]?.symbol;
@@ -54,7 +70,12 @@ function ProTradeApplet() {
   };
 
   return (
-    <div className="flex w-full min-h-screen lg:min-h-[calc(100vh-76px)] relative overflow-visible">
+    <div
+      className="flex w-full min-h-screen lg:min-h-[calc(100vh-112px)] relative overflow-visible"
+      style={{
+        minHeight: `calc(100vh - ${headerHeight}px)`,
+      }}
+    >
       <ProTrade
         pairId={pairId}
         onChangePairId={onChangePairId}
@@ -65,7 +86,7 @@ function ProTradeApplet() {
       >
         <div className="flex flex-col flex-1">
           <div className="flex flex-col xl:flex-row flex-1">
-            <div className="flex flex-col flex-1">
+            <div className="flex flex-col flex-1 justify-end">
               <ProTrade.Header />
               <ProTrade.Chart />
             </div>
