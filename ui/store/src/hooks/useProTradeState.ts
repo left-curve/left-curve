@@ -10,8 +10,19 @@ import { useSubmitTx } from "./useSubmitTx.js";
 import { useQueryWithPagination } from "./useQueryWithPagination.js";
 
 import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import {
+  camelCaseJsonDeserialization,
+  snakeCaseJsonSerialization,
+} from "@left-curve/dango/encoding";
 
-import type { CreateOrderRequest, PairId, PriceOption } from "@left-curve/dango/types";
+import type {
+  CreateOrderRequest,
+  PairId,
+  PriceOption,
+  QueryRequest,
+  QueryResponse,
+  RestingOrderBookState,
+} from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount } from "../types/coin.js";
 
 export type UseProTradeStateParameters = {
@@ -40,7 +51,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   } = parameters;
   const { inputs, setValue } = controllers;
   const { account } = useAccount();
-  const { coins } = useConfig();
+  const { coins, subscriptions, getAppConfig } = useConfig();
   const queryClient = useQueryClient();
   const publicClient = usePublicClient();
   const { data: signingClient } = useSigningClient();
@@ -50,6 +61,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const [sizeCoin, setSizeCoin] = useState(coins.byDenom[pairId.quoteDenom]);
   const [operation, setOperation] = useState(orderType);
   const [action, setAction] = useState(initialAction);
+  const [orderBookState, setOrderBookState] = useState<RestingOrderBookState>();
 
   const { data: balances = {} } = useBalances({
     address: account?.address,
@@ -138,30 +150,53 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     },
   });
 
-  const orderAmount = useMemo(() => {
-    if (sizeValue === "0") return { baseAmount: "0", quoteAmount: "0" };
+  const amount = useMemo(() => {
+    if (!orderBookState) return { base: "0", quote: "0" };
+    if (sizeValue === "0") return { base: "0", quote: "0" };
 
     const isBaseSize = sizeCoin.denom === pairId.baseDenom;
     const isQuoteSize = sizeCoin.denom === pairId.quoteDenom;
 
-    if (operation === "market") {
-      return {
-        baseAmount: isBaseSize
-          ? sizeValue
-          : convertAmount(sizeValue, sizeCoin.denom, pairId.baseDenom).toString(),
-        quoteAmount: isQuoteSize
-          ? sizeValue
-          : convertAmount(sizeValue, sizeCoin.denom, pairId.quoteDenom).toString(),
-      };
-    }
-
-    if (priceValue === "0") return { baseAmount: "0", quoteAmount: "0" };
+    const price = parseUnits(
+      operation === "market" ? orderBookState.midPrice || "0" : priceValue || "0",
+      baseCoin.decimals - quoteCoin.decimals,
+    );
 
     return {
-      baseAmount: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(priceValue).toFixed(),
-      quoteAmount: isQuoteSize ? sizeValue : Decimal(sizeValue).mul(priceValue).toFixed(),
+      base: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(price).toFixed(),
+      quote: isQuoteSize ? sizeValue : Decimal(sizeValue).mulCeil(price).toFixed(),
     };
-  }, [operation, sizeCoin, pairId, sizeValue, priceValue, needsConversion]);
+  }, [orderBookState, operation, sizeCoin, pairId, sizeValue, priceValue]);
+
+  useEffect(() => {
+    let unsubscribe: () => void;
+    (async () => {
+      const { addresses } = await getAppConfig();
+      unsubscribe = subscriptions.subscribe("queryApp", {
+        params: {
+          request: snakeCaseJsonSerialization({
+            wasmSmart: {
+              contract: addresses.dex,
+              msg: {
+                restingOrderBookState: {
+                  baseDenom: pairId.baseDenom,
+                  quoteDenom: pairId.quoteDenom,
+                },
+              },
+            },
+          }) as QueryRequest,
+        },
+        listener: (event) => {
+          type Event = Extract<QueryResponse, { wasmSmart: unknown }>;
+          const { wasmSmart: orderBookState } = camelCaseJsonDeserialization<Event>(event);
+          setOrderBookState(orderBookState as RestingOrderBookState);
+        },
+      });
+    })();
+    return () => {
+      unsubscribe?.();
+    };
+  }, []);
 
   useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
@@ -183,37 +218,22 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
         const { baseDenom, quoteDenom } = pairId;
 
-        const limitAmount = Decimal(orderAmount.baseAmount)
-          .times(Decimal(10).pow(baseCoin.decimals))
-          .toFixed(0, 0);
-
-        const limitPrice = Decimal(priceValue)
-          .times(Decimal(10).pow(quoteCoin.decimals - baseCoin.decimals))
-          .toFixed();
-
-        const amount = (() => {
-          if (operation === "market") {
-            return (
-              baseCoin.denom === availableCoin.denom
-                ? parseUnits(orderAmount.baseAmount, baseCoin.decimals)
-                : parseUnits(orderAmount.quoteAmount, quoteCoin.decimals)
-            ).toString();
-          }
-
-          if (baseCoin.denom === availableCoin.denom)
-            return parseUnits(orderAmount.baseAmount, baseCoin.decimals).toString();
-
-          return Decimal(limitAmount).mulCeil(limitPrice).toFixed(0, 3);
-        })();
+        const parsedAmount =
+          baseCoin.denom === availableCoin.denom
+            ? parseUnits(amount.base, baseCoin.decimals)
+            : parseUnits(amount.quote, quoteCoin.decimals);
 
         const price: PriceOption =
-          operation === "market" ? { market: { maxSlippage: "0.001" } } : { limit: limitPrice };
+          operation === "market"
+            ? { market: { maxSlippage: "0.001" } }
+            : { limit: parseUnits(priceValue, baseCoin.decimals - quoteCoin.decimals) };
 
         const order: CreateOrderRequest = {
           baseDenom,
           quoteDenom,
           price,
-          amount: action === "buy" ? { bid: { quote: amount } } : { ask: { base: amount } },
+          amount:
+            action === "buy" ? { bid: { quote: parsedAmount } } : { ask: { base: parsedAmount } },
           timeInForce: operation === "market" ? "IOC" : "GTC",
         };
 
@@ -221,7 +241,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
           sender: account.address,
           creates: [order],
           funds: {
-            [availableCoin.denom]: amount,
+            [availableCoin.denom]: parsedAmount,
           },
         });
       },
@@ -238,7 +258,8 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   return {
     pairId,
     onChangePairId: changePairId,
-    orderAmount,
+    amount,
+    orderBookState,
     maxSizeAmount,
     availableCoin,
     baseCoin,
