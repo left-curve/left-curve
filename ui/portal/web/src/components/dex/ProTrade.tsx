@@ -201,24 +201,24 @@ const ProTradeMenu: React.FC = () => {
 };
 
 const ProTradeHistory: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
+  const [activeTab, setActiveTab] = useState<"open orders" | "trade history">("open orders");
 
   return (
     <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
-          layoutId="tabs-open-order"
+          layoutId="tabs-open-orders"
           selectedTab={activeTab}
-          keys={["open order", "trade history"]}
-          onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
+          keys={["open orders", "trade history"]}
+          onTabChange={(tab) => setActiveTab(tab as "open orders" | "trade history")}
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
         />
 
         <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
       </div>
       <div className="w-full h-full relative">
-        {activeTab === "open order" ? <ProTradeOpenOrders /> : null}
+        {activeTab === "open orders" ? <ProTradeOpenOrders /> : null}
         {activeTab === "trade history" ? <ProTradeOrdersHistory /> : null}
       </div>
     </div>
