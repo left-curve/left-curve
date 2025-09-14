@@ -316,11 +316,18 @@ export const NotificationsTab: React.FC = () => {
       {totalNotifications > 0 ? (
         <Notifications className="overflow-y-scroll scrollbar-none" />
       ) : (
-        <div className="px-4">
-          <EmptyPlaceholder
-            component={m["notifications.noNotifications.title"]()}
-            className="p-4"
+        <div className="px-4 flex flex-col gap-6 items-center">
+          <img
+            src="/images/emojis/detailed/hamster.svg"
+            alt="hamster"
+            className="mx-auto h-[125px] w-auto"
           />
+          <div className="flex flex-col gap-2 items-center text-center">
+            <p className="exposure-m-italic">{m["notifications.noNotifications.title"]()}</p>
+            <p className="text-tertiary-500 diatype-m-bold">
+              {m["notifications.noNotifications.description"]()}
+            </p>
+          </div>
         </div>
       )}
     </div>
