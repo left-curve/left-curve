@@ -31,16 +31,18 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
 
   if (!hasNotifications) {
     return (
-      <div className="min-h-[19rem] flex flex-col shadow-account-card gap-4 items-center justify-center px-4 py-6 text-center relative bg-[url('./images/notifications/bubble-bg.svg')] bg-[-11rem_4rem] bg-no-repeat rounded-xl ">
+      <div className="px-4 flex flex-col gap-6 items-center">
         <img
-          src="/images/notifications/no-notifications.svg"
-          alt="no-notifications"
-          className="h-[154px]"
+          src="/images/emojis/detailed/hamster.svg"
+          alt="hamster"
+          className="mx-auto h-[125px] w-auto"
         />
-        <p className="exposure-m-italic">{m["notifications.noNotifications.title"]()}</p>
-        <p className="diatype-m-bold text-tertiary-500">
-          {m["notifications.noNotifications.description"]()}
-        </p>
+        <div className="flex flex-col gap-2 items-center text-center">
+          <p className="exposure-m-italic">{m["notifications.noNotifications.title"]()}</p>
+          <p className="text-tertiary-500 diatype-m-bold">
+            {m["notifications.noNotifications.description"]()}
+          </p>
+        </div>
       </div>
     );
   }
