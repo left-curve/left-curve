@@ -5,7 +5,7 @@ use {
     },
     grug_app::{
         App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer,
-        UpgradeHandler, Vm,
+        StorageProvider, UpgradeHandler, Vm,
     },
     grug_db_memory::MemDb,
     grug_math::Uint128,
@@ -623,6 +623,15 @@ where
     /// Return a `QuerierWrapper` object.
     pub fn querier(&self) -> QuerierWrapper<'_> {
         QuerierWrapper::new(self)
+    }
+
+    /// Return a `Storage` object representing the storage of a given contract.
+    pub fn contract_storage(&self, address: Addr) -> StorageProvider
+    where
+        <DB as grug_app::Db>::Error: std::fmt::Debug,
+    {
+        let storage = self.app.db.state_storage(None).unwrap();
+        StorageProvider::new(Box::new(storage), &[grug_app::CONTRACT_NAMESPACE, &address])
     }
 }
 
