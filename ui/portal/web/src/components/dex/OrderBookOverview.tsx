@@ -224,6 +224,11 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center tabular-nums lining-nums">
         {trades.map((trade, index) => {
+          const size = formatNumber(calculateTradeSize(trade, base.decimals).toFixed(), {
+            ...formatNumberOptions,
+            maxSignificantDigits: 10,
+            maxFractionDigits: 5,
+          }).slice(0, 7);
           return (
             <div
               key={`${trade.addr}-${trade.createdAt}-${index}`}
@@ -245,12 +250,9 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
                   { ...formatNumberOptions, minSignificantDigits: 8, maxSignificantDigits: 8 },
                 ).slice(0, 10)}
               </p>
-              <p className="text-end z-10">
-                {formatNumber(calculateTradeSize(trade, base.decimals).toFixed(), {
-                  ...formatNumberOptions,
-                  maxSignificantDigits: 10,
-                  maxFractionDigits: 5,
-                }).slice(0, 7)}
+              <p className="text-end z-10 flex gap-1 justify-end">
+                {+size < 0.00001 ? <span>{"<"}</span> : null}
+                {+size < 0.00001 ? "0.00001" : size}
               </p>
 
               <div className="flex gap-1 items-center justify-end z-10">
