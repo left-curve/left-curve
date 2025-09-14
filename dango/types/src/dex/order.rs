@@ -1,6 +1,6 @@
 use {
-    crate::dex::{Direction, TimeInForce},
-    grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Udec128_24, Uint64, Uint128},
+    crate::dex::{Direction, Price, TimeInForce},
+    grug::{Addr, MathResult, Number, NumberConst, Udec128_6, Uint64, Uint128},
 };
 
 /// Numerical identifier of an order (limit or market).
@@ -68,7 +68,7 @@ pub struct Order {
     /// The order's time-in-force.
     pub time_in_force: TimeInForce,
     /// The order's limit price, measured in quote asset per base asset.
-    pub price: Udec128_24,
+    pub price: Price,
     /// The order's total size, measured in the _base asset_.
     pub amount: Uint128,
     /// Portion of the order that remains unfilled, measured in the _base asset_.

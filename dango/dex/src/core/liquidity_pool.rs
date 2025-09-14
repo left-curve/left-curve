@@ -2,10 +2,10 @@ use {
     super::{geometric, xyk},
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
-    dango_types::dex::{PairParams, PassiveLiquidity},
+    dango_types::dex::{PairParams, PassiveLiquidity, Price},
     grug::{
         Coin, CoinPair, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst,
-        PrevNumber, Sign, Udec128, Udec128_24, Uint128,
+        PrevNumber, Sign, Udec128, Uint128,
     },
     std::ops::Sub,
 };
@@ -133,8 +133,8 @@ pub trait PassiveLiquidityPool {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>, // bids: price => amount in base asset
-        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>, // asks: price => amount in base asset
+        Box<dyn Iterator<Item = (Price, Uint128)>>, // bids: price => amount in base asset
+        Box<dyn Iterator<Item = (Price, Uint128)>>, // asks: price => amount in base asset
     )>;
 }
 
@@ -377,8 +377,8 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
-        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
+        Box<dyn Iterator<Item = (Price, Uint128)>>,
+        Box<dyn Iterator<Item = (Price, Uint128)>>,
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;

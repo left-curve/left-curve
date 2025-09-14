@@ -32,7 +32,7 @@ use grug::Udec128_24;
 /// Suppose ETH is trading at 4000 USDC (or in other words, 4e-15 in base units),
 /// this corresponds to 3.4e+14 / 4e-15 = 8.5e+28 wei or 8.5e+10 ETH, way beyond
 /// the biggest order size we reasonable expect. So, 128-bit is sufficient.
-pub type Price = Udec128_24; // TODO: use this alias throughout the types and dex contract crates.
+pub type Price = Udec128_24;
 
 /// The state of resting order book.
 ///

@@ -12,7 +12,7 @@ use {
         account_factory::Username,
         dex::{
             CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
-            Paused, ReplyMsg, RestingOrderBookState, TimeInForce,
+            Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
         },
         taxman::{self, FeeType},
     },
@@ -20,7 +20,7 @@ use {
         Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
         MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
         PrimaryKey, Response, StdError, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx,
-        Timestamp, TransferBuilder, Udec128, Udec128_6, Udec128_24,
+        Timestamp, TransferBuilder, Udec128, Udec128_6,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
@@ -185,7 +185,7 @@ fn clear_orders_of_pair(
     taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
-    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
+    bucket_sizes: &BTreeSet<NonZero<Price>>,
     events: &mut EventBuilder,
     refunds: &mut TransferBuilder<DecCoins<6>>,
     fees: &mut DecCoins<6>,

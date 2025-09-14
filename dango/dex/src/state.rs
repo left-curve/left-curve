@@ -1,11 +1,11 @@
 use {
     dango_types::{
         account_factory::Username,
-        dex::{Direction, Order, OrderId, PairParams, RestingOrderBookState, TimeInForce},
+        dex::{Direction, Order, OrderId, PairParams, Price, RestingOrderBookState, TimeInForce},
     },
     grug::{
         Addr, CoinPair, Counter, Denom, IndexedMap, Item, Map, MultiIndex, NumberConst, Timestamp,
-        Udec128_6, Udec128_24, Uint64, UniqueIndex,
+        Udec128_6, Uint64, UniqueIndex,
     },
 };
 
@@ -41,14 +41,14 @@ pub const VOLUMES_BY_USER: Map<(&Username, Timestamp), Udec128_6> = Map::new("vo
 /// ```plain
 /// ((base_denom, quote_denom), direction, price, order_id)
 /// ```
-pub type OrderKey = ((Denom, Denom), Direction, Udec128_24, OrderId);
+pub type OrderKey = ((Denom, Denom), Direction, Price, OrderId);
 
 /// Storage key for liquidity depths.
 ///
 /// ```plain
 /// ((base_denom, quote_denom), bucket_size, direction, bucket)
 /// ```
-pub type DepthKey<'a> = ((&'a Denom, &'a Denom), Udec128_24, Direction, Udec128_24);
+pub type DepthKey<'a> = ((&'a Denom, &'a Denom), Price, Direction, Price);
 
 #[grug::index_list(OrderKey, Order)]
 pub struct OrderIndex<'a> {
