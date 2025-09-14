@@ -25,7 +25,13 @@ import HippoSvg from "@left-curve/foundation/images/characters/hippo.svg";
 import { RangeWithButtons } from "./components/RangeWithButtons";
 
 import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
-import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curve/dango/utils";
+import {
+  Decimal,
+  formatNumber,
+  formatUnits,
+  parseUnits,
+  withResolvers,
+} from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PropsWithChildren } from "react";
@@ -181,6 +187,11 @@ const ConvertForm: React.FC = () => {
   useDebounce(
     () => {
       if ((baseAmount === "0" && quoteAmount === "0") || !activeInput || !pair) return;
+      const checkAmount =
+        activeInput === "base"
+          ? parseUnits(baseAmount, base.decimals)
+          : parseUnits(quoteAmount, quote.decimals);
+      if (Decimal(simulation.variables?.input?.amount || "0").eq(checkAmount)) return;
       (async () => {
         const request =
           activeInput === "base"
