@@ -802,7 +802,9 @@
           }
         }
       ],
+      "openOrders": "Open Orders",
       "tradeHistory": {
+        "title": "Trade History",
         "pair": "Pair",
         "direction": "Direction",
         "type": "Type",

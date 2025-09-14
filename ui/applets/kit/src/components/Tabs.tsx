@@ -81,7 +81,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
                 fullWidth={fullWidth}
               />
             ) : (
-              cloneElement(e as React.ReactElement, { isActive })
+              cloneElement(e as React.ReactElement, { isActive, color })
             )}
             {isActive && hasMounted ? (
               <motion.div
