@@ -8,6 +8,7 @@ import {
   useSubmitTx,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 import {
   Badge,
@@ -17,20 +18,20 @@ import {
   Input,
   Modals,
   Skeleton,
+  useDebounce,
   type useApp,
 } from "@left-curve/applets-kit";
 import HippoSvg from "@left-curve/foundation/images/characters/hippo.svg";
+import { RangeWithButtons } from "./components/RangeWithButtons";
 
 import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
 import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { type PropsWithChildren, useEffect, useState } from "react";
-
+import type { PropsWithChildren } from "react";
 import type { Address } from "@left-curve/dango/types";
 import type { UseConvertStateParameters, UseSubmitTxReturnType } from "@left-curve/store";
 import type React from "react";
-import { RangeWithButtons } from "./components/RangeWithButtons";
 
 const [ConvertProvider, useConvert] = createContext<{
   state: ReturnType<typeof useConvertState>;
@@ -177,38 +178,42 @@ const ConvertForm: React.FC = () => {
     Object.keys(pairs.data).includes(c.denom),
   );
 
-  useEffect(() => {
-    if ((baseAmount === "0" && quoteAmount === "0") || !activeInput || !pair) return;
-    (async () => {
-      const request =
-        activeInput === "base"
-          ? {
-              amount: baseAmount,
-              input: base,
-              target: "quote",
-              output: quote,
-            }
-          : {
-              amount: quoteAmount,
-              input: quote,
-              target: "base",
-              output: base,
-            };
+  useDebounce(
+    () => {
+      if ((baseAmount === "0" && quoteAmount === "0") || !activeInput || !pair) return;
+      (async () => {
+        const request =
+          activeInput === "base"
+            ? {
+                amount: baseAmount,
+                input: base,
+                target: "quote",
+                output: quote,
+              }
+            : {
+                amount: quoteAmount,
+                input: quote,
+                target: "base",
+                output: base,
+              };
 
-      const { output } = await simulation.simulate({
-        pair,
-        input: {
-          amount: parseUnits(request.amount, request.input.decimals).toString(),
-          denom: request.input.denom,
-        },
-      });
+        const { output } = await simulation.simulate({
+          pair,
+          input: {
+            amount: parseUnits(request.amount, request.input.decimals).toString(),
+            denom: request.input.denom,
+          },
+        });
 
-      if (output) {
-        setValue(request.target, formatUnits(output.amount, request.output.decimals));
-      }
-      revalidate();
-    })();
-  }, [baseAmount, quoteAmount, pair]);
+        if (output) {
+          setValue(request.target, formatUnits(output.amount, request.output.decimals));
+        }
+        revalidate();
+      })();
+    },
+    [baseAmount, quoteAmount, pair],
+    300,
+  );
 
   return (
     <form

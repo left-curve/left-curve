@@ -12,8 +12,6 @@ export type AppState = {
   config: ReturnType<typeof useAppConfig>;
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
-  isNotificationMenuVisible: boolean;
-  setNotificationMenuVisibility: (visibility: boolean) => void;
   isSearchBarVisible: boolean;
   setSearchBarVisibility: (visibility: boolean) => void;
   isTradeBarVisible: boolean;
@@ -48,7 +46,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
 }) => {
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
-  const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
   const [isQuestBannerVisible, setQuestBannerVisibility] = useState(false);
@@ -107,8 +104,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
         subscriptions,
         isSidebarVisible,
         setSidebarVisibility,
-        isNotificationMenuVisible,
-        setNotificationMenuVisibility,
         isSearchBarVisible,
         setSearchBarVisibility,
         isTradeBarVisible,

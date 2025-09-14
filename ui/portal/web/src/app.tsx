@@ -3,7 +3,11 @@ import { captureException } from "@sentry/react";
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
-import { AppRouter } from "./app.router";
+import { AppRouter, router } from "./app.router";
+import { AppProvider } from "@left-curve/foundation";
+import { Toast } from "@left-curve/applets-kit";
+import { createToaster } from "./app.toaster";
+import { RootModal } from "./components/modals/RootModal";
 
 import type React from "react";
 
@@ -18,6 +22,8 @@ import "@left-curve/foundation/fonts/ABCDiatypeRounded/mono/500.css";
 
 import "@left-curve/foundation/fonts/Exposure/italic/400.css";
 import "@left-curve/foundation/fonts/Exposure/italic/700.css";
+
+const [Toaster, toast] = createToaster((props) => <Toast {...props} />);
 
 const channel = new BroadcastChannel("dango.queries");
 
@@ -54,10 +60,14 @@ const queryClient = new QueryClient({
 
 export const App: React.FC = () => {
   return (
-    <DangoStoreProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <AppRouter />
-      </QueryClientProvider>
-    </DangoStoreProvider>
+    <QueryClientProvider client={queryClient}>
+      <DangoStoreProvider config={config}>
+        <AppProvider toast={toast} navigate={(to, options) => router.navigate({ to, ...options })}>
+          <AppRouter />
+          <RootModal />
+          <Toaster position="bottom-center" containerStyle={{ zIndex: 99999999 }} />
+        </AppProvider>
+      </DangoStoreProvider>
+    </QueryClientProvider>
   );
 };

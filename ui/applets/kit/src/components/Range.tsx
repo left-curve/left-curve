@@ -70,7 +70,7 @@ export const Range: React.FC<RangeProps> = ({
   const getPercentage = useCallback(
     (val: number) => {
       if (maxValue === minValue) return 0;
-      return ((val - minValue) / (maxValue - minValue)) * 100;
+      return Math.min(((val - minValue) / (maxValue - minValue)) * 100, 100);
     },
     [minValue, maxValue],
   );

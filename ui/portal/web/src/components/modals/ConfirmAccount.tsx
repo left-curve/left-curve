@@ -2,20 +2,26 @@ import { forwardRef } from "react";
 
 import { Badge, Button, IconButton, IconChecked, IconClose, useApp } from "@left-curve/applets-kit";
 
-import { capitalize, formatUnits } from "@left-curve/dango/utils";
-import { useConfig, usePrices } from "@left-curve/store";
+import { capitalize, formatUnits, wait } from "@left-curve/dango/utils";
+import { useAccount, useConfig, usePrices } from "@left-curve/store";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+
+import type { Address } from "@left-curve/dango/types";
+import type { useNavigate } from "@tanstack/react-router";
 
 type ConfirmAccountProps = {
   amount: string;
   accountType: string;
+  accountAddress: Address;
   accountName: string;
+  navigate: ReturnType<typeof useNavigate>;
   denom: string;
 };
 
 export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
-  ({ amount, accountName, accountType, denom }, _ref) => {
+  ({ amount, accountName, accountType, accountAddress, denom, navigate }, _ref) => {
     const { hideModal, settings } = useApp();
+    const { refreshAccounts, changeAccount } = useAccount();
     const { formatNumberOptions } = settings;
 
     const { coins } = useConfig();
@@ -71,7 +77,16 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
         </div>
 
         <div className="p-4 md:p-6 pt-0 md:pt-0">
-          <Button fullWidth onClick={hideModal}>
+          <Button
+            fullWidth
+            onClick={async () => {
+              hideModal();
+              await refreshAccounts?.();
+              await wait(500);
+              navigate({ to: "/" });
+              changeAccount?.(accountAddress);
+            }}
+          >
             {m["modals.accountCreation.getStarted"]()}
           </Button>
         </div>
