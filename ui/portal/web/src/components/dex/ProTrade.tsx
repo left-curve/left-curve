@@ -3,6 +3,7 @@ import {
   CursorPagination,
   Modals,
   Spinner,
+  Tab,
   twMerge,
   useApp,
   useInputs,
@@ -86,7 +87,7 @@ const ProTradeHeader: React.FC = () => {
   }, [isLg]);
 
   return (
-    <div className="flex bg-surface-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
+    <div className="flex bg-surface-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between shadow-account-card z-10">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-2">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
@@ -201,25 +202,26 @@ const ProTradeMenu: React.FC = () => {
 };
 
 const ProTradeHistory: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
+  const [activeTab, setActiveTab] = useState<"orders" | "trade-history">("orders");
 
   return (
     <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
-          layoutId="tabs-open-order"
+          layoutId="tabs-open-orders"
+          onTabChange={(tab) => setActiveTab(tab as "orders" | "trade-history")}
           selectedTab={activeTab}
-          keys={["open order", "trade history"]}
-          onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
-        />
-
+        >
+          <Tab title="orders">{m["dex.protrade.openOrders"]()}</Tab>
+          <Tab title="trade-history">{m["dex.protrade.tradeHistory.title"]()}</Tab>
+        </Tabs>
         <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
       </div>
       <div className="w-full h-full relative">
-        {activeTab === "open order" ? <ProTradeOpenOrders /> : null}
-        {activeTab === "trade history" ? <ProTradeOrdersHistory /> : null}
+        {activeTab === "orders" ? <ProTradeOpenOrders /> : null}
+        {activeTab === "trade-history" ? <ProTradeOrdersHistory /> : null}
       </div>
     </div>
   );

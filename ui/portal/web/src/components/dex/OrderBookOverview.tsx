@@ -31,7 +31,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ base, quot
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem]"
+      className="z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem] h-full"
     >
       <Tabs
         color="line-red"
@@ -199,7 +199,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
       },
       listener: ({ trades: trade }) => {
         try {
-          setTrades((prev) => [trade, ...prev].slice(0, 25));
+          setTrades((prev) => [trade, ...prev].slice(0, 50));
         } catch (err) {
           console.error(err);
         }
@@ -216,14 +216,23 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
   }, [base, quote]);
 
   return (
-    <div className="flex gap-2 flex-col items-center justify-center ">
-      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3 ">
+    <div className="flex gap-2 flex-col items-center justify-start max-h-[23.1375rem] lg:max-h-[56.2vh] overflow-hidden">
+      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-end">{m["dex.protrade.history.size"]({ symbol: base.symbol })}</p>
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
       </div>
-      <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
+      <div className="relative flex-1 w-full flex flex-col gap-1 items-center tabular-nums lining-nums">
         {trades.map((trade, index) => {
+          const size = calculateTradeSize(trade, base.decimals).toFixed();
+
+          const formattedSize = formatNumber(size, {
+            ...formatNumberOptions,
+            maxSignificantDigits: 10,
+            maxFractionDigits: 5,
+          }).slice(0, 7);
+
+          const isAmountTooSmall = Decimal(size).lt(0.00001);
           return (
             <div
               key={`${trade.addr}-${trade.createdAt}-${index}`}
@@ -245,12 +254,15 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
                   { ...formatNumberOptions, minSignificantDigits: 8, maxSignificantDigits: 8 },
                 ).slice(0, 10)}
               </p>
-              <p className="text-end z-10">
-                {formatNumber(calculateTradeSize(trade, base.decimals).toFixed(), {
-                  ...formatNumberOptions,
-                  maxSignificantDigits: 10,
-                  maxFractionDigits: 5,
-                }).slice(0, 7)}
+              <p className="text-end z-10 flex gap-1 justify-end">
+                {isAmountTooSmall ? (
+                  <>
+                    <span>{"<"}</span>
+                    {"0.00001"}
+                  </>
+                ) : (
+                  formattedSize
+                )}
               </p>
 
               <div className="flex gap-1 items-center justify-end z-10">
