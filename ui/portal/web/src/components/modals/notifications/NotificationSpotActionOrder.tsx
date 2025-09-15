@@ -1,3 +1,5 @@
+import { useApp } from "@left-curve/applets-kit";
+
 import {
   Badge,
   formatDate,
@@ -6,16 +8,15 @@ import {
   IconLink,
   PairAssets,
   TextCopy,
-  twMerge,
-  useApp,
 } from "@left-curve/applets-kit";
-import { useRouter } from "@tanstack/react-router";
 
 import { forwardRef } from "react";
+import { twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-
-import type { AnyCoin, WithAmount } from "@left-curve/store/types";
 import { formatNumber, formatOrderId, formatUnits } from "@left-curve/dango/utils";
+
+import type { useNavigate } from "@tanstack/react-router";
+import type { AnyCoin, WithAmount } from "@left-curve/store/types";
 
 type NotificationSpotActionOrderProps = {
   status: "created" | "canceled" | "fulfilled";
@@ -36,17 +37,17 @@ type NotificationSpotActionOrderProps = {
     filled?: string;
     timeUpdated?: string;
   };
+  navigate: ReturnType<typeof useNavigate>;
 };
 
 export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpotActionOrderProps>(
-  ({ status, action, base, quote, order, blockHeight }, _) => {
+  ({ status, action, base, quote, order, blockHeight, navigate: _navigate_ }, _) => {
     const { id, type, amount, limitPrice, refund, timeCreated, timeCanceled, fee, averagePrice } =
       order;
 
     const { hideModal, setSidebarVisibility, settings } = useApp();
     const { formatNumberOptions, timeFormat, dateFormat } = settings;
     const orderId = formatOrderId(id);
-    const { navigate: _navigate_ } = useRouter();
 
     const navigate = (parameters: Parameters<typeof _navigate_>[0]) => {
       _navigate_(parameters);
