@@ -420,7 +420,7 @@ fn clear_orders_of_pair(
     let mut outflows = DecCoins::new();
 
     #[cfg(feature = "metrics")]
-    let mut metric_volume: HashMap<(&Denom, &Denom, &Denom), grug::Uint128> = HashMap::new();
+    let mut metric_volume = HashMap::new();
 
     #[cfg(feature = "metrics")]
     {
