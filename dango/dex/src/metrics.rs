@@ -3,23 +3,24 @@ use {
     std::sync::Once,
 };
 
-static ONCE_METRICS_INITIALIZED: Once = Once::new();
-
-pub const TOTAL_TRADES_LABEL: &str = "dango.contract.dex.total_trades";
-pub const TOTAL_FILLED_ORDERS_LABEL: &str = "dango.contract.dex.total_filled_orders";
-pub const TRADE_PER_BLOCK_LABEL: &str = "dango.contract.dex.trade_per_block";
-pub const VOLUME_PER_TRADE_LABEL: &str = "dango.contract.dex.volume_per_trade";
-pub const VOLUME_PER_BLOCK_LABEL: &str = "dango.contract.dex.volume_per_block";
+pub const LABEL_TRADES: &str = "dango.contract.dex.trades";
+pub const LABEL_ORDERS_FILLED: &str = "dango.contract.dex.orders_filled";
+pub const LABEL_TRADES_PER_BLOCK: &str = "dango.contract.dex.trades_per_block";
+pub const LABEL_VOLUME_PER_TRADE: &str = "dango.contract.dex.volume_per_trade";
+pub const LABEL_VOLUME_PER_BLOCK: &str = "dango.contract.dex.volume_per_block";
 
 pub fn init_metrics() {
-    ONCE_METRICS_INITIALIZED.call_once(|| {
-        describe_counter!(TOTAL_TRADES_LABEL, "Cumulative total trades");
-        describe_counter!(
-            TOTAL_FILLED_ORDERS_LABEL,
-            "Cumulative total filled unique orders"
-        );
-        describe_histogram!(TRADE_PER_BLOCK_LABEL, "Trade per block");
-        describe_histogram!(VOLUME_PER_TRADE_LABEL, "Volume per trade");
-        describe_histogram!(VOLUME_PER_BLOCK_LABEL, "Volume per block");
+    static ONCE: Once = Once::new();
+
+    ONCE.call_once(|| {
+        describe_counter!(LABEL_TRADES, "Number of trades executed");
+
+        describe_counter!(LABEL_ORDERS_FILLED, "Number of unique orders filled");
+
+        describe_histogram!(LABEL_TRADES_PER_BLOCK, "Number of trades in a block");
+
+        describe_histogram!(LABEL_VOLUME_PER_TRADE, "Volume per trade");
+
+        describe_histogram!(LABEL_VOLUME_PER_BLOCK, "Volume per block");
     });
 }

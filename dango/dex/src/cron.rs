@@ -421,13 +421,15 @@ fn clear_orders_of_pair(
 
     #[cfg(feature = "metrics")]
     let mut metric_volume: HashMap<(&Denom, &Denom, &Denom), grug::Uint128> = HashMap::new();
+
     #[cfg(feature = "metrics")]
     {
-        metrics::counter!(crate::metrics::TOTAL_TRADES_LABEL)
-            .increment(filling_outcomes.len() as u64);
-        metrics::histogram!(crate::metrics::TRADE_PER_BLOCK_LABEL)
+        metrics::counter!(crate::metrics::LABEL_TRADES).increment(filling_outcomes.len() as u64);
+
+        metrics::histogram!(crate::metrics::LABEL_TRADES_PER_BLOCK)
             .record(filling_outcomes.len() as f64);
     }
+
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order,
@@ -480,8 +482,11 @@ fn clear_orders_of_pair(
                                 order.id,
                             ),
                         )?;
+
                         #[cfg(feature = "metrics")]
-                        metrics::counter!(crate::metrics::TOTAL_FILLED_ORDERS_LABEL).increment(1);
+                        {
+                            metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+                        }
                     } else {
                         ORDERS.save(
                             storage,
@@ -507,8 +512,11 @@ fn clear_orders_of_pair(
                             order.id,
                         ),
                     )?;
+
                     #[cfg(feature = "metrics")]
-                    metrics::counter!(crate::metrics::TOTAL_FILLED_ORDERS_LABEL).increment(1);
+                    {
+                        metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+                    }
                 },
             }
         } else {
@@ -566,7 +574,7 @@ fn clear_orders_of_pair(
                 .checked_add_assign(filled_quote.into_int_floor())?;
 
             metrics::histogram!(
-                crate::metrics::VOLUME_PER_TRADE_LABEL,
+                crate::metrics::LABEL_VOLUME_PER_TRADE,
                 "base_denom" => base_denom.to_string(),
                 "quote_denom" => quote_denom.to_string(),
                 "token" => base_denom.to_string(),
@@ -574,7 +582,7 @@ fn clear_orders_of_pair(
             .record(filled_base.into_inner() as f64);
 
             metrics::histogram!(
-                crate::metrics::VOLUME_PER_TRADE_LABEL,
+                crate::metrics::LABEL_VOLUME_PER_TRADE,
                 "base_denom" => base_denom.to_string(),
                 "quote_denom" => quote_denom.to_string(),
                 "token" => quote_denom.to_string(),
@@ -587,7 +595,7 @@ fn clear_orders_of_pair(
     {
         for ((bd, qd, token), amount) in metric_volume {
             metrics::histogram!(
-                crate::metrics::VOLUME_PER_BLOCK_LABEL,
+                crate::metrics::LABEL_VOLUME_PER_BLOCK,
                 "base_denom" => bd.to_string(),
                 "quote_denom" => qd.to_string(),
                 "token" => token.to_string(),

@@ -103,12 +103,13 @@ fn cancel_order(
             order.remaining,
             &pair.bucket_sizes,
         )?;
+
         #[cfg(feature = "metrics")]
         {
-            // We can skip the check for TimeInForce::ImmediateOrCancel, because
-            // the order will be proceed in the next auction. and always canceled.
+            // We can skip the check for `TimeInForce::ImmediateOrCancel`, because
+            // the order will be proceed in the next auction and always canceled.
             if order.amount > order.remaining.into_int_floor() {
-                metrics::counter!(crate::metrics::TOTAL_FILLED_ORDERS_LABEL).increment(1);
+                metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
             }
         }
     }
