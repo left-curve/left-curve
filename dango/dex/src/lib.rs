@@ -2,11 +2,10 @@ pub mod core;
 mod cron;
 mod execute;
 pub mod liquidity_depth;
-mod query;
-mod state;
-
 #[cfg(feature = "metrics")]
 pub mod metrics;
+mod query;
+mod state;
 
 pub use {cron::*, execute::*, query::*, state::*};
 
