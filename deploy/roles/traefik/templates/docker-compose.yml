@@ -6,6 +6,7 @@ services:
       - "{{ tailscale_ip }}:8888:8888"
       # devnet
       - "8080:8080"
+      - "9191:9191"
       - "8081:8081"
       - "8082:8082"
       - "26656:26656"
@@ -32,6 +33,7 @@ services:
       - --providers.file.watch=true
       - --entrypoints.traefik.address=:8888
       - --entrypoints.devnet-dango.address=:8080
+      - --entrypoints.devnet-dango-metrics.address=:9191
       - --entrypoints.devnet-frontend.address=:8081
       - --entrypoints.devnet-faucet_bot.address=:8082
       - --entrypoints.devnet-cometbft_p2p.address=:26656
