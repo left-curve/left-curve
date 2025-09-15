@@ -1,5 +1,6 @@
 import {
   AddressVisualizer,
+  formatDate,
   IconButton,
   IconClose,
   IconLink,
@@ -11,7 +12,6 @@ import { useRouter } from "@tanstack/react-router";
 
 import { forwardRef } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { format } from "date-fns";
 import { formatUnits } from "@left-curve/dango/utils";
 
 import type { Address, Coins } from "@left-curve/dango/types";
@@ -28,10 +28,11 @@ type NotificationSentAndReceivedProps = {
 
 export const NotificationSentAndReceived = forwardRef<undefined, NotificationSentAndReceivedProps>(
   ({ action = "received", from, to, time, txHash, coins, blockHeight }) => {
-    const { hideModal, setSidebarVisibility } = useApp();
+    const { hideModal, setSidebarVisibility, settings } = useApp();
     const { getCoinInfo } = useConfig();
     const { navigate: _navigate_ } = useRouter();
     const { getPrice } = usePrices();
+    const { timeFormat, dateFormat } = settings;
 
     const navigate = (url: string) => {
       hideModal();
@@ -105,7 +106,7 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
                   {m["notifications.notification.modal.time"]()}
                 </p>
                 <div className="flex items-center gap-1">
-                  <p>{format(time, "dd/MM/yyyy hh:mm a")}</p>
+                  <p>{formatDate(time, `${dateFormat} ${timeFormat}`)}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">

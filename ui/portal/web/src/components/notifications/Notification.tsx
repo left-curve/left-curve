@@ -10,19 +10,13 @@ import {
 } from "react";
 import { useNotifications, type Notifications } from "~/hooks/useNotifications";
 
-import {
-  differenceInDays,
-  differenceInHours,
-  differenceInMinutes,
-  format,
-  isToday,
-} from "date-fns";
+import { differenceInDays, differenceInHours, differenceInMinutes, isToday } from "date-fns";
 
-import { IconClose } from "@left-curve/applets-kit";
+import { formatDate, IconClose, useApp } from "@left-curve/applets-kit";
 
 import type React from "react";
 
-const formatNotificationTimestamp = (timestamp: Date): string => {
+const formatNotificationTimestamp = (timestamp: Date, mask: string): string => {
   const now = new Date();
   if (isToday(timestamp)) {
     const minutesDifference = differenceInMinutes(now, timestamp);
@@ -45,7 +39,7 @@ const formatNotificationTimestamp = (timestamp: Date): string => {
     return "1d";
   }
 
-  return format(timestamp, "MM/dd");
+  return formatDate(timestamp, mask);
 };
 
 const notifications: Record<
@@ -91,6 +85,8 @@ export type NotificationRef = {
 
 export const Notification: React.FC<NotificationProps> = ({ notification }) => {
   const notificationRef = useRef<NotificationRef | null>(null);
+  const { settings } = useApp();
+  const { dateFormat } = settings;
   const { deleteNotification } = useNotifications();
   const { id, createdAt, type } = notification;
 
@@ -116,7 +112,12 @@ export const Notification: React.FC<NotificationProps> = ({ notification }) => {
             className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-1 remove-notification"
             onClick={() => deleteNotification(id)}
           />
-          <p>{formatNotificationTimestamp(new Date(createdAt))}</p>
+          <p>
+            {formatNotificationTimestamp(
+              new Date(createdAt),
+              dateFormat.replace(/\/yyyy|yyyy\//g, ""),
+            )}
+          </p>
         </div>
       </div>
     </Suspense>

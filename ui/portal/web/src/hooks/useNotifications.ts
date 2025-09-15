@@ -2,7 +2,7 @@ import { useAccount, useConfig, useStorage } from "@left-curve/store";
 import { useCallback, useMemo } from "react";
 
 import { uid } from "@left-curve/dango/utils";
-import { format, isToday } from "date-fns";
+import { isToday } from "date-fns";
 
 import type {
   AccountTypes,
@@ -15,6 +15,7 @@ import type {
   UID,
   Username,
 } from "@left-curve/dango/types";
+import { formatDate, useApp } from "@left-curve/foundation";
 
 export type Notifications = {
   transfer: {
@@ -52,7 +53,10 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
   const { limit = 5 } = parameters;
   const { username = "", accounts, account } = useAccount();
   const { subscriptions } = useConfig();
+  const { settings } = useApp();
   const userAddresses = useMemo(() => (accounts ? accounts.map((a) => a.address) : []), [accounts]);
+
+  const { dateFormat } = settings;
 
   const [allNotifications, setAllNotifications] = useStorage<Record<Username, Notification[]>>(
     "app.notifications",
@@ -116,7 +120,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
       .reduce((acc, notification) => {
         const dateKey = isToday(notification.createdAt)
           ? "Today"
-          : format(notification.createdAt, "MM/dd/yyyy");
+          : formatDate(notification.createdAt, dateFormat);
 
         if (!acc[dateKey]) {
           acc[dateKey] = [];

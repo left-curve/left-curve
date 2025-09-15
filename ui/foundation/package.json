@@ -35,15 +35,20 @@
     "@inlang/paraglide-js": "^2.2.0",
     "@left-curve/dango": "workspace:^",
     "@left-curve/store": "workspace:^",
-    "@rslib/core": "^0.12.4",
     "concurrently": "^9.2.1",
+    "date-fns-tz": "^3.2.0",
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "catalog:",
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
+    "@types/date-fns": "catalog:",
+    "date-fns": "catalog:",
     "nodemon": "^3.1.10"
+  },
+  "peerDependencies": {
+    "date-fns": ">=4.0.0"
   },
   "nodemonConfig": {
     "watch": [

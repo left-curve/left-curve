@@ -1,5 +1,6 @@
 import {
   Button,
+  formatDate,
   IconAddCross,
   IconTrash,
   Modals,
@@ -18,7 +19,6 @@ import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { format } from "date-fns";
 
 const KeyTranslation = {
   secp256r1: "Passkey",
@@ -29,8 +29,10 @@ const KeyTranslation = {
 export const KeyManagementSection: React.FC = () => {
   const { status, username, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
-  const { showModal } = useApp();
+  const { showModal, settings } = useApp();
   const { isMd } = useMediaQuery();
+
+  const { timeFormat, dateFormat } = settings;
 
   const { data: keys = [], isPending } = useQuery({
     enabled: !!signingClient && !!username,
@@ -80,7 +82,7 @@ export const KeyManagementSection: React.FC = () => {
                     {KeyTranslation[key.keyType.toLowerCase() as keyof typeof KeyTranslation]}
                   </p>
                   <p className="text-tertiary-500 diatype-sm-medium">
-                    {format(key.createdAt, "dd/MM/yyyy hh:mm a")}
+                    {formatDate(key.createdAt, `${dateFormat} ${timeFormat}`)}
                   </p>
                 </div>
                 <div className="flex gap-1">
