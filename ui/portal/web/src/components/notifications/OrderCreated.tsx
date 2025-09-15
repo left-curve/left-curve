@@ -1,4 +1,5 @@
 import { useConfig } from "@left-curve/store";
+import { useRouter } from "@tanstack/react-router";
 
 import { forwardRef, useImperativeHandle } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -17,11 +18,12 @@ type NotificationOrderCreatedProps = {
 
 export const NotificationOrderCreated = forwardRef<NotificationRef, NotificationOrderCreatedProps>(
   ({ notification }, ref) => {
+    const { navigate } = useRouter();
     const { getCoinInfo } = useConfig();
+    const { settings, showModal } = useApp();
     const { blockHeight, createdAt } = notification;
     const { id, quote_denom, base_denom, price, time_in_force, direction, amount } =
       notification.data;
-    const { settings, showModal } = useApp();
     const { formatNumberOptions } = settings;
 
     const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
@@ -49,6 +51,7 @@ export const NotificationOrderCreated = forwardRef<NotificationRef, Notification
             limitPrice,
             amount: formatNumber(formatUnits(amount, base.decimals), formatNumberOptions),
           },
+          navigate,
         }),
     }));
 
