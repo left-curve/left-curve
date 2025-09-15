@@ -39,6 +39,7 @@ export {
   type CreateContextReturn,
 } from "./utils/context.js";
 
+export { formatDate } from "./utils/dates.js";
 export { twMerge } from "./utils/twMerge.js";
 export { mergeRefs } from "./utils/mergeRefs.js";
 export { forwardRefPolymorphic } from "./utils/polymorph.js";
