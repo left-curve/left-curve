@@ -24,6 +24,7 @@ export type BaseCoin = {
   readonly symbol: string;
   readonly denom: Denom;
   readonly decimals: number;
+  readonly name: string;
   readonly logoURI?: string;
 };
 
