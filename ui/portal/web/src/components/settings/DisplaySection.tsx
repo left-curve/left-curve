@@ -1,4 +1,5 @@
 import {
+  IconCalendar,
   IconDepth,
   IconFormatNumber,
   IconLanguage,
@@ -18,6 +19,7 @@ import { getLocale, locales, setLocale } from "@left-curve/foundation/paraglide/
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 import type React from "react";
+import type { AppState } from "@left-curve/applets-kit";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
@@ -101,6 +103,59 @@ const FormatNumberSection: React.FC = () => {
   );
 };
 
+const TimeFormatSection: React.FC = () => {
+  const { settings, changeSettings } = useApp();
+  const { timeFormat } = settings;
+  return (
+    <div className="flex items-center justify-between px-2 rounded-md">
+      <p className="flex items-center justify-center gap-2">
+        <IconCalendar className="text-tertiary-500" />
+        <span className="diatype-m-bold text-secondary-700"> {m["settings.time"]()}</span>
+      </p>
+
+      <Select
+        value={timeFormat}
+        onChange={(key) => [
+          changeSettings({
+            timeFormat: key as AppState["settings"]["timeFormat"],
+          }),
+        ]}
+      >
+        <Select.Item value="hh:mm a">9:18 PM</Select.Item>
+        <Select.Item value="hh:mm aaa">9:18 pm</Select.Item>
+        <Select.Item value="HH:mm">21:18</Select.Item>
+      </Select>
+    </div>
+  );
+};
+
+const DateFormatSection: React.FC = () => {
+  const { settings, changeSettings } = useApp();
+  const { dateFormat } = settings;
+
+  return (
+    <div className="flex items-center justify-between px-2 rounded-md">
+      <p className="flex items-center justify-center gap-2">
+        <IconCalendar className="text-tertiary-500" />
+        <span className="diatype-m-bold text-secondary-700"> {m["settings.date"]()}</span>
+      </p>
+
+      <Select
+        value={dateFormat}
+        onChange={(key) => [
+          changeSettings({
+            dateFormat: key as AppState["settings"]["dateFormat"],
+          }),
+        ]}
+      >
+        <Select.Item value="MM/dd/yyyy">08/29/2025</Select.Item>
+        <Select.Item value="dd/MM/yyyy">29/08/2025</Select.Item>
+        <Select.Item value="yyyy/MM/dd">2025/08/29</Select.Item>
+      </Select>
+    </div>
+  );
+};
+
 const ThemeSection: React.FC = () => {
   const { themeSchema, setThemeSchema } = useTheme();
 
@@ -132,5 +187,7 @@ export const DisplaySection = Object.assign(Container, {
   Language: LanguageSection,
   ChartEngine: ChartEngineSection,
   FormatNumber: FormatNumberSection,
+  TimeFormat: TimeFormatSection,
+  DateFormat: DateFormatSection,
   Theme: ThemeSection,
 });

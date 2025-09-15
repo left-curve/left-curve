@@ -29,8 +29,10 @@ const KeyTranslation = {
 export const KeyManagementSection: React.FC = () => {
   const { status, username, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
-  const { showModal } = useApp();
+  const { showModal, settings } = useApp();
   const { isMd } = useMediaQuery();
+
+  const { timeFormat, dateFormat } = settings;
 
   const { data: keys = [], isPending } = useQuery({
     enabled: !!signingClient && !!username,
@@ -80,7 +82,7 @@ export const KeyManagementSection: React.FC = () => {
                     {KeyTranslation[key.keyType.toLowerCase() as keyof typeof KeyTranslation]}
                   </p>
                   <p className="text-tertiary-500 diatype-sm-medium">
-                    {format(key.createdAt, "dd/MM/yyyy hh:mm a")}
+                    {format(key.createdAt, `${dateFormat} ${timeFormat}`)}
                   </p>
                 </div>
                 <div className="flex gap-1">

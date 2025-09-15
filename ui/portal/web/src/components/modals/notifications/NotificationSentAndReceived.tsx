@@ -28,10 +28,11 @@ type NotificationSentAndReceivedProps = {
 
 export const NotificationSentAndReceived = forwardRef<undefined, NotificationSentAndReceivedProps>(
   ({ action = "received", from, to, time, txHash, coins, blockHeight }) => {
-    const { hideModal, setSidebarVisibility } = useApp();
+    const { hideModal, setSidebarVisibility, settings } = useApp();
     const { getCoinInfo } = useConfig();
     const { navigate: _navigate_ } = useRouter();
     const { getPrice } = usePrices();
+    const { timeFormat, dateFormat } = settings;
 
     const navigate = (url: string) => {
       hideModal();
@@ -105,7 +106,7 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
                   {m["notifications.notification.modal.time"]()}
                 </p>
                 <div className="flex items-center gap-1">
-                  <p>{format(time, "dd/MM/yyyy hh:mm a")}</p>
+                  <p>{format(time, `${dateFormat} ${timeFormat}`)}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">

@@ -92,3 +92,4 @@ export { IconWallet } from "./icons/IconWallet";
 export { IconLimitOrder } from "./icons/IconLimitOrder";
 export { IconMarketOrder } from "./icons/IconMarketOrder";
 export { IconNewAccount } from "./icons/IconNewAccount";
+export { IconCalendar } from "./icons/IconCalendar";

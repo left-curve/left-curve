@@ -44,7 +44,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
       order;
 
     const { hideModal, setSidebarVisibility, settings } = useApp();
-    const { formatNumberOptions } = settings;
+    const { formatNumberOptions, timeFormat, dateFormat } = settings;
     const orderId = formatOrderId(id);
     const { navigate: _navigate_ } = useRouter();
 
@@ -202,7 +202,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
                     {m["notifications.notification.modal.timeCreated"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>{format(timeCreated, "dd/MM/yyyy hh:mm a")}</p>
+                    <p>{format(timeCreated, `${dateFormat} ${timeFormat}`)}</p>
                   </div>
                 </div>
               ) : null}
@@ -212,7 +212,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
                     {m["notifications.notification.modal.timeCanceled"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>{format(timeCanceled, "dd/MM/yyyy hh:mm a")}</p>
+                    <p>{format(timeCanceled, `${dateFormat} ${timeFormat}`)}</p>
                   </div>
                 </div>
               )}

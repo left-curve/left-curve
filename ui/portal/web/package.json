@@ -32,7 +32,6 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-error-boundary": "^6.0.0",
-    "react-hook-form": "catalog:",
     "react-hot-toast": "catalog:",
     "react-modal-sheet": "^4.0.1",
     "zod": "catalog:"
@@ -52,8 +51,6 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@unocss/postcss": "catalog:",
-    "@unocss/reset": "catalog:",
     "postcss": "catalog:",
     "react-refresh": "catalog:",
     "tailwindcss": "catalog:",
