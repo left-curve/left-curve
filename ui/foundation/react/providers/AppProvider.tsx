@@ -26,6 +26,7 @@ export type AppState = {
     chart: "tradingview" | "chartiq";
     timeFormat: "hh:mm a" | "hh:mm aa" | "HH:mm";
     dateFormat: "MM/dd/yyyy" | "dd/MM/yyyy" | "yyyy/MM/dd";
+    timeZone: "local" | "utc";
     showWelcome: boolean;
     isFirstVisit: boolean;
     useSessionKey: boolean;
@@ -62,6 +63,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
       useSessionKey: true,
       timeFormat: "hh:mm a",
       dateFormat: "MM/dd/yyyy",
+      timeZone: "local",
       formatNumberOptions: {
         mask: 1,
         language: "en-US",
@@ -83,6 +85,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
       1.4: (state: AppState["settings"]) => {
         state.timeFormat = "hh:mm a";
         state.dateFormat = "MM/dd/yyyy";
+        state.timeZone = "local";
         return state;
       },
     },

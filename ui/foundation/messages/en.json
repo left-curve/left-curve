@@ -728,6 +728,7 @@
     "number": "Number Format",
     "time": "Time Format",
     "date": "Date Format",
+    "timeZone": "Time Zone",
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Key Management",

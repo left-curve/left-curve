@@ -10,15 +10,9 @@ import {
 } from "react";
 import { useNotifications, type Notifications } from "~/hooks/useNotifications";
 
-import {
-  differenceInDays,
-  differenceInHours,
-  differenceInMinutes,
-  format,
-  isToday,
-} from "date-fns";
+import { differenceInDays, differenceInHours, differenceInMinutes, isToday } from "date-fns";
 
-import { IconClose, useApp } from "@left-curve/applets-kit";
+import { formatDate, IconClose, useApp } from "@left-curve/applets-kit";
 
 import type React from "react";
 
@@ -45,7 +39,7 @@ const formatNotificationTimestamp = (timestamp: Date, mask: string): string => {
     return "1d";
   }
 
-  return format(timestamp, mask);
+  return formatDate(timestamp, mask);
 };
 
 const notifications: Record<

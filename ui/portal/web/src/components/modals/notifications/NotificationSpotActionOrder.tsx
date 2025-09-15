@@ -1,5 +1,6 @@
 import {
   Badge,
+  formatDate,
   IconButton,
   IconClose,
   IconLink,
@@ -12,7 +13,6 @@ import { useRouter } from "@tanstack/react-router";
 
 import { forwardRef } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { format } from "date-fns";
 
 import type { AnyCoin, WithAmount } from "@left-curve/store/types";
 import { formatNumber, formatOrderId, formatUnits } from "@left-curve/dango/utils";
@@ -202,7 +202,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
                     {m["notifications.notification.modal.timeCreated"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>{format(timeCreated, `${dateFormat} ${timeFormat}`)}</p>
+                    <p>{formatDate(timeCreated, `${dateFormat} ${timeFormat}`)}</p>
                   </div>
                 </div>
               ) : null}
@@ -212,7 +212,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
                     {m["notifications.notification.modal.timeCanceled"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>{format(timeCanceled, `${dateFormat} ${timeFormat}`)}</p>
+                    <p>{formatDate(timeCanceled, `${dateFormat} ${timeFormat}`)}</p>
                   </div>
                 </div>
               )}

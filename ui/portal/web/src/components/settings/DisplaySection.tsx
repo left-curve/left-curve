@@ -156,6 +156,32 @@ const DateFormatSection: React.FC = () => {
   );
 };
 
+const TimeZoneSection: React.FC = () => {
+  const { settings, changeSettings } = useApp();
+  const { timeZone } = settings;
+
+  return (
+    <div className="flex items-center justify-between px-2 rounded-md">
+      <p className="flex items-center justify-center gap-2">
+        <IconCalendar className="text-tertiary-500" />
+        <span className="diatype-m-bold text-secondary-700"> {m["settings.timeZone"]()}</span>
+      </p>
+
+      <Select
+        value={timeZone}
+        onChange={(key) => [
+          changeSettings({
+            timeZone: key as AppState["settings"]["timeZone"],
+          }),
+        ]}
+      >
+        <Select.Item value="utc">UTC</Select.Item>
+        <Select.Item value="local">Local</Select.Item>
+      </Select>
+    </div>
+  );
+};
+
 const ThemeSection: React.FC = () => {
   const { themeSchema, setThemeSchema } = useTheme();
 
@@ -188,6 +214,7 @@ export const DisplaySection = Object.assign(Container, {
   ChartEngine: ChartEngineSection,
   FormatNumber: FormatNumberSection,
   TimeFormat: TimeFormatSection,
+  TimeZone: TimeZoneSection,
   DateFormat: DateFormatSection,
   Theme: ThemeSection,
 });

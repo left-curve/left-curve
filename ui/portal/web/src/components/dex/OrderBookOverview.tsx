@@ -3,11 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { Direction } from "@left-curve/dango/types";
-import { format } from "date-fns";
 import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
-import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
+import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { AnyCoin } from "@left-curve/store/types";
@@ -266,7 +265,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
               </p>
 
               <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
-                <p>{format(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
+                <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
                 <IconLink className="w-3 h-3" />
               </div>
               <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
