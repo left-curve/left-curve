@@ -62,6 +62,8 @@ impl GenesisCodes for RustVm {
             .with_reply(Box::new(dango_dex::reply))
             .build();
 
+        #[cfg(feature = "metrics")]
+        dango_dex::metrics::init_metrics();
         let gateway = ContractBuilder::new(Box::new(dango_gateway::instantiate))
             .with_execute(Box::new(dango_gateway::execute))
             .with_query(Box::new(dango_gateway::query))

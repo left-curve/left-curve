@@ -422,8 +422,12 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     let mut metric_volume: HashMap<(&Denom, &Denom, &Denom), grug::Uint128> = HashMap::new();
     #[cfg(feature = "metrics")]
-    metrics::counter!(crate::metrics::TOTAL_TRADES_LABEL).increment(filling_outcomes.len() as u64);
-
+    {
+        metrics::counter!(crate::metrics::TOTAL_TRADES_LABEL)
+            .increment(filling_outcomes.len() as u64);
+        metrics::histogram!(crate::metrics::TRADE_PER_BLOCK_LABEL)
+            .record(filling_outcomes.len() as f64);
+    }
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order,
@@ -476,6 +480,8 @@ fn clear_orders_of_pair(
                                 order.id,
                             ),
                         )?;
+                        #[cfg(feature = "metrics")]
+                        metrics::counter!(crate::metrics::TOTAL_FILLED_ORDERS_LABEL).increment(1);
                     } else {
                         ORDERS.save(
                             storage,
@@ -501,6 +507,8 @@ fn clear_orders_of_pair(
                             order.id,
                         ),
                     )?;
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!(crate::metrics::TOTAL_FILLED_ORDERS_LABEL).increment(1);
                 },
             }
         } else {
