@@ -497,8 +497,7 @@ jobs:
           fi
           echo "| **Architectures:** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
 
-  deploy-pr:
-    if: github.event_name == 'pull_request'
+  deploy:
     permissions:
       packages: read
       deployments: write
@@ -545,67 +544,26 @@ jobs:
           ansible-galaxy collection install -r requirements.yml
       - name: Run Ansible playbook
         run: |
-          cd deploy
-          pipx ensurepath
-          ansible-playbook full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }}
-
-  deploy-main:
-    if: github.ref == 'refs/heads/main'
-    permissions:
-      packages: read
-    needs: [backend-push-manifest]
-    runs-on: [self-hosted]
-    env:
-      DANGO_DB_PASSWORD: ${{ secrets.DANGO_DB_PASSWORD }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DANGO_CLICKHOUSE_PASSWORD: ${{ secrets.DANGO_CLICKHOUSE_PASSWORD }}
-      CLICKHOUSE_PASSWORD: ${{ secrets.CLICKHOUSE_PASSWORD }}
-      DEVNET_COMETBFT_NODE_KEY: ${{ secrets.DEVNET_COMETBFT_NODE_KEY }}
-      DEVNET_COMETBFT_VALIDATOR_ADDRESS: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_ADDRESS }}
-      DEVNET_COMETBFT_VALIDATOR_PUB_KEY: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_PUB_KEY }}
-      DEVNET_COMETBFT_VALIDATOR_PRIVATE_KEY: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_PRIVATE_KEY }}
-      SENTRY__DSN: ${{ secrets.SENTRY__DSN }}
-      # Still using this as ENV for the bots ansible playbook to login properly
-      GITHUB_USER: ${{ github.actor }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref }}
-      - name: Check DEPLOY_KEY is set
-        run: |
-          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
-            echo "Missing DEPLOY_KEY secret"
-            exit 1
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            cd deploy
+            pipx ensurepath
+            ansible-playbook reset-cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+            ansible-playbook reset-dango.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+            ansible-playbook cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+            ansible-playbook dango.yml --tags setup --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
+            ansible-playbook dango.yml --limit 100.96.253.40 \
+              --skip-tags setup \
+              -e dango_image_tag=${{ env.GIT_COMMIT }} \
+              -e "dango_db_password=$DANGO_DB_PASSWORD" \
+              -e '{"dango_networks":["devnet"]}'
+            ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e faucet_version=latest
           fi
-      - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
-      - name: Ensure ~/.local/bin is in PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Install Ansible & Docker SDK
-        run: |
-          pipx install ansible
-          pipx ensurepath
-          ln -f -s ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
-          ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
-          cd deploy
-          ansible-galaxy collection install -r requirements.yml
-      - name: Run Ansible playbook
-        run: |
-          cd deploy
-          pipx ensurepath
-          ansible-playbook reset-cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
-          ansible-playbook reset-dango.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
-          ansible-playbook cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
-          ansible-playbook dango.yml --tags setup --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
-          ansible-playbook dango.yml --limit 100.96.253.40 \
-            --skip-tags setup \
-            -e dango_image_tag=${{ env.GIT_COMMIT }} \
-            -e "dango_db_password=$DANGO_DB_PASSWORD" \
-            -e '{"dango_networks":["devnet"]}'
-          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e faucet_version=latest
+
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            cd deploy
+            pipx ensurepath
+            ansible-playbook full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }}
+          fi
 
   localdango:
     timeout-minutes: 5
