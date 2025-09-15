@@ -4,9 +4,13 @@ use {
 };
 
 pub const LABEL_TRADES: &str = "dango.contract.dex.trades";
+
 pub const LABEL_ORDERS_FILLED: &str = "dango.contract.dex.orders_filled";
+
 pub const LABEL_TRADES_PER_BLOCK: &str = "dango.contract.dex.trades_per_block";
+
 pub const LABEL_VOLUME_PER_TRADE: &str = "dango.contract.dex.volume_per_trade";
+
 pub const LABEL_VOLUME_PER_BLOCK: &str = "dango.contract.dex.volume_per_block";
 
 pub fn init_metrics() {
