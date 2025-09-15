@@ -1,10 +1,12 @@
+import { useApp } from "@left-curve/foundation";
+import { useRouter } from "@tanstack/react-router";
+import { forwardRef, useImperativeHandle } from "react";
 import { useConfig, usePrices } from "@left-curve/store";
-import { Direction, TimeInForceOption } from "@left-curve/dango/types";
 
 import { OrderNotification } from "./OrderNotification";
+import { Direction, TimeInForceOption } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { twMerge, useApp } from "@left-curve/foundation";
-import { forwardRef, useImperativeHandle } from "react";
+import { twMerge } from "@left-curve/foundation";
 import {
   calculateFees,
   calculatePrice,
@@ -42,6 +44,7 @@ export const NotificationOrderFilled = forwardRef<NotificationRef, NotificationO
       refund_quote,
     } = notification.data;
     const { settings, showModal } = useApp();
+    const { navigate } = useRouter();
     const { formatNumberOptions } = settings;
     const { getPrice } = usePrices();
 
@@ -97,6 +100,7 @@ export const NotificationOrderFilled = forwardRef<NotificationRef, NotificationO
               { ...quote, amount: refund_quote },
             ],
           },
+          navigate,
         }),
     }));
 

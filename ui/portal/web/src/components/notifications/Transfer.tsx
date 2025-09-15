@@ -24,35 +24,31 @@ type NotificationTransferProps = {
 
 export const NotificationTransfer = forwardRef<NotificationRef, NotificationTransferProps>(
   ({ notification }, ref) => {
-    const { settings, showModal, setNotificationMenuVisibility } = useApp();
+    const { settings, showModal } = useApp();
     const { navigate } = useRouter();
     const { getCoinInfo } = useConfig();
     const { blockHeight, txHash, createdAt } = notification;
     const { coins, type, fromAddress, toAddress } = notification.data;
     const { formatNumberOptions } = settings;
     const isSent = type === "sent";
-
-    const originAddress = isSent ? fromAddress : toAddress;
-    const targetAddress = isSent ? toAddress : fromAddress;
-
     const Icon = isSent ? IconSent : IconReceived;
 
     useImperativeHandle(ref, () => ({
       onClick: () => {
         showModal(Modals.NotificationSentAndReceived, {
+          navigate,
           blockHeight,
           txHash,
           coins,
           action: type,
-          from: originAddress,
-          to: targetAddress,
+          from: fromAddress,
+          to: toAddress,
           time: createdAt,
         });
       },
     }));
 
     const onNavigate = (url: string) => {
-      setNotificationMenuVisibility(false);
       navigate({ to: url });
     };
 
@@ -102,23 +98,19 @@ export const NotificationTransfer = forwardRef<NotificationRef, NotificationTran
           </div>
           <div className="flex flex-col diatype-m-medium text-tertiary-500 items-start gap-1">
             <div className="flex flex-wrap items-center gap-1">
-              <span>
-                {m["notifications.notification.transfer.direction.first"]({ direction: type })}
-              </span>
+              <span>{m["notifications.notification.transfer.direction.first"]()}</span>
               <AddressVisualizer
                 classNames={{ container: "address-visualizer" }}
-                address={originAddress}
+                address={fromAddress}
                 withIcon
                 onClick={onNavigate}
               />
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              <span>
-                {m["notifications.notification.transfer.direction.second"]({ direction: type })}
-              </span>
+              <span>{m["notifications.notification.transfer.direction.second"]()}</span>
               <AddressVisualizer
                 classNames={{ container: "address-visualizer" }}
-                address={targetAddress}
+                address={toAddress}
                 withIcon
                 onClick={onNavigate}
               />{" "}

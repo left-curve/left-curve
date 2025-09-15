@@ -527,26 +527,8 @@
           }
         ],
         "direction": {
-          "first": [
-            {
-              "declarations": ["input direction"],
-              "selectors": ["direction"],
-              "match": {
-                "direction=sent": "from",
-                "direction=received": "in"
-              }
-            }
-          ],
-          "second": [
-            {
-              "declarations": ["input direction"],
-              "selectors": ["direction"],
-              "match": {
-                "direction=sent": "to",
-                "direction=received": "from"
-              }
-            }
-          ]
+          "first": "from",
+          "second": "to"
         }
       },
       "account": {

@@ -1,15 +1,18 @@
 import { useConfig } from "@left-curve/store";
-
-import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
-import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { useApp } from "@left-curve/applets-kit";
+import { useRouter } from "@tanstack/react-router";
+import { forwardRef, useImperativeHandle } from "react";
 
 import { OrderNotification } from "./OrderNotification";
 
-import type { Notification } from "~/hooks/useNotifications";
-import { PairAssets, twMerge, useApp } from "@left-curve/applets-kit";
-import { forwardRef, useImperativeHandle } from "react";
+import { PairAssets, twMerge } from "@left-curve/applets-kit";
+import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
+
+import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+
 import type { NotificationRef } from "./Notification";
+import type { Notification } from "~/hooks/useNotifications";
 
 type NotificationOrderCanceledProps = {
   notification: Notification<"orderCanceled">;
@@ -32,6 +35,7 @@ export const NotificationOrderCanceled = forwardRef<
     refund,
     remaining,
   } = notification.data;
+  const { navigate } = useRouter();
   const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
@@ -65,6 +69,7 @@ export const NotificationOrderCanceled = forwardRef<
           refund: [{ ...refundCoin, amount: refund.amount }],
           amount: formatNumber(formatUnits(amount, base.decimals), formatNumberOptions),
         },
+        navigate,
       }),
   }));
 

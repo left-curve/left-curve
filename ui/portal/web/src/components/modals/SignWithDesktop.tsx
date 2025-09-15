@@ -6,11 +6,14 @@ import { Scanner } from "@yudiel/react-qr-scanner";
 
 import { WEBRTC_URI } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useRouter } from "@tanstack/react-router";
 
-export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ socketId }, _ref) => {
+import type { useNavigate } from "@tanstack/react-router";
+
+export const SignWithDesktop = forwardRef<
+  unknown,
+  { socketId: string; navigate: ReturnType<typeof useNavigate> }
+>(({ socketId, navigate }, _ref) => {
   const { toast, hideModal } = useApp();
-  const { navigate } = useRouter();
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
     url: WEBRTC_URI,
