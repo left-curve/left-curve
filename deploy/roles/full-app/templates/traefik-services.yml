@@ -1,0 +1,43 @@
+http:
+  services:
+    {{ dango_network }}-dango:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-dango-1:{{ dango_port }}"
+    {{ dango_network }}-frontend:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-dango-frontend-1:{{ dango_frontend_port }}"
+    {{ dango_network }}-faucet_bot:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-faucet-bot-1:{{ faucet_port }}"
+    {{ dango_network }}-cometbftp2p:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_p2p_port }}"
+
+  routers:
+    {{ dango_network }}-dango:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-dango"
+      service: "{{ dango_network }}-dango"
+
+    {{ dango_network }}-frontend:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-frontend"
+      service: "{{ dango_network }}-frontend"
+
+    {{ dango_network }}-faucet_bot:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-faucet_bot"
+      service: "{{ dango_network }}-faucet_bot"
+
+    {{ dango_network }}-cometbftp2p:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-cometbftp2p"
+      service: "{{ dango_network }}-cometbftp2p"

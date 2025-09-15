@@ -22,6 +22,15 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
+  - job_name: 'traefik'
+    static_configs:
+      - targets: ['traefik:8888']
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: 'traefik:8888'
+      target_label: instance
+      replacement: 'ovh3:8888'
+
   - job_name: 'alertmanager'
     static_configs:
       - targets: ['alertmanager:9093']
