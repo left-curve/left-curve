@@ -25,6 +25,7 @@ import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
 import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
+import { ErrorBoundary } from "react-error-boundary";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
@@ -181,7 +182,9 @@ const ProTradeChart: React.FC = () => {
   const Chart = (
     <Suspense fallback={<Spinner color="pink" size="md" />}>
       <div className="flex w-full h-full lg:min-h-[52vh]" id="chart-container">
-        <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
+        <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
+          <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
+        </ErrorBoundary>
       </div>
     </Suspense>
   );

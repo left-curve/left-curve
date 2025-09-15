@@ -11,11 +11,9 @@
     "@fullpage/react-fullpage": "^0.1.45",
     "@left-curve/applets-convert": "workspace:^",
     "@left-curve/applets-kit": "workspace:^",
-    "@left-curve/chartiq": "^9.9.0",
     "@left-curve/dango": "workspace:^",
     "@left-curve/foundation": "workspace:^",
     "@left-curve/store": "workspace:^",
-    "@left-curve/tradingview": "^29.4.0",
     "@monaco-editor/react": "^4.7.0",
     "@sentry/react": "^9.10.1",
     "@sentry/webpack-plugin": "^3.2.4",
@@ -33,10 +31,15 @@
     "graphql-ws": "^6.0.4",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-error-boundary": "^6.0.0",
     "react-hook-form": "catalog:",
     "react-hot-toast": "catalog:",
     "react-modal-sheet": "^4.0.1",
     "zod": "catalog:"
+  },
+  "optionalDependencies": {
+    "@left-curve/tradingview": "^29.4.0",
+    "@left-curve/chartiq": "^9.9.0"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
