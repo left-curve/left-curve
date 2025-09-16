@@ -37,5 +37,5 @@ ports:
 # 26660, to tailscale (metrics)
 # dango needs to expose:
 # 8080, to anyone
-# 9191m to tailscale (metrics)
+# 9191, to tailscale (metrics)
 # 26658, to cometbft container only

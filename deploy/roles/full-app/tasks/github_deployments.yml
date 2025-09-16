@@ -15,9 +15,14 @@
     status_code: [200, 201]
   register: deployment_results
   loop:
-    - { name: "frontend", description: "Frontend", url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}" }
-    - { name: "api", description: "Dango API", url: "http://{{ tailscale_ip }}:{{ dango_port }}" }
-    - { name: "faucet", description: "Faucet", url: "http://{{ tailscale_ip }}:{{ faucet_port }}" }
+    - { name: "dango-frontend", description: "Frontend", url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}" }
+    - { name: "dango-api", description: "Dango API", url: "http://{{ tailscale_ip }}:{{ dango_port }}" }
+    - { name: "dango-metrics", description: "Dango Metrics", url: "http://{{ tailscale_ip }}:{{ dango_metrics_port }}" }
+    - { name: "faucet-bot", description: "Faucet", url: "http://{{ tailscale_ip }}:{{ faucet_port }}" }
+    - { name: "cometbft-p2p", description: "CometBFT P2P", url: "http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}" }
+    - { name: "cometbft-rpc", description: "CometBFT RPC", url: "http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}" }
+    - { name: "cometbft-abci", description: "CometBFT ABCI", url: "http://{{ tailscale_ip }}:{{ cometbft_abci_port }}" }
+    - { name: "cometbft-metrics", description: "CometBFT metrics", url: "http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}" }
 
 - name: Set deployment statuses
   uri:
@@ -39,6 +44,8 @@
   when: deployment_results.results is defined
 
 - name: Add deployment summary to GitHub
+  delegate_to: localhost
+  connection: local
   shell: |
     cat >> $GITHUB_STEP_SUMMARY << 'EOF'
     # 🚀 PR Deployment Summary
@@ -57,5 +64,3 @@
     | **Environment:** | `{{ deployment_name }}` |
     | **Commit:** | `{{ github_sha }}` |
     EOF
-  environment:
-    GITHUB_STEP_SUMMARY: "{{ ansible_env.GITHUB_STEP_SUMMARY | default('/dev/null') }}"
