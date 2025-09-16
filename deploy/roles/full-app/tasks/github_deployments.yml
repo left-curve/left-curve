@@ -52,16 +52,15 @@
     # 🚀 PR Deployment Summary
     | Name | Result |
     | ---- | ------ |
-    | **PR Number:** | `{{ github_pr_number }}` |
-    | **Status:** | ✅ Deployed successfully! |
-    | **Dango Frontend:** | [http://{{ tailscale_ip }}:{{ dango_frontend_port }}](http://{{ tailscale_ip }}:{{ dango_frontend_port }}) |
-    | **Dango GraphQL:** | [http://{{ tailscale_ip }}:{{ dango_port }}/graphql](http://{{ tailscale_ip }}:{{ dango_port }}/graphql) |
-    | **Dango metrics:** | [http://{{ tailscale_ip }}:{{ dango_metrics_port }}/graphql](http://{{ tailscale_ip }}:{{ dango_metrics_port }}) |
-    | **Faucet bot:** | [http://{{ tailscale_ip }}:{{ faucet_port }}](http://{{ tailscale_ip }}:{{ faucet_port }}) |
-    | ** CometBFT P2P:** | [http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}](http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}) |
-    | ** CometBFT RPC:** | [http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}](http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}) |
-    | ** CometBFT ABCI:** | [http://{{ tailscale_ip }}:{{ cometbft_abci_port }}](http://{{ tailscale_ip }}:{{ cometbft_abci_port }}) |
-    | ** CometBFT Metrics:** | [http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}](http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}) |
-    | **Environment:** | `{{ deployment_name }}` |
-    | **Commit:** | `{{ github_sha }}` |
+    | **Status** | ✅ |
+    | **Dango Frontend** | [http://{{ tailscale_ip }}:{{ dango_frontend_port }}](http://{{ tailscale_ip }}:{{ dango_frontend_port }}) |
+    | **Dango GraphQL** | [http://{{ tailscale_ip }}:{{ dango_port }}/graphql](http://{{ tailscale_ip }}:{{ dango_port }}/graphql) |
+    | **Dango metrics** | [http://{{ tailscale_ip }}:{{ dango_metrics_port }}/graphql](http://{{ tailscale_ip }}:{{ dango_metrics_port }}) |
+    | **Faucet bot** | [http://{{ tailscale_ip }}:{{ faucet_port }}](http://{{ tailscale_ip }}:{{ faucet_port }}) |
+    | **CometBFT P2P** | [http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}](http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}) |
+    | **CometBFT RPC** | [http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}](http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}) |
+    | **CometBFT ABCI** | [http://{{ tailscale_ip }}:{{ cometbft_abci_port }}](http://{{ tailscale_ip }}:{{ cometbft_abci_port }}) |
+    | **CometBFT Metrics** | [http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}](http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}) |
+    | **Deployment name** | `{{ deployment_name }}` |
+    | **Commit** | `{{ github_sha }}` |
     EOF

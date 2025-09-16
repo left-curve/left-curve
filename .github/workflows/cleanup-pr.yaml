@@ -50,6 +50,12 @@ jobs:
             "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango/versions" \
             -d '{"names":["pr-${{ github.event.pull_request.number }}-latest"]}'
 
+          curl -X DELETE \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango-frontend/versions" \
+            -d '{"names":["pr-${{ github.event.pull_request.number }}-latest"]}'
+
           # Delete commit-specific images for this PR
           for commit in $PR_COMMITS; do
             echo "Deleting image for commit: $commit"
@@ -57,6 +63,11 @@ jobs:
               -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/vnd.github.v3+json" \
               "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango/versions" \
+              -d "{\"names\":[\"$commit\", \"$commit-amd64\", \"$commit-arm64\"]}"
+            curl -X DELETE \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango-frontend/versions" \
               -d "{\"names\":[\"$commit\", \"$commit-amd64\", \"$commit-arm64\"]}"
           done
 
