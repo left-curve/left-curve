@@ -56,7 +56,7 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
-{% if not traefik_enabled %}
+{% if expose_ports %}
     ports:
       - "{{ tailscale_ip }}:${DANGO_PORT:-0}:8080"
       - "{{ tailscale_ip }}:${DANGO_METRICS_PORT:-0}:9191"
@@ -85,7 +85,7 @@ services:
     depends_on:
       dango:
         condition: service_healthy
-{% if not traefik_enabled %}
+{% if expose_ports %}
     ports:
       - "{{ tailscale_ip }}:${DANGO_FRONTEND_PORT:-0}:80"
 {% endif %}
@@ -111,7 +111,7 @@ services:
     depends_on:
       dango:
         condition: service_healthy
-{% if not traefik_enabled %}
+{% if expose_ports %}
     ports:
       - "{{ tailscale_ip }}:${FAUCET_PORT:-0}:8082"
 {% endif %}
@@ -136,13 +136,12 @@ services:
       - dango
     volumes:
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:/root/.cometbft/config"
-{% if not traefik_enabled %}
-    # if I ever need to make those available
-    # ports:
-    #   - "{{ tailscale_ip }}:${COMETBFT_P2P_PORT:-0}:26656"
-    #   - "{{ tailscale_ip }}:${COMETBFT_RPC_PORT:-0}:26657"
-    #   - "{{ tailscale_ip }}:${COMETBFT_ABCI_PORT:-0}:26658"
-    #   - "{{ tailscale_ip }}:${COMETBFT_METRICS_PORT:-0}:26660"
+{% if expose_ports %}
+    ports:
+      - "{{ tailscale_ip }}:${COMETBFT_P2P_PORT:-0}:26656"
+      - "{{ tailscale_ip }}:${COMETBFT_RPC_PORT:-0}:26657"
+      - "{{ tailscale_ip }}:${COMETBFT_ABCI_PORT:-0}:26658"
+      - "{{ tailscale_ip }}:${COMETBFT_METRICS_PORT:-0}:26660"
 {% endif %}
     networks:
       - default

@@ -1,3 +1,16 @@
+- name: Set port facts from local variable
+  set_fact:
+    "{{ item }}": "{{ ports[dango_network][item] }}"
+  loop:
+    - dango_port
+    - dango_frontend_port
+    - dango_metrics_port
+    - faucet_port
+    - cometbft_p2p_port
+    - cometbft_rpc_port
+    - cometbft_abci_port
+    - cometbft_metrics_port
+
 - name: Check if deployment already exists
   stat:
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"

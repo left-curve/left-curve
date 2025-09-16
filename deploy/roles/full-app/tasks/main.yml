@@ -1,6 +1,20 @@
+# When changing this file, you have to check 3 scenarios:
+#
+# Classic deploy, used for PRs
+# 1. `ansible-playbook full-app.yml -e expose_ports=true`
+#
+# Classic deploy, used for already deployed PRs
+# 2. `ansible-playbook full-app.yml -e expose_ports=true -e deployment_name=<existing deploy>`
+#
+# Used to deploy devnet
+# 3. `ansible-playbook full-app.yml -e traefik_enabled=true`
+
 - import_tasks: validate.yml
 - import_tasks: setup.yml
-- import_tasks: "{{ 'traefik.yml' if traefik_enabled else 'standalone.yml' }}"
+- import_tasks: "traefik.yml"
+  when: traefik_enabled
+- import_tasks: "standalone.yml"
+  when: not traefik_enabled
 - import_tasks: github_deployments.yml
   when: github_pr_number is defined
 - import_tasks: summary.yml
