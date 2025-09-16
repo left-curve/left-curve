@@ -18,6 +18,7 @@ import {
 
 import type {
   CreateOrderRequest,
+  Denom,
   LiquidityDepth,
   LiquidityDepthResponse,
   PairId,
@@ -46,18 +47,23 @@ function liquidityDepthMapper(parameters: {
   coins: { base: AnyCoin; quote: AnyCoin };
   price: string;
   liquidityDepth: LiquidityDepth;
+  bucketSizeCoin: Denom;
   accumulativeSize: string;
 }) {
-  const { coins, liquidityDepth, price, accumulativeSize } = parameters;
+  const { coins, liquidityDepth, price, accumulativeSize, bucketSizeCoin } = parameters;
   const { base, quote } = coins;
 
+  const isBase = bucketSizeCoin === base.symbol;
+
   const parsedPrice = parseUnits(price, base.decimals - quote.decimals);
-  const baseSize = Decimal(liquidityDepth.depthBase).div(Decimal(10).pow(base.decimals));
+  const size = Decimal(isBase ? liquidityDepth.depthBase : liquidityDepth.depthQuote).div(
+    Decimal(10).pow(isBase ? base.decimals : quote.decimals),
+  );
 
   return {
     price: parsedPrice,
-    size: baseSize.toFixed(),
-    total: Decimal(accumulativeSize).plus(baseSize).toFixed(),
+    size: size.toFixed(),
+    total: Decimal(accumulativeSize).plus(size).toFixed(),
   };
 }
 
@@ -276,6 +282,8 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     records: { price: string; size: string; total: string }[];
   };
 
+  const [bucketSizeCoin, setBucketSizeCoin] = useState<string>(baseCoin.symbol);
+
   const [liquidityDepth, setLiquidityDepth] = useState<{
     asks: LiquidityDepthOverview;
     bids: LiquidityDepthOverview;
@@ -310,13 +318,14 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
           const askDepth = liquidityDepth.askDepth || [];
 
           const asks = askDepth
-            .sort(([priceA], [priceB]) => (Decimal(priceA).gt(priceB) ? 1 : -1))
+            .sort(([priceA], [priceB]) => (Decimal(priceA).gt(priceB) ? -1 : 1))
             .reduce(
               (acc, [price, liquidityDepth]) => {
                 const depth = liquidityDepthMapper({
                   coins: { base: baseCoin, quote: quoteCoin },
                   price,
                   liquidityDepth,
+                  bucketSizeCoin,
                   accumulativeSize: acc.total,
                 });
                 acc.records.push(depth);
@@ -334,6 +343,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
                   coins: { base: baseCoin, quote: quoteCoin },
                   price,
                   liquidityDepth,
+                  bucketSizeCoin,
                   accumulativeSize: acc.total,
                 });
                 acc.records.push(depth);
@@ -350,7 +360,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     return () => {
       unsubscribe?.();
     };
-  }, [appConfig, bucketSize, baseCoin, quoteCoin]);
+  }, [appConfig, bucketSizeCoin, bucketSize, baseCoin, quoteCoin]);
 
   useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
@@ -414,6 +424,8 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     liquidityDepth,
     bucketSize,
     setBucketSize,
+    bucketSizeCoin,
+    setBucketSizeCoin,
     previousPrice,
     pair,
     pairId,

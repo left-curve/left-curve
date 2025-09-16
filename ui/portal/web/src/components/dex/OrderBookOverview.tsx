@@ -135,7 +135,10 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
     previousPrice,
     orderBookState,
     pair,
+    bucketSize,
     setBucketSize,
+    bucketSizeCoin,
+    setBucketSizeCoin,
   } = state;
 
   if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
@@ -151,11 +154,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
       <div className="flex items-center justify-between w-full">
-        <Select
-          value={pair.params.bucketSizes[1]}
-          onChange={(key) => setBucketSize(key)}
-          variant="plain"
-        >
+        <Select value={bucketSize} onChange={(key) => setBucketSize(key)} variant="plain">
           {pair.params.bucketSizes.map((size) => {
             return (
               <Select.Item key={`bucket-${size}`} value={size}>
@@ -165,8 +164,8 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           })}
         </Select>
         <Select
-          value={baseCoin.symbol}
-          onChange={(key) => console.log(key)}
+          value={bucketSizeCoin}
+          onChange={(key) => setBucketSizeCoin(key)}
           variant="plain"
           classNames={{ listboxWrapper: "right-0 left-auto" }}
         >
@@ -179,14 +178,14 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           {m["dex.protrade.history.price"]()}
         </p>
         <p className="text-center hidden lg:block">
-          {m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}
+          {m["dex.protrade.history.size"]({ symbol: bucketSizeCoin })}
         </p>
         <p className="lg:text-end order-1 lg:order-none">
-          {m["dex.protrade.history.total"]({ symbol: baseCoin.symbol })}
+          {m["dex.protrade.history.total"]({ symbol: bucketSizeCoin })}
         </p>
         <p className="order-3 lg:hidden">{m["dex.protrade.history.price"]()}</p>
         <p className="order-4 text-end lg:order-none lg:hidden">
-          {m["dex.protrade.history.total"]({ symbol: baseCoin.symbol })}
+          {m["dex.protrade.history.total"]({ symbol: bucketSizeCoin })}
         </p>
       </div>
       <div className="flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
