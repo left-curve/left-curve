@@ -43,9 +43,11 @@ jobs:
 
       - name: Check dependencies
         run: |
+          set -e
+
           now=$(date -u +"%s")
 
-          yq -p toml '.package[] | .name + " " + .version' Cargo.lock | while read -r name ver; do
+          yq -oy toml '.package[] | .name + " " + .version' Cargo.lock | while read -r name ver; do
             url="https://crates.io/api/v1/crates/$name/$ver"
 
             created_at=$(curl -s "$url" | jq -r .version.created_at)
@@ -61,7 +63,7 @@ jobs:
               echo "❌ dependency not old enough! name: $name, version: $version, age: $age_days"
               exit 1
             else
-              echo "✅ dependency is old enough. name: $name, version: $version, age: $age_days"
+              echo "✅ dependency old enough. name: $name, version: $version, age: $age_days"
             fi
           done
 
