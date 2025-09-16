@@ -11,30 +11,42 @@ jobs:
       packages: write
       deployments: write
     steps:
-      - name: Delete PR deployment
+      - name: Delete PR deployments
         run: |
-          # Define environments to clean up
-          ENVIRONMENTS=("frontend" "api" "faucet")
+          ENVIRONMENTS=("preview-dango-frontend" "preview-dango-api" "preview-dango-metrics" "preview-faucet-bot" "preview-cometbft-p2p" "preview-cometbft-rpc" "preview-cometbft-abci" "preview-cometbft-metrics")
 
           for env in "${ENVIRONMENTS[@]}"; do
-            echo "Cleaning up pr-${{ github.event.pull_request.number }}-${env}"
+            echo "Checking environment: ${env}"
+            page=1
+            while true; do
+              # Fetch page with per_page=100 to minimize requests
+              response=$(curl -s \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                "https://api.github.com/repos/${{ github.repository }}/deployments?environment=${env}&page=${page}&per_page=100")
 
-            # Get deployment IDs for this environment
-            DEPLOYMENT_IDS=$(curl -s \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/deployments?environment=pr-${{ github.event.pull_request.number }}-${env}" \
-              | jq -r '.[].id')
-
-            # Set each deployment to inactive
-            for id in $DEPLOYMENT_IDS; do
-              if [ "$id" != "null" ] && [ -n "$id" ]; then
-                echo "Deactivating deployment ID: $id"
-                curl -X POST \
-                  -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                  -H "Accept: application/vnd.github.v3+json" \
-                  "https://api.github.com/repos/${{ github.repository }}/deployments/${id}/statuses" \
-                  -d '{"state":"inactive","description":"PR closed - deployment deactivated"}'
+              # Check if page is empty
+              if [ "$(echo "$response" | jq '. | length')" -eq 0 ]; then
+                break
               fi
+
+              # Extract deployment IDs for this PR
+              DEPLOYMENT_IDS=$(echo "$response" | \
+                jq -r --arg pr "PR ${{ github.event.pull_request.number }}" \
+                  '.[] | select(.description | contains($pr)) | .id')
+
+              # Deactivate deployments found on this page
+              for id in $DEPLOYMENT_IDS; do
+                if [ "$id" != "null" ] && [ -n "$id" ]; then
+                  echo "Deactivating deployment ID: $id in environment: ${env}"
+                  curl -X POST \
+                    -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "Accept: application/vnd.github.v3+json" \
+                    "https://api.github.com/repos/${{ github.repository }}/deployments/${id}/statuses" \
+                    -d '{"state":"inactive","description":"PR closed - deployment deactivated"}'
+                fi
+              done
+
+              ((page++))
             done
           done
 
