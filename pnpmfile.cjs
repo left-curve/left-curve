@@ -1,7 +1,11 @@
 async function fetchPackageMetadata(packageName, version) {
-  const res = await fetch(`https://registry.npmjs.org/${packageName}/${version}`);
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetch(`https://registry.npmjs.org/${packageName}/${version}`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch (cause) {
+    throw new Error(`Failed to fetch metadata for ${packageName}@${version}`, { cause });
+  }
 }
 
 module.exports = {
@@ -18,6 +22,7 @@ module.exports = {
           );
         }
       }
+      console.log(`Package ${pkg.name}@${pkg.version} passed the age check.`);
       return pkg;
     },
   },
