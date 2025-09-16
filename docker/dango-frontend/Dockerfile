@@ -10,6 +10,7 @@ COPY ./pnpm-lock.yaml /app/pnpm-lock.yaml
 COPY ./pnpm-workspace.yaml /app/pnpm-workspace.yaml
 COPY ./turbo.json /app/turbo.json
 COPY ./.npmrc /app/.npmrc
+COPY ./.pnpmfile.cjs /app/.pnpmfile.cjs
 
 WORKDIR /app
 
