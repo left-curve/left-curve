@@ -1,8 +1,9 @@
-import { useAccount, useConfig, useStorage } from "@left-curve/store";
 import { useCallback, useMemo } from "react";
+import { useConfig } from "./useConfig.js";
+import { useAccount } from "./useAccount.js";
+import { useStorage } from "./useStorage.js";
 
 import { uid } from "@left-curve/dango/utils";
-import { isToday } from "date-fns";
 
 import type {
   AccountTypes,
@@ -15,9 +16,8 @@ import type {
   UID,
   Username,
 } from "@left-curve/dango/types";
-import { formatDate, useApp } from "@left-curve/foundation";
 
-export type Notifications = {
+export type Activities = {
   transfer: {
     coins: Coins;
     fromAddress: Address;
@@ -34,10 +34,10 @@ export type Notifications = {
   orderFilled: OrderFilledEvent;
 };
 
-export type Notification<key extends keyof Notifications = keyof Notifications> = {
+export type ActivityRecord<key extends keyof Activities = keyof Activities> = {
   id: UID;
   type: key;
-  data: Notifications[key];
+  data: Activities[key];
   blockHeight: number;
   seen?: boolean;
   isHidden?: boolean;
@@ -45,96 +45,66 @@ export type Notification<key extends keyof Notifications = keyof Notifications> 
   createdAt: string;
 };
 
-type UseNotificationsParameters = {
-  limit?: number;
-};
-
-export function useNotifications(parameters: UseNotificationsParameters = {}) {
-  const { limit = 5 } = parameters;
+export function useActivities() {
   const { username = "", accounts, account } = useAccount();
   const { subscriptions } = useConfig();
-  const { settings } = useApp();
   const userAddresses = useMemo(() => (accounts ? accounts.map((a) => a.address) : []), [accounts]);
 
-  const { dateFormat } = settings;
-
-  const [allNotifications, setAllNotifications] = useStorage<Record<Username, Notification[]>>(
-    "app.notifications",
+  const [allActivities, setAllActivities] = useStorage<Record<Username, ActivityRecord[]>>(
+    "app.activities",
     {
       enabled: Boolean(username),
       initialValue: {},
-      version: 0.3,
-      migrations: {
-        0.1: (notifications: Notification[]) => ({ [username]: notifications }),
-        0.2: () => ({}),
-      },
+      version: 0.1,
     },
   );
 
-  const userNotification = useMemo(
-    () => (allNotifications[username] || []).filter((n) => !n.isHidden),
-    [allNotifications, username],
+  const userActivities = useMemo(
+    () => (allActivities[username] || []).filter((n) => !n.isHidden),
+    [allActivities, username],
   );
 
-  const totalNotifications = userNotification.length;
+  const totalActivities = userActivities.length;
 
-  const addNotification = useCallback(
-    (notification: Notification) => {
-      setAllNotifications((notifications) => {
-        const previousUserNotification = notifications[username] || [];
+  const addActivityRecord = useCallback(
+    (activity: ActivityRecord) => {
+      setAllActivities((activities) => {
+        const previousUserActivities = activities[username] || [];
         return {
-          ...notifications,
-          [username]: [...previousUserNotification, notification],
+          ...activities,
+          [username]: [...previousUserActivities, activity],
         };
       });
     },
     [username],
   );
 
-  const deleteNotification = useCallback(
+  const deleteActivityRecord = useCallback(
     (id: UID) => {
-      setAllNotifications((notifications) => {
-        const previousUserNotification = notifications[username] || [];
-        const notificationIndex = previousUserNotification.findIndex((n) => n.id === id);
-        if (notificationIndex === -1) return notifications;
-        previousUserNotification[notificationIndex] = {
-          ...previousUserNotification[notificationIndex],
+      setAllActivities((activities) => {
+        const previousUserActivities = activities[username] || [];
+        const activityIndex = previousUserActivities.findIndex((n) => n.id === id);
+        if (activityIndex === -1) return activities;
+        previousUserActivities[activityIndex] = {
+          ...previousUserActivities[activityIndex],
           isHidden: true,
         };
         return {
-          ...notifications,
-          [username]: previousUserNotification,
+          ...activities,
+          [username]: previousUserActivities,
         };
       });
     },
     [username],
   );
 
-  const hasNotifications = totalNotifications > 0;
+  const hasActivities = totalActivities > 0;
 
-  const notifications: Record<string, Notification[]> = useMemo(() => {
-    return [...userNotification]
-      .reverse()
-      .slice(0, limit)
-      .sort((a, b) => +b.createdAt - +a.createdAt)
-      .reduce((acc, notification) => {
-        const dateKey = isToday(notification.createdAt)
-          ? "Today"
-          : formatDate(notification.createdAt, dateFormat);
-
-        if (!acc[dateKey]) {
-          acc[dateKey] = [];
-        }
-        acc[dateKey].push(notification);
-        return acc;
-      }, Object.create({}));
-  }, [userNotification, limit]);
-
-  const startNotifications = useCallback(() => {
+  const startActivities = useCallback(() => {
     if (!account || !username) return;
 
-    const lastKnownBlockHeight = userNotification.reduce(
-      (max, notification) => Math.max(max, notification.blockHeight),
+    const lastKnownBlockHeight = userActivities.reduce(
+      (max, activity) => Math.max(max, activity.blockHeight),
       0,
     );
 
@@ -146,16 +116,16 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
         for (const account of accounts) {
           const { address, accountType, accountIndex, createdAt, createdBlockHeight } = account;
 
-          const notification = {
+          const activity = {
             address,
             accountType,
             accountIndex,
           };
 
-          addNotification({
+          addActivityRecord({
             id: uid(),
             type: "account",
-            data: notification,
+            data: activity,
             seen: false,
             blockHeight: createdBlockHeight,
             createdAt,
@@ -173,7 +143,7 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
           if (!("contract_event" in eventData)) continue;
           const { type, data } = eventData.contract_event;
 
-          const notification = (() => {
+          const activity = (() => {
             switch (type) {
               case "sent":
               case "received": {
@@ -189,14 +159,14 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
                 if (!isSent && !userAddresses.includes(user as Address)) return;
                 if (!Object.keys(coins).length) return;
 
-                const notification = {
+                const details = {
                   coins,
                   fromAddress: from || user,
                   toAddress: to || user,
                   type,
                 };
 
-                return { data: notification, type: "transfer" as const };
+                return { data: details, type: "transfer" as const };
               }
               case "order_filled": {
                 return { data: data as OrderFilledEvent, type: "orderFilled" as const };
@@ -210,12 +180,12 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
             }
           })();
 
-          if (!notification) continue;
+          if (!activity) continue;
 
-          addNotification({
+          addActivityRecord({
             id: uid(),
-            data: notification.data,
-            type: notification.type,
+            data: activity.data,
+            type: activity.type,
             txHash: transaction?.hash,
             seen: false,
             blockHeight,
@@ -229,13 +199,13 @@ export function useNotifications(parameters: UseNotificationsParameters = {}) {
       unsubscribeEvents();
       unsubscribeAccount();
     };
-  }, [addNotification, userNotification, username, accounts, account, userAddresses]);
+  }, [addActivityRecord, userActivities, username, accounts, account, userAddresses]);
 
   return {
-    startNotifications,
-    deleteNotification,
-    notifications,
-    hasNotifications,
-    totalNotifications,
+    startActivities,
+    deleteActivityRecord,
+    userActivities,
+    hasActivities,
+    totalActivities,
   };
 }

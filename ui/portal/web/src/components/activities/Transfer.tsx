@@ -15,27 +15,27 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import type { Notification } from "~/hooks/useNotifications";
-import type { NotificationRef } from "./Notification";
+import type { ActivityRef } from "./Activity";
+import type { ActivityRecord } from "@left-curve/store";
 
-type NotificationTransferProps = {
-  notification: Notification<"transfer">;
+type ActivityTransferProps = {
+  activity: ActivityRecord<"transfer">;
 };
 
-export const NotificationTransfer = forwardRef<NotificationRef, NotificationTransferProps>(
-  ({ notification }, ref) => {
+export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
+  ({ activity }, ref) => {
     const { settings, showModal } = useApp();
     const { navigate } = useRouter();
     const { getCoinInfo } = useConfig();
-    const { blockHeight, txHash, createdAt } = notification;
-    const { coins, type, fromAddress, toAddress } = notification.data;
+    const { blockHeight, txHash, createdAt } = activity;
+    const { coins, type, fromAddress, toAddress } = activity.data;
     const { formatNumberOptions } = settings;
     const isSent = type === "sent";
     const Icon = isSent ? IconSent : IconReceived;
 
     useImperativeHandle(ref, () => ({
       onClick: () => {
-        showModal(Modals.NotificationSentAndReceived, {
+        showModal(Modals.ActivityTransfer, {
           navigate,
           blockHeight,
           txHash,
@@ -60,7 +60,7 @@ export const NotificationTransfer = forwardRef<NotificationRef, NotificationTran
 
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
           <span className="diatype-m-medium text-secondary-700">
-            {m["notifications.notification.transfer.title"]({ action: type })}
+            {m["activities.activity.transfer.title"]({ action: type })}
           </span>
           <div className="flex flex-col items-start">
             {Object.entries(coins).map(([denom, amount]) => {
@@ -98,7 +98,7 @@ export const NotificationTransfer = forwardRef<NotificationRef, NotificationTran
           </div>
           <div className="flex flex-col diatype-m-medium text-tertiary-500 items-start gap-1">
             <div className="flex flex-wrap items-center gap-1">
-              <span>{m["notifications.notification.transfer.direction.first"]()}</span>
+              <span>{m["activities.activity.transfer.direction.first"]()}</span>
               <AddressVisualizer
                 classNames={{ container: "address-visualizer" }}
                 address={fromAddress}
@@ -107,7 +107,7 @@ export const NotificationTransfer = forwardRef<NotificationRef, NotificationTran
               />
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              <span>{m["notifications.notification.transfer.direction.second"]()}</span>
+              <span>{m["activities.activity.transfer.direction.second"]()}</span>
               <AddressVisualizer
                 classNames={{ container: "address-visualizer" }}
                 address={toAddress}

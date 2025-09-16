@@ -16,7 +16,7 @@ import { formatUnits } from "@left-curve/dango/utils";
 import type { useNavigate } from "@tanstack/react-router";
 import type { Address, Coins } from "@left-curve/dango/types";
 
-type NotificationSentAndReceivedProps = {
+type ActivityTransferModalProps = {
   action?: "received" | "sent";
   from: Address;
   to: Address;
@@ -27,7 +27,7 @@ type NotificationSentAndReceivedProps = {
   navigate: ReturnType<typeof useNavigate>;
 };
 
-export const NotificationSentAndReceived = forwardRef<undefined, NotificationSentAndReceivedProps>(
+export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModalProps>(
   ({ action = "received", from, to, time, txHash, coins, blockHeight, navigate: _navigate_ }) => {
     const { hideModal, setSidebarVisibility, settings } = useApp();
     const { getCoinInfo } = useConfig();
@@ -52,8 +52,8 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
         <div className="p-4 flex flex-col gap-5">
           <h2 className="text-lg font-semibold text-center text-primary-900">
             {action === "received"
-              ? m["notifications.notification.modal.received"]()
-              : m["notifications.notification.modal.sent"]()}
+              ? m["activities.activity.modal.received"]()
+              : m["activities.activity.modal.sent"]()}
           </h2>
           <div className="flex flex-col gap-4">
             {Object.entries(coins).map(([denom, amount]) => {
@@ -77,7 +77,7 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
             <div className="flex flex-col gap-2 w-full">
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                 <p className="diatype-sm-regular text-tertiary-500 capitalize">
-                  {m["notifications.notification.transfer.direction.first"]()}
+                  {m["activities.activity.transfer.direction.first"]()}
                 </p>
                 <div className="flex items-center gap-1">
                   <AddressVisualizer
@@ -90,7 +90,7 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
               </div>
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                 <p className="diatype-sm-regular text-tertiary-500 capitalize">
-                  {m["notifications.notification.transfer.direction.second"]()}
+                  {m["activities.activity.transfer.direction.second"]()}
                 </p>
                 <div className="flex items-center gap-1">
                   <AddressVisualizer
@@ -103,7 +103,7 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
               </div>
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                 <p className="diatype-sm-regular text-tertiary-500">
-                  {m["notifications.notification.modal.time"]()}
+                  {m["activities.activity.modal.time"]()}
                 </p>
                 <div className="flex items-center gap-1">
                   <p>{formatDate(time, `${dateFormat} ${timeFormat}`)}</p>
@@ -111,7 +111,7 @@ export const NotificationSentAndReceived = forwardRef<undefined, NotificationSen
               </div>
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                 <p className="diatype-sm-regular text-tertiary-500">
-                  {m["notifications.notification.link"]({
+                  {m["activities.activity.link"]({
                     link: txHash ? "txHash" : "blockHeight",
                   })}
                 </p>

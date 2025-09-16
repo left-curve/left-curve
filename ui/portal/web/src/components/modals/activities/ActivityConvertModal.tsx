@@ -9,7 +9,7 @@ import {
 import { forwardRef } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-export const NotificationSwapped = forwardRef(() => {
+export const ActivityConvertModal = forwardRef(() => {
   const { hideModal } = useApp();
 
   return (
@@ -23,7 +23,7 @@ export const NotificationSwapped = forwardRef(() => {
       </IconButton>
       <div className="p-4 flex flex-col gap-5">
         <h2 className="text-lg font-semibold text-center text-primary-900">
-          {m["notifications.notification.modal.swapped"]()}
+          {m["activities.activity.modal.swapped"]()}
         </h2>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-3">
@@ -57,7 +57,7 @@ export const NotificationSwapped = forwardRef(() => {
           <div className="flex flex-col gap-2 w-full">
             <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
               <p className="diatype-sm-regular text-tertiary-500">
-                {m["notifications.notification.modal.fee"]()}
+                {m["activities.activity.modal.fee"]()}
               </p>
               <div className="flex items-center gap-1">
                 <p>$1.2</p>
@@ -65,7 +65,7 @@ export const NotificationSwapped = forwardRef(() => {
             </div>
             <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
               <p className="diatype-sm-regular text-tertiary-500">
-                {m["notifications.notification.modal.time"]()}
+                {m["activities.activity.modal.time"]()}
               </p>
               <div className="flex items-center gap-1">
                 <p>August 14, 2025 10:15 AM</p>
@@ -73,7 +73,7 @@ export const NotificationSwapped = forwardRef(() => {
             </div>
             <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
               <p className="diatype-sm-regular text-tertiary-500">
-                {m["notifications.notification.modal.transaction"]()}
+                {m["activities.activity.modal.transaction"]()}
               </p>
               <div className="flex items-center gap-1">
                 <TruncateText text="0x8dn1...153f" />

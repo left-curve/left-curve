@@ -1,25 +1,23 @@
 import { forwardRef } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
-import { AddressVisualizer, Badge, IconNewAccount, useApp } from "@left-curve/applets-kit";
+import { AddressVisualizer, Badge, IconNewAccount } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { Notification } from "~/hooks/useNotifications";
-import type { NotificationRef } from "./Notification";
+import type { ActivityRecord } from "@left-curve/store";
+import type { ActivityRef } from "./Activity";
 
-type NotificationAccountProps = {
-  notification: Notification<"account">;
+type ActivityAccountProps = {
+  activity: ActivityRecord<"account">;
 };
 
-export const NotificationNewAccount = forwardRef<NotificationRef, NotificationAccountProps>(
-  ({ notification }, _) => {
+export const ActivityNewAccount = forwardRef<ActivityRef, ActivityAccountProps>(
+  ({ activity }, _) => {
     const navigate = useNavigate();
-    const { setNotificationMenuVisibility } = useApp();
-    const { address, accountType } = notification.data;
+    const { address, accountType } = activity.data;
 
     const onNavigate = (url: string) => {
-      setNotificationMenuVisibility(false);
       navigate({ to: url });
     };
 
@@ -30,7 +28,7 @@ export const NotificationNewAccount = forwardRef<NotificationRef, NotificationAc
         </div>
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
           <div className="flex justify-center items-center gap-2 diatype-m-medium text-secondary-700 capitalize">
-            <p>{m["notifications.notification.account.title"]()}</p>
+            <p>{m["activities.activity.account.title"]()}</p>
             <Badge className="capitalize" text={accountType} />
           </div>
           <AddressVisualizer address={address} withIcon onClick={onNavigate} />
