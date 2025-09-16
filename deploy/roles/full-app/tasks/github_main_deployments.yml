@@ -11,7 +11,7 @@
       reviewers: []
       deployment_branch_policy: null
     status_code: [200, 201]
-    failed_when: false
+  failed_when: false
   loop:
     - "dango-frontend"
     - "dango-api"
@@ -26,7 +26,7 @@
       Accept: "application/vnd.github.v3+json"
     body_format: json
     body:
-      ref: "{{ github_sha }}"
+      ref: "{{ dango_image_tag }}"
       environment: "{{ item.name }}"
       description: "{{ item.description }}"
       auto_merge: false
@@ -71,5 +71,5 @@
     | **Dango GraphQL** | [http://{{ tailscale_ip }}:{{ dango_port }}/graphql](http://{{ tailscale_ip }}:{{ dango_port }}/graphql) |
     | **Faucet bot** | [http://{{ tailscale_ip }}:{{ faucet_port }}](http://{{ tailscale_ip }}:{{ faucet_port }}) |
     | **Deployment name** | `{{ deployment_name }}` |
-    | **Commit** | `{{ github_sha }}` |
+    | **Commit** | `{{ dango_image_tag }}` |
     EOF
