@@ -27,9 +27,9 @@ services:
       - "{{ tailscale_ip }}:${DB_METRICS_PORT:-0}:9187"
 {% endif %}
     environment:
-      - DATA_SOURCE_URI: "db:5432/postgres?sslmode=disable"
-      - DATA_SOURCE_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
-      - DATA_SOURCE_PASS: "{{ db_password }}"
+      - DATA_SOURCE_URI="db:5432/postgres?sslmode=disable"
+      - DATA_SOURCE_USER="{{ lookup('env','DB_USER', default='postgres') }}"
+      - DATA_SOURCE_PASS="{{ db_password }}"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9187/metrics"]
       interval: 2s

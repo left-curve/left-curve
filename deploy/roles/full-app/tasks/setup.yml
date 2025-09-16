@@ -2,6 +2,7 @@
   set_fact:
     "{{ item }}": "{{ ports[dango_network][item] }}"
   loop:
+    - db_metrics_port
     - dango_port
     - dango_frontend_port
     - dango_metrics_port
