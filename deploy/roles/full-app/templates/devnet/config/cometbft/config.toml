@@ -16,7 +16,7 @@ version = "1.0.0"
 
 # TCP or UNIX socket address of the ABCI application,
 # or the name of an ABCI application compiled in with the CometBFT binary
-proxy_app = "tcp://{{ dango_host }}:{{ cometbft_abci_port }}"
+proxy_app = "tcp://{{ dango_host }}:26658"
 
 # A custom human readable name for this node
 moniker = "dev"
@@ -90,7 +90,7 @@ filter_peers = false
 [rpc]
 
 # TCP or UNIX socket address for the RPC server to listen on
-laddr = "tcp://0.0.0.0:{{ cometbft_rpc_port }}"
+laddr = "tcp://0.0.0.0:26657"
 
 # A list of origins a cross-domain request can be executed from
 # Default value '[]' disables cors support
@@ -252,7 +252,7 @@ enabled = false
 [p2p]
 
 # Address to listen for incoming connections
-laddr = "tcp://0.0.0.0:{{ cometbft_p2p_port }}"
+laddr = "tcp://0.0.0.0:26656"
 
 # Address to advertise to peers for them to dial. If empty, will use the same
 # port as the laddr, and will introspect on the listener to figure out the
@@ -581,7 +581,7 @@ psql-conn = ""
 prometheus = true
 
 # Address to listen for Prometheus collector(s) connections
-prometheus_listen_addr = ":{{ cometbft_metrics_port }}"
+prometheus_listen_addr = ":26660"
 
 # Maximum number of simultaneous connections.
 # If you want to accept a larger number than the default, make sure
