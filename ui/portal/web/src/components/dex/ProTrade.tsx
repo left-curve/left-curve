@@ -150,8 +150,7 @@ const ProTradeHeader: React.FC = () => {
 
 const ProTradeOverview: React.FC = () => {
   const { state } = useProTrade();
-  const { baseCoin, quoteCoin } = state;
-  return <OrderBookOverview base={baseCoin} quote={quoteCoin} />;
+  return <OrderBookOverview state={state} />;
 };
 
 const ChartIQ = lazy(() =>

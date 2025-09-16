@@ -2,11 +2,13 @@ import { type VariantProps, tv } from "tailwind-variants";
 
 export type SpinnerProps = {
   className?: string;
+  fullContainer?: boolean;
 } & SpinnerVariantProps;
 
-const Spinner: React.FC<SpinnerProps> = ({ className, color, size }) => {
-  const { base, wrapper, circle1, circle2 } = spinner();
-  return (
+const Spinner: React.FC<SpinnerProps> = ({ className, color, size, fullContainer }) => {
+  const { base, wrapper, circle1, circle2 } = styles();
+
+  const spinner = (
     <div className={base({ color, size })}>
       <div className={wrapper({ color, size, className })}>
         <i className={circle1({ color, size })} />
@@ -14,14 +16,18 @@ const Spinner: React.FC<SpinnerProps> = ({ className, color, size }) => {
       </div>
     </div>
   );
+
+  if (!fullContainer) return spinner;
+
+  return <div className="w-full h-full flex items-center justify-center">{spinner}</div>;
 };
 
-export type SpinnerVariantProps = VariantProps<typeof spinner>;
-export type SpinnerSlots = keyof ReturnType<typeof spinner>;
+export type SpinnerVariantProps = VariantProps<typeof styles>;
+export type SpinnerSlots = keyof ReturnType<typeof styles>;
 
 export { Spinner };
 
-const spinner = tv({
+const styles = tv({
   slots: {
     base: "relative inline-flex flex-col gap-2 items-center justify-center",
     circle1: [

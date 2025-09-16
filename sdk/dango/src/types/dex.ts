@@ -192,6 +192,14 @@ export type DexExecuteMsg =
         baseDenom: string;
         quoteDenom: string;
       };
+    }
+  | {
+      liquidityDepth: {
+        baseDenom: Denom;
+        quoteDenom: Denom;
+        bucketSize: string;
+        limit: Option<number>;
+      };
     };
 
 export type GetDexExecuteMsg<K extends KeyOfUnion<DexExecuteMsg>> = ExtractFromUnion<
@@ -254,6 +262,16 @@ export type OrdersByUserResponse = {
   price: string;
   amount: string;
   remaining: string;
+};
+
+export type LiquidityDepth = {
+  depthBase: string;
+  depthQuote: string;
+};
+
+export type LiquidityDepthResponse = {
+  bidDepth: Option<Array<[string, LiquidityDepth]>>;
+  askDepth: Option<Array<[string, LiquidityDepth]>>;
 };
 
 export const CurveInvariant = {

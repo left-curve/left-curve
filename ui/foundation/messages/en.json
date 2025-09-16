@@ -805,6 +805,7 @@
         "limitPrice": "Limit Price",
         "remaining": "Remaining ({symbol})",
         "type": "Type",
+        "total": "Total ({symbol})",
         "size": "Size ({symbol})",
         "direction": "Direction",
         "dateAndTime": "Date & Time",

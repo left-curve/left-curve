@@ -1,24 +1,21 @@
-import { useApp, useMediaQuery } from "@left-curve/applets-kit";
-import { useEffect, useRef, useState } from "react";
+import { Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import { useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { Direction } from "@left-curve/dango/types";
-import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
-import { type OrderBookRow, mockOrderBookData } from "~/mock";
+import { calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { AnyCoin } from "@left-curve/store/types";
-import type { Trade } from "@left-curve/dango/types";
 import type React from "react";
+import type { useProTradeState } from "@left-curve/store";
 
 type OrderBookOverviewProps = {
-  base: AnyCoin;
-  quote: AnyCoin;
+  state: ReturnType<typeof useProTradeState>;
 };
 
-export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ base, quote }) => {
+export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
   const { isLg } = useMediaQuery();
@@ -36,7 +33,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ base, quot
         color="line-red"
         layoutId="tabs-order-history"
         selectedTab={activeTab}
-        keys={isLg ? ["trades"] : ["graph", "trades"]}
+        keys={isLg ? ["trades", "order book"] : ["graph", "trades", "order book"]}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}
@@ -47,43 +44,34 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ base, quot
       />
       {(activeTab === "trades" || activeTab === "order book") && (
         <div className="relative w-full h-full">
-          {activeTab === "order book" && <OrderBook />}
-          {activeTab === "trades" && <LiveTrades base={base} quote={quote} />}
+          {activeTab === "order book" && <OrderBook state={state} />}
+          {activeTab === "trades" && <LiveTrades state={state} />}
         </div>
       )}
     </ResizerContainer>
   );
 };
 
-function groupOrdersByPrice(orders: { price: number; amount: number }[]) {
-  const groupedMap = new Map<number, number>();
+type OrderBookRowProps = {
+  price: string;
+  size: string;
+  total: string;
+  type: "bid" | "ask";
+};
 
-  for (const order of orders) {
-    groupedMap.set(order.price, (groupedMap.get(order.price) || 0) + order.amount);
-  }
+const OrderRow: React.FC<OrderBookRowProps> = (props) => {
+  const { price, size, total, type } = props;
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const depthBarWidthPercent = (Number(size) / Number(total)) * 100;
 
-  const groupedArray: OrderBookRow[] = [];
-  let cumulative = 0;
+  const formattedSize = formatNumber(size, {
+    ...formatNumberOptions,
+    maxSignificantDigits: 10,
+    maxFractionDigits: 5,
+  }).slice(0, 7);
 
-  const sorted = [...groupedMap.entries()].sort((a, b) => b[0] - a[0]);
-
-  for (const [price, amount] of sorted) {
-    const total = price * amount;
-    cumulative += total;
-    groupedArray.push({ price, amount, total, cumulativeTotal: cumulative });
-  }
-
-  return groupedArray;
-}
-
-const OrderRow: React.FC<
-  OrderBookRow & {
-    type: "bid" | "ask";
-    maxCumulativeTotal: number;
-  }
-> = ({ price, amount, total, cumulativeTotal, maxCumulativeTotal, type }) => {
-  const depthBarWidthPercent =
-    maxCumulativeTotal > 0 ? (cumulativeTotal / maxCumulativeTotal) * 100 : 0;
+  const isAmountTooSmall = Decimal(size).lt(0.00001);
 
   const depthBarClass =
     type === "bid"
@@ -104,66 +92,97 @@ const OrderRow: React.FC<
             : "text-status-fail order-2 lg:order-none text-end lg:text-left",
         )}
       >
-        {price.toFixed(1)}
+        {formatNumber(price, {
+          ...formatNumberOptions,
+          minSignificantDigits: 8,
+          maxSignificantDigits: 8,
+        })}
       </div>
-      <div className="z-10 text-end hidden lg:block">{amount.toFixed(4)}</div>
+      <div className="z-10 justify-center text-center hidden lg:flex gap-1">
+        {isAmountTooSmall ? (
+          <>
+            <span>{"<"}</span>
+            {"0.00001"}
+          </>
+        ) : (
+          formattedSize
+        )}
+      </div>
       <div
         className={twMerge(
           "z-10",
           type === "bid" ? "text-end" : "order-1 lg:order-none lg:text-end",
         )}
       >
-        {total.toFixed(2)}
+        {formatNumber(total, {
+          ...formatNumberOptions,
+          minSignificantDigits: 8,
+          maxSignificantDigits: 8,
+        })}
       </div>
     </div>
   );
 };
 
-const OrderBook: React.FC = () => {
+const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { isLg } = useMediaQuery();
-  const { bids, asks } = mockOrderBookData;
-  const maxCumulativeAsk = asks.length > 0 ? asks[asks.length - 1].cumulativeTotal : 0;
-  const maxCumulativeBid = bids.length > 0 ? bids[bids.length - 1].cumulativeTotal : 0;
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+  const { baseCoin, quoteCoin, liquidityDepth, previousPrice, orderBookState } = state;
+
+  if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
+
+  const currentPrice = parseUnits(
+    orderBookState?.midPrice as string,
+    baseCoin.decimals - quoteCoin.decimals,
+  );
+
+  const { bids, asks } = liquidityDepth;
   const numberOfOrders = isLg ? 11 : 16;
-  const groupedAsks = groupOrdersByPrice(mockOrderBookData.asks).slice(0, numberOfOrders);
-  const groupedBids = groupOrdersByPrice(mockOrderBookData.bids).slice(0, numberOfOrders);
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
       <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
-        <p className="order-2 lg:order-none text-end lg:text-start">Price</p>
-        <p className="text-end hidden lg:block">Size (ETH)</p>
-        <p className="lg:text-end order-1 lg:order-none">Total (ETH)</p>
-        <p className="order-3 lg:hidden">Price</p>
-        <p className="order-4 text-end lg:order-none lg:hidden">Total (ETH)</p>
+        <p className="order-2 lg:order-none text-end lg:text-start">
+          {m["dex.protrade.history.price"]()}
+        </p>
+        <p className="text-center hidden lg:block">
+          {m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}
+        </p>
+        <p className="lg:text-end order-1 lg:order-none">
+          {m["dex.protrade.history.total"]({ symbol: baseCoin.symbol })}
+        </p>
+        <p className="order-3 lg:hidden">{m["dex.protrade.history.price"]()}</p>
+        <p className="order-4 text-end lg:order-none lg:hidden">
+          {m["dex.protrade.history.total"]({ symbol: baseCoin.symbol })}
+        </p>
       </div>
-      <div className="flex gap-2 lg:flex-col items-center justify-center w-full">
-        <div className="asks-container flex flex-col w-full gap-1">
-          {groupedAsks.slice().map((ask) => (
-            <OrderRow
-              key={`ask-${ask.price}`}
-              {...ask}
-              type="ask"
-              maxCumulativeTotal={maxCumulativeAsk}
-            />
+      <div className="flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
+        <div className="asks-container flex flex-1 flex-col w-full gap-1">
+          {asks.records.slice(0, numberOfOrders).map((ask) => (
+            <OrderRow key={`ask-${ask.price}`} type="ask" {...ask} />
           ))}
         </div>
-        {bids.length > 0 && asks.length > 0 && (
-          <div className="hidden lg:flex  w-full p-2 items-center justify-center relative">
-            <p className="diatype-xs-bold text-status-success relative z-20">
-              {bids[bids.length - 1].price.toFixed(2)}
-            </p>
-            <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
-          </div>
-        )}
-        <div className="bid-container flex flex-col w-full gap-1">
-          {groupedBids.slice().map((bid) => (
-            <OrderRow
-              key={`bid-${bid.price}`}
-              {...bid}
-              type="bid"
-              maxCumulativeTotal={maxCumulativeBid}
-            />
+
+        <div className="hidden lg:flex  w-full p-2 items-center justify-center relative">
+          <p
+            className={twMerge(
+              "diatype-xs-bold relative z-20",
+              Decimal(previousPrice).lte(currentPrice) ? "text-status-fail" : "text-status-success",
+            )}
+          >
+            {formatNumber(currentPrice || "0", {
+              ...formatNumberOptions,
+              minSignificantDigits: 8,
+              maxSignificantDigits: 8,
+            })}
+          </p>
+          <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
+        </div>
+
+        <div className="bid-container flex flex-1 flex-col w-full gap-1">
+          {bids.records.slice(0, numberOfOrders).map((bid) => (
+            <OrderRow key={`bid-${bid.price}`} type="bid" {...bid} />
           ))}
         </div>
       </div>
@@ -171,59 +190,22 @@ const OrderBook: React.FC = () => {
   );
 };
 
-type LiveTradesProps = {
-  base: AnyCoin;
-  quote: AnyCoin;
-};
-
-const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
+const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { navigate } = useRouter();
-  const { subscriptions, settings } = useApp();
+  const { settings } = useApp();
   const { formatNumberOptions, timeFormat } = settings;
-  const [trades, setTrades] = useState<Trade[]>([]);
-
-  const subscriptionRef = useRef<{
-    unsubscribe: ReturnType<typeof subscriptions.subscribe>;
-    pairSybol: string;
-  } | null>(null);
-
-  useEffect(() => {
-    const pairSybol = `${base.symbol}-${quote.symbol}`;
-    const shouldSubscribe = subscriptionRef.current?.pairSybol !== pairSybol;
-    if (!shouldSubscribe) return;
-    const unsubscribe = subscriptions.subscribe("trades", {
-      params: {
-        baseDenom: base.denom,
-        quoteDenom: quote.denom,
-      },
-      listener: ({ trades: trade }) => {
-        try {
-          setTrades((prev) => [trade, ...prev].slice(0, 50));
-        } catch (err) {
-          console.error(err);
-        }
-      },
-    });
-
-    subscriptionRef.current = { unsubscribe, pairSybol };
-
-    return () => {
-      if (shouldSubscribe) return;
-      setTrades([]);
-      subscriptionRef.current?.unsubscribe();
-    };
-  }, [base, quote]);
+  const { trades, baseCoin, quoteCoin } = state;
 
   return (
     <div className="flex gap-2 flex-col items-center justify-start max-h-[23.1375rem] lg:max-h-[56.2vh] overflow-hidden">
       <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3">
         <p>{m["dex.protrade.history.price"]()}</p>
-        <p className="text-center">{m["dex.protrade.history.size"]({ symbol: base.symbol })}</p>
+        <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center tabular-nums lining-nums">
         {trades.map((trade, index) => {
-          const size = calculateTradeSize(trade, base.decimals).toFixed();
+          const size = calculateTradeSize(trade, baseCoin.decimals).toFixed();
 
           const formattedSize = formatNumber(size, {
             ...formatNumberOptions,
@@ -248,7 +230,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
               >
                 {formatNumber(
                   Decimal(trade.clearingPrice)
-                    .times(Decimal(10).pow(base.decimals - quote.decimals))
+                    .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
                     .toFixed(),
                   { ...formatNumberOptions, minSignificantDigits: 8, maxSignificantDigits: 8 },
                 ).slice(0, 10)}
