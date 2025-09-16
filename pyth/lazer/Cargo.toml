@@ -13,7 +13,6 @@ version       = { workspace = true }
 anyhow              = { workspace = true }
 async-stream        = { workspace = true }
 async-trait         = { workspace = true }
-chrono              = { workspace = true }
 grug                = { workspace = true }
 grug-testing        = { workspace = true }
 indexer-disk-saver  = { workspace = true }

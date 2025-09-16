@@ -7754,7 +7754,6 @@ dependencies = [
  "async-stream",
  "async-trait",
  "axum",
- "chrono",
  "grug",
  "grug-testing",
  "indexer-disk-saver",

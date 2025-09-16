@@ -1,7 +1,6 @@
 use {
     anyhow::bail,
     async_stream::stream,
-    chrono::{Local, TimeDelta},
     grug::{Inner, Lengthy, NonEmpty},
     pyth_client::PythClientTrait,
     pyth_lazer_client::{
@@ -25,7 +24,7 @@ use {
             Arc,
             atomic::{AtomicBool, Ordering},
         },
-        time::Duration,
+        time::{Duration, Instant},
     },
     tokio::{sync::mpsc::Receiver, time::sleep},
     tracing::{debug, error, info, warn},
@@ -128,7 +127,7 @@ impl PythClientLazer {
 
         let mut resubscribe_attempts = 0;
         let mut to_resubscribe = false;
-        let mut last_check = Local::now();
+        let mut last_check = Instant::now();
 
         let buffer_capacity = 1000;
         let mut buffer = Vec::with_capacity(buffer_capacity);
@@ -137,7 +136,7 @@ impl PythClientLazer {
         loop {
             // If after few seconds we haven't received data for all subscriptions,
             // try to reconnect.
-            if Local::now() - last_check > TimeDelta::seconds(2) {
+            if last_check.elapsed() > Duration::from_secs(2) {
                 warn!("Not all subscriptions received data");
                 to_resubscribe = true;
             }
@@ -168,7 +167,7 @@ impl PythClientLazer {
                 sleep(Duration::from_millis(100)).await;
                 Self::connect(client, subscribe_requests.clone()).await;
 
-                last_check = Local::now();
+                last_check = Instant::now();
             }
 
             // Retrieve the data.
@@ -273,7 +272,7 @@ impl PythClientLazer {
         received_data: &mut Vec<AnyResponse>,
         subscription_ids: &Vec<u64>,
         subscriptions_data: &mut HashMap<u64, pyth_types::LeEcdsaMessage>,
-        last_data_received: &mut HashMap<u64, chrono::DateTime<Local>>,
+        last_data_received: &mut HashMap<u64, Instant>,
     ) {
         for data in received_data.drain(..) {
             match data {
@@ -286,7 +285,7 @@ impl PythClientLazer {
                         );
                     } else {
                         // Update the last time we received data for this subscription ID.
-                        last_data_received.insert(update.subscription_id.0, Local::now());
+                        last_data_received.insert(update.subscription_id.0, Instant::now());
                     }
 
                     // Analyze the messages received.
@@ -409,7 +408,7 @@ impl PythClientTrait for PythClientLazer {
         // Keep track of the last time we received data for each subscription ID.
         let mut last_data_received = subscription_ids
             .iter()
-            .map(|id| (*id, Local::now()))
+            .map(|id| (*id, Instant::now()))
             .collect::<HashMap<_, _>>();
 
         // Create the stream.
@@ -462,9 +461,8 @@ impl PythClientTrait for PythClientLazer {
                 );
 
                 // Check if we haven't received data for some subscriptions for more than 3 seconds.
-                let now = Local::now();
                 for (id, last_time) in last_data_received.iter() {
-                    if now - *last_time > TimeDelta::seconds(3) {
+                    if last_time.elapsed() > Duration::from_secs(3) {
                         to_resubscribe = true;
                         warn!("No data received for subscription ID {id} for more than 3 seconds");
                     }
