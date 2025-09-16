@@ -14,18 +14,18 @@ on:
   push:
     branches:
       - "main"
-    # Run this workflow if any lockfile, or the workflow itself, has changed.
-    paths:
-      - ".github/workflows/ensure-dependency-age.yaml"
-      - "Cargo.lock"
-      # - "pnpm-lock.yaml"
+    # # Run this workflow if any lockfile, or the workflow itself, has changed.
+    # paths:
+    #   - ".github/workflows/ensure-dependency-age.yaml"
+    #   - "Cargo.lock"
+    #   # - "pnpm-lock.yaml"
   pull_request:
     branches:
       - "*"
-    paths:
-      - ".github/workflows/ensure-dependency-age.yaml"
-      - "Cargo.lock"
-      # - "pnpm-lock.yaml"
+    # paths:
+    #   - ".github/workflows/ensure-dependency-age.yaml"
+    #   - "Cargo.lock"
+    #   # - "pnpm-lock.yaml"
 
 env:
   MIN_AGE_DAYS: 14
@@ -33,8 +33,8 @@ env:
 jobs:
   depedency-age-rust:
     name: "Rust"
-    runs-on: [self-hosted]
     runs-on: ubuntu-latest
+    # runs-on: [self-hosted]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
