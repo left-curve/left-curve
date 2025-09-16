@@ -23,11 +23,10 @@ module.exports = {
 
       const metadata = await fetchPackageMetadata(pkg.name, pkg.version);
 
-      if (!metadata?.time?.[pkg.version]) {
-        throw new Error(`No publish time found for ${pkg.name}@${pkg.version}`);
-      }
+      const timestamp = metadata?.time?.[pkg.version];
+      if (!timestamp) throw new Error(`No publish time found for ${pkg.name}@${pkg.version}`);
 
-      const publishTime = new Date(metadata.time[pkg.version]);
+      const publishTime = new Date(timestamp);
       const daysOld = (Date.now() - publishTime) / (1000 * 60 * 60 * 24);
 
       if (daysOld < 14) {
