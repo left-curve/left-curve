@@ -7,25 +7,35 @@ deploy_user: deploy
 ports:
   testnet:
     dango_port: 8080
+    dango_metrics_port: 9191
+    quest_port: 8081
     faucet_port: 8082
-    cometbft_metrics_port: 26660
+    dango_frontend_port: 80
     cometbft_p2p_port: 26656
     cometbft_rpc_port: 26657
+    cometbft_abci_port: 26658
+    cometbft_metrics_port: 26660
     chain_id: "dev-6"
     # cometbft_abci_port: 26658
   devnet:
     dango_port: 8080
+    dango_metrics_port: 9191
+    quest_port: 8081
     faucet_port: 8082
-    cometbft_metrics_port: 26660
+    dango_frontend_port: 80
     cometbft_p2p_port: 26656
     cometbft_rpc_port: 26657
+    cometbft_abci_port: 26658
+    cometbft_metrics_port: 26660
     chain_id: "dev-9"
     # cometbft_abci_port: 26658
 
 # in summary cometbft needs to expose:
 # 26656, to anyone
 # 26657, to tailscale
+# 26658, to dango container only
 # 26660, to tailscale (metrics)
 # dango needs to expose:
 # 8080, to anyone
+# 9191, to tailscale (metrics)
 # 26658, to cometbft container only

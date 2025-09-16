@@ -1,0 +1,78 @@
+- name: Set port facts to 0
+  set_fact:
+    "{{ item }}": 0
+  loop:
+    - dango_port
+    - dango_frontend_port
+    - dango_metrics_port
+    - faucet_port
+    - quest_port
+    - cometbft_p2p_port
+    - cometbft_rpc_port
+    - cometbft_abci_port
+    - cometbft_metrics_port
+
+- name: Generate .env with the 0 ports
+  become: true
+  become_user: root
+  template:
+    src: env.j2
+    dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+    owner: "{{ deploy_user }}"
+
+- name: Deploy dango stack first to get binded ports
+  community.docker.docker_compose_v2:
+    project_name: "{{ deployment_name }}"
+    project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    recreate: always
+    services:
+      - db
+      - faucet-bot
+      - clickhouse
+      - dango
+      - cometbft
+
+- name: Get assigned ports
+  shell: |
+    docker port {{ deployment_name }}-dango-1 8080 | cut -d: -f2
+    docker port {{ deployment_name }}-dango-1 9191 | cut -d: -f2
+    docker port {{ deployment_name }}-faucet-bot-1 8082 | cut -d: -f2
+    docker port {{ deployment_name }}-cometbft-1 26656 | cut -d: -f2
+    docker port {{ deployment_name }}-cometbft-1 26657 | cut -d: -f2
+    docker port {{ deployment_name }}-cometbft-1 26658 | cut -d: -f2
+    docker port {{ deployment_name }}-cometbft-1 26660 | cut -d: -f2
+  register: assigned_ports
+
+- name: Set dango, dango_metrics and faucet port facts
+  set_fact:
+    dango_port: "{{ assigned_ports.stdout_lines[0] }}"
+    dango_metrics_port: "{{ assigned_ports.stdout_lines[1] }}"
+    faucet_port: "{{ assigned_ports.stdout_lines[2] }}"
+    cometbft_p2p_port: "{{ assigned_ports.stdout_lines[3] }}"
+    cometbft_rpc_port: "{{ assigned_ports.stdout_lines[4] }}"
+    cometbft_abci_port: "{{ assigned_ports.stdout_lines[5] }}"
+    cometbft_metrics_port: "{{ assigned_ports.stdout_lines[6] }}"
+
+- name: Generate .env with the right ports
+  become: true
+  become_user: root
+  template:
+    src: env.j2
+    dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+    owner: "{{ deploy_user }}"
+
+- name: Deploy all
+  community.docker.docker_compose_v2:
+    project_name: "{{ deployment_name }}"
+    project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    wait: true
+    wait_timeout: 300
+
+- name: Get frontend assigned ports
+  shell: |
+    docker port {{ deployment_name }}-dango-frontend-1 80 | cut -d: -f2
+  register: assigned_ports
+
+- name: Set frontend port facts
+  set_fact:
+    dango_frontend_port: "{{ assigned_ports.stdout_lines[0] }}"

@@ -1,0 +1,11 @@
+- name: Display URLs
+  debug:
+    msg:
+      - "Dango Frontend: http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
+      - "Dango GraphQL: http://{{ tailscale_ip }}:{{ dango_port }}/graphql"
+      - "Dango metrics: http://{{ tailscale_ip }}:{{ dango_metrics_port }}"
+      - "Faucet bot: http://{{ tailscale_ip }}:{{ faucet_port }}"
+      - "CometBFT P2P: http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}"
+      - "CometBFT RPC: http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}"
+      - "CometBFT ABCI: http://{{ tailscale_ip }}:{{ cometbft_abci_port }}"
+      - "CometBFT metrics: http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}"

@@ -14,6 +14,7 @@
 
 - name: Deploy all
   community.docker.docker_compose_v2:
+    recreate: always
     project_src: "{{ traefik_dir }}"
     wait: true
     wait_timeout: 300

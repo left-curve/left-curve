@@ -1,0 +1,6 @@
+- import_tasks: deploy_configs.yml
+- import_tasks: read_current_deploy.yml
+- import_tasks: deploy_standalone.yml
+- import_tasks: update_traefik.yml
+- import_tasks: delete_old_deploy.yml
+  when: current_deployment is defined
