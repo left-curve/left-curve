@@ -15,7 +15,9 @@
   when: traefik_enabled
 - import_tasks: "standalone.yml"
   when: not traefik_enabled
-- import_tasks: github_deployments.yml
+- import_tasks: github_pr_deployments.yml
   when: github_pr_number is defined
+- import_tasks: github_main_deployments.yml
+  when: traefik_enabled
 - import_tasks: summary.yml
   when: not traefik_enabled
