@@ -3,6 +3,7 @@ FROM node:24-alpine AS builder
 # Install pnpm
 RUN corepack enable pnpm
 
+COPY ./.pnpmfile.cjs /app/.pnpmfile.cjs
 COPY ./sdk /app/sdk
 COPY ./ui /app/ui
 COPY ./package.json /app/package.json
@@ -10,7 +11,6 @@ COPY ./pnpm-lock.yaml /app/pnpm-lock.yaml
 COPY ./pnpm-workspace.yaml /app/pnpm-workspace.yaml
 COPY ./turbo.json /app/turbo.json
 COPY ./.npmrc /app/.npmrc
-COPY ./.pnpmfile.cjs /app/.pnpmfile.cjs
 
 WORKDIR /app
 
