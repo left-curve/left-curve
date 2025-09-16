@@ -8,14 +8,17 @@ env:
   COMETBFT_GIT_TAG: v0.38.17
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - ".github/workflows/cometbft.yaml"
+      - "docker/cometbft/**"
   pull_request:
     branches: [main]
     paths:
       - ".github/workflows/cometbft.yaml"
+      - "docker/cometbft/**"
 
 jobs:
   check-image:
@@ -42,7 +45,7 @@ jobs:
 
   build-cometbft:
     needs: check-image
-    if: needs.check-image.outputs.skip_build == 'false'
+    if: needs.check-image.outputs.skip_build == 'false' || github.event_name == 'workflow_dispatch'
     permissions:
       packages: write
     runs-on: self-hosted
