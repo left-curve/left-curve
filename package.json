@@ -1,8 +1,8 @@
 {
   "name": "leftcurve-monorepo",
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@10.16.1",
   "engines": {
-    "pnpm": ">=9.0.0",
+    "pnpm": ">=10.16.1",
     "node": ">=23.0.0"
   },
   "scripts": {
