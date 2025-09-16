@@ -1,0 +1,65 @@
+# Ensure that Rust and JavaScript dependencies are at least 14 days old.
+#
+# This is to prevent supply chain attacks. After a package is published, we give
+# the community sufficient time to vet it before we include it in our project.
+#
+# Examples of such attacks:
+#
+# - https://x.com/P3b7_/status/1965094840959410230
+# - https://x.com/feross/status/1967732902256579014?s=46&t=h5kZ-su4MULE-ezGyh8Cyg
+
+name: Ensure Dependency Age
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "*"
+
+env:
+  MIN_AGE_DAYS: 14
+
+jobs:
+  depedency-age-rust:
+    name: "Rust"
+    # runs-on: [self-hosted]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+        with:
+            ref: ${{ github.head_ref || github.ref }}
+
+      - name: Install yq
+        run: sudo apt install -y yq
+
+      - name: Check dependencies
+        run: |
+          now=$(date -u +"%s")
+
+          yq -p toml '.package[] | .name + " " + .version' Cargo.lock | while read -r name ver; do
+            url="https://crates.io/api/v1/crates/$name/$ver"
+
+            created_at=$(curl -s "$url" | jq -r .version.created_at)
+            if [[ "$created_at" == "null" ]]; then
+              echo "❌ dependency creation time not found! name: $name, version: $version"
+              exit 1
+            fi
+
+            created=$(date -d "$created_at" +"%s")
+            age_days=$(( (now - created) / 86400 ))
+
+            if [[ $age_days -lt $MIN_AGE_DAYS ]]; then
+              echo "❌ dependency not old enough! name: $name, version: $version, age: $age_days"
+              exit 1
+            else
+              echo "✅ dependency is old enough. name: $name, version: $version, age: $age_days"
+            fi
+          done
+
+  # depedency-age-js:
+  #   name: "JavaScript"
+  #   runs-on: [self-hosted]
+  #   steps:
