@@ -10,7 +10,9 @@ services:
       - "8081:8081"
       - "8082:8082"
       - "26656:26656"
-      # - "{{ tailscale_ip }}:26657:26657"
+      - "{{ tailscale_ip }}:26657:26657"
+      - "{{ tailscale_ip }}:26658:26658"
+      - "{{ tailscale_ip }}:26660:26660"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - "{{ traefik_dir }}/config:/config:ro"
@@ -37,7 +39,9 @@ services:
       - --entrypoints.devnet-frontend.address=:8081
       - --entrypoints.devnet-faucet_bot.address=:8082
       - --entrypoints.devnet-cometbft_p2p.address=:26656
-      # - --entrypoints.devnet-cometbft.address=:26657
+      - --entrypoints.devnet-cometbft_rpc.address=:26657
+      - --entrypoints.devnet-cometbft_abci.address=:26658
+      - --entrypoints.devnet-cometbft_metrics.address=:26660
       # Metrics
       - --metrics.prometheus=true
       # Tracing

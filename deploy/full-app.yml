@@ -20,13 +20,16 @@
     chain_id: "dev-9"
     dango_network: "devnet"
     dango_port: 0
+    dango_metrics_port: 0
     quest_port: 0
     faucet_port: 0
     dango_frontend_port: 0
+    # Will need to use `0` when the following ports are exposed in `ports` in docker compose
     cometbft_p2p_port: 26656
     cometbft_rpc_port: 26657
     cometbft_metrics_port: 26660
     cometbft_abci_port: 26658
+    # When traefik is enabled it will be used for routing, keeping the same port
     traefik_enabled: false
   collections:
     - community.docker

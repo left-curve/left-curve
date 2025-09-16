@@ -1,0 +1,6 @@
+- name: Abort if password is empty
+  assert:
+    that:
+      - clickhouse_password is defined
+      - clickhouse_password | length > 0
+    fail_msg: "CLICKHOUSE_PASSWORD must be set and non-empty, aborting deployment."

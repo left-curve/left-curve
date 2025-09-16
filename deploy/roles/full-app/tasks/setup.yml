@@ -1,0 +1,35 @@
+- name: Check if deployment already exists
+  stat:
+    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+  register: env_file_exists
+
+- name: Read existing ports from .env as key=value pairs
+  shell: |
+    grep -E '^(DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_ABCI_PORT|COMETBFT_METRICS_PORT)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+    awk -F= '{print tolower($1) "=" $2}' | \
+    sed 's/cometbft_/cometbft_/g'
+  register: existing_port_pairs
+  when: env_file_exists.stat.exists
+
+- name: Default skip_port_discovery to false
+  set_fact:
+    skip_port_discovery: false
+
+- name: Set port facts from existing .env
+  set_fact:
+    "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
+    skip_port_discovery: true
+  loop: "{{ existing_port_pairs.stdout_lines }}"
+  when: env_file_exists.stat.exists and existing_port_pairs.stdout_lines | length > 0
+
+- name: Create deployment directory
+  file:
+    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/{{ item }}"
+    state: directory
+  loop: [clickhouse, dango, cometbft]
+
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"

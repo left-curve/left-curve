@@ -1,0 +1,56 @@
+- name: Create GitHub deployments
+  uri:
+    url: "https://api.github.com/repos/left-curve/left-curve/deployments"
+    method: POST
+    headers:
+      Authorization: "token {{ ghcr_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      ref: "{{ github_sha }}"
+      environment: "pr-{{ github_pr_number }}-{{ item.name }}"
+      description: "{{ item.description }} for PR {{ github_pr_number }}"
+      auto_merge: false
+      required_contexts: []
+    status_code: [200, 201]
+  register: deployment_results
+  loop:
+    - { name: "frontend", description: "Frontend", url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}" }
+    - { name: "api", description: "Dango API", url: "http://{{ tailscale_ip }}:{{ dango_port }}" }
+    - { name: "faucet", description: "Faucet", url: "http://{{ tailscale_ip }}:{{ faucet_port }}" }
+
+- name: Set deployment statuses
+  uri:
+    url: "https://api.github.com/repos/left-curve/left-curve/deployments/{{ item.json.id }}/statuses"
+    method: POST
+    headers:
+      Authorization: "token {{ ghcr_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      state: "success"
+      target_url: "{{ deployment_results.results[ansible_loop.index0].item.url }}"
+      description: "{{ deployment_results.results[ansible_loop.index0].item.description }} ready"
+      environment_url: "{{ deployment_results.results[ansible_loop.index0].item.url }}"
+    status_code: [200, 201]
+  loop: "{{ deployment_results.results }}"
+  loop_control:
+    extended: true
+  when: deployment_results.results is defined
+
+- name: Add deployment summary to GitHub
+  shell: |
+    cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+    # 🚀 PR Deployment Summary
+    | Name | Result |
+    | ---- | ------ |
+    | **PR Number:** | `{{ github_pr_number }}` |
+    | **Status:** | ✅ Deployed successfully! |
+    | **Frontend:** | [http://{{ tailscale_ip }}:{{ dango_frontend_port }}](http://{{ tailscale_ip }}:{{ dango_frontend_port }}) |
+    | **Dango API:** | [http://{{ tailscale_ip }}:{{ dango_port }}](http://{{ tailscale_ip }}:{{ dango_port }}) |
+    | **Faucet:** | [http://{{ tailscale_ip }}:{{ faucet_port }}](http://{{ tailscale_ip }}:{{ faucet_port }}) |
+    | **Environment:** | `{{ deployment_name }}` |
+    | **Commit:** | `{{ github_sha }}` |
+    EOF
+  environment:
+    GITHUB_STEP_SUMMARY: "{{ ansible_env.GITHUB_STEP_SUMMARY | default('/dev/null') }}"

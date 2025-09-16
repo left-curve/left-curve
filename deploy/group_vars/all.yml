@@ -7,6 +7,7 @@ deploy_user: deploy
 ports:
   testnet:
     dango_port: 8080
+    dango_metrics_port: 9191
     faucet_port: 8082
     cometbft_metrics_port: 26660
     cometbft_p2p_port: 26656
@@ -15,6 +16,7 @@ ports:
     # cometbft_abci_port: 26658
   devnet:
     dango_port: 8080
+    dango_metrics_port: 9191
     faucet_port: 8082
     cometbft_metrics_port: 26660
     cometbft_p2p_port: 26656

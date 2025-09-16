@@ -1,0 +1,7 @@
+- name: Display URLs
+  debug:
+    msg:
+      - "🚀 Preview Deploy Ready!"
+      - "Frontend: http://{{ tailscale_ip }}:{{ dango_frontend_port }}"
+      - "Dango: http://{{ tailscale_ip }}:{{ dango_port }}"
+      - "Faucet: http://{{ tailscale_ip }}:{{ faucet_port }}"

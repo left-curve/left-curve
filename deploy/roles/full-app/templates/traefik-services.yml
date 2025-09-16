@@ -4,6 +4,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-dango-1:{{ dango_port }}"
+    {{ dango_network }}-dango-metrics:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-dango-1:{{ dango_metrics_port }}"
     {{ dango_network }}-frontend:
       loadBalancer:
         servers:
@@ -12,10 +16,22 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-faucet-bot-1:{{ faucet_port }}"
-    {{ dango_network }}-cometbftp2p:
+    {{ dango_network }}-cometbft_p2p:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_p2p_port }}"
+    {{ dango_network }}-cometbft_rpc:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_rpc_port }}"
+    {{ dango_network }}-cometbft_abci:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_abci_port }}"
+    {{ dango_network }}-cometbft_metrics:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_metrics_port }}"
 
   routers:
     {{ dango_network }}-dango:
@@ -23,6 +39,12 @@ http:
       entryPoints:
         - "{{ dango_network }}-dango"
       service: "{{ dango_network }}-dango"
+
+    {{ dango_network }}-dango-metrics:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-dango-metrics"
+      service: "{{ dango_network }}-dango-metrics"
 
     {{ dango_network }}-frontend:
       rule: "PathPrefix(`/`)"
@@ -36,8 +58,27 @@ http:
         - "{{ dango_network }}-faucet_bot"
       service: "{{ dango_network }}-faucet_bot"
 
-    {{ dango_network }}-cometbftp2p:
+    {{ dango_network }}-cometbft_p2p:
       rule: "PathPrefix(`/`)"
       entryPoints:
-        - "{{ dango_network }}-cometbftp2p"
-      service: "{{ dango_network }}-cometbftp2p"
+        - "{{ dango_network }}-cometbft_p2p"
+      service: "{{ dango_network }}-cometbft_p2p"
+
+    {{ dango_network }}-cometbft_rpc:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-cometbft_rpc"
+      service: "{{ dango_network }}-cometbft_rpc"
+
+    {{ dango_network }}-cometbft_abci:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-cometbft_abci"
+      service: "{{ dango_network }}-cometbft_abci"
+
+    {{ dango_network }}-cometbft_metrics:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-cometbft_metrics"
+      service: "{{ dango_network }}-cometbft_metrics"
+

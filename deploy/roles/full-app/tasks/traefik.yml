@@ -1,0 +1,3 @@
+- import_tasks: deploy_configs.yml
+- import_tasks: rolling_deploy.yml
+- import_tasks: deploy_traefik.yml
