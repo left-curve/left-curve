@@ -157,14 +157,14 @@ export function useActivities() {
                 if (!isSent && !userAddresses.includes(user as Address)) return;
                 if (!Object.keys(coins).length) return;
 
-                const notification = {
+                const details = {
                   coins,
                   fromAddress: from || user,
                   toAddress: to || user,
                   type,
                 };
 
-                return { data: notification, type: "transfer" as const };
+                return { data: details, type: "transfer" as const };
               }
               case "order_filled": {
                 return { data: data as OrderFilledEvent, type: "orderFilled" as const };

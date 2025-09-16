@@ -168,14 +168,6 @@
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
-    "notifications": {
-      "id": "notifications",
-      "img": "/images/emojis/simple/notifications.svg",
-      "title": "Notifications",
-      "description": "View recent transactions.",
-      "path": "/notifications",
-      "keywords": "notifications,alerts"
-    },
     "devtool": {
       "id": "devtool",
       "img": "/images/emojis/simple/factory-2.svg",
@@ -508,13 +500,13 @@
       ]
     }
   },
-  "notifications": {
-    "title": "Notifications",
-    "noNotifications": {
+  "activities": {
+    "title": "Activities",
+    "noActivities": {
       "title": "No activity yet",
       "description": "When you trade, transfer tokens, or perform other activities, updates will appear here"
     },
-    "notification": {
+    "activity": {
       "transfer": {
         "title": [
           {

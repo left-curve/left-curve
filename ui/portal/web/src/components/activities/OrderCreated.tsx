@@ -4,7 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { forwardRef, useImperativeHandle } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { PairAssets, twMerge, useApp } from "@left-curve/applets-kit";
+import { Modals, PairAssets, twMerge, useApp } from "@left-curve/applets-kit";
 import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
 import { calculatePrice, formatNumber, formatUnits } from "@left-curve/dango/utils";
 
@@ -37,7 +37,7 @@ export const ActivityOrderCreated = forwardRef<ActivityRef, ActivityOrderCreated
 
     useImperativeHandle(ref, () => ({
       onClick: () =>
-        showModal("notification-spot-action-order", {
+        showModal(Modals.ActivitySpotOrder, {
           base,
           quote,
           blockHeight,
@@ -57,7 +57,7 @@ export const ActivityOrderCreated = forwardRef<ActivityRef, ActivityOrderCreated
     return (
       <OrderActivity kind={kind}>
         <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
-          {m["notifications.notification.orderCreated.title"]()}
+          {m["activities.activity.orderCreated.title"]()}
         </p>
 
         <div className="flex flex-col items-start">
@@ -82,7 +82,7 @@ export const ActivityOrderCreated = forwardRef<ActivityRef, ActivityOrderCreated
           </div>
           {limitPrice ? (
             <div className="flex gap-1">
-              <span>{m["notifications.notification.orderCreated.atPrice"]()}</span>
+              <span>{m["activities.activity.orderCreated.atPrice"]()}</span>
               <span className="diatype-m-bold">
                 {limitPrice} {quote.symbol}
               </span>

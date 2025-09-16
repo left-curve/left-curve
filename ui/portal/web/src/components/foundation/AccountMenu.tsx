@@ -283,7 +283,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
         transition={{ duration: 0.5, ease: "easeInOut" }}
       >
         {activeTab === "wallet" ? <WalletTab /> : null}
-        {activeTab === "activities" ? <NotificationsTab /> : null}
+        {activeTab === "activities" ? <ActivityTab /> : null}
       </motion.div>
     </div>
   );
@@ -306,7 +306,7 @@ export const WalletTab: React.FC = () => {
   );
 };
 
-export const NotificationsTab: React.FC = () => {
+export const ActivityTab: React.FC = () => {
   return (
     <div className="flex flex-col pb-[12rem]">
       <Activities className="overflow-y-scroll scrollbar-none" />

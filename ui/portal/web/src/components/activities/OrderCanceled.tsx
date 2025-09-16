@@ -1,5 +1,5 @@
 import { useConfig } from "@left-curve/store";
-import { useApp } from "@left-curve/applets-kit";
+import { Modals, useApp } from "@left-curve/applets-kit";
 import { useRouter } from "@tanstack/react-router";
 import { forwardRef, useImperativeHandle } from "react";
 
@@ -51,7 +51,7 @@ export const ActivityOrderCanceled = forwardRef<ActivityRef, ActivityOrderCancel
 
     useImperativeHandle(ref, () => ({
       onClick: () =>
-        showModal("notification-spot-action-order", {
+        showModal(Modals.ActivitySpotOrder, {
           base,
           quote,
           blockHeight,
@@ -73,7 +73,7 @@ export const ActivityOrderCanceled = forwardRef<ActivityRef, ActivityOrderCancel
     return (
       <OrderActivity kind={kind}>
         <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
-          {m["notifications.notification.orderCanceled.title"]()}
+          {m["activities.activity.orderCanceled.title"]()}
         </p>
 
         <div className="flex flex-col items-start">
@@ -98,7 +98,7 @@ export const ActivityOrderCanceled = forwardRef<ActivityRef, ActivityOrderCancel
           </div>
           {limitPrice ? (
             <div className="flex gap-1">
-              <span>{m["notifications.notification.orderCreated.atPrice"]()}</span>
+              <span>{m["activities.activity.orderCreated.atPrice"]()}</span>
               <span className="diatype-m-bold">
                 {limitPrice} {quote.symbol}
               </span>

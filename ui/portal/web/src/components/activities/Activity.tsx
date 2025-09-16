@@ -17,7 +17,7 @@ import { formatDate, IconClose, useApp } from "@left-curve/applets-kit";
 import type React from "react";
 import type { Activities, ActivityRecord } from "@left-curve/store";
 
-const formatNotificationTimestamp = (timestamp: Date, mask: string): string => {
+const formatActivityTimestamp = (timestamp: Date, mask: string): string => {
   const now = new Date();
   if (isToday(timestamp)) {
     const minutesDifference = differenceInMinutes(now, timestamp);
@@ -126,10 +126,7 @@ export const Activity: React.FC<ActivityProps> = ({ activity }) => {
             onClick={() => deleteActivityRecord(id)}
           />
           <p>
-            {formatNotificationTimestamp(
-              new Date(createdAt),
-              dateFormat.replace(/\/yyyy|yyyy\//g, ""),
-            )}
+            {formatActivityTimestamp(new Date(createdAt), dateFormat.replace(/\/yyyy|yyyy\//g, ""))}
           </p>
         </div>
       </div>

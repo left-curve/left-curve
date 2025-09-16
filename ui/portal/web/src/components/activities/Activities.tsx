@@ -65,9 +65,9 @@ export const Activities: React.FC<ActivitiesProps> = (props) => {
           className="mx-auto h-[125px] w-auto"
         />
         <div className="flex flex-col gap-2 items-center text-center">
-          <p className="exposure-m-italic">{m["notifications.noNotifications.title"]()}</p>
+          <p className="exposure-m-italic">{m["activities.noActivities.title"]()}</p>
           <p className="text-tertiary-500 diatype-m-bold">
-            {m["notifications.noNotifications.description"]()}
+            {m["activities.noActivities.description"]()}
           </p>
         </div>
       </div>
@@ -77,7 +77,7 @@ export const Activities: React.FC<ActivitiesProps> = (props) => {
   return (
     <div className="flex flex-col gap-6">
       <ResizerContainer
-        layoutId="notifications"
+        layoutId="activities"
         className={twMerge("bg-transparent py-1 px-1 rounded-xl", className)}
       >
         <AnimatePresence mode="wait">

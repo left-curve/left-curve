@@ -1,4 +1,4 @@
-import { useApp } from "@left-curve/foundation";
+import { Modals, useApp } from "@left-curve/foundation";
 import { useRouter } from "@tanstack/react-router";
 import { forwardRef, useImperativeHandle } from "react";
 import { useConfig, usePrices } from "@left-curve/store";
@@ -83,7 +83,7 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
 
     useImperativeHandle(ref, () => ({
       onClick: () =>
-        showModal("notification-spot-action-order", {
+        showModal(Modals.ActivitySpotOrder, {
           base,
           quote,
           blockHeight,
@@ -108,8 +108,8 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
     return (
       <OrderActivity kind={kind}>
         <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
-          {m["notifications.notification.orderFilled.title"]({
-            isFullfilled: m["notifications.notification.orderFilled.isFullfilled"]({
+          {m["activities.activity.orderFilled.title"]({
+            isFullfilled: m["activities.activity.orderFilled.isFullfilled"]({
               isFullfilled: String(cleared),
             }),
           })}
@@ -136,7 +136,7 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
             </span>
             {limitPrice ? (
               <>
-                <span>{m["notifications.notification.orderCreated.atPrice"]()}</span>
+                <span>{m["activities.activity.orderCreated.atPrice"]()}</span>
                 <span className="diatype-m-bold">
                   {limitPrice} {quote.symbol}
                 </span>
@@ -149,7 +149,7 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
               <span className="diatype-m-bold">
                 {width} {base.symbol}
               </span>
-              <span>{m["notifications.notification.orderFilled.remaining"]()}</span>
+              <span>{m["activities.activity.orderFilled.remaining"]()}</span>
             </div>
           ) : null}
         </div>

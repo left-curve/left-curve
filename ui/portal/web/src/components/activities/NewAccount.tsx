@@ -28,7 +28,7 @@ export const ActivityNewAccount = forwardRef<ActivityRef, ActivityAccountProps>(
         </div>
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
           <div className="flex justify-center items-center gap-2 diatype-m-medium text-secondary-700 capitalize">
-            <p>{m["notifications.notification.account.title"]()}</p>
+            <p>{m["activities.activity.account.title"]()}</p>
             <Badge className="capitalize" text={accountType} />
           </div>
           <AddressVisualizer address={address} withIcon onClick={onNavigate} />
