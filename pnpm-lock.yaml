@@ -82,7 +82,7 @@ catalogs:
       specifier: ^5.0.1
       version: 5.0.1
 
-pnpmfileChecksum: sha256-a4bGfjxqwTVI5X1ALKGuR55tpdWfUp+Vmh841j/0uZg=
+pnpmfileChecksum: sha256-TolQLQgxz/ZysueyTrstmNuIHgpHV/PlJO6X9WTUM4o=
 
 importers:
 
