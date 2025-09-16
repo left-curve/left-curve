@@ -46,6 +46,7 @@
 - name: Add deployment summary to GitHub
   delegate_to: localhost
   connection: local
+  become: false
   shell: |
     cat >> $GITHUB_STEP_SUMMARY << 'EOF'
     # 🚀 PR Deployment Summary
