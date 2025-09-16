@@ -287,6 +287,8 @@ export type PairParams = {
   curveInvariant: CurveInvariants;
   /**  Fee rate for instant swaps in the passive liquidity pool. */
   swapFeeRate: string;
+  /** Price buckets for the liquidity depth chart. */
+  bucketSizes: string[];
 };
 
 export type PairUpdate = {

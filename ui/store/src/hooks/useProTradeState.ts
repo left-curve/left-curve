@@ -8,6 +8,7 @@ import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 import { useQueryWithPagination } from "./useQueryWithPagination.js";
+import { useAppConfig } from "./useAppConfig.js";
 
 import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
 import {
@@ -72,7 +73,8 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   } = parameters;
   const { inputs, setValue } = controllers;
   const { account } = useAccount();
-  const { coins, subscriptions, getAppConfig } = useConfig();
+  const { coins, subscriptions } = useConfig();
+  const { data: appConfig } = useAppConfig();
   const queryClient = useQueryClient();
   const publicClient = usePublicClient();
   const { data: signingClient } = useSigningClient();
@@ -88,6 +90,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const { data: balances = {} } = useBalances({
     address: account?.address,
   });
+
+  const pair = appConfig?.pairs[pairId.baseDenom]!;
+
+  const [bucketSize, setBucketSize] = useState(pair.params.bucketSizes[0]);
 
   const changePairId = useCallback((pairId: PairId) => {
     onChangePairId(pairId);
@@ -192,9 +198,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   }, [orderBookState, operation, sizeCoin, pairId, sizeValue, priceValue]);
 
   useEffect(() => {
+    if (!appConfig) return;
     let unsubscribe: () => void;
     (async () => {
-      const { addresses } = await getAppConfig();
+      const { addresses } = appConfig;
       unsubscribe = subscriptions.subscribe("queryApp", {
         params: {
           interval: 1,
@@ -228,7 +235,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     return () => {
       unsubscribe?.();
     };
-  }, []);
+  }, [appConfig]);
 
   const [trades, setTrades] = useState<Trade[]>([]);
 
@@ -275,9 +282,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   } | null>(null);
 
   useEffect(() => {
+    if (!appConfig) return;
     let unsubscribe: () => void;
     (async () => {
-      const { addresses } = await getAppConfig();
+      const { addresses } = appConfig;
       unsubscribe = subscriptions.subscribe("queryApp", {
         params: {
           interval: 1,
@@ -288,7 +296,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
                 liquidityDepth: {
                   baseDenom: baseCoin.denom,
                   quoteDenom: quoteCoin.denom,
-                  bucketSize: "0.01",
+                  bucketSize,
                 },
               },
             },
@@ -342,7 +350,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     return () => {
       unsubscribe?.();
     };
-  }, [baseCoin, quoteCoin]);
+  }, [appConfig, bucketSize, baseCoin, quoteCoin]);
 
   useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
@@ -404,8 +412,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   return {
     trades,
     liquidityDepth,
-    pairId,
+    bucketSize,
+    setBucketSize,
     previousPrice,
+    pair,
+    pairId,
     onChangePairId: changePairId,
     amount,
     orderBookState,
