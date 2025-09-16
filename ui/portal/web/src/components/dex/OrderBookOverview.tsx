@@ -3,11 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { Direction } from "@left-curve/dango/types";
-import { format } from "date-fns";
 import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 import { type OrderBookRow, mockOrderBookData } from "~/mock";
 
-import { IconLink, ResizerContainer, Tabs, twMerge } from "@left-curve/applets-kit";
+import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { AnyCoin } from "@left-curve/store/types";
@@ -180,7 +179,7 @@ type LiveTradesProps = {
 const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
   const { navigate } = useRouter();
   const { subscriptions, settings } = useApp();
-  const { formatNumberOptions } = settings;
+  const { formatNumberOptions, timeFormat } = settings;
   const [trades, setTrades] = useState<Trade[]>([]);
 
   const subscriptionRef = useRef<{
@@ -219,7 +218,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
     <div className="flex gap-2 flex-col items-center justify-start max-h-[23.1375rem] lg:max-h-[56.2vh] overflow-hidden">
       <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3">
         <p>{m["dex.protrade.history.price"]()}</p>
-        <p className="text-end">{m["dex.protrade.history.size"]({ symbol: base.symbol })}</p>
+        <p className="text-center">{m["dex.protrade.history.size"]({ symbol: base.symbol })}</p>
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center tabular-nums lining-nums">
@@ -254,7 +253,7 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
                   { ...formatNumberOptions, minSignificantDigits: 8, maxSignificantDigits: 8 },
                 ).slice(0, 10)}
               </p>
-              <p className="text-end z-10 flex gap-1 justify-end">
+              <p className="text-center z-10 flex gap-1 justify-center">
                 {isAmountTooSmall ? (
                   <>
                     <span>{"<"}</span>
@@ -265,8 +264,8 @@ const LiveTrades: React.FC<LiveTradesProps> = ({ base, quote }) => {
                 )}
               </p>
 
-              <div className="flex gap-1 items-center justify-end z-10">
-                <p>{format(trade.createdAt, "HH:mm:ss")}</p>
+              <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
+                <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
                 <IconLink className="w-3 h-3" />
               </div>
               <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />

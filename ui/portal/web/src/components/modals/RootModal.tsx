@@ -118,29 +118,25 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
-  [Modals.NotificationSentAndReceived]: {
+  [Modals.ActivityTransfer]: {
     component: lazy(() =>
-      import("./notifications/NotificationSentAndReceived").then(
-        ({ NotificationSentAndReceived }) => ({
-          default: NotificationSentAndReceived,
-        }),
-      ),
-    ),
-  },
-  [Modals.NotificationSwapped]: {
-    component: lazy(() =>
-      import("./notifications/NotificationSwapped").then(({ NotificationSwapped }) => ({
-        default: NotificationSwapped,
+      import("./activities/ActivityTransferModal").then(({ ActivityTransferModal }) => ({
+        default: ActivityTransferModal,
       })),
     ),
   },
-  [Modals.NotificationSpotActionOrder]: {
+  [Modals.ActivityConvert]: {
     component: lazy(() =>
-      import("./notifications/NotificationSpotActionOrder").then(
-        ({ NotificationSpotActionOrder }) => ({
-          default: NotificationSpotActionOrder,
-        }),
-      ),
+      import("./activities/ActivityConvertModal").then(({ ActivityConvertModal }) => ({
+        default: ActivityConvertModal,
+      })),
+    ),
+  },
+  [Modals.ActivitySpotOrder]: {
+    component: lazy(() =>
+      import("./activities/ActivitySpotOrderModal").then(({ ActivitySpotOrderModal }) => ({
+        default: ActivitySpotOrderModal,
+      })),
     ),
   },
 };

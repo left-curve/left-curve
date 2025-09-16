@@ -159,6 +159,12 @@ export {
   type SearchBarResult,
 } from "./hooks/useSearchBar.js";
 
+export {
+  useActivities,
+  type ActivityRecord,
+  type Activities,
+} from "./hooks/useActivities.js";
+
 export { useFavApplets } from "./hooks/useFavApplets.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";

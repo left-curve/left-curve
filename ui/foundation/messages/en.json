@@ -168,14 +168,6 @@
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
-    "notifications": {
-      "id": "notifications",
-      "img": "/images/emojis/simple/notifications.svg",
-      "title": "Notifications",
-      "description": "View recent transactions.",
-      "path": "/notifications",
-      "keywords": "notifications,alerts"
-    },
     "devtool": {
       "id": "devtool",
       "img": "/images/emojis/simple/factory-2.svg",
@@ -508,13 +500,13 @@
       ]
     }
   },
-  "notifications": {
-    "title": "Notifications",
-    "noNotifications": {
-      "title": "No notifications yet",
-      "description": "When you approve, trade, or transfer tokens, your transaction will appear here"
+  "activities": {
+    "title": "Activities",
+    "noActivities": {
+      "title": "No activity yet",
+      "description": "When you trade, transfer tokens, or perform other activities, updates will appear here"
     },
-    "notification": {
+    "activity": {
       "transfer": {
         "title": [
           {
@@ -527,26 +519,8 @@
           }
         ],
         "direction": {
-          "first": [
-            {
-              "declarations": ["input direction"],
-              "selectors": ["direction"],
-              "match": {
-                "direction=sent": "from",
-                "direction=received": "in"
-              }
-            }
-          ],
-          "second": [
-            {
-              "declarations": ["input direction"],
-              "selectors": ["direction"],
-              "match": {
-                "direction=sent": "to",
-                "direction=received": "from"
-              }
-            }
-          ]
+          "first": "from",
+          "second": "to"
         }
       },
       "account": {
@@ -726,6 +700,9 @@
       }
     ],
     "number": "Number Format",
+    "time": "Time Format",
+    "date": "Date Format",
+    "timeZone": "Time Zone",
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Key Management",

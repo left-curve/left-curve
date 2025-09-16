@@ -24,6 +24,9 @@ export type AppState = {
   changeSettings: (settings: Partial<AppState["settings"]>) => void;
   settings: {
     chart: "tradingview" | "chartiq";
+    timeFormat: "hh:mm a" | "hh:mm aa" | "HH:mm";
+    dateFormat: "MM/dd/yyyy" | "dd/MM/yyyy" | "yyyy/MM/dd";
+    timeZone: "local" | "utc";
     showWelcome: boolean;
     isFirstVisit: boolean;
     useSessionKey: boolean;
@@ -52,12 +55,15 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.4,
+    version: 1.5,
     initialValue: {
       chart: "tradingview",
       showWelcome: true,
       isFirstVisit: true,
       useSessionKey: true,
+      timeFormat: "hh:mm a",
+      dateFormat: "MM/dd/yyyy",
+      timeZone: "local",
       formatNumberOptions: {
         mask: 1,
         language: "en-US",
@@ -74,6 +80,12 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
       },
       1.3: (state: AppState["settings"]) => {
         state.chart = "tradingview";
+        return state;
+      },
+      1.4: (state: AppState["settings"]) => {
+        state.timeFormat = "hh:mm a";
+        state.dateFormat = "MM/dd/yyyy";
+        state.timeZone = "local";
         return state;
       },
     },

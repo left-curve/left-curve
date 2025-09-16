@@ -3441,6 +3441,7 @@ dependencies = [
  "dango-oracle",
  "dango-types",
  "grug",
+ "metrics",
  "test-case",
  "tracing",
 ]

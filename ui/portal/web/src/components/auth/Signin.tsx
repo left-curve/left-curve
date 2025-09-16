@@ -123,7 +123,7 @@ const CredentialStep: React.FC = () => {
         ) : (
           <Button
             fullWidth
-            onClick={() => showModal(Modals.SignWithDesktop)}
+            onClick={() => showModal(Modals.SignWithDesktop, { navigate })}
             className="gap-2"
             variant="secondary"
           >

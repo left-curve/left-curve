@@ -1,23 +1,24 @@
+import { useApp } from "@left-curve/applets-kit";
+
 import {
   Badge,
+  formatDate,
   IconButton,
   IconClose,
   IconLink,
   PairAssets,
   TextCopy,
-  twMerge,
-  useApp,
 } from "@left-curve/applets-kit";
-import { useRouter } from "@tanstack/react-router";
 
 import { forwardRef } from "react";
+import { twMerge } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { format } from "date-fns";
-
-import type { AnyCoin, WithAmount } from "@left-curve/store/types";
 import { formatNumber, formatOrderId, formatUnits } from "@left-curve/dango/utils";
 
-type NotificationSpotActionOrderProps = {
+import type { useNavigate } from "@tanstack/react-router";
+import type { AnyCoin, WithAmount } from "@left-curve/store/types";
+
+type ActivitySpotOrderModalProps = {
   status: "created" | "canceled" | "fulfilled";
   action: "buy" | "sell";
   base: AnyCoin;
@@ -36,17 +37,17 @@ type NotificationSpotActionOrderProps = {
     filled?: string;
     timeUpdated?: string;
   };
+  navigate: ReturnType<typeof useNavigate>;
 };
 
-export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpotActionOrderProps>(
-  ({ status, action, base, quote, order, blockHeight }, _) => {
+export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderModalProps>(
+  ({ status, action, base, quote, order, blockHeight, navigate: _navigate_ }, _) => {
     const { id, type, amount, limitPrice, refund, timeCreated, timeCanceled, fee, averagePrice } =
       order;
 
     const { hideModal, setSidebarVisibility, settings } = useApp();
-    const { formatNumberOptions } = settings;
+    const { formatNumberOptions, timeFormat, dateFormat } = settings;
     const orderId = formatOrderId(id);
-    const { navigate: _navigate_ } = useRouter();
 
     const navigate = (parameters: Parameters<typeof _navigate_>[0]) => {
       _navigate_(parameters);
@@ -65,7 +66,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
         </IconButton>
         <div className="p-4 flex flex-col gap-5">
           <h2 className="text-lg font-semibold text-center text-primary-900 capitalize">
-            {m["notifications.notification.modal.spotOrderAction"]({ status })}
+            {m["activities.activity.modal.spotOrderAction"]({ status })}
           </h2>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1 items-center">
@@ -94,8 +95,8 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
                   )}
                 >
                   {action === "buy"
-                    ? m["notifications.notification.modal.spotOrderBuy"]({ orderType: type })
-                    : m["notifications.notification.modal.spotOrderSell"]({ orderType: type })}
+                    ? m["activities.activity.modal.spotOrderBuy"]({ orderType: type })
+                    : m["activities.activity.modal.spotOrderSell"]({ orderType: type })}
                 </p>
                 <Badge text="Spot" color="blue" size="s" />
               </div>
@@ -104,7 +105,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
             <div className="flex flex-col gap-2 w-full">
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                 <p className="diatype-sm-regular text-tertiary-500">
-                  {m["notifications.notification.modal.blockHeight"]()}
+                  {m["activities.activity.modal.blockHeight"]()}
                 </p>
                 <div className="flex items-center gap-1">
                   <p>{blockHeight}</p>
@@ -118,7 +119,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
               {amount && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
-                    {m["notifications.notification.modal.amount"]()}
+                    {m["activities.activity.modal.amount"]()}
                   </p>
                   <div className="flex items-center gap-1">
                     <p>
@@ -130,7 +131,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
               {order.filled && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
-                    {m["notifications.notification.modal.filledAmount"]()}
+                    {m["activities.activity.modal.filledAmount"]()}
                   </p>
                   <div className="flex items-center gap-1">
                     <p>
@@ -142,7 +143,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
               {refund && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
-                    {m["notifications.notification.modal.tokenReceived"]()}
+                    {m["activities.activity.modal.tokenReceived"]()}
                   </p>
                   <div className="flex items-center gap-1">
                     {refund.map((r) => (
@@ -156,7 +157,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
               {limitPrice && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
-                    {m["notifications.notification.modal.limitPrice"]()}
+                    {m["activities.activity.modal.limitPrice"]()}
                   </p>
                   <div className="flex items-center gap-1">
                     <p>
@@ -168,7 +169,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
               {averagePrice && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
-                    {m["notifications.notification.modal.averagePrice"]()}
+                    {m["activities.activity.modal.averagePrice"]()}
                   </p>
                   <div className="flex items-center gap-1">
                     <p>
@@ -180,7 +181,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
               {fee && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
-                    {m["notifications.notification.modal.fee"]()}
+                    {m["activities.activity.modal.fee"]()}
                   </p>
                   <div className="flex items-center gap-1">
                     <p>{fee}</p>
@@ -189,7 +190,7 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
               )}
               <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                 <p className="diatype-sm-regular text-tertiary-500">
-                  {m["notifications.notification.modal.id"]()}
+                  {m["activities.activity.modal.id"]()}
                 </p>
                 <div className="flex items-center gap-1">
                   <p>{orderId}</p>
@@ -199,20 +200,20 @@ export const NotificationSpotActionOrder = forwardRef<undefined, NotificationSpo
               {timeCreated ? (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
-                    {m["notifications.notification.modal.timeCreated"]()}
+                    {m["activities.activity.modal.timeCreated"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>{format(timeCreated, "dd/MM/yyyy hh:mm a")}</p>
+                    <p>{formatDate(timeCreated, `${dateFormat} ${timeFormat}`)}</p>
                   </div>
                 </div>
               ) : null}
               {timeCanceled && (
                 <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
                   <p className="diatype-sm-regular text-tertiary-500">
-                    {m["notifications.notification.modal.timeCanceled"]()}
+                    {m["activities.activity.modal.timeCanceled"]()}
                   </p>
                   <div className="flex items-center gap-1">
-                    <p>{format(timeCanceled, "dd/MM/yyyy hh:mm a")}</p>
+                    <p>{formatDate(timeCanceled, `${dateFormat} ${timeFormat}`)}</p>
                   </div>
                 </div>
               )}

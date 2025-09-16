@@ -24,6 +24,9 @@ function SettingsApplet() {
       <DisplaySection>
         <DisplaySection.Language />
         <DisplaySection.FormatNumber />
+        <DisplaySection.DateFormat />
+        <DisplaySection.TimeFormat />
+        <DisplaySection.TimeZone />
         <DisplaySection.ChartEngine />
         <DisplaySection.Theme />
       </DisplaySection>
