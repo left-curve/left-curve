@@ -14,9 +14,15 @@ on:
   push:
     branches:
       - "main"
+    paths:
+      - "Cargo.lock"
+      # - "pnpm-lock.yaml"
   pull_request:
     branches:
       - "*"
+    paths:
+      - "Cargo.lock"
+      # - "pnpm-lock.yaml"
 
 env:
   MIN_AGE_DAYS: 14
@@ -24,7 +30,7 @@ env:
 jobs:
   depedency-age-rust:
     name: "Rust"
-    # runs-on: [self-hosted]
+    runs-on: [self-hosted]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
