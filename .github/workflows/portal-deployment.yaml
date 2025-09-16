@@ -4,6 +4,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  GIT_COMMIT: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
+
 on:
   workflow_dispatch:
   push:
