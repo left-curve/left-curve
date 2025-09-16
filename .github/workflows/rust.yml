@@ -551,24 +551,14 @@ jobs:
           ansible-galaxy collection install -r requirements.yml
       - name: Run Ansible playbook
         run: |
+          cd deploy
+          pipx ensurepath
+
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            cd deploy
-            pipx ensurepath
-            ansible-playbook reset-cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
-            ansible-playbook reset-dango.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
-            ansible-playbook cometbft.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
-            ansible-playbook dango.yml --tags setup --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}'
-            ansible-playbook dango.yml --limit 100.96.253.40 \
-              --skip-tags setup \
-              -e dango_image_tag=${{ env.GIT_COMMIT }} \
-              -e "dango_db_password=$DANGO_DB_PASSWORD" \
-              -e '{"dango_networks":["devnet"]}'
-            ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e faucet_version=latest
+            ansible-playbook full-app.yml -e traefik_enabled=true
           fi
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            cd deploy
-            pipx ensurepath
             ansible-playbook full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e expose_ports=true
           fi
 

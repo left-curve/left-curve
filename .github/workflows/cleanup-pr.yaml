@@ -6,9 +6,10 @@ on:
 
 jobs:
   cleanup-deployment:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted]
     permissions:
       packages: write
+      deployments: write
     steps:
       - name: Delete PR deployment
         run: |
