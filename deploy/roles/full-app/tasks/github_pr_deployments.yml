@@ -31,7 +31,7 @@
       Accept: "application/vnd.github.v3+json"
     body_format: json
     body:
-      ref: "{{ github_sha }}"
+      ref: "{{ dango_image_tag }}"
       environment: "preview-{{ item.name }}"
       description: "PR {{ github_pr_number }} - {{ item.description }}"
       auto_merge: false
@@ -86,5 +86,5 @@
     | **CometBFT ABCI** | [http://{{ tailscale_ip }}:{{ cometbft_abci_port }}](http://{{ tailscale_ip }}:{{ cometbft_abci_port }}) |
     | **CometBFT Metrics** | [http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}/metrics](http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}/metrics) |
     | **Deployment name** | `{{ deployment_name }}` |
-    | **Commit** | `{{ github_sha }}` |
+    | **Commit** | `{{ dango_image_tag }}` |
     EOF
