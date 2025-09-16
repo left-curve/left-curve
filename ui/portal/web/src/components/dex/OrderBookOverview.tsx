@@ -1,4 +1,4 @@
-import { Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import { Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
@@ -128,7 +128,15 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { isLg } = useMediaQuery();
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-  const { baseCoin, quoteCoin, liquidityDepth, previousPrice, orderBookState } = state;
+  const {
+    baseCoin,
+    quoteCoin,
+    liquidityDepth,
+    previousPrice,
+    orderBookState,
+    pair,
+    setBucketSize,
+  } = state;
 
   if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
 
@@ -142,6 +150,30 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
+      <div className="flex items-center justify-between w-full">
+        <Select
+          value={pair.params.bucketSizes[1]}
+          onChange={(key) => setBucketSize(key)}
+          variant="plain"
+        >
+          {pair.params.bucketSizes.map((size) => {
+            return (
+              <Select.Item key={`bucket-${size}`} value={size}>
+                {size}
+              </Select.Item>
+            );
+          })}
+        </Select>
+        <Select
+          value={baseCoin.symbol}
+          onChange={(key) => console.log(key)}
+          variant="plain"
+          classNames={{ listboxWrapper: "right-0 left-auto" }}
+        >
+          <Select.Item value={baseCoin.symbol}>{baseCoin.symbol}</Select.Item>
+          <Select.Item value={quoteCoin.symbol}>{quoteCoin.symbol}</Select.Item>
+        </Select>
+      </div>
       <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
         <p className="order-2 lg:order-none text-end lg:text-start">
           {m["dex.protrade.history.price"]()}
@@ -197,7 +229,7 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { trades, baseCoin, quoteCoin } = state;
 
   return (
-    <div className="flex gap-2 flex-col items-center justify-start max-h-[23.1375rem] lg:max-h-[56.2vh] overflow-hidden">
+    <div className="flex gap-2 flex-col items-center justify-start max-h-[23.1375rem] lg:max-h-[53.55vh] overflow-hidden">
       <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
