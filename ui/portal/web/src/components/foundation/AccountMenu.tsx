@@ -9,8 +9,6 @@ import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";
 
-import { useNotifications } from "~/hooks/useNotifications";
-
 import { motion } from "framer-motion";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -36,7 +34,7 @@ import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";
 import { EmptyPlaceholder } from "./EmptyPlaceholder";
-import { Notifications } from "../notifications/Notifications";
+import { Activities } from "../activities/Activities";
 
 import { Direction } from "@left-curve/dango/types";
 
@@ -311,7 +309,7 @@ export const WalletTab: React.FC = () => {
 export const NotificationsTab: React.FC = () => {
   return (
     <div className="flex flex-col pb-[12rem]">
-      <Notifications className="overflow-y-scroll scrollbar-none" />
+      <Activities className="overflow-y-scroll scrollbar-none" />
     </div>
   );
 };

@@ -15,20 +15,20 @@ import {
   useApp,
 } from "@left-curve/applets-kit";
 
-import type { Notification } from "~/hooks/useNotifications";
-import type { NotificationRef } from "./Notification";
+import type { ActivityRef } from "./Activity";
+import type { ActivityRecord } from "@left-curve/store";
 
-type NotificationTransferProps = {
-  notification: Notification<"transfer">;
+type ActivityTransferProps = {
+  activity: ActivityRecord<"transfer">;
 };
 
-export const NotificationTransfer = forwardRef<NotificationRef, NotificationTransferProps>(
-  ({ notification }, ref) => {
+export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
+  ({ activity }, ref) => {
     const { settings, showModal } = useApp();
     const { navigate } = useRouter();
     const { getCoinInfo } = useConfig();
-    const { blockHeight, txHash, createdAt } = notification;
-    const { coins, type, fromAddress, toAddress } = notification.data;
+    const { blockHeight, txHash, createdAt } = activity;
+    const { coins, type, fromAddress, toAddress } = activity.data;
     const { formatNumberOptions } = settings;
     const isSent = type === "sent";
     const Icon = isSent ? IconSent : IconReceived;

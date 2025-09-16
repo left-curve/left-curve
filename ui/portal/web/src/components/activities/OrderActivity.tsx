@@ -5,14 +5,12 @@ import { IconLimitOrder, IconMarketOrder, twMerge } from "@left-curve/applets-ki
 import type React from "react";
 import type { PropsWithChildren } from "react";
 
-type OrderNotificationProps = {
+type OrderActivityProps = {
   kind: OrderTypes;
   onClick?: () => void;
 };
 
-export const OrderNotification: React.FC<PropsWithChildren<OrderNotificationProps>> = (
-  parameters,
-) => {
+export const OrderActivity: React.FC<PropsWithChildren<OrderActivityProps>> = (parameters) => {
   const { onClick, kind, children } = parameters;
   const isLimit = kind === OrderType.Limit;
   const Icon = isLimit ? IconLimitOrder : IconMarketOrder;
@@ -22,7 +20,7 @@ export const OrderNotification: React.FC<PropsWithChildren<OrderNotificationProp
       className="flex items-start gap-2 max-w-full overflow-hidden cursor-pointer"
       onClick={(event) => {
         const element = event.target as HTMLElement;
-        if (element.closest(".address-visualizer") || element.closest(".remove-notification")) {
+        if (element.closest(".address-visualizer") || element.closest(".remove-activity")) {
           return;
         }
         onClick?.();

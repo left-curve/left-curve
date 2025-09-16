@@ -8,13 +8,14 @@ import {
   useCallback,
   useRef,
 } from "react";
-import { useNotifications, type Notifications } from "~/hooks/useNotifications";
+import { useActivities } from "@left-curve/store";
 
 import { differenceInDays, differenceInHours, differenceInMinutes, isToday } from "date-fns";
 
 import { formatDate, IconClose, useApp } from "@left-curve/applets-kit";
 
 import type React from "react";
+import type { Activities, ActivityRecord } from "@left-curve/store";
 
 const formatNotificationTimestamp = (timestamp: Date, mask: string): string => {
   const now = new Date();
@@ -42,62 +43,74 @@ const formatNotificationTimestamp = (timestamp: Date, mask: string): string => {
   return formatDate(timestamp, mask);
 };
 
-const notifications: Record<
-  keyof Notifications,
+const activities: Record<
+  keyof Activities,
   LazyExoticComponent<
-    ForwardRefExoticComponent<PropsWithoutRef<NotificationProps> & RefAttributes<NotificationRef>>
+    ForwardRefExoticComponent<
+      PropsWithoutRef<{ activity: ActivityRecord<keyof Activities> }> & RefAttributes<ActivityRef>
+    >
   >
 > = {
   transfer: lazy(() =>
-    import("./Transfer").then(({ NotificationTransfer }) => ({
-      default: NotificationTransfer,
+    import("./Transfer").then(({ ActivityTransfer }) => ({
+      default: ActivityTransfer as ForwardRefExoticComponent<{
+        activity: ActivityRecord<keyof Activities>;
+      }>,
     })),
   ),
   account: lazy(() =>
-    import("./NewAccount").then(({ NotificationNewAccount }) => ({
-      default: NotificationNewAccount,
+    import("./NewAccount").then(({ ActivityNewAccount }) => ({
+      default: ActivityNewAccount as ForwardRefExoticComponent<{
+        activity: ActivityRecord<keyof Activities>;
+      }>,
     })),
   ),
   orderCreated: lazy(() =>
-    import("./OrderCreated").then(({ NotificationOrderCreated }) => ({
-      default: NotificationOrderCreated,
+    import("./OrderCreated").then(({ ActivityOrderCreated }) => ({
+      default: ActivityOrderCreated as ForwardRefExoticComponent<{
+        activity: ActivityRecord<keyof Activities>;
+      }>,
     })),
   ),
   orderFilled: lazy(() =>
-    import("./OrderFilled").then(({ NotificationOrderFilled }) => ({
-      default: NotificationOrderFilled,
+    import("./OrderFilled").then(({ ActivityOrderFilled }) => ({
+      default: ActivityOrderFilled as ForwardRefExoticComponent<{
+        activity: ActivityRecord<keyof Activities>;
+      }>,
     })),
   ),
   orderCanceled: lazy(() =>
-    import("./OrderCanceled").then(({ NotificationOrderCanceled }) => ({
-      default: NotificationOrderCanceled,
+    import("./OrderCanceled").then(({ ActivityOrderCanceled }) => ({
+      default: ActivityOrderCanceled as ForwardRefExoticComponent<{
+        activity: ActivityRecord<keyof Activities>;
+      }>,
     })),
   ),
 };
 
-export type NotificationProps = {
-  notification: Notification[keyof Notification];
+export type ActivityProps = {
+  activity: ActivityRecord<keyof Activities>;
 };
 
-export type NotificationRef = {
+export type ActivityRef = {
   onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
 };
 
-export const Notification: React.FC<NotificationProps> = ({ notification }) => {
-  const notificationRef = useRef<NotificationRef | null>(null);
+export const Activity: React.FC<ActivityProps> = ({ activity }) => {
+  const activityRef = useRef<ActivityRef | null>(null);
   const { settings } = useApp();
   const { dateFormat } = settings;
-  const { deleteNotification } = useNotifications();
-  const { id, createdAt, type } = notification;
+  const { deleteActivityRecord } = useActivities();
+  const { id, createdAt, type } = activity;
 
-  const NotificationCard = notifications[type as keyof typeof notifications];
+  const ActivityCard = activities[type as keyof typeof activities];
 
   const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     const element = event.target as HTMLElement;
-    if (element.closest(".address-visualizer") || element.closest(".remove-notification")) {
+    if (element.closest(".address-visualizer") || element.closest(".remove-activity")) {
       return;
     }
-    notificationRef.current?.onClick(event);
+    activityRef.current?.onClick(event);
   }, []);
 
   return (
@@ -106,11 +119,11 @@ export const Notification: React.FC<NotificationProps> = ({ notification }) => {
         className="flex relative items-end justify-between gap-2 p-2 rounded-lg hover:bg-surface-secondary-rice max-w-full group cursor-pointer"
         onClick={handleClick}
       >
-        <NotificationCard notification={notification} ref={notificationRef} />
+        <ActivityCard activity={activity} ref={activityRef} />
         <div className="flex flex-col diatype-sm-medium text-tertiary-500 min-w-fit items-center">
           <IconClose
-            className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-1 remove-notification"
-            onClick={() => deleteNotification(id)}
+            className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-1 remove-activity"
+            onClick={() => deleteActivityRecord(id)}
           />
           <p>
             {formatNotificationTimestamp(

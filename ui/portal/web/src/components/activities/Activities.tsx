@@ -1,35 +1,62 @@
-import { useState } from "react";
-import { useNotifications } from "~/hooks/useNotifications";
+import { useMemo, useState } from "react";
+import { useActivities } from "@left-curve/store";
 
-import { ResizerContainer, Spinner, twMerge, useInfiniteScroll } from "@left-curve/applets-kit";
+import {
+  formatDate,
+  ResizerContainer,
+  Spinner,
+  twMerge,
+  useApp,
+  useInfiniteScroll,
+} from "@left-curve/applets-kit";
 
+import { Activity } from "./Activity";
 import { AnimatePresence, motion } from "framer-motion";
-import { Notification } from "./Notification";
+import { isToday } from "date-fns";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
+import type { ActivityRecord } from "@left-curve/store";
 
-type NotificationsProps = {
+type ActivitiesProps = {
   className?: string;
-  notificationsPerCall?: number;
+  activitiesPerCall?: number;
 };
 
-export const Notifications: React.FC<NotificationsProps> = (props) => {
-  const { className, notificationsPerCall = 5 } = props;
+export const Activities: React.FC<ActivitiesProps> = (props) => {
+  const { className, activitiesPerCall = 5 } = props;
+  const { settings } = useApp();
+  const { dateFormat } = settings;
 
-  const [notificationsVisible, setNotificationsVisible] = useState(notificationsPerCall);
-  const { notifications, hasNotifications, totalNotifications } = useNotifications({
-    limit: notificationsVisible,
-  });
+  const [activitiesVisible, setActivitiesVisible] = useState(activitiesPerCall);
+  const { userActivities, hasActivities, totalActivities } = useActivities();
 
-  const hasMoreNotifications = notificationsVisible < totalNotifications;
+  const activities: Record<string, ActivityRecord[]> = useMemo(() => {
+    return [...userActivities]
+      .reverse()
+      .slice(0, activitiesVisible)
+      .sort((a, b) => +b.createdAt - +a.createdAt)
+      .reduce((acc, activity) => {
+        const dateKey = isToday(activity.createdAt)
+          ? "Today"
+          : formatDate(activity.createdAt, dateFormat);
+
+        if (!acc[dateKey]) {
+          acc[dateKey] = [];
+        }
+        acc[dateKey].push(activity);
+        return acc;
+      }, Object.create({}));
+  }, [userActivities, activitiesVisible]);
+
+  const hasMoreActivities = activitiesVisible < totalActivities;
 
   const { loadMoreRef } = useInfiniteScroll(() => {
-    setNotificationsVisible((prev) => Math.min(prev + notificationsPerCall, totalNotifications));
-  }, hasMoreNotifications);
+    setActivitiesVisible((prev) => Math.min(prev + activitiesPerCall, totalActivities));
+  }, hasMoreActivities);
 
-  if (!hasNotifications) {
+  if (!hasActivities) {
     return (
       <div className="px-4 flex flex-col gap-6 items-center">
         <img
@@ -60,17 +87,17 @@ export const Notifications: React.FC<NotificationsProps> = (props) => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            {Object.entries(notifications).map(([dateKey, n]) => (
+            {Object.entries(activities).map(([dateKey, n]) => (
               <motion.div key={dateKey}>
                 <p className="text-sm text-tertiary-500 mx-2 my-1">{dateKey}</p>
                 <div className="flex flex-col gap-2 max-w-full">
-                  {n.map((notification) => (
-                    <Notification key={notification.id} notification={notification} />
+                  {n.map((activity) => (
+                    <Activity key={activity.id} activity={activity} />
                   ))}
                 </div>
               </motion.div>
             ))}
-            {hasMoreNotifications ? (
+            {hasMoreActivities ? (
               <div ref={loadMoreRef} className="flex justify-center py-2">
                 <Spinner color="pink" />
               </div>

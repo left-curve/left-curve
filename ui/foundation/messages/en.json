@@ -511,8 +511,8 @@
   "notifications": {
     "title": "Notifications",
     "noNotifications": {
-      "title": "No notifications yet",
-      "description": "When you approve, trade, or transfer tokens, your transaction will appear here"
+      "title": "No activity yet",
+      "description": "When you trade, transfer tokens, or perform other activities, updates will appear here"
     },
     "notification": {
       "transfer": {

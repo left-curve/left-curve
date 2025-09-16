@@ -1,29 +1,39 @@
 import { useConfig } from "@left-curve/store";
+import { useApp } from "@left-curve/applets-kit";
 import { useRouter } from "@tanstack/react-router";
-
 import { forwardRef, useImperativeHandle } from "react";
+
+import { OrderActivity } from "./OrderActivity";
+import { PairAssets, twMerge } from "@left-curve/applets-kit";
+import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
+
+import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { OrderNotification } from "./OrderNotification";
-import { PairAssets, twMerge, useApp } from "@left-curve/applets-kit";
-import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
-import { calculatePrice, formatNumber, formatUnits } from "@left-curve/dango/utils";
+import type { ActivityRef } from "./Activity";
+import type { ActivityRecord } from "@left-curve/store";
 
-import type { Notification } from "~/hooks/useNotifications";
-import type { NotificationRef } from "./Notification";
-
-type NotificationOrderCreatedProps = {
-  notification: Notification<"orderCreated">;
+type ActivityOrderCanceledProps = {
+  activity: ActivityRecord<"orderCanceled">;
 };
 
-export const NotificationOrderCreated = forwardRef<NotificationRef, NotificationOrderCreatedProps>(
-  ({ notification }, ref) => {
-    const { navigate } = useRouter();
+export const ActivityOrderCanceled = forwardRef<ActivityRef, ActivityOrderCanceledProps>(
+  ({ activity }, ref) => {
     const { getCoinInfo } = useConfig();
+    const { createdAt, blockHeight } = activity;
+    const {
+      id,
+      quote_denom,
+      base_denom,
+      price,
+      time_in_force,
+      direction,
+      amount,
+      refund,
+      remaining,
+    } = activity.data;
+    const { navigate } = useRouter();
     const { settings, showModal } = useApp();
-    const { blockHeight, createdAt } = notification;
-    const { id, quote_denom, base_denom, price, time_in_force, direction, amount } =
-      notification.data;
     const { formatNumberOptions } = settings;
 
     const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
@@ -31,10 +41,13 @@ export const NotificationOrderCreated = forwardRef<NotificationRef, Notification
 
     const base = getCoinInfo(base_denom);
     const quote = getCoinInfo(quote_denom);
+    const refundCoin = getCoinInfo(refund.denom);
 
     const limitPrice = isLimit
       ? calculatePrice(price, { base: base.decimals, quote: quote.decimals }, formatNumberOptions)
       : null;
+
+    const filled = Decimal(amount).minus(remaining).toFixed();
 
     useImperativeHandle(ref, () => ({
       onClick: () =>
@@ -43,12 +56,14 @@ export const NotificationOrderCreated = forwardRef<NotificationRef, Notification
           quote,
           blockHeight,
           action: direction === "ask" ? "sell" : "buy",
-          status: "created",
+          status: "canceled",
           order: {
             id,
-            type: kind,
-            timeCreated: createdAt,
             limitPrice,
+            type: kind,
+            timeCanceled: createdAt,
+            filledAmount: formatNumber(formatUnits(filled, base.decimals), formatNumberOptions),
+            refund: [{ ...refundCoin, amount: refund.amount }],
             amount: formatNumber(formatUnits(amount, base.decimals), formatNumberOptions),
           },
           navigate,
@@ -56,9 +71,9 @@ export const NotificationOrderCreated = forwardRef<NotificationRef, Notification
     }));
 
     return (
-      <OrderNotification kind={kind}>
+      <OrderActivity kind={kind}>
         <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
-          {m["notifications.notification.orderCreated.title"]()}
+          {m["notifications.notification.orderCanceled.title"]()}
         </p>
 
         <div className="flex flex-col items-start">
@@ -90,7 +105,7 @@ export const NotificationOrderCreated = forwardRef<NotificationRef, Notification
             </div>
           ) : null}
         </div>
-      </OrderNotification>
+      </OrderActivity>
     );
   },
 );

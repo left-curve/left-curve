@@ -3,7 +3,6 @@ import { useRouter } from "@tanstack/react-router";
 import { forwardRef, useImperativeHandle } from "react";
 import { useConfig, usePrices } from "@left-curve/store";
 
-import { OrderNotification } from "./OrderNotification";
 import { Direction, TimeInForceOption } from "@left-curve/dango/types";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { twMerge } from "@left-curve/foundation";
@@ -16,17 +15,19 @@ import {
 } from "@left-curve/dango/utils";
 import { PairAssets } from "@left-curve/applets-kit";
 
-import type { Notification } from "~/hooks/useNotifications";
-import type { NotificationRef } from "./Notification";
+import { OrderActivity } from "./OrderActivity";
 
-type NotificationOrderFilledProps = {
-  notification: Notification<"orderFilled">;
+import type { ActivityRef } from "./Activity";
+import type { ActivityRecord } from "@left-curve/store";
+
+type ActivityOrderFilledProps = {
+  activity: ActivityRecord<"orderFilled">;
 };
 
-export const NotificationOrderFilled = forwardRef<NotificationRef, NotificationOrderFilledProps>(
-  ({ notification }, ref) => {
+export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledProps>(
+  ({ activity }, ref) => {
     const { getCoinInfo } = useConfig();
-    const { createdAt, blockHeight } = notification;
+    const { createdAt, blockHeight } = activity;
     const {
       id,
       quote_denom,
@@ -42,7 +43,7 @@ export const NotificationOrderFilled = forwardRef<NotificationRef, NotificationO
       filled_quote,
       refund_base,
       refund_quote,
-    } = notification.data;
+    } = activity.data;
     const { settings, showModal } = useApp();
     const { navigate } = useRouter();
     const { formatNumberOptions } = settings;
@@ -105,7 +106,7 @@ export const NotificationOrderFilled = forwardRef<NotificationRef, NotificationO
     }));
 
     return (
-      <OrderNotification kind={kind}>
+      <OrderActivity kind={kind}>
         <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
           {m["notifications.notification.orderFilled.title"]({
             isFullfilled: m["notifications.notification.orderFilled.isFullfilled"]({
@@ -152,7 +153,7 @@ export const NotificationOrderFilled = forwardRef<NotificationRef, NotificationO
             </div>
           ) : null}
         </div>
-      </OrderNotification>
+      </OrderActivity>
     );
   },
 );
