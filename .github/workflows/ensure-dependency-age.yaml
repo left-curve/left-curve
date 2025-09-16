@@ -14,13 +14,16 @@ on:
   push:
     branches:
       - "main"
+    # Run this workflow if any lockfile, or the workflow itself, has changed.
     paths:
+      - ".github/workflows/ensure-dependency-age.yaml"
       - "Cargo.lock"
       # - "pnpm-lock.yaml"
   pull_request:
     branches:
       - "*"
     paths:
+      - ".github/workflows/ensure-dependency-age.yaml"
       - "Cargo.lock"
       # - "pnpm-lock.yaml"
 
