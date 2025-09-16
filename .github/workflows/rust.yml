@@ -562,7 +562,7 @@ jobs:
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             cd deploy
             pipx ensurepath
-            ansible-playbook full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }}
+            ansible-playbook full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e expose_ports=true
           fi
 
   localdango:

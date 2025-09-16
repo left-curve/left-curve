@@ -1,10 +1,16 @@
-- name: Set ports to 0
+- name: Set port facts to 0
   set_fact:
-    dango_port: 0
-    dango_metrics_port: 0
-    faucet_port: 0
-    dango_frontend_port: 0
-    dango_metrics_port: 0
+    "{{ item }}": 0
+  loop:
+    - dango_port
+    - dango_frontend_port
+    - dango_metrics_port
+    - faucet_port
+    - quest_port
+    - cometbft_p2p_port
+    - cometbft_rpc_port
+    - cometbft_abci_port
+    - cometbft_metrics_port
 
 - name: Generate .env with the 0 ports
   become: true
@@ -18,7 +24,6 @@
   community.docker.docker_compose_v2:
     project_name: "{{ deployment_name }}"
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
-    pull: always
     recreate: always
     services:
       - db
@@ -27,11 +32,15 @@
       - dango
       - cometbft
 
-- name: Get dango and faucet assigned ports
+- name: Get assigned ports
   shell: |
     docker port {{ deployment_name }}-dango-1 8080 | cut -d: -f2
     docker port {{ deployment_name }}-dango-1 9191 | cut -d: -f2
     docker port {{ deployment_name }}-faucet-bot-1 8082 | cut -d: -f2
+    docker port {{ deployment_name }}-cometbft-1 26656 | cut -d: -f2
+    docker port {{ deployment_name }}-cometbft-1 26657 | cut -d: -f2
+    docker port {{ deployment_name }}-cometbft-1 26658 | cut -d: -f2
+    docker port {{ deployment_name }}-cometbft-1 26660 | cut -d: -f2
   register: assigned_ports
 
 - name: Set dango, dango_metrics and faucet port facts
@@ -39,6 +48,10 @@
     dango_port: "{{ assigned_ports.stdout_lines[0] }}"
     dango_metrics_port: "{{ assigned_ports.stdout_lines[1] }}"
     faucet_port: "{{ assigned_ports.stdout_lines[2] }}"
+    cometbft_p2p_port: "{{ assigned_ports.stdout_lines[3] }}"
+    cometbft_rpc_port: "{{ assigned_ports.stdout_lines[4] }}"
+    cometbft_abci_port: "{{ assigned_ports.stdout_lines[5] }}"
+    cometbft_metrics_port: "{{ assigned_ports.stdout_lines[6] }}"
 
 - name: Generate .env with the right ports
   become: true

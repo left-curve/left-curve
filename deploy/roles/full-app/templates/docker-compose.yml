@@ -63,7 +63,7 @@ services:
 {% endif %}
     networks:
       - default
-      - traefik-net
+      - traefik
     volumes:
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/dango:/root/.dango/config"
     environment:
@@ -91,7 +91,7 @@ services:
 {% endif %}
     networks:
       - default
-      - traefik-net
+      - traefik
     environment:
       INDEXER_URL: ${INDEXER_URL}
       FAUCET_URL: ${FAUCET_URL}
@@ -117,7 +117,7 @@ services:
 {% endif %}
     networks:
       - default
-      - traefik-net
+      - traefik
     environment:
       - HOME=/app
     tty: true
@@ -145,7 +145,7 @@ services:
 {% endif %}
     networks:
       - default
-      - traefik-net
+      - traefik
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:{{ cometbft_rpc_port }}/health"]
@@ -161,5 +161,5 @@ services:
       "
 
 networks:
-  traefik-net:
-    driver: bridge
+  traefik:
+    external: true

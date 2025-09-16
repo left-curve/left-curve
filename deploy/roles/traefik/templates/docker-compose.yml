@@ -22,9 +22,10 @@ services:
     #   - "traefik.http.routers.dashboard.entrypoints=dashboard"
     #   - "traefik.http.routers.dashboard.service=api@internal"
     networks:
-      - traefik-net
+      - traefik
       - monitoring
     command:
+      - --providers.docker.exposedbydefault=false
       - --api.dashboard=true
       - --api.insecure=true
       # - --entrypoints.web=false
@@ -59,7 +60,8 @@ services:
       start_period: 5s
 
 networks:
-  traefik-net:
+  traefik:
     driver: bridge
+    name: traefik
   monitoring:
     external: true

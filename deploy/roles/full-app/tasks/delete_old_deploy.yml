@@ -4,6 +4,7 @@
     - name: Clean up old deployment
       community.docker.docker_compose_v2:
         project_name: "{{ current_deployment }}"
+        project_src: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
         state: absent
         remove_orphans: yes
         remove_volumes: yes

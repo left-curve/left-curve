@@ -8,6 +8,7 @@ ports:
   testnet:
     dango_port: 8080
     dango_metrics_port: 9191
+    quest_port: 8081
     faucet_port: 8082
     dango_frontend_port: 80
     cometbft_p2p_port: 26656
@@ -19,6 +20,7 @@ ports:
   devnet:
     dango_port: 8080
     dango_metrics_port: 9191
+    quest_port: 8081
     faucet_port: 8082
     dango_frontend_port: 80
     cometbft_p2p_port: 26656

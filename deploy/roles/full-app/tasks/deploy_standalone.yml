@@ -11,5 +11,4 @@
   community.docker.docker_compose_v2:
     project_name: "{{ deployment_name }}"
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
-    pull: always
     recreate: always
