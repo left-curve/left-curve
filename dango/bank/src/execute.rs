@@ -161,7 +161,7 @@ fn ensure_namespace_owner(ctx: &MutableCtx, denom: &Denom) -> anyhow::Result<()>
         None => {
             ensure!(
                 ctx.sender == ctx.querier.query_owner()?,
-                "only chain owner can mint or burn top-level denoms"
+                "only chain owner can mint, burn, or set metadata of top-level denoms"
             );
         },
     }
