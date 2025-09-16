@@ -1,3 +1,10 @@
+- name: Set ports to 0
+  set_fact:
+    dango_port: 0
+    faucet_port: 0
+    dango_frontend_port: 0
+    dango_metrics_port: 0
+
 - name: Deploy dango stack first to get binded ports
   community.docker.docker_compose_v2:
     project_name: "{{ deployment_name }}"
@@ -14,13 +21,15 @@
 - name: Get dango and faucet assigned ports
   shell: |
     docker port {{ deployment_name }}-dango-1 8080 | cut -d: -f2
+    docker port {{ deployment_name }}-dango-1 9191 | cut -d: -f2
     docker port {{ deployment_name }}-faucet-bot-1 8082 | cut -d: -f2
   register: assigned_ports
 
-- name: Set dango and faucet port facts
+- name: Set dango, dango_metrics and faucet port facts
   set_fact:
     dango_port: "{{ assigned_ports.stdout_lines[0] }}"
-    faucet_port: "{{ assigned_ports.stdout_lines[1] }}"
+    dango_metrics_port: "{{ assigned_ports.stdout_lines[1] }}"
+    faucet_port: "{{ assigned_ports.stdout_lines[2] }}"
 
 - name: Generate .env with the right ports
   become: true

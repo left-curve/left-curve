@@ -19,12 +19,10 @@
     deploy_env: "staging"
     chain_id: "dev-9"
     dango_network: "devnet"
-    dango_port: 0
-    dango_metrics_port: 0
-    quest_port: 0
-    faucet_port: 0
-    dango_frontend_port: 0
-    # Will need to use `0` when the following ports are exposed in `ports` in docker compose
+    dango_port: 8080
+    dango_metrics_port: 9191
+    faucet_port: 8082
+    dango_frontend_port: 80
     cometbft_p2p_port: 26656
     cometbft_rpc_port: 26657
     cometbft_metrics_port: 26660

@@ -1,0 +1,22 @@
+- name: Clean old deployment
+  when: current_deployment is defined
+  block:
+    - name: Clean up old deployment
+      community.docker.docker_compose_v2:
+        project_name: "{{ current_deployment }}"
+        state: absent
+        remove_orphans: yes
+        remove_volumes: yes
+
+    - name: Remove deployment directory
+      file:
+        path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
+        state: absent
+
+    - name: Prune unused Docker resources
+      community.docker.docker_prune:
+        containers: yes
+        images: yes
+        networks: yes
+        volumes: yes
+        builder_cache: yes

@@ -1,0 +1,19 @@
+- name: Check file
+  stat:
+    path: "{{ ansible_env.HOME }}/deployments/{{ dango_network }}.json"
+  register: traefik_json
+
+- name: Read current traefik deployment
+  slurp:
+    src: "{{ traefik_json.stat.path }}"
+  register: current_deployment_raw
+  when: traefik_json.stat.exists
+
+- name: Parse current traefik deployment
+  set_fact:
+    current_deployment: "{{ (current_deployment_raw.content | b64decode | from_json).current_deployment }}"
+  when: traefik_json.stat.exists and current_deployment_raw is defined
+
+- debug:
+    msg: "Deployment is {{ current_deployment }}"
+  when: current_deployment is defined

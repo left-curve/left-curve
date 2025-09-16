@@ -4,3 +4,4 @@
 - import_tasks: github_deployments.yml
   when: github_pr_number is defined
 - import_tasks: summary.yml
+  when: not traefik_enabled
