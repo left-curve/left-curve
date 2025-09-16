@@ -11,7 +11,7 @@ import {
   usePortalTarget,
 } from "@left-curve/applets-kit";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { useConfig, usePrices, useProTradeState } from "@left-curve/store";
+import { useConfig, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -75,13 +75,9 @@ const ProTradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
   const { state } = useProTrade();
-  const { pairId, onChangePairId } = state;
+  const { pairId, onChangePairId, currentPrice, previousPrice } = state;
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-
-  const { getPrice } = usePrices({
-    defaultFormatOptions: { ...formatNumberOptions, maxSignificantDigits: 8 },
-  });
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -125,8 +121,15 @@ const ProTradeHeader: React.FC = () => {
               <p className="diatype-xs-medium text-tertiary-500">
                 {m["dex.protrade.history.price"]()}
               </p>
-              <p className="diatype-sm-bold text-secondary-700">
-                {getPrice(1, pairId.baseDenom, { format: true })}
+              <p
+                className={twMerge(
+                  "diatype-sm-bold text-secondary-700",
+                  Decimal(previousPrice).lte(currentPrice)
+                    ? "text-status-fail"
+                    : "text-status-success",
+                )}
+              >
+                {formatNumber(currentPrice, { ...formatNumberOptions, maxSignificantDigits: 6 })}
               </p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">

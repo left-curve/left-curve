@@ -133,7 +133,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
     quoteCoin,
     liquidityDepth,
     previousPrice,
-    orderBookState,
+    currentPrice,
     pair,
     bucketSize,
     setBucketSize,
@@ -142,11 +142,6 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   } = state;
 
   if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
-
-  const currentPrice = parseUnits(
-    orderBookState?.midPrice as string,
-    baseCoin.decimals - quoteCoin.decimals,
-  );
 
   const { bids, asks } = liquidityDepth;
   const numberOfOrders = isLg ? 11 : 16;

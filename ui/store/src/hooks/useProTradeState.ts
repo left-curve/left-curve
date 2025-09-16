@@ -161,6 +161,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       : convertAmount(availableCoin.amount, availableCoin.denom, sizeCoin.denom);
   }, [sizeCoin, availableCoin, needsConversion, priceValue]);
 
+  const currentPrice = useMemo(() => {
+    return parseUnits(orderBookState?.midPrice || "0", baseCoin.decimals - quoteCoin.decimals);
+  }, [orderBookState, baseCoin, quoteCoin]);
+
   const orders = useQuery({
     enabled: !!account,
     queryKey: ["ordersByUser", account?.address],
@@ -205,43 +209,43 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   useEffect(() => {
     if (!appConfig) return;
-    let unsubscribe: () => void;
-    (async () => {
-      const { addresses } = appConfig;
-      unsubscribe = subscriptions.subscribe("queryApp", {
-        params: {
-          interval: 1,
-          request: snakeCaseJsonSerialization({
-            wasmSmart: {
-              contract: addresses.dex,
-              msg: {
-                restingOrderBookState: {
-                  baseDenom: pairId.baseDenom,
-                  quoteDenom: pairId.quoteDenom,
-                },
+
+    const { addresses } = appConfig;
+    const unsubscribe = subscriptions.subscribe("queryApp", {
+      params: {
+        interval: 1,
+        request: snakeCaseJsonSerialization({
+          wasmSmart: {
+            contract: addresses.dex,
+            msg: {
+              restingOrderBookState: {
+                baseDenom: pairId.baseDenom,
+                quoteDenom: pairId.quoteDenom,
               },
             },
-          }) as QueryRequest,
-        },
-        listener: (event) => {
-          type Event = { wasmSmart: RestingOrderBookState };
-          const { wasmSmart } = camelCaseJsonDeserialization<Event>(event);
+          },
+        }) as QueryRequest,
+      },
+      listener: (event) => {
+        type Event = { wasmSmart: RestingOrderBookState };
+        const { wasmSmart } = camelCaseJsonDeserialization<Event>(event);
 
-          setOrderBookState((prev) => {
-            if (prev) {
-              setPreviousPrice(
-                parseUnits(prev.midPrice as string, baseCoin.decimals - quoteCoin.decimals),
-              );
-            }
-            return wasmSmart;
-          });
-        },
-      });
-    })();
+        setOrderBookState((prev) => {
+          if (prev) {
+            setPreviousPrice(
+              parseUnits(prev.midPrice as string, baseCoin.decimals - quoteCoin.decimals),
+            );
+          }
+          return wasmSmart;
+        });
+      },
+    });
+
     return () => {
-      unsubscribe?.();
+      console.log("unsubscribing from order book", unsubscribe);
+      unsubscribe();
     };
-  }, [appConfig]);
+  }, [pairId, appConfig]);
 
   const [trades, setTrades] = useState<Trade[]>([]);
 
@@ -426,6 +430,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     setBucketSize,
     bucketSizeCoin,
     setBucketSizeCoin,
+    currentPrice,
     previousPrice,
     pair,
     pairId,
