@@ -13,6 +13,7 @@ services:
       - "{{ tailscale_ip }}:26657:26657"
       - "{{ tailscale_ip }}:26658:26658"
       - "{{ tailscale_ip }}:26660:26660"
+      - "{{ tailscale_ip }}:9187:9187"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - "{{ traefik_dir }}/config:/config:ro"
@@ -35,6 +36,7 @@ services:
       - --providers.file.directory=/config
       - --providers.file.watch=true
       - --entrypoints.traefik.address=:8888
+      - --entrypoints.devnet-db-metrics.address=:9187
       - --entrypoints.devnet-dango.address=:8080
       - --entrypoints.devnet-dango-metrics.address=:9191
       - --entrypoints.devnet-frontend.address=:8081

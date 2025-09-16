@@ -11,6 +11,7 @@
     - cometbft_rpc_port
     - cometbft_abci_port
     - cometbft_metrics_port
+    - db_metrics_port
 
 - name: Generate .env with the 0 ports
   become: true
@@ -27,6 +28,7 @@
     recreate: always
     services:
       - db
+      - postgres-prometheus
       - faucet-bot
       - clickhouse
       - dango
@@ -41,6 +43,7 @@
     docker port {{ deployment_name }}-cometbft-1 26657 | cut -d: -f2
     docker port {{ deployment_name }}-cometbft-1 26658 | cut -d: -f2
     docker port {{ deployment_name }}-cometbft-1 26660 | cut -d: -f2
+    docker port {{ deployment_name }}-postgres-prometheus-1 9187| cut -d: -f2
   register: assigned_ports
 
 - name: Set dango, dango_metrics and faucet port facts
@@ -52,6 +55,7 @@
     cometbft_rpc_port: "{{ assigned_ports.stdout_lines[4] }}"
     cometbft_abci_port: "{{ assigned_ports.stdout_lines[5] }}"
     cometbft_metrics_port: "{{ assigned_ports.stdout_lines[6] }}"
+    db_metrics_port: "{{ assigned_ports.stdout_lines[7] }}"
 
 - name: Generate .env with the right ports
   become: true

@@ -15,6 +15,7 @@ ports:
     cometbft_rpc_port: 26657
     cometbft_abci_port: 26658
     cometbft_metrics_port: 26660
+    db_metrics_port: 9187
     chain_id: "dev-6"
     # cometbft_abci_port: 26658
   devnet:
@@ -27,6 +28,7 @@ ports:
     cometbft_rpc_port: 26657
     cometbft_abci_port: 26658
     cometbft_metrics_port: 26660
+    db_metrics_port: 9187
     chain_id: "dev-9"
     # cometbft_abci_port: 26658
 

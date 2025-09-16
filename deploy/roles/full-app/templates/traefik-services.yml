@@ -32,6 +32,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_metrics_port }}"
+    {{ dango_network }}-db-metrics:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-postgres-prometheus-1:{{ db_metrics_port }}"
 
   routers:
     {{ dango_network }}-dango:
@@ -82,3 +86,8 @@ http:
         - "{{ dango_network }}-cometbft_metrics"
       service: "{{ dango_network }}-cometbft_metrics"
 
+    {{ dango_network }}-db-metrics:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-db-metrics"
+      service: "{{ dango_network }}-db-metrics"
