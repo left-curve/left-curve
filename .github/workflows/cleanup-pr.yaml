@@ -1,3 +1,5 @@
+name: Cleanup PR
+
 on:
   pull_request:
     types: [closed]
