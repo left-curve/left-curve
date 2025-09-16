@@ -11,7 +11,7 @@
       reviewers: []
       deployment_branch_policy: null
     status_code: [200, 201]
-    failed_when: false
+  failed_when: false
   loop:
     - "dango-frontend"
     - "dango-api"
