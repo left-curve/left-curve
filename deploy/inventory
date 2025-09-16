@@ -41,7 +41,6 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
 [traefik]
 100.96.253.40 ansible_user=debian
-100.122.37.57 ansible_user=debian
 
 [monitoring]
 100.122.37.57 hostname=ovh3 ansible_user=debian
