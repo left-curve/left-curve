@@ -1,5 +1,4 @@
 name: Cleanup Old GHCR Images
-
 on:
   schedule:
     # every day at 3am UTC
@@ -9,16 +8,8 @@ on:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: cli/gh-action@v2
-
-      - name: Authenticate GitHub CLI
-        run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Cleanup images
+      - name: Cleanup old container images
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -26,26 +17,111 @@ jobs:
         run: |
           set -e
 
-          IMAGES=("dango")
+          echo "Starting cleanup for repository: $REPO"
+          echo "Deleting images older than $DAYS days"
+          echo "Current date: $(date)"
+          echo "Cutoff date: $(date -d "-${DAYS} days")"
+          echo "====================================="
+
+          IMAGES=("left-curve%2Fdango" "left-curve%2Fdango-frontend")
+          TOTAL_PROCESSED=0
+          TOTAL_DELETED=0
+          TOTAL_SKIPPED=0
+          TOTAL_ERRORS=0
 
           for IMAGE in "${IMAGES[@]}"; do
-            echo "🧹 Cleaning $IMAGE..."
-            gh api -H "Accept: application/vnd.github+json" \
-              "/repos/${REPO}/packages/container/${IMAGE}/versions" |
-            jq -c '.[]' |
-            while read -r version; do
+            echo "🧹 Processing image: $IMAGE"
+
+            # Get all versions with error handling
+            echo "  Fetching versions..."
+            versions_response=$(gh api -H "Accept: application/vnd.github+json" \
+              "/orgs/left-curve/packages/container/${IMAGE}/versions" 2>&1) || {
+              echo "  ERROR: Failed to fetch versions for $IMAGE"
+              echo "  Response: $versions_response"
+              TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+              continue
+            }
+
+            # Count total versions
+            version_count=$(echo "$versions_response" | jq '. | length')
+            echo "  Found $version_count version(s)"
+
+            if [ "$version_count" -eq 0 ]; then
+              echo "  No versions found, skipping"
+              continue
+            fi
+
+            # Process each version
+            echo "$versions_response" | jq -c '.[]' | while read -r version; do
+              TOTAL_PROCESSED=$((TOTAL_PROCESSED + 1))
+
               CREATED=$(echo "$version" | jq -r '.created_at')
               ID=$(echo "$version" | jq -r '.id')
-              TAGS=$(echo "$version" | jq -r '.metadata.container.tags[]')
+              NAME=$(echo "$version" | jq -r '.name // "unnamed"')
 
-              if echo "$TAGS" | grep -q "^latest$"; then
-                echo "✅ Skipping version $ID (has tag: latest)"
+              # Get tags safely
+              TAGS=$(echo "$version" | jq -r '.metadata.container.tags[]? // empty' 2>/dev/null | tr '\n' ',' | sed 's/,$//')
+
+              echo "    Processing version: $ID (name: $NAME, tags: ${TAGS:-none}, created: $CREATED)"
+
+              # Skip if has latest tag
+              if echo "$version" | jq -r '.metadata.container.tags[]?' 2>/dev/null | grep -q "^latest$"; then
+                echo "      ✅ SKIP: Has 'latest' tag"
+                TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
                 continue
               fi
 
-              if [[ $(date -d "$CREATED" +%s) -lt $(date -d "-${DAYS} days" +%s) ]]; then
-                echo "🗑️  Deleting version ID $ID (created $CREATED)..."
-                gh api --method DELETE "/repos/${REPO}/packages/container/${IMAGE}/versions/$ID"
+              # Skip if has pr-X-latest pattern (preserve PR preview tags)
+              if echo "$version" | jq -r '.metadata.container.tags[]?' 2>/dev/null | grep -q "^pr-.*-latest$"; then
+                echo "      ✅ SKIP: Has PR preview tag"
+                TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+                continue
+              fi
+
+              # Check age
+              CREATED_TIMESTAMP=$(date -d "$CREATED" +%s 2>/dev/null) || {
+                echo "      ⚠️  SKIP: Invalid date format: $CREATED"
+                TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+                continue
+              }
+
+              CUTOFF_TIMESTAMP=$(date -d "-${DAYS} days" +%s)
+
+              if [ "$CREATED_TIMESTAMP" -lt "$CUTOFF_TIMESTAMP" ]; then
+                echo "      🗑️  DELETE: Image is older than $DAYS days"
+
+                delete_response=$(gh api --method DELETE \
+                  "/orgs/left-curve/packages/container/${IMAGE}/versions/$ID" 2>&1) || {
+                  echo "      ❌ ERROR: Failed to delete version $ID"
+                  echo "      Response: $delete_response"
+                  TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+                  continue
+                }
+
+                echo "      ✅ SUCCESS: Deleted version $ID"
+                TOTAL_DELETED=$((TOTAL_DELETED + 1))
+              else
+                echo "      ✅ SKIP: Image is newer than $DAYS days"
+                TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
               fi
             done
+
+            echo "  Completed processing $IMAGE"
+            echo
           done
+
+          echo "====================================="
+          echo "CLEANUP SUMMARY"
+          echo "====================================="
+          echo "Images processed: ${#IMAGES[@]}"
+          echo "Versions processed: $TOTAL_PROCESSED"
+          echo "Versions deleted: $TOTAL_DELETED"
+          echo "Versions skipped: $TOTAL_SKIPPED"
+          echo "Errors encountered: $TOTAL_ERRORS"
+
+          if [ $TOTAL_ERRORS -gt 0 ]; then
+            echo "⚠️  WARNING: Some operations failed. Check logs above."
+            exit 1
+          else
+            echo "✅ SUCCESS: Cleanup completed successfully"
+          fi

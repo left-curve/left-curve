@@ -14,42 +14,89 @@ jobs:
     steps:
       - name: Delete PR deployments
         run: |
+          set -e
+
+          echo "Starting deployment cleanup for PR ${{ github.event.pull_request.number }}"
+
           ENVIRONMENTS=("preview-dango-frontend" "preview-dango-api" "preview-dango-metrics" "preview-faucet-bot" "preview-cometbft-p2p" "preview-cometbft-rpc" "preview-cometbft-abci" "preview-cometbft-metrics")
+
+          TOTAL_DEACTIVATED=0
+          TOTAL_ERRORS=0
 
           for env in "${ENVIRONMENTS[@]}"; do
             echo "Checking environment: ${env}"
             page=1
+            env_deactivated=0
+
             while true; do
-              # Fetch page with per_page=100 to minimize requests
-              response=$(curl -s \
+              # Fetch deployments page
+              response=$(curl -s -w "%{http_code}" \
                 -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                 "https://api.github.com/repos/${{ github.repository }}/deployments?environment=${env}&page=${page}&per_page=100")
 
+              http_code="${response: -3}"
+              response_body="${response%???}"
+
+              if [ "$http_code" -ne 200 ]; then
+                echo "ERROR: Failed to fetch deployments for $env (HTTP $http_code)"
+                TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+                break
+              fi
+
               # Check if page is empty
-              if [ "$(echo "$response" | jq '. | length')" -eq 0 ]; then
+              if [ "$(echo "$response_body" | jq '. | length')" -eq 0 ]; then
                 break
               fi
 
               # Extract deployment IDs for this PR
-              DEPLOYMENT_IDS=$(echo "$response" | \
+              DEPLOYMENT_IDS=$(echo "$response_body" | \
                 jq -r --arg pr "PR ${{ github.event.pull_request.number }}" \
                   '.[] | select(.description | contains($pr)) | .id')
 
               # Deactivate deployments found on this page
               for id in $DEPLOYMENT_IDS; do
                 if [ "$id" != "null" ] && [ -n "$id" ]; then
-                  echo "Deactivating deployment ID: $id in environment: ${env}"
-                  curl -X POST \
+                  echo "  Deactivating deployment ID: $id"
+
+                  deactivate_response=$(curl -s -w "%{http_code}" -X POST \
                     -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                     -H "Accept: application/vnd.github.v3+json" \
                     "https://api.github.com/repos/${{ github.repository }}/deployments/${id}/statuses" \
-                    -d '{"state":"inactive","description":"PR closed - deployment deactivated"}'
+                    -d '{"state":"inactive","description":"PR closed - deployment deactivated"}')
+
+                  deactivate_code="${deactivate_response: -3}"
+                  if [ "$deactivate_code" -eq 200 ] || [ "$deactivate_code" -eq 201 ]; then
+                    echo "    SUCCESS: Deployment $id deactivated"
+                    env_deactivated=$((env_deactivated + 1))
+                    TOTAL_DEACTIVATED=$((TOTAL_DEACTIVATED + 1))
+                  else
+                    echo "    ERROR: Failed to deactivate deployment $id (HTTP $deactivate_code)"
+                    echo "    Response: ${deactivate_response%???}"
+                    TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+                  fi
                 fi
               done
 
               ((page++))
             done
+
+            if [ $env_deactivated -eq 0 ]; then
+              echo "  No deployments found for PR ${{ github.event.pull_request.number }}"
+            else
+              echo "  Deactivated $env_deactivated deployment(s) in $env"
+            fi
+            echo
           done
+
+          echo "=== DEPLOYMENT CLEANUP SUMMARY ==="
+          echo "Total deployments deactivated: $TOTAL_DEACTIVATED"
+          echo "Total errors: $TOTAL_ERRORS"
+
+          if [ $TOTAL_ERRORS -gt 0 ]; then
+            echo "WARNING: Some operations failed. Check logs above for details."
+          else
+            echo "SUCCESS: All deployments cleaned up successfully"
+          fi
 
       - name: Delete PR container images
         run: |
@@ -180,6 +227,18 @@ jobs:
       - name: Install collections
         run: |
           ansible-galaxy collection install -r deploy/requirements.yml
+
+      - name: Check DEPLOY_KEY is set
+        run: |
+          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+            echo "Missing DEPLOY_KEY secret"
+            exit 1
+          fi
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
 
       - name: Cleanup actual containers
         run: |
