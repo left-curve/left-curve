@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAccount } from "./useAccount.js";
 import { useBalances } from "./useBalances.js";
 import { useConfig } from "./useConfig.js";
@@ -9,25 +9,14 @@ import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 import { useQueryWithPagination } from "./useQueryWithPagination.js";
 import { useAppConfig } from "./useAppConfig.js";
+import { useOrderBookState } from "./useOrderBookState.js";
+import { useLiquidityDepthState } from "./useLiquidityDepthState.js";
 
 import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
 
-import type {
-  CreateOrderRequest,
-  Denom,
-  LiquidityDepth,
-  LiquidityDepthResponse,
-  PairId,
-  PriceOption,
-  QueryRequest,
-  RestingOrderBookState,
-  Trade,
-} from "@left-curve/dango/types";
+import type { CreateOrderRequest, PairId, PriceOption } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount } from "../types/coin.js";
+import { useLiveTradesState } from "./useLiveTradesState.js";
 
 export type UseProTradeStateParameters = {
   action: "buy" | "sell";
@@ -43,30 +32,6 @@ export type UseProTradeStateParameters = {
   };
 };
 
-function liquidityDepthMapper(parameters: {
-  coins: { base: AnyCoin; quote: AnyCoin };
-  price: string;
-  liquidityDepth: LiquidityDepth;
-  bucketSizeCoin: Denom;
-  accumulativeSize: string;
-}) {
-  const { coins, liquidityDepth, price, accumulativeSize, bucketSizeCoin } = parameters;
-  const { base, quote } = coins;
-
-  const isBase = bucketSizeCoin === base.symbol;
-
-  const parsedPrice = parseUnits(price, base.decimals - quote.decimals);
-  const size = Decimal(isBase ? liquidityDepth.depthBase : liquidityDepth.depthQuote).div(
-    Decimal(10).pow(isBase ? base.decimals : quote.decimals),
-  );
-
-  return {
-    price: parsedPrice,
-    size: size.toFixed(),
-    total: Decimal(accumulativeSize).plus(size).toFixed(),
-  };
-}
-
 export function useProTradeState(parameters: UseProTradeStateParameters) {
   const {
     controllers,
@@ -77,21 +42,20 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     orderType,
     onChangeOrderType,
   } = parameters;
-  const { inputs, setValue } = controllers;
-  const { account } = useAccount();
-  const { coins, subscriptions } = useConfig();
-  const { data: appConfig } = useAppConfig();
   const queryClient = useQueryClient();
   const publicClient = usePublicClient();
+
+  const { inputs, setValue } = controllers;
+  const { account } = useAccount();
+  const { coins } = useConfig();
+  const { data: appConfig } = useAppConfig();
   const { data: signingClient } = useSigningClient();
-  const [previousPrice, setPreviousPrice] = useState<string>("0");
 
   const { convertAmount, getPrice, isFetched } = usePrices();
 
   const [sizeCoin, setSizeCoin] = useState(coins.byDenom[pairId.quoteDenom]);
   const [operation, setOperation] = useState(orderType);
   const [action, setAction] = useState(initialAction);
-  const [orderBookState, setOrderBookState] = useState<RestingOrderBookState>();
 
   const { data: balances = {} } = useBalances({
     address: account?.address,
@@ -101,11 +65,21 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const [bucketSize, setBucketSize] = useState(pair.params.bucketSizes[0]);
 
+  const { liquidityDepthStore } = useLiquidityDepthState({
+    subscribe: true,
+    pairId,
+    bucketSize,
+  });
+
+  const { orderBookStore } = useOrderBookState({ pairId, subscribe: true });
+  const orderBookState = orderBookStore((s) => s.orderBook);
+
+  const { liveTradesStore } = useLiveTradesState({ pairId, subscribe: true });
+
   const changePairId = useCallback((pairId: PairId) => {
     onChangePairId(pairId);
     setSizeCoin(coins.byDenom[pairId.quoteDenom]);
     setValue("size", "");
-    setPreviousPrice("0");
   }, []);
 
   const changeAction = useCallback((action: "buy" | "sell") => {
@@ -161,10 +135,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       : convertAmount(availableCoin.amount, availableCoin.denom, sizeCoin.denom);
   }, [sizeCoin, availableCoin, needsConversion, priceValue]);
 
-  const currentPrice = useMemo(() => {
-    return parseUnits(orderBookState?.midPrice || "0", baseCoin.decimals - quoteCoin.decimals);
-  }, [orderBookState, baseCoin, quoteCoin]);
-
   const orders = useQuery({
     enabled: !!account,
     queryKey: ["ordersByUser", account?.address],
@@ -206,165 +176,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       quote: isQuoteSize ? sizeValue : Decimal(sizeValue).mulCeil(price).toFixed(),
     };
   }, [orderBookState, operation, sizeCoin, pairId, sizeValue, priceValue]);
-
-  useEffect(() => {
-    if (!appConfig) return;
-
-    const { addresses } = appConfig;
-    const unsubscribe = subscriptions.subscribe("queryApp", {
-      params: {
-        interval: 1,
-        request: snakeCaseJsonSerialization({
-          wasmSmart: {
-            contract: addresses.dex,
-            msg: {
-              restingOrderBookState: {
-                baseDenom: pairId.baseDenom,
-                quoteDenom: pairId.quoteDenom,
-              },
-            },
-          },
-        }) as QueryRequest,
-      },
-      listener: (event) => {
-        type Event = { wasmSmart: RestingOrderBookState };
-        const { wasmSmart } = camelCaseJsonDeserialization<Event>(event);
-
-        setOrderBookState((prev) => {
-          if (prev) {
-            setPreviousPrice(
-              parseUnits(prev.midPrice as string, baseCoin.decimals - quoteCoin.decimals),
-            );
-          }
-          return wasmSmart;
-        });
-      },
-    });
-
-    return () => {
-      console.log("unsubscribing from order book", unsubscribe);
-      unsubscribe();
-    };
-  }, [pairId, appConfig]);
-
-  const [trades, setTrades] = useState<Trade[]>([]);
-
-  const subscriptionRef = useRef<{
-    unsubscribe: ReturnType<typeof subscriptions.subscribe>;
-    pairSymbol: string;
-  } | null>(null);
-
-  useEffect(() => {
-    const pairSymbol = `${baseCoin.symbol}-${quoteCoin.symbol}`;
-    const shouldSubscribe = subscriptionRef.current?.pairSymbol !== pairSymbol;
-    if (!shouldSubscribe) return;
-    const unsubscribe = subscriptions.subscribe("trades", {
-      params: {
-        baseDenom: baseCoin.denom,
-        quoteDenom: quoteCoin.denom,
-      },
-      listener: ({ trades: trade }) => {
-        try {
-          setTrades((prev) => [trade, ...prev].slice(0, 50));
-        } catch (err) {
-          console.error(err);
-        }
-      },
-    });
-
-    subscriptionRef.current = { unsubscribe, pairSymbol };
-
-    return () => {
-      if (shouldSubscribe) return;
-      setTrades([]);
-      subscriptionRef.current?.unsubscribe();
-    };
-  }, [baseCoin, quoteCoin]);
-
-  type LiquidityDepthOverview = {
-    tota: string;
-    records: { price: string; size: string; total: string }[];
-  };
-
-  const [bucketSizeCoin, setBucketSizeCoin] = useState<string>(baseCoin.symbol);
-
-  const [liquidityDepth, setLiquidityDepth] = useState<{
-    asks: LiquidityDepthOverview;
-    bids: LiquidityDepthOverview;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!appConfig) return;
-    let unsubscribe: () => void;
-    (async () => {
-      const { addresses } = appConfig;
-      unsubscribe = subscriptions.subscribe("queryApp", {
-        params: {
-          interval: 1,
-          request: snakeCaseJsonSerialization({
-            wasmSmart: {
-              contract: addresses.dex,
-              msg: {
-                liquidityDepth: {
-                  baseDenom: baseCoin.denom,
-                  quoteDenom: quoteCoin.denom,
-                  bucketSize,
-                },
-              },
-            },
-          }) as QueryRequest,
-        },
-        listener: (event) => {
-          type Event = { wasmSmart: LiquidityDepthResponse };
-          const { wasmSmart: liquidityDepth } = camelCaseJsonDeserialization<Event>(event);
-
-          const bidDepth = liquidityDepth.bidDepth || [];
-          const askDepth = liquidityDepth.askDepth || [];
-
-          const asks = askDepth
-            .sort(([priceA], [priceB]) => (Decimal(priceA).gt(priceB) ? -1 : 1))
-            .reduce(
-              (acc, [price, liquidityDepth]) => {
-                const depth = liquidityDepthMapper({
-                  coins: { base: baseCoin, quote: quoteCoin },
-                  price,
-                  liquidityDepth,
-                  bucketSizeCoin,
-                  accumulativeSize: acc.total,
-                });
-                acc.records.push(depth);
-                acc.total = depth.total;
-                return acc;
-              },
-              Object.assign({ records: [], total: "0" }),
-            );
-
-          const bids = bidDepth
-            .sort(([priceA], [priceB]) => (Decimal(priceA).gt(priceB) ? -1 : 1))
-            .reduce(
-              (acc, [price, liquidityDepth]) => {
-                const depth = liquidityDepthMapper({
-                  coins: { base: baseCoin, quote: quoteCoin },
-                  price,
-                  liquidityDepth,
-                  bucketSizeCoin,
-                  accumulativeSize: acc.total,
-                });
-                acc.records.push(depth);
-                acc.total = depth.total;
-                return acc;
-              },
-              Object.assign({ records: [], total: "0" }),
-            );
-
-          setLiquidityDepth({ asks, bids });
-        },
-      });
-    })();
-    return () => {
-      unsubscribe?.();
-    };
-  }, [appConfig, bucketSizeCoin, bucketSize, baseCoin, quoteCoin]);
 
   useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
@@ -424,21 +235,17 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   });
 
   return {
-    trades,
-    liquidityDepth,
     bucketSize,
     setBucketSize,
-    bucketSizeCoin,
-    setBucketSizeCoin,
-    currentPrice,
-    previousPrice,
     pair,
     pairId,
     onChangePairId: changePairId,
     amount,
-    orderBookState,
     maxSizeAmount,
     availableCoin,
+    orderBookStore,
+    liveTradesStore,
+    liquidityDepthStore,
     baseCoin,
     quoteCoin,
     sizeCoin,

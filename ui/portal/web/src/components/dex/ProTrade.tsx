@@ -75,7 +75,11 @@ const ProTradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
   const { state } = useProTrade();
-  const { pairId, onChangePairId, currentPrice, previousPrice } = state;
+  const { pairId, onChangePairId, orderBookStore } = state;
+
+  const previousPrice = orderBookStore((s) => s.previousPrice);
+  const currentPrice = orderBookStore((s) => s.currentPrice);
+
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
