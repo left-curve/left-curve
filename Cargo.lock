@@ -7757,6 +7757,7 @@ dependencies = [
  "grug",
  "grug-testing",
  "indexer-disk-saver",
+ "metrics",
  "pyth-client",
  "pyth-lazer-client",
  "pyth-lazer-protocol",

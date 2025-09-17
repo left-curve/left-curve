@@ -9,9 +9,6 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[features]
-metrics = ["dep:metrics"]
-
 [dependencies]
 anyhow       = { workspace = true }
 dango-types  = { workspace = true }
@@ -20,7 +17,7 @@ grug-app     = { workspace = true }
 metrics      = { workspace = true, optional = true }
 prost        = { workspace = true }
 pyth-client  = { workspace = true }
-pyth-lazer   = { workspace = true }
+pyth-lazer   = { workspace = true, features = ["metrics"] }
 pyth-types   = { workspace = true }
 reqwest      = { workspace = true }
 tokio        = { workspace = true }

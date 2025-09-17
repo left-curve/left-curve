@@ -31,6 +31,9 @@ use {
     url::Url,
 };
 
+#[cfg(feature = "metrics")]
+use metrics::{counter, describe_counter, describe_histogram, histogram};
+
 pub const RESUBSCRIBE_ATTEMPTS: usize = 5;
 
 #[derive(Clone, Debug)]
@@ -48,6 +51,9 @@ impl PythClientLazer {
         U: IntoUrl,
         T: ToString,
     {
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
         Ok(PythClientLazer {
             endpoints: endpoints
                 .into_inner()
@@ -83,6 +89,9 @@ impl PythClientLazer {
     // Ignore the error here and analyze the data received from the stream: in case
     // we don't receive any data for a subscription, we will resubscribe.
     async fn connect(client: &mut PythLazerClient, subscribe_requests: Vec<SubscribeRequest>) {
+        #[cfg(feature = "metrics")]
+        counter!(pyth_types::metrics::PYTH_RECONNECTION_ATTEMPTS).increment(1);
+
         info!(
             "Sending subscription with {} requests",
             subscribe_requests.len()
@@ -328,17 +337,16 @@ impl PythClientLazer {
         buffer_capacity: usize,
         timeout: Duration,
     ) -> Option<usize> {
-        tokio::select! {
-            // The server is not sending any more data.
-            _ = tokio::time::sleep(timeout) => {
-                warn!("No new data received for {} milliseconds", timeout.as_millis());
+        match tokio::time::timeout(timeout, receiver.recv_many(buffer, buffer_capacity)).await {
+            Ok(data_count) => Some(data_count),
+            Err(_) => {
+                warn!(
+                    "No new data received for {} milliseconds",
+                    timeout.as_millis()
+                );
+
                 None
             },
-
-            // Read next data from stream.
-            data_count = receiver.recv_many(buffer, buffer_capacity) => {
-                Some(data_count)
-            }
         }
     }
 }
@@ -411,6 +419,9 @@ impl PythClientTrait for PythClientLazer {
             .map(|id| (*id, Instant::now()))
             .collect::<HashMap<_, _>>();
 
+        // Keep track of how long the stream works without issues.
+        let mut start_uptime = Instant::now();
+
         // Create the stream.
         let stream = stream! {
             loop {
@@ -424,15 +435,49 @@ impl PythClientTrait for PythClientLazer {
                 if to_resubscribe {
                     to_resubscribe = false;
 
-                    match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await
-                    {
-                        Ok(()) => {},
-                        Err(err) => {
-                            // If the subscription fails, wait for a while and try again.
-                            error!("Failed to reconnect: {}", err.to_string());
-                            sleep(Duration::from_millis(200)).await;
-                            continue;
-                        },
+
+                    let uptime = start_uptime.elapsed();
+                    info!("Uptime: {} seconds", uptime.as_secs());
+
+                    #[cfg(feature = "metrics")]
+                    histogram!(pyth_types::metrics::PYTH_UPTIME).record(uptime.as_secs_f64());
+
+                    info!("Resubscribing to Pyth Lazer...");
+                    let start_reconnection = Instant::now();
+
+                    loop{
+                        match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await
+                        {
+                            Ok(()) => {
+
+                                let reconnection_time = start_reconnection.elapsed();
+                                info!("Resubscribed successfully after {} seconds", reconnection_time.as_secs());
+
+                                #[cfg(feature = "metrics")]
+                                histogram!(pyth_types::metrics::PYTH_RECONNECTION_TIME).record(reconnection_time.as_secs_f64());
+
+                                start_uptime = Instant::now();
+
+                                // Reset the last data received time for each subscription ID.
+                                for id in subscription_ids.iter() {
+                                    last_data_received.insert(*id, Instant::now());
+                                }
+                                break
+                            },
+                            Err(err) => {
+
+                                // Check if the streaming has to be closed.
+                                if !keep_running.load(Ordering::Acquire) {
+                                    break;
+                                }
+
+                                // If the subscription fails, wait for a while and try again.
+                                error!("Failed to reconnect: {}", err.to_string());
+                                // TODO : Exponential backoff.
+                                sleep(Duration::from_millis(200)).await;
+                                continue;
+                            },
+                        }
                     }
                 }
 
@@ -452,6 +497,9 @@ impl PythClientTrait for PythClientLazer {
                     continue;
                 };
 
+                #[cfg(feature = "metrics")]
+                histogram!(pyth_types::metrics::PYTH_DATA_RECEIVED).record(data_count as f64);
+
                 // Analyze the data received.
                 Self::analyze_data(
                     &mut buffer,
@@ -461,8 +509,8 @@ impl PythClientTrait for PythClientLazer {
                 );
 
                 // Check if we haven't received data for some subscriptions for more than 3 seconds.
-                for (id, last_time) in last_data_received.iter() {
-                    if last_time.elapsed() > Duration::from_secs(3) {
+                for (id, last_update) in last_data_received.iter() {
+                    if last_update.elapsed() > Duration::from_secs(3) {
                         to_resubscribe = true;
                         warn!("No data received for subscription ID {id} for more than 3 seconds");
                     }
@@ -505,4 +553,27 @@ impl PythClientTrait for PythClientLazer {
     fn close(&mut self) {
         self.keep_running.store(false, Ordering::SeqCst);
     }
+}
+
+#[cfg(feature = "metrics")]
+pub fn init_metrics() {
+    describe_counter!(
+        pyth_types::metrics::PYTH_RECONNECTION_ATTEMPTS,
+        "Number of reconnection attempts made by the Pyth Lazer client"
+    );
+
+    describe_histogram!(
+        pyth_types::metrics::PYTH_RECONNECTION_TIME,
+        "Time (in seconds) it took to reconnect to Pyth Lazer after a disconnection"
+    );
+
+    describe_histogram!(
+        pyth_types::metrics::PYTH_UPTIME,
+        "Uptime (in seconds) of the Pyth Lazer connection without interruptions"
+    );
+
+    describe_histogram!(
+        pyth_types::metrics::PYTH_DATA_RECEIVED,
+        "Number of data messages received from Pyth Lazer"
+    );
 }
