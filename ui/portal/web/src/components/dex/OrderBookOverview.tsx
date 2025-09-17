@@ -205,8 +205,8 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const trades = liveTradesStore((s) => s.trades);
 
   return (
-    <div className="flex gap-2 flex-col items-center justify-start max-h-[23.1375rem] lg:max-h-[53.55vh] overflow-hidden">
-      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3">
+    <div className="flex gap-2 flex-col items-center justify-start max-h-[23.1375rem] lg:max-h-[53.55vh] overflow-y-scroll scrollbar-none overflow-x-hidden relative">
+      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-secondary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
