@@ -5,8 +5,7 @@ use {
     async_trait::async_trait,
     grug::{Inner, Lengthy, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
-    pyth_client::PythClientTrait,
-    pyth_types::{LeEcdsaMessage, PriceUpdate, PythLazerSubscriptionDetails},
+    pyth_types::{LeEcdsaMessage, PriceUpdate, PythClientTrait, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         collections::HashMap,
@@ -113,7 +112,7 @@ impl PythClientLazerCache {
             .expect("Workspace root not found");
 
         workspace_root
-            .join("pyth/client/testdata/lazer")
+            .join("pyth/lazer/testdata")
             .join(id.id.to_string())
     }
 }

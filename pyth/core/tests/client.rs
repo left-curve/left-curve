@@ -11,9 +11,9 @@ use {
     common_function::{test_latest_vaas, test_stream},
     futures::stream::{self, Stream},
     grug::{Inner, JsonSerExt, NonEmpty},
-    pyth_client::{PythClientCore, PythClientCoreCache, PythClientTrait},
+    pyth_core::{PythClientCore, PythClientCoreCache},
     pyth_types::{
-        LatestVaaBinaryResponse, LatestVaaResponse,
+        LatestVaaBinaryResponse, LatestVaaResponse, PythClientTrait,
         constants::{ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_URL},
     },
     rand::Rng,

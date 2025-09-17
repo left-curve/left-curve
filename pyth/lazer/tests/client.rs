@@ -12,7 +12,6 @@ use {
         routing::get,
     },
     grug::{Inner, NonEmpty, setup_tracing_subscriber},
-    pyth_client::PythClientTrait,
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
     pyth_lazer_protocol::{
         binary_update::BinaryWsUpdate,
@@ -20,7 +19,7 @@ use {
         subscription::{Request as SubscriptionRequest, SubscriptionId},
     },
     pyth_types::{
-        PythLazerSubscriptionDetails,
+        PythClientTrait, PythLazerSubscriptionDetails,
         constants::{
             ATOM_USD_ID_LAZER, BTC_USD_ID_LAZER, DOGE_USD_ID_LAZER, ETH_USD_ID_LAZER,
             LAZER_ENDPOINTS_TEST,

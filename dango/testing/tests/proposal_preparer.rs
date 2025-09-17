@@ -11,10 +11,10 @@ use {
         StorageQuerier, btree_map, setup_tracing_subscriber,
     },
     hex_literal::hex,
-    pyth_client::{PythClientCoreCache, PythClientTrait},
+    pyth_core::PythClientCoreCache,
     pyth_lazer::PythClientLazerCache,
     pyth_types::{
-        Channel, FixedRate, PythId, PythLazerSubscriptionDetails,
+        Channel, FixedRate, PythClientTrait, PythId, PythLazerSubscriptionDetails,
         constants::{BTC_USD_ID_LAZER, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER, PYTH_URL},
     },
     std::{

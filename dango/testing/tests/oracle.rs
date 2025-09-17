@@ -13,9 +13,9 @@ use {
         StorageQuerier, Timestamp, Udec128, btree_map,
     },
     grug_app::NaiveProposalPreparer,
-    pyth_client::{PythClientCoreCache, PythClientTrait},
+    pyth_core::PythClientCoreCache,
     pyth_types::{
-        Channel, LeEcdsaMessage, PriceUpdate, PythId, PythVaa,
+        Channel, LeEcdsaMessage, PriceUpdate, PythClientTrait, PythId, PythVaa,
         constants::{
             ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LAZER_TRUSTED_SIGNER,
             PYTH_URL, SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,

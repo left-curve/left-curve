@@ -6,9 +6,9 @@ use {
         oracle::{ExecuteMsg, InstantiateMsg, PriceSource, QueryPriceSourcesRequest},
     },
     grug::{Coins, HashExt, NonEmpty, QuerierExt, QuerierWrapper, ResultExt, btree_map},
-    pyth_client::{PythClientCoreCache, PythClientTrait},
+    pyth_core::PythClientCoreCache,
     pyth_types::{
-        Channel,
+        Channel, PythClientTrait,
         constants::{LAZER_ENDPOINTS_TEST, PYTH_URL},
     },
     std::{thread::sleep, time::Duration},

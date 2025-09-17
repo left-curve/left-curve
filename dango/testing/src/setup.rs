@@ -22,7 +22,7 @@ use {
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
-    pyth_client::PythClientCoreCache,
+    pyth_core::PythClientCoreCache,
     pyth_lazer::PythClientLazerCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,

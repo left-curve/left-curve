@@ -1,9 +1,9 @@
 use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
     grug::{Addr, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
-    pyth_client::{PythClientCore, PythClientCoreCache, PythClientTrait},
+    pyth_core::{PythClientCore, PythClientCoreCache},
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
-    pyth_types::{PriceUpdate, PythId, PythLazerSubscriptionDetails},
+    pyth_types::{PriceUpdate, PythClientTrait, PythId, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         fmt::Debug,

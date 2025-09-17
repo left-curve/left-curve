@@ -4,9 +4,10 @@ use {
     common_function::{test_latest_vaas, test_stream},
     grug::{Binary, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
-    pyth_client::{PYTH_CACHE_SAMPLES, PythClientCoreCache, PythClientTrait},
-    pyth_types::constants::{
-        ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_IDS_ALL, PYTH_URL,
+    pyth_core::{PYTH_CACHE_SAMPLES, PythClientCoreCache},
+    pyth_types::{
+        PythClientTrait,
+        constants::{ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_IDS_ALL, PYTH_URL},
     },
 };
 

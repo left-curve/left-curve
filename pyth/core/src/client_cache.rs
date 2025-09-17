@@ -1,10 +1,10 @@
 use {
-    crate::{PythClientCore, PythClientTrait, error},
+    crate::{PythClientCore, error},
     async_stream::stream,
     async_trait::async_trait,
     grug::{Binary, Inner, Lengthy, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
-    pyth_types::{PriceUpdate, PythId},
+    pyth_types::{PriceUpdate, PythClientTrait, PythId},
     reqwest::{IntoUrl, Url},
     std::{
         collections::HashMap,
@@ -114,7 +114,7 @@ impl PythClientCoreCache {
             .find(|p| p.join("Cargo.lock").exists())
             .expect("Workspace root not found");
 
-        workspace_root.join("pyth/client/testdata").join(id)
+        workspace_root.join("pyth/core/testdata").join(id)
     }
 }
 

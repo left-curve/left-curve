@@ -2,9 +2,9 @@ use {
     clap::{Parser, Subcommand},
     grug::Inner,
     grug_types::{JsonSerExt, MockApi, NonEmpty},
-    pyth_client::{PythClientCore, PythClientTrait},
+    pyth_core::PythClientCore,
     pyth_types::{
-        PythVaa,
+        PythClientTrait, PythVaa,
         constants::{BTC_USD_ID, ETH_USD_ID, PYTH_URL},
     },
     tokio_stream::StreamExt,

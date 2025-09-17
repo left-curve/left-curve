@@ -2,7 +2,6 @@ use {
     anyhow::bail,
     async_stream::stream,
     grug::{Inner, Lengthy, NonEmpty},
-    pyth_client::PythClientTrait,
     pyth_lazer_client::{
         client::{PythLazerClient, PythLazerClientBuilder},
         ws_connection::AnyResponse,
@@ -15,7 +14,7 @@ use {
         },
         subscription::{Response, SubscribeRequest, SubscriptionId},
     },
-    pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
+    pyth_types::{PriceUpdate, PythClientTrait, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         collections::HashMap,

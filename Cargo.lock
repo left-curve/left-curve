@@ -3417,7 +3417,7 @@ dependencies = [
  "indexer-httpd",
  "indexer-sql",
  "metrics-exporter-prometheus",
- "pyth-client",
+ "pyth-core",
  "pyth-types",
  "rand 0.8.5",
  "sentry",
@@ -3664,7 +3664,7 @@ dependencies = [
  "grug-app",
  "metrics",
  "prost",
- "pyth-client",
+ "pyth-core",
  "pyth-lazer",
  "pyth-types",
  "reqwest 0.12.15",
@@ -3760,7 +3760,7 @@ dependencies = [
  "k256",
  "metrics-exporter-prometheus",
  "proptest",
- "pyth-client",
+ "pyth-core",
  "pyth-lazer",
  "pyth-types",
  "rand 0.8.5",
@@ -7723,7 +7723,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyth-client"
+name = "pyth-core"
 version = "0.0.0"
 dependencies = [
  "anyhow",
@@ -7758,7 +7758,7 @@ dependencies = [
  "grug-testing",
  "indexer-disk-saver",
  "metrics",
- "pyth-client",
+ "pyth-core",
  "pyth-lazer-client",
  "pyth-lazer-protocol",
  "pyth-types",
@@ -7843,6 +7843,7 @@ name = "pyth-types"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "byteorder",
  "data-encoding",
  "grug",
@@ -7850,6 +7851,7 @@ dependencies = [
  "pyth-lazer-protocol",
  "pyth-sdk 0.8.0",
  "pythnet-sdk",
+ "tokio-stream",
 ]
 
 [[package]]

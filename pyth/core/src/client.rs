@@ -1,9 +1,9 @@
 use {
-    crate::{PythClientTrait, error},
+    crate::error,
     async_stream::stream,
     async_trait::async_trait,
     grug::{Inner, JsonDeExt, Lengthy, NonEmpty},
-    pyth_types::{LatestVaaResponse, PriceUpdate, PythId},
+    pyth_types::{LatestVaaResponse, PriceUpdate, PythClientTrait, PythId},
     reqwest::{Client, IntoUrl, Url},
     reqwest_eventsource::{Event, EventSource, retry::ExponentialBackoff},
     std::{
