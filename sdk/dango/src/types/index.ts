@@ -149,6 +149,8 @@ export type {
   TimeInForceOptions,
   OrderTypes,
   RestingOrderBookState,
+  LiquidityDepth,
+  LiquidityDepthResponse,
 } from "./dex.js";
 
 export type { WithPrice } from "./utils.js";

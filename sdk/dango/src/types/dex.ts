@@ -192,6 +192,14 @@ export type DexExecuteMsg =
         baseDenom: string;
         quoteDenom: string;
       };
+    }
+  | {
+      liquidityDepth: {
+        baseDenom: Denom;
+        quoteDenom: Denom;
+        bucketSize: string;
+        limit: Option<number>;
+      };
     };
 
 export type GetDexExecuteMsg<K extends KeyOfUnion<DexExecuteMsg>> = ExtractFromUnion<
@@ -256,6 +264,16 @@ export type OrdersByUserResponse = {
   remaining: string;
 };
 
+export type LiquidityDepth = {
+  depthBase: string;
+  depthQuote: string;
+};
+
+export type LiquidityDepthResponse = {
+  bidDepth: Option<Array<[string, LiquidityDepth]>>;
+  askDepth: Option<Array<[string, LiquidityDepth]>>;
+};
+
 export const CurveInvariant = {
   XYK: "xyk",
 } as const;
@@ -269,6 +287,8 @@ export type PairParams = {
   curveInvariant: CurveInvariants;
   /**  Fee rate for instant swaps in the passive liquidity pool. */
   swapFeeRate: string;
+  /** Price buckets for the liquidity depth chart. */
+  bucketSizes: string[];
 };
 
 export type PairUpdate = {

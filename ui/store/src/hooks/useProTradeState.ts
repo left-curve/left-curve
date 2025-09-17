@@ -8,22 +8,15 @@ import { usePublicClient } from "./usePublicClient.js";
 import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 import { useQueryWithPagination } from "./useQueryWithPagination.js";
+import { useAppConfig } from "./useAppConfig.js";
+import { useOrderBookState } from "./useOrderBookState.js";
+import { useLiquidityDepthState } from "./useLiquidityDepthState.js";
 
 import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
-import {
-  camelCaseJsonDeserialization,
-  snakeCaseJsonSerialization,
-} from "@left-curve/dango/encoding";
 
-import type {
-  CreateOrderRequest,
-  PairId,
-  PriceOption,
-  QueryRequest,
-  QueryResponse,
-  RestingOrderBookState,
-} from "@left-curve/dango/types";
+import type { CreateOrderRequest, PairId, PriceOption } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount } from "../types/coin.js";
+import { useLiveTradesState } from "./useLiveTradesState.js";
 
 export type UseProTradeStateParameters = {
   action: "buy" | "sell";
@@ -49,11 +42,13 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     orderType,
     onChangeOrderType,
   } = parameters;
-  const { inputs, setValue } = controllers;
-  const { account } = useAccount();
-  const { coins, subscriptions, getAppConfig } = useConfig();
   const queryClient = useQueryClient();
   const publicClient = usePublicClient();
+
+  const { inputs, setValue } = controllers;
+  const { account } = useAccount();
+  const { coins } = useConfig();
+  const { data: appConfig } = useAppConfig();
   const { data: signingClient } = useSigningClient();
 
   const { convertAmount, getPrice, isFetched } = usePrices();
@@ -61,11 +56,25 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   const [sizeCoin, setSizeCoin] = useState(coins.byDenom[pairId.quoteDenom]);
   const [operation, setOperation] = useState(orderType);
   const [action, setAction] = useState(initialAction);
-  const [orderBookState, setOrderBookState] = useState<RestingOrderBookState>();
 
   const { data: balances = {} } = useBalances({
     address: account?.address,
   });
+
+  const pair = appConfig?.pairs[pairId.baseDenom]!;
+
+  const [bucketSize, setBucketSize] = useState(pair.params.bucketSizes[0]);
+
+  const { liquidityDepthStore } = useLiquidityDepthState({
+    subscribe: true,
+    pairId,
+    bucketSize,
+  });
+
+  const { orderBookStore } = useOrderBookState({ pairId, subscribe: true });
+  const orderBookState = orderBookStore((s) => s.orderBook);
+
+  const { liveTradesStore } = useLiveTradesState({ pairId, subscribe: true });
 
   const changePairId = useCallback((pairId: PairId) => {
     onChangePairId(pairId);
@@ -169,36 +178,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   }, [orderBookState, operation, sizeCoin, pairId, sizeValue, priceValue]);
 
   useEffect(() => {
-    let unsubscribe: () => void;
-    (async () => {
-      const { addresses } = await getAppConfig();
-      unsubscribe = subscriptions.subscribe("queryApp", {
-        params: {
-          request: snakeCaseJsonSerialization({
-            wasmSmart: {
-              contract: addresses.dex,
-              msg: {
-                restingOrderBookState: {
-                  baseDenom: pairId.baseDenom,
-                  quoteDenom: pairId.quoteDenom,
-                },
-              },
-            },
-          }) as QueryRequest,
-        },
-        listener: (event) => {
-          type Event = Extract<QueryResponse, { wasmSmart: unknown }>;
-          const { wasmSmart: orderBookState } = camelCaseJsonDeserialization<Event>(event);
-          setOrderBookState(orderBookState as RestingOrderBookState);
-        },
-      });
-    })();
-    return () => {
-      unsubscribe?.();
-    };
-  }, []);
-
-  useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
   }, [isFetched, pairId]);
 
@@ -256,12 +235,17 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   });
 
   return {
+    bucketSize,
+    setBucketSize,
+    pair,
     pairId,
     onChangePairId: changePairId,
     amount,
-    orderBookState,
     maxSizeAmount,
     availableCoin,
+    orderBookStore,
+    liveTradesStore,
+    liquidityDepthStore,
     baseCoin,
     quoteCoin,
     sizeCoin,
