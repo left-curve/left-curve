@@ -95,10 +95,8 @@ export function formatNumber(_amount_: number | string, options: FormatNumberOpt
     intlOptions.maximumFractionDigits = maximumTotalDigits - integerDigits;
   }
 
-  if (minimumTotalDigits > integerDigits) {
-    intlOptions.minimumFractionDigits = minimumTotalDigits;
-  } else {
-    intlOptions.minimumFractionDigits = minimumTotalDigits - integerDigits;
+  if (minimumTotalDigits) {
+    intlOptions.minimumFractionDigits = Math.min(minimumTotalDigits, maximumTotalDigits);
   }
 
   return new Intl.NumberFormat(language, intlOptions)
