@@ -70,7 +70,7 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
       <div className={base({ className: classNames?.base })}>
         <NativeSelect classNames={classNames}>{children}</NativeSelect>
 
-        <div className="hidden md:block relative w-full test" ref={selectRef}>
+        <div className="hidden md:block relative w-full" ref={selectRef}>
           <button
             type="button"
             onClick={() => !isDisabled && setIsOpen((prev) => !prev)}
@@ -191,7 +191,7 @@ const selectVariants = tv({
   slots: {
     base: "group inline-flex flex-col relative w-fit transition-all duration-500 leading-none",
     listboxWrapper:
-      "overflow-hidden max-h-[12rem] w-full transition-all z-50 shadow-account-card bg-surface-secondary-rice absolute min-w-full w-max",
+      "overflow-hidden max-h-[12rem] transition-all z-50 shadow-account-card bg-surface-secondary-rice absolute min-w-full w-max",
     listBoxContainer:
       "max-h-[12rem] outline-none gap-1 flex flex-col scrollbar-none overflow-auto min-w-full w-max",
     listBoxItem: "outline-none cursor-pointer flex items-center transition-all leading-none",
