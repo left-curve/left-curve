@@ -25,6 +25,7 @@ export type UseProTradeStateParameters = {
   onChangeOrderType: (order_type: "limit" | "market") => void;
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
+  bucketRecords: number;
   controllers: {
     inputs: Record<string, { value: string }>;
     reset: () => void;
@@ -41,6 +42,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     action: initialAction,
     orderType,
     onChangeOrderType,
+    bucketRecords,
   } = parameters;
   const queryClient = useQueryClient();
   const publicClient = usePublicClient();
@@ -69,6 +71,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     subscribe: true,
     pairId,
     bucketSize,
+    bucketRecords,
   });
 
   const { orderBookStore } = useOrderBookState({ pairId, subscribe: true });

@@ -220,7 +220,7 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
   }, [pairSymbol]);
 
   return (
-    <div className="w-full min-h-[23.1375rem] lg:min-h-[52vh] h-full relative">
+    <div className="w-full min-h-[23.1375rem] lg:min-h-[33.875rem] h-full relative">
       <cq-context ref={container} className="chart-context">
         <cq-chart-instructions />
 

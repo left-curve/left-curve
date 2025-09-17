@@ -30,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   return (
     <header
       className={twMerge(
-        "fixed bottom-0 lg:top-0 left-0 right-0 bg-transparent z-50 transition-all",
+        "fixed bottom-0 lg:top-0 left-0 right-0 bg-transparent z-50 transition-all w-full",
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",

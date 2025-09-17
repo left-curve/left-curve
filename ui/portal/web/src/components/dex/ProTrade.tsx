@@ -58,9 +58,12 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
 }) => {
   const controllers = useInputs();
 
+  const { isLg } = useMediaQuery();
+
   const state = useProTradeState({
     controllers,
     pairId,
+    bucketRecords: isLg ? 11 : 16,
     onChangePairId,
     action,
     onChangeAction,
@@ -90,7 +93,7 @@ const ProTradeHeader: React.FC = () => {
   return (
     <div className="flex bg-surface-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between shadow-account-card z-20 lg:z-10">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
-        <div className="flex lg:flex-col gap-2">
+        <div className="flex lg:flex-col gap-[2px]">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
           <div className="lg:pl-8">
             <Badge text="Spot" color="blue" size="s" />
@@ -187,7 +190,7 @@ const ProTradeChart: React.FC = () => {
 
   const Chart = (
     <Suspense fallback={<Spinner color="pink" size="md" />}>
-      <div className="flex w-full h-full lg:min-h-[52vh]" id="chart-container">
+      <div className="flex w-full lg:min-h-[33.875rem] h-full" id="chart-container">
         <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
           <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
         </ErrorBoundary>
