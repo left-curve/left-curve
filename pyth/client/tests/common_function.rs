@@ -96,18 +96,17 @@ pub fn test_latest_vaas<P, I>(pyth_client: P, ids: I)
 where
     P: PythClientTrait + Debug,
     P::Error: Debug,
-    I: IntoIterator + Clone + Lengthy,
-    I::Item: ToString,
+    I: IntoIterator<Item = P::PythId> + Clone + Lengthy,
 {
     let mut vaas_checker = VaasChecker::new(ids.clone());
     let ids = NonEmpty::new(ids).unwrap();
 
     for _ in 0..5 {
         // Retrieve the latest vaas.
-        let vaas = pyth_client.get_latest_vaas(ids.clone()).unwrap();
+        let price_update = pyth_client.get_latest_price_update(ids.clone()).unwrap();
 
         // Update the values with new ones.
-        vaas_checker.update_values(vaas);
+        vaas_checker.update_values(price_update.try_into_core().unwrap().into_inner());
 
         sleep(Duration::from_millis(400));
     }
@@ -121,21 +120,21 @@ pub async fn test_stream<P, I>(mut client: P, ids1: I, ids2: I)
 where
     P: PythClientTrait + Debug,
     P::Error: Debug,
-    I: IntoIterator + Clone + Lengthy + Send + 'static,
-    I::Item: ToString,
+    I: IntoIterator<Item = P::PythId> + Clone + Lengthy + Send + 'static,
 {
     let mut vaas_checker = VaasChecker::new(ids1.clone());
     let mut stream = client.stream(NonEmpty::new_unchecked(ids1)).await.unwrap();
     let mut not_none_vaas = 0;
 
     while not_none_vaas < 5 {
-        if let Some(vaas) = stream.next().await {
+        if let Some(price_update) = stream.next().await {
             not_none_vaas += 1;
-            vaas_checker.update_values(vaas);
+
+            vaas_checker.update_values(price_update.try_into_core().unwrap().into_inner());
         }
     }
 
-    // Asset that the prices and publish times have changed at least once.
+    // Assert that the prices and publish times have changed at least once.
     vaas_checker.assert_changes();
 
     // Close the stream.
@@ -156,9 +155,9 @@ where
     let mut not_none_vaas = 0;
 
     while not_none_vaas < 5 {
-        if let Some(vaas) = stream.next().await {
+        if let Some(price_update) = stream.next().await {
             not_none_vaas += 1;
-            vaas_checker.update_values(vaas);
+            vaas_checker.update_values(price_update.try_into_core().unwrap().into_inner());
         }
     }
 

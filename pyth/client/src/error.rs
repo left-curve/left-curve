@@ -1,4 +1,4 @@
-use {thiserror::Error, url::ParseError};
+use {grug::StdError, thiserror::Error, url::ParseError};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -7,4 +7,7 @@ pub enum Error {
 
     #[error(transparent)]
     ParseErrorUrl(#[from] ParseError),
+
+    #[error(transparent)]
+    StdError(#[from] StdError),
 }

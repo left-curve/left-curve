@@ -1,7 +1,7 @@
 use {
     crate::oracle::{PrecisionedPrice, PriceSource},
-    grug::{Binary, Denom, NonEmpty},
-    pyth_types::{GuardianSet, GuardianSetIndex},
+    grug::{Binary, Denom, Timestamp},
+    pyth_types::{GuardianSet, GuardianSetIndex, PriceUpdate},
     std::collections::BTreeMap,
 };
 
@@ -16,7 +16,14 @@ pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
     RegisterPriceSources(BTreeMap<Denom, PriceSource>),
     /// Submit price data from Pyth Network.
-    FeedPrices(NonEmpty<Vec<Binary>>),
+    FeedPrices(PriceUpdate),
+    /// Set a trusted signer for Pyth Lazer.
+    SetTrustedSigner {
+        public_key: Binary,
+        expires_at: Timestamp,
+    },
+    /// Remove a trusted signer for Pyth Lazer.
+    RemoveTrustedSigner { public_key: Binary },
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -46,6 +53,12 @@ pub enum QueryMsg {
     #[returns(BTreeMap<GuardianSetIndex, GuardianSet>)]
     GuardianSets {
         start_after: Option<GuardianSetIndex>,
+        limit: Option<u32>,
+    },
+    /// Query the trusted signers for Pyth Lazer.
+    #[returns(BTreeMap<Binary, Timestamp>)]
+    TrustedSigners {
+        start_after: Option<Binary>,
         limit: Option<u32>,
     },
 }

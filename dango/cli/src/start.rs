@@ -1,6 +1,6 @@
 use {
     crate::{
-        config::{Config, GrugConfig, HttpdConfig, TendermintConfig},
+        config::{Config, GrugConfig, HttpdConfig, PythLazerConfig, TendermintConfig},
         home_directory::HomeDirectory,
     },
     anyhow::anyhow,
@@ -105,7 +105,14 @@ impl StartCmd {
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, hooked_indexer)
+                    self.run_with_indexer(
+                        cfg.grug,
+                        cfg.tendermint,
+                        cfg.pyth,
+                        db,
+                        vm,
+                        hooked_indexer
+                    )
                 )?;
             },
             (true, true, false) => {
@@ -123,7 +130,14 @@ impl StartCmd {
 
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, hooked_indexer)
+                    self.run_with_indexer(
+                        cfg.grug,
+                        cfg.tendermint,
+                        cfg.pyth,
+                        db,
+                        vm,
+                        hooked_indexer
+                    )
                 )?;
             },
             (true, false, true) => {
@@ -141,7 +155,14 @@ impl StartCmd {
 
                 tokio::try_join!(
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, hooked_indexer)
+                    self.run_with_indexer(
+                        cfg.grug,
+                        cfg.tendermint,
+                        cfg.pyth,
+                        db,
+                        vm,
+                        hooked_indexer
+                    )
                 )?;
             },
             (true, false, false) => {
@@ -157,7 +178,7 @@ impl StartCmd {
                     )
                     .await?;
 
-                self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, hooked_indexer)
+                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, hooked_indexer)
                     .await?;
             },
             (false, true, false) => {
@@ -165,7 +186,7 @@ impl StartCmd {
                 let httpd_context = HttpdContext::new(Arc::new(app));
                 tokio::try_join!(
                     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, NullIndexer)
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
                 )?;
             },
             (false, true, true) => {
@@ -173,13 +194,13 @@ impl StartCmd {
                 let httpd_context = HttpdContext::new(Arc::new(app));
                 tokio::try_join!(
                     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, NullIndexer),
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer),
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler)
                 )?;
             },
             (false, false, _) => {
                 // No indexer, no HTTP server
-                self.run_with_indexer(cfg.grug, cfg.tendermint, db, vm, NullIndexer)
+                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
                     .await?;
             },
         }
@@ -318,6 +339,7 @@ impl StartCmd {
         self,
         grug_cfg: GrugConfig,
         tendermint_cfg: TendermintConfig,
+        pyth_lazer_cfg: PythLazerConfig,
         db: DiskDbLite,
         vm: HybridVm,
         indexer: ID,
@@ -328,7 +350,7 @@ impl StartCmd {
         let app = App::new(
             db,
             vm,
-            ProposalPreparer::new(),
+            ProposalPreparer::new_with_lazer(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
             indexer,
             grug_cfg.query_gas_limit,
             None, // currently there's no chain upgrade

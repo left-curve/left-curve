@@ -23,6 +23,7 @@ use {
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
+    pyth_types::PriceUpdate,
     std::{
         cmp::min,
         fmt::Display,
@@ -98,9 +99,9 @@ fn feed_oracle_price(
         .execute(
             &mut accounts.owner,
             contracts.oracle,
-            &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
+            &oracle::ExecuteMsg::FeedPrices(PriceUpdate::Core(NonEmpty::new_unchecked(vec![
                 Binary::from_str(vaa).unwrap(),
-            ])),
+            ]))),
             Coins::default(),
         )
         .should_succeed();
@@ -890,7 +891,7 @@ fn test_denom(index: usize) -> impl Strategy<Value = TestDenom> {
     )
         .prop_map(|(denom, precision, price)| TestDenom {
             denom,
-            initial_price: PrecisionlessPrice::new(price, price, Timestamp::from_seconds(0))
+            initial_price: PrecisionlessPrice::new(price, Timestamp::from_seconds(0))
                 .with_precision(precision),
         })
 }

@@ -1,12 +1,17 @@
 use {
-    crate::pyth_handler::PythHandler,
+    crate::{QueryPythId, pyth_handler::PythHandler},
     dango_types::{config::AppConfig, oracle::ExecuteMsg},
-    grug::{Coins, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError, Tx},
+    grug::{
+        Coins, Json, JsonSerExt, Lengthy, Message, NonEmpty, QuerierExt, QuerierWrapper, StdError,
+        Tx,
+    },
     prost::bytes::Bytes,
-    pyth_client::{PythClient, PythClientCache, PythClientTrait},
-    pyth_types::constants::PYTH_URL,
+    pyth_client::{PythClientCore, PythClientCoreCache, PythClientTrait},
+    pyth_lazer::{PythClientLazer, PythClientLazerCache},
+    pyth_types::constants::{LAZER_ENDPOINTS_TEST, PYTH_URL},
+    reqwest::IntoUrl,
     std::{fmt::Debug, sync::Mutex},
-    tracing::error,
+    tracing::{error, warn},
 };
 #[cfg(feature = "metrics")]
 use {
@@ -16,23 +21,29 @@ use {
 
 const GAS_LIMIT: u64 = 50_000_000;
 
-pub struct ProposalPreparer<P> {
+pub struct ProposalPreparer<P>
+where
+    P: PythClientTrait,
+{
     // `Option` to be able to not clone the `PythHandler`.
     pyth_handler: Option<Mutex<PythHandler<P>>>,
 }
 
-impl<P> Clone for ProposalPreparer<P> {
+impl<P> Clone for ProposalPreparer<P>
+where
+    P: PythClientTrait,
+{
     fn clone(&self) -> Self {
         Self { pyth_handler: None }
     }
 }
 
-impl ProposalPreparer<PythClient> {
+impl ProposalPreparer<PythClientCore> {
     pub fn new() -> Self {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new(PYTH_URL);
+        let client = PythHandler::new_with_core(PYTH_URL);
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
@@ -40,18 +51,63 @@ impl ProposalPreparer<PythClient> {
     }
 }
 
-impl Default for ProposalPreparer<PythClient> {
+impl Default for ProposalPreparer<PythClientCore> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ProposalPreparer<PythClientCache> {
+impl ProposalPreparer<PythClientCoreCache> {
     pub fn new_with_cache() -> Self {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new_with_cache(PYTH_URL);
+        let client = PythHandler::new_with_core_cache(PYTH_URL);
+
+        Self {
+            pyth_handler: Some(Mutex::new(client)),
+        }
+    }
+}
+
+impl ProposalPreparer<PythClientLazer> {
+    pub fn new_with_lazer<V, U, T>(endpoints: V, access_token: T) -> Self
+    where
+        V: IntoIterator<Item = U> + Lengthy,
+        U: IntoUrl,
+        T: ToString,
+    {
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
+        let mut client = None;
+
+        if access_token.to_string().is_empty() {
+            warn!("Access token for Pyth Lazer is empty, oracle feeding will be disabled");
+        } else if endpoints.length() == 0 {
+            warn!("Endpoints for Pyth Lazer not provided, oracle feeding will be disabled");
+        } else {
+            client = Some(Mutex::new(PythHandler::new_with_lazer(
+                NonEmpty::new(endpoints).unwrap(),
+                access_token,
+            )))
+        }
+
+        Self {
+            pyth_handler: client,
+        }
+    }
+}
+
+impl ProposalPreparer<PythClientLazerCache> {
+    pub fn new_with_lazer_cache() -> Self {
+        #[cfg(feature = "metrics")]
+        init_metrics();
+
+        let client = PythHandler::new_with_lazer_cache(
+            NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
+            "lazer_token",
+        );
 
         Self {
             pyth_handler: Some(Mutex::new(client)),
@@ -61,7 +117,7 @@ impl ProposalPreparer<PythClientCache> {
 
 impl<P> grug_app::ProposalPreparer for ProposalPreparer<P>
 where
-    P: PythClientTrait + Send + 'static,
+    P: PythClientTrait + QueryPythId + Send + 'static,
     P::Error: Debug,
 {
     type Error = StdError;
@@ -77,6 +133,11 @@ where
 
         let cfg: AppConfig = querier.query_app_config()?;
 
+        // Check if the PythHandler is initialized.
+        if self.pyth_handler.is_none() {
+            return Ok(txs);
+        }
+
         // Should we find a way to start and connect the PythClientPPHandler at startup?
         // How to know which ids should be used?
         let mut pyth_handler = self.pyth_handler.as_ref().unwrap().lock().unwrap();
@@ -86,13 +147,13 @@ where
             error!("Failed to update Pyth stream: {:?}", err);
         }
 
-        // Retrieve the VAAs.
-        let vaas = pyth_handler.fetch_latest_vaas();
+        // Retrieve the PriceUpdate.
+        let maybe_price_update = pyth_handler.fetch_latest_price_update();
 
-        // Return if there are no VAAs to feed.
-        if vaas.is_empty() {
+        // Return if there are no new prices to feed.
+        let Some(price_update) = maybe_price_update else {
             return Ok(txs);
-        }
+        };
 
         // Build the tx.
         let tx = Tx {
@@ -100,7 +161,7 @@ where
             gas_limit: GAS_LIMIT,
             msgs: NonEmpty::new_unchecked(vec![Message::execute(
                 cfg.addresses.oracle,
-                &ExecuteMsg::FeedPrices(NonEmpty::new(vaas)?),
+                &ExecuteMsg::FeedPrices(price_update),
                 Coins::new(),
             )?]),
             data: Json::null(),
