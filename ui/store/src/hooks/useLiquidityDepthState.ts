@@ -21,14 +21,16 @@ function liquidityDepthMapper(parameters: {
   records: [string, LiquidityDepth][];
   coins: { base: AnyCoin; quote: AnyCoin };
   bucketSizeCoin: "base" | "quote";
+  bucketRecords: number;
 }) {
-  const { coins, records, bucketSizeCoin } = parameters;
+  const { coins, records, bucketSizeCoin, bucketRecords } = parameters;
   const { base, quote } = coins;
 
   const isBase = bucketSizeCoin === "base";
 
   return records
     .sort(([priceA], [priceB]) => (Decimal(priceA).gt(priceB) ? -1 : 1))
+    .slice(0, bucketRecords)
     .reduce(
       (acc, [price, liquidityDepth]) => {
         const parsedPrice = parseUnits(price, base.decimals - quote.decimals);
@@ -76,11 +78,12 @@ const liquidityDepthStore = create<LiquidityDepthStoreState>((set) => ({
 type UseLiquidityDepthStateParameters = {
   pairId: PairId;
   subscribe?: boolean;
+  bucketRecords: number;
   bucketSize: string;
 };
 
 export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParameters) {
-  const { pairId, subscribe, bucketSize } = parameters;
+  const { pairId, subscribe, bucketSize, bucketRecords } = parameters;
   const { subscriptions, coins } = useConfig();
   const { data: appConfig } = useAppConfig();
 
@@ -116,19 +119,21 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
           records: liquidityDepth.askDepth || [],
           coins: { base: baseCoin, quote: quoteCoin },
           bucketSizeCoin,
+          bucketRecords,
         });
 
         const bids = liquidityDepthMapper({
           records: liquidityDepth.bidDepth || [],
           coins: { base: baseCoin, quote: quoteCoin },
           bucketSizeCoin,
+          bucketRecords,
         });
 
         setLiquidityDepth({ asks, bids });
       },
     });
     return unsubscribe;
-  }, [appConfig, bucketSizeCoin, bucketSize, baseCoin, quoteCoin, subscribe]);
+  }, [appConfig, bucketRecords, bucketSizeCoin, bucketSize, baseCoin, quoteCoin, subscribe]);
 
   return { liquidityDepthStore };
 }
