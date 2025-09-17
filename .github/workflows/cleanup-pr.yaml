@@ -53,47 +53,122 @@ jobs:
 
       - name: Delete PR container images
         run: |
-          # Get PR commits
-          PR_COMMITS=$(curl -s \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits" \
-            | jq -r '.[].sha')
+          set -e  # Exit on any error
 
-          # Function to delete images by tag
+          echo "Starting cleanup for PR ${{ github.event.pull_request.number }}"
+
+          # Get PR commits with error handling
+          echo "Fetching PR commits..."
+          PR_COMMITS_RESPONSE=$(curl -s -w "%{http_code}" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits")
+
+          HTTP_CODE="${PR_COMMITS_RESPONSE: -3}"
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "ERROR: Failed to fetch PR commits (HTTP $HTTP_CODE)"
+            echo "Response: ${PR_COMMITS_RESPONSE%???}"
+            exit 1
+          fi
+
+          PR_COMMITS=$(echo "${PR_COMMITS_RESPONSE%???}" | jq -r '.[].sha' 2>/dev/null)
+          if [ $? -ne 0 ] || [ -z "$PR_COMMITS" ]; then
+            echo "ERROR: Failed to parse commits from API response"
+            echo "Response: ${PR_COMMITS_RESPONSE%???}"
+            exit 1
+          fi
+
+          echo "Found commits: $(echo "$PR_COMMITS" | wc -l)"
+          echo "$PR_COMMITS"
+
+          # Function to delete images by tag with comprehensive error handling
           delete_image_versions() {
             local package=$1
             local tag=$2
 
-            # Get version ID for this tag
-            version_id=$(curl -s \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/orgs/left-curve/packages/container/${package}/versions" \
-              | jq -r --arg tag "$tag" '.[] | select(.metadata.container.tags[]? == $tag) | .id')
+            echo "Processing $package:$tag"
 
-            if [ "$version_id" != "null" ] && [ -n "$version_id" ]; then
-              echo "Deleting $package:$tag (ID: $version_id)"
-              curl -X DELETE \
-                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                "https://api.github.com/orgs/left-curve/packages/container/${package}/versions/${version_id}"
+            # Get version ID for this tag
+            local versions_response=$(curl -s -w "%{http_code}" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/orgs/left-curve/packages/container/${package}/versions")
+
+            local http_code="${versions_response: -3}"
+            if [ "$http_code" -ne 200 ]; then
+              echo "WARNING: Failed to fetch versions for $package (HTTP $http_code)"
+              echo "Response: ${versions_response%???}"
+              return 1
+            fi
+
+            local version_id=$(echo "${versions_response%???}" | \
+              jq -r --arg tag "$tag" '.[] | select(.metadata.container.tags[]? == $tag) | .id' 2>/dev/null)
+
+            if [ $? -ne 0 ]; then
+              echo "WARNING: Failed to parse versions response for $package:$tag"
+              return 1
+            fi
+
+            if [ "$version_id" = "null" ] || [ -z "$version_id" ]; then
+              echo "INFO: Version $package:$tag not found (may already be deleted)"
+              return 0
+            fi
+
+            echo "Deleting $package:$tag (ID: $version_id)"
+            local delete_response=$(curl -s -w "%{http_code}" -X DELETE \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/orgs/left-curve/packages/container/${package}/versions/${version_id}")
+
+            local delete_code="${delete_response: -3}"
+            if [ "$delete_code" -eq 200 ] || [ "$delete_code" -eq 204 ]; then
+              echo "SUCCESS: Deleted $package:$tag"
+              return 0
             else
-              echo "Version $package:$tag not found"
+              echo "ERROR: Failed to delete $package:$tag (HTTP $delete_code)"
+              echo "Response: ${delete_response%???}"
+              return 1
             fi
           }
 
+          # Track successes and failures
+          TOTAL_ATTEMPTS=0
+          SUCCESSFUL_DELETIONS=0
+          FAILED_DELETIONS=0
+
           # Delete pr-latest tags
-          delete_image_versions "left-curve%2Fdango" "pr-${{ github.event.pull_request.number }}-latest"
-          delete_image_versions "left-curve%2Fdango-frontend" "pr-${{ github.event.pull_request.number }}-latest"
+          PACKAGES=("left-curve%2Fdango" "left-curve%2Fdango-frontend")
+          for package in "${PACKAGES[@]}"; do
+            TOTAL_ATTEMPTS=$((TOTAL_ATTEMPTS + 1))
+            if delete_image_versions "$package" "pr-${{ github.event.pull_request.number }}-latest"; then
+              SUCCESSFUL_DELETIONS=$((SUCCESSFUL_DELETIONS + 1))
+            else
+              FAILED_DELETIONS=$((FAILED_DELETIONS + 1))
+            fi
+          done
 
           # Delete commit-specific images
           for commit in $PR_COMMITS; do
-            echo "Processing commit: $commit"
-            delete_image_versions "left-curve%2Fdango" "$commit"
-            delete_image_versions "left-curve%2Fdango" "$commit-amd64"
-            delete_image_versions "left-curve%2Fdango" "$commit-arm64"
-            delete_image_versions "left-curve%2Fdango-frontend" "$commit"
-            delete_image_versions "left-curve%2Fdango-frontend" "$commit-amd64"
-            delete_image_versions "left-curve%2Fdango-frontend" "$commit-arm64"
+            for package in "${PACKAGES[@]}"; do
+              for suffix in "" "-amd64" "-arm64"; do
+                TOTAL_ATTEMPTS=$((TOTAL_ATTEMPTS + 1))
+                if delete_image_versions "$package" "$commit$suffix"; then
+                  SUCCESSFUL_DELETIONS=$((SUCCESSFUL_DELETIONS + 1))
+                else
+                  FAILED_DELETIONS=$((FAILED_DELETIONS + 1))
+                fi
+              done
+            done
           done
+
+          echo "=== CLEANUP SUMMARY ==="
+          echo "Total attempts: $TOTAL_ATTEMPTS"
+          echo "Successful deletions: $SUCCESSFUL_DELETIONS"
+          echo "Failed deletions: $FAILED_DELETIONS"
+
+          if [ $FAILED_DELETIONS -gt 0 ]; then
+            echo "WARNING: Some deletions failed. Check logs above for details."
+            # Don't exit 1 unless you want the workflow to fail
+          else
+            echo "SUCCESS: All cleanup operations completed successfully"
+          fi
 
       - name: Install Ansible
         run: |
