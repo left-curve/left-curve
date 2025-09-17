@@ -181,6 +181,18 @@ jobs:
         run: |
           ansible-galaxy collection install -r deploy/requirements.yml
 
+      - name: Check DEPLOY_KEY is set
+        run: |
+          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+            echo "Missing DEPLOY_KEY secret"
+            exit 1
+          fi
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
       - name: Cleanup actual containers
         run: |
           cd deploy
