@@ -89,14 +89,15 @@ jobs:
       - name: Install Ansible
         run: |
           pipx install ansible
-          pipx ensurepath
-          ln -f -s ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+          ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
           ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
-          cd deploy
-          ansible-galaxy collection install -r requirements.yml
+
+      - name: Install collections
+        run: |
+          ansible-galaxy collection install -r deploy/requirements.yml
 
       - name: Cleanup actual containers
         run: |
           cd deploy
-          pipx ensurepath
           ansible-playbook delete-full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
