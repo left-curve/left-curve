@@ -115,10 +115,10 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
 
     stx.formatYAxisPrice = (price, params) => {
       if (params?.display?.includes("-")) {
-        return formatNumber(price, { ...formatNumberOptions, maxSignificantDigits: 5 });
+        return formatNumber(price, formatNumberOptions);
       }
 
-      return formatNumber(price, { ...formatNumberOptions, notation: "compact" });
+      return formatNumber(price, { ...formatNumberOptions, maximumTotalDigits: 3 });
     };
 
     stx.candleWidthPercent = 0.9;
@@ -172,7 +172,7 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
         });
         stx.createYAxisLabel(
           stx.chart.panel,
-          formatNumber(price, { ...formatNumberOptions, maxSignificantDigits: 5 }),
+          formatNumber(price, formatNumberOptions),
           stx.pixelFromTransformedValue(price),
           color,
           "white",

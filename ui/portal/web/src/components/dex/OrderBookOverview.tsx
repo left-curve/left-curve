@@ -68,11 +68,8 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
 
   const formattedSize = formatNumber(size, {
     ...formatNumberOptions,
-    maxSignificantDigits: 5,
-    minSignificantDigits: 5,
+    minimumTotalDigits: 8,
   });
-
-  const isAmountTooSmall = Decimal(size).lt(0.00001);
 
   const depthBarClass =
     type === "bid"
@@ -93,21 +90,9 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
             : "text-status-fail order-2 lg:order-none text-end lg:text-left",
         )}
       >
-        {formatNumber(price, {
-          ...formatNumberOptions,
-          maxSignificantDigits: 8,
-        })}
+        {formatNumber(price, formatNumberOptions)}
       </div>
-      <div className="z-10 justify-center text-center hidden lg:flex gap-1">
-        {isAmountTooSmall ? (
-          <>
-            <span>{"<"}</span>
-            {"0.00001"}
-          </>
-        ) : (
-          formattedSize
-        )}
-      </div>
+      <div className="z-10 justify-end text-end hidden lg:flex gap-1">{formattedSize}</div>
       <div
         className={twMerge(
           "z-10",
@@ -116,8 +101,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
       >
         {formatNumber(total, {
           ...formatNumberOptions,
-          minSignificantDigits: 8,
-          maxSignificantDigits: 8,
+          minimumTotalDigits: 8,
         })}
       </div>
     </div>
@@ -172,7 +156,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
         <p className="order-2 lg:order-none text-end lg:text-start">
           {m["dex.protrade.history.price"]()}
         </p>
-        <p className="text-center hidden lg:block">
+        <p className="text-end hidden lg:block">
           {m["dex.protrade.history.size"]({ symbol: bucketSizeSymbol })}
         </p>
         <p className="lg:text-end order-1 lg:order-none">
@@ -197,10 +181,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
               Decimal(previousPrice).lte(currentPrice) ? "text-status-fail" : "text-status-success",
             )}
           >
-            {formatNumber(currentPrice || "0", {
-              ...formatNumberOptions,
-              maxSignificantDigits: 8,
-            })}
+            {formatNumber(currentPrice || "0", formatNumberOptions)}
           </p>
           <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
         </div>
@@ -236,11 +217,10 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
 
           const formattedSize = formatNumber(size, {
             ...formatNumberOptions,
-            maxSignificantDigits: 5,
-            minSignificantDigits: 5,
+            maximumTotalDigits: 5,
+            minimumTotalDigits: 5,
           });
 
-          const isAmountTooSmall = Decimal(size).lt(0.00001);
           return (
             <div
               key={`${trade.addr}-${trade.createdAt}-${index}`}
@@ -259,19 +239,10 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
                   Decimal(trade.clearingPrice)
                     .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
                     .toFixed(),
-                  { ...formatNumberOptions, maxSignificantDigits: 8 },
-                ).slice(0, 10)}
-              </p>
-              <p className="text-center z-10 flex gap-1 justify-center">
-                {isAmountTooSmall ? (
-                  <>
-                    <span>{"<"}</span>
-                    {"0.00001"}
-                  </>
-                ) : (
-                  formattedSize
+                  { ...formatNumberOptions, minimumTotalDigits: 8 },
                 )}
               </p>
+              <p className="text-center z-10 flex gap-1 justify-center">{formattedSize}</p>
 
               <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
                 <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>

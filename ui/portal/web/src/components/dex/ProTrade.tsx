@@ -133,7 +133,7 @@ const ProTradeHeader: React.FC = () => {
                     : "text-status-success",
                 )}
               >
-                {formatNumber(currentPrice, { ...formatNumberOptions, maxSignificantDigits: 6 })}
+                {formatNumber(currentPrice, formatNumberOptions)}
               </p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
@@ -304,7 +304,7 @@ const ProTradeOpenOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          formatOptions={formatNumberOptions}
           value={Decimal(row.original.remaining)
             .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
             .toFixed()}
@@ -319,7 +319,7 @@ const ProTradeOpenOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          formatOptions={formatNumberOptions}
           value={Decimal(row.original.amount)
             .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
             .toFixed()}
@@ -339,7 +339,7 @@ const ProTradeOpenOrders: React.FC = () => {
                 ),
               )
               .toFixed(),
-            { ...formatNumberOptions, maxSignificantDigits: 10 },
+            formatNumberOptions,
           )}
         />
       ),
@@ -448,7 +448,7 @@ const ProTradeOrdersHistory: React.FC = () => {
       cell: ({ row }) => {
         return (
           <Cell.Number
-            formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+            formatOptions={formatNumberOptions}
             value={calculateTradeSize(
               row.original,
               coins.byDenom[row.original.baseDenom].decimals,
@@ -470,7 +470,7 @@ const ProTradeOrdersHistory: React.FC = () => {
                 ),
               )
               .toFixed(),
-            { ...formatNumberOptions, maxSignificantDigits: 10 },
+            formatNumberOptions,
           )}
         />
       ),

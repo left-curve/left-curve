@@ -14,8 +14,6 @@ export {
 } from "./typedData.js";
 
 export {
-  type CurrencyFormatterOptions,
-  formatCurrency,
   type FormatNumberOptions,
   formatNumber,
   formatUnits,

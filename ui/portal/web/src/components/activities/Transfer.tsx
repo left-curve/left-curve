@@ -88,10 +88,7 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
                       />
                     )}
                   </span>
-                  {`${isSent ? "−" : "+"}${formatNumber(formatUnits(amount, coin.decimals), {
-                    ...formatNumberOptions,
-                    maxSignificantDigits: 4,
-                  })}  ${coin.symbol}`}
+                  {`${isSent ? "−" : "+"}${formatNumber(formatUnits(amount, coin.decimals), formatNumberOptions)}  ${coin.symbol}`}
                 </p>
               );
             })}

@@ -184,13 +184,7 @@ function TransferApplet() {
                   insideBottomComponent={
                     <div className="w-full flex justify-between pl-4 h-[22px]">
                       <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
-                        <span>
-                          {formatNumber(humanAmount, {
-                            ...formatNumberOptions,
-                            notation: "compact",
-                            maxFractionDigits: selectedCoin.decimals / 3,
-                          })}
-                        </span>
+                        <span>{formatNumber(humanAmount, formatNumberOptions)}</span>
                         <Button
                           type="button"
                           isDisabled={isPending}

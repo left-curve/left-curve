@@ -255,9 +255,7 @@ export const Deposit: React.FC = () => {
             <p>{m["common.available"]()}</p>
             <p className="flex gap-1">
               <span>{coinInfo.symbol}</span>
-              <span>
-                {formatNumber(humanBalance, { ...formatNumberOptions, maxSignificantDigits: 6 })}
-              </span>
+              <span>{formatNumber(humanBalance, formatNumberOptions)}</span>
             </p>
           </div>
         }

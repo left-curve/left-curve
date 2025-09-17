@@ -37,7 +37,6 @@ export function calculatePrice(
 ) {
   return formatNumber(parseUnits(price, decimals.base - decimals.quote), {
     ...options,
-    minSignificantDigits: 8,
-    maxSignificantDigits: 8,
-  }).slice(0, 7);
+    minimumTotalDigits: 8,
+  });
 }
