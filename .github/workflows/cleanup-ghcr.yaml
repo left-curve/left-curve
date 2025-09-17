@@ -32,27 +32,58 @@ jobs:
           for IMAGE in "${IMAGES[@]}"; do
             echo "🧹 Processing image: $IMAGE"
 
-            # Get all versions with error handling
-            echo "  Fetching versions..."
-            versions_response=$(gh api -H "Accept: application/vnd.github+json" \
-              "/orgs/left-curve/packages/container/${IMAGE}/versions" 2>&1) || {
-              echo "  ERROR: Failed to fetch versions for $IMAGE"
-              echo "  Response: $versions_response"
-              TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
-              continue
-            }
+            # Get all versions with proper pagination
+            echo "  Fetching all versions..."
+            page=1
+            all_versions=""
 
-            # Count total versions
-            version_count=$(echo "$versions_response" | jq '. | length')
-            echo "  Found $version_count version(s)"
+            while true; do
+              echo "    Fetching page $page..."
 
-            if [ "$version_count" -eq 0 ]; then
+              page_response=$(gh api -H "Accept: application/vnd.github+json" \
+                "/orgs/left-curve/packages/container/${IMAGE}/versions?page=${page}&per_page=100" 2>&1) || {
+                echo "  ERROR: Failed to fetch page $page for $IMAGE"
+                echo "  Response: $page_response"
+                TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+                break
+              }
+
+              # Check if page is empty
+              page_count=$(echo "$page_response" | jq '. | length')
+              if [ "$page_count" -eq 0 ]; then
+                echo "    No more versions found"
+                break
+              fi
+
+              echo "    Found $page_count version(s) on page $page"
+
+              # Append to all_versions
+              if [ -z "$all_versions" ]; then
+                all_versions="$page_response"
+              else
+                all_versions=$(echo "$all_versions" "$page_response" | jq -s 'add')
+              fi
+
+              ((page++))
+
+              # Safety break to avoid infinite loops
+              if [ $page -gt 100 ]; then
+                echo "    WARNING: Reached page limit (100), stopping"
+                break
+              fi
+            done
+
+            if [ -z "$all_versions" ]; then
               echo "  No versions found, skipping"
               continue
             fi
 
+            # Count total versions
+            total_count=$(echo "$all_versions" | jq '. | length')
+            echo "  Total versions found: $total_count"
+
             # Process each version
-            echo "$versions_response" | jq -c '.[]' | while read -r version; do
+            while IFS= read -r version; do
               TOTAL_PROCESSED=$((TOTAL_PROCESSED + 1))
 
               CREATED=$(echo "$version" | jq -r '.created_at')
@@ -71,7 +102,7 @@ jobs:
                 continue
               fi
 
-              # Skip if has pr-X-latest pattern (preserve PR preview tags)
+              # Skip if has pr-X-latest pattern
               if echo "$version" | jq -r '.metadata.container.tags[]?' 2>/dev/null | grep -q "^pr-.*-latest$"; then
                 echo "      ✅ SKIP: Has PR preview tag"
                 TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
@@ -104,7 +135,7 @@ jobs:
                 echo "      ✅ SKIP: Image is newer than $DAYS days"
                 TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
               fi
-            done
+            done < <(echo "$all_versions" | jq -c '.[]')
 
             echo "  Completed processing $IMAGE"
             echo
@@ -125,3 +156,4 @@ jobs:
           else
             echo "✅ SUCCESS: Cleanup completed successfully"
           fi
+
