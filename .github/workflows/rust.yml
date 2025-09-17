@@ -553,7 +553,7 @@ jobs:
           cd deploy
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            ansible-playbook full-app.yml -e traefik_enabled=true -e deploy_env=production
+            ansible-playbook full-app.yml -e traefik_enabled=true -e deploy_env=production -e dango_image_tag=latest
           fi
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
