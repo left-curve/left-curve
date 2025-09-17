@@ -55,7 +55,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.5,
+    version: 1.6,
     initialValue: {
       chart: "tradingview",
       showWelcome: true,
@@ -66,10 +66,8 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
       timeZone: "local",
       formatNumberOptions: {
         mask: 1,
+        maximumTotalDigits: 8,
         language: "en-US",
-        maxFractionDigits: 4,
-        minFractionDigits: 0,
-        notation: "standard",
       },
     },
     sync: true,
@@ -86,6 +84,14 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
         state.timeFormat = "hh:mm a";
         state.dateFormat = "MM/dd/yyyy";
         state.timeZone = "local";
+        return state;
+      },
+      1.5: (state: AppState["settings"]) => {
+        state.formatNumberOptions = {
+          mask: state.formatNumberOptions.mask,
+          maximumTotalDigits: 8,
+          language: state.formatNumberOptions.language,
+        };
         return state;
       },
     },

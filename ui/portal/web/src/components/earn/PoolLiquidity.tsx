@@ -131,7 +131,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   const { coins, userHasLiquidity, userLiquidity } = state;
   const { base, quote } = coins;
 
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+  const { getPrice } = usePrices();
 
   if (userLiquidity.isLoading)
     return <Skeleton className="h-[9rem] rounded-xl shadow-account-card flex-1" />;
@@ -228,7 +228,7 @@ const PoolLiquidityDeposit: React.FC = () => {
               <div className="w-full flex justify-between pl-4 h-[22px]">
                 <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
                   <span>
-                    {base.balance} {base.symbol}
+                    {formatNumber(base.balance, formatNumberOptions)} {base.symbol}
                   </span>
                   <Button
                     type="button"
@@ -274,7 +274,7 @@ const PoolLiquidityDeposit: React.FC = () => {
               <div className="w-full flex justify-between pl-4 h-[22px]">
                 <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
                   <span>
-                    {quote.balance} {quote.symbol}
+                    {formatNumber(quote.balance, formatNumberOptions)} {quote.symbol}
                   </span>
                   <Button
                     type="button"

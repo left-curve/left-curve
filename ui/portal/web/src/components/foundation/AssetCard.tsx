@@ -43,7 +43,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
           <p className="text-primary-900 diatype-m-bold">{price}</p>
           <p>
             {coinInfo.type === "lp"
-              ? formatNumber(humanAmount, { ...formatNumberOptions, notation: "compact" })
+              ? formatNumber(humanAmount, { ...formatNumberOptions, maximumTotalDigits: 4 })
               : formatNumber(humanAmount, formatNumberOptions)}
           </p>
         </div>

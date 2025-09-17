@@ -272,7 +272,7 @@ const ConvertForm: React.FC = () => {
             <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular">
               <div className="flex items-center gap-2">
                 <p>
-                  {baseBalance} {base.symbol}
+                  {formatNumber(baseBalance, formatNumberOptions)} {base.symbol}
                 </p>
               </div>
               <div>
@@ -281,7 +281,7 @@ const ConvertForm: React.FC = () => {
                 ) : (
                   getPrice(baseAmount, base.denom, {
                     format: true,
-                    formatOptions: formatNumberOptions,
+                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
                   })
                 )}
               </div>
@@ -350,7 +350,7 @@ const ConvertForm: React.FC = () => {
             <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular">
               <div className="flex items-center gap-2">
                 <p>
-                  {quoteBalance} {quote.symbol}
+                  {formatNumber(quoteBalance, formatNumberOptions)} {quote.symbol}
                 </p>
               </div>
               <div>
@@ -359,7 +359,7 @@ const ConvertForm: React.FC = () => {
                 ) : (
                   getPrice(quoteAmount, quote.denom, {
                     format: true,
-                    formatOptions: formatNumberOptions,
+                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
                   })
                 )}
               </div>
@@ -419,9 +419,9 @@ const ConvertDetails: React.FC = () => {
         ) : (
           <p className="text-secondary-700 diatype-sm-medium">
             1 {inputCoin.symbol} ≈{" "}
-            {formatNumber(Number(outputAmount) / Number(inputAmount), {
+            {formatNumber(Decimal(outputAmount).div(inputAmount).toFixed(), {
               ...formatNumberOptions,
-              maxFractionDigits: outputCoin.decimals,
+              maximumTotalDigits: 10,
             })}{" "}
             {outputCoin.symbol}
           </p>

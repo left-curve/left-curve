@@ -68,13 +68,7 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
 
     const limitPrice = null;
 
-    const width = cleared
-      ? null
-      : formatNumber(remaining, {
-          ...formatNumberOptions,
-          minSignificantDigits: 8,
-          maxSignificantDigits: 8,
-        }).slice(0, 7);
+    const width = cleared ? null : formatNumber(remaining, formatNumberOptions);
 
     const filled =
       direction === Direction.Buy
