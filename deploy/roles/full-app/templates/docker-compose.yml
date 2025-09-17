@@ -1,6 +1,7 @@
 x-common-labels: &common-labels
   environment: "{{ deploy_env }}"
   project: "{{ deployment_name }}"
+  dango_network: "{{ dango_network }}"
 
 services:
   db:
@@ -8,6 +9,7 @@ services:
     shm_size: 1gb
     labels:
       <<: *common-labels
+      service_name: "postgres"
     environment:
       - POSTGRES_DB=dango_prod
       - POSTGRES_USER={{ lookup('env','DB_USER', default='postgres') }}
@@ -22,6 +24,7 @@ services:
     image: prometheuscommunity/postgres-exporter:latest
     labels:
       <<: *common-labels
+      service_name: "postgres-prometheus"
 {% if expose_ports %}
     ports:
       - "{{ tailscale_ip }}:${DB_METRICS_PORT:-0}:9187"
@@ -38,6 +41,9 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
+    labels:
+      <<: *common-labels
+      service_name: "clickhouse"
     restart: unless-stopped
     volumes:
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
@@ -68,6 +74,7 @@ services:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
     labels:
       <<: *common-labels
+      service_name: "dango"
     depends_on:
       db:
         condition: service_healthy
@@ -99,6 +106,7 @@ services:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
     labels:
       <<: *common-labels
+      service_name: "dango-frontend"
     depends_on:
       dango:
         condition: service_healthy
@@ -125,6 +133,7 @@ services:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
     labels:
       <<: *common-labels
+      service_name: "faucet_bot"
     depends_on:
       dango:
         condition: service_healthy
@@ -149,6 +158,7 @@ services:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
     labels:
       <<: *common-labels
+      service_name: "cometbft"
     depends_on:
       - dango
     volumes:
