@@ -1,5 +1,5 @@
 import { useAppConfig, useConfig } from "@left-curve/store";
-import { memo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import {
   IconChevronDownFill,
@@ -45,7 +45,7 @@ const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId, isOpen })
   );
 };
 
-const SearchTokenMenu: React.FC<SearchTokenProps> = memo(({ pairId, onChangePairId }) => {
+const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId }) => {
   const [activeFilter, setActiveFilter] = useState<string>("All");
   const [searchText, setSearchText] = useState<string>("");
   const { data: config } = useAppConfig();
@@ -87,7 +87,7 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = memo(({ pairId, onChangePair
       </SearchTokenTable>
     </div>
   );
-});
+};
 
 type SearchTokenProps = {
   pairId: PairId;
