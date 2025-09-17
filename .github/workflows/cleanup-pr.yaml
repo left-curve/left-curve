@@ -10,6 +10,7 @@ jobs:
     permissions:
       packages: write
       deployments: write
+
     steps:
       - name: Delete PR deployments
         run: |
@@ -52,38 +53,46 @@ jobs:
 
       - name: Delete PR container images
         run: |
-          # Get PR commits to find all related image tags
+          # Get PR commits
           PR_COMMITS=$(curl -s \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits" \
             | jq -r '.[].sha')
 
-          # Delete pr-X-latest tag
-          curl -X DELETE \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango/versions" \
-            -d '{"names":["pr-${{ github.event.pull_request.number }}-latest"]}'
+          # Function to delete images by tag
+          delete_image_versions() {
+            local package=$1
+            local tag=$2
 
-          curl -X DELETE \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango-frontend/versions" \
-            -d '{"names":["pr-${{ github.event.pull_request.number }}-latest"]}'
+            # Get version ID for this tag
+            version_id=$(curl -s \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/orgs/left-curve/packages/container/${package}/versions" \
+              | jq -r --arg tag "$tag" '.[] | select(.metadata.container.tags[]? == $tag) | .id')
 
-          # Delete commit-specific images for this PR
+            if [ "$version_id" != "null" ] && [ -n "$version_id" ]; then
+              echo "Deleting $package:$tag (ID: $version_id)"
+              curl -X DELETE \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                "https://api.github.com/orgs/left-curve/packages/container/${package}/versions/${version_id}"
+            else
+              echo "Version $package:$tag not found"
+            fi
+          }
+
+          # Delete pr-latest tags
+          delete_image_versions "left-curve%2Fdango" "pr-${{ github.event.pull_request.number }}-latest"
+          delete_image_versions "left-curve%2Fdango-frontend" "pr-${{ github.event.pull_request.number }}-latest"
+
+          # Delete commit-specific images
           for commit in $PR_COMMITS; do
-            echo "Deleting image for commit: $commit"
-            curl -X DELETE \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango/versions" \
-              -d "{\"names\":[\"$commit\", \"$commit-amd64\", \"$commit-arm64\"]}"
-            curl -X DELETE \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/orgs/left-curve/packages/container/left-curve%2Fdango-frontend/versions" \
-              -d "{\"names\":[\"$commit\", \"$commit-amd64\", \"$commit-arm64\"]}"
+            echo "Processing commit: $commit"
+            delete_image_versions "left-curve%2Fdango" "$commit"
+            delete_image_versions "left-curve%2Fdango" "$commit-amd64"
+            delete_image_versions "left-curve%2Fdango" "$commit-arm64"
+            delete_image_versions "left-curve%2Fdango-frontend" "$commit"
+            delete_image_versions "left-curve%2Fdango-frontend" "$commit-amd64"
+            delete_image_versions "left-curve%2Fdango-frontend" "$commit-arm64"
           done
 
       - name: Install Ansible
