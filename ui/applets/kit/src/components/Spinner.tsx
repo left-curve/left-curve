@@ -91,16 +91,16 @@ const styles = tv({
         circle2: "border-b-current",
       },
       gray: {
-        circle1: "border-b-gray-500",
-        circle2: "border-b-gray-500",
+        circle1: "border-b-primitives-gray-light-500",
+        circle2: "border-b-primitives-gray-light-500",
       },
       white: {
         circle1: "border-b-white",
         circle2: "border-b-white",
       },
       green: {
-        circle1: "border-b-green-bean-300",
-        circle2: "border-b-green-bean-300",
+        circle1: "border-b-primitives-green-light-300",
+        circle2: "border-b-primitives-green-light-300",
       },
       pink: {
         circle1: "border-b-primitives-red-light-300",

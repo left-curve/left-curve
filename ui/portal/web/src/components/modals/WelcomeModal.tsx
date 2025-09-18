@@ -17,7 +17,7 @@ export const WelcomeModal: React.FC = () => {
   return (
     <div
       className={twMerge(
-        "w-screen h-screen bg-gray-900/50 fixed top-0 left-0 z-[51] flex items-center justify-center p-4 overflow-auto scrollbar-none py-32",
+        "w-screen h-screen bg-primitives-gray-light-900/50 fixed top-0 left-0 z-[51] flex items-center justify-center p-4 overflow-auto scrollbar-none py-32",
       )}
     >
       <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice rounded-xl border border-secondary-gray max-w-2xl">

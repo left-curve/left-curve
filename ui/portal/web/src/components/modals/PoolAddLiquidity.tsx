@@ -43,7 +43,7 @@ export const PoolAddLiquidity = forwardRef(
             <Badge color="green" size="s" text="Stable Strategy" />
           </div>
           <div className="flex flex-col gap-4">
-            <p className="exposure-sm-italic text-gray-300 font-normal">
+            <p className="exposure-sm-italic text-primitives-gray-light-300 font-normal">
               {m["poolLiquidity.modal.depositing"]()}
             </p>
             <div className="flex flex-col">

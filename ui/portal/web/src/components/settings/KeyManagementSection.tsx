@@ -92,7 +92,7 @@ export const KeyManagementSection: React.FC = () => {
                       isActive ? null : showModal(Modals.RemoveKey, { keyHash: key.keyHash })
                     }
                     className={twMerge("w-5 h-5 cursor-pointer", {
-                      "text-gray-300 cursor-default": isActive,
+                      "text-primitives-gray-light-300 cursor-default": isActive,
                     })}
                   />
                 </div>

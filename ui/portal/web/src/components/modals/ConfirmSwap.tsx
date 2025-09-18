@@ -57,7 +57,9 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
         </div>
         <div className="flex flex-col gap-3 items-center">
           <div className="flex flex-col gap-1 w-full">
-            <p className="text-gray-300 exposure-sm-italic">{m["dex.swapping"]()}</p>
+            <p className="text-primitives-gray-light-300 exposure-sm-italic">
+              {m["dex.swapping"]()}
+            </p>
             <div className="flex w-full items-center justify-between">
               <p className="text-secondary-700 h3-bold">
                 {inputAmount} {inputCoin.symbol}
@@ -68,8 +70,8 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
               {getPrice(inputAmount, inputCoin.denom, { format: true, ...formatNumberOptions })}
             </p>
           </div>
-          <div className="flex items-center justify-center border border-gray-300 rounded-full h-5 w-5">
-            <IconArrowDown className="h-3 w-3 text-gray-300" />
+          <div className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5">
+            <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
           </div>
           <div className="flex flex-col gap-1 w-full">
             <div className="flex w-full items-center justify-between">

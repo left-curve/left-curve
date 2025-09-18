@@ -13,8 +13,8 @@ const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text
     <div className="flex items-center gap-1 diatype-sm-medium">
       <div
         className={twMerge(
-          "h-4 w-4 flex items-center justify-center rounded-full bg-green-bean-400",
-          { "bg-gray-400": !completed },
+          "h-4 w-4 flex items-center justify-center rounded-full bg-primitives-green-light-400",
+          { "bg-primitives-gray-light-400": !completed },
         )}
       >
         {completed ? (

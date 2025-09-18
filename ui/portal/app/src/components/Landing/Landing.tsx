@@ -103,10 +103,10 @@ const SectionGreen: React.FC = () => {
     >
       <View className="w-full max-w-[1216px] self-center flex-col lg:flex-row items-center lg:justify-between">
         <View className="max-w-[640px] self-center">
-          <GlobalText className="display-heading-l text-green-bean-800 dark:text-foreground-primary-green">
+          <GlobalText className="display-heading-l text-primitives-green-light-800 dark:text-foreground-primary-green">
             Earn
           </GlobalText>
-          <GlobalText className="diatype-m-regular mt-2 text-green-bean-800 dark:text-foreground-primary-green">
+          <GlobalText className="diatype-m-regular mt-2 text-primitives-green-light-800 dark:text-foreground-primary-green">
             passive yields on your idle assets, by participating in Dango’s passive market making
             vaults.
           </GlobalText>

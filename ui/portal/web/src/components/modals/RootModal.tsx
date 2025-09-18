@@ -210,7 +210,7 @@ export const RootModal: React.FC = () => {
         onClick={(e) => {
           if (e.target === overlayRef.current && !options.disableClosing) closeModal();
         }}
-        className="backdrop-blur-[10px] bg-gray-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
+        className="backdrop-blur-[10px] bg-primitives-gray-light-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

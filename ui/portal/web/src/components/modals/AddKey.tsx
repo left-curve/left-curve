@@ -44,7 +44,7 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
         <IconClose />
       </IconButton>
       <div className="p-4 flex flex-col gap-4">
-        <div className="w-12 h-12 rounded-full bg-secondary-green flex items-center justify-center text-green-bean-600">
+        <div className="w-12 h-12 rounded-full bg-secondary-green flex items-center justify-center text-primitives-green-light-600">
           <IconKey />
         </div>
         <div className="flex flex-col gap-2">

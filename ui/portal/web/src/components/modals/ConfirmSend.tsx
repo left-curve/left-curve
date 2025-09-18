@@ -57,7 +57,9 @@ export const ConfirmSend = forwardRef(
         </p>
         <div className=" flex flex-col gap-4">
           <div className="flex flex-col gap-2 w-full">
-            <p className="exposure-sm-italic text-gray-300">{m["modals.confirmSend.sending"]()}</p>
+            <p className="exposure-sm-italic text-primitives-gray-light-300">
+              {m["modals.confirmSend.sending"]()}
+            </p>
             <div className="flex items-center justify-between text-secondary-700 h3-bold">
               <p>
                 {humanAmount} {coin.symbol}
@@ -69,7 +71,7 @@ export const ConfirmSend = forwardRef(
             </p>
           </div>
           <div className="flex flex-col gap-2 w-full">
-            <p className="exposure-sm-italic text-gray-300">{m["common.to"]()}</p>
+            <p className="exposure-sm-italic text-primitives-gray-light-300">{m["common.to"]()}</p>
             {isLoading ? (
               <Skeleton className="h-[34px] w-full max-w-36" />
             ) : (

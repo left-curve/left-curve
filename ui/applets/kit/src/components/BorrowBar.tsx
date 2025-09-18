@@ -16,7 +16,7 @@ export const BorrowBar: React.FC<Props> = ({ borrow, borrowed, total }) => {
         <span className="diatype-sm-medium text-tertiary-500">Borrow Capacity</span>
         <span className="diatype-sm-bold">${total}K</span>
       </div>
-      <div className="border border-green-bean-500 rounded-full overflow-hidden bg-gray-400 relative z-10 h-3">
+      <div className="border border-primitives-green-light-500 rounded-full overflow-hidden bg-primitives-gray-light-400 relative z-10 h-3">
         <span
           className="absolute top-0 left-0 z-[11] h-full bg-borrow-bar-green"
           style={{ width: `${borrowPercentage.toFixed(2)}%` }}

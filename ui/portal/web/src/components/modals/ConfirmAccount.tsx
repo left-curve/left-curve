@@ -52,7 +52,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
 
         <div className=" flex flex-col gap-4 p-4 py-0 md:p-6 md:py-0">
           <div className="flex flex-col gap-2 w-full">
-            <p className="exposure-sm-italic text-gray-300">
+            <p className="exposure-sm-italic text-primitives-gray-light-300">
               {m["modals.accountCreation.accountName"]()}
             </p>
             <div className="flex gap-1 items-center ">
@@ -61,7 +61,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
             </div>
           </div>
           <div className="flex flex-col gap-1 w-full">
-            <p className="exposure-sm-italic text-gray-300">
+            <p className="exposure-sm-italic text-primitives-gray-light-300">
               {m["modals.accountCreation.accountBalance"]()}
             </p>
             <div className="flex items-center justify-between text-secondary-700 h3-bold">

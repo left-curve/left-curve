@@ -242,7 +242,7 @@ const BlockCronsOutcomes: React.FC = () => {
   return (
     <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
       <p className="h4-bold text-primary-900">{m["explorer.block.cronsOutcomes"]()}</p>
-      <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
+      <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md">
         <JsonVisualizer
           json={Array.isArray(cronOutcomes) ? cronOutcomes : [cronOutcomes]}
           collapsed={0}

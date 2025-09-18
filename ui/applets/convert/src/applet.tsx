@@ -297,13 +297,13 @@ const ConvertForm: React.FC = () => {
       <button
         type="button"
         disabled={isPending}
-        className="flex items-center justify-center border border-gray-300 rounded-full h-5 w-5 cursor-pointer mt-4"
+        className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5 cursor-pointer mt-4"
         onClick={() => {
           toggleDirection();
           setActiveInput(activeInput === "base" ? "quote" : "base");
         }}
       >
-        <IconArrowDown className="h-3 w-3 text-gray-300" />
+        <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
       </button>
       <Input
         isDisabled={isPending}

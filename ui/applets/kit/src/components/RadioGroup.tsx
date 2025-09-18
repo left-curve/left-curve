@@ -120,7 +120,7 @@ export const Item: React.FC<RadioProps> = ({
           />
         )}
       </motion.div>
-      <span className="diatype-sm-medium text-gray-800">{label}</span>
+      <span className="diatype-sm-medium text-primitives-gray-light-800">{label}</span>
     </label>
   );
 };
