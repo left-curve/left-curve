@@ -51,7 +51,7 @@ impl Nonce {
     }
 
     /// Get the next nonce.
-    pub fn next(&mut self) -> u32 {
+    pub fn next_nonce(&mut self) -> u32 {
         match self {
             Self::Random => rand::thread_rng().gen(),
             Self::Sequential(nonce) => {
@@ -184,7 +184,7 @@ impl MockValidatorSet {
             let (merkle_tree, nonce) = &mut *guard;
 
             // Get the next nonce.
-            let next_nonce = nonce.next();
+            let next_nonce = nonce.next_nonce();
 
             // Compose the Hyperlane message and encode it to raw bytes.
             let raw_message = mailbox::Message {
