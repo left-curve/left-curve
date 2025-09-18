@@ -110,6 +110,13 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         )?;
 
         ORDERS.remove(ctx.storage, (denoms, direction, price, order_id))?;
+
+        #[cfg(feature = "metrics")]
+        {
+            if order.amount > order.remaining.into_int_floor() {
+                metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+            }
+        }
     }
 
     // Loop through all trading pairs. Match and clear the orders for each of them.
