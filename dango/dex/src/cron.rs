@@ -599,7 +599,7 @@ fn clear_orders_of_pair(
                 "quote_denom" => quote_denom.to_string(),
                 "token" => base_denom.to_string(),
             )
-            .record(filled_base.into_inner() as f64);
+            .record(filled_base.into_int_floor().into_inner() as f64);
 
             metrics::histogram!(
                 crate::metrics::LABEL_VOLUME_PER_TRADE,
@@ -607,7 +607,7 @@ fn clear_orders_of_pair(
                 "quote_denom" => quote_denom.to_string(),
                 "token" => quote_denom.to_string(),
             )
-            .record(filled_quote.into_inner() as f64);
+            .record(filled_quote.into_int_floor().into_inner() as f64);
         }
     }
 
