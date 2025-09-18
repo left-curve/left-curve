@@ -41,7 +41,6 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 });
 
 function TransferApplet() {
-  const { toast } = useApp();
   const { action } = Route.useSearch();
   const navigate = useNavigate({ from: "/transfer" });
   const { settings, showModal } = useApp();
@@ -80,14 +79,6 @@ function TransferApplet() {
     Error,
     { amount: string; address: string }
   >({
-    toast: {
-      success: () => toast.success({ title: m["sendAndReceive.sendSuccessfully"]() }),
-      error: () =>
-        toast.error(
-          { title: m["transfer.error.title"](), description: m["transfer.error.description"]() },
-          { duration: Number.POSITIVE_INFINITY },
-        ),
-    },
     submission: {
       success: m["sendAndReceive.sendSuccessfully"](),
       error: m["transfer.error.description"](),

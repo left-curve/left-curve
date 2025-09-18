@@ -26,9 +26,11 @@ const toastStore = create<ToastStore>((set, get) => ({
     const { toasts } = get();
 
     set({ toasts: [toast, ...toasts] });
-    setTimeout(() => {
-      set({ toasts: get().toasts.filter((t) => t.id !== toast.id) });
-    }, duration);
+    if (duration !== Number.POSITIVE_INFINITY) {
+      setTimeout(() => {
+        set({ toasts: get().toasts.filter((t) => t.id !== toast.id) });
+      }, duration);
+    }
     return toast.id;
   },
   remove(id) {
