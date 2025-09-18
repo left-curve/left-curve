@@ -98,13 +98,13 @@ const SectionRice: React.FC = () => {
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(212.63deg,_rgba(255,_229,_190,_0.4)_19.52%,_#FFDEAE_94.1%)] dark:bg-[linear-gradient(212.63deg,_#42403D_19.52%,_#807668_94.1%)]">
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center lg:justify-between p-4 pr-0">
         <div className="flex flex-col gap-2 max-w-[40rem]">
-          <h1 className="display-heading-l md:display-heading-2xl text-rice-600 dark:text-secondary-rice">
+          <h1 className="display-heading-l md:display-heading-2xl text-rice-600 dark:text-ink-secondary-rice">
             {m["welcome.trade"]()}
           </h1>
-          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-secondary-rice">
+          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-ink-secondary-rice">
             {m["welcome.tradeText"]()}
           </p>
-          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-secondary-rice">
+          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-ink-secondary-rice">
             {m["welcome.tradeText2"]()}
           </p>
         </div>

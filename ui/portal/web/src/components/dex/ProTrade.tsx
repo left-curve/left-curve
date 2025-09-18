@@ -229,7 +229,7 @@ const ProTradeHistory: React.FC = () => {
           <Tab title="orders">{m["dex.protrade.openOrders"]()}</Tab>
           <Tab title="trade-history">{m["dex.protrade.tradeHistory.title"]()}</Tab>
         </Tabs>
-        <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
+        <span className="w-full absolute h-[2px] bg-overlay-secondary-gray bottom-[0px] z-0" />
       </div>
       <div className="w-full h-full relative">
         {activeTab === "orders" ? <ProTradeOpenOrders /> : null}

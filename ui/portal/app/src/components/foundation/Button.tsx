@@ -57,8 +57,8 @@ const buttonVariants = tv({
       },
       utility: {
         base: "bg-surface-quaternary-rice !rounded-md",
-        icons: "text-secondary-rice",
-        text: "text-secondary-rice",
+        icons: "text-ink-secondary-rice",
+        text: "text-ink-secondary-rice",
       },
       link: {
         base: "bg-transparent",

@@ -20,7 +20,7 @@ export const RenewSession = forwardRef<undefined>(() => {
   return (
     <div className="flex flex-col bg-surface-primary-rice rounded-xl relative max-w-[400px]">
       <div className="p-4 flex flex-col gap-4">
-        <div className="w-12 h-12 rounded-full bg-secondary-green flex items-center justify-center text-primitives-green-light-600">
+        <div className="w-12 h-12 rounded-full bg-surface-secondary-green flex items-center justify-center text-primitives-green-light-600">
           <IconKey />
         </div>
         <p className="text-ink-secondary-700 h4-bold">{m["modals.renewSession.title"]()}</p>
@@ -28,7 +28,7 @@ export const RenewSession = forwardRef<undefined>(() => {
           {m["modals.renewSession.description"]()}
         </p>
       </div>
-      <span className="w-full h-[1px] bg-secondary-gray my-2 lg:block hidden" />
+      <span className="w-full h-[1px] bg-overlay-secondary-gray my-2 lg:block hidden" />
       <div className="p-4 flex gap-4 flex-col-reverse lg:flex-row">
         <Button
           fullWidth

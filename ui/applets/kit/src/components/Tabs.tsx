@@ -111,12 +111,12 @@ const tabsVariants = tv({
     },
     color: {
       green: {
-        base: "bg-secondary-green",
+        base: "bg-surface-secondary-green",
         "animated-element":
           "bg-surface-button-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       red: {
-        base: "bg-secondary-red",
+        base: "bg-surface-secondary-red",
         "animated-element":
           "bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
@@ -127,7 +127,7 @@ const tabsVariants = tv({
       },
       "line-red": {
         base: "p-0",
-        button: "border-b-[1px] border-secondary-gray pt-0",
+        button: "border-b-[1px] border-overlay-secondary-gray pt-0",
         "animated-element": "bg-primitives-red-light-400 w-full h-[2px] bottom-[-1px]",
       },
     },

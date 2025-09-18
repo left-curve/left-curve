@@ -222,7 +222,7 @@ const selectVariants = tv({
     },
     isDisabled: {
       true: {
-        trigger: "bg-secondary-gray text-ink-tertiary-500 cursor-not-allowed",
+        trigger: "bg-surface-disabled-gray text-ink-quaternary-200 cursor-not-allowed",
       },
     },
   },

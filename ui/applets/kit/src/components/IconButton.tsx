@@ -79,7 +79,7 @@ const buttonVariants = tv(
         secondary:
           "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility:
-          "shadow-btn-shadow-gradient transition-all duration-300 w-fit bg-surface-quaternary-rice hover:bg-surface-quaternary-rice-hover text-secondary-rice",
+          "shadow-btn-shadow-gradient transition-all duration-300 w-fit bg-surface-quaternary-rice hover:bg-surface-quaternary-rice-hover text-ink-secondary-rice",
         link: "rounded-xl transition-all duration-300 w-fit bg-transparent hover:text-primitives-gray-light-600 text-ink-tertiary-500",
       },
       color: {

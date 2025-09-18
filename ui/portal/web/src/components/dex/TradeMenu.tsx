@@ -204,7 +204,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             </p>
           </div>
         </div>
-        {/*  <span className="w-full h-[1px] bg-secondary-gray" />
+        {/*  <span className="w-full h-[1px] bg-overlay-secondary-gray" />
         <div className="px-4 flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <p className="diatype-xs-bold">Account Equity</p>

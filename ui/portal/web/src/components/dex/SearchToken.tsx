@@ -62,7 +62,7 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
             <p className="text-ink-tertiary-500 diatype-m-regular mt-[2px]">
               {m["dex.searchFor"]()}
             </p>
-            <p className="exposure-m-italic text-secondary-rice">{m["dex.tokens"]()}</p>
+            <p className="exposure-m-italic text-ink-secondary-rice">{m["dex.tokens"]()}</p>
           </div>
         }
       />
@@ -76,7 +76,7 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
           classNames={{ base: "z-10" }}
         />
 
-        <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
+        <span className="w-full absolute h-[2px] bg-overlay-secondary-gray bottom-[0px] z-0" />
       </div>
       <SearchTokenTable>
         <SearchTokenTable.Spot

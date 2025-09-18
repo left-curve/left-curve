@@ -246,7 +246,7 @@ const PoolLiquidityDeposit: React.FC = () => {
               </div>
             }
           />
-          <span className="w-full h-[1px] bg-secondary-gray" />
+          <span className="w-full h-[1px] bg-overlay-secondary-gray" />
           <Input
             {...register("quoteAmount", {
               mask: numberMask,
