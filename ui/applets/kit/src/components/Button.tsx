@@ -141,28 +141,28 @@ const buttonVariants = tv(
       {
         variant: "link",
         isDisabled: true,
-        class: "text-foreground-disabled-gray",
+        class: "text-fg-disabled",
       },
       {
         variant: "primary",
         isDisabled: true,
-        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled ",
       },
       {
         variant: "secondary",
         isDisabled: true,
         class:
-          "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary",
         isDisabled: true,
-        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled ",
       },
       {
         variant: "tertiary-red",
         isDisabled: true,
-        class: "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled ",
       },
       {
         variant: "utility",
@@ -173,7 +173,7 @@ const buttonVariants = tv(
         variant: "utility",
         isDisabled: true,
         class:
-          "bg-surface-disabled-gray text-foreground-disabled-gray shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+          "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
         variant: ["utility", "link"],

@@ -166,7 +166,7 @@ const inputVariants = tv(
         true: {
           base: "opacity-disabled pointer-events-none",
           inputWrapper:
-            "pointer-events-none bg-surface-disabled-gray placeholder:text-foreground-disabled-gray text-foreground-disabled-gray active:border-transparent",
+            "pointer-events-none bg-surface-disabled-gray placeholder:text-fg-disabled text-fg-disabled active:border-transparent",
           label: "pointer-events-none",
         },
       },
