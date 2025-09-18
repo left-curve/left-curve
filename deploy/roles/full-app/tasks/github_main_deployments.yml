@@ -26,7 +26,7 @@
       Accept: "application/vnd.github.v3+json"
     body_format: json
     body:
-      ref: "{{ dango_image_tag }}"
+      ref: "{{ github_sha }}"
       environment: "{{ item.name }}"
       description: "{{ item.description }}"
       auto_merge: false

@@ -5,7 +5,8 @@
     traefik_dir: "{{ ansible_env.HOME }}/traefik"
     tailscale_iface: tailscale0
     tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
-    dango_image_tag: "{{ lookup('pipe','git rev-parse HEAD') }}"
+    github_sha: "{{ lookup('pipe','git rev-parse HEAD') }}"
+    dango_image_tag: "{{ github_sha }}"
     ghcr_user: "{{ lookup('env','GITHUB_USER') }}"
     ghcr_token: "{{ lookup('env','GITHUB_TOKEN') }}"
     timestamp: "{{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}{{ ansible_date_time.second }}"
