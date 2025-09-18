@@ -20,6 +20,7 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
+
   postgres-prometheus:
     image: prometheuscommunity/postgres-exporter:latest
     labels:
@@ -155,7 +156,7 @@ services:
       retries: 3
 
   cometbft:
-    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
+    image: ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
     labels:
       <<: *common-labels
       service_name: "cometbft"
@@ -163,6 +164,7 @@ services:
       - dango
     volumes:
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:/root/.cometbft/config"
+      # - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/data/cometbft:/root/.cometbft/data"
 {% if expose_ports %}
     ports:
       - "{{ tailscale_ip }}:${COMETBFT_P2P_PORT:-0}:26656"
