@@ -83,7 +83,7 @@ const StepIcon: React.FC<StepProps> = ({ index, active }) => {
       <div
         className={twMerge(
           "w-2 h-2 rounded-full z-10",
-          active === index ? "bg-white" : "bg-foreground-tertiary",
+          active === index ? "bg-white" : "bg-fg-tertiary-400",
         )}
       />
     </div>

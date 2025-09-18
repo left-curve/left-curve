@@ -177,6 +177,7 @@ export const tailwindConfig: Partial<Config> = {
             },
           },
           white: {
+            DEFAULT: "#FFFFFF",
             light: {
               100: "#FFFCF6",
               200: "#FFFBF0",

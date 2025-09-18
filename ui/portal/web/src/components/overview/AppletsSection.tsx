@@ -35,7 +35,7 @@ export function AppletsSection() {
         <button
           type="button"
           onClick={() => setSearchBarVisibility(true)}
-          className="h-16 w-16 md:h-20 md:w-20 shadow-account-card border-[1.43px] border-tertiary-rice text-tertiary-rice bg-fg-primary-rice hover:bg-foreground-secondary-rice transition-all rounded-xl p-[10px] flex items-center justify-center cursor-pointer"
+          className="h-16 w-16 md:h-20 md:w-20 shadow-account-card border-[1.43px] border-tertiary-rice text-tertiary-rice bg-fg-primary-rice hover:bg-fg-secondary-rice transition-all rounded-xl p-[10px] flex items-center justify-center cursor-pointer"
         >
           <IconAddCross />
         </button>

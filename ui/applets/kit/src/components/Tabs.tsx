@@ -199,12 +199,12 @@ const tabVariants = tv({
     {
       isActive: false,
       color: "red",
-      class: "text-foreground-tertiary",
+      class: "text-fg-tertiary-400",
     },
     {
       isActive: false,
       color: "green",
-      class: "text-foreground-tertiary",
+      class: "text-fg-tertiary-400",
     },
     {
       isActive: true,
@@ -214,7 +214,7 @@ const tabVariants = tv({
     {
       isActive: false,
       color: "light-green",
-      class: "text-foreground-tertiary",
+      class: "text-fg-tertiary-400",
     },
     {
       isActive: true,
@@ -224,7 +224,7 @@ const tabVariants = tv({
     {
       isActive: false,
       color: "line-red",
-      class: "text-foreground-tertiary",
+      class: "text-fg-tertiary-400",
     },
   ],
 });
