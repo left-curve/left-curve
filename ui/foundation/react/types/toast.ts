@@ -3,7 +3,7 @@ import type { Renderable } from "./react";
 
 export type ToastDefinition = {
   id: string;
-  type: "success" | "error" | "loading";
+  type: "success" | "error";
   title: ValueOrFunction<Renderable, ToastDefinition>;
   description: ValueOrFunction<Renderable, ToastDefinition>;
   duration?: number;

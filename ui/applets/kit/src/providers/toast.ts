@@ -1,15 +1,20 @@
 import { create } from "zustand";
 
-import type { Toast, ToastMessage, ToastOptions, ToastStore } from "@left-curve/foundation";
+import type {
+  ToastDefinition,
+  ToastMessage,
+  ToastOptions,
+  ToastStore,
+} from "@left-curve/foundation";
 
 const toastStore = create<ToastStore>((set, get) => ({
-  toasts: [] as Toast[],
+  toasts: [] as ToastDefinition[],
   add(type, message, options) {
-    const { id, duration } = options || {};
+    const { id, duration = 4000 } = options || {};
     const { title, description } = message;
     const createdAt = Date.now();
 
-    const toast: Toast = {
+    const toast: ToastDefinition = {
       id: id || createdAt.toString(),
       title,
       description,
@@ -23,7 +28,7 @@ const toastStore = create<ToastStore>((set, get) => ({
     set({ toasts: [toast, ...toasts] });
     setTimeout(() => {
       set({ toasts: get().toasts.filter((t) => t.id !== toast.id) });
-    }, 4000);
+    }, duration);
     return toast.id;
   },
   remove(id) {
@@ -40,9 +45,6 @@ export const toast = {
   },
   success(message: ToastMessage, options?: ToastOptions) {
     return this.getState().add("success", message, options);
-  },
-  loading(message: ToastMessage, options?: ToastOptions) {
-    return this.getState().add("loading", message, options);
   },
   dismiss(id: string) {
     this.getState().remove(id);
