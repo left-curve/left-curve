@@ -36,11 +36,11 @@
   loop: "{{ existing_port_pairs.stdout_lines }}"
   when: env_file_exists.stat.exists and existing_port_pairs.stdout_lines | length > 0
 
-- name: Create deployment directory
+- name: Create deployment directories
   file:
-    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/{{ item }}"
+    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item }}"
     state: directory
-  loop: [clickhouse, dango, cometbft]
+  loop: ["configs/clickhouse", "configs/dango", "configs/cometbft", "data/cometbft"]
 
 - name: Login to GHCR
   community.docker.docker_login:

@@ -18,10 +18,12 @@
             state: absent
             remove_orphans: yes
             remove_volumes: yes
+          ignore_errors: true
 
         - name: Remove deployment directory
+          become: true
           file:
-            path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+            path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
             state: absent
 
         - name: Prune unused Docker resources

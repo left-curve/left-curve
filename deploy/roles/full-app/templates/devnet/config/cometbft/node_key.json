@@ -1,1 +1,1 @@
-{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"{{ COMETBFT_NODE_KEY }}"}}
+{"priv_key":{"type":"tendermint/PrivKeyEd25519","value":"{{ cometbft_node_key }}"}}

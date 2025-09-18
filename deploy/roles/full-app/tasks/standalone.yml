@@ -1,3 +1,4 @@
+- import_tasks: cometbft_keys.yml
 - import_tasks: deploy_configs.yml
 - import_tasks: ports_discovery.yml
   when: not skip_port_discovery
