@@ -220,17 +220,17 @@ export const Range: React.FC<RangeProps> = ({
             <div
               className={twMerge(
                 "absolute top-0 left-0 h-full rounded-full",
-                isDisabled ? "bg-gray-400" : "bg-red-bean-400",
+                isDisabled ? "bg-gray-400" : "bg-primitives-red-light-400",
               )}
               style={{ width: `${currentPercentage}%` }}
             />
 
             <div
               className={twMerge(
-                "absolute top-1/2 w-4 h-4 rounded-full shadow-md focus:outline-none focus:border-red-bean-600",
+                "absolute top-1/2 w-4 h-4 rounded-full shadow-md focus:outline-none focus:border-primitives-red-light-600",
                 isDisabled
                   ? "bg-gray-300 border-2 border-gray-500"
-                  : "bg-white border-2 border-red-bean-500 cursor-grab active:cursor-grabbing",
+                  : "bg-white border-2 border-primitives-red-light-500 cursor-grab active:cursor-grabbing",
               )}
               style={{
                 left: `calc(${currentPercentage}% - ${currentPercentage < 2 ? "0px" : "16px"})`,

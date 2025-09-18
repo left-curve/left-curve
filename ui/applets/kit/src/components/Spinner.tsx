@@ -103,8 +103,8 @@ const styles = tv({
         circle2: "border-b-green-bean-300",
       },
       pink: {
-        circle1: "border-b-red-bean-300",
-        circle2: "border-b-red-bean-300",
+        circle1: "border-b-primitives-red-light-300",
+        circle2: "border-b-primitives-red-light-300",
       },
       blue: {
         circle1: "border-b-blue-300",

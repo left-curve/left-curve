@@ -188,9 +188,9 @@ const SectionCommunity: React.FC = () => {
           <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
             <h2 className="display-heading-m md:display-heading-2xl">
               {m["welcome.join"]()}
-              <span className="text-red-bean-400">{m["welcome.community"]()}</span>{" "}
+              <span className="text-primitives-red-light-400">{m["welcome.community"]()}</span>{" "}
               {m["welcome.of"]()}{" "}
-              <span className="text-red-bean-400">{m["welcome.dangbros"]()}</span>
+              <span className="text-primitives-red-light-400">{m["welcome.dangbros"]()}</span>
             </h2>
             <div className="flex gap-4">
               <Button

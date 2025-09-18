@@ -106,7 +106,7 @@ export const Item: React.FC<RadioProps> = ({
         className={twMerge(
           "w-4 h-4 rounded-full flex items-center justify-center transition-all border-2",
           isSelected
-            ? "border-red-bean-500 bg-red-bean-500"
+            ? "border-primitives-red-light-500 bg-primitives-red-light-500"
             : "border-secondary-gray bg-transparent",
         )}
       >

@@ -111,7 +111,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                     as={Link}
                     to="/"
                     variant="link"
-                    className="text-red-bean-400 hover:text-red-bean-600"
+                    className="text-primitives-red-light-400 hover:text-primitives-red-light-600"
                   >
                     {m["signup.doThisLater"]()}
                   </Button>
@@ -354,7 +354,7 @@ const Username: React.FC = () => {
           isFetching ? (
             <Spinner size="sm" color="gray" />
           ) : errorMessage ? (
-            <XCircleIcon className="stroke-red-bean-400 stroke-2" />
+            <XCircleIcon className="stroke-primitives-red-light-400 stroke-2" />
           ) : isUsernameAvailable ? (
             <CheckCircleIcon className="stroke-status-success stroke-2" />
           ) : null

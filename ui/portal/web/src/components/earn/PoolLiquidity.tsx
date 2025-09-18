@@ -234,7 +234,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                     type="button"
                     variant="secondary"
                     size="xs"
-                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
                     onClick={() => setValue("baseAmount", base.balance)}
                   >
                     {m["common.max"]()}
@@ -280,7 +280,7 @@ const PoolLiquidityDeposit: React.FC = () => {
                     type="button"
                     variant="secondary"
                     size="xs"
-                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
                     onClick={() => setValue("quoteAmount", quote.balance)}
                   >
                     {m["common.max"]()}

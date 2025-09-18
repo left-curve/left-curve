@@ -18,7 +18,7 @@ const Icon = {
     </div>
   ),
   error: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-red-bean-300 text-red-bean-100 flex items-center justify-center">
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-primitives-red-light-300 text-primitives-red-light-100 flex items-center justify-center">
       <IconClose className="w-4 h-4" />
     </div>
   ),

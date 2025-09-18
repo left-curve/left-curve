@@ -128,7 +128,7 @@ const tabsVariants = tv({
       "line-red": {
         base: "p-0",
         button: "border-b-[1px] border-secondary-gray pt-0",
-        "animated-element": "bg-red-bean-400 w-full h-[2px] bottom-[-1px]",
+        "animated-element": "bg-primitives-red-light-400 w-full h-[2px] bottom-[-1px]",
       },
     },
     fullWidth: {
@@ -219,7 +219,7 @@ const tabVariants = tv({
     {
       isActive: true,
       color: "line-red",
-      class: "text-red-bean-400",
+      class: "text-primitives-red-light-400",
     },
     {
       isActive: false,

@@ -17,7 +17,7 @@ export const ProSwapMarketClose = forwardRef(() => {
         <div className="flex flex-col  gap-1">
           <div className="w-full flex gap-2 items-center justify-between">
             <p className="diatype-sm-regular text-tertiary-500">Size</p>
-            <p className="diatype-sm-medium text-red-bean-500">1.23 ETH</p>
+            <p className="diatype-sm-medium text-primitives-red-light-500">1.23 ETH</p>
           </div>
           <div className="w-full flex gap-2 items-center justify-between">
             <p className="diatype-sm-regular text-tertiary-500">Price</p>

@@ -36,7 +36,7 @@ const buttonVariants = tv({
   variants: {
     variant: {
       primary: {
-        base: "bg-red-bean-400",
+        base: "bg-primitives-red-light-400",
         icons: "text-surface-primary-rice",
         text: "text-surface-primary-rice",
       },

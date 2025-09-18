@@ -75,7 +75,7 @@ const buttonVariants = tv(
     variants: {
       variant: {
         primary:
-          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit bg-red-bean-400 hover:bg-red-bean-600 text-surface-primary-rice",
+          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit bg-primitives-red-light-400 hover:bg-primitives-red-light-600 text-surface-primary-rice",
         secondary:
           "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility:
@@ -125,7 +125,8 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         color: "red",
-        class: "bg-red-bean-50 hover:bg-red-bean-100 text-red-bean-500",
+        class:
+          "bg-primitives-red-light-50 hover:bg-primitives-red-light-100 text-primitives-red-light-500",
       },
       {
         variant: "secondary",

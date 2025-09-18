@@ -19,7 +19,7 @@ export const Stepper: React.FC<Props> = ({ steps, activeStep }) => {
                 className={twMerge(
                   "absolute min-w-fit block top-9 left-1/2 -translate-x-1/2 transition-all text-nowrap",
                   {
-                    "text-red-bean-600": isActive,
+                    "text-primitives-red-light-600": isActive,
                   },
                 )}
               >
@@ -30,7 +30,7 @@ export const Stepper: React.FC<Props> = ({ steps, activeStep }) => {
               <span
                 className={twMerge(
                   "w-full h-[2px]  transition-all",
-                  i < activeStep ? "bg-red-bean-500" : "bg-secondary-gray",
+                  i < activeStep ? "bg-primitives-red-light-500" : "bg-secondary-gray",
                 )}
               />
             )}
@@ -74,9 +74,9 @@ const StepIcon: React.FC<StepProps> = ({ index, active }) => {
     <div
       className={twMerge(
         "transition-all rounded-full flex items-center justify-center relative z-20",
-        "before:content-[''] before:absolute before:z-10 before:bg-surface-primary-rice before:border-2 before:border-red-bean-400 before:w-7 before:h-7 before:rounded-full before:bg-red-bean-400 before:transition-all",
+        "before:content-[''] before:absolute before:z-10 before:bg-surface-primary-rice before:border-2 before:border-primitives-red-light-400 before:w-7 before:h-7 before:rounded-full before:bg-primitives-red-light-400 before:transition-all",
         active === index
-          ? "border-surface-primary-rice bg-red-bean-400 before:scale-1 w-7 h-7 border-4 before:bg-transparent"
+          ? "border-surface-primary-rice bg-primitives-red-light-400 before:scale-1 w-7 h-7 border-4 before:bg-transparent"
           : "border-primary-gray before:scale-0 bg-secondary-gray w-6 h-6 border-2",
       )}
     >

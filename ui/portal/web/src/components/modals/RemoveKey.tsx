@@ -41,7 +41,7 @@ export const RemoveKey = forwardRef<never, Props>(({ keyHash }, _ref) => {
         <IconClose />
       </IconButton>
       <div className="p-4 flex flex-col gap-4">
-        <div className="w-12 h-12 rounded-full bg-red-bean-100 flex items-center justify-center text-red-bean-600">
+        <div className="w-12 h-12 rounded-full bg-primitives-red-light-100 flex items-center justify-center text-primitives-red-light-600">
           <IconTrash />
         </div>
         <div className="flex flex-col gap-2">

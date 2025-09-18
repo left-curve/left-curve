@@ -34,10 +34,10 @@ export const TestnetBanner: React.FC = () => {
       />
       <button
         type="button"
-        className="absolute right-3 top-[7px] h-6 w-6 z-10 rounded-full bg-red-bean-50 border border-gray-100 flex items-center justify-center"
+        className="absolute right-3 top-[7px] h-6 w-6 z-10 rounded-full bg-primitives-red-light-50 border border-gray-100 flex items-center justify-center"
         onClick={() => setTestBannerVisibility(false)}
       >
-        <IconClose className="text-red-bean-500 w-5 h-5" />
+        <IconClose className="text-primitives-red-light-500 w-5 h-5" />
       </button>
     </motion.div>
   );
