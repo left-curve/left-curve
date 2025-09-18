@@ -21,6 +21,13 @@ export type ExactRequired<type> = {
   [P in keyof type]-?: Exclude<type[P], undefined>;
 };
 
+/** @description Creates a type that is T with the required keys K.
+ * @example
+ * Require<{ a?: string, b: number }, 'a'>
+ * => { a: string, b: number }
+ */
+export type Require<T, K extends keyof T> = T & { [P in K]-?: T[P] };
+
 /**
  * @description Creates a type that is T with the required keys K.
  *
@@ -125,3 +132,6 @@ export type Flatten<T> = {
       : never
     : never]: T[K] extends Record<string, unknown> ? T[K][keyof T[K]] : never;
 };
+
+export type ValueFunction<TValue, TArg> = (arg: TArg) => TValue;
+export type ValueOrFunction<TValue, TArg> = TValue | ValueFunction<TValue, TArg>;

@@ -34,7 +34,7 @@ export { AddressVisualizer } from "./AddressVisualizer";
 export { Range } from "./Range";
 export { Tooltip } from "./Tooltip";
 export { Radio } from "./RadioGroup";
-export { Toast } from "./Toast";
+export { Toast, Toaster } from "./Toast";
 export { PairAssets } from "./PairAssets";
 export { Marquee } from "./Marquee";
 

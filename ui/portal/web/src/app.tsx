@@ -5,8 +5,7 @@ import { config } from "~/store";
 
 import { AppRouter, router } from "./app.router";
 import { AppProvider } from "@left-curve/foundation";
-import { Toast } from "@left-curve/applets-kit";
-import { createToaster } from "./app.toaster";
+import { Toaster, toast } from "@left-curve/applets-kit";
 import { RootModal } from "./components/modals/RootModal";
 
 import type React from "react";
@@ -22,8 +21,6 @@ import "@left-curve/foundation/fonts/ABCDiatypeRounded/mono/500.css";
 
 import "@left-curve/foundation/fonts/Exposure/italic/400.css";
 import "@left-curve/foundation/fonts/Exposure/italic/700.css";
-
-const [Toaster, toast] = createToaster((props) => <Toast {...props} />);
 
 const channel = new BroadcastChannel("dango.queries");
 
@@ -65,7 +62,7 @@ export const App: React.FC = () => {
         <AppProvider toast={toast} navigate={(to, options) => router.navigate({ to, ...options })}>
           <AppRouter />
           <RootModal />
-          <Toaster position="bottom-center" containerStyle={{ zIndex: 99999999 }} />
+          <Toaster />
         </AppProvider>
       </DangoStoreProvider>
     </QueryClientProvider>

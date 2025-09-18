@@ -2,6 +2,13 @@ import { Spinner } from "./Spinner";
 import { IconChecked } from "./icons/IconChecked";
 import { IconClose } from "./icons/IconClose";
 
+import { useToastStore, toast as toaster } from "../providers/toast";
+import { createPortal } from "react-dom";
+import { AnimatePresence } from "framer-motion";
+
+import type { ToastDefinition } from "@left-curve/foundation";
+import type { Prettify } from "@left-curve/dango/types";
+
 const Icon = {
   success: (
     <div className="min-h-6 min-w-6 rounded-full bg-surface-quaternary-green text-secondary-green flex items-center justify-center">
@@ -20,31 +27,52 @@ const Icon = {
   ),
 };
 
-export type ToastProps = {
-  title: string;
-  type: "error" | "success" | "loading";
-  close: () => void;
-  description?: string;
-};
+export type ToastProps = Prettify<{
+  toast: ToastDefinition;
+}>;
 
-export const Toast: React.FC<ToastProps> = ({ title, description, type, close }) => {
+export const Toast: React.FC<ToastProps> = ({ toast }) => {
+  const { id, title: Title, description: Description, type } = toast;
+
   return (
     <div className="w-fit min-w-[12rem] max-w-[20rem] py-4 pl-4 pr-10 rounded-[20px] bg-surface-primary-rice border border-secondary-gray transition-all duration-500 shadow-account-card flex items-start gap-2 relative">
       {Icon[type]}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <p className="text-primary-900 diatype-sm-medium">{title}</p>
-        {description && (
-          <p className="text-tertiary-500 diatype-xs-medium break-all">{description}</p>
-        )}
+        {typeof Title === "string" ? (
+          <p className="text-primary-900 diatype-sm-medium">{Title}</p>
+        ) : typeof Title === "function" ? (
+          <Title {...toast} />
+        ) : null}
+
+        {typeof Description === "string" ? (
+          <p className="text-tertiary-500 diatype-xs-medium break-all">{Description}</p>
+        ) : typeof Description === "function" ? (
+          <Description {...toast} />
+        ) : null}
       </div>
       <button
         aria-label="Close Notification"
         className="absolute top-4 right-4 transition-all duration-200"
-        onClick={close}
+        onClick={() => toaster.dismiss(id)}
         type="button"
       >
         <IconClose className="w-6 h-6 text-tertiary-500 hover:text-primary-900" />
       </button>
     </div>
+  );
+};
+
+export const Toaster: React.FC = () => {
+  const { toasts } = useToastStore();
+
+  return createPortal(
+    <div className="fixed z-50">
+      <AnimatePresence>
+        {toasts.map((toast) => (
+          <Toast key={toast.id} toast={toast} />
+        ))}
+      </AnimatePresence>
+    </div>,
+    document.body,
   );
 };
