@@ -42,11 +42,17 @@ export const toast = {
   getState() {
     return toastStore.getState();
   },
+  info(message: ToastMessage, options?: ToastOptions) {
+    return this.getState().add("info", message, options);
+  },
   error(message: ToastMessage, options?: ToastOptions) {
     return this.getState().add("error", message, options);
   },
   success(message: ToastMessage, options?: ToastOptions) {
     return this.getState().add("success", message, options);
+  },
+  maintenance(message: ToastMessage, options?: ToastOptions) {
+    return this.getState().add("maintenance", message, options);
   },
   dismiss(id: string) {
     this.getState().remove(id);
