@@ -21,7 +21,7 @@ import {
   ResizerContainer,
   Stepper,
 } from "@left-curve/applets-kit";
-import { ensureErrorMessage, twMerge } from "@left-curve/applets-kit";
+import { twMerge } from "@left-curve/applets-kit";
 import { AccountType } from "@left-curve/dango/types";
 import { Link } from "@tanstack/react-router";
 
@@ -170,14 +170,11 @@ export const Deposit: React.FC = () => {
 
   const { mutateAsync: send, isPending } = useSubmitTx({
     toast: {
-      error: (e) =>
-        toast.error(
-          {
-            title: m["signup.errors.couldntCompleteRequest"](),
-            description: ensureErrorMessage(e),
-          },
-          { duration: Number.POSITIVE_INFINITY },
-        ),
+      error: () =>
+        toast.error({
+          title: m["common.error"](),
+          description: m["signup.errors.couldntCompleteRequest"](),
+        }),
     },
     submission: {
       success: m["accountCreation.accountCreated"](),

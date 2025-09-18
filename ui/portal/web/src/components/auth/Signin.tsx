@@ -84,7 +84,10 @@ const CredentialStep: React.FC = () => {
         }
         nextStep();
       } catch (err) {
-        toast.error({ title: m["errors.failureRequest"]() });
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.failedSigningIn"](),
+        });
         console.log(err);
       }
     },

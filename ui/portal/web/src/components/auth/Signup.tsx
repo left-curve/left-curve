@@ -178,7 +178,7 @@ const Credential: React.FC = () => {
           if (connectorId === "passkey") {
             try {
               const { id, getPublicKey } = await createWebAuthnCredential({
-                challenge: encodeUtf8(challenge),
+                challenge: encodeUtf8(challenge) as BufferSource,
                 user: {
                   name: `${getNavigatorOS()} ${new Date().toLocaleString()}`,
                 },
@@ -198,9 +198,10 @@ const Credential: React.FC = () => {
               const keyHash = createKeyHash(id);
 
               return { key, keyHash };
-            } catch (err) {
+            } catch (cause) {
               throw new Error(
                 "Your device is not compatible with passkey or you cancelled the request",
+                { cause },
               );
             }
           }
@@ -270,7 +271,11 @@ const Username: React.FC = () => {
 
   const { isPending, mutateAsync: createAccount } = useSubmitTx({
     toast: {
-      error: () => toast.error({ title: m["signup.errors.creatingAccount"]() }),
+      error: () =>
+        toast.error({
+          title: m["common.error"](),
+          description: m["signup.errors.creatingAccount"](),
+        }),
     },
     mutation: {
       mutationFn: async () => {

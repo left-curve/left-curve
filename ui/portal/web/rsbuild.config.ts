@@ -9,6 +9,7 @@ import { pluginSvgr } from "@rsbuild/plugin-svgr";
 
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
+import { GenerateSW } from "workbox-webpack-plugin";
 
 import { devnet, local, testnet } from "@left-curve/dango";
 
@@ -74,7 +75,6 @@ export default defineConfig({
   source: {
     entry: {
       index: "./src/index.tsx",
-      "tv-overrides": "./public/styles/tv-overrides.css",
     },
     define: {
       ...publicVars,
@@ -149,6 +149,17 @@ export default defineConfig({
           },
         },
       );
+
+      if (process.env.NODE_ENV === "production") {
+        config.plugins.push(
+          new GenerateSW({
+            cacheId: "leftcurve-portal",
+            clientsClaim: true,
+            skipWaiting: false,
+            cleanupOutdatedCaches: true,
+          }),
+        );
+      }
 
       config.devtool = "source-map";
       return config;

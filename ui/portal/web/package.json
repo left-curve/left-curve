@@ -33,11 +33,13 @@
     "react-dom": "catalog:",
     "react-error-boundary": "^6.0.0",
     "react-modal-sheet": "^4.0.1",
+    "workbox-webpack-plugin": "^7.3.0",
+    "workbox-window": "^7.3.0",
     "zod": "catalog:"
   },
   "optionalDependencies": {
-    "@left-curve/tradingview": "^29.4.0",
-    "@left-curve/chartiq": "^9.9.0"
+    "@left-curve/chartiq": "^9.9.0",
+    "@left-curve/tradingview": "^29.4.0"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",

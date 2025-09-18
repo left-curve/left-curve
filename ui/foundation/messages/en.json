@@ -284,6 +284,11 @@
       }
     }
   },
+  "appUpdate": {
+    "title": "Update Available",
+    "description": "A new version of the app is available. Please update to the latest version to continue using the app.",
+    "updateButton": "Update Now"
+  },
   "modals": {
     "qrconnect": {
       "title": "QR Connect",

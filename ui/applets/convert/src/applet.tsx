@@ -63,12 +63,8 @@ const ConvertContainer: React.FC<
 
   const submission = useSubmitTx({
     toast: {
-      success: () => toast.success({ title: m["dex.convert.convertSuccessfully"]() }),
       error: () =>
-        toast.error(
-          { title: m["dex.convert.errors.failure"]() },
-          { duration: Number.POSITIVE_INFINITY },
-        ),
+        toast.error({ title: m["common.error"](), description: m["dex.convert.errors.failure"]() }),
     },
     submission: {
       success: m["dex.convert.convertSuccessfully"](),
