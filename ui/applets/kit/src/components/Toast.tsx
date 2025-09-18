@@ -37,9 +37,9 @@ export const Toast: React.FC<ToastProps> = ({ toast }) => {
       initial={{ opacity: 0, y }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y }}
-      className="relative pointer-events-auto w-full h-full"
+      className="relative w-full h-full"
     >
-      <div className="absolute w-full lg:w-auto top-0 lg:top-auto lg:bottom-4 lg:right-4 bg-surface-primary-rice rounded-b-md lg:rounded-md border lg:min-w-[18rem] lg:max-w-[25rem] border-secondary-gray shadow-account-card">
+      <div className="absolute pointer-events-auto w-full lg:w-auto top-0 lg:top-auto lg:bottom-4 lg:right-4 bg-surface-primary-rice rounded-b-md lg:rounded-md border lg:min-w-[18rem] lg:max-w-[25rem] border-secondary-gray shadow-account-card">
         <div className="w-fit py-4 pl-4 pr-10 transition-all duration-500 flex items-start gap-2">
           {Icon[type]}
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">
