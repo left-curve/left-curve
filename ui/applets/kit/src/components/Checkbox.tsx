@@ -61,7 +61,7 @@ const checkBoxVariants = tv(
     variants: {
       color: {
         red: "bg-white data-[checked]:bg-primitives-red-light-400 border-primitives-red-light-400",
-        blue: "bg-white data-[checked]:bg-blue-500  border-blue-500",
+        blue: "bg-white data-[checked]:bg-primitives-blue-light-500  border-primitives-blue-light-500",
         grey: "bg-white data-[checked]:bg-primitives-gray-light-500  border-primitives-gray-light-500",
       },
       size: {

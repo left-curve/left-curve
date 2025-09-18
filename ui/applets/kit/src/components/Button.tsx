@@ -136,7 +136,7 @@ const buttonVariants = tv(
       {
         variant: "link",
         class:
-          "bg-transparent hover:text-blue-600 text-secondary-blue focus:bg-primary-blue focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
+          "bg-transparent hover:text-primitives-blue-light-600 text-secondary-blue focus:bg-primary-blue focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
       },
       {
         variant: "link",

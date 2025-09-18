@@ -142,7 +142,7 @@ const Mobile: React.FC = () => {
       <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice text-primary-900 rounded-xl border border-secondary-gray max-w-96">
         <div className="flex flex-col gap-4 p-4 border-b border-b-secondary-gray">
           <div className="w-12 h-12 bg-error-100 rounded-full flex items-center justify-center">
-            <IconAlert className="w-6 h-6 text-error-500" />
+            <IconAlert className="w-6 h-6 text-status-fail" />
           </div>
           <p className="h4-bold text-primary-900">{m["signup.mobileModal.title"]()}</p>
           <p className="diatype-m-medium text-tertiary-500">

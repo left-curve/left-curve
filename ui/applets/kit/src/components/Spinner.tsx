@@ -107,8 +107,8 @@ const styles = tv({
         circle2: "border-b-primitives-red-light-300",
       },
       blue: {
-        circle1: "border-b-blue-300",
-        circle2: "border-b-blue-500",
+        circle1: "border-b-primitives-blue-light-300",
+        circle2: "border-b-primitives-blue-light-500",
       },
     },
   },

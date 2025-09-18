@@ -120,7 +120,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             block: errorMessage && !hideErrorMessage,
           })}
         >
-          <span className="diatype-sm-regular text-error-500">{errorMessage}</span>
+          <span className="diatype-sm-regular text-status-fail">{errorMessage}</span>
         </div>
 
         <div
@@ -172,7 +172,7 @@ const inputVariants = tv(
       },
       isInvalid: {
         true: {
-          inputWrapper: "border-error-500",
+          inputWrapper: "border-status-fail",
           input: "text-secondary-700",
         },
       },

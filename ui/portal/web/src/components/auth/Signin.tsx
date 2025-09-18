@@ -223,7 +223,7 @@ const UsernameStep: React.FC = () => {
         </div>
       ) : (
         <Button variant="link" onClick={previousStep}>
-          <IconLeft className="w-[22px] h-[22px] text-blue-500" />
+          <IconLeft className="w-[22px] h-[22px] text-primitives-blue-light-500" />
           <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
         </Button>
       )}

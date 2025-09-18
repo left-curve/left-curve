@@ -293,7 +293,7 @@ const PoolLiquidityDeposit: React.FC = () => {
             }
           />
         </div>
-        <div className="diatype-sm-regular text-error-500">
+        <div className="diatype-sm-regular text-status-fail">
           {errors && (
             <p>
               {errors.baseAmount && (

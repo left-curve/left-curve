@@ -68,7 +68,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
         <IconClose />
       </IconButton>
       <div className="p-4 flex flex-col gap-4">
-        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+        <div className="w-12 h-12 rounded-full bg-primitives-blue-light-100 flex items-center justify-center text-primitives-blue-light-600">
           <IconMobile />
         </div>
         <div className="flex flex-col gap-2">
