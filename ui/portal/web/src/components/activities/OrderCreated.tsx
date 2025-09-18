@@ -56,7 +56,7 @@ export const ActivityOrderCreated = forwardRef<ActivityRef, ActivityOrderCreated
 
     return (
       <OrderActivity kind={kind}>
-        <p className="flex items-center gap-2 diatype-m-medium text-secondary-700">
+        <p className="flex items-center gap-2 diatype-m-medium text-ink-secondary-700">
           {m["activities.activity.orderCreated.title"]()}
         </p>
 

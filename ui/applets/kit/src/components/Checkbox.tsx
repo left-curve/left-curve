@@ -92,7 +92,7 @@ const checkBoxVariants = tv(
 
 const labelVariants = tv(
   {
-    base: "text-tertiary-500 pt-1 select-none cursor-pointer",
+    base: "text-ink-tertiary-500 pt-1 select-none cursor-pointer",
     variants: {
       size: {
         sm: "diatype-sm-regular",

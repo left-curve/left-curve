@@ -74,10 +74,10 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
     <div className="w-full flex flex-col justify-between h-full gap-4 flex-1">
       <div className="w-full flex flex-col gap-4 px-4">
         <div className="flex items-center justify-between gap-2">
-          <p className="diatype-xs-regular text-tertiary-500">
+          <p className="diatype-xs-regular text-ink-tertiary-500">
             {m["dex.protrade.spot.availableToTrade"]()}
           </p>
-          <p className="diatype-xs-medium text-secondary-700">
+          <p className="diatype-xs-medium text-ink-secondary-700">
             {formatNumber(availableCoin.amount, formatNumberOptions)} {availableCoin.symbol}
           </p>
         </div>
@@ -114,7 +114,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           startContent={
             <CoinSelector
               classNames={{
-                trigger: "text-tertiary-500",
+                trigger: "text-ink-tertiary-500",
               }}
               onChange={changeSizeCoin}
               value={sizeCoin.denom}
@@ -166,38 +166,40 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
         </div>
         <div className="flex flex-col gap-1 px-4">
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-tertiary-500">
+            <p className="diatype-xs-regular text-ink-tertiary-500">
               {m["dex.protrade.spot.orderValue"]()}
             </p>
-            <p className="diatype-xs-medium text-secondary-700">
+            <p className="diatype-xs-medium text-ink-secondary-700">
               {getPrice(size, sizeCoin.denom, { format: true })}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="flex gap-1 diatype-xs-regular text-tertiary-500">
+            <p className="flex gap-1 diatype-xs-regular text-ink-tertiary-500">
               <span>{m["dex.protrade.spot.orderSize"]()}</span>
             </p>
-            <p className="diatype-xs-medium text-secondary-700">
+            <p className="diatype-xs-medium text-ink-secondary-700">
               {formatNumber(amount.quote, formatNumberOptions)} {quoteCoin.symbol}
             </p>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-tertiary-500" />
-            <p className="diatype-xs-medium text-secondary-700">
+            <p className="diatype-xs-regular text-ink-tertiary-500" />
+            <p className="diatype-xs-medium text-ink-secondary-700">
               {formatNumber(amount.base, formatNumberOptions)} {baseCoin.symbol}
             </p>
           </div>
           {operation === "market" ? (
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-tertiary-500">
+              <p className="diatype-xs-regular text-ink-tertiary-500">
                 {m["dex.protrade.spot.slippage"]()}
               </p>
               <p className="diatype-xs-medium">-</p>
             </div>
           ) : null}
           <div className="flex items-center justify-between gap-2">
-            <p className="diatype-xs-regular text-tertiary-500">{m["dex.protrade.spot.fees"]()}</p>
-            <p className="diatype-xs-medium text-secondary-700">
+            <p className="diatype-xs-regular text-ink-tertiary-500">
+              {m["dex.protrade.spot.fees"]()}
+            </p>
+            <p className="diatype-xs-medium text-ink-secondary-700">
               {Number(appConfig?.takerFeeRate) * 100} % / {Number(appConfig?.makerFeeRate) * 100} %
             </p>
           </div>
@@ -207,35 +209,35 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
           <div className="flex flex-col gap-2">
             <p className="diatype-xs-bold">Account Equity</p>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-tertiary-500">Spot</p>
-              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
+              <p className="diatype-xs-regular text-ink-tertiary-500">Spot</p>
+              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-tertiary-500">Perps</p>
-              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
+              <p className="diatype-xs-regular text-ink-tertiary-500">Perps</p>
+              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
             <p className="diatype-xs-bold">Perp Overview</p>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-tertiary-500">Balance</p>
-              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
+              <p className="diatype-xs-regular text-ink-tertiary-500">Balance</p>
+              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-tertiary-500">Unrealized PNL</p>
-              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
+              <p className="diatype-xs-regular text-ink-tertiary-500">Unrealized PNL</p>
+              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-tertiary-500">Cross Margin Ratio</p>
-              <p className="diatype-xs-medium text-secondary-700">0.00%</p>
+              <p className="diatype-xs-regular text-ink-tertiary-500">Cross Margin Ratio</p>
+              <p className="diatype-xs-medium text-ink-secondary-700">0.00%</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-tertiary-500">Maintenance</p>
-              <p className="diatype-xs-medium text-secondary-700">$10.00</p>
+              <p className="diatype-xs-regular text-ink-tertiary-500">Maintenance</p>
+              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-tertiary-500">Cross Account Leverage</p>
-              <p className="diatype-xs-medium text-secondary-700">0.00x</p>
+              <p className="diatype-xs-regular text-ink-tertiary-500">Cross Account Leverage</p>
+              <p className="diatype-xs-medium text-ink-secondary-700">0.00x</p>
             </div>
           </div>
         </div> */}
@@ -259,8 +261,8 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
         color="line-red"
       />
       <div className="flex items-center justify-between gap-2">
-        <p className="diatype-xs-medium text-tertiary-500">Current Position</p>
-        <p className="diatype-xs-bold text-secondary-700">123.00 ETH</p>
+        <p className="diatype-xs-medium text-ink-tertiary-500">Current Position</p>
+        <p className="diatype-xs-bold text-ink-secondary-700">123.00 ETH</p>
       </div>
       <Input
         placeholder="0"
@@ -285,7 +287,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
           </div>
         }
         insideBottomComponent={
-          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular pl-4">
+          <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular pl-4">
             <div className="flex items-center gap-2">
               <p>12.23</p>
               <Button

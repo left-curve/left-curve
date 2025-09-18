@@ -13,7 +13,7 @@ type ContractCardProps = {
 
 export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, balanceChange }) => {
   return (
-    <div className="shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 bg-account-card-contract text-secondary-700">
+    <div className="shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 bg-account-card-contract text-ink-secondary-700">
       <img
         src="/images/emojis/detailed/factory.svg"
         alt="factory"
@@ -30,11 +30,11 @@ export const ContractCard: React.FC<ContractCardProps> = ({ address, balance, ba
         <div className="flex gap-1 items-center">
           <TruncateText
             text={address}
-            className="diatype-xs-medium text-tertiary-500"
+            className="diatype-xs-medium text-ink-tertiary-500"
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-tertiary-500" />
+          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
         </div>
       </div>
 

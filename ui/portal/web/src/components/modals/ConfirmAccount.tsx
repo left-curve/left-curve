@@ -45,7 +45,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
           <div className="h-12 w-12 bg-surface-quaternary-green rounded-full flex items-center justify-center">
             <IconChecked className="h-6 w-6 text-secondary-green" />
           </div>
-          <p className="text-primary-900 h4-bold">{m["modals.accountCreation.title"]()}</p>
+          <p className="text-ink-primary-900 h4-bold">{m["modals.accountCreation.title"]()}</p>
         </div>
 
         <span className="h-[1px] w-full bg-secondary-gray" />
@@ -56,7 +56,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
               {m["modals.accountCreation.accountName"]()}
             </p>
             <div className="flex gap-1 items-center ">
-              <p className=" text-secondary-700 h3-bold">{accountName}</p>
+              <p className=" text-ink-secondary-700 h3-bold">{accountName}</p>
               <Badge text={capitalize(accountType)} color="blue" />
             </div>
           </div>
@@ -64,13 +64,13 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
             <p className="exposure-sm-italic text-primitives-gray-light-300">
               {m["modals.accountCreation.accountBalance"]()}
             </p>
-            <div className="flex items-center justify-between text-secondary-700 h3-bold">
+            <div className="flex items-center justify-between text-ink-secondary-700 h3-bold">
               <p>
                 {humanAmount} {coin.symbol}
               </p>
               <img src={coin.logoURI} alt={coin.symbol} className="w-8 h-8" />
             </div>
-            <p className="text-tertiary-500 diatype-sm-regular">
+            <p className="text-ink-tertiary-500 diatype-sm-regular">
               {getPrice(humanAmount, denom, { format: true, formatOptions: formatNumberOptions })}
             </p>
           </div>

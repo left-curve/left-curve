@@ -30,7 +30,7 @@ export const WelcomeModal: React.FC = () => {
             />
           </div>
           <p className="h4-bold">{m["common.testnet.title"]()}</p>
-          <div className="flex flex-col diatype-m-medium text-tertiary-500 gap-4">
+          <div className="flex flex-col diatype-m-medium text-ink-tertiary-500 gap-4">
             <p>Hi there,</p>
             <p>
               Thank you for participating in <span className="font-bold">testnet-2</span>!

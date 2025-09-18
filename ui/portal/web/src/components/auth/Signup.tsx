@@ -56,7 +56,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
   return (
     <>
       <Mobile />
-      <div className="h-screen w-screen flex items-center justify-center bg-surface-primary-rice text-primary-900">
+      <div className="h-screen w-screen flex items-center justify-center bg-surface-primary-rice text-ink-primary-900">
         <div className="flex items-center justify-center flex-1">
           <ResizerContainer layoutId="signup" className="w-full max-w-[22.5rem]">
             <div className="flex items-center justify-center gap-8 px-4 lg:px-0 flex-col w-full">
@@ -69,7 +69,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                 {activeStep !== 2 ? (
                   <div className="flex flex-col gap-3 items-center justify-center text-center w-full">
                     <h1 className="h2-heavy">{m["signup.stepper.title"]({ step: activeStep })}</h1>
-                    <p className="text-tertiary-500 diatype-m-medium">
+                    <p className="text-ink-tertiary-500 diatype-m-medium">
                       {m["signup.stepper.description"]({ step: activeStep })}
                     </p>
                   </div>
@@ -78,7 +78,7 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
                     <h1 className="h2-heavy">
                       {m["common.hi"]()}, {data.username}
                     </h1>
-                    <p className="text-tertiary-500 diatype-m-medium">
+                    <p className="text-ink-tertiary-500 diatype-m-medium">
                       {m["signup.stepper.description"]({ step: activeStep })}
                     </p>
                   </div>
@@ -139,13 +139,13 @@ const Mobile: React.FC = () => {
   const { history } = useRouter();
   return (
     <div className="md:hidden w-screen h-screen bg-primitives-gray-light-900/50 fixed top-0 left-0 z-50 flex items-center justify-center p-4">
-      <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice text-primary-900 rounded-xl border border-secondary-gray max-w-96">
+      <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice text-ink-primary-900 rounded-xl border border-secondary-gray max-w-96">
         <div className="flex flex-col gap-4 p-4 border-b border-b-secondary-gray">
           <div className="w-12 h-12 bg-error-100 rounded-full flex items-center justify-center">
             <IconAlert className="w-6 h-6 text-status-fail" />
           </div>
-          <p className="h4-bold text-primary-900">{m["signup.mobileModal.title"]()}</p>
-          <p className="diatype-m-medium text-tertiary-500">
+          <p className="h4-bold text-ink-primary-900">{m["signup.mobileModal.title"]()}</p>
+          <p className="diatype-m-medium text-ink-tertiary-500">
             {m["signup.mobileModal.description"]()}
           </p>
         </div>
@@ -332,7 +332,7 @@ const Username: React.FC = () => {
         placeholder={
           <p className="flex gap-1 items-center justify-start">
             <span>{m["signin.placeholder"]()}</span>
-            <span className="text-primary-rice exposure-m-italic group-data-[focus=true]:text-tertiary-500">
+            <span className="text-primary-rice exposure-m-italic group-data-[focus=true]:text-ink-tertiary-500">
               {m["common.username"]().toLowerCase()}
             </span>
           </p>

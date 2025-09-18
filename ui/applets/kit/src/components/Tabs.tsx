@@ -209,7 +209,7 @@ const tabVariants = tv({
     {
       isActive: true,
       color: "light-green",
-      class: "text-secondary-700",
+      class: "text-ink-secondary-700",
     },
     {
       isActive: false,

@@ -35,12 +35,12 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
             )}
           </div>
           <div className="flex flex-col">
-            <p className="text-primary-900 diatype-m-bold">{coinInfo.symbol}</p>
-            <p className="text-tertiary-500 diatype-m-regular">{coinInfo.name}</p>
+            <p className="text-ink-primary-900 diatype-m-bold">{coinInfo.symbol}</p>
+            <p className="text-ink-tertiary-500 diatype-m-regular">{coinInfo.name}</p>
           </div>
         </div>
         <div className="flex flex-col items-end">
-          <p className="text-primary-900 diatype-m-bold">{price}</p>
+          <p className="text-ink-primary-900 diatype-m-bold">{price}</p>
           <p>
             {coinInfo.type === "lp"
               ? formatNumber(humanAmount, { ...formatNumberOptions, maximumTotalDigits: 4 })

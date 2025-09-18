@@ -132,7 +132,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
           <div className="w-full flex gap-2">
             <IconButton variant="link" onClick={() => history.go(-1)}>
               <IconChevronDown className="rotate-90" />
-              <span className="h4-bold text-primary-900">{m["common.accounts"]()} </span>
+              <span className="h4-bold text-ink-primary-900">{m["common.accounts"]()} </span>
             </IconButton>
           </div>
         ) : null}

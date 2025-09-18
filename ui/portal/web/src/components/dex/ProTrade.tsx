@@ -105,12 +105,12 @@ const ProTradeHeader: React.FC = () => {
             onClick={() => setIsExpanded(!isExpanded)}
           >
             <IconChevronDownFill
-              className={twMerge("text-tertiary-500 w-4 h-4 transition-all", {
+              className={twMerge("text-ink-tertiary-500 w-4 h-4 transition-all", {
                 "rotate-180": isExpanded,
               })}
             />
           </div>
-          {/*   <IconEmptyStar className="w-5 h-5 text-tertiary-500" /> */}
+          {/*   <IconEmptyStar className="w-5 h-5 text-ink-tertiary-500" /> */}
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -125,12 +125,12 @@ const ProTradeHeader: React.FC = () => {
             className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start pt-8 lg:pt-0">
-              <p className="diatype-xs-medium text-tertiary-500">
+              <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.history.price"]()}
               </p>
               <p
                 className={twMerge(
-                  "diatype-sm-bold text-secondary-700",
+                  "diatype-sm-bold text-ink-secondary-700",
                   Decimal(previousPrice).lte(currentPrice)
                     ? "text-status-fail"
                     : "text-status-success",
@@ -140,13 +140,13 @@ const ProTradeHeader: React.FC = () => {
               </p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-tertiary-500">
+              <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.24hChange"]()}
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-tertiary-500">
+              <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.volume"]()}
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
@@ -262,7 +262,7 @@ const ProTradeOpenOrders: React.FC = () => {
         return (
           <Cell.Text
             text={value}
-            className="diatype-xs-regular text-secondary-700 hover:text-primary-900 cursor-pointer"
+            className="diatype-xs-regular text-ink-secondary-700 hover:text-ink-primary-900 cursor-pointer"
           />
         );
       },

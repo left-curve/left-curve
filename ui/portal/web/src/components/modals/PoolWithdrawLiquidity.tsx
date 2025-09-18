@@ -26,10 +26,10 @@ export const PoolWithdrawLiquidity = forwardRef(
             <IconAlert />
           </div>
           <div className="flex flex-col gap-2">
-            <h3 className="h4-bold text-primary-900">
+            <h3 className="h4-bold text-ink-primary-900">
               {m["poolLiquidity.modal.withdrawalConfirmation"]()}
             </h3>
-            <p className="text-tertiary-500 diatype-m-regular">
+            <p className="text-ink-tertiary-500 diatype-m-regular">
               {m["poolLiquidity.modal.withdrawPenaltyAdvice"]()}
             </p>
           </div>

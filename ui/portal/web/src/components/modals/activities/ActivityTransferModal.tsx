@@ -50,7 +50,7 @@ export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModal
           <IconClose />
         </IconButton>
         <div className="p-4 flex flex-col gap-5">
-          <h2 className="text-lg font-semibold text-center text-primary-900">
+          <h2 className="text-lg font-semibold text-center text-ink-primary-900">
             {action === "received"
               ? m["activities.activity.modal.received"]()
               : m["activities.activity.modal.sent"]()}
@@ -61,13 +61,13 @@ export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModal
               const humanAmount = formatUnits(amount, coin.decimals);
               return (
                 <div className="flex flex-col gap-2 w-full" key={`transfer-coin-${denom}`}>
-                  <div className="flex items-center justify-between  h3-bold text-secondary-700">
+                  <div className="flex items-center justify-between  h3-bold text-ink-secondary-700">
                     <p>
                       {humanAmount} {coin.symbol}
                     </p>
                     <img src={coin.logoURI} alt={`${coin.symbol} logo`} className="h-8 w-8" />
                   </div>
-                  <p className="text-tertiary-500 diatype-sm-regular">
+                  <p className="text-ink-tertiary-500 diatype-sm-regular">
                     {getPrice(humanAmount, denom, { format: true })}
                   </p>
                 </div>
@@ -75,8 +75,8 @@ export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModal
             })}
             <span className="w-full h-[1px] bg-secondary-gray my-2" />
             <div className="flex flex-col gap-2 w-full">
-              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500 capitalize">
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500 capitalize">
                   {m["activities.activity.transfer.direction.first"]()}
                 </p>
                 <div className="flex items-center gap-1">
@@ -88,8 +88,8 @@ export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModal
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500 capitalize">
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500 capitalize">
                   {m["activities.activity.transfer.direction.second"]()}
                 </p>
                 <div className="flex items-center gap-1">
@@ -101,16 +101,16 @@ export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModal
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500">
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500">
                   {m["activities.activity.modal.time"]()}
                 </p>
                 <div className="flex items-center gap-1">
                   <p>{formatDate(time, `${dateFormat} ${timeFormat}`)}</p>
                 </div>
               </div>
-              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500">
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500">
                   {m["activities.activity.link"]({
                     link: txHash ? "txHash" : "blockHeight",
                   })}

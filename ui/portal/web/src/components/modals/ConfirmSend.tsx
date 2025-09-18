@@ -52,7 +52,7 @@ export const ConfirmSend = forwardRef(
 
     return (
       <div className="flex flex-col bg-surface-primary-rice md:border border-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
-        <p className="text-primary-900 diatype-lg-medium w-full text-center">
+        <p className="text-ink-primary-900 diatype-lg-medium w-full text-center">
           {m["modals.confirmSend.title"]()}
         </p>
         <div className=" flex flex-col gap-4">
@@ -60,13 +60,13 @@ export const ConfirmSend = forwardRef(
             <p className="exposure-sm-italic text-primitives-gray-light-300">
               {m["modals.confirmSend.sending"]()}
             </p>
-            <div className="flex items-center justify-between text-secondary-700 h3-bold">
+            <div className="flex items-center justify-between text-ink-secondary-700 h3-bold">
               <p>
                 {humanAmount} {coin.symbol}
               </p>
               <img src={coin.logoURI} alt={coin.denom} className="w-8 h-8" />
             </div>
-            <p className="text-tertiary-500 diatype-sm-regular">
+            <p className="text-ink-tertiary-500 diatype-sm-regular">
               {getPrice(humanAmount, denom, { format: true, formatOptions: formatNumberOptions })}
             </p>
           </div>
@@ -75,13 +75,13 @@ export const ConfirmSend = forwardRef(
             {isLoading ? (
               <Skeleton className="h-[34px] w-full max-w-36" />
             ) : (
-              <p className=" text-secondary-700 h3-bold">{username}</p>
+              <p className=" text-ink-secondary-700 h3-bold">{username}</p>
             )}
-            <TruncateText className="text-tertiary-500 diatype-sm-regular " text={to} />
+            <TruncateText className="text-ink-tertiary-500 diatype-sm-regular " text={to} />
           </div>
           {/*  <div className="flex items-center justify-between ">
-          <p className="text-tertiary-500 diatype-sm-regular">Fee</p>
-          <p className="text-secondary-700 diatype-sm-medium">$1.2</p>
+          <p className="text-ink-tertiary-500 diatype-sm-regular">Fee</p>
+          <p className="text-ink-secondary-700 diatype-sm-medium">$1.2</p>
         </div> */}
         </div>
         <IconButton

@@ -18,10 +18,10 @@ export const MobileTitle: React.FC<MobileTitleProps> = ({ title, className }) =>
   return (
     <View className={twMerge("flex flex-row gap-2 items-center self-start", className)}>
       <Pressable onPress={() => back()} className="p-2 rotate-90" accessibilityRole="button">
-        <IconChevronDown className="w-5 h-5 text-primary-900" />
+        <IconChevronDown className="w-5 h-5 text-ink-primary-900" />
       </Pressable>
 
-      <GlobalText className="h3-bold text-primary-900">{title}</GlobalText>
+      <GlobalText className="h3-bold text-ink-primary-900">{title}</GlobalText>
     </View>
   );
 };

@@ -28,10 +28,10 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserS
               </div>
               <div className="flex-1 flex gap-4 items-center justify-between">
                 <div className="flex flex-col gap-1">
-                  <p className="diatype-lg-medium text-secondary-700">{username}</p>
+                  <p className="diatype-lg-medium text-ink-secondary-700">{username}</p>
                 </div>
 
-                <IconButton variant="link" className="text-tertiary-500 p-0 h-fit w-fit">
+                <IconButton variant="link" className="text-ink-tertiary-500 p-0 h-fit w-fit">
                   <IconChevronRight className="w-6 h-6" />
                 </IconButton>
               </div>

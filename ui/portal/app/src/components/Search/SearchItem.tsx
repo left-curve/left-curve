@@ -38,9 +38,9 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
           </View>
 
           <View className="flex flex-col max-w-full flex-1">
-            <GlobalText className="diatype-lg-medium text-secondary-700">{title}</GlobalText>
+            <GlobalText className="diatype-lg-medium text-ink-secondary-700">{title}</GlobalText>
             <GlobalText
-              className="diatype-m-regular text-tertiary-500"
+              className="diatype-m-regular text-ink-tertiary-500"
               numberOfLines={2}
               ellipsizeMode="tail"
             >
@@ -76,7 +76,7 @@ const AssetItem: React.FC<SearchAssetProps> = ({ symbol, price }) => {
           {/* <Image source={{ uri: logoURI }} style={{ width: 32, height: 32 }} /> */}
           <View className="flex-col gap-1">
             <GlobalText className="diatype-m-bold">{symbol}</GlobalText>
-            <GlobalText className="diatype-m-regular text-tertiary-500">{symbol}</GlobalText>
+            <GlobalText className="diatype-m-regular text-ink-tertiary-500">{symbol}</GlobalText>
           </View>
         </View>
         <View className="flex-col gap-1">
@@ -98,7 +98,7 @@ const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
         </View>
         <View className="flex-col">
           <GlobalText className="diatype-m-medium">#{height} Block</GlobalText>
-          <TruncateText className="diatype-sm-regular text-tertiary-500" text={hash} end={20} />
+          <TruncateText className="diatype-sm-regular text-ink-tertiary-500" text={hash} end={20} />
         </View>
       </View>
     </MotiView>
@@ -116,7 +116,9 @@ const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash })
         </View>
         <View className="flex-col">
           <TruncateText className="flex-row gap-2 diatype-m-medium" text={hash} end={20} />
-          <GlobalText className="diatype-sm-regular text-tertiary-500">Block: #{height}</GlobalText>
+          <GlobalText className="diatype-sm-regular text-ink-tertiary-500">
+            Block: #{height}
+          </GlobalText>
         </View>
       </View>
     </MotiView>
@@ -136,7 +138,11 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
         </View>
         <View className="flex-col">
           <AddressVisualizer address={address} withIcon classNames={{ text: "diatype-m-medium" }} />
-          <TruncateText className="diatype-sm-regular text-tertiary-500" text={address} end={20} />
+          <TruncateText
+            className="diatype-sm-regular text-ink-tertiary-500"
+            text={address}
+            end={20}
+          />
         </View>
       </View>
     </MotiView>
@@ -157,7 +163,11 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
         </View>
         <View className="flex-col">
           <GlobalText>{name}</GlobalText>
-          <TruncateText className="diatype-sm-regular text-tertiary-500" text={address} end={20} />
+          <TruncateText
+            className="diatype-sm-regular text-ink-tertiary-500"
+            text={address}
+            end={20}
+          />
         </View>
       </View>
     </MotiView>

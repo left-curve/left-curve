@@ -56,13 +56,13 @@ export const Toast: React.FC<ToastProps> = ({ toast }) => {
           {Icon[type]}
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">
             {typeof Title === "string" ? (
-              <p className="text-primary-900 diatype-sm-medium">{Title}</p>
+              <p className="text-ink-primary-900 diatype-sm-medium">{Title}</p>
             ) : typeof Title === "function" ? (
               <Title {...toast} />
             ) : null}
 
             {typeof Description === "string" ? (
-              <p className="text-tertiary-500 diatype-xs-medium break-all">{Description}</p>
+              <p className="text-ink-tertiary-500 diatype-xs-medium break-all">{Description}</p>
             ) : typeof Description === "function" ? (
               <Description {...toast} />
             ) : null}
@@ -73,7 +73,7 @@ export const Toast: React.FC<ToastProps> = ({ toast }) => {
             onClick={() => toaster.dismiss(id)}
             type="button"
           >
-            <IconClose className="w-6 h-6 text-tertiary-500 hover:text-primary-900" />
+            <IconClose className="w-6 h-6 text-ink-tertiary-500 hover:text-ink-primary-900" />
           </button>
         </div>
       </div>

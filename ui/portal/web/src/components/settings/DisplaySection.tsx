@@ -24,7 +24,7 @@ import type { AppState } from "@left-curve/applets-kit";
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="rounded-xl bg-surface-secondary-rice shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
-      <h3 className="h4-bold text-primary-900 px-2">{m["settings.display"]()}</h3>
+      <h3 className="h4-bold text-ink-primary-900 px-2">{m["settings.display"]()}</h3>
       {children}
     </div>
   );
@@ -34,8 +34,8 @@ const LanguageSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconLanguage className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700">{m["settings.language"]()}</span>
+        <IconLanguage className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700">{m["settings.language"]()}</span>
       </p>
       <Select value={getLocale()} onChange={(key) => setLocale(key as (typeof locales)[number])}>
         {locales.map((locale) => (
@@ -56,8 +56,8 @@ const ChartEngineSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconDepth className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700">{m["settings.chart"]()}</span>
+        <IconDepth className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700">{m["settings.chart"]()}</span>
       </p>
       <Select
         value={chart}
@@ -79,8 +79,8 @@ const FormatNumberSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconFormatNumber className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700"> {m["settings.number"]()}</span>
+        <IconFormatNumber className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.number"]()}</span>
       </p>
 
       <Select
@@ -109,8 +109,8 @@ const TimeFormatSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconCalendar className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700"> {m["settings.time"]()}</span>
+        <IconCalendar className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.time"]()}</span>
       </p>
 
       <Select
@@ -136,8 +136,8 @@ const DateFormatSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconCalendar className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700"> {m["settings.date"]()}</span>
+        <IconCalendar className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.date"]()}</span>
       </p>
 
       <Select
@@ -163,8 +163,8 @@ const TimeZoneSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconCalendar className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700"> {m["settings.timeZone"]()}</span>
+        <IconCalendar className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.timeZone"]()}</span>
       </p>
 
       <Select
@@ -188,8 +188,8 @@ const ThemeSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconTheme className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700">{m["settings.theme"]()}</span>
+        <IconTheme className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700">{m["settings.theme"]()}</span>
       </p>
       <Tabs
         selectedTab={themeSchema}

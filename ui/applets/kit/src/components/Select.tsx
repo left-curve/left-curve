@@ -216,13 +216,13 @@ const selectVariants = tv({
         listBoxContainer: "p-1",
         listBoxItem:
           "rounded-sm py-1 px-2 text-sm diatype-xs-regular bg-surface-secondary-rice hover:bg-surface-tertiary-rice",
-        trigger: "diatype-xs-regular group-hover:text-primary-900 gap-1",
-        icon: "w-3 h-3 group-hover:text-primary-900",
+        trigger: "diatype-xs-regular group-hover:text-ink-primary-900 gap-1",
+        icon: "w-3 h-3 group-hover:text-ink-primary-900",
       },
     },
     isDisabled: {
       true: {
-        trigger: "bg-secondary-gray text-tertiary-500 cursor-not-allowed",
+        trigger: "bg-secondary-gray text-ink-tertiary-500 cursor-not-allowed",
       },
     },
   },

@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/correctness/noUnknownFunction: <explanation> */
 :root {
   --color-surface-primary-rice: #FFFCF6;
   --color-surface-primary-green: #D2D184;
@@ -142,7 +143,7 @@ body {
 
 
 [cmdk-group-heading] {
-  @apply diatype-sm-medium text-tertiary-500;
+  @apply diatype-sm-medium text-ink-tertiary-500;
   padding: 0 11px;
 }
 
@@ -193,7 +194,7 @@ body {
 #chart-container .ciq-night .ciq-nav,
 #chart-container .ciq-night .chartContainer,
 #chart-container .ciq-night cq-chart-title {
-  color: var(--color-tertiary-500) !important;
+  color: var(--color-ink-tertiary-500) !important;
   background: var(--color-surface-secondary-rice) !important;
   border: none;
 }
@@ -213,7 +214,7 @@ body {
 
 #chart-container .ciq-day cq-menu .menu-clickable:not(cq-help),
 #chart-container .ciq-night cq-menu .menu-clickable:not(cq-help) {
-  color: var(--color-tertiary-500);
+  color: var(--color-ink-tertiary-500);
 }
 
 #chart-container .stx-subholder {
@@ -245,7 +246,7 @@ body {
 #chart-container .ciq-day .ciq-select:hover {
   background: var(--color-surface-tertiary-rice);
   border: transparent;
-  color: var(--color-primary-900);
+  color: theme('colors.ink.primary.900');
 }
 
 #chart-container cq-heading {

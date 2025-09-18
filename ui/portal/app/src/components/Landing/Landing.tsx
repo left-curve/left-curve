@@ -37,7 +37,7 @@ const Overview: React.FC = () => {
       style={{ height: height - 100 }}
     >
       <View className="w-full items-center">
-        <Logo width={200} height={80} className="text-primary-900" />
+        <Logo width={200} height={80} className="text-ink-primary-900" />
       </View>
 
       <View className="w-full pb-[4rem]">

@@ -23,7 +23,7 @@ const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text
           <IconClose className="h-4 w-4 text-white" />
         )}
       </div>
-      <p className={twMerge({ "text-tertiary-500": !completed })}>{text}</p>
+      <p className={twMerge({ "text-ink-tertiary-500": !completed })}>{text}</p>
     </div>
   );
 };
@@ -118,7 +118,7 @@ export const QuestBanner: React.FC = () => {
           </Button>
         ) : null}
         <IconClose
-          className="absolute top-4 right-4 lg:static h-6 w-6 text-tertiary-500 cursor-pointer"
+          className="absolute top-4 right-4 lg:static h-6 w-6 text-ink-tertiary-500 cursor-pointer"
           onClick={() => setQuestBannerVisibility(false)}
         />
       </div>

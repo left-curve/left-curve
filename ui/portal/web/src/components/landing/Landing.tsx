@@ -233,7 +233,7 @@ const SectionCommunity: React.FC = () => {
               href="/documents/Dango%20-%20Terms%20of%20Use.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline text-tertiary-500"
+              className="hover:underline text-ink-tertiary-500"
             >
               {m["welcome.termsOfUse"]()}
             </a>
@@ -242,7 +242,7 @@ const SectionCommunity: React.FC = () => {
               href="/documents/Dango%20-%20Privacy%20Policy.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline text-tertiary-500"
+              className="hover:underline text-ink-tertiary-500"
             >
               {m["welcome.privacyPolicy"]()}
             </a>
