@@ -41,12 +41,12 @@ const buttonVariants = tv({
         text: "text-surface-primary-rice",
       },
       secondary: {
-        base: "bg-primary-blue",
-        icons: "text-secondary-blue",
-        text: "text-secondary-blue",
+        base: "bg-surface-primary-blue",
+        icons: "text-ink-secondary-blue",
+        text: "text-ink-secondary-blue",
       },
       tertiary: {
-        base: "bg-button-green",
+        base: "bg-surface-button-green",
         icons: "text-surface-primary-rice",
         text: "text-surface-primary-rice",
       },
@@ -62,8 +62,8 @@ const buttonVariants = tv({
       },
       link: {
         base: "bg-transparent",
-        icons: "text-secondary-blue",
-        text: "text-secondary-blue",
+        icons: "text-ink-secondary-blue",
+        text: "text-ink-secondary-blue",
       },
     },
     radius: {

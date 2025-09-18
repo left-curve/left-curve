@@ -32,7 +32,7 @@ export const OrderActivity: React.FC<PropsWithChildren<OrderActivityProps>> = (p
           isLimit ? "bg-tertiary-blue" : "bg-tertiary-green",
         )}
       >
-        <Icon className={twMerge(isLimit ? "text-secondary-blue" : "text-brand-green")} />
+        <Icon className={twMerge(isLimit ? "text-ink-secondary-blue" : "text-brand-green")} />
       </div>
       <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">{children}</div>
     </div>

@@ -120,7 +120,7 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         color: "blue",
-        class: "bg-primary-blue hover:bg-surface-secondary-blue text-secondary-blue",
+        class: "bg-surface-primary-blue hover:bg-surface-secondary-blue text-ink-secondary-blue",
       },
       {
         variant: "secondary",
@@ -131,7 +131,8 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         color: "green",
-        class: "bg-button-green hover:bg-secondary-green text-surface-primary-rice",
+        class:
+          "bg-surface-button-green hover:bg-surface-button-green-hover text-surface-primary-rice",
       },
       {
         variant: "link",

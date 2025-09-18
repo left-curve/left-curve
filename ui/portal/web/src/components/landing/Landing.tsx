@@ -226,7 +226,7 @@ const SectionCommunity: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row gap-1">
+        <div className="w-full border-t border-t-overlay-tertiary-blue items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row gap-1">
           <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
           <div className="flex gap-10 lg:gap-4 diatype-m-medium">
             <a

@@ -25,7 +25,7 @@ const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
         onPress={() => push(path)}
         accessibilityRole="button"
         accessibilityLabel={title}
-        className="h-20 w-20 rounded-xl p-2.5 shadow-account-card bg-primary-red active:opacity-80 flex items-center justify-center"
+        className="h-20 w-20 rounded-xl p-2.5 shadow-account-card bg-surface-primary-red active:opacity-80 flex items-center justify-center"
       >
         <AppletImage width="44" height="44" />
       </Pressable>

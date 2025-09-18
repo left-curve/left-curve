@@ -16,9 +16,9 @@ const badgeVariants = tv(
     base: ["rounded-[4px] diatype-xs-medium w-fit h-fit"],
     variants: {
       color: {
-        blue: "bg-surface-secondary-blue text-fg-primary-blue border-tertiary-blue",
-        red: "bg-surface-secondary-red text-fg-primary-red border-secondary-red",
-        green: "bg-surface-tertiary-green text-fg-primary-green border-surface-primary-green",
+        blue: "bg-surface-secondary-blue text-fg-primary-blue border-overlay-tertiary-blue",
+        red: "bg-surface-secondary-red text-fg-primary-red border-overlay-secondary-red",
+        green: "bg-surface-tertiary-green text-fg-primary-green border-overlay-primary-green",
       },
       size: {
         s: "py-[2px] px-2 diatype-xs-medium",

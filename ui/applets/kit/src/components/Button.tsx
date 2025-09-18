@@ -121,12 +121,12 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         class:
-          "bg-primary-blue hover:bg-surface-secondary-blue text-secondary-blue focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-primary-blue hover:bg-surface-secondary-blue text-ink-secondary-blue focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary",
         class:
-          "bg-button-green hover:bg-primitives-green-light-500 text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-button-green hover:bg-surface-button-green-hover text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary-red",
@@ -136,7 +136,7 @@ const buttonVariants = tv(
       {
         variant: "link",
         class:
-          "bg-transparent hover:text-primitives-blue-light-600 text-secondary-blue focus:bg-primary-blue focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
+          "bg-transparent hover:text-primitives-blue-light-600 text-ink-secondary-blue focus:bg-surface-primary-blue focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
       },
       {
         variant: "link",

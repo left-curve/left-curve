@@ -23,12 +23,12 @@ const Icon = {
     </div>
   ),
   maintenance: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-rice text-primary-rice flex items-center justify-center">
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-rice text-ink-secondary-rice flex items-center justify-center">
       <IconTools className="w-4 h-4" />
     </div>
   ),
   info: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-tertiary-blue text-secondary-blue flex items-center justify-center">
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-tertiary-blue text-ink-secondary-blue flex items-center justify-center">
       <IconInfo className="w-4 h-4" />
     </div>
   ),

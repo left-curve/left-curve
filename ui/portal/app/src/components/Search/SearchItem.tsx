@@ -33,7 +33,7 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
     <MotiView key={title} className="w-full p-2 rounded-xs">
       <View className="flex flex-row items-center justify-between gap-4">
         <View className="flex-row items-center gap-4 flex-1 basis-0">
-          <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+          <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
             {AppletImage ? <AppletImage width={48} height={48} /> : null}
           </View>
 
@@ -93,7 +93,7 @@ const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
   return (
     <MotiView key={height} className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex flex-row items-center gap-4">
-        <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiBlocks width={48} height={48} />
         </View>
         <View className="flex-col">
@@ -111,7 +111,7 @@ const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash })
   return (
     <MotiView key={height} className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-center gap-4">
-        <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiTxs width={48} height={48} />
         </View>
         <View className="flex-col">
@@ -133,7 +133,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
   return (
     <MotiView key={address} className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-center gap-4">
-        <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiFactory width={48} height={48} />
         </View>
         <View className="flex-col">
@@ -158,7 +158,7 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
   return (
     <MotiView key={address} className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-center gap-4">
-        <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiFactory width={48} height={48} />
         </View>
         <View className="flex-col">

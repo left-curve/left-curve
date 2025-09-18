@@ -305,30 +305,7 @@ export const tailwindConfig: Partial<Config> = {
           fail: "var(--color-status-fail)",
         },
         transparent: "transparent",
-        /*  foreground: {
-          "primary-blue": "var(--color-foreground-primary-blue)",
-          "primary-red": "var(--color-foreground-primary-red)",
-          "primary-green": "var(--color-foreground-primary-green)",
-          "disabled-gray": "var(--color-foreground-disabled-gray)",
-          "secondary-rice": "var(--color-foreground-secondary-rice)",
-          tertiary: "var(--color-foreground-tertiary)",
-          "tertiary-rice": "var(--color-foreground-tertiary-rice)",
-          "quaternary-rice": "var(--color-foreground-quaternary-rice)",
-        }, */
-        /*  overlay-rice */
-        /* border: {
-          "secondary-rice": "var(--color-border-secondary-rice)",
-          "tertiary-blue": "var(--color-border-tertiary-blue)",
-        }, */
-        /* "button-green": "var(--color-button-green)",
-        primary: {
-          blue: "var(--color-primary-blue)",
-          red: "var(--color-primary-red)",
-          rice: "var(--color-primary-rice)",
-          "900": "var(--color-primary-900)",
-          gray: "var(--color-primary-gray)",
-          green: "var(--color-primary-green)",
-        },
+        /*
         secondary: {
           "700": "var(--color-secondary-700)",
           blue: "var(--color-secondary-blue)",

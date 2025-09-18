@@ -37,7 +37,7 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
       key={title}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <img src={img} alt={title} className="w-12 h-12" />
         </div>
         <div>
@@ -93,7 +93,7 @@ const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
       key={height}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <img src="/images/emojis/simple/blocks.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
@@ -118,7 +118,7 @@ const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash })
       variants={childVariants}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <img src="/images/emojis/simple/txs.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
@@ -145,7 +145,7 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
       key={address}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <img src="/images/emojis/simple/factory.svg" alt="test" className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
@@ -182,7 +182,7 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
       key={address}
     >
       <div className="flex items-center gap-4">
-        <div className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <div className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <img src={`/images/emojis/simple/${type}.svg`} alt={type} className="w-12 h-12" />
         </div>
         <div className="flex flex-col">
