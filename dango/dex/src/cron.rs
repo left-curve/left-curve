@@ -70,6 +70,9 @@ pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Respon
 }
 
 pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let now = std::time::Instant::now();
+
     let app_cfg = ctx.querier.query_dango_config()?;
 
     let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier)
@@ -153,6 +156,12 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     // Round refunds and fee to integer amounts. Round _down_ in both cases.
     let refunds = refunds.into_batch();
     let fees = fees.into_coins_floor();
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_AUCTION_DURATION,)
+            .record(now.elapsed().as_secs_f64());
+    }
 
     Ok(Response::new()
         .may_add_message(if !refunds.is_empty() {
@@ -433,8 +442,12 @@ fn clear_orders_of_pair(
     {
         metrics::counter!(crate::metrics::LABEL_TRADES).increment(filling_outcomes.len() as u64);
 
-        metrics::histogram!(crate::metrics::LABEL_TRADES_PER_BLOCK)
-            .record(filling_outcomes.len() as f64);
+        metrics::histogram!(
+            crate::metrics::LABEL_TRADES_PER_BLOCK,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string()
+        )
+        .record(filling_outcomes.len() as f64);
     }
 
     // Handle order filling outcomes for the user placed orders.
