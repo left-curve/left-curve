@@ -172,7 +172,7 @@ const Messages: React.FC = () => {
               classNames={{ text: "capitalize" }}
               defaultExpanded
             >
-              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-white-100">
+              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
                 <JsonVisualizer json={message} collapsed={1} />
               </div>
             </AccordionItem>
