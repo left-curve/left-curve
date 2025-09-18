@@ -32,7 +32,6 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-error-boundary": "^6.0.0",
-    "react-hot-toast": "catalog:",
     "react-modal-sheet": "^4.0.1",
     "zod": "catalog:"
   },
