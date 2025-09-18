@@ -5577,6 +5577,7 @@ dependencies = [
  "hyperlane-types",
  "identity",
  "k256",
+ "rand 0.8.5",
 ]
 
 [[package]]
