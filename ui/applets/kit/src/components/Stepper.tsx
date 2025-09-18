@@ -77,7 +77,7 @@ const StepIcon: React.FC<StepProps> = ({ index, active }) => {
         "before:content-[''] before:absolute before:z-10 before:bg-surface-primary-rice before:border-2 before:border-primitives-red-light-400 before:w-7 before:h-7 before:rounded-full before:bg-primitives-red-light-400 before:transition-all",
         active === index
           ? "border-surface-primary-rice bg-primitives-red-light-400 before:scale-1 w-7 h-7 border-4 before:bg-transparent"
-          : "border-primary-gray before:scale-0 bg-overlay-secondary-gray w-6 h-6 border-2",
+          : "border-overlay-primary-gray before:scale-0 bg-overlay-secondary-gray w-6 h-6 border-2",
       )}
     >
       <div
