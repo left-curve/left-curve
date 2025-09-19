@@ -70,6 +70,7 @@
 
     - name: Clean up generated files
       become: true
+      become_user: root
       file:
         path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item }}"
         state: absent
