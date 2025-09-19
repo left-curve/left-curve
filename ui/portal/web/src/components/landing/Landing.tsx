@@ -178,12 +178,12 @@ const SectionCommunity: React.FC = () => {
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center lg:justify-end bg-surface-primary-rice bg-[linear-gradient(6.97deg,_#D0CFEB_11.63%,_#F6F6FB_88.19%)] dark:bg-[linear-gradient(6.97deg,_#6E6D77_11.63%,_#373634_88.19%)]">
-      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 pb-[10svh] lg:pb-0 min-h-[calc(100svh)] lg:justify-center pt-[76px]">
+      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 pb-[10svh] lg:pb-0 min-h-[calc(100svh)] lg:justify-center pt-[76px] gap-4">
         <div className="w-full flex flex-col lg:flex-row items-center lg:justify-between gap-4 flex-1">
           <img
             src="/images/characters/friends.svg"
             alt="rabbits"
-            className="w-full transition-all max-w-[317px] md:max-w-[435px] lg:max-h-[535px]"
+            className="w-full transition-all max-w-[217px] sm:max-w-[317px] md:max-w-[435px] lg:max-h-[535px]"
           />
           <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
             <h2 className="display-heading-m md:display-heading-2xl">

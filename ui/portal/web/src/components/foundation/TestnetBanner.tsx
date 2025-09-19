@@ -1,4 +1,4 @@
-import { IconClose, Marquee } from "@left-curve/applets-kit";
+import { IconClose, Marquee, twMerge } from "@left-curve/applets-kit";
 
 import type React from "react";
 
@@ -15,12 +15,16 @@ export const TestnetBanner: React.FC = () => {
   const text = m["common.advice"]({ environment: m["common.environment"]({ environment: env }) });
 
   if (!testBannerVisibility || !showBanner) return null;
+  const isLandingPage = location.pathname === "/";
 
   return (
     <motion.div
       exit={{ transform: "scaleY(0)", height: 0, opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="min-h-9 h-9 w-full relative top-0  bg-[url('./images/warning-banner.svg')] flex items-center justify-center"
+      className={twMerge(
+        "min-h-9 h-9 w-full relative top-0 bg-[url('./images/warning-banner.svg')] flex items-center justify-center",
+        isLandingPage && "fixed z-50",
+      )}
     >
       <Marquee
         className="w-full bg-[#F7CF74] h-fit p-0 uppercase gap-10"
