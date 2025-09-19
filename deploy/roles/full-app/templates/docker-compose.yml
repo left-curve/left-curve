@@ -14,6 +14,8 @@ services:
       - POSTGRES_DB=dango_prod
       - POSTGRES_USER={{ lookup('env','DB_USER', default='postgres') }}
       - POSTGRES_PASSWORD={{ db_password }}
+    volumes:
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/postgres/data:/var/lib/postgresql/data"
     tty: true
     healthcheck:
       test: ["CMD", "pg_isready", "-q"]
@@ -49,6 +51,7 @@ services:
     volumes:
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/data:/var/lib/clickhouse"
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
