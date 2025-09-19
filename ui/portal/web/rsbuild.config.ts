@@ -157,6 +157,15 @@ export default defineConfig({
             clientsClaim: true,
             skipWaiting: false,
             cleanupOutdatedCaches: true,
+            runtimeCaching: [
+              {
+                urlPattern: ({ request }) => request.mode === "navigate",
+                handler: "NetworkFirst",
+                options: {
+                  cacheName: "html-cache",
+                },
+              },
+            ],
           }),
         );
       }
