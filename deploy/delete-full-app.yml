@@ -22,6 +22,7 @@
 
         - name: Remove deployment directory
           become: true
+          become_user: root
           file:
             path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
             state: absent

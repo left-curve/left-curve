@@ -47,8 +47,8 @@ services:
       service_name: "clickhouse"
     restart: unless-stopped
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
@@ -90,7 +90,7 @@ services:
       - default
       - traefik
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/dango:/root/.dango/config"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/dango:/root/.dango"
     environment:
       - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres:{{ db_password }}@db:5432/dango_prod}
       - INDEXER__CLICKHOUSE__USER=default
@@ -187,8 +187,7 @@ services:
     depends_on:
       - dango
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:/root/.cometbft/config"
-      # - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/data/cometbft:/root/.cometbft/data"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/cometbft:/root/.cometbft"
 {% if expose_ports %}
     ports:
       - "{{ tailscale_ip }}:${COMETBFT_P2P_PORT:-0}:26656"

@@ -40,7 +40,7 @@
   file:
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item }}"
     state: directory
-  loop: ["configs/clickhouse", "configs/dango", "configs/cometbft", "data/cometbft"]
+  loop: ["dango/config", "clickhouse", "cometbft/config"]
 
 - name: Login to GHCR
   community.docker.docker_login:

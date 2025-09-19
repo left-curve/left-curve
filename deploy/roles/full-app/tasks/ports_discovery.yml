@@ -33,6 +33,8 @@
       - clickhouse
       - dango
       - cometbft
+  retries: 3
+  delay: 5
 
 - name: Get assigned ports
   shell: |
@@ -65,12 +67,22 @@
     dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
     owner: "{{ deploy_user }}"
 
-- name: Deploy all
+- name: Deploy frontend
   community.docker.docker_compose_v2:
     project_name: "{{ deployment_name }}"
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
     wait: true
     wait_timeout: 300
+    services:
+      - db
+      - postgres-prometheus
+      - faucet-bot
+      - clickhouse
+      - dango
+      - dango-frontend
+      - cometbft
+  retries: 3
+  delay: 5
 
 - name: Get frontend assigned ports
   shell: |

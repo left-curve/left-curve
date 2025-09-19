@@ -1,11 +1,3 @@
-- name: Generate .env
-  become: true
-  become_user: root
-  template:
-    src: env.j2
-    dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
-    owner: "{{ deploy_user }}"
-
 # Quick redeploy for existing deployments
 - name: Deploy with new image tag
   community.docker.docker_compose_v2:
@@ -13,3 +5,5 @@
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
     recreate: always
     pull: always
+  retries: 3
+  delay: 5

@@ -1,0 +1,36 @@
+- name: Generate random identifiers
+  set_fact:
+    port_start: "{{ (30000 + (1000 | random)) }}"
+    script_name: "find_ports_{{ ansible_date_time.epoch }}_{{ 999999 | random }}.sh"
+
+- name: Copy port detection script with random name
+  copy:
+    src: find_ports.sh
+    dest: "/tmp/{{ script_name }}"
+    mode: '0755'
+
+- name: Find 10 available ports
+  command: "/tmp/{{ script_name }} {{ port_start }} 10"
+  register: available_ports_result
+
+- name: Set available ports as list
+  set_fact:
+    available_ports: "{{ available_ports_result.stdout.split() }}"
+
+- name: Clean up script
+  file:
+    path: "/tmp/{{ script_name }}"
+    state: absent
+
+- name: Set dango, dango_metrics and faucet port facts
+  set_fact:
+    dango_port: "{{ available_ports[0] }}"
+    dango_metrics_port: "{{ available_ports[1] }}"
+    faucet_port: "{{ available_ports[2] }}"
+    cometbft_p2p_port: "{{ available_ports[3] }}"
+    cometbft_rpc_port: "{{ available_ports[4] }}"
+    cometbft_abci_port: "{{ available_ports[5] }}"
+    cometbft_metrics_port: "{{ available_ports[6] }}"
+    db_metrics_port: "{{ available_ports[7] }}"
+    dango_frontend_port: "{{ available_ports[8] }}"
+    quest_port: "{{ available_ports[9] }}"
