@@ -26,7 +26,9 @@ export const WelcomeModal: React.FC = () => {
             <img
               src="/favicon.svg"
               alt="dango logo"
-              className={"h-11 order-1 cursor-pointer flex rounded-full shadow-account-card"}
+              className={
+                "h-11 order-1 cursor-pointer flex rounded-full shadow-account-card select-none"
+              }
             />
           </div>
           <p className="h4-bold">{m["common.testnet.title"]()}</p>
