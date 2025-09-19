@@ -157,18 +157,26 @@ services:
 
 {% if dex_bot_enabled %}
   dex-bot:
-    image: ghcr.io/left-curve/bots/dex:${dex_bot_tag}
+    image: ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }}
     depends_on:
       dango:
         condition: service_healthy
     restart: always
     environment:
       # NOTE: those are public and only use for development and testnets
-      username: "user8"
-      address: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
-      key__privatekey: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
+      username: "{{ dango[dango_network].dex_bot.username }}"
+      address: "{{ dango[dango_network].dex_bot.address }}"
+      key__privatekey: "{{ dango[dango_network].dex_bot.private_key }}"
       http_url: "http://dango:8080"
       chain_id: "{{ chain_id }}"
+      # Mandatory else fails with `file not found: /root/.dango-dex/config.json`
+      app_settings__sleep__min: 1s
+      app_settings__sleep__max: 2s
+      app_settings__size_percent__min: 0.5
+      app_settings__size_percent__max: 3.0
+      app_settings__price_percent__min: 0.05
+      app_settings__price_percent__max: 0.2
+      app_settings__order_type: market
 {% endif %}
 
   cometbft:

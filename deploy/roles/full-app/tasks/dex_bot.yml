@@ -1,0 +1,47 @@
+- set_fact:
+    mint_command: "dex liquidity mint --url http://dango:8080/ {{ dango[dango_network].dex_bot.mint_amount }} {{ dango[dango_network].dex_bot.mint_user }} --address {{ dango[dango_network].dex_bot.address }} --username {{ dango[dango_network].dex_bot.username }} --private-key {{ dango[dango_network].dex_bot.private_key }}"
+
+- debug:
+    msg: "Calling: {{ mint_command }}"
+
+- name: Mint liquidity tokens
+  community.docker.docker_compose_v2_exec:
+    project_name: "{{ deployment_name }}"
+    project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    service: dex-bot
+    command: "{{ mint_command }}"
+  register: mint_result
+  ignore_errors: yes
+
+- name: Show mint results
+  debug:
+    msg: |
+      STDOUT:
+      {{ mint_result.stdout | regex_replace('\x1b\[[0-9;]*m', '') }}
+      STDERR:
+      {{ mint_result.stderr }}
+      TX HASH: {{ mint_result.stdout | regex_search('([A-F0-9]{64})') }}
+
+- set_fact:
+    provide_liquidity_command: "dex liquidity provide --url http://dango:8080/ {{ dango[dango_network].dex_bot.liquidity_amount }} --address {{ dango[dango_network].dex_bot.address }} --username {{ dango[dango_network].dex_bot.username }} --private-key {{ dango[dango_network].dex_bot.private_key }}"
+
+- debug:
+    msg: "Calling: {{ provide_liquidity_command }}"
+
+- name: Provide liquidity
+  community.docker.docker_compose_v2_exec:
+    project_name: "{{ deployment_name }}"
+    project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    service: dex-bot
+    command: "{{ provide_liquidity_command }}"
+  register: provide_liquidity_result
+  ignore_errors: yes
+
+- name: Show provide liquidity results
+  debug:
+    msg: |
+      STDOUT:
+      {{ provide_liquidity_result.stdout | regex_replace('\x1b\[[0-9;]*m', '') }}
+      STDERR:
+      {{ provide_liquidity_result.stderr }}
+      TX HASH: {{ provide_liquidity_result.stdout | regex_search('([A-F0-9]{64})') }}

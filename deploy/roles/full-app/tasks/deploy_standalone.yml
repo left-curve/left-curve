@@ -12,3 +12,4 @@
     project_name: "{{ deployment_name }}"
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
     recreate: always
+    pull: always
