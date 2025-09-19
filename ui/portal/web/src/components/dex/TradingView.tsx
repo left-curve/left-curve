@@ -44,7 +44,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       "tradingview.time_hours_format",
       timeFormat.includes("a") ? "12-hours" : "24-hours",
     );
-    const toolbar_bg = theme === "dark" ? "#363432" : "#FFF9F0";
+    const toolbar_bg = theme === "dark" ? "#2d2c2a" : "#FFFCF6";
     const toTimestamp = Math.floor(Date.now() / 1000);
     const fromTimestamp = toTimestamp - 3600 * 4;
 
@@ -72,7 +72,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       },
       loading_screen: {
         backgroundColor: "transparent",
-        foregroundColor: "rgb(249 169 178)",
+        foregroundColor: "#F9A9B2",
       },
       time_frames: [],
       enabled_features: ["seconds_resolution"],
@@ -96,7 +96,6 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
         "mainSeriesProperties.candleStyle.borderDownColor": "#EB5757",
         "mainSeriesProperties.candleStyle.wickUpColor": "#27AE60",
         "mainSeriesProperties.candleStyle.wickDownColor": "#EB5757",
-
         "paneProperties.backgroundType": "solid",
         "paneProperties.background": toolbar_bg,
       },
