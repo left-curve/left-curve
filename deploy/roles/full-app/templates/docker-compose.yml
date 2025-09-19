@@ -166,7 +166,7 @@ services:
         condition: service_healthy
     restart: always
     environment:
-      # NOTE: those are public and only use for development and testnets
+      # NOTE: those are public and only used for development and testnets
       username: "{{ dango[dango_network].dex_bot.username }}"
       address: "{{ dango[dango_network].dex_bot.address }}"
       key__privatekey: "{{ dango[dango_network].dex_bot.private_key }}"
