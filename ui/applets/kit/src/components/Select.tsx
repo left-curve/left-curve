@@ -195,7 +195,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
 
 const selectVariants = tv({
   slots: {
-    base: "group inline-flex flex-col relative w-fit duration-500 leading-none",
+    base: "group inline-flex flex-col relative w-fit leading-none",
     listboxWrapper:
       "overflow-hidden max-h-[12rem] transition-all z-50 shadow-account-card bg-surface-secondary-rice absolute min-w-full w-max",
     listBoxContainer:
@@ -203,7 +203,7 @@ const selectVariants = tv({
     listBoxItem: "outline-none cursor-pointer flex items-center transition-all leading-none",
     trigger:
       "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between outline-none",
-    icon: "pointer-events-none w-4 h-4 transition-all duration-300",
+    icon: "pointer-events-none w-4 h-4 transition-[transform] duration-300",
   },
   variants: {
     variant: {
