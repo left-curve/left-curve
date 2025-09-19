@@ -144,17 +144,20 @@ type NativeSelectProps = {
   classNames?: {
     base?: string;
     trigger?: string;
+    icon?: string;
   };
+  variant: "boxed" | "plain";
 };
 
 export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
   children,
   classNames,
+  variant = "boxed",
 }) => {
   const selectId = useId();
   const { setSelected, selected } = useSelect();
 
-  const { trigger, base } = selectVariants();
+  const { trigger, base } = selectVariants({ variant, isDisabled: false });
 
   const SelectedItem = Children.toArray(children).find(
     (e) => isValidElement(e) && selected === (e as ReactElement).props.value,
@@ -181,7 +184,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
       </select>
       <label htmlFor={selectId} className={trigger({ className: classNames?.trigger })}>
         <span>{SelectedItem?.props.children}</span>
-        <IconChevronDownFill className={twMerge("w-4 h-4 transition-all duration-300")} />
+        <IconChevronDownFill className={twMerge("w-4 h-4 pointer-events-none")} />
       </label>
     </div>
   );
@@ -189,7 +192,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
 
 const selectVariants = tv({
   slots: {
-    base: "group inline-flex flex-col relative w-fit transition-all duration-500 leading-none",
+    base: "group inline-flex flex-col relative w-fit duration-500 leading-none",
     listboxWrapper:
       "overflow-hidden max-h-[12rem] transition-all z-50 shadow-account-card bg-surface-secondary-rice absolute min-w-full w-max",
     listBoxContainer:
