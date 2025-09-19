@@ -121,7 +121,7 @@ const tabsVariants = tv({
           "bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       "light-green": {
-        base: " bg-surface-secondary-green",
+        base: "bg-surface-secondary-green",
         "animated-element":
           "bg-surface-button-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
