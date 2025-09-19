@@ -285,6 +285,11 @@ body {
   background: var(--color-surface-secondary-gray);
 }
 
+::selection {
+  background: var(--color-surface-secondary-red);
+  color: var(--color-ink-primary-900);
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-surface-secondary-gray);
