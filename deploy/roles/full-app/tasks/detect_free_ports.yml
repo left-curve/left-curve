@@ -22,7 +22,7 @@
     path: "/tmp/{{ script_name }}"
     state: absent
 
-- name: Set dango, dango_metrics and faucet port facts
+- name: Set ports
   set_fact:
     dango_port: "{{ available_ports[0] }}"
     dango_metrics_port: "{{ available_ports[1] }}"

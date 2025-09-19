@@ -11,10 +11,7 @@
         provide_liquidity_command: "dex liquidity provide --url http://dango:8080/ {{ dango[dango_network].dex_bot.liquidity_amount }} --address {{ dango[dango_network].dex_bot.address }} --username {{ dango[dango_network].dex_bot.username }} --private-key {{ dango[dango_network].dex_bot.private_key }}"
 
     - debug:
-        msg: "Calling: {{ provide_liquidity_command }}"
-
-    - debug:
-        msg: "Calling: {{ mint_command }}"
+        msg: "Calling: {{ provide_liquidity_command }} ; {{ mint_command }}"
 
     - name: Run both liquidity commands in sequence
       community.docker.docker_compose_v2_exec:
