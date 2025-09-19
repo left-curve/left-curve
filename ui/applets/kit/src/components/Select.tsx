@@ -68,7 +68,9 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
   return (
     <Provider value={{ selected, setSelected, slots, classNames }}>
       <div className={base({ className: classNames?.base })}>
-        <NativeSelect classNames={classNames}>{children}</NativeSelect>
+        <NativeSelect classNames={classNames} variant={variant}>
+          {children}
+        </NativeSelect>
 
         <div className="hidden md:block relative w-full" ref={selectRef}>
           <button
@@ -157,14 +159,15 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
   const selectId = useId();
   const { setSelected, selected } = useSelect();
 
-  const { trigger, base } = selectVariants({ variant, isDisabled: false });
+  const slots = selectVariants({ isDisabled: false, variant });
+  const { base, trigger } = slots;
 
   const SelectedItem = Children.toArray(children).find(
     (e) => isValidElement(e) && selected === (e as ReactElement).props.value,
   ) as { props: { children: ReactElement } };
 
   return (
-    <div className={twMerge("relative md:hidden block", base({ className: classNames?.base }))}>
+    <div className={twMerge("relative md:hidden block", base(), classNames?.base)}>
       <select
         id={selectId}
         className="absolute top-[-20px] right-0 opacity-0 h-full w-full"
@@ -182,7 +185,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
           return null;
         })}
       </select>
-      <label htmlFor={selectId} className={trigger({ className: classNames?.trigger })}>
+      <label htmlFor={selectId} className={twMerge(trigger(), classNames?.trigger)}>
         <span>{SelectedItem?.props.children}</span>
         <IconChevronDownFill className={twMerge("w-4 h-4 pointer-events-none")} />
       </label>
