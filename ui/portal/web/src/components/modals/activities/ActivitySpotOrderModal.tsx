@@ -56,7 +56,7 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
     };
 
     return (
-      <div className="flex flex-col bg-surface-primary-rice rounded-xl relative w-full md:max-w-[25rem]">
+      <div className="flex flex-col bg-surface-primary-rice rounded-xl relative w-full md:max-w-[25rem] shadow-account-card">
         <IconButton
           className="hidden md:block absolute right-2 top-2"
           variant="link"
