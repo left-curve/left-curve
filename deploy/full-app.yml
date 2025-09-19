@@ -7,6 +7,7 @@
     tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
     github_sha: "{{ lookup('pipe','git rev-parse HEAD') }}"
     dango_image_tag: "{{ github_sha }}"
+    dex_bot_tag: "latest"
     ghcr_user: "{{ lookup('env','GITHUB_USER') }}"
     ghcr_token: "{{ lookup('env','GITHUB_TOKEN') }}"
     timestamp: "{{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}{{ ansible_date_time.second }}"
@@ -25,6 +26,7 @@
     # When traefik is enabled it will be used for routing, keeping the same port
     traefik_enabled: false
     expose_ports: false
+    dex_bot_enabled: false
   collections:
     - community.docker
     - community.clickhouse

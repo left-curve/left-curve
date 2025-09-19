@@ -155,6 +155,22 @@ services:
       timeout: 5s
       retries: 3
 
+{% if dex_bot_enabled %}
+  dex-bot:
+    image: ghcr.io/left-curve/bots/dex:${dex_bot_tag}
+    depends_on:
+      dango:
+        condition: service_healthy
+    restart: always
+    environment:
+      # NOTE: those are public and only use for development and testnets
+      username: "user8"
+      address: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
+      key__privatekey: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
+      http_url: "http://dango:8080"
+      chain_id: "{{ chain_id }}"
+{% endif %}
+
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
     labels:
