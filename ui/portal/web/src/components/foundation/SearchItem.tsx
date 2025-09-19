@@ -47,9 +47,9 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
       </div>
       <div onClick={onClickStar}>
         {isFav ? (
-          <IconStar className="w-6 h-6 text-rice-500" />
+          <IconStar className="w-6 h-6 text-primitives-rice-light-500" />
         ) : (
-          <IconEmptyStar className="w-6 h-6" />
+          <IconEmptyStar className="w-6 h-6 text-primitives-rice-light-500" />
         )}
       </div>
     </motion.div>

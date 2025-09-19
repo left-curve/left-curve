@@ -56,9 +56,9 @@ export const AppletsSection: React.FC = () => {
           onPress={() => push("/search")}
           accessibilityRole="button"
           accessibilityLabel="Add applet"
-          className="h-20 w-20 rounded-xl p-2.5 shadow shadow-account-card border border-tertiary-rice  bg-fg-primary-rice items-center justify-center"
+          className="h-20 w-20 rounded-xl p-2.5 shadow shadow-account-card border border-overlay-tertiary-rice bg-surface-primary-rice items-center justify-center"
         >
-          <IconAddCross className="w-8 h-8 text-tertiary-rice" />
+          <IconAddCross className="w-8 h-8 text-overlay-tertiary-rice" />
         </Pressable>
         <Text className="min-h-6" />
       </View>

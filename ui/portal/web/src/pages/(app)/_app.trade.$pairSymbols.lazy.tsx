@@ -94,7 +94,7 @@ function ProTradeApplet() {
           </div>
           <ProTrade.History />
         </div>
-        <div className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] lg:bg-surface-secondary-rice shadow-account-card z-20 max-h-[calc(100vh-76px)] md:sticky top-[76px]">
+        <div className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] bg-surface-primary-rice shadow-account-card z-20 max-h-[calc(100vh-76px)] md:sticky top-[76px]">
           <ProTrade.TradeMenu />
         </div>
       </ProTrade>

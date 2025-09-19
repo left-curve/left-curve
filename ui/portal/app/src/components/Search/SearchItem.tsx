@@ -56,9 +56,9 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
           className="shrink-0 ml-2"
         >
           {isFav ? (
-            <IconStar className="w-6 h-6 text-rice-500" />
+            <IconStar className="w-6 h-6 text-primitives-rice-light-500" />
           ) : (
-            <IconEmptyStar className="w-6 h-6 text-rice-500" />
+            <IconEmptyStar className="w-6 h-6 text-primitives-rice-light-500" />
           )}
         </Pressable>
       </View>

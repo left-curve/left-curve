@@ -78,11 +78,11 @@ const SectionRed: React.FC = () => {
     >
       <View className="w-full max-w-[1216px] self-center px-0">
         <View className="max-w-[640px] self-start">
-          <GlobalText className="display-heading-l text-tertiary-red">Leverage up</GlobalText>
-          <GlobalText className="diatype-m-regular mt-2 text-tertiary-red">
+          <GlobalText className="display-heading-l text-ink-tertiary-red">Leverage up</GlobalText>
+          <GlobalText className="diatype-m-regular mt-2 text-ink-tertiary-red">
             with Dango’s unified trading account with low cost and high capital efficiency.
           </GlobalText>
-          <GlobalText className="diatype-m-regular mt-2 text-tertiary-red">
+          <GlobalText className="diatype-m-regular mt-2 text-ink-tertiary-red">
             Spot, perps, vaults; one account, under a unified margin system.
           </GlobalText>
         </View>

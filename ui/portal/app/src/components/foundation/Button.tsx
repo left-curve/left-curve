@@ -52,8 +52,8 @@ const buttonVariants = tv({
       },
       "tertiary-red": {
         base: "bg-surface-primary-red",
-        icons: "text-tertiary-red",
-        text: "text-tertiary-red",
+        icons: "text-ink-tertiary-red",
+        text: "text-ink-tertiary-red",
       },
       utility: {
         base: "bg-surface-quaternary-rice !rounded-md",

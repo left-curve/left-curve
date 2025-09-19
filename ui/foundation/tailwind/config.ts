@@ -305,25 +305,6 @@ export const tailwindConfig: Partial<Config> = {
           fail: "var(--color-status-fail)",
         },
         transparent: "transparent",
-        /*
-        secondary: {
-          "700": "var(--color-secondary-700)",
-          blue: "var(--color-secondary-blue)",
-          rice: "var(--color-secondary-rice)",
-          gray: "var(--color-secondary-gray)",
-          red: "var(--color-secondary-red)",
-          green: "var(--color-secondary-green)",
-        },
-        tertiary: {
-          rice: "var(--color-tertiary-rice)",
-          "500": "var(--color-tertiary-500)",
-          green: "var(--color-tertiary-green)",
-          blue: "var(--color-tertiary-blue)",
-          red: "var(--color-tertiary-red)",
-        },
-        quaternary: {
-          rice: "var(--color-surface-quaternary-rice)",
-        }, */
       },
       boxShadow: {
         "account-card": "var(--shadow-card)",

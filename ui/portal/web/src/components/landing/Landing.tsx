@@ -126,13 +126,13 @@ const SectionRed: React.FC = () => {
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(212.63deg,_rgba(255,_221,_223,_0.4)_19.52%,_#FFD0D3_94.1%)] dark:bg-[linear-gradient(212.63deg,_#383634_19.52%,_#6A6361_94.1%)]">
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center lg:justify-between p-4 pr-0">
         <div className="flex flex-col gap-2 max-w-[40rem]">
-          <h1 className="display-heading-l md:display-heading-2xl text-tertiary-red">
+          <h1 className="display-heading-l md:display-heading-2xl text-ink-tertiary-red">
             {m["welcome.leverageUp"]()}
           </h1>
-          <p className="diatype-m-regular md:h1-medium text-tertiary-red">
+          <p className="diatype-m-regular md:h1-medium text-ink-tertiary-red">
             {m["welcome.leverageUpText"]()}
           </p>
-          <p className="diatype-m-regular md:h1-medium text-tertiary-red">
+          <p className="diatype-m-regular md:h1-medium text-ink-tertiary-red">
             {m["welcome.leverageUpText2"]()}
           </p>
         </div>
