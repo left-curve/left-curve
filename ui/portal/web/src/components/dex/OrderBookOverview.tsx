@@ -27,7 +27,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="z-10 relative p-4 shadow-account-card bg-surface-secondary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37.9rem] max-h-[30.3125rem] lg:max-h-[38.875rem] h-full"
+      className="overflow-hidden z-10 relative p-4 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] h-[27.25rem] lg:min-h-[37.9rem] lg:max-h-[38.875rem] lg:h-full"
     >
       <Tabs
         color="line-red"
@@ -43,10 +43,10 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
         className={twMerge("h-full w-full", { hidden: activeTab !== "graph" })}
       />
       {(activeTab === "trades" || activeTab === "order book") && (
-        <div className="relative w-full h-full">
+        <>
           {activeTab === "order book" && <OrderBook state={state} />}
           {activeTab === "trades" && <LiveTrades state={state} />}
-        </div>
+        </>
       )}
     </ResizerContainer>
   );
@@ -77,7 +77,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
       : "bg-status-fail -right-0 lg:-left-4 lg:right-auto";
 
   return (
-    <div className="relative flex-1 diatype-xs-medium text-secondary-700 grid grid-cols-2 lg:grid-cols-3">
+    <div className="relative flex-1 diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3">
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
@@ -152,7 +152,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           <Select.Item value={quoteCoin.symbol}>{quoteCoin.symbol}</Select.Item>
         </Select>
       </div>
-      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
+      <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
         <p className="order-2 lg:order-none text-end lg:text-start">
           {m["dex.protrade.history.price"]()}
         </p>
@@ -206,7 +206,7 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
 
   return (
     <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[60vh] overflow-y-scroll scrollbar-none overflow-x-hidden relative">
-      <div className="diatype-xs-medium text-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-secondary-rice z-20">
+      <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
@@ -226,7 +226,7 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
               key={`${trade.addr}-${trade.createdAt}-${index}`}
               onClick={() => navigate({ to: `/block/${trade.blockHeight}` })}
               className={
-                "grid grid-cols-3 diatype-xs-medium text-secondary-700 w-full cursor-pointer group relative"
+                "grid grid-cols-3 diatype-xs-medium text-ink-secondary-700 w-full cursor-pointer group relative"
               }
             >
               <p

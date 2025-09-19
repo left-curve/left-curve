@@ -79,7 +79,7 @@ export const AccountCardContainer: React.FC<PropsWithChildren<AccountCardContain
         colors={colors}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
-        className="rounded-xl text-secondary-700"
+        className="rounded-xl text-ink-secondary-700"
       >
         <View
           key="content"
@@ -125,11 +125,11 @@ export const AccountCard: React.FC<AccountCardProps> = ({
         <View className="flex-row gap-1 items-center">
           <TruncateText
             text={address}
-            className="diatype-xs-medium text-tertiary-500"
+            className="diatype-xs-medium text-ink-tertiary-500"
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 text-tertiary-500" />
+          <TextCopy copyText={address} className="w-4 h-4 text-ink-tertiary-500" />
         </View>
       </View>
 
@@ -166,7 +166,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
   return (
     <Pressable
       className={twMerge(
-        "shadow-account-card w-full max-w-[360px] md:max-w-[328px] lg:min-w-[328px] -mb-[99px] flex-shrink-0 h-[160px] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 text-secondary-700",
+        "shadow-account-card w-full max-w-[360px] md:max-w-[328px] lg:min-w-[328px] -mb-[99px] flex-shrink-0 h-[160px] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 text-ink-secondary-700",
       )}
       onPress={() => onAccountSelect(account)}
       accessibilityRole="button"
@@ -174,7 +174,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
       <View className="flex-row items-start justify-between relative z-10">
         <View className="flex-col">
           <View className="flex-row gap-1 items-center">
-            <GlobalText className="exposure-m-italic capitalize text-tertiary-500">
+            <GlobalText className="exposure-m-italic capitalize text-ink-tertiary-500">
               {name}
             </GlobalText>
           </View>
@@ -182,16 +182,16 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
           <View className="flex-row gap-1 items-center">
             <TruncateText
               text={address}
-              className="diatype-xs-medium text-tertiary-500"
+              className="diatype-xs-medium text-ink-tertiary-500"
               start={4}
               end={4}
             />
-            <TextCopy copyText={address} className="w-4 h-4 text-tertiary-500" />
+            <TextCopy copyText={address} className="w-4 h-4 text-ink-tertiary-500" />
           </View>
         </View>
 
         <View className="flex-col gap-1 items-end">
-          <GlobalText className="diatype-m-bold text-tertiary-500">{totalBalance}</GlobalText>
+          <GlobalText className="diatype-m-bold text-ink-tertiary-500">{totalBalance}</GlobalText>
           <Badge text={text} color={badge} size="s" />
         </View>
       </View>

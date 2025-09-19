@@ -23,11 +23,11 @@ export const ActivityNewAccount = forwardRef<ActivityRef, ActivityAccountProps>(
 
     return (
       <div className="flex items-start gap-2 max-w-full overflow-hidden">
-        <div className="flex justify-center items-center bg-tertiary-green w-7 h-7 rounded-sm">
+        <div className="flex justify-center items-center bg-surface-primary-gray w-7 h-7 rounded-sm">
           <IconNewAccount className="text-brand-green h-4 w-4" />
         </div>
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
-          <div className="flex justify-center items-center gap-2 diatype-m-medium text-secondary-700 capitalize">
+          <div className="flex justify-center items-center gap-2 diatype-m-medium text-ink-secondary-700 capitalize">
             <p>{m["activities.activity.account.title"]()}</p>
             <Badge className="capitalize" text={accountType} />
           </div>

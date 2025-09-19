@@ -174,14 +174,14 @@ function TransferApplet() {
                   }
                   insideBottomComponent={
                     <div className="w-full flex justify-between pl-4 h-[22px]">
-                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
+                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-ink-tertiary-500">
                         <span>{formatNumber(humanAmount, formatNumberOptions)}</span>
                         <Button
                           type="button"
                           isDisabled={isPending}
                           variant="secondary"
                           size="xs"
-                          className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                          className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
                           onClick={() => setValue("amount", humanAmount)}
                         >
                           {m["common.max"]()}
@@ -218,12 +218,12 @@ function TransferApplet() {
                 <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
                 <div className="flex gap-1">
                   <TruncateText
-                    className="diatype-sm-medium text-tertiary-500"
+                    className="diatype-sm-medium text-ink-tertiary-500"
                     text={account?.address}
                   />
                   <TextCopy
                     copyText={account?.address}
-                    className="w-4 h-4 cursor-pointer text-tertiary-500"
+                    className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
                   />
                 </div>
               </div>

@@ -22,7 +22,7 @@ export const Menu: React.FC = () => {
           className="flex-1 h-[44px] flex justify-center p-2 pl-4 shadow shadow-btn-shadow-gradient bg-surface-secondary-rice rounded-md"
         >
           <View className="relative flex flex-row gap-2 items-center">
-            <IconSearch className="text-tertiary-500" />
+            <IconSearch className="text-ink-tertiary-500" />
             <View className="flex flex-row gap-1 items-center relative">
               <GlobalText>Search for</GlobalText>
               <TextLoop

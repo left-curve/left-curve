@@ -48,8 +48,8 @@ export const TxIndicator: React.FC<TxIndicatorProps> = ({ icon }) => {
       size="md"
       color="current"
       className={twMerge({
-        "text-green-bean-300 w-6 h-6": indicator === "success",
-        "text-red-bean-300 w-6 h-6": indicator === "error",
+        "text-primitives-green-light-300 w-6 h-6": indicator === "success",
+        "text-primitives-red-light-300 w-6 h-6": indicator === "error",
       })}
     />
   ) : (

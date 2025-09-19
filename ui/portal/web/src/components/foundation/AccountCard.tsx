@@ -63,7 +63,7 @@ const AccountCard: React.FC<AccountCardProps> = ({
   return (
     <div
       className={twMerge(
-        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 text-secondary-700",
+        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 text-ink-secondary-700",
         bgColor,
       )}
     >
@@ -104,11 +104,11 @@ const AccountCard: React.FC<AccountCardProps> = ({
         <div className="flex gap-1 items-center">
           <TruncateText
             text={address}
-            className="diatype-xs-medium text-tertiary-500"
+            className="diatype-xs-medium text-ink-tertiary-500"
             start={4}
             end={4}
           />
-          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-tertiary-500" />
+          <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
         </div>
       </div>
       {type === AccountType.Margin ? (
@@ -149,7 +149,7 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
   return (
     <div
       className={twMerge(
-        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] mb-[-6.2rem] flex-shrink-0 h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 cursor-pointer text-secondary-700",
+        "shadow-account-card w-full max-w-[22.5rem] md:max-w-[20.5rem] lg:min-w-[20.5rem] mb-[-6.2rem] flex-shrink-0 h-[10rem] relative overflow-hidden rounded-xl flex flex-col justify-between p-4 cursor-pointer text-ink-secondary-700",
         bgColor,
       )}
       onClick={() => onAccountSelect(account)}
@@ -157,20 +157,20 @@ const Preview: React.FC<AccountCardPreviewProps> = ({ account, onAccountSelect }
       <div className="flex items-start justify-between relative z-10">
         <div className="flex flex-col">
           <div className="flex gap-1 items-center">
-            <p className="exposure-m-italic capitalize text-tertiary-500">{name}</p>
+            <p className="exposure-m-italic capitalize text-ink-tertiary-500">{name}</p>
           </div>
           <div className="flex gap-1 items-center">
             <TruncateText
               text={address}
-              className="diatype-xs-medium text-tertiary-500"
+              className="diatype-xs-medium text-ink-tertiary-500"
               start={4}
               end={4}
             />
-            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-tertiary-500" />
+            <TextCopy copyText={address} className="w-4 h-4 cursor-pointer text-ink-tertiary-500" />
           </div>
         </div>
         <div className="flex flex-col gap-1 items-end">
-          <p className="diatype-m-bold text-tertiary-500">{totalBalance}</p>
+          <p className="diatype-m-bold text-ink-tertiary-500">{totalBalance}</p>
           <Badge text={text} color={badge} className="h-fit capitalize" size="s" />
         </div>
       </div>

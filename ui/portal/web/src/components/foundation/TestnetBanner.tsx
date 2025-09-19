@@ -1,4 +1,4 @@
-import { IconClose, Marquee } from "@left-curve/applets-kit";
+import { IconClose, Marquee, twMerge } from "@left-curve/applets-kit";
 
 import type React from "react";
 
@@ -15,17 +15,21 @@ export const TestnetBanner: React.FC = () => {
   const text = m["common.advice"]({ environment: m["common.environment"]({ environment: env }) });
 
   if (!testBannerVisibility || !showBanner) return null;
+  const isLandingPage = location.pathname === "/";
 
   return (
     <motion.div
       exit={{ transform: "scaleY(0)", height: 0, opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="min-h-9 h-9 w-full relative top-0  bg-[url('./images/warning-banner.svg')] flex items-center justify-center"
+      className={twMerge(
+        "min-h-9 h-9 w-full relative top-0 bg-[url('./images/warning-banner.svg')] flex items-center justify-center",
+        isLandingPage && "fixed z-50",
+      )}
     >
       <Marquee
         className="w-full bg-[#F7CF74] h-fit p-0 uppercase gap-10"
         item={
-          <div className="flex gap-10 items-center text-gray-700 diatype-sm-heavy ml-10">
+          <div className="flex gap-10 items-center text-primitives-gray-light-700 diatype-sm-heavy ml-10">
             <span>{text}</span>
             <span>•</span>
           </div>
@@ -34,10 +38,10 @@ export const TestnetBanner: React.FC = () => {
       />
       <button
         type="button"
-        className="absolute right-3 top-[7px] h-6 w-6 z-10 rounded-full bg-red-bean-50 border border-gray-100 flex items-center justify-center"
+        className="absolute right-3 top-[7px] h-6 w-6 z-10 rounded-full bg-primitives-red-light-50 border border-primitives-gray-light-100 flex items-center justify-center"
         onClick={() => setTestBannerVisibility(false)}
       >
-        <IconClose className="text-red-bean-500 w-5 h-5" />
+        <IconClose className="text-primitives-red-light-500 w-5 h-5" />
       </button>
     </motion.div>
   );

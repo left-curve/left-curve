@@ -49,7 +49,7 @@ export const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
             )}
             <span className="h2-heavy">{m["accountCreation.title"]()}</span>
           </h2>
-          <p className="text-tertiary-500 diatype-m-medium">
+          <p className="text-ink-tertiary-500 diatype-m-medium">
             {m["accountCreation.stepper.description"]({ step: activeStep })}
           </p>
         </div>
@@ -115,7 +115,7 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
       className={twMerge(
         "min-h-[9.125rem] w-full max-w-[22.5rem] border border-transparent text-start rounded-md overflow-hidden relative p-4 flex flex-col gap-4 transition-all shadow-account-card items-start justify-start",
         { "cursor-pointer": onClick },
-        { " border border-red-bean-400": isSelected },
+        { " border border-primitives-red-light-400": isSelected },
         {
           "bg-account-card-red-2": accountType === "spot",
         },
@@ -128,7 +128,7 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
       <p className="capitalize exposure-m-italic">
         {m["accountCreation.accountType.title"]({ accountType })}
       </p>
-      <p className="diatype-sm-medium text-tertiary-500 relative max-w-[15.5rem] z-10">
+      <p className="diatype-sm-medium text-ink-tertiary-500 relative max-w-[15.5rem] z-10">
         {m["accountCreation.accountType.description"]({ accountType })}
       </p>
       <img
@@ -244,7 +244,7 @@ export const Deposit: React.FC = () => {
         endContent={
           <div className="flex flex-row items-center gap-1 justify-center">
             <img src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.symbol} />
-            <span className="diatype-m-regular text-tertiary-500 pt-1">{coinInfo.symbol}</span>
+            <span className="diatype-m-regular text-ink-tertiary-500 pt-1">{coinInfo.symbol}</span>
           </div>
         }
         bottomComponent={

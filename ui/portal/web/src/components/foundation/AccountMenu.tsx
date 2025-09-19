@@ -132,7 +132,7 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
           <div className="w-full flex gap-2">
             <IconButton variant="link" onClick={() => history.go(-1)}>
               <IconChevronDown className="rotate-90" />
-              <span className="h4-bold text-primary-900">{m["common.accounts"]()} </span>
+              <span className="h4-bold text-ink-primary-900">{m["common.accounts"]()} </span>
             </IconButton>
           </div>
         ) : null}
@@ -197,7 +197,7 @@ const Desktop: React.FC = () => {
       )}
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
-        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-secondary-gray overflow-hidden">
+        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-overlay-secondary-gray overflow-hidden">
           <Menu />
         </div>
       </div>
@@ -355,7 +355,7 @@ const Selector: React.FC<SelectorProps> = ({ onBack }) => {
             ))}
         </div>
         <div className="absolute h-2 w-full bottom-[1.5rem] z-50 max-w-[22.5rem] md:max-w-[20.5rem] pointer-events-none left-1/2 -translate-x-1/2">
-          <div className="bg-gradient-to-b from-transparent from-20% to-bg-primary-rice h-[3rem] w-full rounded-b-2xl" />
+          <div className="bg-gradient-to-b from-transparent from-20% to-bg-surface-primary-rice h-[3rem] w-full rounded-b-2xl" />
         </div>
       </div>
     </div>

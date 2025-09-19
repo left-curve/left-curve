@@ -54,12 +54,14 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
 
     return (
       <div className="flex items-start gap-2 max-w-full overflow-hidden cursor-pointer">
-        <div className="flex items-center justify-center bg-quaternary-rice min-w-7 min-h-7 w-7 h-7 rounded-sm">
-          <Icon className={twMerge(isSent ? "text-red-bean-600" : "text-brand-green")} />
+        <div className="flex items-center justify-center bg-surface-quaternary-rice min-w-7 min-h-7 w-7 h-7 rounded-sm">
+          <Icon
+            className={twMerge(isSent ? "text-primitives-red-light-600" : "text-brand-green")}
+          />
         </div>
 
         <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">
-          <span className="diatype-m-medium text-secondary-700">
+          <span className="diatype-m-medium text-ink-secondary-700">
             {m["activities.activity.transfer.title"]({ action: type })}
           </span>
           <div className="flex flex-col items-start">
@@ -93,7 +95,7 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
               );
             })}
           </div>
-          <div className="flex flex-col diatype-m-medium text-tertiary-500 items-start gap-1">
+          <div className="flex flex-col diatype-m-medium text-ink-tertiary-500 items-start gap-1">
             <div className="flex flex-wrap items-center gap-1">
               <span>{m["activities.activity.transfer.direction.first"]()}</span>
               <AddressVisualizer

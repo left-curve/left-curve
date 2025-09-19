@@ -157,13 +157,13 @@ const Body: React.FC<SearchMenuProps> = ({
               <GlobalText>Searching...</GlobalText>
             </View>
           ) : groups.length === 0 ? (
-            <GlobalText className="text-tertiary-500 diatype-m-regular p-2 text-center">
+            <GlobalText className="text-ink-tertiary-500 diatype-m-regular p-2 text-center">
               No results
             </GlobalText>
           ) : (
             groups.map((group) => (
               <View key={group.key} className="w-full gap-1">
-                <GlobalText className="px-1 diatype-sm-bold text-tertiary-500">
+                <GlobalText className="px-1 diatype-sm-bold text-ink-tertiary-500">
                   {group.title}
                 </GlobalText>
 

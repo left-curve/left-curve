@@ -29,10 +29,10 @@ export const OrderActivity: React.FC<PropsWithChildren<OrderActivityProps>> = (p
       <div
         className={twMerge(
           "flex items-center justify-center min-w-7 min-h-7 w-7 h-7 rounded-sm",
-          isLimit ? "bg-tertiary-blue" : "bg-tertiary-green",
+          isLimit ? "bg-fg-tertiary-blue" : "bg-surface-primary-green",
         )}
       >
-        <Icon className={twMerge(isLimit ? "text-secondary-blue" : "text-brand-green")} />
+        <Icon className={twMerge(isLimit ? "text-ink-secondary-blue" : "text-brand-green")} />
       </div>
       <div className="flex flex-col max-w-[calc(100%)] overflow-hidden">{children}</div>
     </div>

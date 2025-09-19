@@ -18,7 +18,7 @@ export const AppUpdater: React.FC = () => {
           {
             title: m["appUpdate.title"](),
             description: ({ id }) => (
-              <div className="text-tertiary-500 diatype-xs-medium">
+              <div className="text-ink-tertiary-500 diatype-xs-medium">
                 <span>{m["appUpdate.description"]()}</span>
                 <Button
                   as="span"

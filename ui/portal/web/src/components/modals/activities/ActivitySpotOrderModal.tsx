@@ -56,7 +56,7 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
     };
 
     return (
-      <div className="flex flex-col bg-surface-primary-rice rounded-xl relative w-full md:max-w-[25rem]">
+      <div className="flex flex-col bg-surface-primary-rice rounded-xl relative w-full md:max-w-[25rem] shadow-account-card">
         <IconButton
           className="hidden md:block absolute right-2 top-2"
           variant="link"
@@ -65,19 +65,19 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
           <IconClose />
         </IconButton>
         <div className="p-4 flex flex-col gap-5">
-          <h2 className="text-lg font-semibold text-center text-primary-900 capitalize">
+          <h2 className="text-lg font-semibold text-center text-ink-primary-900 capitalize">
             {m["activities.activity.modal.spotOrderAction"]({ status })}
           </h2>
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1 items-center">
               <div className="flex gap-2 items-center justify-center">
                 <PairAssets assets={[base, quote]} />
-                <p className="h4-bold text-secondary-700">
+                <p className="h4-bold text-ink-secondary-700">
                   {base.symbol}-{quote.symbol}
                 </p>
 
                 <IconLink
-                  className="text-tertiary-500 h-4 w-4 cursor-pointer"
+                  className="text-ink-tertiary-500 h-4 w-4 cursor-pointer"
                   onClick={() =>
                     navigate({
                       to: `/trade/${base.symbol}-${quote.symbol}`,
@@ -101,24 +101,24 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                 <Badge text="Spot" color="blue" size="s" />
               </div>
             </div>
-            <span className="w-full h-[1px] bg-secondary-gray my-2" />
+            <span className="w-full h-[1px] bg-overlay-secondary-gray my-2" />
             <div className="flex flex-col gap-2 w-full">
-              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500">
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500">
                   {m["activities.activity.modal.blockHeight"]()}
                 </p>
                 <div className="flex items-center gap-1">
                   <p>{blockHeight}</p>
                   <IconLink
-                    className="text-tertiary-500 h-4 w-4 cursor-pointer"
+                    className="text-ink-tertiary-500 h-4 w-4 cursor-pointer"
                     onClick={() => navigate({ to: `/block/${blockHeight}`, params: true })}
                   />
                 </div>
               </div>
 
               {amount && (
-                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                  <p className="diatype-sm-regular text-tertiary-500">
+                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                  <p className="diatype-sm-regular text-ink-tertiary-500">
                     {m["activities.activity.modal.amount"]()}
                   </p>
                   <div className="flex items-center gap-1">
@@ -129,8 +129,8 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                 </div>
               )}
               {order.filled && (
-                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                  <p className="diatype-sm-regular text-tertiary-500">
+                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                  <p className="diatype-sm-regular text-ink-tertiary-500">
                     {m["activities.activity.modal.filledAmount"]()}
                   </p>
                   <div className="flex items-center gap-1">
@@ -141,8 +141,8 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                 </div>
               )}
               {refund && (
-                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                  <p className="diatype-sm-regular text-tertiary-500">
+                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                  <p className="diatype-sm-regular text-ink-tertiary-500">
                     {m["activities.activity.modal.tokenReceived"]()}
                   </p>
                   <div className="flex items-center gap-1">
@@ -155,8 +155,8 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                 </div>
               )}
               {limitPrice && (
-                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                  <p className="diatype-sm-regular text-tertiary-500">
+                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                  <p className="diatype-sm-regular text-ink-tertiary-500">
                     {m["activities.activity.modal.limitPrice"]()}
                   </p>
                   <div className="flex items-center gap-1">
@@ -167,8 +167,8 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                 </div>
               )}
               {averagePrice && (
-                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                  <p className="diatype-sm-regular text-tertiary-500">
+                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                  <p className="diatype-sm-regular text-ink-tertiary-500">
                     {m["activities.activity.modal.averagePrice"]()}
                   </p>
                   <div className="flex items-center gap-1">
@@ -179,8 +179,8 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                 </div>
               )}
               {fee && (
-                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                  <p className="diatype-sm-regular text-tertiary-500">
+                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                  <p className="diatype-sm-regular text-ink-tertiary-500">
                     {m["activities.activity.modal.fee"]()}
                   </p>
                   <div className="flex items-center gap-1">
@@ -188,8 +188,8 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                   </div>
                 </div>
               )}
-              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                <p className="diatype-sm-regular text-tertiary-500">
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500">
                   {m["activities.activity.modal.id"]()}
                 </p>
                 <div className="flex items-center gap-1">
@@ -198,8 +198,8 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                 </div>
               </div>
               {timeCreated ? (
-                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                  <p className="diatype-sm-regular text-tertiary-500">
+                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                  <p className="diatype-sm-regular text-ink-tertiary-500">
                     {m["activities.activity.modal.timeCreated"]()}
                   </p>
                   <div className="flex items-center gap-1">
@@ -208,8 +208,8 @@ export const ActivitySpotOrderModal = forwardRef<undefined, ActivitySpotOrderMod
                 </div>
               ) : null}
               {timeCanceled && (
-                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-secondary-700">
-                  <p className="diatype-sm-regular text-tertiary-500">
+                <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                  <p className="diatype-sm-regular text-ink-tertiary-500">
                     {m["activities.activity.modal.timeCanceled"]()}
                   </p>
                   <div className="flex items-center gap-1">

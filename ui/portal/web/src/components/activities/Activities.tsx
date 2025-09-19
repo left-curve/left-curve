@@ -66,7 +66,7 @@ export const Activities: React.FC<ActivitiesProps> = (props) => {
         />
         <div className="flex flex-col gap-2 items-center text-center">
           <p className="exposure-m-italic">{m["activities.noActivities.title"]()}</p>
-          <p className="text-tertiary-500 diatype-m-bold">
+          <p className="text-ink-tertiary-500 diatype-m-bold">
             {m["activities.noActivities.description"]()}
           </p>
         </div>
@@ -89,7 +89,7 @@ export const Activities: React.FC<ActivitiesProps> = (props) => {
           >
             {Object.entries(activities).map(([dateKey, n]) => (
               <motion.div key={dateKey}>
-                <p className="text-sm text-tertiary-500 mx-2 my-1">{dateKey}</p>
+                <p className="text-sm text-ink-tertiary-500 mx-2 my-1">{dateKey}</p>
                 <div className="flex flex-col gap-2 max-w-full">
                   {n.map((activity) => (
                     <Activity key={activity.id} activity={activity} />

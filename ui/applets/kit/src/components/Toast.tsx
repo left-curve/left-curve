@@ -13,22 +13,22 @@ import { IconInfo } from "./icons/IconInfo";
 
 const Icon = {
   success: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-green text-secondary-green flex items-center justify-center">
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-green text-primitives-green-light-100 flex items-center justify-center">
       <IconChecked className="w-4 h-4" />
     </div>
   ),
   error: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-red-bean-300 text-red-bean-100 flex items-center justify-center">
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-primitives-red-light-300 text-primitives-red-light-100 flex items-center justify-center">
       <IconClose className="w-4 h-4" />
     </div>
   ),
   maintenance: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-rice text-primary-rice flex items-center justify-center">
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-rice text-ink-secondary-rice flex items-center justify-center">
       <IconTools className="w-4 h-4" />
     </div>
   ),
   info: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-tertiary-blue text-secondary-blue flex items-center justify-center">
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-fg-tertiary-blue flex items-center justify-center">
       <IconInfo className="w-4 h-4" />
     </div>
   ),
@@ -51,18 +51,18 @@ export const Toast: React.FC<ToastProps> = ({ toast }) => {
       exit={{ opacity: 0, y }}
       className="relative w-full h-full"
     >
-      <div className="absolute pointer-events-auto w-full lg:w-auto top-0 lg:top-auto lg:bottom-4 lg:right-4 bg-surface-primary-rice rounded-b-md lg:rounded-md border lg:min-w-[18rem] lg:max-w-[26rem] border-secondary-gray shadow-account-card">
+      <div className="absolute pointer-events-auto w-full lg:w-auto top-0 lg:top-auto lg:bottom-4 lg:right-4 bg-surface-primary-rice rounded-b-md lg:rounded-md border lg:min-w-[18rem] lg:max-w-[26rem] border-overlay-secondary-gray shadow-account-card">
         <div className="w-fit py-4 pl-4 pr-10 transition-all duration-500 flex items-start gap-2">
           {Icon[type]}
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">
             {typeof Title === "string" ? (
-              <p className="text-primary-900 diatype-sm-medium">{Title}</p>
+              <p className="text-ink-primary-900 diatype-sm-medium">{Title}</p>
             ) : typeof Title === "function" ? (
               <Title {...toast} />
             ) : null}
 
             {typeof Description === "string" ? (
-              <p className="text-tertiary-500 diatype-xs-medium break-all">{Description}</p>
+              <p className="text-ink-tertiary-500 diatype-xs-medium break-all">{Description}</p>
             ) : typeof Description === "function" ? (
               <Description {...toast} />
             ) : null}
@@ -73,7 +73,7 @@ export const Toast: React.FC<ToastProps> = ({ toast }) => {
             onClick={() => toaster.dismiss(id)}
             type="button"
           >
-            <IconClose className="w-6 h-6 text-tertiary-500 hover:text-primary-900" />
+            <IconClose className="w-6 h-6 text-ink-tertiary-500 hover:text-ink-primary-900" />
           </button>
         </div>
       </div>

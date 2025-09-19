@@ -120,7 +120,7 @@ export const Activity: React.FC<ActivityProps> = ({ activity }) => {
         onClick={handleClick}
       >
         <ActivityCard activity={activity} ref={activityRef} />
-        <div className="flex flex-col diatype-sm-medium text-tertiary-500 min-w-fit items-center">
+        <div className="flex flex-col diatype-sm-medium text-ink-tertiary-500 min-w-fit items-center">
           <IconClose
             className="absolute w-6 h-6 cursor-pointer group-hover:block hidden top-1 remove-activity"
             onClick={() => deleteActivityRecord(id)}

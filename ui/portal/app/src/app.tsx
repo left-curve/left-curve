@@ -29,7 +29,7 @@ export const App: React.FC = () => {
                   <SafeAreaView
                     className={twMerge(
                       theme,
-                      "flex-1 bg-surface-primary-rice text-primary-900 diatype-m-medium relative",
+                      "flex-1 bg-surface-primary-rice text-ink-primary-900 diatype-m-medium relative",
                     )}
                   >
                     {children}

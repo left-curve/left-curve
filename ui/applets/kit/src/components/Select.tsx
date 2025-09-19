@@ -68,7 +68,9 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
   return (
     <Provider value={{ selected, setSelected, slots, classNames }}>
       <div className={base({ className: classNames?.base })}>
-        <NativeSelect classNames={classNames}>{children}</NativeSelect>
+        <NativeSelect classNames={classNames} variant={variant}>
+          {children}
+        </NativeSelect>
 
         <div className="hidden md:block relative w-full" ref={selectRef}>
           <button
@@ -144,24 +146,28 @@ type NativeSelectProps = {
   classNames?: {
     base?: string;
     trigger?: string;
+    icon?: string;
   };
+  variant: "boxed" | "plain";
 };
 
 export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
   children,
   classNames,
+  variant = "boxed",
 }) => {
   const selectId = useId();
   const { setSelected, selected } = useSelect();
 
-  const { trigger, base } = selectVariants();
+  const slots = selectVariants({ isDisabled: false, variant });
+  const { base, trigger } = slots;
 
   const SelectedItem = Children.toArray(children).find(
     (e) => isValidElement(e) && selected === (e as ReactElement).props.value,
   ) as { props: { children: ReactElement } };
 
   return (
-    <div className={twMerge("relative md:hidden block", base({ className: classNames?.base }))}>
+    <div className={twMerge("relative md:hidden block", base(), classNames?.base)}>
       <select
         id={selectId}
         className="absolute top-[-20px] right-0 opacity-0 h-full w-full"
@@ -179,9 +185,9 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
           return null;
         })}
       </select>
-      <label htmlFor={selectId} className={trigger({ className: classNames?.trigger })}>
+      <label htmlFor={selectId} className={twMerge(trigger(), classNames?.trigger)}>
         <span>{SelectedItem?.props.children}</span>
-        <IconChevronDownFill className={twMerge("w-4 h-4 transition-all duration-300")} />
+        <IconChevronDownFill className={twMerge("w-4 h-4 pointer-events-none")} />
       </label>
     </div>
   );
@@ -189,7 +195,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
 
 const selectVariants = tv({
   slots: {
-    base: "group inline-flex flex-col relative w-fit transition-all duration-500 leading-none",
+    base: "group inline-flex flex-col relative w-fit leading-none",
     listboxWrapper:
       "overflow-hidden max-h-[12rem] transition-all z-50 shadow-account-card bg-surface-secondary-rice absolute min-w-full w-max",
     listBoxContainer:
@@ -197,7 +203,7 @@ const selectVariants = tv({
     listBoxItem: "outline-none cursor-pointer flex items-center transition-all leading-none",
     trigger:
       "w-full inline-flex tap-highlight-transparent flex-row items-center justify-between outline-none",
-    icon: "pointer-events-none w-4 h-4 transition-all duration-300",
+    icon: "pointer-events-none w-4 h-4 transition-[transform] duration-300",
   },
   variants: {
     variant: {
@@ -216,13 +222,13 @@ const selectVariants = tv({
         listBoxContainer: "p-1",
         listBoxItem:
           "rounded-sm py-1 px-2 text-sm diatype-xs-regular bg-surface-secondary-rice hover:bg-surface-tertiary-rice",
-        trigger: "diatype-xs-regular group-hover:text-primary-900 gap-1",
-        icon: "w-3 h-3 group-hover:text-primary-900",
+        trigger: "diatype-xs-regular group-hover:text-ink-primary-900 gap-1",
+        icon: "w-3 h-3 group-hover:text-ink-primary-900",
       },
     },
     isDisabled: {
       true: {
-        trigger: "bg-secondary-gray text-tertiary-500 cursor-not-allowed",
+        trigger: "bg-surface-disabled-gray text-ink-quaternary-200 cursor-not-allowed",
       },
     },
   },

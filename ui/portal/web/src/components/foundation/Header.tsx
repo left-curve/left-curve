@@ -45,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           <img
             src="/favicon.svg"
             alt="dango logo"
-            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card"
+            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card select-none"
           />
         </Link>
         <div
