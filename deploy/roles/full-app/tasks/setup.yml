@@ -42,6 +42,16 @@
     state: directory
   loop: ["dango/config", "clickhouse", "cometbft/config"]
 
+- name: Check if cometbft keys already exists
+  stat:
+    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/cometbft/config/priv_validator_key.json"
+  register: priv_validator_key_exists
+
+- name: Set cometbft_generate_keys based on key existence
+  set_fact:
+    cometbft_generate_keys: "{{ not priv_validator_key_exists.stat.exists }}"
+  when: cometbft_generate_keys
+
 - name: Login to GHCR
   community.docker.docker_login:
     registry: ghcr.io
