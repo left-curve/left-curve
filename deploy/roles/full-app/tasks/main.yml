@@ -15,6 +15,8 @@
   when: traefik_enabled
 - import_tasks: "standalone.yml"
   when: not traefik_enabled
+- import_tasks: "dex_bot.yml"
+  when: dex_bot_enabled
 - import_tasks: github_pr_deployments.yml
   when: github_pr_number is defined
 - import_tasks: github_main_deployments.yml

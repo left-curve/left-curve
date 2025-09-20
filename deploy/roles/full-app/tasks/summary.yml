@@ -9,3 +9,4 @@
       - "CometBFT RPC: http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}"
       - "CometBFT ABCI: http://{{ tailscale_ip }}:{{ cometbft_abci_port }}"
       - "CometBFT metrics: http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}"
+      - "deployment_name: {{ deployment_name }}"

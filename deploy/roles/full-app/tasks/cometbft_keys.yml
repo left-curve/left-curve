@@ -1,27 +1,26 @@
 - set_fact:
     cometbft_user_dir: /root/.cometbft
+    cometbft_local_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/cometbft"
 
-- name: Generate CometBFT keys then fetch them
-  when: cometbft_generate_keys | default(false)
+- name: Generate CometBFT keys
+  when: cometbft_generate_keys and not validator_private_key_exists
+  command: >
+    docker run --rm
+    -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
+    ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
+    sh -c "
+    if [ ! -f {{ cometbft_user_dir }}/config/node_key.json ]; then
+      cometbft init --home {{ cometbft_user_dir }} && echo 'Initialized'
+    else
+      echo 'Already initialized'
+    fi"
+
+- when: cometbft_generate_keys
   block:
-    - name: Generate CometBFT keys
-      command: >
-        docker run --rm
-        -v {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:{{ cometbft_user_dir }}/config
-        -v {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/data/cometbft:{{ cometbft_user_dir }}/data
-        ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
-        sh -c "
-        if [ ! -f {{ cometbft_user_dir }}/config/node_key.json ]; then
-          cometbft init --home {{ cometbft_user_dir }} && echo 'Initialized'
-        else
-          echo 'Already initialized'
-        fi"
-
     - name: Get CometBFT node ID
       command: >
         docker run --rm
-        -v {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:{{ cometbft_user_dir }}/config
-        -v {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/data/cometbft:{{ cometbft_user_dir }}/data
+        -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
         ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
         cometbft show-node-id --home {{ cometbft_user_dir }}
       register: cometbft_node_id_result
@@ -29,8 +28,7 @@
     - name: Get validator public key
       command: >
         docker run --rm
-        -v {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:{{ cometbft_user_dir }}/config
-        -v {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/data/cometbft:{{ cometbft_user_dir }}/data
+        -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
         ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
         cometbft show-validator --home {{ cometbft_user_dir }}
       register: cometbft_validator_public_key_result
@@ -38,7 +36,7 @@
     - name: Get validator private key
       command: >
         docker run --rm
-        -v {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:{{ cometbft_user_dir }}/config
+        -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
         ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
         cat {{ cometbft_user_dir }}/config/priv_validator_key.json
       register: cometbft_priv_validator_key_result
@@ -58,27 +56,14 @@
     - name: Read and parse node_key.json
       command: >
         docker run --rm
-        -v {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:{{ cometbft_user_dir }}/config
-        -v {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/data/cometbft:{{ cometbft_user_dir }}/data
-        ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag | default('v0.38.17') }}
-        cat  {{ cometbft_user_dir }}/config/node_key.json
+        -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
+        ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
+        cat {{ cometbft_user_dir }}/config/node_key.json
       register: cometbft_node_key_result
 
     - name: Extract node key value
       set_fact:
         cometbft_node_key: "{{ (cometbft_node_key_result.stdout | from_json).priv_key.value }}"
-
-    - name: Clean up generated files
-      become: true
-      file:
-        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item }}"
-        state: absent
-      loop:
-        - "configs/cometbft/node_key.json"
-        - "configs/cometbft/priv_validator_key.json"
-        - "configs/cometbft/config.toml"
-        - "configs/cometbft/genesis.json"
-        - "data/"
 
     - name: Debug keys
       debug:

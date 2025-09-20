@@ -17,8 +17,10 @@
       ignore_errors: true
 
     - name: Remove deployment directory
+      become: true
+      become_user: root
       file:
-        path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
+        path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
         state: absent
 
     - name: Prune unused Docker resources

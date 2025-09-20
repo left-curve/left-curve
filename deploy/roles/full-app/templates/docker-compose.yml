@@ -14,6 +14,8 @@ services:
       - POSTGRES_DB=dango_prod
       - POSTGRES_USER={{ lookup('env','DB_USER', default='postgres') }}
       - POSTGRES_PASSWORD={{ db_password }}
+    volumes:
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/postgres/data:/var/lib/postgresql/data"
     tty: true
     healthcheck:
       test: ["CMD", "pg_isready", "-q"]
@@ -47,8 +49,9 @@ services:
       service_name: "clickhouse"
     restart: unless-stopped
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/data:/var/lib/clickhouse"
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
@@ -90,7 +93,7 @@ services:
       - default
       - traefik
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/dango:/root/.dango/config"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/dango:/root/.dango"
     environment:
       - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres:{{ db_password }}@db:5432/dango_prod}
       - INDEXER__CLICKHOUSE__USER=default
@@ -155,6 +158,30 @@ services:
       timeout: 5s
       retries: 3
 
+{% if dex_bot_enabled %}
+  dex-bot:
+    image: ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }}
+    depends_on:
+      dango:
+        condition: service_healthy
+    restart: always
+    environment:
+      # NOTE: those are public and only used for development and testnets
+      username: "{{ dango[dango_network].dex_bot.username }}"
+      address: "{{ dango[dango_network].dex_bot.address }}"
+      key__privatekey: "{{ dango[dango_network].dex_bot.private_key }}"
+      http_url: "http://dango:8080"
+      chain_id: "{{ chain_id }}"
+      # Mandatory else fails with `file not found: /root/.dango-dex/config.json`
+      app_settings__sleep__min: 1s
+      app_settings__sleep__max: 2s
+      app_settings__size_percent__min: 0.5
+      app_settings__size_percent__max: 3.0
+      app_settings__price_percent__min: 0.05
+      app_settings__price_percent__max: 0.2
+      app_settings__order_type: market
+{% endif %}
+
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
     labels:
@@ -163,8 +190,7 @@ services:
     depends_on:
       - dango
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:/root/.cometbft/config"
-      # - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/data/cometbft:/root/.cometbft/data"
+      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/cometbft:/root/.cometbft"
 {% if expose_ports %}
     ports:
       - "{{ tailscale_ip }}:${COMETBFT_P2P_PORT:-0}:26656"
@@ -177,7 +203,7 @@ services:
       - traefik
     tty: true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:{{ cometbft_rpc_port }}/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
       interval: 10s
       timeout: 5s
       retries: 3
