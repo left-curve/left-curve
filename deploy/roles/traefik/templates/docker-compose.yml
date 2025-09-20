@@ -2,6 +2,7 @@ services:
   traefik:
     image: traefik:v3.5
     ports:
+      - "80:80"
       # traefik dashboard
       - "{{ tailscale_ip }}:8888:8888"
       # devnet
@@ -36,6 +37,7 @@ services:
       - --providers.file.directory=/config
       - --providers.file.watch=true
       - --entrypoints.traefik.address=:8888
+      - --entrypoints.homer.address=:80
       - --entrypoints.devnet-db-metrics.address=:9187
       - --entrypoints.devnet-dango.address=:8080
       - --entrypoints.devnet-dango-metrics.address=:9191

@@ -1,0 +1,7 @@
+- hosts: homer
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+  roles:
+    - homer
