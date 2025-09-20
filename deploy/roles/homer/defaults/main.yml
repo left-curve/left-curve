@@ -1,0 +1,2 @@
+---
+homer_directory: "{{ ansible_env.HOME }}/homer"

@@ -1,0 +1,12 @@
+http:
+  services:
+    homer:
+      loadBalancer:
+        servers:
+          - url: "http://homer:8080"
+  routers:
+    homer:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "homer"
+      service: "homer"
