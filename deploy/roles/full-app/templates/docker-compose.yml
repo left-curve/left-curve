@@ -203,7 +203,7 @@ services:
       - traefik
     tty: true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:{{ cometbft_rpc_port }}/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
       interval: 10s
       timeout: 5s
       retries: 3
