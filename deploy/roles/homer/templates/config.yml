@@ -122,7 +122,7 @@ services:
         url: "http://ovh2:26657"
         target: "_blank"
 
-      - name: "CometBFT gRPC"
+      - name: "CometBFT abci"
         icon: "fas fa-network-wired"
         subtitle: "Port 26658"
         tag: "testnet"
@@ -167,7 +167,7 @@ services:
         url: "http://ovh1:26657"
         target: "_blank"
 
-      - name: "CometBFT gRPC"
+      - name: "CometBFT abci"
         icon: "fas fa-network-wired"
         subtitle: "Port 26658"
         tag: "devnet"
