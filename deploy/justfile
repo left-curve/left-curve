@@ -26,6 +26,9 @@ deploy-testnet:
   ansible-playbook dango.yml --limit 100.107.248.71 -e dango_image_tag=latest -e "dango_db_password=$DANGO_DB_PASSWORD" -e '{"dango_networks":["testnet"]}'
   ansible-playbook bots.yml --limit 100.107.248.71 -e '{"dango_networks":["testnet"]}' -e faucet_version=latest
 
+deploy-preview-latest:
+  ansible-playbook full-app.yml -e '{"expose_ports": true, "dex_bot_enabled":true, "cometbft_generate_keys":true}' -e deploy_env=preview -e dango_image_tag=latest
+
 deploy-bots:
   ansible-playbook bots.yml
 

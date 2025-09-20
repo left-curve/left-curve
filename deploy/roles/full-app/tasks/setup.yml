@@ -25,32 +25,33 @@
   register: existing_port_pairs
   when: env_file_exists.stat.exists
 
-- name: Default skip_port_discovery to false
-  set_fact:
+- set_fact:
     skip_port_discovery: false
+    validator_private_key_exists: false
 
-- name: Set port facts from existing .env
+- name: Set facts from existing .env
   set_fact:
     "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
     skip_port_discovery: true
   loop: "{{ existing_port_pairs.stdout_lines }}"
   when: env_file_exists.stat.exists and existing_port_pairs.stdout_lines | length > 0
 
+- name: Check if cometbft keys already exists
+  stat:
+    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/cometbft/config/priv_validator_key.json"
+  register: validator_private_key_file_exists
+
+- name: Set port facts from existing .env
+  set_fact:
+    validator_private_key_exists: true
+  when: validator_private_key_file_exists.stat.exists
+
 - name: Create deployment directories
   file:
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item }}"
     state: directory
   loop: ["dango/config", "clickhouse", "cometbft/config"]
-
-- name: Check if cometbft keys already exists
-  stat:
-    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/cometbft/config/priv_validator_key.json"
-  register: priv_validator_key_exists
-
-- name: Set cometbft_generate_keys based on key existence
-  set_fact:
-    cometbft_generate_keys: "{{ not priv_validator_key_exists.stat.exists }}"
-  when: cometbft_generate_keys
+  when: not env_file_exists.stat.exists
 
 - name: Login to GHCR
   community.docker.docker_login:
