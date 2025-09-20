@@ -27,6 +27,7 @@
     traefik_enabled: false
     expose_ports: false
     dex_bot_enabled: false
+    github_deployments_enabled: false
   collections:
     - community.docker
     - community.clickhouse

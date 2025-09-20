@@ -3,39 +3,39 @@ http:
     {{ dango_network }}-dango:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-dango-1:{{ dango_port }}"
+          - url: "http://{{ deployment_name }}-dango-1:8080"
     {{ dango_network }}-dango-metrics:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-dango-1:{{ dango_metrics_port }}"
+          - url: "http://{{ deployment_name }}-dango-1:9191"
     {{ dango_network }}-frontend:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-dango-frontend-1:{{ dango_frontend_port }}"
+          - url: "http://{{ deployment_name }}-dango-frontend-1:80"
     {{ dango_network }}-faucet_bot:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-faucet-bot-1:{{ faucet_port }}"
+          - url: "http://{{ deployment_name }}-faucet-bot-1:8082"
     {{ dango_network }}-cometbft_p2p:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_p2p_port }}"
+          - url: "http://{{ deployment_name }}-cometbft-1:26656"
     {{ dango_network }}-cometbft_rpc:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_rpc_port }}"
+          - url: "http://{{ deployment_name }}-cometbft-1:26657"
     {{ dango_network }}-cometbft_abci:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_abci_port }}"
+          - url: "http://{{ deployment_name }}-cometbft-1:26658"
     {{ dango_network }}-cometbft_metrics:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-cometbft-1:{{ cometbft_metrics_port }}"
+          - url: "http://{{ deployment_name }}-cometbft-1:26660"
     {{ dango_network }}-db-metrics:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-postgres-prometheus-1:{{ db_metrics_port }}"
+          - url: "http://{{ deployment_name }}-postgres-prometheus-1:9187"
 
   routers:
     {{ dango_network }}-dango:

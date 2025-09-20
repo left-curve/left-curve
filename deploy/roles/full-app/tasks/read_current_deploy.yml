@@ -15,5 +15,5 @@
   when: traefik_json.stat.exists and current_deployment_raw is defined
 
 - debug:
-    msg: "Deployment is {{ current_deployment }}"
+    msg: "Current existing deployment is {{ current_deployment }}"
   when: current_deployment is defined

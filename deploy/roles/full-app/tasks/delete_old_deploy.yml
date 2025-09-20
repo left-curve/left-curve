@@ -20,7 +20,7 @@
       become: true
       become_user: root
       file:
-        path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
+        path: "~{{ deploy_user }}/deployments/{{ current_deployment }}"
         state: absent
 
     - name: Prune unused Docker resources

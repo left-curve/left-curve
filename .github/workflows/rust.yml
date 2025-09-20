@@ -553,11 +553,11 @@ jobs:
           cd deploy
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true}' -e deploy_env=production -e github_sha=${{ env.GIT_COMMIT }}
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true}' -e deploy_env=production -e github_sha=${{ env.GIT_COMMIT }}
           fi
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-          ansible-playbook full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true}' -e deploy_env=preview
+          ansible-playbook full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true}' -e deploy_env=preview
           fi
 
   localdango:

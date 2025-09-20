@@ -11,15 +11,25 @@
 
 - import_tasks: validate.yml
 - import_tasks: setup.yml
-- import_tasks: "traefik.yml"
+- import_tasks: detect_free_ports.yml
+  when: expose_ports and not skip_port_discovery
+- import_tasks: read_current_deploy.yml
   when: traefik_enabled
-- import_tasks: "standalone.yml"
-  when: not traefik_enabled
-- import_tasks: "dex_bot.yml"
+- import_tasks: cometbft_keys.yml
+  when: cometbft_generate_keys
+- import_tasks: deploy_configs.yml
+- import_tasks: deploy_standalone.yml
+- import_tasks: dex_bot.yml
   when: dex_bot_enabled
+- import_tasks: update_traefik.yml
+  when: traefik_enabled
+- import_tasks: delete_old_deploy.yml
+  when: current_deployment is defined and github_deployments_enabled
 - import_tasks: github_pr_deployments.yml
   when: github_pr_number is defined
+  ignore_errors: true
 - import_tasks: github_main_deployments.yml
-  when: traefik_enabled
+  when: not (github_pr_number is defined) and github_deployments_enabled
+  ignore_errors: true
 - import_tasks: summary.yml
   when: not traefik_enabled
