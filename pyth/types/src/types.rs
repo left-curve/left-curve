@@ -73,9 +73,8 @@ impl ExponentialBackoff {
         }
     }
 
-    /// Get the next backoff time in milliseconds.
+    /// Get the next backoff duration.
     /// Returns `None` if the maximum number of attempts has been reached.
-    /// Otherwise, returns `Some(delay_time)`.
     pub fn next_delay(&mut self) -> Option<Duration> {
         if let Some(max_attempts) = self.max_attempts {
             if self.attempts > max_attempts {
