@@ -1,11 +1,12 @@
 use {
     crate::PythClientLazer,
-    anyhow::bail,
     async_stream::stream,
     async_trait::async_trait,
     grug::{Inner, Lengthy, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
-    pyth_types::{LeEcdsaMessage, PriceUpdate, PythClientTrait, PythLazerSubscriptionDetails},
+    pyth_types::{
+        LeEcdsaMessage, PriceUpdate, PythClientTrait, PythLazerId, PythLazerSubscriptionDetails,
+    },
     reqwest::IntoUrl,
     std::{
         collections::HashMap,
@@ -58,8 +59,8 @@ impl PythClientLazerCache {
         let mut stored_data = HashMap::new();
 
         // Load data for each id.
-        for id in ids.into_inner() {
-            let filename = Self::cache_filename(&id);
+        for subscription_details in ids.into_inner() {
+            let filename = Self::cache_filename(&subscription_details.id);
 
             // If the file is not in memory, try to read from disk.
             stored_data.entry(filename.clone()).or_insert_with(|| {
@@ -73,7 +74,7 @@ impl PythClientLazerCache {
                 let values = rt.block_on(async {
                     let mut stream = self
                         .client
-                        .stream(NonEmpty::new_unchecked(vec![id]))
+                        .stream(NonEmpty::new_unchecked(vec![subscription_details]))
                         .await
                         .unwrap();
 
@@ -97,7 +98,7 @@ impl PythClientLazerCache {
         stored_data
     }
 
-    pub fn cache_filename(id: &PythLazerSubscriptionDetails) -> PathBuf {
+    pub fn cache_filename(id: &PythLazerId) -> PathBuf {
         let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
         let start_path = Path::new(&manifest_dir);
@@ -109,7 +110,7 @@ impl PythClientLazerCache {
 
         workspace_root
             .join("pyth/lazer/testdata")
-            .join(id.id.to_string())
+            .join(id.to_string())
     }
 }
 
@@ -157,15 +158,6 @@ impl PythClientTrait for PythClientLazerCache {
         };
 
         Ok(Box::pin(stream))
-    }
-
-    // TODO: remove once Pyth Core is removed
-    fn get_latest_price_update<I>(&self, _ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
-    where
-        I: IntoIterator + Clone + Lengthy,
-        I::Item: ToString,
-    {
-        bail!("unimplemented");
     }
 
     fn close(&mut self) {

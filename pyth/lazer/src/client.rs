@@ -1,5 +1,4 @@
 use {
-    anyhow::bail,
     async_stream::stream,
     grug::{Inner, Lengthy, NonEmpty},
     pyth_lazer_client::{
@@ -539,15 +538,6 @@ impl PythClientTrait for PythClientLazer {
         };
 
         Ok(Box::pin(stream))
-    }
-
-    fn get_latest_price_update<I>(&self, _ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
-    where
-        I: IntoIterator + Clone + Lengthy,
-        I::Item: ToString,
-    {
-        // TODO: This function will be removed once the Pyth Core will be removed.
-        bail!("Unimplemented")
     }
 
     fn close(&mut self) {
