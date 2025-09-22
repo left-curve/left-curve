@@ -179,12 +179,11 @@ fn verify_pyth_lazer_message(
 #[cfg(test)]
 mod tests {
     use {
+        super::*,
         grug::{Binary, Duration, EncodedBytes, MockApi, MockStorage},
         pyth_types::{LeEcdsaMessage, constants::LAZER_TRUSTED_SIGNER},
         std::str::FromStr,
     };
-
-    use super::*;
 
     #[test]
     fn test_verify_pyth_lazer_message() {

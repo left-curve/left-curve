@@ -127,7 +127,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
         #[cfg(feature = "testing")]
-        Command::Test(cmd) => cmd.run().await,
+        Command::Test(cmd) => cmd.run(app_dir).await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
     }
 }

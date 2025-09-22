@@ -1,11 +1,13 @@
 use {
+    crate::{config::Config, home_directory::HomeDirectory},
     clap::{Parser, Subcommand},
+    config_parser::parse_config,
     grug::Inner,
-    grug_types::{JsonSerExt, MockApi, NonEmpty},
-    pyth_core::PythClientCore,
+    grug_types::NonEmpty,
+    pyth_lazer::PythClientLazerCache,
     pyth_types::{
-        PythClientTrait, PythVaa,
-        constants::{BTC_USD_ID, ETH_USD_ID, PYTH_URL},
+        PayloadData, PythClientTrait,
+        constants::{BTC_USD_ID_LAZER, ETH_USD_ID_LAZER},
     },
     tokio_stream::StreamExt,
     tracing::info,
@@ -24,13 +26,20 @@ enum SubCmd {
 }
 
 impl TestCmd {
-    pub async fn run(self) -> anyhow::Result<()> {
+    pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         match self.subcmd {
             SubCmd::Pyth => {
-                // For the purpose of this test, we fetch the prices of BTC and ETH.
-                let ids = NonEmpty::new_unchecked(vec![BTC_USD_ID, ETH_USD_ID]);
+                // Parse the config file.
+                let cfg: Config = parse_config(app_dir.config_file())?;
 
-                let mut client = PythClientCore::new(PYTH_URL)?;
+                // For the purpose of this test, we fetch the prices of BTC and ETH.
+                let ids = NonEmpty::new_unchecked(vec![BTC_USD_ID_LAZER, ETH_USD_ID_LAZER]);
+
+                let mut client = PythClientLazerCache::new(
+                    NonEmpty::new(cfg.pyth.endpoints)?,
+                    cfg.pyth.access_token,
+                )?;
+
                 let mut stream = client.stream(ids).await?;
 
                 loop {
@@ -40,13 +49,15 @@ impl TestCmd {
 
                     // Decode the price feeds.
                     let mut feeds = Vec::with_capacity(2);
-                    for raw in data.try_into_core().unwrap().into_inner() {
-                        let vaa = PythVaa::new(&MockApi, raw.as_ref())?;
+                    for message in data.into_inner() {
                         // For the purpose of this test, it isn't necessary to verify the Wormhole VAAs.
-                        feeds.extend(vaa.unverified());
+
+                        // Deserialize the payload.
+                        let payload = PayloadData::deserialize_slice_le(&message.payload)?;
+                        feeds.push(payload);
                     }
 
-                    info!("Fetched data\n{}", feeds.to_json_string_pretty()?);
+                    info!("Fetched data:\n{feeds:?}");
                 }
             },
         }

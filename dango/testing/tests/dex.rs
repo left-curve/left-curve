@@ -1,5 +1,5 @@
 use {
-    dango_oracle::{PRICE_SOURCES, PRICES},
+    dango_oracle::{PRICE_SOURCES, PYTH_LAZER_PRICES},
     dango_testing::{BridgeOp, TestOption, setup_test_naive},
     dango_types::{
         account::single::Params,
@@ -22,7 +22,7 @@ use {
         UniqueVec, btree_map, coin_pair, coins,
     },
     hyperlane_types::constants::ethereum,
-    pyth_types::constants::USDC_USD_ID,
+    pyth_types::constants::USDC_USD_ID_LAZER,
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
@@ -1515,8 +1515,8 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                 usdc::DENOM.clone() => 100_000,
             },
         )
-        .should_fail_with_error(StdError::data_not_found::<(PrecisionlessPrice, u64)>(
-            PRICES.path(USDC_USD_ID).storage_key(),
+        .should_fail_with_error(StdError::data_not_found::<PrecisionlessPrice>(
+            PYTH_LAZER_PRICES.path(USDC_USD_ID_LAZER.id).storage_key(),
         ));
 }
 
