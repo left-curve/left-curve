@@ -25,16 +25,16 @@ export default function SearchScreen() {
         <Button
           variant="link"
           size="icon"
-          classNames={{ icons: "text-tertiary-500 rotate-90" }}
+          classNames={{ icons: "text-ink-tertiary-500 rotate-90" }}
           onPress={back}
-          rightIcon={<IconChevronDown className="text-tertiary-500" />}
+          rightIcon={<IconChevronDown className="text-ink-tertiary-500" />}
         />
         <TextInput
           value={searchText}
           onChangeText={(t) => setSearchText(t)}
           placeholderTextColor={theme === "dark" ? "#6A5D42" : "#EFDAA4"}
           selectionColor={theme === "dark" ? "#6A5D42" : "#EFDAA4"}
-          className="flex-1 h-[44px] flex justify-center p-2  pl-4 shadow shadow-btn-shadow-gradient bg-surface-secondary-rice rounded-md text-primary-900"
+          className="flex-1 h-[44px] flex justify-center p-2  pl-4 shadow shadow-btn-shadow-gradient bg-surface-secondary-rice rounded-md text-ink-primary-900"
         />
       </View>
       <View className="flex-1 w-full">

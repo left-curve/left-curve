@@ -17,20 +17,22 @@ export const WelcomeModal: React.FC = () => {
   return (
     <div
       className={twMerge(
-        "w-screen h-screen bg-gray-900/50 fixed top-0 left-0 z-[51] flex items-center justify-center p-4 overflow-auto scrollbar-none py-32",
+        "w-screen h-screen bg-primitives-gray-light-900/50 fixed top-0 left-0 z-[51] flex items-center justify-center p-4 overflow-auto scrollbar-none py-32",
       )}
     >
-      <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice rounded-xl border border-secondary-gray max-w-2xl">
+      <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice rounded-xl border border-overlay-secondary-gray max-w-2xl">
         <div className="flex flex-col gap-4 p-4 border-b border-b-secondary-gray">
           <div className="w-12 h-12 rounded-full flex items-center justify-center">
             <img
               src="/favicon.svg"
               alt="dango logo"
-              className={"h-11 order-1 cursor-pointer flex rounded-full shadow-account-card"}
+              className={
+                "h-11 order-1 cursor-pointer flex rounded-full shadow-account-card select-none"
+              }
             />
           </div>
           <p className="h4-bold">{m["common.testnet.title"]()}</p>
-          <div className="flex flex-col diatype-m-medium text-tertiary-500 gap-4">
+          <div className="flex flex-col diatype-m-medium text-ink-tertiary-500 gap-4">
             <p>Hi there,</p>
             <p>
               Thank you for participating in <span className="font-bold">testnet-2</span>!

@@ -9,6 +9,9 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+metrics = ["dango-dex/metrics"]
+
 [dependencies]
 anyhow                = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }

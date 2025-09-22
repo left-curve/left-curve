@@ -1,4 +1,5 @@
 import {
+  IconCalendar,
   IconDepth,
   IconFormatNumber,
   IconLanguage,
@@ -18,11 +19,12 @@ import { getLocale, locales, setLocale } from "@left-curve/foundation/paraglide/
 import type { FormatNumberOptions } from "@left-curve/dango/utils";
 import type { PropsWithChildren } from "react";
 import type React from "react";
+import type { AppState } from "@left-curve/applets-kit";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return (
     <div className="rounded-xl bg-surface-secondary-rice shadow-account-card flex flex-col w-full px-2 py-4 gap-4">
-      <h3 className="h4-bold text-primary-900 px-2">{m["settings.display"]()}</h3>
+      <h3 className="h4-bold text-ink-primary-900 px-2">{m["settings.display"]()}</h3>
       {children}
     </div>
   );
@@ -32,8 +34,8 @@ const LanguageSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconLanguage className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700">{m["settings.language"]()}</span>
+        <IconLanguage className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700">{m["settings.language"]()}</span>
       </p>
       <Select value={getLocale()} onChange={(key) => setLocale(key as (typeof locales)[number])}>
         {locales.map((locale) => (
@@ -54,8 +56,8 @@ const ChartEngineSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconDepth className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700">{m["settings.chart"]()}</span>
+        <IconDepth className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700">{m["settings.chart"]()}</span>
       </p>
       <Select
         value={chart}
@@ -77,8 +79,8 @@ const FormatNumberSection: React.FC = () => {
   return (
     <div className="flex items-center justify-between px-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconFormatNumber className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700"> {m["settings.number"]()}</span>
+        <IconFormatNumber className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.number"]()}</span>
       </p>
 
       <Select
@@ -101,14 +103,93 @@ const FormatNumberSection: React.FC = () => {
   );
 };
 
+const TimeFormatSection: React.FC = () => {
+  const { settings, changeSettings } = useApp();
+  const { timeFormat } = settings;
+  return (
+    <div className="flex items-center justify-between px-2 rounded-md">
+      <p className="flex items-center justify-center gap-2">
+        <IconCalendar className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.time"]()}</span>
+      </p>
+
+      <Select
+        value={timeFormat}
+        onChange={(key) => [
+          changeSettings({
+            timeFormat: key as AppState["settings"]["timeFormat"],
+          }),
+        ]}
+      >
+        <Select.Item value="hh:mm a">9:18 PM</Select.Item>
+        <Select.Item value="hh:mm aaa">9:18 pm</Select.Item>
+        <Select.Item value="HH:mm">21:18</Select.Item>
+      </Select>
+    </div>
+  );
+};
+
+const DateFormatSection: React.FC = () => {
+  const { settings, changeSettings } = useApp();
+  const { dateFormat } = settings;
+
+  return (
+    <div className="flex items-center justify-between px-2 rounded-md">
+      <p className="flex items-center justify-center gap-2">
+        <IconCalendar className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.date"]()}</span>
+      </p>
+
+      <Select
+        value={dateFormat}
+        onChange={(key) => [
+          changeSettings({
+            dateFormat: key as AppState["settings"]["dateFormat"],
+          }),
+        ]}
+      >
+        <Select.Item value="MM/dd/yyyy">08/29/2025</Select.Item>
+        <Select.Item value="dd/MM/yyyy">29/08/2025</Select.Item>
+        <Select.Item value="yyyy/MM/dd">2025/08/29</Select.Item>
+      </Select>
+    </div>
+  );
+};
+
+const TimeZoneSection: React.FC = () => {
+  const { settings, changeSettings } = useApp();
+  const { timeZone } = settings;
+
+  return (
+    <div className="flex items-center justify-between px-2 rounded-md">
+      <p className="flex items-center justify-center gap-2">
+        <IconCalendar className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700"> {m["settings.timeZone"]()}</span>
+      </p>
+
+      <Select
+        value={timeZone}
+        onChange={(key) => [
+          changeSettings({
+            timeZone: key as AppState["settings"]["timeZone"],
+          }),
+        ]}
+      >
+        <Select.Item value="utc">UTC</Select.Item>
+        <Select.Item value="local">Local</Select.Item>
+      </Select>
+    </div>
+  );
+};
+
 const ThemeSection: React.FC = () => {
   const { themeSchema, setThemeSchema } = useTheme();
 
   return (
     <div className="flex items-center justify-between px-[10px] py-2 rounded-md">
       <p className="flex items-center justify-center gap-2">
-        <IconTheme className="text-tertiary-500" />
-        <span className="diatype-m-bold text-secondary-700">{m["settings.theme"]()}</span>
+        <IconTheme className="text-ink-tertiary-500" />
+        <span className="diatype-m-bold text-ink-secondary-700">{m["settings.theme"]()}</span>
       </p>
       <Tabs
         selectedTab={themeSchema}
@@ -132,5 +213,8 @@ export const DisplaySection = Object.assign(Container, {
   Language: LanguageSection,
   ChartEngine: ChartEngineSection,
   FormatNumber: FormatNumberSection,
+  TimeFormat: TimeFormatSection,
+  TimeZone: TimeZoneSection,
+  DateFormat: DateFormatSection,
   Theme: ThemeSection,
 });

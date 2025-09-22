@@ -445,11 +445,11 @@ mod tests {
         dango_types::{
             constants::{dango, usdc},
             dex::{
-                AmountOption, PairParams, PassiveLiquidity, PriceOption, RestingOrderBookState,
-                TimeInForce, Xyk,
+                AmountOption, PairParams, PassiveLiquidity, Price, PriceOption,
+                RestingOrderBookState, TimeInForce, Xyk,
             },
         },
-        grug::{Addr, Bounded, MockContext, MockQuerier, NumberConst, Udec128, Udec128_24},
+        grug::{Addr, Bounded, MockContext, MockQuerier, NumberConst, Udec128},
         std::{collections::BTreeSet, str::FromStr},
         test_case::test_case,
     };
@@ -462,7 +462,7 @@ mod tests {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                price: PriceOption::Limit(NonZero::new_unchecked(Udec128_24::new(2))),
+                price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
                 amount: AmountOption::Bid {
                     quote: NonZero::new_unchecked(Uint128::new(200)),
                 },
@@ -480,7 +480,7 @@ mod tests {
             creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                price: PriceOption::Limit(NonZero::new_unchecked(Udec128_24::new(2))),
+                price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
                 amount: AmountOption::Ask {
                     base: NonZero::new_unchecked(Uint128::new(100)),
                 },
@@ -494,9 +494,9 @@ mod tests {
     )]
     #[test_case(
         Some(RestingOrderBookState {
-            best_bid_price: Some(Udec128_24::new(100)),
-            best_ask_price: Some(Udec128_24::new(100)),
-            mid_price: Some(Udec128_24::new(100)),
+            best_bid_price: Some(Price::new(100)),
+            best_ask_price: Some(Price::new(100)),
+            mid_price: Some(Price::new(100)),
         }),
         ExecuteMsg::BatchUpdateOrders {
             creates: vec![CreateOrderRequest {
@@ -518,9 +518,9 @@ mod tests {
     )]
     #[test_case(
         Some(RestingOrderBookState {
-            best_bid_price: Some(Udec128_24::new(100)),
-            best_ask_price: Some(Udec128_24::new(100)),
-            mid_price: Some(Udec128_24::new(100)),
+            best_bid_price: Some(Price::new(100)),
+            best_ask_price: Some(Price::new(100)),
+            mid_price: Some(Price::new(100)),
         }),
         ExecuteMsg::BatchUpdateOrders {
             creates: vec![CreateOrderRequest {
@@ -542,9 +542,9 @@ mod tests {
     )]
     #[test_case(
         Some(RestingOrderBookState {
-            best_bid_price: Some(Udec128_24::new(100)),
-            best_ask_price: Some(Udec128_24::new(100)),
-            mid_price: Some(Udec128_24::new(100)),
+            best_bid_price: Some(Price::new(100)),
+            best_ask_price: Some(Price::new(100)),
+            mid_price: Some(Price::new(100)),
         }),
         ExecuteMsg::BatchUpdateOrders {
             creates: vec![
@@ -575,7 +575,7 @@ mod tests {
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    price: PriceOption::Limit(NonZero::new_unchecked(Udec128_24::new(2))),
+                    price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
                     amount: AmountOption::Bid {
                         quote: NonZero::new_unchecked(Uint128::new(200)),
                     },
@@ -584,7 +584,7 @@ mod tests {
                 CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    price: PriceOption::Limit(NonZero::new_unchecked(Udec128_24::new(2))),
+                    price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
                     amount: AmountOption::Ask {
                         base: NonZero::new_unchecked(Uint128::new(100)),
                     },

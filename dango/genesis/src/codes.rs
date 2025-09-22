@@ -111,6 +111,12 @@ impl GenesisCodes for RustVm {
             .with_query(Box::new(dango_warp::query))
             .build();
 
+        #[cfg(feature = "metrics")]
+        {
+            dango_dex::metrics::init_metrics();
+            // TODO: add other contracts that emit metrics
+        }
+
         Codes {
             account_factory,
             account_margin,

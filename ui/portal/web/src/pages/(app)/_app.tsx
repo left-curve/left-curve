@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 import { QuestBannerRender } from "~/components/foundation/QuestBanner";
+import { TestnetBanner } from "~/components/foundation/TestnetBanner";
 
 import { WelcomeModal } from "~/components/modals/WelcomeModal";
 
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/(app)/_app")({
     const { isLg } = useMediaQuery();
 
     return (
-      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-surface-primary-rice text-secondary-700">
+      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-surface-primary-rice text-ink-secondary-700">
         <img
           src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
           alt="bg-image"
@@ -63,7 +64,7 @@ function LayoutApp() {
   const isHomePage = location.pathname === "/";
 
   return (
-    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-surface-primary-rice text-secondary-700">
+    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-surface-primary-rice text-ink-secondary-700">
       <img
         src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
         alt="bg-image"
@@ -74,6 +75,7 @@ function LayoutApp() {
       />
       <WelcomeModal />
       {!isLg ? <div id="quest-banner-mobile" /> : null}
+      {!isLg ? <TestnetBanner /> : null}
       <QuestBannerRender />
       <Header isScrolled={isScrolled} />
       <div className="flex flex-1 items-center justify-start w-full h-full relative flex-col z-30">

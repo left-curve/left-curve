@@ -14,15 +14,13 @@ export {
 } from "./typedData.js";
 
 export {
-  type CurrencyFormatterOptions,
-  formatCurrency,
   type FormatNumberOptions,
   formatNumber,
   formatUnits,
   parseUnits,
 } from "./formatters.js";
 
-export { calculateTradeSize } from "./dex.js";
+export { calculateTradeSize, calculateFees, calculatePrice, formatOrderId } from "./dex.js";
 
 export { Actions } from "./actions.js";
 

@@ -1,5 +1,6 @@
 import {
   Button,
+  formatDate,
   IconAddCross,
   IconTrash,
   Modals,
@@ -18,7 +19,6 @@ import { useQuery } from "@tanstack/react-query";
 import type React from "react";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { format } from "date-fns";
 
 const KeyTranslation = {
   secp256r1: "Passkey",
@@ -29,8 +29,10 @@ const KeyTranslation = {
 export const KeyManagementSection: React.FC = () => {
   const { status, username, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
-  const { showModal } = useApp();
+  const { showModal, settings } = useApp();
   const { isMd } = useMediaQuery();
+
+  const { timeFormat, dateFormat } = settings;
 
   const { data: keys = [], isPending } = useQuery({
     enabled: !!signingClient && !!username,
@@ -44,8 +46,8 @@ export const KeyManagementSection: React.FC = () => {
     <div className="rounded-xl bg-surface-secondary-rice shadow-account-card flex flex-col w-full p-4 gap-4">
       <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
         <div className="flex flex-col gap-4 max-w-lg">
-          <h3 className="h4-bold text-primary-900">{m["settings.keyManagement.title"]()}</h3>
-          <p className="text-tertiary-500 diatype-sm-regular">
+          <h3 className="h4-bold text-ink-primary-900">{m["settings.keyManagement.title"]()}</h3>
+          <p className="text-ink-tertiary-500 diatype-sm-regular">
             {m["settings.keyManagement.description"]()}
           </p>
         </div>
@@ -71,16 +73,16 @@ export const KeyManagementSection: React.FC = () => {
             >
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">
-                  <div className="flex gap-[6px] items-center text-secondary-700 diatype-m-bold">
+                  <div className="flex gap-[6px] items-center text-ink-secondary-700 diatype-m-bold">
                     {isMd ? <p>{keyRepresentation}</p> : <TruncateText text={keyRepresentation} />}
                     {isActive ? <span className="bg-status-success rounded-full h-2 w-2" /> : null}
                   </div>
 
-                  <p className="text-tertiary-500 diatype-sm-medium">
+                  <p className="text-ink-tertiary-500 diatype-sm-medium">
                     {KeyTranslation[key.keyType.toLowerCase() as keyof typeof KeyTranslation]}
                   </p>
-                  <p className="text-tertiary-500 diatype-sm-medium">
-                    {format(key.createdAt, "dd/MM/yyyy hh:mm a")}
+                  <p className="text-ink-tertiary-500 diatype-sm-medium">
+                    {formatDate(key.createdAt, `${dateFormat} ${timeFormat}`)}
                   </p>
                 </div>
                 <div className="flex gap-1">
@@ -90,7 +92,7 @@ export const KeyManagementSection: React.FC = () => {
                       isActive ? null : showModal(Modals.RemoveKey, { keyHash: key.keyHash })
                     }
                     className={twMerge("w-5 h-5 cursor-pointer", {
-                      "text-gray-300 cursor-default": isActive,
+                      "text-primitives-gray-light-300 cursor-default": isActive,
                     })}
                   />
                 </div>

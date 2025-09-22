@@ -3459,6 +3459,7 @@ dependencies = [
  "dango-oracle",
  "dango-types",
  "grug",
+ "metrics",
  "test-case",
  "tracing",
 ]
@@ -5632,6 +5633,7 @@ dependencies = [
  "hyperlane-types",
  "identity",
  "k256",
+ "rand 0.8.5",
 ]
 
 [[package]]

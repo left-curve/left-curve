@@ -4,23 +4,34 @@
   collections:
     - community.docker
   tasks:
-    - name: Stop and remove stack
-      community.docker.docker_compose_v2:
-        project_name: "{{ deployment_name }}"
-        project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
-        state: absent
-        remove_orphans: yes
-        remove_volumes: yes
-
-    - name: Remove deployment directory
-      file:
+    - name: Check if deployment directory exists
+      stat:
         path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
-        state: absent
+      register: deployment_dir
 
-    - name: Prune unused Docker resources
-      community.docker.docker_prune:
-        containers: yes
-        images: yes
-        networks: yes
-        volumes: yes
-        builder_cache: yes
+    - name: Cleanup deployment
+      block:
+        - name: Stop and remove stack
+          community.docker.docker_compose_v2:
+            project_name: "{{ deployment_name }}"
+            project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+            state: absent
+            remove_orphans: yes
+            remove_volumes: yes
+          ignore_errors: true
+
+        - name: Remove deployment directory
+          become: true
+          become_user: root
+          file:
+            path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
+            state: absent
+
+        - name: Prune unused Docker resources
+          community.docker.docker_prune:
+            containers: yes
+            images: yes
+            networks: yes
+            volumes: yes
+            builder_cache: yes
+      when: deployment_dir.stat.exists

@@ -3,6 +3,7 @@ import {
   CursorPagination,
   Modals,
   Spinner,
+  Tab,
   twMerge,
   useApp,
   useInputs,
@@ -10,7 +11,7 @@ import {
   usePortalTarget,
 } from "@left-curve/applets-kit";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { useConfig, usePrices, useProTradeState } from "@left-curve/store";
+import { useConfig, useProTradeState } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -24,6 +25,7 @@ import { OrderBookOverview } from "./OrderBookOverview";
 import { SearchToken } from "./SearchToken";
 import { TradeButtons } from "./TradeButtons";
 import { TradeMenu } from "./TradeMenu";
+import { ErrorBoundary } from "react-error-boundary";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
@@ -56,9 +58,12 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
 }) => {
   const controllers = useInputs();
 
+  const { isLg } = useMediaQuery();
+
   const state = useProTradeState({
     controllers,
     pairId,
+    bucketRecords: isLg ? 11 : 16,
     onChangePairId,
     action,
     onChangeAction,
@@ -73,22 +78,22 @@ const ProTradeHeader: React.FC = () => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
   const { state } = useProTrade();
-  const { pairId, onChangePairId } = state;
+  const { pairId, onChangePairId, orderBookStore } = state;
+
+  const previousPrice = orderBookStore((s) => s.previousPrice);
+  const currentPrice = orderBookStore((s) => s.currentPrice);
+
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
-
-  const { getPrice } = usePrices({
-    defaultFormatOptions: { ...formatNumberOptions, maxSignificantDigits: 8 },
-  });
 
   useEffect(() => {
     setIsExpanded(isLg);
   }, [isLg]);
 
   return (
-    <div className="flex bg-surface-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between">
+    <div className="flex bg-surface-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between shadow-account-card z-20 lg:z-10">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
-        <div className="flex lg:flex-col gap-2">
+        <div className="flex lg:flex-col gap-[2px]">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
           <div className="lg:pl-8">
             <Badge text="Spot" color="blue" size="s" />
@@ -100,12 +105,12 @@ const ProTradeHeader: React.FC = () => {
             onClick={() => setIsExpanded(!isExpanded)}
           >
             <IconChevronDownFill
-              className={twMerge("text-tertiary-500 w-4 h-4 transition-all", {
+              className={twMerge("text-ink-tertiary-500 w-4 h-4 transition-all", {
                 "rotate-180": isExpanded,
               })}
             />
           </div>
-          {/*   <IconEmptyStar className="w-5 h-5 text-tertiary-500" /> */}
+          {/*   <IconEmptyStar className="w-5 h-5 text-ink-tertiary-500" /> */}
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -120,21 +125,28 @@ const ProTradeHeader: React.FC = () => {
             className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start pt-8 lg:pt-0">
-              <p className="diatype-xs-medium text-tertiary-500">
+              <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.history.price"]()}
               </p>
-              <p className="diatype-sm-bold text-secondary-700">
-                {getPrice(1, pairId.baseDenom, { format: true })}
+              <p
+                className={twMerge(
+                  "diatype-sm-bold text-ink-secondary-700",
+                  Decimal(previousPrice).lte(currentPrice)
+                    ? "text-status-fail"
+                    : "text-status-success",
+                )}
+              >
+                {formatNumber(currentPrice, formatNumberOptions)}
               </p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-tertiary-500">
+              <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.24hChange"]()}
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
             </div>
             <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
-              <p className="diatype-xs-medium text-tertiary-500">
+              <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.volume"]()}
               </p>
               <p className="diatype-sm-bold w-full text-center">-</p>
@@ -148,8 +160,7 @@ const ProTradeHeader: React.FC = () => {
 
 const ProTradeOverview: React.FC = () => {
   const { state } = useProTrade();
-  const { baseCoin, quoteCoin } = state;
-  return <OrderBookOverview base={baseCoin} quote={quoteCoin} />;
+  return <OrderBookOverview state={state} />;
 };
 
 const ChartIQ = lazy(() =>
@@ -179,8 +190,10 @@ const ProTradeChart: React.FC = () => {
 
   const Chart = (
     <Suspense fallback={<Spinner color="pink" size="md" />}>
-      <div className="flex w-full h-full lg:min-h-[52vh]" id="chart-container">
-        <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
+      <div className="flex w-full lg:min-h-[33.875rem] h-full" id="chart-container">
+        <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
+          <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
+        </ErrorBoundary>
       </div>
     </Suspense>
   );
@@ -201,25 +214,26 @@ const ProTradeMenu: React.FC = () => {
 };
 
 const ProTradeHistory: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"open order" | "trade history">("open order");
+  const [activeTab, setActiveTab] = useState<"orders" | "trade-history">("orders");
 
   return (
-    <div className="flex-1 p-4 bg-surface-secondary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
+    <div className="flex-1 p-4 bg-surface-primary-rice flex flex-col gap-2 shadow-account-card pb-20 lg:pb-5 z-10">
       <div className="relative">
         <Tabs
           color="line-red"
-          layoutId="tabs-open-order"
+          layoutId="tabs-open-orders"
+          onTabChange={(tab) => setActiveTab(tab as "orders" | "trade-history")}
           selectedTab={activeTab}
-          keys={["open order", "trade history"]}
-          onTabChange={(tab) => setActiveTab(tab as "open order" | "trade history")}
           classNames={{ button: "exposure-xs-italic", base: "z-10" }}
-        />
-
-        <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
+        >
+          <Tab title="orders">{m["dex.protrade.openOrders"]()}</Tab>
+          <Tab title="trade-history">{m["dex.protrade.tradeHistory.title"]()}</Tab>
+        </Tabs>
+        <span className="w-full absolute h-[2px] bg-overlay-secondary-gray bottom-[0px] z-0" />
       </div>
       <div className="w-full h-full relative">
-        {activeTab === "open order" ? <ProTradeOpenOrders /> : null}
-        {activeTab === "trade history" ? <ProTradeOrdersHistory /> : null}
+        {activeTab === "orders" ? <ProTradeOpenOrders /> : null}
+        {activeTab === "trade-history" ? <ProTradeOrdersHistory /> : null}
       </div>
     </div>
   );
@@ -248,7 +262,7 @@ const ProTradeOpenOrders: React.FC = () => {
         return (
           <Cell.Text
             text={value}
-            className="diatype-xs-regular text-secondary-700 hover:text-primary-900 cursor-pointer"
+            className="diatype-xs-regular text-ink-secondary-700 hover:text-ink-primary-900 cursor-pointer"
           />
         );
       },
@@ -293,7 +307,7 @@ const ProTradeOpenOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          formatOptions={formatNumberOptions}
           value={Decimal(row.original.remaining)
             .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
             .toFixed()}
@@ -308,7 +322,7 @@ const ProTradeOpenOrders: React.FC = () => {
         }),
       cell: ({ row }) => (
         <Cell.Number
-          formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+          formatOptions={formatNumberOptions}
           value={Decimal(row.original.amount)
             .div(Decimal(10).pow(coins.byDenom[row.original.baseDenom].decimals))
             .toFixed()}
@@ -328,7 +342,7 @@ const ProTradeOpenOrders: React.FC = () => {
                 ),
               )
               .toFixed(),
-            { ...formatNumberOptions, maxSignificantDigits: 10 },
+            formatNumberOptions,
           )}
         />
       ),
@@ -437,7 +451,7 @@ const ProTradeOrdersHistory: React.FC = () => {
       cell: ({ row }) => {
         return (
           <Cell.Number
-            formatOptions={{ ...formatNumberOptions, maxSignificantDigits: 10 }}
+            formatOptions={formatNumberOptions}
             value={calculateTradeSize(
               row.original,
               coins.byDenom[row.original.baseDenom].decimals,
@@ -459,7 +473,7 @@ const ProTradeOrdersHistory: React.FC = () => {
                 ),
               )
               .toFixed(),
-            { ...formatNumberOptions, maxSignificantDigits: 10 },
+            formatNumberOptions,
           )}
         />
       ),

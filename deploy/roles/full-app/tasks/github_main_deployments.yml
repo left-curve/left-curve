@@ -1,0 +1,75 @@
+- name: Create environments
+  uri:
+    url: "https://api.github.com/repos/left-curve/left-curve/environments/{{ item }}"
+    method: PUT
+    headers:
+      Authorization: "token {{ ghcr_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      wait_timer: 0
+      reviewers: []
+      deployment_branch_policy: null
+    status_code: [200, 201]
+  failed_when: false
+  loop:
+    - "dango-frontend"
+    - "dango-api"
+    - "faucet-bot"
+
+- name: Create GitHub deployments
+  uri:
+    url: "https://api.github.com/repos/left-curve/left-curve/deployments"
+    method: POST
+    headers:
+      Authorization: "token {{ ghcr_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      ref: "{{ github_sha }}"
+      environment: "{{ item.name }}"
+      description: "{{ item.description }}"
+      auto_merge: false
+      required_contexts: []
+    status_code: [200, 201]
+  register: deployment_results
+  loop:
+    - { name: "dango-frontend", description: "Frontend", url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}" }
+    - { name: "dango-api", description: "Dango API", url: "http://{{ tailscale_ip }}:{{ dango_port }}" }
+    - { name: "faucet-bot", description: "Faucet", url: "http://{{ tailscale_ip }}:{{ faucet_port }}" }
+
+- name: Set deployment statuses
+  uri:
+    url: "https://api.github.com/repos/left-curve/left-curve/deployments/{{ item.json.id }}/statuses"
+    method: POST
+    headers:
+      Authorization: "token {{ ghcr_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      state: "success"
+      target_url: "{{ deployment_results.results[ansible_loop.index0].item.url }}"
+      description: "{{ deployment_results.results[ansible_loop.index0].item.description }} ready"
+      environment_url: "{{ deployment_results.results[ansible_loop.index0].item.url }}"
+    status_code: [200, 201]
+  loop: "{{ deployment_results.results }}"
+  loop_control:
+    extended: true
+  when: deployment_results.results is defined
+
+- name: Add deployment summary to GitHub
+  delegate_to: localhost
+  connection: local
+  become: false
+  shell: |
+    cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+    # 🚀 PR Deployment Summary
+    | Name | Result |
+    | ---- | ------ |
+    | **Status** | ✅ |
+    | **Dango Frontend** | [http://{{ tailscale_ip }}:{{ dango_frontend_port }}](http://{{ tailscale_ip }}:{{ dango_frontend_port }}) |
+    | **Dango GraphQL** | [http://{{ tailscale_ip }}:{{ dango_port }}/graphql](http://{{ tailscale_ip }}:{{ dango_port }}/graphql) |
+    | **Faucet bot** | [http://{{ tailscale_ip }}:{{ faucet_port }}](http://{{ tailscale_ip }}:{{ faucet_port }}) |
+    | **Deployment name** | `{{ deployment_name }}` |
+    | **Commit** | `{{ dango_image_tag }}` |
+    EOF

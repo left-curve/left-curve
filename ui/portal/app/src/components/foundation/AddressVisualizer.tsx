@@ -152,7 +152,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
         {...rest}
       >
         {withIcon ? (
-          <IconUserCircle className="w-4 h-4 fill-rice-50 text-rice-500 rounded-full overflow-hidden" />
+          <IconUserCircle className="w-4 h-4 fill-primitives-rice-light-50 text-primitives-rice-light-500 rounded-full overflow-hidden" />
         ) : null}
         <Text className={twMerge("diatype-m-bold", classNames?.text)}>{account.name}</Text>
         {isClickable ? <IconLink className="w-4 h-4" /> : null}

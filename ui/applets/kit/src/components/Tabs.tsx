@@ -81,7 +81,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
                 fullWidth={fullWidth}
               />
             ) : (
-              cloneElement(e as React.ReactElement, { isActive })
+              cloneElement(e as React.ReactElement, { isActive, color })
             )}
             {isActive && hasMounted ? (
               <motion.div
@@ -111,24 +111,24 @@ const tabsVariants = tv({
     },
     color: {
       green: {
-        base: "bg-secondary-green",
+        base: "bg-surface-secondary-green",
         "animated-element":
-          "bg-button-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+          "bg-surface-button-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       red: {
-        base: "bg-secondary-red",
+        base: "bg-surface-secondary-red",
         "animated-element":
           "bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       "light-green": {
-        base: " bg-tertiary-green",
+        base: "bg-surface-secondary-green",
         "animated-element":
-          "bg-primary-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+          "bg-surface-button-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       "line-red": {
         base: "p-0",
-        button: "border-b-[1px] border-secondary-gray pt-0",
-        "animated-element": "bg-red-bean-400 w-full h-[2px] bottom-[-1px]",
+        button: "border-b-[1px] border-overlay-secondary-gray pt-0",
+        "animated-element": "bg-primitives-red-light-400 w-full h-[2px] bottom-[-1px]",
       },
     },
     fullWidth: {
@@ -199,32 +199,32 @@ const tabVariants = tv({
     {
       isActive: false,
       color: "red",
-      class: "text-foreground-tertiary",
+      class: "text-fg-tertiary-400",
     },
     {
       isActive: false,
       color: "green",
-      class: "text-foreground-tertiary",
+      class: "text-fg-tertiary-400",
     },
     {
       isActive: true,
       color: "light-green",
-      class: "text-secondary-700",
+      class: "text-ink-secondary-700",
     },
     {
       isActive: false,
       color: "light-green",
-      class: "text-foreground-tertiary",
+      class: "text-fg-tertiary-400",
     },
     {
       isActive: true,
       color: "line-red",
-      class: "text-red-bean-400",
+      class: "text-primitives-red-light-400",
     },
     {
       isActive: false,
       color: "line-red",
-      class: "text-foreground-tertiary",
+      class: "text-fg-tertiary-400",
     },
   ],
 });

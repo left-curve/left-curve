@@ -3,7 +3,11 @@ import { captureException } from "@sentry/react";
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { config } from "~/store";
 
-import { AppRouter } from "./app.router";
+import { AppRouter, router } from "./app.router";
+import { AppUpdater } from "./app.updater";
+import { AppProvider } from "@left-curve/foundation";
+import { Toaster, toast } from "@left-curve/applets-kit";
+import { RootModal } from "./components/modals/RootModal";
 
 import type React from "react";
 
@@ -54,10 +58,15 @@ const queryClient = new QueryClient({
 
 export const App: React.FC = () => {
   return (
-    <DangoStoreProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        <AppRouter />
-      </QueryClientProvider>
-    </DangoStoreProvider>
+    <QueryClientProvider client={queryClient}>
+      <DangoStoreProvider config={config}>
+        <AppProvider toast={toast} navigate={(to, options) => router.navigate({ to, ...options })}>
+          <AppRouter />
+          <AppUpdater />
+          <RootModal />
+          <Toaster />
+        </AppProvider>
+      </DangoStoreProvider>
+    </QueryClientProvider>
   );
 };

@@ -1,11 +1,15 @@
 import type {
+  Address,
   Candle,
   CandleIntervals,
   Denom,
   IndexedAccountEvent,
   IndexedBlock,
+  IndexedEvent,
   IndexedTransferEvent,
   PublicClient,
+  QueryRequest,
+  QueryResponse,
   Trade,
   Username,
 } from "@left-curve/dango/types";
@@ -25,6 +29,11 @@ export type SubscriptionSchema = [
     key: "account";
     params: { username: Username; sinceBlockHeight?: number };
     listener: (event: { accounts: IndexedAccountEvent[] }) => void;
+  },
+  {
+    key: "eventsByAddresses";
+    params: { addresses: Address[]; sinceBlockHeight?: number };
+    listener: (events: IndexedEvent[]) => void;
   },
   {
     key: "candles";
@@ -55,6 +64,14 @@ export type SubscriptionSchema = [
       data?: T;
     }) => void;
   },
+  {
+    key: "queryApp";
+    params: {
+      request: QueryRequest;
+      interval?: number;
+    };
+    listener: (event: QueryResponse) => void;
+  },
 ];
 
 export type SubscriptionKey = SubscriptionSchema[number]["key"];
@@ -81,5 +98,8 @@ export type SubscriptionEvent<K extends SubscriptionKey> = Parameters<
 
 export type SubscriptionStore = {
   subscribe: <K extends SubscriptionKey>(key: K, args: SubscribeArguments<K>) => () => void;
-  emit: <K extends SubscriptionKey>(key: K, event: SubscriptionEvent<K>) => void;
+  emit: <K extends SubscriptionKey>(
+    { key, params }: { key: K; params?: GetSubscriptionDef<K>["params"] },
+    event: SubscriptionEvent<K>,
+  ) => void;
 };

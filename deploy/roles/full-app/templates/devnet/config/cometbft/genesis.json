@@ -922,12 +922,12 @@
   "initial_height": "0",
   "validators": [
     {
-      "address": "{{ COMETBFT_VALIDATOR_ADDRESS }}",
+      "address": "{{ cometbft_validator_address }}",
       "name": "",
       "power": "10",
       "pub_key": {
         "type": "tendermint/PubKeyEd25519",
-        "value": "{{ COMETBFT_VALIDATOR_PUB_KEY }}"
+        "value": "{{ cometbft_validator_public_key }}"
       }
     }
   ]

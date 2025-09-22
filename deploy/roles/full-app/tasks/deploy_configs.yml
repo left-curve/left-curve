@@ -1,0 +1,18 @@
+- name: Deploy configuration files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "{{ dango_network}}/config/cometbft/config.toml", dest: "cometbft/config/config.toml" }
+        - { src: "{{ dango_network}}/config/cometbft/genesis.json", dest: "cometbft/config/genesis.json" }
+        - { src: "{{ dango_network}}/config/cometbft/node_key.json", dest: "cometbft/config/node_key.json" }
+        - { src: "{{ dango_network}}/config/cometbft/priv_validator_key.json", dest: "cometbft/config/priv_validator_key.json" }
+        - { src: "{{ dango_network}}/config/dango/app.toml", dest: "dango/config/app.toml" }
+        - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
+        - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }
+        - { src: "docker-compose.yml", dest: "docker-compose.yml" }
+        - { src: "env.j2", dest: ".env" }

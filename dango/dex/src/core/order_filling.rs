@@ -1,6 +1,6 @@
 use {
-    dango_types::dex::Order,
-    grug::{IsZero, Number, NumberConst, StdResult, Udec128, Udec128_6, Udec128_24},
+    dango_types::dex::{Order, Price},
+    grug::{IsZero, Number, NumberConst, StdResult, Udec128, Udec128_6},
 };
 
 #[derive(Debug)]
@@ -20,14 +20,14 @@ pub struct FillingOutcome {
     /// Fee charged in quote asset.
     pub fee_quote: Udec128_6,
     /// The price at which the order was filled.
-    pub clearing_price: Udec128_24,
+    pub clearing_price: Price,
 }
 
 /// Clear the orders given a clearing price and volume.
 pub fn fill_orders(
-    bids: Vec<(Udec128_24, Order)>,
-    asks: Vec<(Udec128_24, Order)>,
-    clearing_price: Udec128_24,
+    bids: Vec<(Price, Order)>,
+    asks: Vec<(Price, Order)>,
+    clearing_price: Price,
     volume: Udec128_6,
     current_block_height: u64,
     maker_fee_rate: Udec128,
@@ -58,8 +58,8 @@ pub fn fill_orders(
 
 /// Fill the BUY orders given a clearing price and volume.
 fn fill_bids(
-    bids: Vec<(Udec128_24, Order)>,
-    clearing_price: Udec128_24,
+    bids: Vec<(Price, Order)>,
+    clearing_price: Price,
     mut volume: Udec128_6,
     current_block_height: u64,
     maker_fee_rate: Udec128,
@@ -120,8 +120,8 @@ fn fill_bids(
 
 /// Fill the SELL orders given a clearing price and volume.
 fn fill_asks(
-    asks: Vec<(Udec128_24, Order)>,
-    clearing_price: Udec128_24,
+    asks: Vec<(Price, Order)>,
+    clearing_price: Price,
     mut volume: Udec128_6,
     current_block_height: u64,
     maker_fee_rate: Udec128,

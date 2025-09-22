@@ -66,12 +66,12 @@ const Details: React.FC = () => {
   const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
     tx;
   return (
-    <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-secondary-700 diatype-sm-medium relative overflow-hidden">
-      <h1 className="h4-bold text-primary-900">{m["explorer.txs.txDetails"]()}</h1>
+    <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-ink-secondary-700 diatype-sm-medium relative overflow-hidden">
+      <h1 className="h4-bold text-ink-primary-900">{m["explorer.txs.txDetails"]()}</h1>
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.txHash"]()}
           </p>
           <p className="break-all whitespace-normal">
@@ -83,7 +83,7 @@ const Details: React.FC = () => {
           </p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.sender"]()}
           </p>
           <AddressVisualizer
@@ -94,13 +94,13 @@ const Details: React.FC = () => {
           />
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.time"]()}
           </p>
           <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
           <button
@@ -113,25 +113,25 @@ const Details: React.FC = () => {
           </button>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.index"]()}
           </p>
           <p>{transactionIdx}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
           <p>{gasUsed}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
           <p>{gasWanted}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.status"]()}
           </p>
           <div>
@@ -162,7 +162,7 @@ const Messages: React.FC = () => {
   return (
     <div className="flex flex-col w-full gap-6">
       <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
-        <p className="h4-bold text-primary-900">{m["explorer.txs.messages"]()}</p>
+        <p className="h4-bold text-ink-primary-900">{m["explorer.txs.messages"]()}</p>
         {messages.map(({ data, methodName, orderIdx }) => {
           const message = data[methodName];
           return (
@@ -172,7 +172,7 @@ const Messages: React.FC = () => {
               classNames={{ text: "capitalize" }}
               defaultExpanded
             >
-              <div className="p-4 bg-gray-700 shadow-account-card  rounded-md text-white-100">
+              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
                 <JsonVisualizer json={message} collapsed={1} />
               </div>
             </AccordionItem>
@@ -180,8 +180,8 @@ const Messages: React.FC = () => {
         })}
       </div>
       <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
-        <p className="h4-bold text-primary-900">{m["explorer.txs.events"]()}</p>
-        <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
+        <p className="h4-bold text-ink-primary-900">{m["explorer.txs.events"]()}</p>
+        <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md">
           <JsonVisualizer string={nestedEvents} collapsed={1} />
         </div>
       </div>
@@ -198,10 +198,10 @@ const NotFound: React.FC = () => {
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center">
-          <h3 className="exposure-m-italic text-secondary-700">
+          <h3 className="exposure-m-italic text-ink-secondary-700">
             {m["explorer.txs.notFound.title"]()}
           </h3>
-          <p className="diatype-m-medium max-w-[42.5rem] text-center text-tertiary-500 ">
+          <p className="diatype-m-medium max-w-[42.5rem] text-center text-ink-tertiary-500 ">
             {m["explorer.txs.notFound.pre"]()}
             <span className="break-all overflow-hidden underline"> {txHash}</span>{" "}
             {m["explorer.txs.notFound.description"]()}
