@@ -1,4 +1,4 @@
-import * as webllm from "@mlc-ai/web-llm";
+import type * as webllm from "@mlc-ai/web-llm";
 import { StreamParser } from "./parser";
 
 export type Tool = { name: string; fn: <P, R>(params: P) => Promise<R> };
@@ -11,8 +11,6 @@ export type LLMessage =
 export function systemPrompt(tools: Array<webllm.ChatCompletionTool>) {
   return `
   # Tool Instructions
-    - Only when looking for real time information use relevant functions if available, otherwise answer based on your knowledge.
-    - Not all questions require a function call.
     You have access to the following functions:
 
     ${JSON.stringify(tools, null, 2)}
@@ -26,20 +24,58 @@ export function systemPrompt(tools: Array<webllm.ChatCompletionTool>) {
     - Only call one function at a time
     - When calling a function, do NOT add any other words, ONLY the function calling
     - Put the entire function call reply on one line
-    - Always add your sources when using search results to answer the user query
+    - You can NOT call functions that are not listed in the tool list
 
-    **If no tool is needed to answer the user, you must respond directly with a helpful, plain text answer. Do not use any tags in this case.**
+    **After a function call transform the response in natural language to the user.**
+
+    If you do not need to call a function, respond in natural language.
 
     You are a helpful Assistant.
   `;
 }
 
-export async function loadModel(_modelId: string): Promise<webllm.MLCEngine> {
-  const engine = new webllm.MLCEngine({
-    initProgressCallback: (p) => console.log(p),
-  });
-  engine.setAppConfig({
+export async function loadModel(engine: webllm.MLCEngine): Promise<webllm.MLCEngine> {
+  const appConfig = {
     model_list: [
+      {
+        model: "https://huggingface.co/mlc-ai/Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC",
+        model_id: "Hermes-2-Pro-Llama-3-8B-q4f16_1-MLC",
+        model_lib:
+          "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/" +
+          "v0_2_48" +
+          "/Llama-3-8B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+        vram_required_MB: 4976.13,
+        low_resource_required: false,
+        overrides: {
+          context_window_size: 4096,
+        },
+      },
+      {
+        model: "https://huggingface.co/mlc-ai/Qwen3-4B-q4f32_1-MLC",
+        model_id: "Qwen3-4B-q4f32_1-MLC",
+        model_lib:
+          "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/" +
+          "v0_2_80" +
+          "/Qwen3-4B-q4f32_1-ctx4k_cs1k-webgpu.wasm",
+        vram_required_MB: 4327.71,
+        low_resource_required: true,
+        overrides: {
+          context_window_size: 4096,
+        },
+      },
+      {
+        model: "https://huggingface.co/mlc-ai/Qwen3-8B-q4f32_1-MLC",
+        model_id: "Qwen3-8B-q4f32_1-MLC",
+        model_lib:
+          "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/" +
+          "v0_2_80" +
+          "/Qwen3-8B-q4f32_1-ctx4k_cs1k-webgpu.wasm",
+        vram_required_MB: 5695.78,
+        low_resource_required: false,
+        overrides: {
+          context_window_size: 4096,
+        },
+      },
       {
         model: "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f16_1-MLC",
         model_id: "Qwen3-1.7B-q4f16_1-MLC",
@@ -53,18 +89,27 @@ export async function loadModel(_modelId: string): Promise<webllm.MLCEngine> {
           context_window_size: 4096,
         },
       },
+      {
+        model: "https://huggingface.co/mlc-ai/gemma-3-1b-it-q4f16_1-MLC",
+        model_id: "gemma-3-1b-it-q4f16_1-MLC",
+        model_lib:
+          "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/" +
+          "v0_2_80" +
+          "/gemma3-1b-it-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+      },
     ],
-  });
+  };
 
   try {
-    await engine.reload("Qwen3-1.7B-q4f16_1-MLC");
+    // engine.setAppConfig(appConfig);
+    await engine.reload("Qwen3-4B-q4f32_1-MLC");
+    // await engine.reload("Qwen3-8B-q4f32_1-MLC");
     return engine;
   } catch (error) {
     console.error("Error loading model:", error);
     throw error;
   }
 }
-
 export async function handleStreamResponse(
   engine: webllm.MLCEngine,
   tools: Tool[],
@@ -80,10 +125,9 @@ export async function handleStreamResponse(
     const delta = chunk.choices[0]?.delta?.content || "";
     finalMessages = parser.feed(delta);
 
-    if (finalMessages.length > 1 && finalMessages[0].type === "thinking") {
+    /*     if (finalMessages.length > 1 && finalMessages[0].type === "thinking") {
       finalMessages.shift();
-    }
-
+    } */
     updateMessages([...messages, ...finalMessages]);
   }
 
@@ -104,7 +148,10 @@ export async function handleStreamResponse(
             role: "assistant",
             content: `<function>${last.content}</function>`,
           },
-          { role: "user", content: JSON.stringify(result) },
+          {
+            role: "user",
+            content: `<tool_response>\n${JSON.stringify(result)}\n</tool_response>`,
+          },
         ],
       };
 

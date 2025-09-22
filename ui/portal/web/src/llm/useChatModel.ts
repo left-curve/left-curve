@@ -5,20 +5,23 @@ import { handleStreamResponse, loadModel, systemPrompt } from "./model";
 import type { LLMessage } from "./model";
 
 type UseChatModelParameters = {
+  engine: webllm.MLCEngine;
   toolsDefinition: webllm.ChatCompletionTool[];
   toolsImplementation: { name: string; fn: <P, R>(params: P) => Promise<R> }[];
 };
 
 export function useChatModel(parameters: UseChatModelParameters) {
-  const { toolsDefinition, toolsImplementation } = parameters;
+  const { toolsDefinition, toolsImplementation, engine } = parameters;
   const modelRef = useRef<webllm.MLCEngine | null>(null);
   const [messages, setMessages] = useState<LLMessage[]>([]);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    loadModel("Qwen3-1.7B-q4f16_1-MLC").then((engine) => {
+    setIsLoading(true);
+    loadModel(engine).then((engine) => {
       modelRef.current = engine;
+      setIsLoading(false);
     });
   }, []);
 
