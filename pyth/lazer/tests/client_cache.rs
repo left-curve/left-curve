@@ -33,9 +33,11 @@ async fn test_lazer_stream() {
 fn create_cache() {
     let update_ids = LAZER_ID_ALL;
 
-    let mut client =
-        PythClientLazerCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer-token")
-            .unwrap();
+    let mut client = PythClientLazerCache::new(
+        NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST),
+        "8groZyxhfobyiQod0c3tZxlDXhXQ3Xh8T9C-demo",
+    )
+    .unwrap();
     client.load_or_retrieve_data(NonEmpty::new_unchecked(update_ids.clone()));
 
     for id in update_ids {
