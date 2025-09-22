@@ -50,8 +50,6 @@ impl TestCmd {
                     // Decode the price feeds.
                     let mut feeds = Vec::with_capacity(2);
                     for message in data.into_inner() {
-                        // For the purpose of this test, it isn't necessary to verify the Wormhole VAAs.
-
                         // Deserialize the payload.
                         let payload = PayloadData::deserialize_slice_le(&message.payload)?;
                         feeds.push(payload);

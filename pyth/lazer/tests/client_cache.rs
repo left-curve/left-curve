@@ -38,12 +38,13 @@ fn create_cache() {
             .unwrap();
     client.load_or_retrieve_data(NonEmpty::new_unchecked(update_ids.clone()));
 
-    for id in update_ids {
+    for subscription_details in update_ids {
+        let id = subscription_details.id;
         let filename = PythClientLazerCache::cache_filename(&id);
 
         let mut cache_file = DiskPersistence::new(filename, true);
 
-        assert!(cache_file.exists(), "Cache file for {id} not found");
+        assert!(cache_file.exists(), "Cache file for {} not found", id);
 
         // Load the cache file to ensure it was created correctly.
         let data = cache_file.load::<Vec<Vec<LeEcdsaMessage>>>().unwrap();
