@@ -88,6 +88,7 @@ export const tailwindConfig: Partial<Config> = {
               700: "#453D39",
               800: "#302723",
               900: "#2E2521",
+              950: "#2C231F",
             },
           },
           green: {
