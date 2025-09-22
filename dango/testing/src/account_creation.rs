@@ -14,7 +14,7 @@ use {
     grug_vm_rust::RustVm,
     hyperlane_types::constants::solana,
     indexer_hooked::HookedIndexer,
-    pyth_core::PythClientCoreCache,
+    pyth_lazer::PythClientLazerCache,
     std::{ops::DerefMut, str::FromStr},
 };
 
@@ -22,7 +22,7 @@ pub fn create_user_account(
     suite: &mut HyperlaneTestSuite<
         MemDb,
         RustVm,
-        ProposalPreparer<PythClientCoreCache>,
+        ProposalPreparer<PythClientLazerCache>,
         HookedIndexer,
     >,
     contracts: &Contracts,
@@ -35,7 +35,7 @@ pub fn add_user_public_key(
     suite: &mut HyperlaneTestSuite<
         MemDb,
         RustVm,
-        ProposalPreparer<PythClientCoreCache>,
+        ProposalPreparer<PythClientLazerCache>,
         HookedIndexer,
     >,
     contracts: &Contracts,
@@ -62,7 +62,7 @@ pub fn add_account_with_existing_user(
     suite: &mut HyperlaneTestSuite<
         MemDb,
         RustVm,
-        ProposalPreparer<PythClientCoreCache>,
+        ProposalPreparer<PythClientLazerCache>,
         HookedIndexer,
     >,
     contracts: &Contracts,
@@ -82,7 +82,7 @@ pub fn create_user_and_account(
     suite: &mut HyperlaneTestSuite<
         MemDb,
         RustVm,
-        ProposalPreparer<PythClientCoreCache>,
+        ProposalPreparer<PythClientLazerCache>,
         HookedIndexer,
     >,
     accounts: &mut TestAccounts,

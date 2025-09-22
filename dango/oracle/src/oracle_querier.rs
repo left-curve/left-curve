@@ -1,5 +1,5 @@
 use {
-    crate::{PRICE_SOURCES, PRICES, PYTH_LAZER_PRICES},
+    crate::{PRICE_SOURCES, PYTH_LAZER_PRICES},
     anyhow::{anyhow, ensure},
     dango_types::{
         DangoQuerier,
@@ -10,7 +10,7 @@ use {
         Addr, Cache, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp,
         Udec128,
     },
-    pyth_types::{PythId, PythLazerId},
+    pyth_types::PythLazerId,
     std::{cell::OnceCell, collections::HashMap},
 };
 
@@ -112,10 +112,6 @@ impl<'a> OracleQuerierNoCache<'a> {
                 let price = PrecisionlessPrice::new(humanized_price, timestamp);
                 Ok(price.with_precision(precision))
             },
-            PriceSource::Pyth { id, precision } => {
-                let (price, _) = self.ctx.get_price(id)?;
-                Ok(price.with_precision(precision))
-            },
             PriceSource::PythLazer { id, precision, .. } => {
                 let price = self.ctx.get_lazer_price(id)?;
                 Ok(price.with_precision(precision))
@@ -160,17 +156,6 @@ enum OracleContext<'a> {
 
 #[rustfmt::skip]
 impl OracleContext<'_> {
-    fn get_price(&self, pyth_id: PythId) -> StdResult<(PrecisionlessPrice, u64)> {
-        match self {
-            OracleContext::Local { storage } => {
-                PRICES.load(*storage, pyth_id)
-            },
-            OracleContext::Remote { address, querier } => {
-                querier.query_wasm_path(*address, &PRICES.path(pyth_id))
-            },
-        }
-    }
-
     fn get_lazer_price(&self, lazer_id: PythLazerId) -> StdResult<PrecisionlessPrice> {
         match self {
             OracleContext::Local { storage } => {

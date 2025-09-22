@@ -1,11 +1,10 @@
 use {
-    crate::{GUARDIAN_SETS, OracleQuerierNoCache, PRICE_SOURCES, PYTH_LAZER_TRUSTED_SIGNERS},
+    crate::{OracleQuerierNoCache, PRICE_SOURCES, PYTH_LAZER_TRUSTED_SIGNERS},
     dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
     grug::{
         Binary, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
         Timestamp,
     },
-    pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::BTreeMap,
 };
 
@@ -26,14 +25,6 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::PriceSources { start_after, limit } => {
             let res = query_price_sources(ctx, start_after, limit)?;
-            Ok(res.to_json_value()?)
-        },
-        QueryMsg::GuardianSet { index } => {
-            let res = query_guardian_set(ctx, index)?;
-            Ok(res.to_json_value()?)
-        },
-        QueryMsg::GuardianSets { start_after, limit } => {
-            let res = query_guardian_sets(ctx, start_after, limit)?;
             Ok(res.to_json_value()?)
         },
         QueryMsg::TrustedSigners { start_after, limit } => {
@@ -87,24 +78,6 @@ fn query_price_sources(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     PRICE_SOURCES
-        .range(ctx.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect()
-}
-
-fn query_guardian_set(ctx: ImmutableCtx, index: u32) -> StdResult<GuardianSet> {
-    GUARDIAN_SETS.load(ctx.storage, index)
-}
-
-fn query_guardian_sets(
-    ctx: ImmutableCtx,
-    start_after: Option<GuardianSetIndex>,
-    limit: Option<u32>,
-) -> StdResult<BTreeMap<GuardianSetIndex, GuardianSet>> {
-    let start = start_after.map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    GUARDIAN_SETS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .collect()

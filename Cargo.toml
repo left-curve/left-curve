@@ -57,7 +57,6 @@ members = [
   "indexer/sql",
   "indexer/sql-migration",
   "indexer/testing",
-  "pyth/core",
   "pyth/lazer",
   "pyth/types",
   "utils/config-parser",
@@ -257,7 +256,6 @@ indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql                 = { path = "indexer/sql" }
 indexer-sql-migration       = { path = "indexer/sql-migration" }
 indexer-testing             = { path = "indexer/testing" }
-pyth-core                   = { path = "pyth/core" }
 pyth-lazer                  = { path = "pyth/lazer" }
 pyth-types                  = { path = "pyth/types" }
 

@@ -3417,7 +3417,7 @@ dependencies = [
  "indexer-httpd",
  "indexer-sql",
  "metrics-exporter-prometheus",
- "pyth-core",
+ "pyth-lazer",
  "pyth-types",
  "rand 0.8.5",
  "sentry",
@@ -3664,7 +3664,6 @@ dependencies = [
  "grug-app",
  "metrics",
  "prost",
- "pyth-core",
  "pyth-lazer",
  "pyth-types",
  "reqwest 0.12.15",
@@ -3760,7 +3759,6 @@ dependencies = [
  "k256",
  "metrics-exporter-prometheus",
  "proptest",
- "pyth-core",
  "pyth-lazer",
  "pyth-types",
  "rand 0.8.5",
@@ -4273,17 +4271,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
  "event-listener 5.4.0",
- "pin-project-lite",
-]
-
-[[package]]
-name = "eventsource-stream"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74fef4569247a5f429d9156b9d0a2599914385dd189c539334c625d8099d90ab"
-dependencies = [
- "futures-core",
- "nom",
  "pin-project-lite",
 ]
 
@@ -7723,30 +7710,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyth-core"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "async-stream",
- "async-trait",
- "axum",
- "dango-types",
- "futures",
- "grug",
- "grug-app",
- "indexer-disk-saver",
- "pyth-types",
- "rand 0.8.5",
- "reqwest 0.12.15",
- "reqwest-eventsource",
- "thiserror 2.0.12",
- "tokio",
- "tokio-stream",
- "tracing",
- "url",
-]
-
-[[package]]
 name = "pyth-lazer"
 version = "0.0.0"
 dependencies = [
@@ -7758,7 +7721,6 @@ dependencies = [
  "grug-testing",
  "indexer-disk-saver",
  "metrics",
- "pyth-core",
  "pyth-lazer-client",
  "pyth-lazer-protocol",
  "pyth-types",
@@ -8289,22 +8251,6 @@ dependencies = [
  "wasm-streams",
  "web-sys",
  "windows-registry",
-]
-
-[[package]]
-name = "reqwest-eventsource"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "632c55746dbb44275691640e7b40c907c16a2dc1a5842aa98aaec90da6ec6bde"
-dependencies = [
- "eventsource-stream",
- "futures-core",
- "futures-timer",
- "mime",
- "nom",
- "pin-project-lite",
- "reqwest 0.12.15",
- "thiserror 1.0.69",
 ]
 
 [[package]]

@@ -1,16 +1,10 @@
 use {
     dango_types::oracle::{PrecisionlessPrice, PriceSource},
     grug::{Denom, Map, Serde, Timestamp},
-    pyth_types::{GuardianSet, GuardianSetIndex, PythId, PythLazerId},
+    pyth_types::PythLazerId,
 };
 
-pub const GUARDIAN_SETS: Map<GuardianSetIndex, GuardianSet> = Map::new("guardian_set");
-
 pub const PRICE_SOURCES: Map<&Denom, PriceSource, Serde> = Map::new("price_source");
-
-/// Map from PythId to (price, sequence). The sequence is used on update
-/// to ensure that the price is more recent.
-pub const PRICES: Map<PythId, (PrecisionlessPrice, u64)> = Map::new("price");
 
 /// Map from PythLazerId to price.
 pub const PYTH_LAZER_PRICES: Map<PythLazerId, PrecisionlessPrice> = Map::new("pyth_lazer_price");

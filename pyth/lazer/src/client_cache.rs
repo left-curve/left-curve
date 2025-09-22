@@ -9,7 +9,7 @@ use {
     reqwest::IntoUrl,
     std::{
         collections::HashMap,
-        env, panic,
+        env,
         path::{Path, PathBuf},
         sync::{
             Arc,
@@ -81,11 +81,7 @@ impl PythClientLazerCache {
                     let mut values = vec![];
                     while values.len() < PYTH_CACHE_SAMPLES {
                         if let Some(price_update) = stream.next().await {
-                            if let PriceUpdate::Lazer(messages) = price_update {
-                                values.push(messages);
-                            } else {
-                                panic!("Received non-lazer PriceUpdate: {price_update:?}");
-                            }
+                            values.push(price_update);
                         }
                     }
 
@@ -153,7 +149,7 @@ impl PythClientTrait for PythClientLazerCache {
                 if data.is_empty() {
                     warn!("No new VAA data available, waiting for next update");
                 }else{
-                    yield PriceUpdate::Lazer(NonEmpty::new(data).unwrap());
+                    yield NonEmpty::new_unchecked(data);
                 }
 
                 sleep(Duration::from_millis(400));

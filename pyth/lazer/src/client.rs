@@ -517,10 +517,11 @@ impl PythClientTrait for PythClientLazer {
 
                 // Yield the current data.
                 if !subscriptions_data.is_empty() {
-                    let send_data = subscriptions_data.clone();
-                    yield PriceUpdate::Lazer(NonEmpty::new_unchecked(
-                        send_data.into_values().collect::<Vec<_>>(),
-                    ));
+                    let send_data = subscriptions_data
+                        .clone()
+                        .into_values()
+                        .collect::<Vec<_>>();
+                    yield NonEmpty::new_unchecked(send_data);
                 }
             }
 

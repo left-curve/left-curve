@@ -6,12 +6,8 @@ use {
         Tx,
     },
     prost::bytes::Bytes,
-    pyth_core::{PythClientCore, PythClientCoreCache},
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
-    pyth_types::{
-        PythClientTrait,
-        constants::{LAZER_ENDPOINTS_TEST, PYTH_URL},
-    },
+    pyth_types::{PythClientTrait, constants::LAZER_ENDPOINTS_TEST},
     reqwest::IntoUrl,
     std::{fmt::Debug, sync::Mutex},
     tracing::{error, warn},
@@ -38,38 +34,6 @@ where
 {
     fn clone(&self) -> Self {
         Self { pyth_handler: None }
-    }
-}
-
-impl ProposalPreparer<PythClientCore> {
-    pub fn new() -> Self {
-        #[cfg(feature = "metrics")]
-        init_metrics();
-
-        let client = PythHandler::new_with_core(PYTH_URL);
-
-        Self {
-            pyth_handler: Some(Mutex::new(client)),
-        }
-    }
-}
-
-impl Default for ProposalPreparer<PythClientCore> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ProposalPreparer<PythClientCoreCache> {
-    pub fn new_with_cache() -> Self {
-        #[cfg(feature = "metrics")]
-        init_metrics();
-
-        let client = PythHandler::new_with_core_cache(PYTH_URL);
-
-        Self {
-            pyth_handler: Some(Mutex::new(client)),
-        }
     }
 }
 
@@ -187,25 +151,4 @@ pub fn init_metrics() {
         "proposal_preparer.prepare_proposal.duration",
         "Duration of the prepare_proposal method in seconds",
     );
-}
-
-// ----------------------------------- tests -----------------------------------
-
-#[cfg(test)]
-mod test {
-    use {grug::JsonDeExt, pyth_types::LatestVaaResponse};
-
-    #[test]
-    fn deserializing_pyth_response() {
-        r#"{
-          "binary": {
-            "encoding": "base64",
-            "data": [
-              "UE5BVQEAAAADuAEAAAAEDQBkr0PLb+gk8uvpb1vCCnSzrkNBWuAKD+4/oHA1HhL2rywRRNl4NEsUMyNDHVVFJz7sb2TqUXbIVKSDR+cXZk12AQHIF5lSaXo4Br8HN9I8FxSKI+k39d0G/hfGGcg42L1lmhol2f3hJRw32z9e9ktuCvOIClAe0U0t8hQk2meeHWReAARHzS7dEnqYLo5cM0ct+0lmMftM+SER9GP/Kr/l1nnUaRNff+2443LwCqOay1A0DSn6sOa6FO16w5mbgsNiUuMlAAhiIiNh1QIxaoKUydS3R0MnKoBkdt7ixtVCvK/GPi0PeC3goY+ZgaheHaVYt6lfjD0nwITz2bdYFZNq2SqO510VAAoHTixQaLHPPgi72kww0j5hOlJn11W1Rz8LAGGl0gk7/GZwEhiBUCuUCfTFwpHqX4UHJIXftR0SV1mS6UB3XLV6AAtAVczuOpFCCPiH9Sg9I0l1xitkQotpP8h+di11JJ3CVkm6vRU7zy1KrhYFsoV082IZTi0XN0Xdv5fWZZdg3Hx5AAzpW38X3a88bFIoys/jeflLAN+A9VeABd5HN9D6snOgI3o5FXftoZjNP0c8Xd/J8rTlUgBIOgsyGFh2vRjJbe6JAQ2+2P9NCAAhBnOYoRjASsA/XlI2FDEGK58ati8kz4vJGyO9B8O6sdZiKE70ieoDirBl8puIkYb0sPU8vov/xF1kAA4cPqmQw6zUazq7F8VE0FSe9C2KD3bD2drA/5rkFExyABw+4XL/4KGbA02YEvp4rGpQvBHKjyS7HhdfuWaspCtjAQ8IoVHbmdLHcnc1dJLgduCtMOPVB3+kpJZBLRfu962mRhG6zLmIr5ioO8/HSsDSQWLWGfi7u2z+g9Nw0CVVhmwmARBAmbiFQ3nI4Idyu9XHuY9r9FaQa1rAcdCuDEGCZPdbphqX7kckA6r95J01ERAqLHwNvZDzuTTgY00Qcuh4v7bfABELTI+OKdU8zctRIb+HJxqQJKeCuBc2+zFo0Tfjs7A8Ix4mszdY/c+1iKZjQLP8MvDekc1rPgjCbhJeZrvoz7xHABJoPDAMGFjauAjWB3g8EJHV+V+oTH5pYLXfZrXdUzzHxTj+JdMaJNIl7EN9MQ7hPzwKkkvwEKuHx661sLdMwGt1AWc3bGMAAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFkcwYAUFVV1YAAAAAAAqelroAACcQy4n8eAYQTYIOJi7hMVMnT8+xofsBAFUA5i32yLSoX+GmfbRNwS3l2zMPesZrctxliv7fD0pBW0MAAAgFdR9DkgAAAAErfT7c////+AAAAABnN2xjAAAAAGc3bGMAAAgVwbgMwAAAAAErXavAC2svmTTo0dM2ChAXPyvygP0QyQvSR/BV5sMFociUhrsruHLNPmvHkOxzZMH4NQzepTk6Wc6cGiVU1RVKdqDYcPPsm+N2jsKYH5zp65jeHXG0h5pR53BajAgRmNmq7xzBP5e1vT6gv5CHEbv1QGAvbGXSReuOOj1LR29RgjJiM/A/PCysDvPuhI5r9QqT69mMvlraw2QdqlRGmTsq/1LlskABMC+bL64zMUlwLmo0N3kxXuS3Y906SY9J733py3EPMQMRrGD5C185kIK9iYlvyEOx5Tq0wvQeaB2/J7Q="
-            ]
-          }
-        }"#
-        .deserialize_json::<LatestVaaResponse>()
-        .unwrap();
-    }
 }

@@ -1,9 +1,8 @@
 use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
     grug::{Addr, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
-    pyth_core::{PythClientCore, PythClientCoreCache},
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
-    pyth_types::{PriceUpdate, PythClientTrait, PythId, PythLazerSubscriptionDetails},
+    pyth_types::{PriceUpdate, PythClientTrait, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         fmt::Debug,
@@ -32,18 +31,6 @@ where
     shared_vaas: Shared<Option<PriceUpdate>>,
     current_ids: Vec<P::PythId>,
     stoppable_thread: Option<(Arc<AtomicBool>, thread::JoinHandle<()>)>,
-}
-
-impl PythHandler<PythClientCore> {
-    pub fn new_with_core<U: IntoUrl>(base_url: U) -> PythHandler<PythClientCore> {
-        Self::new_with_client(PythClientCore::new(base_url).unwrap())
-    }
-}
-
-impl PythHandler<PythClientCoreCache> {
-    pub fn new_with_core_cache<U: IntoUrl>(base_url: U) -> PythHandler<PythClientCoreCache> {
-        Self::new_with_client(PythClientCoreCache::new(base_url).unwrap())
-    }
 }
 
 impl PythHandler<PythClientLazer> {
@@ -216,42 +203,6 @@ where
 
 pub trait QueryPythId: PythClientTrait {
     fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>>;
-}
-
-impl QueryPythId for PythClientCore {
-    //  TODO: optimize this by using the raw WasmScan query.
-    /// Retrieve the Pyth ids from the Oracle contract.
-    fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>> {
-        pyth_ids_core(querier, oracle)
-    }
-}
-
-impl QueryPythId for PythClientCoreCache {
-    //  TODO: optimize this by using the raw WasmScan query.
-    /// Retrieve the Pyth ids from the Oracle contract.
-    fn pyth_ids(&self, querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<Self::PythId>> {
-        pyth_ids_core(querier, oracle)
-    }
-}
-
-/// Retrieve the Pyth Core ids from the Oracle contract.
-fn pyth_ids_core(querier: QuerierWrapper, oracle: Addr) -> StdResult<Vec<PythId>> {
-    let new_ids = querier
-        .query_wasm_smart(oracle, QueryPriceSourcesRequest {
-            start_after: None,
-            limit: Some(u32::MAX),
-        })?
-        .into_values()
-        .filter_map(|price_source| {
-            if let PriceSource::Pyth { id, .. } = price_source {
-                Some(id)
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-
-    Ok(new_ids)
 }
 
 impl QueryPythId for PythClientLazer {

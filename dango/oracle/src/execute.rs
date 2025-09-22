@@ -1,25 +1,23 @@
 use {
-    crate::{
-        PRICE_SOURCES, PRICES, PYTH_LAZER_PRICES, PYTH_LAZER_TRUSTED_SIGNERS, state::GUARDIAN_SETS,
-    },
+    crate::{PRICE_SOURCES, PYTH_LAZER_PRICES, PYTH_LAZER_TRUSTED_SIGNERS},
     anyhow::{bail, ensure},
     dango_types::oracle::{ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource},
     grug::{
         Api, AuthCtx, AuthMode, AuthResponse, Binary, Denom, Inner, JsonDeExt, Message, MsgExecute,
         MutableCtx, QuerierExt, Response, Storage, Timestamp, Tx,
     },
-    pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate, PythId, PythVaa},
-    std::{cmp::Ordering, collections::BTreeMap},
+    pyth_types::{LeEcdsaMessage, PayloadData, PriceUpdate},
+    std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
-    for (i, guardian_set) in msg.guardian_sets {
-        GUARDIAN_SETS.save(ctx.storage, i, &guardian_set)?;
-    }
-
     for (denom, price_source) in msg.price_sources {
         PRICE_SOURCES.save(ctx.storage, &denom, &price_source)?;
+    }
+
+    for (public_key, expires_at) in msg.trusted_signers {
+        PYTH_LAZER_TRUSTED_SIGNERS.save(ctx.storage, &public_key, &expires_at)?;
     }
 
     Ok(Response::new())
@@ -95,82 +93,34 @@ fn register_price_sources(
 }
 
 fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Response> {
-    match price_update {
-        PriceUpdate::Core(vaas) => {
-            for vaa in vaas.into_inner() {
-                // Deserialize the Pyth VAA from binary.
-                let vaa = PythVaa::new(ctx.api, vaa.into_inner())?;
-                let new_sequence = vaa.wormhole_vaa.sequence;
+    for message in price_update.into_inner() {
+        verify_pyth_lazer_message(ctx.storage, ctx.block.timestamp, ctx.api, &message)?;
 
-                // Verify the VAA, and store the prices.
-                for feed in vaa.verify(ctx.storage, ctx.api, ctx.block, GUARDIAN_SETS)? {
-                    let id = PythId::from_inner(feed.id.to_bytes());
-                    let new_price = PrecisionlessPrice::try_from(feed)?;
+        // Deserialize the payload.
+        let payload = PayloadData::deserialize_slice_le(&message.payload)?;
+        let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
 
-                    // Save the price if there isn't already a price saved, or if the
-                    // new price is more recent than the existing one.
-                    //
-                    // Note: the CosmWasm implementation of Pyth contract uses the
-                    // price feed's `publish_time` to determine which price is newer:
-                    // https://github.com/pyth-network/pyth-crosschain/blob/df1ca64/target_chains/cosmwasm/contracts/pyth/src/contract.rs#L588-L589
-                    //
-                    // However, this doesn't work in practice: whereas Pyth Core prices
-                    // are updated every 400 ms, `publish_time` only comes in whole
-                    // seconds. As such, it's possible for two prices to have the same
-                    // `publish_time`, in which case it's impossible to tell which price
-                    // is newer.
-                    //
-                    // To deal with this, we addtionally compare the price feed's
-                    // Wormhole VAA sequence. In case `publish_time` are the same, the
-                    // price with the bigger sequence is accepted.
-                    PRICES.may_update(ctx.storage, id, |current_record| -> anyhow::Result<_> {
-                        match current_record {
-                            Some((current_price, current_sequence)) => {
-                                match current_price.timestamp.cmp(&new_price.timestamp) {
-                                    Ordering::Less => Ok((new_price, new_sequence)),
-                                    Ordering::Equal if current_sequence < new_sequence => {
-                                        Ok((new_price, new_sequence))
-                                    },
-                                    _ => Ok((current_price, current_sequence)),
-                                }
-                            },
-                            None => Ok((new_price, new_sequence)),
-                        }
-                    })?;
-                }
-            }
-        },
-        PriceUpdate::Lazer(messages) => {
-            for message in messages.into_inner() {
-                verify_pyth_lazer_message(ctx.storage, ctx.block.timestamp, ctx.api, &message)?;
-
-                // Deserialize the payload.
-                let payload = PayloadData::deserialize_slice_le(&message.payload)?;
-                let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
-
-                // Store the prices from each feed.
-                for feed in payload.feeds {
-                    let id = feed.feed_id.0;
-                    let price = PrecisionlessPrice::try_from((feed, timestamp))?;
-                    PYTH_LAZER_PRICES.may_update(
-                        ctx.storage,
-                        id,
-                        |current_record| -> anyhow::Result<_> {
-                            match current_record {
-                                Some(current_price) => {
-                                    if current_price.timestamp > timestamp {
-                                        Ok(current_price)
-                                    } else {
-                                        Ok(price)
-                                    }
-                                },
-                                None => Ok(price),
+        // Store the prices from each feed.
+        for feed in payload.feeds {
+            let id = feed.feed_id.0;
+            let price = PrecisionlessPrice::try_from((feed, timestamp))?;
+            PYTH_LAZER_PRICES.may_update(
+                ctx.storage,
+                id,
+                |current_record| -> anyhow::Result<_> {
+                    match current_record {
+                        Some(current_price) => {
+                            if current_price.timestamp > timestamp {
+                                Ok(current_price)
+                            } else {
+                                Ok(price)
                             }
                         },
-                    )?;
-                }
-            }
-        },
+                        None => Ok(price),
+                    }
+                },
+            )?;
+        }
     }
 
     Ok(Response::new())
@@ -187,6 +137,7 @@ fn set_trusted_signer(
     );
 
     PYTH_LAZER_TRUSTED_SIGNERS.save(ctx.storage, &public_key, &expires_at)?;
+
     Ok(Response::new())
 }
 
@@ -197,6 +148,7 @@ fn remove_trusted_signer(ctx: MutableCtx, public_key: Binary) -> anyhow::Result<
     );
 
     PYTH_LAZER_TRUSTED_SIGNERS.remove(ctx.storage, &public_key);
+
     Ok(Response::new())
 }
 
@@ -221,6 +173,8 @@ fn verify_pyth_lazer_message(
 
     Ok(())
 }
+
+// ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {

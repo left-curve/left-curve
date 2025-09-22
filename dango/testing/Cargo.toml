@@ -39,7 +39,6 @@ indexer-hooked           = { workspace = true, features = ["metrics", "tracing"]
 indexer-httpd            = { workspace = true, features = ["metrics"] }
 indexer-sql              = { workspace = true, features = ["async-graphql", "testing", "tracing"] }
 k256                     = { workspace = true }
-pyth-core                = { workspace = true }
 pyth-lazer               = { workspace = true }
 pyth-types               = { workspace = true }
 sea-orm                  = { workspace = true }
