@@ -23,7 +23,7 @@ export const TestnetBanner: React.FC = () => {
       transition={{ duration: 0.2 }}
       className={twMerge(
         "min-h-9 h-9 w-full relative top-0 bg-[url('./images/warning-banner.svg')] flex items-center justify-center",
-        isLandingPage && "fixed z-50",
+        isLandingPage && "relative z-50",
       )}
     >
       <Marquee
