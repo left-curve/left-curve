@@ -498,6 +498,9 @@ importers:
       '@left-curve/store':
         specifier: workspace:^
         version: link:../../store
+      '@mlc-ai/web-llm':
+        specifier: ^0.2.79
+        version: 0.2.79
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -2817,6 +2820,9 @@ packages:
     peerDependencies:
       react: '>= 15'
       react-dom: '>= 15'
+
+  '@mlc-ai/web-llm@0.2.79':
+    resolution: {integrity: sha512-Hy1ZHQ0o2bZGZoVnGK48+fts/ZSKwLe96xjvqL/6C59Mem9HoHTcFE07NC2E23mRmhd01tL655N6CPeYmwWgwQ==}
 
   '@module-federation/error-codes@0.13.1':
     resolution: {integrity: sha512-azgGDBnFRfqlivHOl96ZjlFUFlukESz2Rnnz/pINiSqoBBNjUE0fcAZP4X6jgrVITuEg90YkruZa7pW9I3m7Uw==}
@@ -6739,6 +6745,10 @@ packages:
   log-symbols@2.2.0:
     resolution: {integrity: sha512-VeIAFslyIerEJLXHziedo2basKbMKtTw3vfn5IzG0XTjhAVEJyNHnL2p7vc+wBDSdQuUpNw3M2u6xb9QsAY5Eg==}
     engines: {node: '>=4'}
+
+  loglevel@1.9.2:
+    resolution: {integrity: sha512-HgMmCqIJSAKqo68l0rS2AanEWfkxaZ5wNiEFb5ggm08lDs9Xl2KxBlX3PTcaD2chBM1gXAYf491/M2Rv8Jwayg==}
+    engines: {node: '>= 0.6.0'}
 
   loose-envify@1.4.0:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
@@ -11729,6 +11739,10 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
 
+  '@mlc-ai/web-llm@0.2.79':
+    dependencies:
+      loglevel: 1.9.2
+
   '@module-federation/error-codes@0.13.1': {}
 
   '@module-federation/error-codes@0.18.0':
@@ -16105,6 +16119,8 @@ snapshots:
   log-symbols@2.2.0:
     dependencies:
       chalk: 2.4.2
+
+  loglevel@1.9.2: {}
 
   loose-envify@1.4.0:
     dependencies:

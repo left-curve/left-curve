@@ -14,6 +14,7 @@
     "@left-curve/dango": "workspace:^",
     "@left-curve/foundation": "workspace:^",
     "@left-curve/store": "workspace:^",
+    "@mlc-ai/web-llm": "^0.2.79",
     "@monaco-editor/react": "^4.7.0",
     "@sentry/react": "^9.10.1",
     "@sentry/webpack-plugin": "^3.2.4",
