@@ -40,7 +40,7 @@ export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
             )}
           />
         </div>
-        {showLine ? <span className="flex-1 h-[1px] bg-overlay-secondary-gray" /> : null}
+        {showLine ? <span className="flex-1 h-[1px] bg-outline-secondary-gray" /> : null}
       </div>
       <motion.div layout className="overflow-hidden">
         <AnimatePresence>

@@ -37,7 +37,7 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserS
               </div>
             </div>
             {usernames.length - 1 !== i && (
-              <span className="w-full h-[1px] bg-overlay-secondary-gray" />
+              <span className="w-full h-[1px] bg-outline-secondary-gray" />
             )}
           </Fragment>
         );

@@ -154,7 +154,7 @@ export const RootModal: React.FC = () => {
   const { isMd } = useMediaQuery();
 
   const sheetRef = useRef<SheetRef>();
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const outlineRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<{ triggerOnClose: () => void } | null>(null);
 
   const { modal: activeModal, props: modalProps } = modal;
@@ -206,9 +206,9 @@ export const RootModal: React.FC = () => {
   return (
     <AnimatePresence initial={false} mode="wait" onExitComplete={() => null}>
       <motion.div
-        ref={overlayRef}
+        ref={outlineRef}
         onClick={(e) => {
-          if (e.target === overlayRef.current && !options.disableClosing) closeModal();
+          if (e.target === outlineRef.current && !options.disableClosing) closeModal();
         }}
         className="backdrop-blur-[10px] bg-primitives-gray-light-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
         initial={{ opacity: 0 }}

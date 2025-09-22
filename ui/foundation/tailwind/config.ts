@@ -224,23 +224,23 @@ export const tailwindConfig: Partial<Config> = {
           },
           playground: "var(--color-surface-playground)",
         },
-        overlay: {
+        outline: {
           primary: {
-            gray: "var(--color-overlay-primary-gray)",
-            blue: "var(--color-overlay-primary-blue)",
-            green: "var(--color-overlay-primary-green)",
-            red: "var(--color-overlay-primary-red)",
-            rice: "var(--color-overlay-primary-rice)",
+            gray: "var(--color-outline-primary-gray)",
+            blue: "var(--color-outline-primary-blue)",
+            green: "var(--color-outline-primary-green)",
+            red: "var(--color-outline-primary-red)",
+            rice: "var(--color-outline-primary-rice)",
           },
           secondary: {
-            gray: "var(--color-overlay-secondary-gray)",
-            green: "var(--color-overlay-secondary-green)",
-            red: "var(--color-overlay-secondary-red)",
-            rice: "var(--color-overlay-secondary-rice)",
+            gray: "var(--color-outline-secondary-gray)",
+            green: "var(--color-outline-secondary-green)",
+            red: "var(--color-outline-secondary-red)",
+            rice: "var(--color-outline-secondary-rice)",
           },
           tertiary: {
-            blue: "var(--color-overlay-tertiary-blue)",
-            rice: "var(--color-overlay-tertiary-rice)",
+            blue: "var(--color-outline-tertiary-blue)",
+            rice: "var(--color-outline-tertiary-rice)",
           },
         },
         fg: {

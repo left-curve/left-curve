@@ -76,7 +76,7 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
           classNames={{ base: "z-10" }}
         />
 
-        <span className="w-full absolute h-[2px] bg-overlay-secondary-gray bottom-[0px] z-0" />
+        <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
       <SearchTokenTable>
         <SearchTokenTable.Spot

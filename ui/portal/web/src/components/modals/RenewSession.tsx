@@ -28,7 +28,7 @@ export const RenewSession = forwardRef<undefined>(() => {
           {m["modals.renewSession.description"]()}
         </p>
       </div>
-      <span className="w-full h-[1px] bg-overlay-secondary-gray my-2 lg:block hidden" />
+      <span className="w-full h-[1px] bg-outline-secondary-gray my-2 lg:block hidden" />
       <div className="p-4 flex gap-4 flex-col-reverse lg:flex-row">
         <Button
           fullWidth

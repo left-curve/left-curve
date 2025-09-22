@@ -155,7 +155,7 @@ const FutureBlock: React.FC = () => {
             </p>
           </div>
         </div>
-        <span className="w-full h-[1px] bg-overlay-secondary-gray lg:max-w-[45.5rem]" />
+        <span className="w-full h-[1px] bg-outline-secondary-gray lg:max-w-[45.5rem]" />
         <div className="grid grid-cols-3 lg:grid-cols-7 gap-3 items-center text-center lg:max-w-[45.5rem]">
           <div>
             <p className="h1-bold text-ink-primary-900">{days}</p>
@@ -203,7 +203,7 @@ const FutureBlock: React.FC = () => {
               </p>
               <p className="diatype-m-bold text-ink-secondary-700">#{height}</p>
             </div>
-            <span className="w-full h-[1px] max-w-44 lg:w-[1px] lg:h-9 bg-overlay-secondary-gray" />
+            <span className="w-full h-[1px] max-w-44 lg:w-[1px] lg:h-9 bg-outline-secondary-gray" />
             <div className="flex flex-col gap-1 items-center">
               <p className="diatype-m-medium text-ink-tertiary-500">
                 {m["explorer.block.futureBlock.currentBlock"]()}
@@ -212,7 +212,7 @@ const FutureBlock: React.FC = () => {
                 #{currentBlock.blockHeight ? currentBlock.blockHeight + countdown : "-"}
               </p>
             </div>
-            <span className="w-full h-[1px] max-w-44 lg:w-[1px] lg:h-9 bg-overlay-secondary-gray" />
+            <span className="w-full h-[1px] max-w-44 lg:w-[1px] lg:h-9 bg-outline-secondary-gray" />
             <div className="flex flex-col gap-1 items-center">
               <p className="diatype-m-medium text-ink-tertiary-500">
                 {m["explorer.block.futureBlock.remainingBlocks"]()}
