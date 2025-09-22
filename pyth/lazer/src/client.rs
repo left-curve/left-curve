@@ -14,7 +14,7 @@ use {
         },
         subscription::{Response, SubscribeRequest, SubscriptionId},
     },
-    pyth_types::{PriceUpdate, PythClientTrait, PythLazerSubscriptionDetails},
+    pyth_types::{ExponentialBackoff, PriceUpdate, PythClientTrait, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         collections::HashMap,
@@ -33,7 +33,7 @@ use {
 #[cfg(feature = "metrics")]
 use metrics::{counter, describe_counter, describe_histogram, histogram};
 
-pub const RESUBSCRIBE_ATTEMPTS: usize = 5;
+pub const RESUBSCRIBE_ATTEMPTS: u32 = 5;
 
 #[derive(Clone, Debug)]
 pub struct PythClientLazer {
@@ -133,13 +133,19 @@ impl PythClientLazer {
             data_per_ids.insert(id, false);
         }
 
-        let mut resubscribe_attempts = 0;
         let mut to_resubscribe = false;
         let mut last_check = Instant::now();
 
         let buffer_capacity = 1000;
         let mut buffer = Vec::with_capacity(buffer_capacity);
         let timeout = Duration::from_secs(3);
+
+        let mut backoff = ExponentialBackoff::new(
+            Duration::from_millis(100),
+            Duration::from_secs(2),
+            2,
+            Some(RESUBSCRIBE_ATTEMPTS),
+        );
 
         loop {
             // If after few seconds we haven't received data for all subscriptions,
@@ -152,14 +158,15 @@ impl PythClientLazer {
             // Check if we need to resubscribe.
             if to_resubscribe {
                 to_resubscribe = false;
-                resubscribe_attempts += 1;
 
-                // Return error if we have reached the maximum number of resubscription attempts.
-                if resubscribe_attempts > RESUBSCRIBE_ATTEMPTS {
+                let maybe_next_delay = backoff.next_delay();
+
+                // If we have reached the maximum number of resubscription attempts, return an error.
+                let Some(next_delay) = maybe_next_delay else {
                     return Err(anyhow::anyhow!(
-                        "Failed to connect to Pyth Lazer after {resubscribe_attempts} attempts"
+                        "Failed to connect to Pyth Lazer after {RESUBSCRIBE_ATTEMPTS} attempts"
                     ));
-                }
+                };
 
                 // Reset all received data to false for each subscription ID, just to be sure that
                 // everything works fine.
@@ -169,10 +176,11 @@ impl PythClientLazer {
 
                 warn!(
                     "Attempting to resubscribe... (attempt {}/{})",
-                    resubscribe_attempts, RESUBSCRIBE_ATTEMPTS
+                    backoff.attempts(),
+                    RESUBSCRIBE_ATTEMPTS
                 );
 
-                sleep(Duration::from_millis(100)).await;
+                sleep(next_delay).await;
                 Self::connect(client, subscribe_requests.clone()).await;
 
                 last_check = Instant::now();
@@ -444,6 +452,13 @@ impl PythClientTrait for PythClientLazer {
                     info!("Resubscribing to Pyth Lazer...");
                     let start_reconnection = Instant::now();
 
+                    let mut backoff = ExponentialBackoff::new(
+                        Duration::from_millis(100),
+                        Duration::from_secs(5),
+                        2,
+                        None,
+                    );
+
                     loop{
                         match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await
                         {
@@ -471,9 +486,10 @@ impl PythClientTrait for PythClientLazer {
                                 }
 
                                 // If the subscription fails, wait for a while and try again.
-                                error!("Failed to reconnect: {}", err.to_string());
-                                // TODO : Exponential backoff.
-                                sleep(Duration::from_millis(200)).await;
+                                let next_delay = backoff.next_delay().unwrap_or(Duration::from_secs(1));
+
+                                error!("Failed to reconnect: {}; retrying in {:?}", err.to_string(), next_delay);
+                                sleep(next_delay).await;
                                 continue;
                             },
                         }
