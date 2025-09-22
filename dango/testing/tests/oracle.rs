@@ -327,22 +327,21 @@ fn sequence() {
     assert_eq!(new_pyth_vaa.wormhole_vaa.sequence, sequence);
 }
 
-#[ignore = "work in progress"]
 #[test]
 fn pyth_lazer() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
     let message = LeEcdsaMessage {
         payload: vec![
-            117, 211, 199, 147, 176, 69, 182, 116, 186, 60, 6, 0, 1, 2, 1, 0, 0, 0, 2, 0, 177, 106,
-            175, 92, 86, 10, 0, 0, 4, 248, 255, 2, 0, 0, 0, 2, 0, 149, 185, 181, 48, 97, 0, 0, 0,
+            117, 211, 199, 147, 192, 211, 105, 236, 97, 63, 6, 0, 1, 2, 1, 0, 0, 0, 2, 0, 62, 69,
+            110, 163, 70, 10, 0, 0, 4, 248, 255, 2, 0, 0, 0, 2, 0, 142, 173, 202, 117, 97, 0, 0, 0,
             4, 248, 255,
         ],
         signature: EncodedBytes::from_inner([
-            130, 238, 159, 50, 90, 235, 146, 66, 22, 150, 217, 47, 21, 202, 76, 230, 207, 142, 241,
-            194, 185, 61, 34, 194, 86, 164, 48, 50, 40, 197, 158, 129, 11, 220, 18, 70, 38, 166,
-            191, 150, 182, 201, 45, 201, 18, 30, 187, 23, 31, 124, 182, 203, 141, 24, 28, 162, 91,
-            199, 156, 252, 42, 49, 222, 140,
+            186, 96, 166, 26, 76, 188, 9, 187, 138, 228, 131, 44, 114, 155, 181, 87, 138, 140, 135,
+            77, 124, 146, 141, 138, 208, 195, 55, 185, 146, 227, 205, 115, 68, 98, 149, 231, 81,
+            228, 139, 163, 157, 174, 155, 188, 121, 0, 136, 119, 109, 122, 177, 102, 73, 190, 130,
+            37, 171, 253, 166, 18, 185, 152, 53, 136,
         ]),
         recovery_id: 0,
     };
@@ -355,7 +354,7 @@ fn pyth_lazer() {
             &mut accounts.owner,
             oracle,
             &ExecuteMsg::RegisterPriceSources(btree_map! {
-                btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 6, channel:Channel::RealTime },
+                btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 8, channel:Channel::RealTime },
                 eth::DENOM.clone() => PriceSource::PythLazer { id: 2, precision: 18 , channel:Channel::RealTime },
             }),
             Coins::default(),
@@ -449,9 +448,9 @@ fn pyth_lazer() {
 
     assert_eq!(
         price.humanized_price,
-        Udec128::from_str("113660.38465201").unwrap()
+        Udec128::from_str("112985.05901374").unwrap()
     );
-    assert_eq!(price.timestamp, Timestamp::from_micros(1755621379950000));
+    assert_eq!(price.timestamp, Timestamp::from_micros(1758539671000000));
 
     // Query the ETH price
     let price = suite
@@ -462,7 +461,7 @@ fn pyth_lazer() {
 
     assert_eq!(
         price.humanized_price,
-        Udec128::from_str("4174.29043605").unwrap()
+        Udec128::from_str("4185.88044686").unwrap()
     );
-    assert_eq!(price.timestamp, Timestamp::from_micros(1755621379950000));
+    assert_eq!(price.timestamp, Timestamp::from_micros(1758539671000000));
 }
