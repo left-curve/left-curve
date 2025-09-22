@@ -28,6 +28,10 @@
     expose_ports: false
     dex_bot_enabled: false
     github_deployments_enabled: false
+    deploy_includes_postgres: true
+    deploy_includes_clickhouse: true
+    postgres_database: "dango_{{ dango_network }}_{{ timestamp }}"
+    clickhouse_database: "dango_{{ dango_network }}_{{ timestamp }}"
   collections:
     - community.docker
     - community.clickhouse

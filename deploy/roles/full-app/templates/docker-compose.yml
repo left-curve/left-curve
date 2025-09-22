@@ -4,14 +4,15 @@ x-common-labels: &common-labels
   dango_network: "{{ dango_network }}"
 
 services:
-  db:
+{% if deploy_includes_postgres %}
+  postgres:
     image: postgres:17
     shm_size: 1gb
     labels:
       <<: *common-labels
       service_name: "postgres"
     environment:
-      - POSTGRES_DB=dango_prod
+      - POSTGRES_DB={{ postgres_database }}
       - POSTGRES_USER={{ lookup('env','DB_USER', default='postgres') }}
       - POSTGRES_PASSWORD={{ db_password }}
     volumes:
@@ -33,16 +34,18 @@ services:
       - "{{ tailscale_ip }}:${DB_METRICS_PORT:-0}:9187"
 {% endif %}
     depends_on:
-      db:
+      postgres:
         condition: service_healthy
     environment:
-      DATA_SOURCE_NAME: postgresql://{{ lookup('env','DB_USER', default='postgres') }}:{{ db_password }}@db:5432/dango_prod?sslmode=disable
+      DATA_SOURCE_NAME: postgresql://{{ lookup('env','DB_USER', default='postgres') }}:{{ db_password }}@postgres:5432/{{ postgres_database }}?sslmode=disable
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9187/metrics"]
       interval: 2s
       timeout: 5s
       retries: 10
+{% endif %}
 
+{% if deploy_includes_clickhouse %}
   clickhouse:
     image: clickhouse/clickhouse-server:latest
     labels:
@@ -74,6 +77,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+{% endif %}
 
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
@@ -81,10 +85,14 @@ services:
       <<: *common-labels
       service_name: "dango"
     depends_on:
+{% if deploy_includes_postgres %}
       db:
         condition: service_healthy
+{% endif %}
+{% if deploy_includes_clickhouse %}
       clickhouse:
         condition: service_healthy
+{% endif %}
 {% if expose_ports %}
     ports:
       - "{{ tailscale_ip }}:${DANGO_PORT:-0}:8080"
@@ -96,10 +104,10 @@ services:
     volumes:
       - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/dango:/root/.dango"
     environment:
-      - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres:{{ db_password }}@db:5432/dango_prod}
+      - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres:{{ db_password }}@postgres:5432/{{ postgres_database }}}
       - INDEXER__CLICKHOUSE__USER=default
       - INDEXER__CLICKHOUSE__PASSWORD={{ clickhouse_password }}
-      - INDEXER__CLICKHOUSE__DATABASE=default
+      - INDEXER__CLICKHOUSE__DATABASE={{ clickhouse_database }}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
@@ -219,3 +227,11 @@ services:
 networks:
   traefik:
     external: true
+{% if not deploy_includes_postgres %}
+  postgres:
+    external: true
+{% endif %}
+{% if not deploy_includes_clickhouse %}
+  clickhouse:
+    external: true
+{% endif %}
