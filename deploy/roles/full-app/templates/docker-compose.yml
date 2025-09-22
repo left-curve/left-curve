@@ -86,7 +86,7 @@ services:
       service_name: "dango"
     depends_on:
 {% if deploy_includes_postgres %}
-      db:
+      postgres:
         condition: service_healthy
 {% endif %}
 {% if deploy_includes_clickhouse %}
