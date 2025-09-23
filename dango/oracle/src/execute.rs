@@ -66,12 +66,12 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::RegisterPriceSources(price_sources) => {
             register_price_sources(ctx, price_sources)
         },
-        ExecuteMsg::FeedPrices(price_update) => feed_prices(ctx, price_update),
-        ExecuteMsg::SetTrustedSigner {
+        ExecuteMsg::RegisterTrustedSigner {
             public_key,
             expires_at,
-        } => set_trusted_signer(ctx, public_key, expires_at),
+        } => register_trusted_signer(ctx, public_key, expires_at),
         ExecuteMsg::RemoveTrustedSigner { public_key } => remove_trusted_signer(ctx, public_key),
+        ExecuteMsg::FeedPrices(price_update) => feed_prices(ctx, price_update),
     }
 }
 
@@ -92,41 +92,7 @@ fn register_price_sources(
     Ok(Response::new())
 }
 
-fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Response> {
-    for message in price_update.into_inner() {
-        verify_pyth_lazer_message(ctx.storage, ctx.block.timestamp, ctx.api, &message)?;
-
-        // Deserialize the payload.
-        let payload = PayloadData::deserialize_slice_le(&message.payload)?;
-        let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
-
-        // Store the prices from each feed.
-        for feed in payload.feeds {
-            let id = feed.feed_id.0;
-            let price = PrecisionlessPrice::try_from((feed, timestamp))?;
-            PYTH_LAZER_PRICES.may_update(
-                ctx.storage,
-                id,
-                |current_record| -> anyhow::Result<_> {
-                    match current_record {
-                        Some(current_price) => {
-                            if current_price.timestamp > timestamp {
-                                Ok(current_price)
-                            } else {
-                                Ok(price)
-                            }
-                        },
-                        None => Ok(price),
-                    }
-                },
-            )?;
-        }
-    }
-
-    Ok(Response::new())
-}
-
-fn set_trusted_signer(
+fn register_trusted_signer(
     ctx: MutableCtx,
     public_key: Binary,
     expires_at: Timestamp,
@@ -148,6 +114,31 @@ fn remove_trusted_signer(ctx: MutableCtx, public_key: Binary) -> anyhow::Result<
     );
 
     PYTH_LAZER_TRUSTED_SIGNERS.remove(ctx.storage, &public_key);
+
+    Ok(Response::new())
+}
+
+fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Response> {
+    for message in price_update.into_inner() {
+        verify_pyth_lazer_message(ctx.storage, ctx.block.timestamp, ctx.api, &message)?;
+
+        // Deserialize the payload.
+        let payload = PayloadData::deserialize_slice_le(&message.payload)?;
+        let timestamp = Timestamp::from_micros(payload.timestamp_us.as_micros().into());
+
+        // Store the prices from each feed.
+        for feed in payload.feeds {
+            let id = feed.feed_id.0;
+            let price = PrecisionlessPrice::try_from((feed, timestamp))?;
+
+            PYTH_LAZER_PRICES.may_update(ctx.storage, id, |current| -> anyhow::Result<_> {
+                match current {
+                    Some(current_price) if current_price.timestamp > timestamp => Ok(current_price),
+                    _ => Ok(price),
+                }
+            })?;
+        }
+    }
 
     Ok(Response::new())
 }
@@ -180,19 +171,18 @@ fn verify_pyth_lazer_message(
 mod tests {
     use {
         super::*,
-        grug::{Binary, Duration, EncodedBytes, MockApi, MockStorage},
+        grug::{Binary, Duration, EncodedBytes, MockApi, MockStorage, ResultExt},
         pyth_types::{LeEcdsaMessage, constants::LAZER_TRUSTED_SIGNER},
         std::str::FromStr,
     };
 
     #[test]
     fn test_verify_pyth_lazer_message() {
-        let api = MockApi;
         let mut storage = MockStorage::default();
+        let api = MockApi;
         let current_time = Timestamp::from_seconds(1000);
 
-        let trusted_signer: EncodedBytes<Vec<u8>, grug::Base64Encoder> =
-            Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
+        let trusted_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
 
         let message = LeEcdsaMessage {
             payload: vec![
@@ -208,9 +198,8 @@ mod tests {
             recovery_id: 0,
         };
 
-        let err =
-            verify_pyth_lazer_message(&storage, current_time, &api, &message.clone()).unwrap_err();
-        assert!(err.to_string().contains("signer is not trusted"));
+        verify_pyth_lazer_message(&storage, current_time, &api, &message.clone())
+            .should_fail_with_error("signer is not trusted");
 
         // Store trusted signer to storage with timestamp in the past.
         PYTH_LAZER_TRUSTED_SIGNERS
@@ -221,9 +210,8 @@ mod tests {
             )
             .unwrap();
 
-        let err =
-            verify_pyth_lazer_message(&storage, current_time, &api, &message.clone()).unwrap_err();
-        assert!(err.to_string().contains("signer is no longer trusted"));
+        verify_pyth_lazer_message(&storage, current_time, &api, &message.clone())
+            .should_fail_with_error("signer is no longer trusted");
 
         // Store trusted signer to storage with timestamp in the future.
         PYTH_LAZER_TRUSTED_SIGNERS
@@ -234,7 +222,6 @@ mod tests {
             )
             .unwrap();
 
-        // Should succeed.
-        verify_pyth_lazer_message(&storage, current_time, &api, &message).unwrap();
+        verify_pyth_lazer_message(&storage, current_time, &api, &message).should_succeed();
     }
 }

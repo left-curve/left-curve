@@ -80,7 +80,7 @@ fn proposal_pyth_lazer() {
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::SetTrustedSigner {
+            &ExecuteMsg::RegisterTrustedSigner {
                 public_key: pubkey,
                 expires_at: current_time + GrugDuration::from_minutes(10),
             },

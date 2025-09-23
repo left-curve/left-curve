@@ -84,7 +84,7 @@ fn pyth_lazer() {
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::SetTrustedSigner {
+            &ExecuteMsg::RegisterTrustedSigner {
                 public_key: trusted_signer.clone(),
                 expires_at: current_time - grug::Duration::from_seconds(60), // 1 minute ago
             },
@@ -123,7 +123,7 @@ fn pyth_lazer() {
         .execute(
             &mut accounts.owner,
             oracle,
-            &ExecuteMsg::SetTrustedSigner {
+            &ExecuteMsg::RegisterTrustedSigner {
                 public_key: trusted_signer.clone(),
                 expires_at: current_time + grug::Duration::from_seconds(60), // 1 minute from now
             },

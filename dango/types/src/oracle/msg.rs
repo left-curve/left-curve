@@ -16,15 +16,15 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
     RegisterPriceSources(BTreeMap<Denom, PriceSource>),
-    /// Submit price data from Pyth Network.
-    FeedPrices(PriceUpdate),
     /// Set a trusted signer for Pyth Lazer.
-    SetTrustedSigner {
+    RegisterTrustedSigner {
         public_key: Binary,
         expires_at: Timestamp,
     },
     /// Remove a trusted signer for Pyth Lazer.
     RemoveTrustedSigner { public_key: Binary },
+    /// Submit price data from Pyth Network.
+    FeedPrices(PriceUpdate),
 }
 
 #[grug::derive(Serde, QueryRequest)]
