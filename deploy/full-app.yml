@@ -32,6 +32,7 @@
     deploy_includes_clickhouse: true
     postgres_database: "dango_{{ dango_network }}_{{ timestamp }}"
     clickhouse_database: "dango_{{ dango_network }}_{{ timestamp }}"
+    deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
   collections:
     - community.docker
     - community.clickhouse

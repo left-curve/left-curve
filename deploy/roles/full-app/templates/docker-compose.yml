@@ -1,7 +1,7 @@
 x-common-labels: &common-labels
-  environment: "{{ deploy_env }}"
-  project: "{{ deployment_name }}"
-  dango_network: "{{ dango_network }}"
+  environment: "${DEPLOY_ENV}"
+  project: "${DEPLOYMENT_NAME}"
+  dango_network: "${DANGO_NETWORK}"
 
 services:
 {% if deploy_includes_postgres %}
@@ -12,11 +12,11 @@ services:
       <<: *common-labels
       service_name: "postgres"
     environment:
-      - POSTGRES_DB={{ postgres_database }}
-      - POSTGRES_USER={{ lookup('env','DB_USER', default='postgres') }}
-      - POSTGRES_PASSWORD={{ db_password }}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/postgres/data:/var/lib/postgresql/data"
+      - "${DEPLOYMENT_DIR}/postgres/data:/var/lib/postgresql/data"
     tty: true
     healthcheck:
       test: ["CMD", "pg_isready", "-q"]
@@ -31,13 +31,13 @@ services:
       service_name: "postgres-prometheus"
 {% if expose_ports %}
     ports:
-      - "{{ tailscale_ip }}:${DB_METRICS_PORT:-0}:9187"
+      - "${BINDING_IP}:${DB_METRICS_PORT:-0}:9187"
 {% endif %}
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      DATA_SOURCE_NAME: postgresql://{{ lookup('env','DB_USER', default='postgres') }}:{{ db_password }}@postgres:5432/{{ postgres_database }}?sslmode=disable
+      - DATA_SOURCE_NAME=${POSTGRES_DATA_SOURCE}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9187/metrics"]
       interval: 2s
@@ -53,9 +53,10 @@ services:
       service_name: "clickhouse"
     restart: unless-stopped
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/clickhouse/data:/var/lib/clickhouse"
+      - "${DEPLOYMENT_DIR}/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
+      - "${DEPLOYMENT_DIR}/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
+      - "${DEPLOYMENT_DIR}/clickhouse/data:/var/lib/clickhouse"
+      - "${DEPLOYMENT_DIR}/clickhouse/init.sh:/docker-entrypoint-initdb.d/init.sh"
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
     ulimits:
@@ -95,19 +96,19 @@ services:
 {% endif %}
 {% if expose_ports %}
     ports:
-      - "{{ tailscale_ip }}:${DANGO_PORT:-0}:8080"
-      - "{{ tailscale_ip }}:${DANGO_METRICS_PORT:-0}:9191"
+      - "${DANGO_PORT:-0}:8080"
+      - "${BINDING_IP}:${DANGO_METRICS_PORT:-0}:9191"
 {% endif %}
     networks:
       - default
       - traefik
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/dango:/root/.dango"
+      - "${DEPLOYMENT_DIR}/dango:/root/.dango"
     environment:
-      - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres:{{ db_password }}@postgres:5432/{{ postgres_database }}}
+      - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL}
       - INDEXER__CLICKHOUSE__USER=default
-      - INDEXER__CLICKHOUSE__PASSWORD={{ clickhouse_password }}
-      - INDEXER__CLICKHOUSE__DATABASE={{ clickhouse_database }}
+      - INDEXER__CLICKHOUSE__PASSWORD=${INDEXER__CLICKHOUSE__PASSWORD}
+      - INDEXER__CLICKHOUSE__DATABASE=${INDEXER__CLICKHOUSE__DATABASE}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
@@ -125,7 +126,7 @@ services:
         condition: service_healthy
 {% if expose_ports %}
     ports:
-      - "{{ tailscale_ip }}:${DANGO_FRONTEND_PORT:-0}:80"
+      - "${DANGO_FRONTEND_PORT:-0}:80"
 {% endif %}
     networks:
       - default
@@ -152,7 +153,7 @@ services:
         condition: service_healthy
 {% if expose_ports %}
     ports:
-      - "{{ tailscale_ip }}:${FAUCET_PORT:-0}:8082"
+      - "${FAUCET_PORT:-0}:8082"
 {% endif %}
     networks:
       - default
@@ -160,7 +161,7 @@ services:
     environment:
       - HOME=/app
     tty: true
-    command: ["faucet", "--provider-url", "http://dango:8080", "--chain-id", "{{ chain_id }}"]
+    command: ["faucet", "--provider-url", "http://dango:8080", "--chain-id", "${CHAIN_ID}"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8082/health"]
       interval: 10s
@@ -169,18 +170,18 @@ services:
 
 {% if dex_bot_enabled %}
   dex-bot:
-    image: ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }}
+    image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
     depends_on:
       dango:
         condition: service_healthy
     restart: always
     environment:
       # NOTE: those are public and only used for development and testnets
-      username: "{{ dango[dango_network].dex_bot.username }}"
-      address: "{{ dango[dango_network].dex_bot.address }}"
-      key__privatekey: "{{ dango[dango_network].dex_bot.private_key }}"
+      username: ${DEX_BOT_USERNAME}
+      address: ${DEX_BOT_ADDRESS}
+      key__privatekey: ${DEX_BOT_PRIVATE_KEY}
       http_url: "http://dango:8080"
-      chain_id: "{{ chain_id }}"
+      chain_id: ${CHAIN_ID}
       # Mandatory else fails with `file not found: /root/.dango-dex/config.json`
       app_settings__sleep__min: 1s
       app_settings__sleep__max: 2s
@@ -192,20 +193,20 @@ services:
 {% endif %}
 
   cometbft:
-    image: ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
+    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-latest}
     labels:
       <<: *common-labels
       service_name: "cometbft"
     depends_on:
       - dango
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/cometbft:/root/.cometbft"
+      - "${DEPLOYMENT_DIR}/cometbft:/root/.cometbft"
 {% if expose_ports %}
     ports:
-      - "{{ tailscale_ip }}:${COMETBFT_P2P_PORT:-0}:26656"
-      - "{{ tailscale_ip }}:${COMETBFT_RPC_PORT:-0}:26657"
-      - "{{ tailscale_ip }}:${COMETBFT_ABCI_PORT:-0}:26658"
-      - "{{ tailscale_ip }}:${COMETBFT_METRICS_PORT:-0}:26660"
+      - "${BINDING_IP}:${COMETBFT_P2P_PORT:-0}:26656"
+      - "${BINDING_IP}:${COMETBFT_RPC_PORT:-0}:26657"
+      - "${BINDING_IP}:${COMETBFT_ABCI_PORT:-0}:26658"
+      - "${BINDING_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
 {% endif %}
     networks:
       - default
