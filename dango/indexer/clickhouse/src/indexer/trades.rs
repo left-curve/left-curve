@@ -123,11 +123,11 @@ impl Indexer {
 
         // Use Row binary inserter with the official clickhouse serde helpers
         let mut inserter = clickhouse_client
-            .inserter::<Trade>("trades")?
+            .inserter::<Trade>("trades")
             .with_max_rows(trades.len() as u64);
 
         for trade in trades.iter() {
-            inserter.write(trade).inspect_err(|_err| {
+            inserter.write(trade).await.inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write trade: {trade:#?}: {_err}");
             })?;
