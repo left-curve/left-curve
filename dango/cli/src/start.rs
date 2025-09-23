@@ -6,6 +6,7 @@ use {
     anyhow::anyhow,
     clap::Parser,
     config_parser::parse_config,
+    dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
     grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer},
     grug_client::TendermintRpcClient,
@@ -39,6 +40,9 @@ impl StartCmd {
         let db = DiskDbLite::open(app_dir.data_dir())?;
 
         // Create Rust VM.
+
+        // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
+        RustVm::genesis_codes();
         let vm = RustVm::new(
             // Below are parameters if we want to switch to `HybridVm`:
             // cfg.grug.wasm_cache_capacity,

@@ -3293,6 +3293,7 @@ dependencies = [
  "colored_json",
  "config-parser",
  "dango-client",
+ "dango-genesis",
  "dango-httpd",
  "dango-indexer-clickhouse",
  "dango-indexer-sql",
