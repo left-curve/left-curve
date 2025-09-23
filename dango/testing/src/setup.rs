@@ -100,30 +100,6 @@ pub fn setup_test(
     )
 }
 
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` with cached
-/// Pyth Lazer client, and `ContractWrapper` codes.
-///
-/// Used for running regular tests.
-pub fn setup_test_lazer(
-    test_opt: TestOption,
-) -> (
-    TestSuite<ProposalPreparer<PythClientCache>>,
-    TestAccounts,
-    Codes<ContractWrapper>,
-    Contracts,
-    MockValidatorSets,
-) {
-    setup_suite_with_db_and_vm(
-        MemDb::new(),
-        RustVm::new(),
-        ProposalPreparer::new_with_cache(),
-        NullIndexer,
-        RustVm::genesis_codes(),
-        test_opt,
-        GenesisOption::preset_test(),
-    )
-}
-
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `NaiveProposalPreparer`, and
 /// `ContractWrapper` codes.
 ///

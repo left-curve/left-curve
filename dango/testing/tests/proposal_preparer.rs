@@ -1,6 +1,6 @@
 use {
     dango_proposal_preparer::{ProposalPreparer, QueryPythId},
-    dango_testing::{TestSuite, setup_test_lazer},
+    dango_testing::{TestSuite, setup_test},
     dango_types::{
         constants::btc,
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryPriceSourcesRequest},
@@ -28,14 +28,14 @@ const NOT_USED_ID_LAZER: PythLazerSubscriptionDetails = PythLazerSubscriptionDet
 };
 
 #[test]
-fn proposal_pyth_lazer() {
+fn proposal_pyth() {
     // Ensure there are all cache file for the PythIds in oracle and also for
     // the NOT_USED_ID and retrieve them if not presents. This is needed since
     // the PythPPHandler create a thread to get the data from Pyth and if the
     // cache files are not present the thread will not wait for client to retrieve
     // and save them. The test will end before the client is able to finish.
     {
-        let (suite, _, _, contracts, _) = setup_test_lazer(Default::default());
+        let (suite, _, _, contracts, _) = setup_test(Default::default());
 
         // Retrieve all PythIds from the oracle.
         let mut pyth_ids = suite
@@ -64,7 +64,7 @@ fn proposal_pyth_lazer() {
 
     setup_tracing_subscriber(Level::INFO);
 
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_lazer(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) = setup_test(Default::default());
 
     let current_time = suite.block.timestamp;
 
