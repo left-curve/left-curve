@@ -13,8 +13,8 @@ struct VaasChecker {
 impl VaasChecker {
     pub fn new<I, P>(ids: I, _client: &P) -> Self
     where
-        I: IntoIterator<Item = P::PythId>,
-        P: PythClientTrait<PythId = PythLazerSubscriptionDetails> + Debug,
+        I: IntoIterator<Item = PythLazerSubscriptionDetails>,
+        P: PythClientTrait + Debug,
     {
         let mut values = BTreeMap::new();
         for id in ids.into_iter() {
@@ -94,9 +94,9 @@ impl VaasChecker {
 // Test for streaming vaas.
 pub async fn test_stream<P, I>(mut client: P, ids1: I, ids2: I)
 where
-    P: PythClientTrait<PythId = PythLazerSubscriptionDetails> + Debug,
+    P: PythClientTrait + Debug,
     P::Error: Debug,
-    I: IntoIterator<Item = P::PythId> + Clone + Lengthy + Send + 'static,
+    I: IntoIterator<Item = PythLazerSubscriptionDetails> + Clone + Lengthy + Send + 'static,
 {
     let mut vaas_checker = VaasChecker::new(ids1.clone(), &client);
     let mut stream = client.stream(NonEmpty::new_unchecked(ids1)).await.unwrap();

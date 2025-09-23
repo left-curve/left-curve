@@ -116,14 +116,13 @@ impl PythClientCache {
 #[async_trait]
 impl PythClientTrait for PythClientCache {
     type Error = anyhow::Error;
-    type PythId = PythLazerSubscriptionDetails;
 
     async fn stream<I>(
         &mut self,
         ids: NonEmpty<I>,
     ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = PriceUpdate> + Send>>, Self::Error>
     where
-        I: IntoIterator<Item = Self::PythId> + Lengthy + Send + Clone,
+        I: IntoIterator<Item = PythLazerSubscriptionDetails> + Lengthy + Send + Clone,
     {
         self.close();
         self.keep_running = Arc::new(AtomicBool::new(true));

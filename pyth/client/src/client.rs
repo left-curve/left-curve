@@ -361,7 +361,6 @@ impl PythClient {
 #[async_trait::async_trait]
 impl PythClientTrait for PythClient {
     type Error = anyhow::Error;
-    type PythId = PythLazerSubscriptionDetails;
 
     async fn stream<I>(
         &mut self,
