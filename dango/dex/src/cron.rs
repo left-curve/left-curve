@@ -142,6 +142,9 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         )?;
     }
 
+    #[cfg(feature = "metrics")]
+    let now_volume = std::time::Instant::now();
+
     // Calculate the timestamp of `MAX_VOLUME_AGE` ago. Volume data older than
     // this timestamp are to be purged from storage.
     // Use `saturating_sub` because tests sometimes use small timestamps.
@@ -160,13 +163,19 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         purge_old_volume_data(VOLUMES_BY_USER, &username, ctx.storage, cutoff)?;
     }
 
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_DURATION_STORE_VOLUME)
+            .record(now_volume.elapsed().as_secs_f64());
+    }
+
     // Round refunds and fee to integer amounts. Round _down_ in both cases.
     let refunds = refunds.into_batch();
     let fees = fees.into_coins_floor();
 
     #[cfg(feature = "metrics")]
     {
-        metrics::histogram!(crate::metrics::LABEL_AUCTION_DURATION,)
+        metrics::histogram!(crate::metrics::LABEL_DURATION_AUCTION)
             .record(now.elapsed().as_secs_f64());
     }
 
@@ -209,6 +218,9 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Udec128_6>,
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
+    #[cfg(feature = "metrics")]
+    let mut now = std::time::Instant::now();
+
     // --------------------- 1. Update passive pool orders ---------------------
 
     // Generate updated passive orders and insert them into the book.
@@ -315,6 +327,18 @@ fn clear_orders_of_pair(
         }
     }
 
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_REFLECT_CURVE,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string()
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
+
     // ----------------------- 2. Perform order matching -----------------------
 
     // Create iterators over orders.
@@ -346,6 +370,12 @@ fn clear_orders_of_pair(
         asks,
     } = match_orders(&mut bid_iter, &mut ask_iter)?;
 
+    // Drop the iterators, which hold immutable references to the storage,
+    // so that we can write to storage later.
+    // The Rust compiler isn't smart enough to do this on its own.
+    drop(bid_iter);
+    drop(ask_iter);
+
     #[cfg(feature = "tracing")]
     {
         let range_str = match range {
@@ -364,11 +394,17 @@ fn clear_orders_of_pair(
         );
     }
 
-    // Drop the iterators, which hold immutable references to the storage,
-    // so that we can write to storage later.
-    // The Rust compiler isn't smart enough to do this on its own.
-    drop(bid_iter);
-    drop(ask_iter);
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_ORDER_MATCHING,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
 
     // ----------------------- 3. Perform order filling ------------------------
 
@@ -427,6 +463,18 @@ fn clear_orders_of_pair(
             num_filling_outcomes = filling_outcomes.len(),
             "Filled orders"
         );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_ORDER_FILLING,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
     }
 
     // ------------------------ 4. Handle filled orders ------------------------
@@ -592,6 +640,7 @@ fn clear_orders_of_pair(
         {
             let filled_base = filled_base.into_int_floor();
             let filled_quote = filled_quote.into_int_floor();
+
             metric_volume
                 .entry((&base_denom, &quote_denom, &base_denom))
                 .or_insert(grug::Int::ZERO)
@@ -620,19 +669,6 @@ fn clear_orders_of_pair(
         }
     }
 
-    #[cfg(feature = "metrics")]
-    {
-        for ((bd, qd, token), amount) in metric_volume {
-            metrics::histogram!(
-                crate::metrics::LABEL_VOLUME_PER_BLOCK,
-                "base_denom" => bd.to_string(),
-                "quote_denom" => qd.to_string(),
-                "token" => token.to_string(),
-            )
-            .record(amount.into_inner() as f64);
-        }
-    }
-
     // Update the pool reserve.
     if inflows.is_non_empty() || outflows.is_non_empty() {
         RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
@@ -655,6 +691,28 @@ fn clear_orders_of_pair(
             quote_denom = quote_denom.to_string(),
             "Handled filled orders"
         );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        for ((bd, qd, token), amount) in metric_volume {
+            metrics::histogram!(
+                crate::metrics::LABEL_VOLUME_PER_BLOCK,
+                "base_denom" => bd.to_string(),
+                "quote_denom" => qd.to_string(),
+                "token" => token.to_string(),
+            )
+            .record(amount.into_inner() as f64);
+        }
+
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_HANDLE_FILLED,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
     }
 
     // ------------------------- 5. Cancel IOC orders --------------------------
@@ -687,6 +745,18 @@ fn clear_orders_of_pair(
             quote_denom = quote_denom.to_string(),
             "Canceled IOC orders"
         );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_CANCEL_IOC,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
     }
 
     // ----------------- 6. Save the resting order book state ------------------
@@ -736,6 +806,16 @@ fn clear_orders_of_pair(
             ?mid_price,
             "Saved resting order book state"
         )
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_UPDATE_REST_STATE,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
     }
 
     Ok(())
