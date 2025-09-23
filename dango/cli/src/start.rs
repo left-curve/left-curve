@@ -1,3 +1,5 @@
+#[cfg(not(feature = "wasm"))]
+use grug_vm_rust::RustVm;
 use {
     crate::{
         config::{Config, GrugConfig, HttpdConfig, TendermintConfig},
@@ -6,14 +8,12 @@ use {
     anyhow::anyhow,
     clap::Parser,
     config_parser::parse_config,
-    dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer},
+    grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_client::TendermintRpcClient,
     grug_db_disk_lite::DiskDbLite,
     grug_httpd::context::Context as HttpdContext,
-    grug_types::{GIT_COMMIT, HashExt},
-    grug_vm_hybrid::HybridVm,
+    grug_types::GIT_COMMIT,
     indexer_hooked::HookedIndexer,
     indexer_sql::indexer_path::IndexerPath,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
@@ -22,6 +22,8 @@ use {
     tower::ServiceBuilder,
     tower_abci::v038::{Server, split},
 };
+#[cfg(feature = "wasm")]
+use {dango_genesis::GenesisCodes, grug_types::HashExt, grug_vm_hybrid::HybridVm};
 
 #[derive(Parser)]
 pub struct StartCmd;
@@ -39,27 +41,33 @@ impl StartCmd {
         // Open disk DB.
         let db = DiskDbLite::open(app_dir.data_dir())?;
 
-        // Create Rust VM contract codes.
-        let codes = HybridVm::genesis_codes();
+        #[cfg(not(feature = "wasm"))]
+        let vm = RustVm::new();
 
-        // Create hybird VM.
-        let vm = HybridVm::new(cfg.grug.wasm_cache_capacity, [
-            codes.account_factory.to_bytes().hash256(),
-            codes.account_margin.to_bytes().hash256(),
-            codes.account_multi.to_bytes().hash256(),
-            codes.account_spot.to_bytes().hash256(),
-            codes.bank.to_bytes().hash256(),
-            codes.dex.to_bytes().hash256(),
-            codes.gateway.to_bytes().hash256(),
-            codes.hyperlane.ism.to_bytes().hash256(),
-            codes.hyperlane.mailbox.to_bytes().hash256(),
-            codes.hyperlane.va.to_bytes().hash256(),
-            codes.lending.to_bytes().hash256(),
-            codes.oracle.to_bytes().hash256(),
-            codes.taxman.to_bytes().hash256(),
-            codes.vesting.to_bytes().hash256(),
-            codes.warp.to_bytes().hash256(),
-        ]);
+        #[cfg(feature = "wasm")]
+        let vm = {
+            // Create Rust VM contract codes.
+            let codes = HybridVm::genesis_codes();
+
+            // Create hybird VM.
+            HybridVm::new(cfg.grug.wasm_cache_capacity, [
+                codes.account_factory.to_bytes().hash256(),
+                codes.account_margin.to_bytes().hash256(),
+                codes.account_multi.to_bytes().hash256(),
+                codes.account_spot.to_bytes().hash256(),
+                codes.bank.to_bytes().hash256(),
+                codes.dex.to_bytes().hash256(),
+                codes.gateway.to_bytes().hash256(),
+                codes.hyperlane.ism.to_bytes().hash256(),
+                codes.hyperlane.mailbox.to_bytes().hash256(),
+                codes.hyperlane.va.to_bytes().hash256(),
+                codes.lending.to_bytes().hash256(),
+                codes.oracle.to_bytes().hash256(),
+                codes.taxman.to_bytes().hash256(),
+                codes.vesting.to_bytes().hash256(),
+                codes.warp.to_bytes().hash256(),
+            ])
+        };
 
         // Create the base app instance for HTTP server
         let app = App::new(
@@ -188,19 +196,23 @@ impl StartCmd {
     }
 
     /// Setup the hooked indexer with both SQL and Dango indexers, and prepare contexts for HTTP servers
-    async fn setup_indexer_stack(
+    async fn setup_indexer_stack<VM>(
         &self,
         cfg: &Config,
         sql_indexer: indexer_sql::Indexer,
         indexer_context: indexer_sql::context::Context,
         indexer_path: IndexerPath,
-        app: Arc<App<DiskDbLite, HybridVm, NaiveProposalPreparer, NullIndexer>>,
+        app: Arc<App<DiskDbLite, VM, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(
         HookedIndexer,
         indexer_httpd::context::Context,
         dango_httpd::context::Context,
-    )> {
+    )>
+    where
+        VM: Vm + Clone + Send + Sync + 'static,
+        AppError: From<VM::Error>,
+    {
         let mut hooked_indexer = HookedIndexer::new();
 
         // Create a separate context for dango indexer (shares DB but has independent pubsub)
@@ -314,16 +326,18 @@ impl StartCmd {
             })
     }
 
-    async fn run_with_indexer<ID>(
+    async fn run_with_indexer<VM, ID>(
         self,
         grug_cfg: GrugConfig,
         tendermint_cfg: TendermintConfig,
         db: DiskDbLite,
-        vm: HybridVm,
+        vm: VM,
         indexer: ID,
     ) -> anyhow::Result<()>
     where
+        VM: Vm + Clone + Send + Sync + 'static,
         ID: Indexer + Send + 'static,
+        AppError: From<VM::Error>,
     {
         let app = App::new(
             db,

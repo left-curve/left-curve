@@ -3393,6 +3393,7 @@ dependencies = [
  "grug-httpd",
  "grug-types",
  "grug-vm-hybrid",
+ "grug-vm-rust",
  "hex",
  "home",
  "indexer-hooked",

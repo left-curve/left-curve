@@ -12,6 +12,8 @@ version       = { workspace = true }
 [features]
 default = []
 testing = ["pyth-client", "pyth-types", "tokio-stream"]
+# Enable wasm smart contracts by using the `HybridVm`. If disabled, the `RustVm` is used.
+wasm = ["dango-genesis", "grug-vm-hybrid"]
 
 [dependencies]
 anyhow                      = { workspace = true }
@@ -21,7 +23,7 @@ colored                     = { workspace = true }
 colored_json                = { workspace = true }
 config-parser               = { workspace = true }
 dango-client                = { workspace = true }
-dango-genesis               = { workspace = true, features = ["metrics"] }
+dango-genesis               = { workspace = true, features = ["metrics"], optional = true }
 dango-httpd                 = { workspace = true, features = ["metrics"] }
 dango-indexer-clickhouse    = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 dango-indexer-sql           = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
@@ -35,7 +37,8 @@ grug-client                 = { workspace = true }
 grug-db-disk-lite           = { workspace = true }
 grug-httpd                  = { workspace = true }
 grug-types                  = { workspace = true }
-grug-vm-hybrid              = { workspace = true }
+grug-vm-hybrid              = { workspace = true, optional = true }
+grug-vm-rust                = { workspace = true }
 hex                         = { workspace = true }
 home                        = { workspace = true }
 indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
