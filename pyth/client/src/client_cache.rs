@@ -42,6 +42,7 @@ impl PythClientCache {
         T: ToString,
     {
         let client = PythClient::new(endpoints, access_token)?;
+
         Ok(Self {
             client,
             keep_running: Arc::new(AtomicBool::new(true)),
@@ -109,7 +110,7 @@ impl PythClientCache {
             .expect("Workspace root not found");
 
         workspace_root
-            .join("pyth/lazer/testdata")
+            .join("pyth/client/testdata")
             .join(id.to_string())
     }
 }
@@ -128,8 +129,8 @@ impl PythClientTrait for PythClientCache {
     {
         self.close();
         self.keep_running = Arc::new(AtomicBool::new(true));
-        let keep_running = self.keep_running.clone();
 
+        let keep_running = self.keep_running.clone();
         let mut stored_data = self.load_or_retrieve_data(ids);
         let mut index = 0;
 
@@ -149,7 +150,7 @@ impl PythClientTrait for PythClientCache {
 
                 if data.is_empty() {
                     warn!("No new VAA data available, waiting for next update");
-                }else{
+                } else {
                     yield NonEmpty::new_unchecked(data);
                 }
 
