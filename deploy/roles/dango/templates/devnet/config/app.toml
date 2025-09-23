@@ -135,10 +135,10 @@ traces_sample_rate = 1.0
 
 [pyth]
 
-# PythLazer endpoints. This is a Vec<String>.
-# If the list is empty, PythLazer oracle is disabled.
+# Pyth Lazer endpoints. This is a Vec<String>.
+# If the list is empty, Pyth Lazer oracle is disabled.
 endpoints = ["wss://pyth-lazer-0.dourolabs.app/v1/stream"]
 
-# PythLazer access token.
-# If the string is empty, PythLazer oracle is disabled.
-access_token = {{ pyth_access_token }}
+# Pyth Lazer access token.
+# If the string is empty, Pyth Lazer oracle is disabled.
+access_token = "{{ pyth_access_token }}"
