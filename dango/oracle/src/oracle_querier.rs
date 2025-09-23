@@ -156,13 +156,13 @@ enum OracleContext<'a> {
 
 #[rustfmt::skip]
 impl OracleContext<'_> {
-    fn get_price(&self, lazer_id: PythId) -> StdResult<PrecisionlessPrice> {
+    fn get_price(&self, pyth_id: PythId) -> StdResult<PrecisionlessPrice> {
         match self {
             OracleContext::Local { storage } => {
-                PYTH_PRICES.load(*storage, lazer_id)
+                PYTH_PRICES.load(*storage, pyth_id)
             },
             OracleContext::Remote { address, querier } => {
-                querier.query_wasm_path(*address, &PYTH_PRICES.path(lazer_id))
+                querier.query_wasm_path(*address, &PYTH_PRICES.path(pyth_id))
             },
         }
     }
