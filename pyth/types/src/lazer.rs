@@ -1,21 +1,16 @@
 use {
-    grug::{ByteArray, Inner},
+    grug::{ByteArray, Inner, NonEmpty},
     pyth_lazer_protocol::{message::LeEcdsaMessage as LazerLeEcdsaMessage, router::Channel},
-    std::fmt::Display,
 };
 
 pub type PythLazerId = u32;
+
+pub type PriceUpdate = NonEmpty<Vec<LeEcdsaMessage>>;
 
 #[grug::derive(Serde)]
 pub struct PythLazerSubscriptionDetails {
     pub id: PythLazerId,
     pub channel: Channel,
-}
-
-impl Display for PythLazerSubscriptionDetails {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.id)
-    }
 }
 
 #[grug::derive(Serde, Borsh)]

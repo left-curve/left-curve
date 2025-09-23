@@ -10,9 +10,8 @@ use {
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Uint128},
+    grug::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, Timestamp, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
-    pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -124,8 +123,8 @@ pub struct LendingOption {
 pub struct OracleOption {
     /// Oracle price sources.
     pub pyth_price_sources: BTreeMap<Denom, PriceSource>,
-    /// Wormhole guardian sets that will sign Pyth VAA messages.
-    pub wormhole_guardian_sets: BTreeMap<GuardianSetIndex, GuardianSet>,
+    /// Pyth Lazer trusted signers: public key and expiration timestamp.
+    pub pyth_trusted_signers: BTreeMap<Binary, Timestamp>,
 }
 
 pub struct VestingOption {

@@ -20,7 +20,6 @@ grug                = { workspace = true }
 grug-testing        = { workspace = true }
 indexer-disk-saver  = { workspace = true }
 metrics             = { workspace = true, optional = true }
-pyth-core           = { workspace = true }
 pyth-lazer-client   = { workspace = true }
 pyth-lazer-protocol = { workspace = true }
 pyth-types          = { workspace = true }

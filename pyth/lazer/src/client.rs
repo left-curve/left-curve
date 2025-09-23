@@ -1,5 +1,4 @@
 use {
-    anyhow::bail,
     async_stream::stream,
     grug::{Inner, Lengthy, NonEmpty},
     pyth_lazer_client::{
@@ -533,10 +532,11 @@ impl PythClientTrait for PythClientLazer {
 
                 // Yield the current data.
                 if !subscriptions_data.is_empty() {
-                    let send_data = subscriptions_data.clone();
-                    yield PriceUpdate::Lazer(NonEmpty::new_unchecked(
-                        send_data.into_values().collect::<Vec<_>>(),
-                    ));
+                    let send_data = subscriptions_data
+                        .clone()
+                        .into_values()
+                        .collect::<Vec<_>>();
+                    yield NonEmpty::new_unchecked(send_data);
                 }
             }
 
@@ -554,15 +554,6 @@ impl PythClientTrait for PythClientLazer {
         };
 
         Ok(Box::pin(stream))
-    }
-
-    fn get_latest_price_update<I>(&self, _ids: NonEmpty<I>) -> Result<PriceUpdate, Self::Error>
-    where
-        I: IntoIterator + Clone + Lengthy,
-        I::Item: ToString,
-    {
-        // TODO: This function will be removed once the Pyth Core will be removed.
-        bail!("Unimplemented")
     }
 
     fn close(&mut self) {

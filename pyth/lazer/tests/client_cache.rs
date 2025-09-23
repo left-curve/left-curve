@@ -38,7 +38,8 @@ fn create_cache() {
             .unwrap();
     client.load_or_retrieve_data(NonEmpty::new_unchecked(update_ids.clone()));
 
-    for id in update_ids {
+    for subscription_details in update_ids {
+        let id = subscription_details.id;
         let filename = PythClientLazerCache::cache_filename(&id);
 
         let mut cache_file = DiskPersistence::new(filename, true);

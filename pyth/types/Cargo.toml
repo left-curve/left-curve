@@ -12,11 +12,6 @@ version       = { workspace = true }
 [dependencies]
 anyhow              = { workspace = true }
 async-trait         = { workspace = true }
-byteorder           = { workspace = true }
-data-encoding       = { workspace = true }
 grug                = { workspace = true }
-hex-literal         = { workspace = true }
 pyth-lazer-protocol = { workspace = true }
-pyth-sdk            = { workspace = true }
-pythnet-sdk         = { workspace = true }
 tokio-stream        = { workspace = true }

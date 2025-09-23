@@ -106,7 +106,7 @@ where
     while not_none_vaas < 5 {
         if let Some(price_update) = stream.next().await {
             not_none_vaas += 1;
-            vaas_checker.update_values(price_update.try_into_lazer().unwrap().into_inner());
+            vaas_checker.update_values(price_update.into_inner());
             tokio::time::sleep(Duration::from_millis(200)).await;
         }
     }
@@ -136,7 +136,7 @@ where
     while not_none_vaas < 5 {
         if let Some(price_update) = stream.next().await {
             not_none_vaas += 1;
-            vaas_checker.update_values(price_update.try_into_lazer().unwrap().into_inner());
+            vaas_checker.update_values(price_update.into_inner());
             tokio::time::sleep(Duration::from_millis(200)).await;
         }
     }

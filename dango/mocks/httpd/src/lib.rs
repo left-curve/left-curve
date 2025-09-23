@@ -107,7 +107,7 @@ where
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
-        ProposalPreparer::new(),
+        ProposalPreparer::new_with_lazer([""], ""), // FIXME: endpoints and access token
         hooked_indexer,
         RustVm::genesis_codes(),
         test_opt,

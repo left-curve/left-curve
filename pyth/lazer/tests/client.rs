@@ -284,7 +284,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
             break;
         }
 
-        let msg = data.try_into_lazer().unwrap().first().cloned().unwrap();
+        let msg = data.first().cloned().unwrap();
 
         let send_msg = BinaryWsUpdate {
             subscription_id,

@@ -1,14 +1,15 @@
 use {
     crate::oracle::{PrecisionedPrice, PriceSource},
     grug::{Binary, Denom, Timestamp},
-    pyth_types::{GuardianSet, GuardianSetIndex, PriceUpdate},
+    pyth_types::PriceUpdate,
     std::collections::BTreeMap,
 };
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub guardian_sets: BTreeMap<GuardianSetIndex, GuardianSet>,
     pub price_sources: BTreeMap<Denom, PriceSource>,
+    /// Pyth Lazer trusted signers: public keys and expiration timestamps.
+    pub trusted_signers: BTreeMap<Binary, Timestamp>,
 }
 
 #[grug::derive(Serde)]
@@ -44,15 +45,6 @@ pub enum QueryMsg {
     #[returns(BTreeMap<Denom, PriceSource>)]
     PriceSources {
         start_after: Option<Denom>,
-        limit: Option<u32>,
-    },
-    /// Query the guardian set of the given index.
-    #[returns(GuardianSet)]
-    GuardianSet { index: GuardianSetIndex },
-    /// Enumerate the guardian set of all known indexed.
-    #[returns(BTreeMap<GuardianSetIndex, GuardianSet>)]
-    GuardianSets {
-        start_after: Option<GuardianSetIndex>,
         limit: Option<u32>,
     },
     /// Query the trusted signers for Pyth Lazer.

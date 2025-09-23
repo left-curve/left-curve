@@ -57,7 +57,6 @@ members = [
   "indexer/sql",
   "indexer/sql-migration",
   "indexer/testing",
-  "pyth/core",
   "pyth/lazer",
   "pyth/types",
   "utils/config-parser",
@@ -111,7 +110,6 @@ blake2                      = "0.10"
 blake3                      = "1"
 bnum                        = "0.13"
 borsh                       = "1"
-byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
 clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs" } # TODO: use crates.io once the latest version is published
@@ -155,8 +153,6 @@ proptest                    = "1"
 prost                       = "0.13"
 pyth-lazer-client           = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-lazer-client" }
 pyth-lazer-protocol         = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-lazer-protocol" }
-pyth-sdk                    = "0.8"
-pythnet-sdk                 = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                     = { version = "0.12", features = ["stream"] }
@@ -257,7 +253,6 @@ indexer-httpd               = { path = "indexer/httpd", features = ["tracing"] }
 indexer-sql                 = { path = "indexer/sql" }
 indexer-sql-migration       = { path = "indexer/sql-migration" }
 indexer-testing             = { path = "indexer/testing" }
-pyth-core                   = { path = "pyth/core" }
 pyth-lazer                  = { path = "pyth/lazer" }
 pyth-types                  = { path = "pyth/types" }
 
