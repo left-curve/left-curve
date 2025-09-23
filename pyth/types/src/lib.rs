@@ -7,10 +7,7 @@ mod types;
 pub use {lazer::*, traits::*, types::*};
 
 // Re-exports
-pub use {
-    pyth_lazer_protocol::{
-        payload::{PayloadData, PayloadFeedData, PayloadPropertyValue},
-        router::{Channel, FixedRate},
-    },
-    pyth_sdk::PriceFeed,
+pub use pyth_lazer_protocol::{
+    payload::{PayloadData, PayloadFeedData, PayloadPropertyValue},
+    router::{Channel, FixedRate},
 };

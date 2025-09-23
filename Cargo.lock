@@ -1523,7 +1523,7 @@ dependencies = [
  "Inflector",
  "async-graphql-parser",
  "darling",
- "proc-macro-crate 3.3.0",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "strum 0.26.3",
@@ -2080,15 +2080,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bincode"
-version = "1.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "bindgen"
 version = "0.69.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2297,29 +2288,9 @@ version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "119771309b95163ec7aaf79810da82f7cd0599c19722d48b9c03894dca833966"
 dependencies = [
- "borsh 1.5.7",
+ "borsh",
  "serde",
  "serde-big-array",
-]
-
-[[package]]
-name = "borsh"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15bf3650200d8bffa99015595e10f1fbd17de07abbc25bb067da79e769939bfa"
-dependencies = [
- "borsh-derive 0.9.3",
- "hashbrown 0.11.2",
-]
-
-[[package]]
-name = "borsh"
-version = "0.10.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "115e54d64eb62cdebad391c19efc9dce4981c690c85a33a12199d99bb9546fee"
-dependencies = [
- "borsh-derive 0.10.4",
- "hashbrown 0.13.2",
 ]
 
 [[package]]
@@ -2328,34 +2299,8 @@ version = "1.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad8646f98db542e39fc66e68a20b2144f6a732636df7c2354e74645faaa433ce"
 dependencies = [
- "borsh-derive 1.5.7",
+ "borsh-derive",
  "cfg_aliases",
-]
-
-[[package]]
-name = "borsh-derive"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6441c552f230375d18e3cc377677914d2ca2b0d36e52129fe15450a2dce46775"
-dependencies = [
- "borsh-derive-internal 0.9.3",
- "borsh-schema-derive-internal 0.9.3",
- "proc-macro-crate 0.1.5",
- "proc-macro2",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "borsh-derive"
-version = "0.10.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "831213f80d9423998dd696e2c5345aba6be7a0bd8cd19e31c5243e13df1cef89"
-dependencies = [
- "borsh-derive-internal 0.10.4",
- "borsh-schema-derive-internal 0.10.4",
- "proc-macro-crate 0.1.5",
- "proc-macro2",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -2365,54 +2310,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdd1d3c0c2f5833f22386f252fe8ed005c7f59fdcddeef025c01b4c3b9fd9ac3"
 dependencies = [
  "once_cell",
- "proc-macro-crate 3.3.0",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn 2.0.101",
-]
-
-[[package]]
-name = "borsh-derive-internal"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5449c28a7b352f2d1e592a8a28bf139bc71afb0764a14f3c02500935d8c44065"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "borsh-derive-internal"
-version = "0.10.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65d6ba50644c98714aa2a70d13d7df3cd75cd2b523a2b452bf010443800976b3"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "borsh-schema-derive-internal"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdbd5696d8bfa21d53d9fe39a714a18538bad11492a42d066dbbc395fb1951c0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "borsh-schema-derive-internal"
-version = "0.10.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "276691d96f063427be83e6692b86148e488ebba9f48f77788724ca027ba3b6d4"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -2505,26 +2406,6 @@ name = "bytecheck_derive"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efb7846e0cb180355c2dec69e721edafa36919850f1a9f52ffba4ebc0393cb71"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.101",
-]
-
-[[package]]
-name = "bytemuck"
-version = "1.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9134a6ef01ce4b366b50689c94f82c14bc72bc5d0386829828a2e2752ef7958c"
-dependencies = [
- "bytemuck_derive",
-]
-
-[[package]]
-name = "bytemuck_derive"
-version = "1.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ecc273b49b3205b83d648f0690daa588925572cc5063745bfe547fe7ec8e1a1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2884,7 +2765,7 @@ dependencies = [
  "rust-ini",
  "serde",
  "serde_json",
- "toml 0.8.22",
+ "toml",
  "winnow",
  "yaml-rust2",
 ]
@@ -3542,7 +3423,7 @@ dependencies = [
  "async-trait",
  "bigdecimal",
  "bnum",
- "borsh 1.5.7",
+ "borsh",
  "chrono",
  "clickhouse",
  "dango-types",
@@ -3577,7 +3458,7 @@ dependencies = [
  "assertor",
  "async-graphql",
  "async-trait",
- "borsh 1.5.7",
+ "borsh",
  "dango-indexer-sql-migration",
  "dango-types",
  "grug",
@@ -4292,15 +4173,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
 
 [[package]]
-name = "fast-math"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2465292146cdfc2011350fe3b1c616ac83cf0faeedb33463ba1c332ed8948d66"
-dependencies = [
- "ieee754",
-]
-
-[[package]]
 name = "fast_chemail"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4777,7 +4649,7 @@ dependencies = [
 name = "grug"
 version = "0.0.0"
 dependencies = [
- "borsh 1.5.7",
+ "borsh",
  "grug-client",
  "grug-ffi",
  "grug-macros",
@@ -4794,7 +4666,7 @@ dependencies = [
 name = "grug-app"
 version = "0.0.0"
 dependencies = [
- "borsh 1.5.7",
+ "borsh",
  "data-encoding",
  "dyn-event",
  "grug-storage",
@@ -4886,7 +4758,7 @@ dependencies = [
 name = "grug-ffi"
 version = "0.0.0"
 dependencies = [
- "borsh 1.5.7",
+ "borsh",
  "grug-types",
  "serde",
 ]
@@ -4935,7 +4807,7 @@ dependencies = [
 name = "grug-jmt"
 version = "0.0.0"
 dependencies = [
- "borsh 1.5.7",
+ "borsh",
  "grug-storage",
  "grug-types",
  "hex-literal",
@@ -4960,7 +4832,7 @@ name = "grug-math"
 version = "0.0.0"
 dependencies = [
  "bnum",
- "borsh 1.5.7",
+ "borsh",
  "paste",
  "proptest",
  "serde",
@@ -4998,7 +4870,7 @@ name = "grug-mock-taxman"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "borsh 1.5.7",
+ "borsh",
  "grug-ffi",
  "grug-math",
  "grug-mock-bank",
@@ -5012,7 +4884,7 @@ name = "grug-storage"
 version = "0.0.0"
 dependencies = [
  "bnum",
- "borsh 1.5.7",
+ "borsh",
  "grug-math",
  "grug-types",
  "prost",
@@ -5033,7 +4905,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "borsh 1.5.7",
+ "borsh",
  "grug-app",
  "grug-db-memory",
  "grug-math",
@@ -5064,7 +4936,7 @@ dependencies = [
  "async-graphql",
  "async-trait",
  "bnum",
- "borsh 1.5.7",
+ "borsh",
  "chrono",
  "data-encoding",
  "digest 0.10.7",
@@ -5204,15 +5076,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 1.0.69",
-]
-
-[[package]]
-name = "hashbrown"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
-dependencies = [
- "ahash 0.7.8",
 ]
 
 [[package]]
@@ -5809,12 +5672,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ieee754"
-version = "0.2.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9007da9cacbd3e6343da136e98b0d2df013f553d35bdec8b518f07bea768e19c"
-
-[[package]]
 name = "impl-codec"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5879,7 +5736,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "assertor",
- "borsh 1.5.7",
+ "borsh",
  "glob",
  "grug",
  "grug-app",
@@ -5907,7 +5764,7 @@ dependencies = [
  "async-graphql",
  "async-stream",
  "async-trait",
- "borsh 1.5.7",
+ "borsh",
  "futures",
  "grug-app",
  "grug-types",
@@ -5986,7 +5843,7 @@ dependencies = [
  "async-graphql",
  "async-stream",
  "async-trait",
- "borsh 1.5.7",
+ "borsh",
  "futures",
  "grug-app",
  "grug-types",
@@ -6777,20 +6634,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "35bd024e8b2ff75562e5f34e7f4905839deb4b22955ef5e73d2fea1b9813cb23"
-dependencies = [
- "num-bigint",
- "num-complex",
- "num-integer",
- "num-iter",
- "num-rational",
- "num-traits",
-]
-
-[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6815,15 +6658,6 @@ dependencies = [
  "rand 0.8.5",
  "smallvec",
  "zeroize",
-]
-
-[[package]]
-name = "num-complex"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
-dependencies = [
- "num-traits",
 ]
 
 [[package]]
@@ -6858,17 +6692,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1429034a0490724d0075ebb2bc9e875d6503c3cf69e235a8941aa757d83ef5bf"
 dependencies = [
  "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
-dependencies = [
- "num-bigint",
  "num-integer",
  "num-traits",
 ]
@@ -7124,7 +6947,7 @@ version = "3.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "581c837bb6b9541ce7faa9377c20616e4fb7650f6b0f68bc93c827ee504fb7b3"
 dependencies = [
- "proc-macro-crate 3.3.0",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn 2.0.101",
@@ -7494,15 +7317,6 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-crate"
-version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d6ea3c4595b96363c13943497db34af4460fb474a95c43f4446ad341b8c9785"
-dependencies = [
- "toml 0.5.11",
-]
-
-[[package]]
-name = "proc-macro-crate"
 version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edce586971a4dfaa28950c6f18ed55e0406c1ab88bbce2c6f6293a7aaba73d35"
@@ -7776,33 +7590,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyth-sdk"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5c805ba3dfb5b7ed6a8ffa62ec38391f485a79c7cf6b3b11d3bd44fb0325824"
-dependencies = [
- "borsh 0.9.3",
- "borsh-derive 0.9.3",
- "hex",
- "schemars",
- "serde",
-]
-
-[[package]]
-name = "pyth-sdk"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e7aeef4d5f0a9c98ff5af2ddd84a8b89919c512188305b497a9eb9afa97a949"
-dependencies = [
- "borsh 0.10.4",
- "borsh-derive 0.10.4",
- "getrandom 0.2.16",
- "hex",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "pyth-types"
 version = "0.0.0"
 dependencies = [
@@ -7813,28 +7600,7 @@ dependencies = [
  "grug",
  "hex-literal",
  "pyth-lazer-protocol",
- "pyth-sdk 0.8.0",
- "pythnet-sdk",
  "tokio-stream",
-]
-
-[[package]]
-name = "pythnet-sdk"
-version = "2.3.1"
-source = "git+https://github.com/pyth-network/pyth-crosschain?rev=6077910#60779100cbd669cd358f28ba60215b8c6b235077"
-dependencies = [
- "bincode",
- "borsh 0.10.4",
- "bytemuck",
- "byteorder",
- "fast-math",
- "hex",
- "pyth-sdk 0.5.0",
- "rustc_version 0.4.1",
- "serde",
- "sha3",
- "slow_primes",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -8460,7 +8226,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "faa7de2ba56ac291bd90c6b9bece784a52ae1411f9506544b3eae36dd2356d50"
 dependencies = [
  "arrayvec",
- "borsh 1.5.7",
+ "borsh",
  "bytes",
  "num-traits",
  "rand 0.8.5",
@@ -8690,30 +8456,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f29ebaa345f945cec9fbbc532eb307f0fdad8161f281b6369539c8d84876b3d"
 dependencies = [
  "windows-sys 0.59.0",
-]
-
-[[package]]
-name = "schemars"
-version = "0.8.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fbf2ae1b8bc8e02df939598064d22402220cd5bbcca1c76f7d6a310974d5615"
-dependencies = [
- "dyn-clone",
- "schemars_derive",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "schemars_derive"
-version = "0.8.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32e265784ad618884abaea0600a9adf15393368d840e0222d101a072f3f7534d"
-dependencies = [
- "proc-macro2",
- "quote",
- "serde_derive_internals",
- "syn 2.0.101",
 ]
 
 [[package]]
@@ -9470,15 +9212,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "826167069c09b99d56f31e9ae5c99049e932a98c9dc2dac47645b08dbbf76ba7"
 
 [[package]]
-name = "slow_primes"
-version = "0.1.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58267dd2fbaa6dceecba9e3e106d2d90a2b02497c0e8b01b8759beccf5113938"
-dependencies = [
- "num",
-]
-
-[[package]]
 name = "smallvec"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10016,7 +9749,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tendermint",
- "toml 0.8.22",
+ "toml",
  "url",
 ]
 
@@ -10353,15 +10086,6 @@ dependencies = [
  "futures-sink",
  "pin-project-lite",
  "tokio",
-]
-
-[[package]]
-name = "toml"
-version = "0.5.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
-dependencies = [
- "serde",
 ]
 
 [[package]]

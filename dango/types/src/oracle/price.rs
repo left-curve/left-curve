@@ -3,7 +3,7 @@ use {
         Dec, Defined, Exponentiate, FixedPoint, MathResult, MaybeDefined, MultiplyFraction, Number,
         NumberConst, PrevNumber, Timestamp, Udec128, Uint128, Uint256, Undefined,
     },
-    pyth_types::{PayloadFeedData, PayloadPropertyValue, PriceFeed},
+    pyth_types::{PayloadFeedData, PayloadPropertyValue},
     std::cmp::Ordering,
 };
 
@@ -131,26 +131,6 @@ impl PrecisionedPrice {
     pub fn unit_amount_from_value_ceil(&self, value: Udec128) -> MathResult<Uint128> {
         Uint128::new(10u128.pow(self.precision.into_inner() as u32))
             .checked_mul_dec_ceil(value.checked_div(self.humanized_price)?)
-    }
-}
-
-impl TryFrom<PriceFeed> for PrecisionlessPrice {
-    type Error = anyhow::Error;
-
-    fn try_from(value: PriceFeed) -> Result<Self, Self::Error> {
-        let price_unchecked = value.get_price_unchecked();
-        let price = Udec128::checked_from_atomics::<u128>(
-            price_unchecked.price.try_into()?,
-            (-price_unchecked.expo).try_into()?,
-        )?;
-
-        let timestamp = Timestamp::from_seconds(price_unchecked.publish_time.try_into()?);
-
-        Ok(Price {
-            humanized_price: price,
-            timestamp,
-            precision: Undefined::new(),
-        })
     }
 }
 

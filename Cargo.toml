@@ -154,8 +154,6 @@ proptest                    = "1"
 prost                       = "0.13"
 pyth-lazer-client           = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-lazer-client" }
 pyth-lazer-protocol         = { git = "https://github.com/pyth-network/pyth-crosschain", package = "pyth-lazer-protocol" }
-pyth-sdk                    = "0.8"
-pythnet-sdk                 = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                     = { version = "0.12", features = ["stream"] }
