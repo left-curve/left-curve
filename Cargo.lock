@@ -3302,7 +3302,6 @@ dependencies = [
  "data-encoding",
  "dialoguer",
  "futures",
- "grug",
  "grug-app",
  "grug-client",
  "grug-db-disk-lite",

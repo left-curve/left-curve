@@ -2,8 +2,7 @@ use {
     crate::{config::Config, home_directory::HomeDirectory},
     clap::{Parser, Subcommand},
     config_parser::parse_config,
-    grug::Inner,
-    grug_types::NonEmpty,
+    grug_types::{Inner, NonEmpty},
     pyth_client::PythClientLazerCache,
     pyth_types::{
         PayloadData, PythClientTrait,
