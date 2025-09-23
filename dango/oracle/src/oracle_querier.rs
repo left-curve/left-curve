@@ -112,7 +112,7 @@ impl<'a> OracleQuerierNoCache<'a> {
                 let price = PrecisionlessPrice::new(humanized_price, timestamp);
                 Ok(price.with_precision(precision))
             },
-            PriceSource::PythLazer { id, precision, .. } => {
+            PriceSource::Pyth { id, precision, .. } => {
                 let price = self.ctx.get_lazer_price(id)?;
                 Ok(price.with_precision(precision))
             },

@@ -230,7 +230,7 @@ fn pyth_ids_lazer(
         })?
         .into_values()
         .filter_map(|price_source| {
-            if let PriceSource::PythLazer { id, channel, .. } = price_source {
+            if let PriceSource::Pyth { id, channel, .. } = price_source {
                 Some(PythLazerSubscriptionDetails { id, channel })
             } else {
                 None

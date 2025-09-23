@@ -73,7 +73,7 @@ fn handler_lazer() {
         .address;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 8, channel: Channel::RealTime }
+        btc::DENOM.clone() => PriceSource::Pyth { id: 1, precision: 8, channel: Channel::RealTime }
     );
 
     suite

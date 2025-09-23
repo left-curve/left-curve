@@ -45,8 +45,8 @@ fn pyth_lazer() {
             &mut accounts.owner,
             oracle,
             &ExecuteMsg::RegisterPriceSources(btree_map! {
-                btc::DENOM.clone() => PriceSource::PythLazer { id: 1, precision: 8, channel:Channel::RealTime },
-                eth::DENOM.clone() => PriceSource::PythLazer { id: 2, precision: 18 , channel:Channel::RealTime },
+                btc::DENOM.clone() => PriceSource::Pyth { id: 1, precision: 8, channel:Channel::RealTime },
+                eth::DENOM.clone() => PriceSource::Pyth { id: 2, precision: 18 , channel:Channel::RealTime },
             }),
             Coins::default(),
         )

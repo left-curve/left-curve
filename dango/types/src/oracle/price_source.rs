@@ -18,7 +18,7 @@ pub enum PriceSource {
         timestamp: Timestamp,
     },
     /// A price source that uses price feeds from Pyth Lazer.
-    PythLazer {
+    Pyth {
         /// The Pyth Lazer ID of the price feed.
         id: PythLazerId,
         /// The number of decimal places of the token that is used to convert
