@@ -2,6 +2,7 @@
 use metrics::{counter, describe_counter, describe_histogram, histogram};
 use {
     crate::PythClientTrait,
+    anyhow::bail,
     async_stream::stream,
     grug::{Inner, Lengthy, NonEmpty},
     pyth_lazer_client::{
@@ -167,9 +168,7 @@ impl PythClient {
 
                 // If we have reached the maximum number of resubscription attempts, return an error.
                 let Some(next_delay) = maybe_next_delay else {
-                    return Err(anyhow::anyhow!(
-                        "Failed to connect to Pyth Lazer after {RESUBSCRIBE_ATTEMPTS} attempts"
-                    ));
+                    bail!("failed to connect to Pyth Lazer after {RESUBSCRIBE_ATTEMPTS} attempts");
                 };
 
                 // Reset all received data to false for each subscription ID, just to be sure that
