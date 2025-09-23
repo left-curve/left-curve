@@ -1,5 +1,5 @@
 use {
-    crate::{PRICE_SOURCES, PYTH_LAZER_PRICES, PYTH_LAZER_TRUSTED_SIGNERS},
+    crate::{PRICE_SOURCES, PYTH_PRICES, PYTH_TRUSTED_SIGNERS},
     anyhow::{bail, ensure},
     dango_types::oracle::{ExecuteMsg, InstantiateMsg, PrecisionlessPrice, PriceSource},
     grug::{
@@ -17,7 +17,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     }
 
     for (public_key, expires_at) in msg.trusted_signers {
-        PYTH_LAZER_TRUSTED_SIGNERS.save(ctx.storage, &public_key, &expires_at)?;
+        PYTH_TRUSTED_SIGNERS.save(ctx.storage, &public_key, &expires_at)?;
     }
 
     Ok(Response::new())
@@ -102,7 +102,7 @@ fn register_trusted_signer(
         "you don't have the right, O you don't have the right"
     );
 
-    PYTH_LAZER_TRUSTED_SIGNERS.save(ctx.storage, &public_key, &expires_at)?;
+    PYTH_TRUSTED_SIGNERS.save(ctx.storage, &public_key, &expires_at)?;
 
     Ok(Response::new())
 }
@@ -113,7 +113,7 @@ fn remove_trusted_signer(ctx: MutableCtx, public_key: Binary) -> anyhow::Result<
         "you don't have the right, O you don't have the right"
     );
 
-    PYTH_LAZER_TRUSTED_SIGNERS.remove(ctx.storage, &public_key);
+    PYTH_TRUSTED_SIGNERS.remove(ctx.storage, &public_key);
 
     Ok(Response::new())
 }
@@ -131,7 +131,7 @@ fn feed_prices(ctx: MutableCtx, price_update: PriceUpdate) -> anyhow::Result<Res
             let id = feed.feed_id.0;
             let price = PrecisionlessPrice::try_from((feed, timestamp))?;
 
-            PYTH_LAZER_PRICES.may_update(ctx.storage, id, |current| -> anyhow::Result<_> {
+            PYTH_PRICES.may_update(ctx.storage, id, |current| -> anyhow::Result<_> {
                 match current {
                     Some(current_price) if current_price.timestamp > timestamp => Ok(current_price),
                     _ => Ok(price),
@@ -158,7 +158,7 @@ fn verify_pyth_lazer_message(
     )?;
 
     // Ensure the signer is trusted.
-    match PYTH_LAZER_TRUSTED_SIGNERS.may_load(storage, &pk)? {
+    match PYTH_TRUSTED_SIGNERS.may_load(storage, &pk)? {
         Some(expiration) => {
             ensure!(
                 expiration > current_time,
@@ -211,7 +211,7 @@ mod tests {
             .should_fail_with_error("signer is not trusted");
 
         // Store trusted signer to storage with timestamp in the past.
-        PYTH_LAZER_TRUSTED_SIGNERS
+        PYTH_TRUSTED_SIGNERS
             .save(
                 &mut storage,
                 &trusted_signer,
@@ -223,7 +223,7 @@ mod tests {
             .should_fail_with_error("signer is no longer trusted");
 
         // Store trusted signer to storage with timestamp in the future.
-        PYTH_LAZER_TRUSTED_SIGNERS
+        PYTH_TRUSTED_SIGNERS
             .save(
                 &mut storage,
                 &trusted_signer,

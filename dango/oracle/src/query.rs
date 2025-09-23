@@ -1,5 +1,5 @@
 use {
-    crate::{OracleQuerierNoCache, PRICE_SOURCES, PYTH_LAZER_TRUSTED_SIGNERS},
+    crate::{OracleQuerierNoCache, PRICE_SOURCES, PYTH_TRUSTED_SIGNERS},
     dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
     grug::{
         Binary, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
@@ -42,7 +42,7 @@ fn query_trusted_signers(
     let start = start_after.as_ref().map(|b| Bound::Exclusive(b.as_ref()));
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    PYTH_LAZER_TRUSTED_SIGNERS
+    PYTH_TRUSTED_SIGNERS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|res| {

@@ -1,5 +1,5 @@
 use {
-    crate::{PRICE_SOURCES, PYTH_LAZER_PRICES},
+    crate::{PRICE_SOURCES, PYTH_PRICES},
     anyhow::{anyhow, ensure},
     dango_types::{
         DangoQuerier,
@@ -159,10 +159,10 @@ impl OracleContext<'_> {
     fn get_lazer_price(&self, lazer_id: PythLazerId) -> StdResult<PrecisionlessPrice> {
         match self {
             OracleContext::Local { storage } => {
-                PYTH_LAZER_PRICES.load(*storage, lazer_id)
+                PYTH_PRICES.load(*storage, lazer_id)
             },
             OracleContext::Remote { address, querier } => {
-                querier.query_wasm_path(*address, &PYTH_LAZER_PRICES.path(lazer_id))
+                querier.query_wasm_path(*address, &PYTH_PRICES.path(lazer_id))
             },
         }
     }
