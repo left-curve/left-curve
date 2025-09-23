@@ -56,7 +56,7 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
           </p>
         </div>
       </div>
-      <span className="w-full h-[1px] bg-overlay-secondary-gray my-2" />
+      <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
       <div className="p-4">
         <AuthOptions mode="signin" action={addKey} isPending={isPending} />
       </div>

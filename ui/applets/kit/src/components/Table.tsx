@@ -172,7 +172,7 @@ const tabsVariants = tv({
         header:
           "p-4 last:text-end bg-surface-secondary-green text-ink-tertiary-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
         cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end text-start",
-        row: "border-b border-overlay-secondary-gray last:border-b-0",
+        row: "border-b border-outline-secondary-gray last:border-b-0",
       },
       simple: {
         base: "text-ink-tertiary-500 border-separate gap-2",

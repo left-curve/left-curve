@@ -197,7 +197,7 @@ const Desktop: React.FC = () => {
       )}
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
-        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-overlay-secondary-gray overflow-hidden">
+        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-outline-secondary-gray overflow-hidden">
           <Menu />
         </div>
       </div>

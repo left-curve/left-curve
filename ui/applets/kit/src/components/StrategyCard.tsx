@@ -107,7 +107,7 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
           >
             {labels.select}
           </Button>
-          <div className="p-2 rounded-xl bg-overlay-primary-rice flex items-center justify-between">
+          <div className="p-2 rounded-xl bg-outline-primary-rice flex items-center justify-between">
             <div className="flex gap-2 items-center">
               <span className="text-ink-tertiary-500 diatype-xs-medium">{labels.apy}</span>
               <span className="text-ink-secondary-700 diatype-sm-bold">-</span>

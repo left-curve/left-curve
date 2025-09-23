@@ -51,7 +51,7 @@ export const Toast: React.FC<ToastProps> = ({ toast }) => {
       exit={{ opacity: 0, y }}
       className="relative w-full h-full"
     >
-      <div className="absolute pointer-events-auto w-full lg:w-auto top-0 lg:top-auto lg:bottom-4 lg:right-4 bg-surface-primary-rice rounded-b-md lg:rounded-md border lg:min-w-[18rem] lg:max-w-[26rem] border-overlay-secondary-gray shadow-account-card">
+      <div className="absolute pointer-events-auto w-full lg:w-auto top-0 lg:top-auto lg:bottom-4 lg:right-4 bg-surface-primary-rice rounded-b-md lg:rounded-md border lg:min-w-[18rem] lg:max-w-[26rem] border-outline-secondary-gray shadow-account-card">
         <div className="w-fit py-4 pl-4 pr-10 transition-all duration-500 flex items-start gap-2">
           {Icon[type]}
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">

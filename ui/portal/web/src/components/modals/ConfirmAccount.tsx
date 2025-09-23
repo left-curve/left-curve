@@ -32,7 +32,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
     const humanAmount = formatUnits(amount, coin.decimals);
 
     return (
-      <div className="flex flex-col bg-surface-primary-rice md:border border-overlay-secondary-gray rounded-xl relative gap-4 w-full md:max-w-[25rem]">
+      <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray rounded-xl relative gap-4 w-full md:max-w-[25rem]">
         <IconButton
           className="hidden md:block absolute right-5 top-5"
           variant="link"
@@ -48,7 +48,7 @@ export const ConfirmAccount = forwardRef<undefined, ConfirmAccountProps>(
           <p className="text-ink-primary-900 h4-bold">{m["modals.accountCreation.title"]()}</p>
         </div>
 
-        <span className="h-[1px] w-full bg-overlay-secondary-gray" />
+        <span className="h-[1px] w-full bg-outline-secondary-gray" />
 
         <div className=" flex flex-col gap-4 p-4 py-0 md:p-6 md:py-0">
           <div className="flex flex-col gap-2 w-full">

@@ -53,7 +53,7 @@ export const ActivityConvertModal = forwardRef(() => {
               <p className="text-ink-tertiary-500 diatype-sm-regular">$20.00</p>
             </div>
           </div>
-          <span className="w-full h-[1px] bg-overlay-secondary-gray my-2" />
+          <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
           <div className="flex flex-col gap-2 w-full">
             <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
               <p className="diatype-sm-regular text-ink-tertiary-500">
