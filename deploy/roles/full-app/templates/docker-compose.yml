@@ -12,7 +12,7 @@ services:
       <<: *common-labels
       service_name: "postgres"
     environment:
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_DB=${POSTGRES_DATABASE}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
@@ -59,14 +59,14 @@ services:
       - "${DEPLOYMENT_DIR}/clickhouse/init.sh:/docker-entrypoint-initdb.d/init.sh"
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
-      INDEXER__CLICKHOUSE__PASSWORD: ${INDEXER__CLICKHOUSE__PASSWORD}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
     healthcheck:
       test: >
-        bash -c 'clickhouse-client --user default --password "$$INDEXER__CLICKHOUSE__PASSWORD" --query "SELECT 1"'
+        bash -c 'clickhouse-client --user default --password "$$CLICKHOUSE_PASSWORD" --query "SELECT 1"'
       interval: 5s
       timeout: 5s
       retries: 10
@@ -97,10 +97,10 @@ services:
     volumes:
       - "${DEPLOYMENT_DIR}/dango:/root/.dango"
     environment:
-      - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL}
+      - INDEXER__DATABASE__URL=${POSTGRES_DATABASE_URL}
       - INDEXER__CLICKHOUSE__USER=default
-      - INDEXER__CLICKHOUSE__PASSWORD=${INDEXER__CLICKHOUSE__PASSWORD}
-      - INDEXER__CLICKHOUSE__DATABASE=${INDEXER__CLICKHOUSE__DATABASE}
+      - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD}
+      - INDEXER__CLICKHOUSE__DATABASE=${CLICKHOUSE_DATABASE}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
