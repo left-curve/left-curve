@@ -50,14 +50,14 @@ impl ProposalPreparer<PythClient> {
         let mut client = None;
 
         if access_token.to_string().is_empty() {
-            warn!("Access token for Pyth Lazer is empty, oracle feeding will be disabled");
+            warn!("Pyth Lazer access token is empty! Oracle feeding is disabled");
         } else if endpoints.length() == 0 {
-            warn!("Endpoints for Pyth Lazer not provided, oracle feeding will be disabled");
+            warn!("Pyth Lazer endpoints not provided! Oracle feeding is disabled");
         } else {
             client = Some(Mutex::new(PythHandler::new_with_lazer(
                 NonEmpty::new(endpoints).unwrap(),
                 access_token,
-            )))
+            )));
         }
 
         Self {
@@ -149,6 +149,6 @@ where
 pub fn init_metrics() {
     describe_histogram!(
         "proposal_preparer.prepare_proposal.duration",
-        "Duration of the prepare_proposal method in seconds",
+        "Duration of the `prepare_proposal` method in seconds",
     );
 }
