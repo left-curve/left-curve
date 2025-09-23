@@ -142,6 +142,9 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         )?;
     }
 
+    #[cfg(feature = "metrics")]
+    let now_volume = std::time::Instant::now();
+
     // Calculate the timestamp of `MAX_VOLUME_AGE` ago. Volume data older than
     // this timestamp are to be purged from storage.
     // Use `saturating_sub` because tests sometimes use small timestamps.
@@ -158,6 +161,12 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
 
         purge_old_volume_data(VOLUMES_BY_USER, &username, ctx.storage, cutoff)?;
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_DURATION_STORE_VOLUME)
+            .record(now_volume.elapsed().as_secs_f64());
     }
 
     // Round refunds and fee to integer amounts. Round _down_ in both cases.
