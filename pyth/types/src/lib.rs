@@ -1,10 +1,10 @@
+mod backoff;
 pub mod constants;
 mod lazer;
 pub mod metrics;
 mod traits;
-mod types;
 
-pub use {lazer::*, traits::*, types::*};
+pub use {backoff::*, lazer::*, traits::*};
 
 // Re-exports
 pub use pyth_lazer_protocol::{
