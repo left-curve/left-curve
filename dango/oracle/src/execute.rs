@@ -149,17 +149,26 @@ fn verify_pyth_lazer_message(
     api: &dyn Api,
     message: &LeEcdsaMessage,
 ) -> anyhow::Result<()> {
-    let msg_hash = api.keccak256(&message.payload);
-
-    let pk =
-        api.secp256k1_pubkey_recover(&msg_hash, &message.signature, message.recovery_id, true)?;
+    // Recover the signer public key from the message.
+    let pk = api.secp256k1_pubkey_recover(
+        &api.keccak256(&message.payload),
+        &message.signature,
+        message.recovery_id,
+        true,
+    )?;
 
     // Ensure the signer is trusted.
     match PYTH_LAZER_TRUSTED_SIGNERS.may_load(storage, &pk)? {
-        Some(timestamp) => {
-            ensure!(timestamp > current_time, "signer is no longer trusted");
+        Some(expiration) => {
+            ensure!(
+                expiration > current_time,
+                "signer is no longer trusted! public key: {}, expired at: {}, current time: {}",
+                hex::encode(&pk),
+                expiration.to_rfc3339_string(),
+                current_time.to_rfc3339_string()
+            );
         },
-        None => bail!("signer is not trusted"),
+        None => bail!("signer is not trusted! public key: {}", hex::encode(&pk)),
     }
 
     Ok(())

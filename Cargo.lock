@@ -3548,6 +3548,7 @@ dependencies = [
  "dango-lending",
  "dango-types",
  "grug",
+ "hex",
  "pyth-types",
  "test-case",
 ]
