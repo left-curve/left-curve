@@ -17,6 +17,7 @@ use {
 async fn test_lazer_stream() {
     let client =
         PythClientCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer-token").unwrap();
+
     test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
         ETH_USD_ID,
         ATOM_USD_ID,
