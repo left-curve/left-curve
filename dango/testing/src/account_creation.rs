@@ -14,7 +14,7 @@ use {
     grug_vm_rust::RustVm,
     hyperlane_types::constants::solana,
     indexer_hooked::HookedIndexer,
-    pyth_lazer::PythClientLazerCache,
+    pyth_client::PythClientLazerCache,
     std::{ops::DerefMut, str::FromStr},
 };
 

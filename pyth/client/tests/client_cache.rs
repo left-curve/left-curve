@@ -4,7 +4,7 @@ use {
     crate::common_function::test_stream,
     grug::NonEmpty,
     indexer_disk_saver::persistence::DiskPersistence,
-    pyth_lazer::{PYTH_CACHE_SAMPLES, PythClientLazerCache},
+    pyth_client::{PYTH_CACHE_SAMPLES, PythClientLazerCache},
     pyth_types::{
         LeEcdsaMessage,
         constants::{

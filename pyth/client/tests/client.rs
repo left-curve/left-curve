@@ -12,7 +12,7 @@ use {
         routing::get,
     },
     grug::{Inner, NonEmpty, setup_tracing_subscriber},
-    pyth_lazer::{PythClientLazer, PythClientLazerCache},
+    pyth_client::{PythClientLazer, PythClientLazerCache},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
         binary_update::BinaryWsUpdate,

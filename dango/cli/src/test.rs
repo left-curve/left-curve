@@ -4,7 +4,7 @@ use {
     config_parser::parse_config,
     grug::Inner,
     grug_types::NonEmpty,
-    pyth_lazer::PythClientLazerCache,
+    pyth_client::PythClientLazerCache,
     pyth_types::{
         PayloadData, PythClientTrait,
         constants::{BTC_USD_ID_LAZER, ETH_USD_ID_LAZER},

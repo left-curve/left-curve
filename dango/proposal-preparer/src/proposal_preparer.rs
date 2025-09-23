@@ -6,7 +6,7 @@ use {
         Tx,
     },
     prost::bytes::Bytes,
-    pyth_lazer::{PythClientLazer, PythClientLazerCache},
+    pyth_client::{PythClientLazer, PythClientLazerCache},
     pyth_types::{PythClientTrait, constants::LAZER_ENDPOINTS_TEST},
     reqwest::IntoUrl,
     std::{fmt::Debug, sync::Mutex},
