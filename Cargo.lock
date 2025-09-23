@@ -7595,10 +7595,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "byteorder",
- "data-encoding",
  "grug",
- "hex-literal",
  "pyth-lazer-protocol",
  "tokio-stream",
 ]
