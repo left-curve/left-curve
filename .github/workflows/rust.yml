@@ -23,6 +23,7 @@ on:
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
+      - "pyth/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "clippy.toml"
@@ -42,6 +43,7 @@ on:
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
+      - "pyth/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "clippy.toml"
@@ -228,7 +230,7 @@ jobs:
           # when needing to try on all runner types
           # - [self-hosted, Linux]
           # - [self-hosted, macOS]
-    name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
+    name: Build backend for ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
     needs: [backend-test]
     permissions:
@@ -407,7 +409,7 @@ jobs:
           # NOTE: building arm on `self-hosted` is very very slow
           - arch: arm64
             runner: ubuntu-24.04-arm
-    name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
+    name: Build frontend for ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
     env:
       GITHUB_USER: ${{ github.actor }}
@@ -525,6 +527,7 @@ jobs:
       # Still using this as ENV for the bots ansible playbook to login properly
       GITHUB_USER: ${{ github.actor }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PYTH_ACCESS_TOKEN: ${{ secrets.PYTH_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:

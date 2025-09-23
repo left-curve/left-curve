@@ -6,7 +6,7 @@ export const ProSwapMarketClose = forwardRef(() => {
   const { hideModal } = useApp();
 
   return (
-    <div className="flex flex-col bg-surface-primary-rice md:border border-overlay-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[25rem]">
+    <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[25rem]">
       <div className="flex flex-col gap-2">
         <h2 className="text-ink-primary-900 h4-bold w-full">Market Close</h2>
         <p className="text-ink-tertiary-500 diatype-sm-regular">

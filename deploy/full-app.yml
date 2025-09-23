@@ -33,6 +33,7 @@
     postgres_database: "dango_{{ dango_network }}_{{ timestamp }}"
     clickhouse_database: "dango_{{ dango_network }}_{{ timestamp }}"
     deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    pyth_access_token: "{{ lookup('env', 'PYTH_ACCESS_TOKEN') }}"
   collections:
     - community.docker
     - community.clickhouse

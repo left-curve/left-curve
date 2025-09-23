@@ -252,7 +252,7 @@ where
         oracle_code_hash,
         &oracle::InstantiateMsg {
             price_sources: opt.oracle.pyth_price_sources,
-            guardian_sets: opt.oracle.wormhole_guardian_sets,
+            trusted_signers: opt.oracle.pyth_trusted_signers,
         },
         "dango/oracle",
         "dango/oracle",

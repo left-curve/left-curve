@@ -34,20 +34,20 @@
   --color-surface-playground: #FFF;
 
 
-  /* Overlay (Border) */
-  --color-overlay-primary-gray: theme('colors.primitives.gray.light.200');
-  --color-overlay-primary-blue: theme('colors.primitives.blue.light.500');
-  --color-overlay-primary-green: theme('colors.primitives.green.light.300');
-  --color-overlay-primary-red: theme('colors.primitives.red.light.300');
-  --color-overlay-primary-rice: theme('colors.primitives.rice.light.300');
+  /* outline (Border) */
+  --color-outline-primary-gray: theme('colors.primitives.gray.light.200');
+  --color-outline-primary-blue: theme('colors.primitives.blue.light.500');
+  --color-outline-primary-green: theme('colors.primitives.green.light.300');
+  --color-outline-primary-red: theme('colors.primitives.red.light.300');
+  --color-outline-primary-rice: theme('colors.primitives.rice.light.300');
 
-  --color-overlay-secondary-gray: theme('colors.primitives.gray.light.100');
-  --color-overlay-secondary-green: theme('colors.primitives.green.light.200');
-  --color-overlay-secondary-red: theme('colors.primitives.red.light.200');
-  --color-overlay-secondary-rice: theme('colors.primitives.rice.light.200');
+  --color-outline-secondary-gray: theme('colors.primitives.gray.light.100');
+  --color-outline-secondary-green: theme('colors.primitives.green.light.200');
+  --color-outline-secondary-red: theme('colors.primitives.red.light.200');
+  --color-outline-secondary-rice: theme('colors.primitives.rice.light.200');
 
-  --color-overlay-tertiary-blue: theme('colors.primitives.blue.light.200');
-  --color-overlay-tertiary-rice: theme('colors.primitives.rice.light.100');
+  --color-outline-tertiary-blue: theme('colors.primitives.blue.light.200');
+  --color-outline-tertiary-rice: theme('colors.primitives.rice.light.100');
 
 
   /* fg (Foreground) */
@@ -152,20 +152,20 @@
   --color-surface-playground: #1e1e1e;
 
 
-  /* Overlay (Border) */
-  --color-overlay-primary-gray: theme('colors.primitives.gray.dark.700');
-  --color-overlay-primary-blue: theme('colors.primitives.blue.dark.500');
-  --color-overlay-primary-green: theme('colors.primitives.green.dark.600');
-  --color-overlay-primary-red: theme('colors.primitives.red.dark.600');
-  --color-overlay-primary-rice: theme('colors.primitives.rice.dark.700');
+  /* outline (Border) */
+  --color-outline-primary-gray: theme('colors.primitives.gray.dark.700');
+  --color-outline-primary-blue: theme('colors.primitives.blue.dark.500');
+  --color-outline-primary-green: theme('colors.primitives.green.dark.600');
+  --color-outline-primary-red: theme('colors.primitives.red.dark.600');
+  --color-outline-primary-rice: theme('colors.primitives.rice.dark.700');
 
-  --color-overlay-secondary-gray: theme('colors.primitives.gray.dark.800');
-  --color-overlay-secondary-green: theme('colors.primitives.green.dark.700');
-  --color-overlay-secondary-red: theme('colors.primitives.red.dark.700');
-  --color-overlay-secondary-rice: theme('colors.primitives.rice.dark.800');
+  --color-outline-secondary-gray: theme('colors.primitives.gray.dark.800');
+  --color-outline-secondary-green: theme('colors.primitives.green.dark.700');
+  --color-outline-secondary-red: theme('colors.primitives.red.dark.700');
+  --color-outline-secondary-rice: theme('colors.primitives.rice.dark.800');
 
-  --color-overlay-tertiary-blue: theme('colors.primitives.blue.dark.700');
-  --color-overlay-tertiary-rice: theme('colors.primitives.rice.dark.900');
+  --color-outline-tertiary-blue: theme('colors.primitives.blue.dark.700');
+  --color-outline-tertiary-rice: theme('colors.primitives.rice.dark.900');
 
 
   /* fg (Foreground) */

@@ -1,7 +1,7 @@
 use {
     dango_dex::{MAX_VOLUME_AGE, VOLUMES, VOLUMES_BY_USER},
     dango_genesis::Contracts,
-    dango_oracle::{PRICE_SOURCES, PRICES},
+    dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
     dango_testing::{BridgeOp, TestAccount, TestOption, TestSuite, setup_test_naive},
     dango_types::{
         account::single::Params,
@@ -1518,8 +1518,8 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                 usdc::DENOM.clone() => 100_000,
             },
         )
-        .should_fail_with_error(StdError::data_not_found::<(PrecisionlessPrice, u64)>(
-            PRICES.path(USDC_USD_ID).storage_key(),
+        .should_fail_with_error(StdError::data_not_found::<PrecisionlessPrice>(
+            PYTH_PRICES.path(USDC_USD_ID.id).storage_key(),
         ));
 }
 

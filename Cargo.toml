@@ -102,7 +102,7 @@ async-std                   = { version = "1", features = ["attributes", "tokio1
 async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
-axum                        = "0.8"
+axum                        = { version = "0.8", features = ["ws"] }
 base64                      = "0.22"
 bigdecimal                  = "0.4"
 bip32                       = "0.5"
@@ -110,7 +110,6 @@ blake2                      = "0.10"
 blake3                      = "1"
 bnum                        = "0.13"
 borsh                       = "1"
-byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
 clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs" } # TODO: use crates.io once the latest version is published
@@ -152,8 +151,8 @@ proc-macro2                 = "1"
 prometheus                  = "0.13"
 proptest                    = "1"
 prost                       = "0.13"
-pyth-sdk                    = "0.8"
-pythnet-sdk                 = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
+pyth-lazer-client           = "8"
+pyth-lazer-protocol         = "0.15"
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                     = { version = "0.12", features = ["stream"] }

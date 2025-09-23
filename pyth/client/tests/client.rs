@@ -1,174 +1,318 @@
-mod common_function;
+pub mod common_function;
 
 use {
+    crate::common_function::test_stream,
     axum::{
         Router,
-        extract::State,
-        response::sse::{Event, Sse},
+        extract::{
+            State, WebSocketUpgrade,
+            ws::{Message, WebSocket},
+        },
+        response::IntoResponse,
         routing::get,
-        serve,
     },
-    common_function::{test_latest_vaas, test_stream},
-    futures::stream::{self, Stream},
-    grug::{JsonSerExt, NonEmpty},
+    grug::{NonEmpty, setup_tracing_subscriber},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    pyth_lazer_protocol::{
+        api::{SubscriptionId, WsRequest},
+        binary_update::BinaryWsUpdate,
+        message::Message as PythMessage,
+    },
     pyth_types::{
-        LatestVaaBinaryResponse, LatestVaaResponse,
-        constants::{ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_URL},
+        PythLazerSubscriptionDetails,
+        constants::{ATOM_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LAZER_ENDPOINTS_TEST},
     },
     rand::Rng,
-    std::{
-        convert::Infallible,
-        sync::{
-            Arc,
-            atomic::{AtomicUsize, Ordering},
-        },
-        time::Duration,
-    },
-    tokio::{
-        net::TcpListener,
-        time::{interval, sleep},
-    },
+    reqwest::StatusCode,
+    std::{net::SocketAddr, sync::Arc, time::Duration},
+    tokio::{select, sync::Mutex, time::sleep},
     tokio_stream::StreamExt,
-    tracing::{info, warn},
+    tracing::{Level, error, info},
 };
 
-#[ignore = "rely on network calls"]
-#[test]
-fn latest_vaas_network() {
-    let pyth_client = PythClient::new(PYTH_URL).unwrap();
-    test_latest_vaas(pyth_client, vec![BTC_USD_ID, ETH_USD_ID]);
-}
+const TOKEN: &str = "inser_lazer_token_here";
 
 #[ignore = "rely on network calls"]
 #[tokio::test]
-async fn test_sse_stream() {
-    let client = PythClient::new(PYTH_URL).unwrap();
-    test_stream(client, vec![BTC_USD_ID, ETH_USD_ID], vec![
+async fn test_lazer_stream() {
+    setup_tracing_subscriber(Level::INFO);
+
+    let client = PythClient::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN).unwrap();
+
+    test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
+        ETH_USD_ID,
         ATOM_USD_ID,
-        BNB_USD_ID,
     ])
     .await;
 }
 
-#[tokio::test]
-async fn test_client_reconnection() {
+// This is used to test the reconnection logic of the PythClientLazer.
+// This test will:
+// - Start 2 WS servers, one that will drop the connection after sending a few messages
+//   and one that will keep the connection alive.
+// - Create a PythClientLazer with both servers as endpoints.
+// - Start a stream with the client.
+// - Wait for a few seconds to allow the client to reconnect.
+// - Ensure the client has reconnected multiple times;
+// - Ensure there are some data in the stream.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn reconnection() {
+    setup_tracing_subscriber(Level::DEBUG);
+
     // Random port 15k - 16k.
     let mut rng = rand::thread_rng();
     let port = rng.gen_range(15000..16000);
+    let port_alive = rng.gen_range(15000..16000);
 
-    let mut client = PythClient::new(format!("http://127.0.0.1:{port}")).unwrap();
+    // Run the mock ws server to keep connection alive.
+    run_server(port_alive, true).await;
+
+    // Run the mock ws server that drop connection.
+    run_server(port, false).await;
+
+    let mut client = PythClient::new(
+        NonEmpty::new_unchecked(vec![
+            format!("ws://0.0.0.0:{port}/ws"),
+            format!("ws://0.0.0.0:{port_alive}/ws"),
+        ]),
+        "test",
+    )
+    .unwrap();
+
+    // Start the stream.
     let mut stream = client
         .stream(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
         .await
         .unwrap();
 
-    // Start client before the server to ensure that the client in able to reconnect.
-    tokio::select! {
-        _ = tokio::time::sleep(Duration::from_secs(6)) => (),
-        _ = stream.next() => {
-            panic!("Stream should be empty")
+    // The server will send some data to the ws connection. What we want to test is
+    // that the client will try to reconnect when the server close the connection.
+    // This mean we only check how many times the server received a new connection
+    // from the PythClientLazer.
+    sleep(Duration::from_secs(8)).await;
+
+    // Check how many reconnection attempts the server received.
+    let reconnections_alive = reqwest::get(format!("http://0.0.0.0:{port_alive}/reconnections"))
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap()
+        .trim()
+        .parse::<usize>()
+        .unwrap();
+
+    let reconnections = reqwest::get(format!("http://0.0.0.0:{port}/reconnections"))
+        .await
+        .unwrap()
+        .text()
+        .await
+        .unwrap()
+        .trim()
+        .parse::<usize>()
+        .unwrap();
+
+    assert!(
+        reconnections_alive >= 1,
+        "Expected at least 1 reconnection attempt on the alive server"
+    );
+
+    assert!(
+        reconnections >= 2,
+        "Expected at least 2 reconnection attempts"
+    );
+
+    select! {
+        _ = sleep(Duration::from_secs(1)) => {
+            error!("Test timed out waiting for stream data");
+            panic!( "Test timed out waiting for stream data");
         },
-    }
-
-    start_server(port).await;
-
-    // Read some data from the stream.
-    // During this pull, the client will receive:
-    // - valid data;
-    // - invalid data;
-    // - connection close;
-    // - panic from the server;
-    // - no data for an extended period of time;
-    // Each time the client should be able to reconnect.
-    for _ in 0..10 {
-        tokio::select! {
-            _ = tokio::time::sleep(Duration::from_secs(5)) => {
-                panic!("The client has not received any data for 10 seconds")
-            },
-            _ = stream.next() => {},
+        data = stream.next() => {
+            assert!(data.is_some(), "Expected some data from the stream")
         }
     }
 }
 
-async fn start_server(port: u16) {
-    let counter = Arc::new(AtomicUsize::new(0));
-    let app = Router::new()
-        .route("/v2/updates/price/stream", get(sse_handler))
-        .with_state(counter.clone());
+#[derive(Clone)]
+struct AppState {
+    // The PythLazer client will send 4 connections during subscription.
+    // This vector is used to filter out duplicate connections, in order to count
+    // correctly the reconnection attempts.
+    connections: Arc<Mutex<Vec<SubscriptionId>>>,
+    // Number of reconnection attempts.
+    reconnection_attempts: Arc<Mutex<usize>>,
+    keep_connection_alive: bool,
+}
 
-    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))
-        .await
-        .unwrap();
+async fn run_server(port: u32, keep_connection_alive: bool) {
+    let state = AppState {
+        connections: Arc::new(Mutex::new(vec![])),
+        reconnection_attempts: Arc::new(Mutex::new(0)),
+        keep_connection_alive,
+    };
+
+    let app = Router::new()
+        .route("/reconnections", get(reconnection_attempts))
+        .route("/ws", get(ws_handler))
+        .with_state(state);
+
+    let addr: SocketAddr = format!("0.0.0.0:{port}").parse().unwrap();
+    info!("listening on {addr}");
 
     tokio::spawn(async move {
-        serve(listener, app.into_make_service()).await.unwrap();
+        axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
+            .await
+            .unwrap();
     });
 }
 
-async fn sse_handler(
-    State(counter): State<Arc<AtomicUsize>>,
-) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    let pyth_client_cache = PythClientCache::new(PYTH_URL).unwrap();
+// Return the number of reconnection attempts.
+async fn reconnection_attempts(State(state): State<AppState>) -> impl IntoResponse {
+    let reconnection_attempts = state.reconnection_attempts.lock().await;
 
-    // Create the data to send to the client.
-    let mut values = vec![];
-    for _ in 0..3 {
-        let latest_vaas = pyth_client_cache
-            .get_latest_vaas(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
-            .unwrap();
-        let data = LatestVaaResponse {
-            binary: LatestVaaBinaryResponse { data: latest_vaas },
-        };
+    let attempts = *reconnection_attempts;
+    (StatusCode::OK, attempts.to_string())
+}
 
-        match data.to_json_value() {
-            Ok(data) => values.push(data),
-            Err(err) => info!(
-                error = err.to_string(),
-                "Error creating json from LatestVaaResponse"
-            ),
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
+    ws.on_upgrade(move |socket| handle_socket(socket, state))
+}
+
+async fn handle_socket(socket: WebSocket, state: AppState) {
+    let socket = Arc::new(Mutex::new(socket));
+
+    // Read the first message to get the subscription details.
+    let first = {
+        let mut guard = socket.lock().await;
+        guard.recv().await
+    };
+
+    // Read the subscription request.
+    let (subscription_id, price_ids) = match first {
+        Some(Ok(Message::Text(txt))) => match serde_json::from_str::<WsRequest>(&txt) {
+            Ok(request) => match request {
+                WsRequest::Subscribe(sub) => {
+                    (sub.subscription_id, sub.params.price_feed_ids.clone())
+                },
+                _ => {
+                    error!("received unexpected request {request:#?}");
+                    return;
+                },
+            },
+            Err(_) => todo!(),
+        },
+        _ => {
+            error!("received unexpected msg {first:#?}");
+            return;
+        },
+    };
+
+    // Check if this is a reconnection attempts or just a duplicate connection.
+    let mut print_info = true;
+    {
+        let mut connections = state.connections.lock().await;
+
+        // Duplicate connection, do not count it.
+        if connections.contains(&subscription_id) {
+            // Reject any duplicate connection in case the server keep alive
+            // in order to have a clean test.
+            if state.keep_connection_alive {
+                return;
+            }
+            print_info = false;
+        } else {
+            // New connection.
+            info!("Client sent ids {price_ids:#?}");
+            connections.push(subscription_id);
+
+            // Increment the number of reconnection attempts.
+            let mut reconnection_attempts = state.reconnection_attempts.lock().await;
+            *reconnection_attempts += 1;
         }
     }
 
-    let request_index = counter.clone().fetch_add(1, Ordering::SeqCst);
+    // Start a client cache in order to read the data from file.
+    let mut pyth_client_cache =
+        match PythClientCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN) {
+            Ok(client) => client,
+            Err(err) => {
+                error!("Error creating PythClientLazerCache: {err}");
+                return;
+            },
+        };
 
-    // Add invalid string in the values.
-    values.insert(1, "{}".to_json_value().unwrap());
+    let subscriptions = price_ids
+        .unwrap()
+        .into_iter()
+        .map(|id| PythLazerSubscriptionDetails {
+            id: id.0,
+            channel: pyth_types::Channel::RealTime,
+        })
+        .collect::<Vec<_>>();
 
-    let stream = stream::unfold(
-        (
-            0u32,
-            interval(Duration::from_millis(700)),
-            values,
-            request_index,
-        ),
-        |(mut count, mut int, values, request_index)| async move {
-            int.tick().await;
+    let mut stream = pyth_client_cache
+        .stream(NonEmpty::new_unchecked(subscriptions))
+        .await
+        .unwrap();
 
-            let json = if let Some(json) = values.get(count as usize) {
-                info!("Sending data to the client");
-                count += 1;
-                json.clone()
-            } else {
-                // Wait some times to trigger the reconnect from client.
-                if request_index == 0 {
-                    sleep(Duration::from_secs(10)).await;
-                } else if request_index == 1 {
-                    // Panic to simulate an unexpected disconnection.
-                    warn!("Panic inside the server");
-                    panic!("BOOM 💥");
-                }
-                // None to simulate a connection close.
-                warn!("Closing server connection");
-                return None;
-            };
+    sleep(Duration::from_secs(1)).await;
 
-            Some((
-                Ok(Event::default().json_data(json).unwrap()),
-                (count, int, values, request_index),
-            ))
-        },
-    );
+    // Send some value;
+    let send_socket = Arc::clone(&socket);
+    let mut iteration = 0;
 
-    Sse::new(stream)
+    // If the server is set to keep the connection alive, send basically all data we have.
+    // Otherwise just send a few messages and close the connection.
+    let max_iteration = if state.keep_connection_alive {
+        300
+    } else {
+        3
+    };
+
+    // Read data from cache and send it to the client.
+    while let Some(data) = stream.next().await {
+        iteration += 1;
+        if iteration >= max_iteration {
+            if print_info {
+                info!("server closing connection after {iteration} messages");
+            }
+            break;
+        }
+
+        let msg = data.first().cloned().unwrap();
+
+        let send_msg = BinaryWsUpdate {
+            subscription_id,
+            messages: vec![PythMessage::LeEcdsa(msg.into())],
+        };
+
+        let mut buf = vec![];
+        send_msg.serialize(&mut buf).unwrap();
+
+        if print_info {
+            info!("Sending data to the client {iteration}");
+        }
+        send_socket
+            .lock()
+            .await
+            .send(Message::binary(buf))
+            .await
+            .unwrap()
+    }
+
+    // Check if we need to keep the connection alive.
+    if state.keep_connection_alive {
+        // Keep the connection alive for a bit.
+        sleep(Duration::from_secs(100)).await;
+    }
+
+    // Remove the connection.
+    let mut connections = state.connections.lock().await;
+    connections.retain(|id| *id != subscription_id);
+    if print_info {
+        info!(
+            "Connection closed, remaining connections: {:#?}",
+            *connections
+        );
+    }
 }

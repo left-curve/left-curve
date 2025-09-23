@@ -20,6 +20,8 @@
         service: dex-bot
         command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
         tty: yes
+      retries: 3
+      delay: 5
 
     - name: Mark liquidity setup as done
       file:
