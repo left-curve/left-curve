@@ -1,7 +1,7 @@
 use {
     crate::oracle::Precision,
     grug::{Timestamp, Udec128},
-    pyth_types::{Channel, PythLazerId},
+    pyth_types::{Channel, PythId},
 };
 
 #[grug::derive(Serde)]
@@ -20,7 +20,7 @@ pub enum PriceSource {
     /// A price source that uses price feeds from Pyth Lazer.
     Pyth {
         /// The Pyth Lazer ID of the price feed.
-        id: PythLazerId,
+        id: PythId,
         /// The number of decimal places of the token that is used to convert
         /// the price from its smallest unit to a humanized form. E.g. 1 ATOM
         /// is 10^6 uatom, so the precision is 6.

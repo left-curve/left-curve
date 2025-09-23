@@ -10,7 +10,7 @@ use {
         Addr, Cache, Denom, Number, QuerierWrapper, StdResult, Storage, StorageQuerier, Timestamp,
         Udec128,
     },
-    pyth_types::PythLazerId,
+    pyth_types::PythId,
     std::{cell::OnceCell, collections::HashMap},
 };
 
@@ -156,7 +156,7 @@ enum OracleContext<'a> {
 
 #[rustfmt::skip]
 impl OracleContext<'_> {
-    fn get_lazer_price(&self, lazer_id: PythLazerId) -> StdResult<PrecisionlessPrice> {
+    fn get_lazer_price(&self, lazer_id: PythId) -> StdResult<PrecisionlessPrice> {
         match self {
             OracleContext::Local { storage } => {
                 PYTH_PRICES.load(*storage, lazer_id)

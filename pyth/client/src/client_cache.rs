@@ -5,7 +5,7 @@ use {
     grug::{Inner, Lengthy, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
     pyth_types::{
-        LeEcdsaMessage, PriceUpdate, PythClientTrait, PythLazerId, PythLazerSubscriptionDetails,
+        LeEcdsaMessage, PriceUpdate, PythClientTrait, PythId, PythLazerSubscriptionDetails,
     },
     reqwest::IntoUrl,
     std::{
@@ -98,7 +98,7 @@ impl PythClientLazerCache {
         stored_data
     }
 
-    pub fn cache_filename(id: &PythLazerId) -> PathBuf {
+    pub fn cache_filename(id: &PythId) -> PathBuf {
         let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
         let start_path = Path::new(&manifest_dir);

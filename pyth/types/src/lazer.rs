@@ -3,13 +3,13 @@ use {
     pyth_lazer_protocol::{api::Channel, message::LeEcdsaMessage as LazerLeEcdsaMessage},
 };
 
-pub type PythLazerId = u32;
+pub type PythId = u32;
 
 pub type PriceUpdate = NonEmpty<Vec<LeEcdsaMessage>>;
 
 #[grug::derive(Serde)]
 pub struct PythLazerSubscriptionDetails {
-    pub id: PythLazerId,
+    pub id: PythId,
     pub channel: Channel,
 }
 
