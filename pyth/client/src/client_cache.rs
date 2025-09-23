@@ -1,5 +1,5 @@
 use {
-    crate::PythClientLazer,
+    crate::PythClient,
     async_stream::stream,
     async_trait::async_trait,
     grug::{Inner, Lengthy, NonEmpty},
@@ -28,20 +28,20 @@ use {
 pub const PYTH_CACHE_SAMPLES: usize = 50;
 
 #[derive(Debug, Clone)]
-pub struct PythClientLazerCache {
-    client: PythClientLazer,
+pub struct PythClientCache {
+    client: PythClient,
     // Used to return newer vaas at each call.
     keep_running: Arc<AtomicBool>,
 }
 
-impl PythClientLazerCache {
+impl PythClientCache {
     pub fn new<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> Result<Self, anyhow::Error>
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
-        let client = PythClientLazer::new(endpoints, access_token)?;
+        let client = PythClient::new(endpoints, access_token)?;
         Ok(Self {
             client,
             keep_running: Arc::new(AtomicBool::new(true)),
@@ -115,7 +115,7 @@ impl PythClientLazerCache {
 }
 
 #[async_trait]
-impl PythClientTrait for PythClientLazerCache {
+impl PythClientTrait for PythClientCache {
     type Error = anyhow::Error;
     type PythId = PythLazerSubscriptionDetails;
 

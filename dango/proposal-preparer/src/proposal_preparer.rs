@@ -6,7 +6,7 @@ use {
         Tx,
     },
     prost::bytes::Bytes,
-    pyth_client::{PythClientLazer, PythClientLazerCache},
+    pyth_client::{PythClient, PythClientCache},
     pyth_types::{PythClientTrait, constants::LAZER_ENDPOINTS_TEST},
     reqwest::IntoUrl,
     std::{fmt::Debug, sync::Mutex},
@@ -37,7 +37,7 @@ where
     }
 }
 
-impl ProposalPreparer<PythClientLazer> {
+impl ProposalPreparer<PythClient> {
     pub fn new_with_lazer<V, U, T>(endpoints: V, access_token: T) -> Self
     where
         V: IntoIterator<Item = U> + Lengthy,
@@ -66,7 +66,7 @@ impl ProposalPreparer<PythClientLazer> {
     }
 }
 
-impl ProposalPreparer<PythClientLazerCache> {
+impl ProposalPreparer<PythClientCache> {
     pub fn new_with_lazer_cache() -> Self {
         #[cfg(feature = "metrics")]
         init_metrics();

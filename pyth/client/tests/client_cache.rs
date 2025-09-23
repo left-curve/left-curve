@@ -4,7 +4,7 @@ use {
     crate::common_function::test_stream,
     grug::NonEmpty,
     indexer_disk_saver::persistence::DiskPersistence,
-    pyth_client::{PYTH_CACHE_SAMPLES, PythClientLazerCache},
+    pyth_client::{PYTH_CACHE_SAMPLES, PythClientCache},
     pyth_types::{
         LeEcdsaMessage,
         constants::{
@@ -16,8 +16,7 @@ use {
 #[tokio::test]
 async fn test_lazer_stream() {
     let client =
-        PythClientLazerCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer-token")
-            .unwrap();
+        PythClientCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer-token").unwrap();
     test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
         ETH_USD_ID,
         ATOM_USD_ID,
@@ -33,13 +32,12 @@ fn create_cache() {
     let update_ids = LAZER_ID_ALL;
 
     let mut client =
-        PythClientLazerCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer_token")
-            .unwrap();
+        PythClientCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer_token").unwrap();
     client.load_or_retrieve_data(NonEmpty::new_unchecked(update_ids.clone()));
 
     for subscription_details in update_ids {
         let id = subscription_details.id;
-        let filename = PythClientLazerCache::cache_filename(&id);
+        let filename = PythClientCache::cache_filename(&id);
 
         let mut cache_file = DiskPersistence::new(filename, true);
 

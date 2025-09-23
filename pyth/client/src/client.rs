@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use metrics::{counter, describe_counter, describe_histogram, histogram};
 use {
     async_stream::stream,
     grug::{Inner, Lengthy, NonEmpty},
@@ -29,20 +31,17 @@ use {
     url::Url,
 };
 
-#[cfg(feature = "metrics")]
-use metrics::{counter, describe_counter, describe_histogram, histogram};
-
 pub const RESUBSCRIBE_ATTEMPTS: u32 = 5;
 
 #[derive(Clone, Debug)]
-pub struct PythClientLazer {
+pub struct PythClient {
     endpoints: Vec<Url>,
     access_token: String,
     keep_running: Arc<AtomicBool>,
     last_subscription_id: u64,
 }
 
-impl PythClientLazer {
+impl PythClient {
     pub fn new<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> Result<Self, anyhow::Error>
     where
         V: IntoIterator<Item = U> + Lengthy,
@@ -52,7 +51,7 @@ impl PythClientLazer {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        Ok(PythClientLazer {
+        Ok(PythClient {
             endpoints: endpoints
                 .into_inner()
                 .into_iter()
@@ -358,7 +357,7 @@ impl PythClientLazer {
 }
 
 #[async_trait::async_trait]
-impl PythClientTrait for PythClientLazer {
+impl PythClientTrait for PythClient {
     type Error = anyhow::Error;
     type PythId = PythLazerSubscriptionDetails;
 

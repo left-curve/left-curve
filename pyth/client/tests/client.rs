@@ -12,7 +12,7 @@ use {
         routing::get,
     },
     grug::{NonEmpty, setup_tracing_subscriber},
-    pyth_client::{PythClientLazer, PythClientLazerCache},
+    pyth_client::{PythClient, PythClientCache},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
         binary_update::BinaryWsUpdate,
@@ -36,8 +36,7 @@ const TOKEN: &str = "inser_lazer_token_here";
 #[tokio::test]
 async fn test_lazer_stream() {
     setup_tracing_subscriber(Level::INFO);
-    let client =
-        PythClientLazer::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN).unwrap();
+    let client = PythClient::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN).unwrap();
     test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
         ETH_USD_ID,
         ATOM_USD_ID,
@@ -69,7 +68,7 @@ async fn reconnection() {
     // Run the mock ws server that drop connection.
     run_server(port, false).await;
 
-    let mut client = PythClientLazer::new(
+    let mut client = PythClient::new(
         NonEmpty::new_unchecked(vec![
             format!("ws://0.0.0.0:{port}/ws"),
             format!("ws://0.0.0.0:{port_alive}/ws"),
@@ -236,7 +235,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
     // Start a client cache in order to read the data from file.
     let mut pyth_client_cache =
-        match PythClientLazerCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN) {
+        match PythClientCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN) {
             Ok(client) => client,
             Err(err) => {
                 error!("Error creating PythClientLazerCache: {err}");

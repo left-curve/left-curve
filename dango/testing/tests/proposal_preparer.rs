@@ -9,7 +9,7 @@ use {
         Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
         btree_map, setup_tracing_subscriber,
     },
-    pyth_client::PythClientLazerCache,
+    pyth_client::PythClientCache,
     pyth_types::{
         Channel, FixedRate, PythClientTrait, PythLazerSubscriptionDetails,
         constants::{BTC_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER},
@@ -57,7 +57,7 @@ fn proposal_pyth_lazer() {
         pyth_ids.push(NOT_USED_ID_LAZER);
 
         // Ensure to have the cache files for all the ids.
-        PythClientLazerCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer_token")
+        PythClientCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer_token")
             .unwrap()
             .load_or_retrieve_data(NonEmpty::new_unchecked(pyth_ids));
     }
