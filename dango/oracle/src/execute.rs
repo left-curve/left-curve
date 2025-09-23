@@ -180,7 +180,7 @@ fn verify_pyth_lazer_message(
 mod tests {
     use {
         super::*,
-        grug::{Binary, Duration, EncodedBytes, MockApi, MockStorage, ResultExt},
+        grug::{Binary, ByteArray, Duration, MockApi, MockStorage, ResultExt},
         pyth_types::{LeEcdsaMessage, constants::LAZER_TRUSTED_SIGNER},
         std::str::FromStr,
     };
@@ -194,11 +194,11 @@ mod tests {
         let trusted_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
 
         let message = LeEcdsaMessage {
-            payload: vec![
+            payload: Binary::from_inner(vec![
                 117, 211, 199, 147, 144, 174, 214, 146, 181, 60, 6, 0, 1, 2, 1, 0, 0, 0, 1, 0, 212,
                 148, 165, 115, 126, 10, 0, 0, 2, 0, 0, 0, 1, 0, 177, 175, 142, 195, 99, 0, 0, 0,
-            ],
-            signature: EncodedBytes::from_inner([
+            ]),
+            signature: ByteArray::from_inner([
                 52, 175, 197, 246, 133, 14, 148, 65, 91, 0, 180, 102, 248, 223, 46, 31, 118, 26,
                 20, 175, 7, 25, 83, 195, 13, 207, 197, 56, 214, 149, 21, 131, 122, 198, 58, 56, 87,
                 57, 92, 85, 12, 226, 100, 89, 148, 98, 146, 187, 168, 111, 67, 248, 246, 131, 53,

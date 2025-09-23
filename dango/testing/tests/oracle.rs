@@ -5,7 +5,7 @@ use {
         oracle::{ExecuteMsg, PriceSource, QueryPriceRequest, QueryTrustedSignersRequest},
     },
     grug::{
-        Addr, Binary, Coins, EncodedBytes, NonEmpty, QuerierExt, ResultExt, Timestamp, Udec128,
+        Addr, Binary, ByteArray, Coins, NonEmpty, QuerierExt, ResultExt, Timestamp, Udec128,
         btree_map,
     },
     grug_app::NaiveProposalPreparer,
@@ -23,12 +23,12 @@ fn pyth_lazer() {
     let (mut suite, mut accounts, oracle) = setup_oracle_test();
 
     let message = LeEcdsaMessage {
-        payload: vec![
+        payload: Binary::from_inner(vec![
             117, 211, 199, 147, 192, 211, 105, 236, 97, 63, 6, 0, 1, 2, 1, 0, 0, 0, 2, 0, 62, 69,
             110, 163, 70, 10, 0, 0, 4, 248, 255, 2, 0, 0, 0, 2, 0, 142, 173, 202, 117, 97, 0, 0, 0,
             4, 248, 255,
-        ],
-        signature: EncodedBytes::from_inner([
+        ]),
+        signature: ByteArray::from_inner([
             186, 96, 166, 26, 76, 188, 9, 187, 138, 228, 131, 44, 114, 155, 181, 87, 138, 140, 135,
             77, 124, 146, 141, 138, 208, 195, 55, 185, 146, 227, 205, 115, 68, 98, 149, 231, 81,
             228, 139, 163, 157, 174, 155, 188, 121, 0, 136, 119, 109, 122, 177, 102, 73, 190, 130,

@@ -11,12 +11,12 @@ use {
         response::IntoResponse,
         routing::get,
     },
-    grug::{Inner, NonEmpty, setup_tracing_subscriber},
+    grug::{NonEmpty, setup_tracing_subscriber},
     pyth_client::{PythClientLazer, PythClientLazerCache},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
         binary_update::BinaryWsUpdate,
-        message::{LeEcdsaMessage, Message as PythMessage},
+        message::Message as PythMessage,
     },
     pyth_types::{
         PythClientTrait, PythLazerSubscriptionDetails,
@@ -289,11 +289,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
         let send_msg = BinaryWsUpdate {
             subscription_id,
-            messages: vec![PythMessage::LeEcdsa(LeEcdsaMessage {
-                payload: msg.payload,
-                signature: msg.signature.into_inner(),
-                recovery_id: msg.recovery_id,
-            })],
+            messages: vec![PythMessage::LeEcdsa(msg.into())],
         };
 
         let mut buf = vec![];
