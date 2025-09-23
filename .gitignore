@@ -65,7 +65,6 @@ ui/foundation/paraglide/*
 # Data used in testing
 **/testdata/
 !pyth/client/testdata/
-!pyth/lazer/testdata/
 
 # Network data
 networks/**/configs/cometbft/config/addrbook.json
