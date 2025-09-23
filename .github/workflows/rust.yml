@@ -228,7 +228,7 @@ jobs:
           # when needing to try on all runner types
           # - [self-hosted, Linux]
           # - [self-hosted, macOS]
-    name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
+    name: Build backend for ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
     needs: [backend-test]
     permissions:
@@ -407,7 +407,7 @@ jobs:
           # NOTE: building arm on `self-hosted` is very very slow
           - arch: arm64
             runner: ubuntu-24.04-arm
-    name: Build ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
+    name: Build frontend for ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
     env:
       GITHUB_USER: ${{ github.actor }}
