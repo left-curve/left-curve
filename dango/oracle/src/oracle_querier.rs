@@ -113,7 +113,7 @@ impl<'a> OracleQuerierNoCache<'a> {
                 Ok(price.with_precision(precision))
             },
             PriceSource::Pyth { id, precision, .. } => {
-                let price = self.ctx.get_lazer_price(id)?;
+                let price = self.ctx.get_price(id)?;
                 Ok(price.with_precision(precision))
             },
             PriceSource::LendingLiquidity => {
@@ -156,7 +156,7 @@ enum OracleContext<'a> {
 
 #[rustfmt::skip]
 impl OracleContext<'_> {
-    fn get_lazer_price(&self, lazer_id: PythId) -> StdResult<PrecisionlessPrice> {
+    fn get_price(&self, lazer_id: PythId) -> StdResult<PrecisionlessPrice> {
         match self {
             OracleContext::Local { storage } => {
                 PYTH_PRICES.load(*storage, lazer_id)
