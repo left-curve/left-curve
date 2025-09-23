@@ -14,9 +14,9 @@ use {
     grug::{Inner, NonEmpty, setup_tracing_subscriber},
     pyth_lazer::{PythClientLazer, PythClientLazerCache},
     pyth_lazer_protocol::{
+        api::{SubscriptionId, WsRequest},
         binary_update::BinaryWsUpdate,
         message::{LeEcdsaMessage, Message as PythMessage},
-        subscription::{Request as SubscriptionRequest, SubscriptionId},
     },
     pyth_types::{
         PythClientTrait, PythLazerSubscriptionDetails,
@@ -195,9 +195,9 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
     // Read the subscription request.
     let (subscription_id, price_ids) = match first {
-        Some(Ok(Message::Text(txt))) => match serde_json::from_str::<SubscriptionRequest>(&txt) {
+        Some(Ok(Message::Text(txt))) => match serde_json::from_str::<WsRequest>(&txt) {
             Ok(request) => match request {
-                SubscriptionRequest::Subscribe(sub) => {
+                WsRequest::Subscribe(sub) => {
                     (sub.subscription_id, sub.params.price_feed_ids.clone())
                 },
                 _ => {
@@ -248,6 +248,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
         };
 
     let subscriptions = price_ids
+        .unwrap()
         .into_iter()
         .map(|id| PythLazerSubscriptionDetails {
             id: id.0,

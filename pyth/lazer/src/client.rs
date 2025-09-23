@@ -2,16 +2,16 @@ use {
     async_stream::stream,
     grug::{Inner, Lengthy, NonEmpty},
     pyth_lazer_client::{
-        client::{PythLazerClient, PythLazerClientBuilder},
+        stream_client::{PythLazerStreamClient, PythLazerStreamClientBuilder},
         ws_connection::AnyResponse,
     },
     pyth_lazer_protocol::{
-        message::Message,
-        router::{
-            Channel, DeliveryFormat, Format, JsonBinaryEncoding, PriceFeedId, PriceFeedProperty,
-            SubscriptionParams, SubscriptionParamsRepr,
+        PriceFeedId, PriceFeedProperty,
+        api::{
+            Channel, DeliveryFormat, Format, JsonBinaryEncoding, SubscribeRequest, SubscriptionId,
+            SubscriptionParams, SubscriptionParamsRepr, WsResponse,
         },
-        subscription::{Response, SubscribeRequest, SubscriptionId},
+        message::Message,
     },
     pyth_types::{ExponentialBackoff, PriceUpdate, PythClientTrait, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
@@ -70,14 +70,15 @@ impl PythClientLazer {
         channel: Channel,
     ) -> Result<SubscriptionParams, anyhow::Error> {
         SubscriptionParams::new(SubscriptionParamsRepr {
-            price_feed_ids,
+            price_feed_ids: Some(price_feed_ids),
+            symbols: None,
             properties: vec![PriceFeedProperty::Price, PriceFeedProperty::Exponent],
             formats: vec![Format::LeEcdsa],
             delivery_format: DeliveryFormat::Binary,
             json_binary_encoding: JsonBinaryEncoding::Base64,
             parsed: false,
             channel,
-            ignore_invalid_feed_ids: true,
+            ignore_invalid_feeds: true,
         })
         .map_err(|e| anyhow::anyhow!(e))
     }
@@ -86,7 +87,10 @@ impl PythClientLazer {
     // The subscribe function return error if at least one subscription fails.
     // Ignore the error here and analyze the data received from the stream: in case
     // we don't receive any data for a subscription, we will resubscribe.
-    async fn connect(client: &mut PythLazerClient, subscribe_requests: Vec<SubscribeRequest>) {
+    async fn connect(
+        client: &mut PythLazerStreamClient,
+        subscribe_requests: Vec<SubscribeRequest>,
+    ) {
         #[cfg(feature = "metrics")]
         counter!(pyth_types::metrics::PYTH_RECONNECTION_ATTEMPTS).increment(1);
 
@@ -101,7 +105,7 @@ impl PythClientLazer {
 
     /// Subscribe to the price feeds and ensure that we are receiving data for all subscriptions.
     async fn subscribe(
-        client: &mut PythLazerClient,
+        client: &mut PythLazerStreamClient,
         receiver: &mut Receiver<AnyResponse>,
         ids_per_channel: HashMap<Channel, (u64, Vec<PriceFeedId>)>,
     ) -> Result<(), anyhow::Error> {
@@ -219,9 +223,8 @@ impl PythClientLazer {
                             }
                         }
                     },
-
                     AnyResponse::Json(response) => match response {
-                        Response::Error(error_response) => {
+                        WsResponse::Error(error_response) => {
                             error!("Subscription failed: {}", error_response.error);
 
                             // In this error there is no information about which subscription failed.
@@ -230,7 +233,7 @@ impl PythClientLazer {
                             // SubscriptionError response.
                             to_resubscribe = true;
                         },
-                        Response::SubscriptionError(subscription_error_response) => {
+                        WsResponse::SubscriptionError(subscription_error_response) => {
                             // Ignore duplicate subscription ID errors.
                             if subscription_error_response.error != "duplicate subscription id" {
                                 error!(
@@ -240,13 +243,13 @@ impl PythClientLazer {
                                 );
                             }
                         },
-                        Response::Subscribed(subscription_response) => {
+                        WsResponse::Subscribed(subscription_response) => {
                             info!(
                                 "Subscribed with ID: {}",
                                 subscription_response.subscription_id.0
                             );
                         },
-                        Response::SubscribedWithInvalidFeedIdsIgnored(subscription_response) => {
+                        WsResponse::SubscribedWithInvalidFeedIdsIgnored(subscription_response) => {
                             // Log a warning if some feed ids were ignored
                             // (this means the Id or the combination Id - channel is not supported).
                             if subscription_response
@@ -266,14 +269,13 @@ impl PythClientLazer {
                                 );
                             }
                         },
-                        Response::Unsubscribed(unsubscribed_response) => {
+                        WsResponse::Unsubscribed(unsubscribed_response) => {
                             warn!(
                                 "Unsubscribed with ID: {}",
                                 unsubscribed_response.subscription_id.0
                             );
                         },
-
-                        Response::StreamUpdated(_) => {
+                        WsResponse::StreamUpdated(_) => {
                             error!("Received Lazer data in json format, only support Binary");
                         },
                     },
@@ -317,13 +319,11 @@ impl PythClientLazer {
                         }
                     }
                 },
-
                 AnyResponse::Json(response) => match response {
-                    Response::Error(error_response) => {
+                    WsResponse::Error(error_response) => {
                         error!("Received error: {:#?}", error_response);
                     },
-
-                    Response::StreamUpdated(_) => {
+                    WsResponse::StreamUpdated(_) => {
                         error!("Received Lazer data in json format, only support Binary");
                     },
                     _ => {
@@ -399,7 +399,7 @@ impl PythClientTrait for PythClientLazer {
         }
 
         // Build the new client and subscribe to the price feeds.
-        let builder = PythLazerClientBuilder::new(self.access_token.clone())
+        let builder = PythLazerStreamClientBuilder::new(self.access_token.clone())
             .with_endpoints(self.endpoints.clone())
             .with_timeout(Duration::from_secs(2));
 

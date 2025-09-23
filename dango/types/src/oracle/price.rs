@@ -158,7 +158,7 @@ impl TryFrom<(PayloadFeedData, Timestamp)> for PrecisionlessPrice {
         let exponent = exponent.ok_or_else(|| anyhow::anyhow!("exponent not found"))?;
 
         let price = Udec128::checked_from_atomics::<u128>(
-            price.into_inner().get().try_into()?,
+            price.mantissa_i64().try_into()?,
             (-exponent).try_into()?,
         )?;
 

@@ -8,6 +8,7 @@ pub use {lazer::*, traits::*, types::*};
 
 // Re-exports
 pub use pyth_lazer_protocol::{
+    api::Channel,
     payload::{PayloadData, PayloadFeedData, PayloadPropertyValue},
-    router::{Channel, FixedRate},
+    time::FixedRate,
 };

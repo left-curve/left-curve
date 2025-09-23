@@ -1,6 +1,6 @@
 use {
     crate::PythLazerSubscriptionDetails,
-    pyth_lazer_protocol::router::{Channel, FixedRate},
+    pyth_lazer_protocol::{api::Channel, time::FixedRate},
 };
 
 pub const LAZER_ENDPOINTS_TEST: [&str; 1] = ["wss://pyth-lazer-0.dourolabs.app/v1/stream"];

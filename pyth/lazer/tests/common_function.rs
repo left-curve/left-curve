@@ -46,7 +46,7 @@ impl VaasChecker {
                     }
                 }
 
-                let new_price = new_price.unwrap().0.into();
+                let new_price = new_price.unwrap().mantissa_i64();
 
                 let element = self.values.get_mut(&price_feed.feed_id.0).unwrap();
 

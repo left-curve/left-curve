@@ -1,6 +1,6 @@
 use {
     grug::{ByteArray, Inner, NonEmpty},
-    pyth_lazer_protocol::{message::LeEcdsaMessage as LazerLeEcdsaMessage, router::Channel},
+    pyth_lazer_protocol::{api::Channel, message::LeEcdsaMessage as LazerLeEcdsaMessage},
 };
 
 pub type PythLazerId = u32;
