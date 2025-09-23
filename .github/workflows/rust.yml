@@ -23,6 +23,7 @@ on:
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
+      - "pyth/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "clippy.toml"
@@ -42,6 +43,7 @@ on:
       - "grug/**"
       - "hyperlane/**"
       - "indexer/**"
+      - "pyth/**"
       - "Cargo.toml"
       - "Cargo.lock"
       - "clippy.toml"
@@ -525,6 +527,7 @@ jobs:
       # Still using this as ENV for the bots ansible playbook to login properly
       GITHUB_USER: ${{ github.actor }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PYTH_ACCESS_TOKEN: ${{ secrets.PYTH_ACCESS_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:

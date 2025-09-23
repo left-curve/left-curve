@@ -23,9 +23,9 @@ use {
         taxman,
     },
     grug::{
-        Addressable, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NonZero, NumberConst, Udec128, Uint128,
-        btree_map, btree_set, coins,
+        Addressable, Binary, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NonZero, NumberConst, Timestamp, Udec128,
+        Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -34,7 +34,7 @@ use {
         constants::{arbitrum, base, ethereum, optimism, solana},
         isms::multisig::ValidatorSet,
     },
-    pyth_types::constants::GUARDIAN_SETS,
+    pyth_types::constants::LAZER_TRUSTED_SIGNER,
     std::{collections::BTreeSet, str::FromStr},
 };
 
@@ -597,7 +597,10 @@ impl Preset for OracleOption {
     fn preset_test() -> Self {
         OracleOption {
             pyth_price_sources: PYTH_PRICE_SOURCES.clone(),
-            wormhole_guardian_sets: GUARDIAN_SETS.clone(),
+            pyth_trusted_signers: {
+                let trused_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
+                btree_map! { trused_signer => Timestamp::from_nanos(u128::MAX) } // FIXME: what's the appropriate expiration time for this?
+            },
         }
     }
 }

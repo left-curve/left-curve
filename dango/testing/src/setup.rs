@@ -76,8 +76,8 @@ pub type TestSuiteWithIndexer<
     ID = HookedIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
-/// `ContractWrapper` codes.
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` with cached
+/// Pyth Lazer client, and `ContractWrapper` codes.
 ///
 /// Used for running regular tests.
 pub fn setup_test(
