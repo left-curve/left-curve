@@ -97,6 +97,7 @@ impl PythClient {
             "Sending subscription with {} requests",
             subscribe_requests.len()
         );
+
         for subscription in subscribe_requests {
             let _ = client.subscribe(subscription).await;
         }
@@ -190,6 +191,7 @@ impl PythClient {
 
             // Retrieve the data.
             buffer.clear();
+
             // Retrieve the data. If no data is received, try to resubscribe.
             let Some(data_count) =
                 Self::retrieve_data(receiver, &mut buffer, buffer_capacity, timeout).await
@@ -202,6 +204,7 @@ impl PythClient {
             if data_count == 0 {
                 // No data received, continue to the next iteration to check for resubscription.
                 error!("Pyth Lazer connection closed");
+
                 to_resubscribe = true;
                 continue;
             }
@@ -222,61 +225,63 @@ impl PythClient {
                             }
                         }
                     },
-                    AnyResponse::Json(response) => match response {
-                        WsResponse::Error(error_response) => {
-                            error!("Subscription failed: {}", error_response.error);
+                    AnyResponse::Json(WsResponse::Error(error_response)) => {
+                        error!("Subscription failed: {}", error_response.error);
 
-                            // In this error there is no information about which subscription failed.
-                            // So we will try to resubscribe to all subscriptions.
-                            // If a connection is already established, the server will send a
-                            // SubscriptionError response.
-                            to_resubscribe = true;
-                        },
-                        WsResponse::SubscriptionError(subscription_error_response) => {
-                            // Ignore duplicate subscription ID errors.
-                            if subscription_error_response.error != "duplicate subscription id" {
-                                error!(
-                                    "Subscription error for id {}: {}",
-                                    subscription_error_response.subscription_id.0,
-                                    subscription_error_response.error
-                                );
-                            }
-                        },
-                        WsResponse::Subscribed(subscription_response) => {
+                        // In this error there is no information about which subscription failed.
+                        // So we will try to resubscribe to all subscriptions.
+                        // If a connection is already established, the server will send a
+                        // SubscriptionError response.
+                        to_resubscribe = true;
+                    },
+                    AnyResponse::Json(WsResponse::SubscriptionError(
+                        subscription_error_response,
+                    )) => {
+                        // Ignore duplicate subscription ID errors.
+                        if subscription_error_response.error != "duplicate subscription id" {
+                            error!(
+                                "Subscription error for id {}: {}",
+                                subscription_error_response.subscription_id.0,
+                                subscription_error_response.error
+                            );
+                        }
+                    },
+                    AnyResponse::Json(WsResponse::Subscribed(subscription_response)) => {
+                        info!(
+                            "Subscribed with ID: {}",
+                            subscription_response.subscription_id.0
+                        );
+                    },
+                    AnyResponse::Json(WsResponse::SubscribedWithInvalidFeedIdsIgnored(
+                        subscription_response,
+                    )) => {
+                        // Log a warning if some feed ids were ignored
+                        // (this means the Id or the combination Id - channel is not supported).
+                        if subscription_response
+                            .ignored_invalid_feed_ids
+                            .unknown_ids
+                            .is_empty()
+                        {
                             info!(
                                 "Subscribed with ID: {}",
                                 subscription_response.subscription_id.0
                             );
-                        },
-                        WsResponse::SubscribedWithInvalidFeedIdsIgnored(subscription_response) => {
-                            // Log a warning if some feed ids were ignored
-                            // (this means the Id or the combination Id - channel is not supported).
-                            if subscription_response
-                                .ignored_invalid_feed_ids
-                                .unknown_ids
-                                .is_empty()
-                            {
-                                info!(
-                                    "Subscribed with ID: {}",
-                                    subscription_response.subscription_id.0
-                                );
-                            } else {
-                                warn!(
-                                    "Subscribed with ID: {}, but some feed ids were ignored: {:#?}",
-                                    subscription_response.subscription_id.0,
-                                    subscription_response.ignored_invalid_feed_ids
-                                );
-                            }
-                        },
-                        WsResponse::Unsubscribed(unsubscribed_response) => {
+                        } else {
                             warn!(
-                                "Unsubscribed with ID: {}",
-                                unsubscribed_response.subscription_id.0
+                                "Subscribed with ID: {}, but some feed ids were ignored: {:#?}",
+                                subscription_response.subscription_id.0,
+                                subscription_response.ignored_invalid_feed_ids
                             );
-                        },
-                        WsResponse::StreamUpdated(_) => {
-                            error!("Received Lazer data in json format, only support Binary");
-                        },
+                        }
+                    },
+                    AnyResponse::Json(WsResponse::Unsubscribed(unsubscribed_response)) => {
+                        warn!(
+                            "Unsubscribed with ID: {}",
+                            unsubscribed_response.subscription_id.0
+                        );
+                    },
+                    AnyResponse::Json(WsResponse::StreamUpdated(_)) => {
+                        error!("Received Lazer data in json format, only support Binary");
                     },
                 }
             }
@@ -312,22 +317,18 @@ impl PythClient {
                                 subscriptions_data
                                     .insert(update.subscription_id.0, le_ecdsa_message.into());
                             },
-                            _ => {
-                                error!("Received non-ECDSA message: {:#?}", msg);
-                            },
+                            _ => error!("Received non-ECDSA message: {msg:#?}"),
                         }
                     }
                 },
-                AnyResponse::Json(response) => match response {
-                    WsResponse::Error(error_response) => {
-                        error!("Received error: {:#?}", error_response);
-                    },
-                    WsResponse::StreamUpdated(_) => {
-                        error!("Received Lazer data in json format, only support Binary");
-                    },
-                    _ => {
-                        warn!("Received json response: {:#?}", response);
-                    },
+                AnyResponse::Json(WsResponse::Error(error_response)) => {
+                    error!("Received error: {error_response:#?}");
+                },
+                AnyResponse::Json(WsResponse::StreamUpdated(_)) => {
+                    error!("Received Lazer data in json format, only support Binary");
+                },
+                AnyResponse::Json(response) => {
+                    warn!("Received json response: {response:#?}");
                 },
             }
         }
@@ -440,7 +441,6 @@ impl PythClientTrait for PythClient {
                 if to_resubscribe {
                     to_resubscribe = false;
 
-
                     let uptime = start_uptime.elapsed();
                     info!("Uptime: {} seconds", uptime.as_secs());
 
@@ -448,8 +448,8 @@ impl PythClientTrait for PythClient {
                     histogram!(pyth_types::metrics::PYTH_UPTIME).record(uptime.as_secs_f64());
 
                     info!("Resubscribing to Pyth Lazer...");
-                    let start_reconnection = Instant::now();
 
+                    let start_reconnection = Instant::now();
                     let mut backoff = ExponentialBackoff::new(
                         Duration::from_millis(100),
                         Duration::from_secs(5),
@@ -457,11 +457,9 @@ impl PythClientTrait for PythClient {
                         None,
                     );
 
-                    loop{
-                        match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await
-                        {
+                    loop {
+                        match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await {
                             Ok(()) => {
-
                                 let reconnection_time = start_reconnection.elapsed();
                                 info!("Resubscribed successfully after {} seconds", reconnection_time.as_secs());
 
@@ -474,10 +472,10 @@ impl PythClientTrait for PythClient {
                                 for id in subscription_ids.iter() {
                                     last_data_received.insert(*id, Instant::now());
                                 }
-                                break
+
+                                break;
                             },
                             Err(err) => {
-
                                 // Check if the streaming has to be closed.
                                 if !keep_running.load(Ordering::Acquire) {
                                     break;
@@ -488,6 +486,7 @@ impl PythClientTrait for PythClient {
 
                                 error!("Failed to reconnect: {}; retrying in {:?}", err.to_string(), next_delay);
                                 sleep(next_delay).await;
+
                                 continue;
                             },
                         }
@@ -496,6 +495,7 @@ impl PythClientTrait for PythClient {
 
                 // Retrieve the data. If no data is received, try to resubscribe.
                 buffer.clear();
+
                 let Some(data_count) =
                     Self::retrieve_data(&mut receiver, &mut buffer, buffer_capacity, timeout).await
                 else {
@@ -543,10 +543,10 @@ impl PythClientTrait for PythClient {
             for id in subscription_ids {
                 match client.unsubscribe(SubscriptionId(id)).await {
                     Ok(_) => {
-                        info!("Unsubscribed stream id {} successfully", id);
+                        info!("Unsubscribed stream id {id} successfully");
                     },
                     Err(e) => {
-                        error!("Failed to unsubscribe stream id {}: {:?}", id, e);
+                        error!("Failed to unsubscribe stream id {id}: {e:?}");
                     },
                 };
             }

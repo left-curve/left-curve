@@ -7576,7 +7576,6 @@ dependencies = [
  "async-trait",
  "axum",
  "grug",
- "grug-testing",
  "indexer-disk-saver",
  "metrics",
  "pyth-lazer-client",
