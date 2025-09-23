@@ -115,14 +115,14 @@ where
                 };
 
                 rt.block_on(async {
-
                     let mut attempts = 0;
 
                     // Try to create the stream, retrying up to CONNECT_ATTEMPTS times if it fails.
-                    let mut stream = loop{
-
+                    let mut stream = loop {
                         match client.stream(ids.clone()).await {
-                            Ok(stream) => {break stream;}
+                            Ok(stream) => {
+                                break stream;
+                            }
                             Err(err) => {
                                 attempts += 1;
 
@@ -134,7 +134,6 @@ where
                                     keep_running.store(false, Ordering::SeqCst);
                                     return;
                                 }
-
                             },
                         };
                     };
@@ -146,7 +145,6 @@ where
                                     return;
                                 }
                             }
-
                             data = stream.next() => {
                                 if !keep_running.load(Ordering::Acquire) {
                                     return;
@@ -156,7 +154,6 @@ where
                                     shared_data.write_with(|mut shared_vaas| *shared_vaas = Some(data));
                                 }
                             }
-
                         }
                     }
                 });
