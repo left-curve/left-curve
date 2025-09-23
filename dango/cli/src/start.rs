@@ -38,7 +38,7 @@ impl StartCmd {
         // Open disk DB.
         let db = DiskDbLite::open(app_dir.data_dir())?;
 
-        // Create hybird VM.
+        // Create Rust VM.
         let vm = RustVm::new(
             // Below are parameters if we want to switch to `HybridVm`:
             // cfg.grug.wasm_cache_capacity,
