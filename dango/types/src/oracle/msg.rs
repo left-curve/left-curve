@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Set the price sources for the given denoms.
     RegisterPriceSources(BTreeMap<Denom, PriceSource>),
-    /// Set a trusted signer for Pyth Lazer.
+    /// Register a trusted signer for Pyth Lazer.
     RegisterTrustedSigner {
         public_key: Binary,
         expires_at: Timestamp,
