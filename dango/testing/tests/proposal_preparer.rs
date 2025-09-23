@@ -9,9 +9,9 @@ use {
         Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
         btree_map, setup_tracing_subscriber,
     },
-    pyth_client::PythClientCache,
+    pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
-        Channel, FixedRate, PythClientTrait, PythLazerSubscriptionDetails,
+        Channel, FixedRate, PythLazerSubscriptionDetails,
         constants::{BTC_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER},
     },
     std::{

@@ -1,7 +1,7 @@
 use {
-    crate::PriceUpdate,
     async_trait::async_trait,
     grug::{Lengthy, NonEmpty},
+    pyth_types::PriceUpdate,
     std::{fmt::Display, pin::Pin},
 };
 

@@ -12,14 +12,14 @@ use {
         routing::get,
     },
     grug::{NonEmpty, setup_tracing_subscriber},
-    pyth_client::{PythClient, PythClientCache},
+    pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
         binary_update::BinaryWsUpdate,
         message::Message as PythMessage,
     },
     pyth_types::{
-        PythClientTrait, PythLazerSubscriptionDetails,
+        PythLazerSubscriptionDetails,
         constants::{ATOM_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LAZER_ENDPOINTS_TEST},
     },
     rand::Rng,

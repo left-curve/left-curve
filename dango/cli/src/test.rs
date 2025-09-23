@@ -3,10 +3,10 @@ use {
     clap::{Parser, Subcommand},
     config_parser::parse_config,
     grug_types::{Inner, NonEmpty},
-    pyth_client::PythClientLazerCache,
+    pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
-        PayloadData, PythClientTrait,
-        constants::{BTC_USD_ID_LAZER, ETH_USD_ID_LAZER},
+        PayloadData,
+        constants::{BTC_USD_ID, ETH_USD_ID},
     },
     tokio_stream::StreamExt,
     tracing::info,
@@ -32,9 +32,9 @@ impl TestCmd {
                 let cfg: Config = parse_config(app_dir.config_file())?;
 
                 // For the purpose of this test, we fetch the prices of BTC and ETH.
-                let ids = NonEmpty::new_unchecked(vec![BTC_USD_ID_LAZER, ETH_USD_ID_LAZER]);
+                let ids = NonEmpty::new_unchecked(vec![BTC_USD_ID, ETH_USD_ID]);
 
-                let mut client = PythClientLazerCache::new(
+                let mut client = PythClientCache::new(
                     NonEmpty::new(cfg.pyth.endpoints)?,
                     cfg.pyth.access_token,
                 )?;

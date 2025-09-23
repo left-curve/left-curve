@@ -7643,11 +7643,8 @@ dependencies = [
 name = "pyth-types"
 version = "0.0.0"
 dependencies = [
- "anyhow",
- "async-trait",
  "grug",
  "pyth-lazer-protocol",
- "tokio-stream",
 ]
 
 [[package]]

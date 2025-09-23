@@ -1,12 +1,10 @@
 use {
-    crate::PythClient,
+    crate::{PythClient, PythClientTrait},
     async_stream::stream,
     async_trait::async_trait,
     grug::{Inner, Lengthy, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
-    pyth_types::{
-        LeEcdsaMessage, PriceUpdate, PythClientTrait, PythId, PythLazerSubscriptionDetails,
-    },
+    pyth_types::{LeEcdsaMessage, PriceUpdate, PythId, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         collections::HashMap,

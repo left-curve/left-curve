@@ -1,6 +1,7 @@
 #[cfg(feature = "metrics")]
 use metrics::{counter, describe_counter, describe_histogram, histogram};
 use {
+    crate::PythClientTrait,
     async_stream::stream,
     grug::{Inner, Lengthy, NonEmpty},
     pyth_lazer_client::{
@@ -15,7 +16,7 @@ use {
         },
         message::Message,
     },
-    pyth_types::{ExponentialBackoff, PriceUpdate, PythClientTrait, PythLazerSubscriptionDetails},
+    pyth_types::{ExponentialBackoff, PriceUpdate, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         collections::HashMap,

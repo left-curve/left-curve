@@ -1,6 +1,7 @@
 use {
     grug::{Inner, Lengthy, NonEmpty, btree_map},
-    pyth_types::{LeEcdsaMessage, PayloadData, PythClientTrait, PythLazerSubscriptionDetails},
+    pyth_client::PythClientTrait,
+    pyth_types::{LeEcdsaMessage, PayloadData, PythLazerSubscriptionDetails},
     std::{collections::BTreeMap, fmt::Debug, time::Duration},
     tokio_stream::StreamExt,
 };

@@ -1,8 +1,8 @@
 use {
     dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
     grug::{Addr, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
-    pyth_client::{PythClient, PythClientCache},
-    pyth_types::{PriceUpdate, PythClientTrait, PythLazerSubscriptionDetails},
+    pyth_client::{PythClient, PythClientCache, PythClientTrait},
+    pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
     std::{
         fmt::Debug,
