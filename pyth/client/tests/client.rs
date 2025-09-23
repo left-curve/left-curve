@@ -55,7 +55,7 @@ async fn test_lazer_stream() {
 // - Wait for a few seconds to allow the client to reconnect.
 // - Ensure the client has reconnected multiple times;
 // - Ensure there are some data in the stream.
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn reconnection() {
     setup_tracing_subscriber(Level::DEBUG);
 
@@ -131,9 +131,6 @@ async fn reconnection() {
             assert!(data.is_some(), "Expected some data from the stream")
         }
     }
-
-    // Assert there is at lest one message in the stream.
-    // assert!(stream.try_next().await.is_some());
 }
 
 #[derive(Clone)]
