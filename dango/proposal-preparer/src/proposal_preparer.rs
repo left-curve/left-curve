@@ -38,7 +38,7 @@ where
 }
 
 impl ProposalPreparer<PythClient> {
-    pub fn new_with_lazer<V, U, T>(endpoints: V, access_token: T) -> Self
+    pub fn new<V, U, T>(endpoints: V, access_token: T) -> Self
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
@@ -67,7 +67,7 @@ impl ProposalPreparer<PythClient> {
 }
 
 impl ProposalPreparer<PythClientCache> {
-    pub fn new_with_lazer_cache() -> Self {
+    pub fn new_with_cache() -> Self {
         #[cfg(feature = "metrics")]
         init_metrics();
 

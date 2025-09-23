@@ -350,7 +350,7 @@ impl StartCmd {
         let app = App::new(
             db,
             vm,
-            ProposalPreparer::new_with_lazer(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
+            ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
             indexer,
             grug_cfg.query_gas_limit,
             None, // currently there's no chain upgrade

@@ -92,7 +92,7 @@ pub fn setup_test(
     setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
-        ProposalPreparer::new_with_lazer_cache(),
+        ProposalPreparer::new_with_cache(),
         NullIndexer,
         RustVm::genesis_codes(),
         test_opt,
@@ -116,7 +116,7 @@ pub fn setup_test_lazer(
     setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
-        ProposalPreparer::new_with_lazer_cache(),
+        ProposalPreparer::new_with_cache(),
         NullIndexer,
         RustVm::genesis_codes(),
         test_opt,
@@ -239,7 +239,7 @@ pub async fn setup_test_with_indexer(
     let (suite, accounts, codes, contracts, validator_sets) = setup_suite_with_db_and_vm(
         db.clone(),
         vm.clone(),
-        ProposalPreparer::new_with_lazer_cache(),
+        ProposalPreparer::new_with_cache(),
         hooked_indexer,
         RustVm::genesis_codes(),
         options,
