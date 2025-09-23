@@ -54,7 +54,7 @@ impl ProposalPreparer<PythClient> {
         } else if endpoints.length() == 0 {
             warn!("Pyth Lazer endpoints not provided! Oracle feeding is disabled");
         } else {
-            client = Some(Mutex::new(PythHandler::new_with_lazer(
+            client = Some(Mutex::new(PythHandler::new(
                 NonEmpty::new(endpoints).unwrap(),
                 access_token,
             )));
@@ -71,7 +71,7 @@ impl ProposalPreparer<PythClientCache> {
         #[cfg(feature = "metrics")]
         init_metrics();
 
-        let client = PythHandler::new_with_lazer_cache(
+        let client = PythHandler::new_with_cache(
             NonEmpty::new(LAZER_ENDPOINTS_TEST).unwrap(),
             "lazer_token",
         );

@@ -34,10 +34,7 @@ where
 }
 
 impl PythHandler<PythClient> {
-    pub fn new_with_lazer<V, U, T>(
-        endpoints: NonEmpty<V>,
-        access_token: T,
-    ) -> PythHandler<PythClient>
+    pub fn new<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> PythHandler<PythClient>
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
@@ -48,7 +45,7 @@ impl PythHandler<PythClient> {
 }
 
 impl PythHandler<PythClientCache> {
-    pub fn new_with_lazer_cache<V, U, T>(
+    pub fn new_with_cache<V, U, T>(
         endpoints: NonEmpty<V>,
         access_token: T,
     ) -> PythHandler<PythClientCache>
