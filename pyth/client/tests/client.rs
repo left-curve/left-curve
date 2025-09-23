@@ -20,10 +20,7 @@ use {
     },
     pyth_types::{
         PythClientTrait, PythLazerSubscriptionDetails,
-        constants::{
-            ATOM_USD_ID_LAZER, BTC_USD_ID_LAZER, DOGE_USD_ID_LAZER, ETH_USD_ID_LAZER,
-            LAZER_ENDPOINTS_TEST,
-        },
+        constants::{ATOM_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LAZER_ENDPOINTS_TEST},
     },
     rand::Rng,
     reqwest::StatusCode,
@@ -41,9 +38,9 @@ async fn test_lazer_stream() {
     setup_tracing_subscriber(Level::INFO);
     let client =
         PythClientLazer::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN).unwrap();
-    test_stream(client, vec![BTC_USD_ID_LAZER, DOGE_USD_ID_LAZER], vec![
-        ETH_USD_ID_LAZER,
-        ATOM_USD_ID_LAZER,
+    test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
+        ETH_USD_ID,
+        ATOM_USD_ID,
     ])
     .await;
 }
@@ -83,7 +80,7 @@ async fn reconnection() {
 
     // Start the stream.
     let mut stream = client
-        .stream(NonEmpty::new_unchecked(vec![BTC_USD_ID_LAZER]))
+        .stream(NonEmpty::new_unchecked(vec![BTC_USD_ID]))
         .await
         .unwrap();
 

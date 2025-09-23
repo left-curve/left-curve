@@ -25,7 +25,7 @@ use {
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
-    pyth_types::constants::USDC_USD_ID_LAZER,
+    pyth_types::constants::USDC_USD_ID,
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
@@ -1519,7 +1519,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
             },
         )
         .should_fail_with_error(StdError::data_not_found::<PrecisionlessPrice>(
-            PYTH_PRICES.path(USDC_USD_ID_LAZER.id).storage_key(),
+            PYTH_PRICES.path(USDC_USD_ID.id).storage_key(),
         ));
 }
 

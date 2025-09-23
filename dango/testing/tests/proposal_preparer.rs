@@ -12,7 +12,7 @@ use {
     pyth_client::PythClientLazerCache,
     pyth_types::{
         Channel, FixedRate, PythClientTrait, PythLazerSubscriptionDetails,
-        constants::{BTC_USD_ID_LAZER, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER},
+        constants::{BTC_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_TRUSTED_SIGNER},
     },
     std::{
         str::FromStr,
@@ -71,7 +71,7 @@ fn proposal_pyth_lazer() {
     let oracle = contracts.oracle;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource::Pyth { id: BTC_USD_ID_LAZER.id, channel: BTC_USD_ID_LAZER.channel, precision: 8 }
+        btc::DENOM.clone() => PriceSource::Pyth { id: BTC_USD_ID.id, channel: BTC_USD_ID.channel, precision: 8 }
     );
 
     let pubkey = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
