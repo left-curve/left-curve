@@ -36,34 +36,34 @@ const buttonVariants = tv({
   variants: {
     variant: {
       primary: {
-        base: "bg-red-bean-400",
+        base: "bg-primitives-red-light-400",
         icons: "text-surface-primary-rice",
         text: "text-surface-primary-rice",
       },
       secondary: {
-        base: "bg-primary-blue",
-        icons: "text-secondary-blue",
-        text: "text-secondary-blue",
+        base: "bg-surface-primary-blue",
+        icons: "text-ink-secondary-blue",
+        text: "text-ink-secondary-blue",
       },
       tertiary: {
-        base: "bg-button-green",
+        base: "bg-surface-button-green",
         icons: "text-surface-primary-rice",
         text: "text-surface-primary-rice",
       },
       "tertiary-red": {
         base: "bg-surface-primary-red",
-        icons: "text-tertiary-red",
-        text: "text-tertiary-red",
+        icons: "text-ink-tertiary-red",
+        text: "text-ink-tertiary-red",
       },
       utility: {
         base: "bg-surface-quaternary-rice !rounded-md",
-        icons: "text-secondary-rice",
-        text: "text-secondary-rice",
+        icons: "text-ink-secondary-rice",
+        text: "text-ink-secondary-rice",
       },
       link: {
         base: "bg-transparent",
-        icons: "text-secondary-blue",
-        text: "text-secondary-blue",
+        icons: "text-ink-secondary-blue",
+        text: "text-ink-secondary-blue",
       },
     },
     radius: {

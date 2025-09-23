@@ -75,7 +75,7 @@ export function useSubmitTx<
       },
       mutationFn: async (variables: TVariables) => {
         const controller = new AbortController();
-        subscriptions.emit("submitTx", { isSubmitting: true });
+        subscriptions.emit({ key: "submitTx" }, { isSubmitting: true });
 
         try {
           const data = await mutationFn(variables, {
@@ -90,7 +90,10 @@ export function useSubmitTx<
             return submission.success || "Transaction submitted successfully.";
           })();
 
-          subscriptions.emit("submitTx", { isSubmitting: false, isSuccess: true, data, message });
+          subscriptions.emit(
+            { key: "submitTx" },
+            { isSubmitting: false, isSuccess: true, data, message },
+          );
           toast.success?.(data);
 
           return data;
@@ -108,11 +111,14 @@ export function useSubmitTx<
             return submission.error || "An error occurred while submitting the transaction.";
           })();
 
-          subscriptions.emit("submitTx", {
-            isSubmitting: false,
-            isSuccess: false,
-            message,
-          });
+          subscriptions.emit(
+            { key: "submitTx" },
+            {
+              isSubmitting: false,
+              isSuccess: false,
+              message,
+            },
+          );
 
           throw error || abortError;
         }

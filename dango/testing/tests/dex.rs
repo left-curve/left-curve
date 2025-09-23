@@ -1,6 +1,8 @@
 use {
+    dango_dex::{MAX_VOLUME_AGE, VOLUMES, VOLUMES_BY_USER},
+    dango_genesis::Contracts,
     dango_oracle::{PRICE_SOURCES, PYTH_LAZER_PRICES},
-    dango_testing::{BridgeOp, TestOption, setup_test_naive},
+    dango_testing::{BridgeOp, TestAccount, TestOption, TestSuite, setup_test_naive},
     dango_types::{
         account::single::Params,
         account_factory::AccountParams,
@@ -17,10 +19,11 @@ use {
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
-        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst, QuerierExt,
-        ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24, Uint128,
+        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order,
+        QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Uint128,
         UniqueVec, btree_map, coin_pair, coins,
     },
+    grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
     pyth_types::constants::USDC_USD_ID_LAZER,
     std::{
@@ -50,7 +53,7 @@ fn cannot_submit_order_with_zero_amount() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::ZERO), // incorrect!
                 )],
                 cancels: None,
@@ -92,7 +95,7 @@ fn cannot_submit_orders_in_non_existing_pairs() {
                     atom::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100)),
                 )],
                 cancels: None,
@@ -389,7 +392,7 @@ fn dex_works(
         .into_iter()
         .zip(accounts.users_mut())
         .map(|((direction, price, amount_base), signer)| {
-            let price = Udec128_24::new(price);
+            let price = Price::new(price);
             let amount_base = Uint128::new(amount_base);
 
             let (amount, funds) = match direction {
@@ -460,7 +463,7 @@ fn dex_works(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(100)),
     )],
     None,
@@ -472,7 +475,7 @@ fn dex_works(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128_24::new(1),
+            price: Price::new(1),
             amount: Uint128::new(100),
             remaining: Udec128_6::new(100),
         },
@@ -484,7 +487,7 @@ fn dex_works(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(100)),
     )],
     Some(CancelOrderRequest::Some(BTreeSet::from([OrderId::new(!1)]))),
@@ -499,14 +502,14 @@ fn dex_works(
             dango::DENOM.clone(),
             usdc::DENOM.clone(),
             Direction::Bid,
-            NonZero::new_unchecked(Udec128_24::new(1)),
+            NonZero::new_unchecked(Price::new(1)),
             NonZero::new_unchecked(Uint128::new(100)),
         ),
         CreateOrderRequest::new_limit(
             dango::DENOM.clone(),
             usdc::DENOM.clone(),
             Direction::Bid,
-            NonZero::new_unchecked(Udec128_24::new(1)),
+            NonZero::new_unchecked(Price::new(1)),
             NonZero::new_unchecked(Uint128::new(100)),
         ),
     ],
@@ -519,7 +522,7 @@ fn dex_works(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128_24::new(1),
+            price: Price::new(1),
             amount: Uint128::new(100),
             remaining: Udec128_6::new(100),
         },
@@ -532,14 +535,14 @@ fn dex_works(
             dango::DENOM.clone(),
             usdc::DENOM.clone(),
             Direction::Bid,
-            NonZero::new_unchecked(Udec128_24::new(1)),
+            NonZero::new_unchecked(Price::new(1)),
             NonZero::new_unchecked(Uint128::new(100)),
         ),
         CreateOrderRequest::new_limit(
             dango::DENOM.clone(),
             usdc::DENOM.clone(),
             Direction::Bid,
-            NonZero::new_unchecked(Udec128_24::new(1)),
+            NonZero::new_unchecked(Price::new(1)),
             NonZero::new_unchecked(Uint128::new(100)),
         ),
     ],
@@ -555,14 +558,14 @@ fn dex_works(
             dango::DENOM.clone(),
             usdc::DENOM.clone(),
             Direction::Bid,
-            NonZero::new_unchecked(Udec128_24::new(1)),
+            NonZero::new_unchecked(Price::new(1)),
             NonZero::new_unchecked(Uint128::new(100)),
         ),
         CreateOrderRequest::new_limit(
             dango::DENOM.clone(),
             usdc::DENOM.clone(),
             Direction::Bid,
-            NonZero::new_unchecked(Udec128_24::new(1)),
+            NonZero::new_unchecked(Price::new(1)),
             NonZero::new_unchecked(Uint128::new(100)),
         ),
     ],
@@ -578,14 +581,14 @@ fn dex_works(
             dango::DENOM.clone(),
             usdc::DENOM.clone(),
             Direction::Bid,
-            NonZero::new_unchecked(Udec128_24::new(1)),
+            NonZero::new_unchecked(Price::new(1)),
             NonZero::new_unchecked(Uint128::new(100)),
         ),
         CreateOrderRequest::new_limit(
             dango::DENOM.clone(),
             usdc::DENOM.clone(),
             Direction::Bid,
-            NonZero::new_unchecked(Udec128_24::new(1)),
+            NonZero::new_unchecked(Price::new(1)),
             NonZero::new_unchecked(Uint128::new(100)),
         ),
     ],
@@ -664,7 +667,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(100)),
     )],
     coins! { usdc::DENOM.clone() => 100 },
@@ -673,7 +676,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(100)),
     )],
     Coins::new(),
@@ -684,7 +687,7 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128_24::new(1),
+            price: Price::new(1),
             amount: Uint128::new(100),
             remaining: Udec128_6::new(100),
         },
@@ -696,7 +699,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(100)),
     )],
     coins! { usdc::DENOM.clone() => 100 },
@@ -705,7 +708,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(50)),
     )],
     Coins::new(),
@@ -716,7 +719,7 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128_24::new(1),
+            price: Price::new(1),
             amount: Uint128::new(50),
             remaining: Udec128_6::new(50),
         },
@@ -728,7 +731,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(100)),
     )],
     coins! { usdc::DENOM.clone() => 100 },
@@ -737,7 +740,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(200)),
     )],
     coins! { usdc::DENOM.clone() => 100 },
@@ -748,7 +751,7 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128_24::new(1),
+            price: Price::new(1),
             amount: Uint128::new(200),
             remaining: Udec128_6::new(200),
         },
@@ -760,7 +763,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(100)),
     )],
     coins! { usdc::DENOM.clone() => 100 },
@@ -769,7 +772,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(200)),
     )],
     Coins::new(),
@@ -780,7 +783,7 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128_24::new(1),
+            price: Price::new(1),
             amount: Uint128::new(200),
             remaining: Udec128_6::new(200),
         },
@@ -793,7 +796,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(100)),
     )],
     coins! { usdc::DENOM.clone() => 100 },
@@ -802,7 +805,7 @@ fn submit_and_cancel_orders(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new(1)),
+        NonZero::new_unchecked(Price::new(1)),
         NonZero::new_unchecked(Uint128::new(150)),
     )],
     coins! { usdc::DENOM.clone() => 100 },
@@ -813,7 +816,7 @@ fn submit_and_cancel_orders(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
             direction: Direction::Bid,
-            price: Udec128_24::new(1),
+            price: Price::new(1),
             amount: Uint128::new(150),
             remaining: Udec128_6::new(150),
         },
@@ -900,7 +903,7 @@ fn submit_and_cancel_order_in_same_block() {
                 dango::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Bid,
-                NonZero::new_unchecked(Udec128_24::new(1)),
+                NonZero::new_unchecked(Price::new(1)),
                 NonZero::new_unchecked(Uint128::new(100)),
             )],
             cancels: None,
@@ -1083,7 +1086,7 @@ fn query_orders_by_pair(
     let txs = orders_to_submit
         .into_iter()
         .map(|((base_denom, quote_denom), direction, price, amount)| {
-            let price = Udec128_24::new(price);
+            let price = Price::new(price);
             let amount_base = Uint128::new(amount);
 
             let (amount, funds) = match direction {
@@ -2504,7 +2507,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Bid,
-                NonZero::new_unchecked(Udec128_24::new_percent(20100)),
+                NonZero::new_unchecked(Price::new_percent(20100)),
                 NonZero::new_unchecked(Uint128::from(49751 * 201)),
             ),
         ],
@@ -2557,7 +2560,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Bid,
-                NonZero::new_unchecked(Udec128_24::new_percent(20100)),
+                NonZero::new_unchecked(Price::new_percent(20100)),
                 NonZero::new_unchecked(Uint128::from(49751 * 201)),
             ),
         ],
@@ -2603,7 +2606,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Bid,
-                NonZero::new_unchecked(Udec128_24::new_percent(20200)),
+                NonZero::new_unchecked(Price::new_percent(20200)),
                 NonZero::new_unchecked(Uint128::from(47783 * 202)),
             ),
         ],
@@ -2649,7 +2652,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Bid,
-                NonZero::new_unchecked(Udec128_24::new_percent(20300)),
+                NonZero::new_unchecked(Price::new_percent(20300)),
                 NonZero::new_unchecked(Uint128::from(157784 * 203)),
             ),
         ],
@@ -2697,7 +2700,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Ask,
-                NonZero::new_unchecked(Udec128_24::new_percent(19900)),
+                NonZero::new_unchecked(Price::new_percent(19900)),
                 NonZero::new_unchecked(Uint128::from(50251)),
             ),
         ],
@@ -2743,7 +2746,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Ask,
-                NonZero::new_unchecked(Udec128_24::new_percent(19900)),
+                NonZero::new_unchecked(Price::new_percent(19900)),
                 NonZero::new_unchecked(Uint128::from(30000)),
             ),
         ],
@@ -2789,7 +2792,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Ask,
-                NonZero::new_unchecked(Udec128_24::new_percent(19900)),
+                NonZero::new_unchecked(Price::new_percent(19900)),
                 NonZero::new_unchecked(Uint128::from(60251)),
             ),
         ],
@@ -2837,7 +2840,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Ask,
-                NonZero::new_unchecked(Udec128_24::new_percent(19800)),
+                NonZero::new_unchecked(Price::new_percent(19800)),
                 NonZero::new_unchecked(Uint128::from(162284)),
             ),
         ],
@@ -2846,7 +2849,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                 eth::DENOM.clone(),
                 usdc::DENOM.clone(),
                 Direction::Bid,
-                NonZero::new_unchecked(Udec128_24::new_percent(20200)),
+                NonZero::new_unchecked(Price::new_percent(20200)),
                 NonZero::new_unchecked(Uint128::from(157784 * 202)),
             ),
         ],
@@ -3080,6 +3083,37 @@ fn balance_changes_from_coins(
         .collect()
 }
 
+/// Submit a standard limit order. Used for volume tracking tests.
+fn submit_standard_order(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    user: &mut TestAccount,
+    contracts: &Contracts,
+    direction: Direction,
+) {
+    let funds = match direction {
+        Direction::Bid => Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
+        Direction::Ask => Coins::one(dango::DENOM.clone(), 100_000_000).unwrap(),
+    };
+
+    suite
+        .execute(
+            user,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateOrderRequest::new_limit(
+                    dango::DENOM.clone(),
+                    usdc::DENOM.clone(),
+                    direction,
+                    NonZero::new_unchecked(Price::new(1)),
+                    NonZero::new_unchecked(Uint128::new(100_000_000)),
+                )],
+                cancels: None,
+            },
+            funds,
+        )
+        .should_succeed();
+}
+
 #[test]
 fn volume_tracking_works() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
@@ -3180,77 +3214,54 @@ fn volume_tracking_works() {
         .should_succeed_and_equal(Udec128::ZERO);
 
     // Submit a new order with user1 address 1
-    suite
-        .execute(
-            &mut user1_addr_1,
-            contracts.dex,
-            &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateOrderRequest::new_limit(
-                    dango::DENOM.clone(),
-                    usdc::DENOM.clone(),
-                    Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
-                    NonZero::new_unchecked(Uint128::new(100_000_000)),
-                )],
-                cancels: None,
-            },
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
-        )
-        .should_succeed();
+    submit_standard_order(&mut suite, &mut user1_addr_1, &contracts, Direction::Bid);
 
     // User2 submit an opposite matching order with address 1
-    suite
-        .execute(
-            &mut user2_addr_1,
-            contracts.dex,
-            &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateOrderRequest::new_limit(
-                    dango::DENOM.clone(),
-                    usdc::DENOM.clone(),
-                    Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
-                    NonZero::new_unchecked(Uint128::new(100_000_000)),
-                )],
-                cancels: None,
-            },
-            Coins::one(dango::DENOM.clone(), 100_000_000).unwrap(),
-        )
-        .should_succeed();
+    submit_standard_order(&mut suite, &mut user2_addr_1, &contracts, Direction::Ask);
 
     // Get timestamp after trade
     let timestamp_after_first_trade = suite.block.timestamp;
 
-    // Query the volume for username user1, should be 100
+    // Submit a new order with user1 address 1
+    submit_standard_order(&mut suite, &mut user1_addr_1, &contracts, Direction::Bid);
+
+    // User2 submit an opposite matching order with address 1
+    submit_standard_order(&mut suite, &mut user2_addr_1, &contracts, Direction::Ask);
+
+    // Get timestamp after trade
+    let timestamp_after_second_trade = suite.block.timestamp;
+
+    // Query the volume for username user1, should be 200
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user1_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(200));
 
-    // Query the volume for username user2, should be 100
+    // Query the volume for username user2, should be 200
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user2_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(200));
 
-    // Query the volume for user1 address 1, should be 100
+    // Query the volume for user1 address 1, should be 200
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user1_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(200));
 
-    // Query the volume for user2 address 1, should be 100
+    // Query the volume for user2 address 1, should be 200
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user2_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(200));
 
     // Query the volume for user1 address 2, should be zero
     suite
@@ -3269,67 +3280,38 @@ fn volume_tracking_works() {
         .should_succeed_and_equal(Udec128::ZERO);
 
     // Submit a new order with user1 address 2
-    suite
-        .execute(
-            &mut user1_addr_2,
-            contracts.dex,
-            &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateOrderRequest::new_limit(
-                    dango::DENOM.clone(),
-                    usdc::DENOM.clone(),
-                    Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
-                    NonZero::new_unchecked(Uint128::new(100_000_000)),
-                )],
-                cancels: None,
-            },
-            Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
-        )
-        .should_succeed();
+    submit_standard_order(&mut suite, &mut user1_addr_2, &contracts, Direction::Bid);
 
     // Submit a new opposite matching order with user2 address 2
-    suite
-        .execute(
-            &mut user2_addr_2,
-            contracts.dex,
-            &dex::ExecuteMsg::BatchUpdateOrders {
-                creates: vec![CreateOrderRequest::new_limit(
-                    dango::DENOM.clone(),
-                    usdc::DENOM.clone(),
-                    Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
-                    NonZero::new_unchecked(Uint128::new(100_000_000)),
-                )],
-                cancels: None,
-            },
-            Coins::one(dango::DENOM.clone(), 100_000_000).unwrap(),
-        )
-        .should_succeed();
+    submit_standard_order(&mut suite, &mut user2_addr_2, &contracts, Direction::Ask);
 
-    // Query the volume for username user1, should be 200
+    let timestamp_after_third_trade = suite.block.timestamp;
+
+    // Query the volume for username user1, should be 300
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user1_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(300));
 
-    // Query the volume for username user2, should be 200
+    // Query the volume for username user2, should be 300
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user2_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(300));
 
-    // Query the volume for all addresses, should be 100
+    // Query the volume for user1 address 1, should be 200
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user1_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(200));
 
+    // Query the volume for user1 address 2, should be 100
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user1_addr_2.address(),
@@ -3337,13 +3319,15 @@ fn volume_tracking_works() {
         })
         .should_succeed_and_equal(Udec128::new(100));
 
+    // Query the volume for user2 address 1, should be 200
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user2_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(200));
 
+    // Query the volume for user2 address 2, should be 100
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user2_addr_2.address(),
@@ -3351,50 +3335,257 @@ fn volume_tracking_works() {
         })
         .should_succeed_and_equal(Udec128::new(100));
 
-    // Query the volume for both usernames since timestamp after first trade, should be 100
+    // Query the volume for both usernames since timestamp after first trade, should be 200
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user1_addr_1.username.clone(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(200));
 
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user2_addr_1.username.clone(),
             since: Some(timestamp_after_first_trade),
         })
+        .should_succeed_and_equal(Udec128::new(200));
+
+    // Query the volume for both usernames since timestamp after second trade, should be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user1_addr_1.username.clone(),
+            since: Some(timestamp_after_second_trade),
+        })
         .should_succeed_and_equal(Udec128::new(100));
 
-    // Query the volume for both users address 1 since timestamp after first trade, should be zero
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user2_addr_1.username.clone(),
+            since: Some(timestamp_after_second_trade),
+        })
+        .should_succeed_and_equal(Udec128::new(100));
+
+    // Query the volume for both users address 1 since timestamp after second trade, should be zero
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user1_addr_1.address(),
-            since: Some(timestamp_after_first_trade),
+            since: Some(timestamp_after_second_trade),
         })
         .should_succeed_and_equal(Udec128::ZERO);
 
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user2_addr_1.address(),
-            since: Some(timestamp_after_first_trade),
+            since: Some(timestamp_after_second_trade),
         })
         .should_succeed_and_equal(Udec128::ZERO);
 
-    // Query the volume for both users address 2 since timestamp after first trade, should be 100
+    // Query the volume for both users address 2 since timestamp after second trade, should be 100
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user1_addr_2.address(),
-            since: Some(timestamp_after_first_trade),
+            since: Some(timestamp_after_second_trade),
         })
         .should_succeed_and_equal(Udec128::new(100));
 
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user2_addr_2.address(),
-            since: Some(timestamp_after_first_trade),
+            since: Some(timestamp_after_second_trade),
         })
         .should_succeed_and_equal(Udec128::new(100));
+
+    // Range over the stored volume data, ensure it's correct
+    let storage = suite.contract_storage(contracts.dex);
+    let volumes = VOLUMES
+        .range(&storage, None, None, Order::Ascending)
+        .collect::<StdResult<BTreeMap<_, _>>>()
+        .unwrap();
+    assert_eq!(volumes, btree_map! {
+        (user1_addr_1.address(), timestamp_after_first_trade) => Udec128_6::new(100),
+        (user1_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200),
+        (user1_addr_2.address(), timestamp_after_third_trade) => Udec128_6::new(100),
+        (user2_addr_1.address(), timestamp_after_first_trade) => Udec128_6::new(100),
+        (user2_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200),
+        (user2_addr_2.address(), timestamp_after_third_trade) => Udec128_6::new(100),
+    });
+
+    let volumes_by_user = VOLUMES_BY_USER
+        .range(&storage, None, None, Order::Ascending)
+        .collect::<StdResult<BTreeMap<_, _>>>()
+        .unwrap();
+    assert_eq!(volumes_by_user, btree_map! {
+        (user1_addr_1.username.clone(), timestamp_after_first_trade) => Udec128_6::new(100),
+        (user1_addr_1.username.clone(), timestamp_after_second_trade) => Udec128_6::new(200),
+        (user1_addr_1.username.clone(), timestamp_after_third_trade) => Udec128_6::new(300),
+        (user2_addr_1.username.clone(), timestamp_after_first_trade) => Udec128_6::new(100),
+        (user2_addr_1.username.clone(), timestamp_after_second_trade) => Udec128_6::new(200),
+        (user2_addr_1.username.clone(), timestamp_after_third_trade) => Udec128_6::new(300),
+    });
+
+    // Fast forward by the duration of MAX_VOLUME_AGE
+    suite.increase_time(MAX_VOLUME_AGE);
+
+    // Submit a new order with user1 address 1, so that old volume entries are removed
+    submit_standard_order(&mut suite, &mut user1_addr_1, &contracts, Direction::Bid);
+
+    // User2 submit an opposite matching order with address 1
+    submit_standard_order(&mut suite, &mut user2_addr_1, &contracts, Direction::Ask);
+
+    // Get timestamp after trade
+    let timestamp_after_fourth_trade = suite.block.timestamp;
+
+    let timestamp_after_fourth_trade_minus_max_volume_age =
+        timestamp_after_fourth_trade.saturating_sub(MAX_VOLUME_AGE);
+
+    // Ensure the oldest data was removed. The first two entries for address 1 and 2 should be
+    // replaced with one entry at the timestamp of MAX_VOLUME_AGE ago.
+    let storage = suite.contract_storage(contracts.dex);
+    let volumes = VOLUMES
+        .range(&storage, None, None, Order::Ascending)
+        .collect::<StdResult<BTreeMap<_, _>>>()
+        .unwrap();
+    assert_eq!(volumes, btree_map! {
+        // `user1_addr_1` has three trades: 1st, 2nd, 4th. Among which, 1st and 2nd
+        // are older than the cutoff. 2nd is kept, 1st is deleted.
+        (user1_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200),
+        (user1_addr_1.address(), timestamp_after_fourth_trade) => Udec128_6::new(300),
+        (user1_addr_2.address(), timestamp_after_third_trade) => Udec128_6::new(100),
+        (user2_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200),
+        (user2_addr_1.address(), timestamp_after_fourth_trade) => Udec128_6::new(300),
+        (user2_addr_2.address(), timestamp_after_third_trade) => Udec128_6::new(100),
+    });
+
+    let volumes_by_user = VOLUMES_BY_USER
+        .range(&storage, None, None, Order::Ascending)
+        .collect::<StdResult<BTreeMap<_, _>>>()
+        .unwrap();
+    assert_eq!(volumes_by_user, btree_map! {
+        (user1_addr_1.username.clone(), timestamp_after_third_trade) => Udec128_6::new(300),
+        (user1_addr_1.username.clone(), timestamp_after_fourth_trade) => Udec128_6::new(400),
+        (user2_addr_1.username.clone(), timestamp_after_third_trade) => Udec128_6::new(300),
+        (user2_addr_1.username.clone(), timestamp_after_fourth_trade) => Udec128_6::new(400),
+    });
+
+    // Query the volume for username user1, should be 400
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user1_addr_1.username.clone(),
+            since: None,
+        })
+        .should_succeed_and_equal(Udec128::new(400));
+
+    // Query the volume for username user2, should be 400
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user2_addr_1.username.clone(),
+            since: None,
+        })
+        .should_succeed_and_equal(Udec128::new(400));
+
+    // Query the volume for user1 address 1, should be 300
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_1.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Udec128::new(300));
+
+    // Query the volume for user2 address 1, should be 300
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_1.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Udec128::new(300));
+
+    // Query the volume for user1 address 2, should still be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_2.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Udec128::new(100));
+
+    // Query the volume for user2 address 2, should still be 100
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_2.address(),
+            since: None,
+        })
+        .should_succeed_and_equal(Udec128::new(100));
+
+    // Query the volume for user1 address 1 since timestamp after third trade,
+    // should return 100.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_1.address(),
+            since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
+        })
+        .should_succeed_and_equal(Udec128::new(100));
+
+    // Query the volume for user2 address 1 since timestamp after third trade,
+    // should return 100.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_1.address(),
+            since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
+        })
+        .should_succeed_and_equal(Udec128::new(100));
+
+    // Query the volume for username user1 since timestamp after third trade,
+    // should return 100.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user1_addr_1.username.clone(),
+            since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
+        })
+        .should_succeed_and_equal(Udec128::new(100));
+
+    // Query the volume for username user2 since timestamp after third trade,
+    // should return 100.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user2_addr_1.username.clone(),
+            since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
+        })
+        .should_succeed_and_equal(Udec128::new(100));
+
+    // Query the volume for user1 address 1 since timestamp after second trade,
+    // should fail as time is more than MAX_VOLUME_AGE ago.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user1_addr_1.address(),
+            since: Some(timestamp_after_second_trade),
+        })
+        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
+
+    // Query the volume for user2 address 1 since timestamp after second trade,
+    // should fail as time is more than MAX_VOLUME_AGE ago.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
+            user: user2_addr_1.address(),
+            since: Some(timestamp_after_second_trade),
+        })
+        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
+
+    // Query the volume for username user1 since timestamp after second trade,
+    // should fail as time is more than MAX_VOLUME_AGE ago.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user1_addr_1.username.clone(),
+            since: Some(timestamp_after_second_trade),
+        })
+        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
+
+    // Query the volume for username user2 since timestamp after second trade,
+    // should fail as time is more than MAX_VOLUME_AGE ago.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
+            user: user2_addr_1.username.clone(),
+            since: Some(timestamp_after_second_trade),
+        })
+        .should_fail_with_error("the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago");
 }
 
 #[test]
@@ -3460,21 +3651,21 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::new(1)),
+                        NonZero::new_unchecked(Price::new(1)),
                         NonZero::new_unchecked(Uint128::new(100_000_000)),
                     ),
                     CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::from_str("1.01").unwrap()),
+                        NonZero::new_unchecked(Price::from_str("1.01").unwrap()),
                         NonZero::new_unchecked(Uint128::new(101_000_000)),
                     ),
                     CreateOrderRequest::new_limit(
                         eth::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
+                        NonZero::new_unchecked(Price::from_str("852.485845").unwrap()),
                         NonZero::new_unchecked(Uint128::new(100_000_000)), // ceil(117304 * 852.485845)
                     ),
                 ],
@@ -3495,14 +3686,14 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Ask,
-                        NonZero::new_unchecked(Udec128_24::new(1)),
+                        NonZero::new_unchecked(Price::new(1)),
                         NonZero::new_unchecked(Uint128::new(200_000_000)),
                     ),
                     CreateOrderRequest::new_limit(
                         eth::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Ask,
-                        NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
+                        NonZero::new_unchecked(Price::from_str("852.485845").unwrap()),
                         NonZero::new_unchecked(Uint128::new(117304)),
                     ),
                 ],
@@ -3575,28 +3766,28 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::new(1)),
+                        NonZero::new_unchecked(Price::new(1)),
                         NonZero::new_unchecked(Uint128::new(100_000_000)),
                     ),
                     CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::from_str("1.01").unwrap()),
+                        NonZero::new_unchecked(Price::from_str("1.01").unwrap()),
                         NonZero::new_unchecked(Uint128::new(101_000_000)),
                     ),
                     CreateOrderRequest::new_limit(
                         eth::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
+                        NonZero::new_unchecked(Price::from_str("852.485845").unwrap()),
                         NonZero::new_unchecked(Uint128::new(100_000_000)), // ceil(117304 * 852.485845)
                     ),
                     CreateOrderRequest::new_limit(
                         eth::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::from_str("937.7344336").unwrap()),
+                        NonZero::new_unchecked(Price::from_str("937.7344336").unwrap()),
                         NonZero::new_unchecked(Uint128::new(110_000_000)), // ceil(117304 * 937.7344336)
                     ),
                 ],
@@ -3619,7 +3810,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Ask,
-                        NonZero::new_unchecked(Udec128_24::new(1)),
+                        NonZero::new_unchecked(Price::new(1)),
                         NonZero::new_unchecked(Uint128::new(300_000_000)),
                     ),
                     CreateOrderRequest::new_limit(
@@ -3627,10 +3818,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                         usdc::DENOM.clone(),
                         Direction::Ask,
                         NonZero::new_unchecked(
-                            Udec128_24::from_str("85248.71")
-                                .unwrap()
-                                .checked_inv()
-                                .unwrap(),
+                            Price::from_str("85248.71").unwrap().checked_inv().unwrap(),
                         ),
                         NonZero::new_unchecked(Uint128::new(117304 * 2)),
                     ),
@@ -3716,7 +3904,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -3768,7 +3956,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -3820,7 +4008,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -3869,7 +4057,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(2)),
+                    NonZero::new_unchecked(Price::new(2)),
                     NonZero::new_unchecked(Uint128::new(200_000_000)), // 100_000_000 * 2
                 ),
             ],
@@ -3918,7 +4106,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -3967,7 +4155,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(2)),
+                    NonZero::new_unchecked(Price::new(2)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4016,7 +4204,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(150_000_000)),
                 ),
             ],
@@ -4067,7 +4255,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(2)),
+                    NonZero::new_unchecked(Price::new(2)),
                     NonZero::new_unchecked(Uint128::new(150_000_000)),
                 ),
             ],
@@ -4118,7 +4306,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(150_000_000)),
                 ),
             ],
@@ -4169,7 +4357,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(2)),
+                    NonZero::new_unchecked(Price::new(2)),
                     NonZero::new_unchecked(Uint128::new(300_000_000)), // 150_000_000 * 2
                 ),
             ],
@@ -4220,7 +4408,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4269,7 +4457,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4283,7 +4471,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new_percent(105)),
+                    NonZero::new_unchecked(Price::new_percent(105)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4338,7 +4526,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4352,7 +4540,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new_percent(50)),
+                    NonZero::new_unchecked(Price::new_percent(50)),
                     NonZero::new_unchecked(Uint128::new(50_000_000)), // 100_000_000 * 0.5
                 ),
             ],
@@ -4407,7 +4595,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4477,7 +4665,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4547,7 +4735,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4596,7 +4784,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(2)),
+                    NonZero::new_unchecked(Price::new(2)),
                     NonZero::new_unchecked(Uint128::new(50_000_000)),
                 ),
             ],
@@ -4645,7 +4833,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4694,7 +4882,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(2)),
+                    NonZero::new_unchecked(Price::new(2)),
                     NonZero::new_unchecked(Uint128::new(200_000_000)), // 100_000_000 * 2
                 ),
             ],
@@ -4743,7 +4931,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4793,7 +4981,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4843,7 +5031,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4899,7 +5087,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -4955,7 +5143,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -5029,7 +5217,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100_000_000)),
                 ),
             ],
@@ -5103,7 +5291,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(110_000_000)),
                 ),
             ],
@@ -5177,7 +5365,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(110_000_000)),
                 ),
             ],
@@ -5406,7 +5594,7 @@ fn market_order_clearing(
         eth::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new_bps(1)),
+        NonZero::new_unchecked(Price::new_bps(1)),
         NonZero::new_unchecked(Uint128::new(50)), // 500000 * 0.0001
     ),
     coins! {
@@ -5437,7 +5625,7 @@ fn market_order_clearing(
         eth::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new_bps(1)),
+        NonZero::new_unchecked(Price::new_bps(1)),
         NonZero::new_unchecked(Uint128::new(1)), // ceil(9999 * 0.0001)
     ),
     coins! {
@@ -5548,7 +5736,7 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Ask,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(1000000)),
                 )],
                 cancels: None,
@@ -5569,7 +5757,7 @@ fn cron_execute_gracefully_handles_oracle_price_failure() {
                     dango::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(1000000)),
                 )],
                 cancels: None,
@@ -5674,7 +5862,7 @@ fn market_orders_are_sorted_by_price_ascending() {
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Ask,
-                        NonZero::new_unchecked(Udec128_24::new(1)),
+                        NonZero::new_unchecked(Price::new(1)),
                         NonZero::new_unchecked(Uint128::new(1000000)),
                     )],
                     cancels: None,
@@ -5807,14 +5995,14 @@ fn refund_left_over_market_bid() {
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Ask,
-                        NonZero::new_unchecked(Udec128_24::new(100)),
+                        NonZero::new_unchecked(Price::new(100)),
                         NonZero::new_unchecked(Uint128::new(2)),
                     ),
                     CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::new(100)),
+                        NonZero::new_unchecked(Price::new(100)),
                         NonZero::new_unchecked(Uint128::new(100)),
                     ),
                 ],
@@ -5835,8 +6023,8 @@ fn refund_left_over_market_bid() {
         })
         .should_succeed_and_equal(RestingOrderBookState {
             best_bid_price: None,
-            best_ask_price: Some(Udec128_24::new(100)),
-            mid_price: Some(Udec128_24::new(100)),
+            best_ask_price: Some(Price::new(100)),
+            mid_price: Some(Price::new(100)),
         });
 
     suite
@@ -5861,7 +6049,7 @@ fn refund_left_over_market_bid() {
                                     dango::DENOM.clone(),
                                     usdc::DENOM.clone(),
                                     Direction::Bid,
-                                    NonZero::new_unchecked(Udec128_24::new(101)),
+                                    NonZero::new_unchecked(Price::new(101)),
                                     NonZero::new_unchecked(Uint128::new(101)),
                                 )],
                                 cancels: None,
@@ -5969,14 +6157,14 @@ fn refund_left_over_market_ask() {
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::new(100)),
+                        NonZero::new_unchecked(Price::new(100)),
                         NonZero::new_unchecked(Uint128::new(200)),
                     ),
                     CreateOrderRequest::new_limit(
                         dango::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Ask,
-                        NonZero::new_unchecked(Udec128_24::new(100)),
+                        NonZero::new_unchecked(Price::new(100)),
                         NonZero::new_unchecked(Uint128::new(1)),
                     ),
                 ],
@@ -5996,9 +6184,9 @@ fn refund_left_over_market_ask() {
             quote_denom: usdc::DENOM.clone(),
         })
         .should_succeed_and_equal(RestingOrderBookState {
-            best_bid_price: Some(Udec128_24::new(100)),
+            best_bid_price: Some(Price::new(100)),
             best_ask_price: None,
-            mid_price: Some(Udec128_24::new(100)),
+            mid_price: Some(Price::new(100)),
         });
 
     suite
@@ -6023,7 +6211,7 @@ fn refund_left_over_market_ask() {
                                     dango::DENOM.clone(),
                                     usdc::DENOM.clone(),
                                     Direction::Ask,
-                                    NonZero::new_unchecked(Udec128_24::new(99)),
+                                    NonZero::new_unchecked(Price::new(99)),
                                     NonZero::new_unchecked(Uint128::new(1)),
                                 )],
                                 cancels: None,
@@ -6108,7 +6296,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
                                 dango::DENOM.clone(),
                                 usdc::DENOM.clone(),
                                 Direction::Ask,
-                                NonZero::new_unchecked(Udec128_24::new(100)),
+                                NonZero::new_unchecked(Price::new(100)),
                                 NonZero::new_unchecked(Uint128::new(1000000)),
                             )],
                             cancels: None,
@@ -6134,7 +6322,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
                                 dango::DENOM.clone(),
                                 usdc::DENOM.clone(),
                                 Direction::Bid,
-                                NonZero::new_unchecked(Udec128_24::new(99)),
+                                NonZero::new_unchecked(Price::new(99)),
                                 NonZero::new_unchecked(Uint128::new(1000000 * 99)),
                             )],
                             cancels: None,
@@ -6166,9 +6354,9 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
             quote_denom: usdc::DENOM.clone(),
         })
         .should_succeed_and_equal(RestingOrderBookState {
-            best_bid_price: Some(Udec128_24::new(99)),
-            best_ask_price: Some(Udec128_24::new(100)),
-            mid_price: Some(Udec128_24::new_permille(99500)),
+            best_bid_price: Some(Price::new(99)),
+            best_ask_price: Some(Price::new(100)),
+            mid_price: Some(Price::new_permille(99500)),
         });
 }
 
@@ -6184,7 +6372,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     dex::LiquidityDepthResponse {
         bid_depth: None,
         ask_depth: Some(vec![
-            (Udec128_24::new(52), dex::LiquidityDepth {
+            (Price::new(52), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1),
                 depth_quote: Udec128_6::new(52),
             }),
@@ -6205,7 +6393,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     dex::LiquidityDepthResponse {
         bid_depth: None,
         ask_depth: Some(vec![
-            (Udec128_24::new(60), dex::LiquidityDepth {
+            (Price::new(60), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1),
                 depth_quote: Udec128_6::new(52),
             }),
@@ -6225,7 +6413,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     None,
     dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
-            (Udec128_24::new(48), dex::LiquidityDepth {
+            (Price::new(48), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1),
                 depth_quote: Udec128_6::new(48),
             }),
@@ -6246,7 +6434,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     None,
     dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
-            (Udec128_24::new(40), dex::LiquidityDepth {
+            (Price::new(40), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1),
                 depth_quote: Udec128_6::new(48),
             }),
@@ -6286,13 +6474,13 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     None,
     dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
-            (Udec128_24::new(40), dex::LiquidityDepth {
+            (Price::new(40), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(55),
                 depth_quote: Udec128_6::new(2365),
             }),
         ]),
         ask_depth: Some(vec![
-            (Udec128_24::new(60), dex::LiquidityDepth {
+            (Price::new(60), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(55),
                 depth_quote: Udec128_6::new(3135),
             }),
@@ -6331,85 +6519,85 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     None,
     dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
-            (Udec128_24::new(49), dex::LiquidityDepth {
+            (Price::new(49), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1),
                 depth_quote: Udec128_6::new(49),
             }),
-            (Udec128_24::new(48), dex::LiquidityDepth {
+            (Price::new(48), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(2),
                 depth_quote: Udec128_6::new(2 * 48),
             }),
-            (Udec128_24::new(47), dex::LiquidityDepth {
+            (Price::new(47), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3),
                 depth_quote: Udec128_6::new(3 * 47),
             }),
-            (Udec128_24::new(46), dex::LiquidityDepth {
+            (Price::new(46), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(4),
                 depth_quote: Udec128_6::new(4 * 46),
             }),
-            (Udec128_24::new(45), dex::LiquidityDepth {
+            (Price::new(45), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(5),
                 depth_quote: Udec128_6::new(5 * 45),
             }),
-            (Udec128_24::new(44), dex::LiquidityDepth {
+            (Price::new(44), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(6),
                 depth_quote: Udec128_6::new(6 * 44),
             }),
-            (Udec128_24::new(43), dex::LiquidityDepth {
+            (Price::new(43), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7),
                 depth_quote: Udec128_6::new(7 * 43),
             }),
-            (Udec128_24::new(42), dex::LiquidityDepth {
+            (Price::new(42), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(8),
                 depth_quote: Udec128_6::new(8 * 42),
             }),
-            (Udec128_24::new(41), dex::LiquidityDepth {
+            (Price::new(41), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9),
                 depth_quote: Udec128_6::new(9 * 41),
             }),
-            (Udec128_24::new(40), dex::LiquidityDepth {
+            (Price::new(40), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(10),
                 depth_quote: Udec128_6::new(10 * 40),
             }),
         ]),
         ask_depth: Some(vec![
-            (Udec128_24::new(51), dex::LiquidityDepth {
+            (Price::new(51), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1),
                 depth_quote: Udec128_6::new(51),
             }),
-            (Udec128_24::new(52), dex::LiquidityDepth {
+            (Price::new(52), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(2),
                 depth_quote: Udec128_6::new(2 * 52),
             }),
-            (Udec128_24::new(53), dex::LiquidityDepth {
+            (Price::new(53), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3),
                 depth_quote: Udec128_6::new(3 * 53),
             }),
-            (Udec128_24::new(54), dex::LiquidityDepth {
+            (Price::new(54), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(4),
                 depth_quote: Udec128_6::new(4 * 54),
             }),
-            (Udec128_24::new(55), dex::LiquidityDepth {
+            (Price::new(55), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(5),
                 depth_quote: Udec128_6::new(5 * 55),
             }),
-            (Udec128_24::new(56), dex::LiquidityDepth {
+            (Price::new(56), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(6),
                 depth_quote: Udec128_6::new(6 * 56),
             }),
-            (Udec128_24::new(57), dex::LiquidityDepth {
+            (Price::new(57), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7),
                 depth_quote: Udec128_6::new(7 * 57),
             }),
-            (Udec128_24::new(58), dex::LiquidityDepth {
+            (Price::new(58), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(8),
                 depth_quote: Udec128_6::new(8 * 58),
             }),
-            (Udec128_24::new(59), dex::LiquidityDepth {
+            (Price::new(59), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9),
                 depth_quote: Udec128_6::new(9 * 59),
             }),
-            (Udec128_24::new(60), dex::LiquidityDepth {
+            (Price::new(60), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(10),
                 depth_quote: Udec128_6::new(10 * 60),
             }),
@@ -6448,29 +6636,29 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     Some(3),
     dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
-            (Udec128_24::new(49), dex::LiquidityDepth {
+            (Price::new(49), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1),
                 depth_quote: Udec128_6::new(49),
             }),
-            (Udec128_24::new(48), dex::LiquidityDepth {
+            (Price::new(48), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(2),
                 depth_quote: Udec128_6::new(2 * 48),
             }),
-            (Udec128_24::new(47), dex::LiquidityDepth {
+            (Price::new(47), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3),
                 depth_quote: Udec128_6::new(3 * 47),
             }),
         ]),
         ask_depth: Some(vec![
-            (Udec128_24::new(51), dex::LiquidityDepth {
+            (Price::new(51), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1),
                 depth_quote: Udec128_6::new(51),
             }),
-            (Udec128_24::new(52), dex::LiquidityDepth {
+            (Price::new(52), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(2),
                 depth_quote: Udec128_6::new(2 * 52),
             }),
-            (Udec128_24::new(53), dex::LiquidityDepth {
+            (Price::new(53), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3),
                 depth_quote: Udec128_6::new(3 * 53),
             }),
@@ -6509,45 +6697,45 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     None,
     dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
-            (Udec128_24::new(490), dex::LiquidityDepth {
+            (Price::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
                 depth_quote: Udec128_6::new(495 + 2 * 490),
             }),
-            (Udec128_24::new(480), dex::LiquidityDepth {
+            (Price::new(480), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
                 depth_quote: Udec128_6::new(3 * 485 + 4 * 480),
             }),
-            (Udec128_24::new(470), dex::LiquidityDepth {
+            (Price::new(470), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(5 + 6),
                 depth_quote: Udec128_6::new(5 * 475 + 6 * 470),
             }),
-            (Udec128_24::new(460), dex::LiquidityDepth {
+            (Price::new(460), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7 + 8),
                 depth_quote: Udec128_6::new(7 * 465 + 8 * 460),
             }),
-            (Udec128_24::new(450), dex::LiquidityDepth {
+            (Price::new(450), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9 + 10),
                 depth_quote: Udec128_6::new(9 * 455 + 10 * 450),
             }),
         ]),
         ask_depth: Some(vec![
-            (Udec128_24::new(510), dex::LiquidityDepth {
+            (Price::new(510), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
                 depth_quote: Udec128_6::new(505 + 2 * 510),
             }),
-            (Udec128_24::new(520), dex::LiquidityDepth {
+            (Price::new(520), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
                 depth_quote: Udec128_6::new(3 * 515 + 4 * 520),
             }),
-            (Udec128_24::new(530), dex::LiquidityDepth {
+            (Price::new(530), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(5 + 6),
                 depth_quote: Udec128_6::new(5 * 525 + 6 * 530),
             }),
-            (Udec128_24::new(540), dex::LiquidityDepth {
+            (Price::new(540), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7 + 8),
                 depth_quote: Udec128_6::new(7 * 535 + 8 * 540),
             }),
-            (Udec128_24::new(550), dex::LiquidityDepth {
+            (Price::new(550), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9 + 10),
                 depth_quote: Udec128_6::new(9 * 545 + 10 * 550),
             }),
@@ -6586,45 +6774,45 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     None,
     dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
-            (Udec128_24::new(490), dex::LiquidityDepth {
+            (Price::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
                 depth_quote: Udec128_6::new(495 + 2 * 490),
             }),
-            (Udec128_24::new(480), dex::LiquidityDepth {
+            (Price::new(480), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
                 depth_quote: Udec128_6::new(3 * 485 + 4 * 480),
             }),
-            (Udec128_24::new(470), dex::LiquidityDepth {
+            (Price::new(470), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(5 + 6),
                 depth_quote: Udec128_6::new(5 * 475 + 6 * 470),
             }),
-            (Udec128_24::new(460), dex::LiquidityDepth {
+            (Price::new(460), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7 + 8),
                 depth_quote: Udec128_6::new(7 * 465 + 8 * 460),
             }),
-            (Udec128_24::new(450), dex::LiquidityDepth {
+            (Price::new(450), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9 + 10),
                 depth_quote: Udec128_6::new(9 * 455 + 10 * 450),
             }),
         ]),
         ask_depth: Some(vec![
-            (Udec128_24::new(510), dex::LiquidityDepth {
+            (Price::new(510), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
                 depth_quote: Udec128_6::new(505 + 2 * 510),
             }),
-            (Udec128_24::new(520), dex::LiquidityDepth {
+            (Price::new(520), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
                 depth_quote: Udec128_6::new(3 * 515 + 4 * 520),
             }),
-            (Udec128_24::new(530), dex::LiquidityDepth {
+            (Price::new(530), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(5 + 6),
                 depth_quote: Udec128_6::new(5 * 525 + 6 * 530),
             }),
-            (Udec128_24::new(540), dex::LiquidityDepth {
+            (Price::new(540), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7 + 8),
                 depth_quote: Udec128_6::new(7 * 535 + 8 * 540),
             }),
-            (Udec128_24::new(550), dex::LiquidityDepth {
+            (Price::new(550), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9 + 10),
                 depth_quote: Udec128_6::new(9 * 545 + 10 * 550),
             }),
@@ -6670,45 +6858,45 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     None,
     dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
-            (Udec128_24::new(490), dex::LiquidityDepth {
+            (Price::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
                 depth_quote: Udec128_6::new(495 + 2 * 490),
             }),
-            (Udec128_24::new(480), dex::LiquidityDepth {
+            (Price::new(480), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
                 depth_quote: Udec128_6::new(3 * 485 + 4 * 480),
             }),
-            (Udec128_24::new(470), dex::LiquidityDepth {
+            (Price::new(470), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(5 + 6),
                 depth_quote: Udec128_6::new(5 * 475 + 6 * 470),
             }),
-            (Udec128_24::new(460), dex::LiquidityDepth {
+            (Price::new(460), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7 + 8),
                 depth_quote: Udec128_6::new(7 * 465 + 8 * 460),
             }),
-            (Udec128_24::new(450), dex::LiquidityDepth {
+            (Price::new(450), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9 + 10),
                 depth_quote: Udec128_6::new(9 * 455 + 10 * 450),
             }),
         ]),
         ask_depth: Some(vec![
-            (Udec128_24::new(510), dex::LiquidityDepth {
+            (Price::new(510), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
                 depth_quote: Udec128_6::new(505 + 2 * 510),
             }),
-            (Udec128_24::new(520), dex::LiquidityDepth {
+            (Price::new(520), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
                 depth_quote: Udec128_6::new(3 * 515 + 4 * 520),
             }),
-            (Udec128_24::new(530), dex::LiquidityDepth {
+            (Price::new(530), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(5 + 6),
                 depth_quote: Udec128_6::new(5 * 525 + 6 * 530),
             }),
-            (Udec128_24::new(540), dex::LiquidityDepth {
+            (Price::new(540), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7 + 8),
                 depth_quote: Udec128_6::new(7 * 535 + 8 * 540),
             }),
-            (Udec128_24::new(550), dex::LiquidityDepth {
+            (Price::new(550), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9 + 10),
                 depth_quote: Udec128_6::new(9 * 545 + 10 * 550),
             }),
@@ -6716,45 +6904,45 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
     },
     Some(    dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
-            (Udec128_24::new(490), dex::LiquidityDepth {
+            (Price::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
                 depth_quote: Udec128_6::new(495 + 2 * 490),
             }),
-            (Udec128_24::new(480), dex::LiquidityDepth {
+            (Price::new(480), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3 + 4),
                 depth_quote: Udec128_6::new(3 * 485 + 4 * 480),
             }),
-            (Udec128_24::new(470), dex::LiquidityDepth {
+            (Price::new(470), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(6),
                 depth_quote: Udec128_6::new(6 * 470),
             }),
-            (Udec128_24::new(460), dex::LiquidityDepth {
+            (Price::new(460), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7),
                 depth_quote: Udec128_6::new(7 * 465),
             }),
-            (Udec128_24::new(450), dex::LiquidityDepth {
+            (Price::new(450), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9 + 10),
                 depth_quote: Udec128_6::new(9 * 455 + 10 * 450),
             }),
         ]),
         ask_depth: Some(vec![
-            (Udec128_24::new(510), dex::LiquidityDepth {
+            (Price::new(510), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
                 depth_quote: Udec128_6::new(505 + 2 * 510),
             }),
-            (Udec128_24::new(520), dex::LiquidityDepth {
+            (Price::new(520), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(3),
                 depth_quote: Udec128_6::new(3 * 515),
             }),
-            (Udec128_24::new(530), dex::LiquidityDepth {
+            (Price::new(530), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(5 + 6),
                 depth_quote: Udec128_6::new(5 * 525 + 6 * 530),
             }),
-            (Udec128_24::new(540), dex::LiquidityDepth {
+            (Price::new(540), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(7 + 8),
                 depth_quote: Udec128_6::new(7 * 535 + 8 * 540),
             }),
-            (Udec128_24::new(550), dex::LiquidityDepth {
+            (Price::new(550), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(9 + 10),
                 depth_quote: Udec128_6::new(9 * 545 + 10 * 550),
             }),
@@ -6765,7 +6953,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
 fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancellation(
     limit_orders: Vec<(Direction, Price, Uint128)>, // direction, price, amount
     cancels: Option<CancelOrderRequest>,
-    bucket_size: Udec128_24,
+    bucket_size: Price,
     limit: Option<u32>,
     expected_liquidity_depth_after_clearing: dex::LiquidityDepthResponse,
     expected_liquidity_depth_after_cancellation: Option<dex::LiquidityDepthResponse>,
@@ -6932,14 +7120,14 @@ fn decrease_liquidity_depths_minimal_failing_test() {
                         eth::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::from_str("852.485845").unwrap()),
+                        NonZero::new_unchecked(Price::from_str("852.485845").unwrap()),
                         NonZero::new_unchecked(Uint128::new(100_000_000)), // ceil(117304 * 852.485845)
                     ),
                     CreateOrderRequest::new_limit(
                         eth::DENOM.clone(),
                         usdc::DENOM.clone(),
                         Direction::Bid,
-                        NonZero::new_unchecked(Udec128_24::from_str("937.7344336").unwrap()),
+                        NonZero::new_unchecked(Price::from_str("937.7344336").unwrap()),
                         NonZero::new_unchecked(Uint128::new(110_000_000)), // ceil(117304 * 937.7344336)
                     ),
                 ],
@@ -6962,10 +7150,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
                     usdc::DENOM.clone(),
                     Direction::Ask,
                     NonZero::new_unchecked(
-                        Udec128_24::from_str("85248.71")
-                            .unwrap()
-                            .checked_inv()
-                            .unwrap(),
+                        Price::from_str("85248.71").unwrap().checked_inv().unwrap(),
                     ),
                     NonZero::new_unchecked(Uint128::new(117304 * 2)),
                 )],
@@ -6993,7 +7178,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(100)), // ceil(199 * 0.5)
     ),
     coins! { usdc::DENOM.clone() => 100 },
@@ -7006,7 +7191,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(99)), // ceil(198 * 0.5)
     ),
     coins! { usdc::DENOM.clone() => 100 },
@@ -7019,7 +7204,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Ask,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(200)),
     ),
     coins! { dango::DENOM.clone() => 200 },
@@ -7032,7 +7217,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Ask,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(198)),
     ),
     coins! { dango::DENOM.clone() => 198 },
@@ -7114,7 +7299,7 @@ fn limit_order_minimum_order_size(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Ask,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(200)),
     ),
     CreateOrderRequest::new_market(
@@ -7135,7 +7320,7 @@ fn limit_order_minimum_order_size(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Ask,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(200)),
     ),
     CreateOrderRequest::new_market(
@@ -7167,7 +7352,7 @@ fn limit_order_minimum_order_size(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Ask,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(200)),
     ),
     CreateOrderRequest::new_market(
@@ -7188,7 +7373,7 @@ fn limit_order_minimum_order_size(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(100)), // 200 * 0.5
     ),
     CreateOrderRequest::new_market(
@@ -7216,7 +7401,7 @@ fn limit_order_minimum_order_size(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(100)), // 200 * 0.5
     ),
     CreateOrderRequest::new_market(
@@ -7237,7 +7422,7 @@ fn limit_order_minimum_order_size(
         dango::DENOM.clone(),
         usdc::DENOM.clone(),
         Direction::Bid,
-        NonZero::new_unchecked(Udec128_24::new_percent(50)),
+        NonZero::new_unchecked(Price::new_percent(50)),
         NonZero::new_unchecked(Uint128::new(100)), // 200 * 0.5
     ),
     CreateOrderRequest::new_market(
@@ -7346,7 +7531,7 @@ fn orders_cannot_be_created_for_non_existing_pair() {
                     dango::DENOM.clone(),
                     eth::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(1)),
+                    NonZero::new_unchecked(Price::new(1)),
                     NonZero::new_unchecked(Uint128::new(100)),
                 )],
                 cancels: None,
@@ -7408,7 +7593,7 @@ fn create_and_cancel_order_with_remainder() {
                     eth::DENOM.clone(),
                     usdc::DENOM.clone(),
                     Direction::Bid,
-                    NonZero::new_unchecked(Udec128_24::new(100)),
+                    NonZero::new_unchecked(Price::new(100)),
                     NonZero::new_unchecked(Uint128::new(150)),
                 )],
                 cancels: None,

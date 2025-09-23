@@ -13,7 +13,7 @@
 
   input:is(:-webkit-autofill, :autofill) {
     /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
-    -webkit-text-fill-color: theme('colors.secondary.700') !important;
+    -webkit-text-fill-color: theme('colors.ink.secondary.700') !important;
   }
 
 

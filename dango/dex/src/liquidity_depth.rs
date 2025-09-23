@@ -1,20 +1,13 @@
 use {
     crate::DEPTHS,
-    dango_types::dex::Direction,
-    grug::{
-        Decimal, Denom, IsZero, MathResult, NonZero, Number, StdResult, Storage, Udec128_6,
-        Udec128_24,
-    },
+    dango_types::dex::{Direction, Price},
+    grug::{Decimal, Denom, IsZero, MathResult, NonZero, Number, StdResult, Storage, Udec128_6},
     std::collections::BTreeSet,
 };
 
 /// For bids, return the bucket that is immediately smaller than the price.
 /// For asks, return the bucket that is immediately larger than the price.
-pub fn get_bucket(
-    bucket_size: Udec128_24,
-    direction: Direction,
-    price: Udec128_24,
-) -> MathResult<Udec128_24> {
+pub fn get_bucket(bucket_size: Price, direction: Direction, price: Price) -> MathResult<Price> {
     // This is the bucket immediately smaller than the price.
     let lower = price
         .checked_div(bucket_size)?
@@ -45,9 +38,9 @@ pub fn increase_liquidity_depths(
     base_denom: &Denom,
     quote_denom: &Denom,
     direction: Direction,
-    price: Udec128_24,
+    price: Price,
     amount_base: Udec128_6,
-    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
+    bucket_sizes: &BTreeSet<NonZero<Price>>,
 ) -> StdResult<()> {
     let amount_quote = amount_base.checked_mul(price)?;
 
@@ -81,9 +74,9 @@ pub fn decrease_liquidity_depths(
     base_denom: &Denom,
     quote_denom: &Denom,
     direction: Direction,
-    price: Udec128_24,
+    price: Price,
     amount_base: Udec128_6,
-    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
+    bucket_sizes: &BTreeSet<NonZero<Price>>,
 ) -> StdResult<()> {
     let amount_quote = amount_base.checked_mul(price)?;
 

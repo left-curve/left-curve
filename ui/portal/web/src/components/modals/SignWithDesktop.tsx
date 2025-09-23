@@ -6,11 +6,14 @@ import { Scanner } from "@yudiel/react-qr-scanner";
 
 import { WEBRTC_URI } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useRouter } from "@tanstack/react-router";
 
-export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ socketId }, _ref) => {
+import type { useNavigate } from "@tanstack/react-router";
+
+export const SignWithDesktop = forwardRef<
+  unknown,
+  { socketId: string; navigate: ReturnType<typeof useNavigate> }
+>(({ socketId, navigate }, _ref) => {
   const { toast, hideModal } = useApp();
-  const { navigate } = useRouter();
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
     url: WEBRTC_URI,
@@ -43,7 +46,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
       ) : (
         <>
           <div className="flex justify-center items-center py-12">
-            <p className="diatype-m-medium text-tertiary-500 p-4 text-center">
+            <p className="diatype-m-medium text-ink-tertiary-500 p-4 text-center">
               {m["signin.qrInstructions"]({ domain: window.location.hostname })}
             </p>
           </div>
@@ -59,7 +62,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
             classNames={{ container: "qr-container", video: "bg-surface-primary-rice" }}
           />
           <div className="py-20 flex items-center justify-center">
-            <p className="text-tertiary-500 diatype-m-medium" />
+            <p className="text-ink-tertiary-500 diatype-m-medium" />
           </div>
         </>
       )}

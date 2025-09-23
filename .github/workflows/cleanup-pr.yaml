@@ -1,0 +1,246 @@
+name: Cleanup PR
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup-deployment:
+    runs-on: [self-hosted]
+    permissions:
+      packages: write
+      deployments: write
+
+    steps:
+      - name: Delete PR deployments
+        run: |
+          set -e
+
+          echo "Starting deployment cleanup for PR ${{ github.event.pull_request.number }}"
+
+          ENVIRONMENTS=("preview-dango-frontend" "preview-dango-api" "preview-dango-metrics" "preview-faucet-bot" "preview-cometbft-p2p" "preview-cometbft-rpc" "preview-cometbft-abci" "preview-cometbft-metrics")
+
+          TOTAL_DEACTIVATED=0
+          TOTAL_ERRORS=0
+
+          for env in "${ENVIRONMENTS[@]}"; do
+            echo "Checking environment: ${env}"
+            page=1
+            env_deactivated=0
+
+            while true; do
+              # Fetch deployments page
+              response=$(curl -s -w "%{http_code}" \
+                -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                "https://api.github.com/repos/${{ github.repository }}/deployments?environment=${env}&page=${page}&per_page=100")
+
+              http_code="${response: -3}"
+              response_body="${response%???}"
+
+              if [ "$http_code" -ne 200 ]; then
+                echo "ERROR: Failed to fetch deployments for $env (HTTP $http_code)"
+                TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+                break
+              fi
+
+              # Check if page is empty
+              if [ "$(echo "$response_body" | jq '. | length')" -eq 0 ]; then
+                break
+              fi
+
+              # Extract deployment IDs for this PR
+              DEPLOYMENT_IDS=$(echo "$response_body" | \
+                jq -r --arg pr "PR ${{ github.event.pull_request.number }}" \
+                  '.[] | select(.description | contains($pr)) | .id')
+
+              # Deactivate deployments found on this page
+              for id in $DEPLOYMENT_IDS; do
+                if [ "$id" != "null" ] && [ -n "$id" ]; then
+                  echo "  Deactivating deployment ID: $id"
+
+                  deactivate_response=$(curl -s -w "%{http_code}" -X POST \
+                    -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "Accept: application/vnd.github.v3+json" \
+                    "https://api.github.com/repos/${{ github.repository }}/deployments/${id}/statuses" \
+                    -d '{"state":"inactive","description":"PR closed - deployment deactivated"}')
+
+                  deactivate_code="${deactivate_response: -3}"
+                  if [ "$deactivate_code" -eq 200 ] || [ "$deactivate_code" -eq 201 ]; then
+                    echo "    SUCCESS: Deployment $id deactivated"
+                    env_deactivated=$((env_deactivated + 1))
+                    TOTAL_DEACTIVATED=$((TOTAL_DEACTIVATED + 1))
+                  else
+                    echo "    ERROR: Failed to deactivate deployment $id (HTTP $deactivate_code)"
+                    echo "    Response: ${deactivate_response%???}"
+                    TOTAL_ERRORS=$((TOTAL_ERRORS + 1))
+                  fi
+                fi
+              done
+
+              ((page++))
+            done
+
+            if [ $env_deactivated -eq 0 ]; then
+              echo "  No deployments found for PR ${{ github.event.pull_request.number }}"
+            else
+              echo "  Deactivated $env_deactivated deployment(s) in $env"
+            fi
+            echo
+          done
+
+          echo "=== DEPLOYMENT CLEANUP SUMMARY ==="
+          echo "Total deployments deactivated: $TOTAL_DEACTIVATED"
+          echo "Total errors: $TOTAL_ERRORS"
+
+          if [ $TOTAL_ERRORS -gt 0 ]; then
+            echo "WARNING: Some operations failed. Check logs above for details."
+          else
+            echo "SUCCESS: All deployments cleaned up successfully"
+          fi
+
+      - name: Delete PR container images
+        run: |
+          set -e  # Exit on any error
+
+          echo "Starting cleanup for PR ${{ github.event.pull_request.number }}"
+
+          # Get PR commits with error handling
+          echo "Fetching PR commits..."
+          PR_COMMITS_RESPONSE=$(curl -s -w "%{http_code}" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/commits")
+
+          HTTP_CODE="${PR_COMMITS_RESPONSE: -3}"
+          if [ "$HTTP_CODE" -ne 200 ]; then
+            echo "ERROR: Failed to fetch PR commits (HTTP $HTTP_CODE)"
+            echo "Response: ${PR_COMMITS_RESPONSE%???}"
+            exit 1
+          fi
+
+          PR_COMMITS=$(echo "${PR_COMMITS_RESPONSE%???}" | jq -r '.[].sha' 2>/dev/null)
+          if [ $? -ne 0 ] || [ -z "$PR_COMMITS" ]; then
+            echo "ERROR: Failed to parse commits from API response"
+            echo "Response: ${PR_COMMITS_RESPONSE%???}"
+            exit 1
+          fi
+
+          echo "Found commits: $(echo "$PR_COMMITS" | wc -l)"
+          echo "$PR_COMMITS"
+
+          # Function to delete images by tag with comprehensive error handling
+          delete_image_versions() {
+            local package=$1
+            local tag=$2
+
+            echo "Processing $package:$tag"
+
+            # Get version ID for this tag
+            local versions_response=$(curl -s -w "%{http_code}" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/orgs/left-curve/packages/container/${package}/versions")
+
+            local http_code="${versions_response: -3}"
+            if [ "$http_code" -ne 200 ]; then
+              echo "WARNING: Failed to fetch versions for $package (HTTP $http_code)"
+              echo "Response: ${versions_response%???}"
+              return 1
+            fi
+
+            local version_id=$(echo "${versions_response%???}" | \
+              jq -r --arg tag "$tag" '.[] | select(.metadata.container.tags[]? == $tag) | .id' 2>/dev/null)
+
+            if [ $? -ne 0 ]; then
+              echo "WARNING: Failed to parse versions response for $package:$tag"
+              return 1
+            fi
+
+            if [ "$version_id" = "null" ] || [ -z "$version_id" ]; then
+              echo "INFO: Version $package:$tag not found (may already be deleted)"
+              return 0
+            fi
+
+            echo "Deleting $package:$tag (ID: $version_id)"
+            local delete_response=$(curl -s -w "%{http_code}" -X DELETE \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/orgs/left-curve/packages/container/${package}/versions/${version_id}")
+
+            local delete_code="${delete_response: -3}"
+            if [ "$delete_code" -eq 200 ] || [ "$delete_code" -eq 204 ]; then
+              echo "SUCCESS: Deleted $package:$tag"
+              return 0
+            else
+              echo "ERROR: Failed to delete $package:$tag (HTTP $delete_code)"
+              echo "Response: ${delete_response%???}"
+              return 1
+            fi
+          }
+
+          # Track successes and failures
+          TOTAL_ATTEMPTS=0
+          SUCCESSFUL_DELETIONS=0
+          FAILED_DELETIONS=0
+
+          # Delete pr-latest tags
+          PACKAGES=("left-curve%2Fdango" "left-curve%2Fdango-frontend")
+          for package in "${PACKAGES[@]}"; do
+            TOTAL_ATTEMPTS=$((TOTAL_ATTEMPTS + 1))
+            if delete_image_versions "$package" "pr-${{ github.event.pull_request.number }}-latest"; then
+              SUCCESSFUL_DELETIONS=$((SUCCESSFUL_DELETIONS + 1))
+            else
+              FAILED_DELETIONS=$((FAILED_DELETIONS + 1))
+            fi
+          done
+
+          # Delete commit-specific images
+          for commit in $PR_COMMITS; do
+            for package in "${PACKAGES[@]}"; do
+              for suffix in "" "-amd64" "-arm64"; do
+                TOTAL_ATTEMPTS=$((TOTAL_ATTEMPTS + 1))
+                if delete_image_versions "$package" "$commit$suffix"; then
+                  SUCCESSFUL_DELETIONS=$((SUCCESSFUL_DELETIONS + 1))
+                else
+                  FAILED_DELETIONS=$((FAILED_DELETIONS + 1))
+                fi
+              done
+            done
+          done
+
+          echo "=== CLEANUP SUMMARY ==="
+          echo "Total attempts: $TOTAL_ATTEMPTS"
+          echo "Successful deletions: $SUCCESSFUL_DELETIONS"
+          echo "Failed deletions: $FAILED_DELETIONS"
+
+          if [ $FAILED_DELETIONS -gt 0 ]; then
+            echo "WARNING: Some deletions failed. Check logs above for details."
+            # Don't exit 1 unless you want the workflow to fail
+          else
+            echo "SUCCESS: All cleanup operations completed successfully"
+          fi
+
+      - name: Install Ansible
+        run: |
+          pipx install ansible
+          echo "${HOME}/.local/bin" >> $GITHUB_PATH
+          ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
+          ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
+
+      - name: Install collections
+        run: |
+          ansible-galaxy collection install -r deploy/requirements.yml
+
+      - name: Check DEPLOY_KEY is set
+        run: |
+          if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
+            echo "Missing DEPLOY_KEY secret"
+            exit 1
+          fi
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Cleanup actual containers
+        run: |
+          cd deploy
+          ansible-playbook delete-full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}

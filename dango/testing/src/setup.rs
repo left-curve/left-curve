@@ -406,7 +406,7 @@ where
     // Create the mock validator sets.
     // TODO: For now, we always use the preset mock. It may not match the ones
     // in the genesis state. We should generate this based on the `genesis_opt`.
-    let validator_sets = MockValidatorSets::new_preset();
+    let validator_sets = MockValidatorSets::new_preset(false);
 
     for op in (test_opt.bridge_ops)(&accounts) {
         match op.remote {

@@ -33,14 +33,14 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
     <MotiView key={title} className="w-full p-2 rounded-xs">
       <View className="flex flex-row items-center justify-between gap-4">
         <View className="flex-row items-center gap-4 flex-1 basis-0">
-          <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+          <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
             {AppletImage ? <AppletImage width={48} height={48} /> : null}
           </View>
 
           <View className="flex flex-col max-w-full flex-1">
-            <GlobalText className="diatype-lg-medium text-secondary-700">{title}</GlobalText>
+            <GlobalText className="diatype-lg-medium text-ink-secondary-700">{title}</GlobalText>
             <GlobalText
-              className="diatype-m-regular text-tertiary-500"
+              className="diatype-m-regular text-ink-tertiary-500"
               numberOfLines={2}
               ellipsizeMode="tail"
             >
@@ -56,9 +56,9 @@ const AppletItem: React.FC<SearchAppletItemProps> = (applet) => {
           className="shrink-0 ml-2"
         >
           {isFav ? (
-            <IconStar className="w-6 h-6 text-rice-500" />
+            <IconStar className="w-6 h-6 text-primitives-rice-light-500" />
           ) : (
-            <IconEmptyStar className="w-6 h-6 text-rice-500" />
+            <IconEmptyStar className="w-6 h-6 text-primitives-rice-light-500" />
           )}
         </Pressable>
       </View>
@@ -76,7 +76,7 @@ const AssetItem: React.FC<SearchAssetProps> = ({ symbol, price }) => {
           {/* <Image source={{ uri: logoURI }} style={{ width: 32, height: 32 }} /> */}
           <View className="flex-col gap-1">
             <GlobalText className="diatype-m-bold">{symbol}</GlobalText>
-            <GlobalText className="diatype-m-regular text-tertiary-500">{symbol}</GlobalText>
+            <GlobalText className="diatype-m-regular text-ink-tertiary-500">{symbol}</GlobalText>
           </View>
         </View>
         <View className="flex-col gap-1">
@@ -93,12 +93,12 @@ const BlockItem: React.FC<SearchBlockItemProps> = ({ height, hash }) => {
   return (
     <MotiView key={height} className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex flex-row items-center gap-4">
-        <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiBlocks width={48} height={48} />
         </View>
         <View className="flex-col">
           <GlobalText className="diatype-m-medium">#{height} Block</GlobalText>
-          <TruncateText className="diatype-sm-regular text-tertiary-500" text={hash} end={20} />
+          <TruncateText className="diatype-sm-regular text-ink-tertiary-500" text={hash} end={20} />
         </View>
       </View>
     </MotiView>
@@ -111,12 +111,14 @@ const TransactionItem: React.FC<SearchTransactionItemProps> = ({ height, hash })
   return (
     <MotiView key={height} className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-center gap-4">
-        <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiTxs width={48} height={48} />
         </View>
         <View className="flex-col">
           <TruncateText className="flex-row gap-2 diatype-m-medium" text={hash} end={20} />
-          <GlobalText className="diatype-sm-regular text-tertiary-500">Block: #{height}</GlobalText>
+          <GlobalText className="diatype-sm-regular text-ink-tertiary-500">
+            Block: #{height}
+          </GlobalText>
         </View>
       </View>
     </MotiView>
@@ -131,12 +133,16 @@ const ContractItem: React.FC<SearchContractItemProps> = ({ contract }) => {
   return (
     <MotiView key={address} className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-center gap-4">
-        <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiFactory width={48} height={48} />
         </View>
         <View className="flex-col">
           <AddressVisualizer address={address} withIcon classNames={{ text: "diatype-m-medium" }} />
-          <TruncateText className="diatype-sm-regular text-tertiary-500" text={address} end={20} />
+          <TruncateText
+            className="diatype-sm-regular text-ink-tertiary-500"
+            text={address}
+            end={20}
+          />
         </View>
       </View>
     </MotiView>
@@ -152,12 +158,16 @@ const AccountItem: React.FC<SearchAccountItemProps> = ({ account }) => {
   return (
     <MotiView key={address} className="w-full p-2 min-h-[74px] rounded-xs">
       <View className="flex-row items-center gap-4">
-        <View className="p-1 bg-primary-red rounded-xxs border border-surface-secondary-red">
+        <View className="p-1 bg-surface-primary-red rounded-xxs border border-surface-secondary-red">
           <EmojiFactory width={48} height={48} />
         </View>
         <View className="flex-col">
           <GlobalText>{name}</GlobalText>
-          <TruncateText className="diatype-sm-regular text-tertiary-500" text={address} end={20} />
+          <TruncateText
+            className="diatype-sm-regular text-ink-tertiary-500"
+            text={address}
+            end={20}
+          />
         </View>
       </View>
     </MotiView>

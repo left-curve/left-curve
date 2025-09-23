@@ -17,7 +17,7 @@ export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) =>
     <div className="flex flex-col gap-4">
       <Range
         minValue={0}
-        maxValue={Number(amount)}
+        maxValue={Number(balance)}
         step={0.1}
         value={Number(amount)}
         onChange={(value) => {
@@ -32,7 +32,7 @@ export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) =>
           type="button"
           variant="secondary"
           size="xs"
-          className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+          className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
           onClick={() => {
             setActiveInput();
             setValue(String(Number(balance) * 0.25));
@@ -44,7 +44,7 @@ export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) =>
           type="button"
           variant="secondary"
           size="xs"
-          className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+          className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
           onClick={() => {
             setActiveInput();
             setValue(String(Number(balance) * 0.5));
@@ -56,7 +56,7 @@ export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) =>
           type="button"
           variant="secondary"
           size="xs"
-          className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+          className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
           onClick={() => {
             setActiveInput();
             setValue(balance);

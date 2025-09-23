@@ -2,8 +2,9 @@ pub mod constants;
 mod lazer;
 pub mod metrics;
 mod traits;
+mod types;
 
-pub use {lazer::*, traits::*};
+pub use {lazer::*, traits::*, types::*};
 
 // Re-exports
 pub use {

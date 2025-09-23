@@ -66,7 +66,7 @@ const Header: React.FC = () => {
         <img
           src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
           alt="Dango"
-          className="max-w-[10rem] lg:max-w-[13rem]"
+          className="max-w-[10rem] lg:max-w-[13rem] select-none"
         />
         {isLg && (
           <div className="relative w-full h-11 z-40 max-w-[38rem]">
@@ -98,13 +98,13 @@ const SectionRice: React.FC = () => {
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(212.63deg,_rgba(255,_229,_190,_0.4)_19.52%,_#FFDEAE_94.1%)] dark:bg-[linear-gradient(212.63deg,_#42403D_19.52%,_#807668_94.1%)]">
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center lg:justify-between p-4 pr-0">
         <div className="flex flex-col gap-2 max-w-[40rem]">
-          <h1 className="display-heading-l md:display-heading-2xl text-rice-600 dark:text-secondary-rice">
+          <h1 className="display-heading-l md:display-heading-2xl text-rice-600 dark:text-ink-secondary-rice">
             {m["welcome.trade"]()}
           </h1>
-          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-secondary-rice">
+          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-ink-secondary-rice">
             {m["welcome.tradeText"]()}
           </p>
-          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-secondary-rice">
+          <p className="diatype-m-regular md:h1-medium text-rice-600 dark:text-ink-secondary-rice">
             {m["welcome.tradeText2"]()}
           </p>
         </div>
@@ -126,13 +126,13 @@ const SectionRed: React.FC = () => {
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(212.63deg,_rgba(255,_221,_223,_0.4)_19.52%,_#FFD0D3_94.1%)] dark:bg-[linear-gradient(212.63deg,_#383634_19.52%,_#6A6361_94.1%)]">
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center lg:justify-between p-4 pr-0">
         <div className="flex flex-col gap-2 max-w-[40rem]">
-          <h1 className="display-heading-l md:display-heading-2xl text-tertiary-red">
+          <h1 className="display-heading-l md:display-heading-2xl text-ink-tertiary-red">
             {m["welcome.leverageUp"]()}
           </h1>
-          <p className="diatype-m-regular md:h1-medium text-tertiary-red">
+          <p className="diatype-m-regular md:h1-medium text-ink-tertiary-red">
             {m["welcome.leverageUpText"]()}
           </p>
-          <p className="diatype-m-regular md:h1-medium text-tertiary-red">
+          <p className="diatype-m-regular md:h1-medium text-ink-tertiary-red">
             {m["welcome.leverageUpText2"]()}
           </p>
         </div>
@@ -154,10 +154,10 @@ const SectionGreen: React.FC = () => {
     <section className="section w-full min-h-svh flex items-center justify-center bg-surface-primary-rice bg-[linear-gradient(212.63deg,_rgba(239,_240,_173,_0.4)_19.52%,_#EFF0AD_94.1%)] dark:bg-[linear-gradient(212.63deg,_#373634_19.52%,_#666654_94.1%)]">
       <div className="max-w-[76rem] w-full mx-auto flex flex-col lg:flex-row items-center lg:justify-between p-4 pr-0">
         <div className="flex flex-col gap-2 max-w-[40rem]">
-          <h1 className="display-heading-l md:display-heading-2xl text-green-bean-800 dark:text-foreground-primary-green">
+          <h1 className="display-heading-l md:display-heading-2xl text-primitives-green-light-800 dark:text-fg-primary-green">
             {m["welcome.earn"]()}
           </h1>
-          <p className="diatype-m-regular md:h1-medium text-green-bean-800 dark:text-foreground-primary-green">
+          <p className="diatype-m-regular md:h1-medium text-primitives-green-light-800 dark:text-fg-primary-green">
             {m["welcome.earnText"]()}
           </p>
         </div>
@@ -178,19 +178,19 @@ const SectionCommunity: React.FC = () => {
 
   return (
     <section className="section w-full min-h-svh flex items-center justify-center lg:justify-end bg-surface-primary-rice bg-[linear-gradient(6.97deg,_#D0CFEB_11.63%,_#F6F6FB_88.19%)] dark:bg-[linear-gradient(6.97deg,_#6E6D77_11.63%,_#373634_88.19%)]">
-      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 pb-[10svh] lg:pb-0 min-h-[calc(100svh)] lg:justify-center pt-[76px]">
+      <div className="max-w-[76rem] w-full mx-auto flex flex-col p-4 pb-[10svh] lg:pb-0 min-h-[calc(100svh)] lg:justify-center pt-[76px] gap-4">
         <div className="w-full flex flex-col lg:flex-row items-center lg:justify-between gap-4 flex-1">
           <img
             src="/images/characters/friends.svg"
             alt="rabbits"
-            className="w-full transition-all max-w-[317px] md:max-w-[435px] lg:max-h-[535px]"
+            className="w-full transition-all max-w-[217px] sm:max-w-[317px] md:max-w-[435px] lg:max-h-[535px]"
           />
           <div className="flex flex-col max-w-[33rem] items-center justify-center text-center gap-6 lg:gap-8 z-30">
             <h2 className="display-heading-m md:display-heading-2xl">
               {m["welcome.join"]()}
-              <span className="text-red-bean-400">{m["welcome.community"]()}</span>{" "}
+              <span className="text-primitives-red-light-400">{m["welcome.community"]()}</span>{" "}
               {m["welcome.of"]()}{" "}
-              <span className="text-red-bean-400">{m["welcome.dangbros"]()}</span>
+              <span className="text-primitives-red-light-400">{m["welcome.dangbros"]()}</span>
             </h2>
             <div className="flex gap-4">
               <Button
@@ -226,14 +226,14 @@ const SectionCommunity: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="w-full border-t border-t-border-tertiary-blue items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row gap-1">
+        <div className="w-full border-t border-t-overlay-tertiary-blue items-center justify-between flex py-6 diatype-m-medium flex-col lg:flex-row gap-1">
           <p>© 2024-{format(new Date(), "yy")} Left Curve Software</p>
           <div className="flex gap-10 lg:gap-4 diatype-m-medium">
             <a
               href="/documents/Dango%20-%20Terms%20of%20Use.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline text-tertiary-500"
+              className="hover:underline text-ink-tertiary-500"
             >
               {m["welcome.termsOfUse"]()}
             </a>
@@ -242,7 +242,7 @@ const SectionCommunity: React.FC = () => {
               href="/documents/Dango%20-%20Privacy%20Policy.pdf"
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:underline text-tertiary-500"
+              className="hover:underline text-ink-tertiary-500"
             >
               {m["welcome.privacyPolicy"]()}
             </a>

@@ -1,0 +1,18 @@
+- become: true
+  become_user: root
+  block:
+    - name: Update Traefik dynamic config
+      template:
+        src: traefik-services.yml
+        dest: "{{ traefik_dir }}/config/{{ dango_network }}.yml"
+        owner: "{{ deploy_user }}"
+
+    - name: Update deployment tracking file
+      copy:
+        content: |
+          {
+            "current_deployment": "{{ deployment_name }}",
+            "deployed_at": "{{ ansible_date_time.iso8601 }}"
+          }
+        dest: "{{ ansible_env.HOME }}/deployments/{{ dango_network }}.json"
+        owner: "{{ deploy_user }}"

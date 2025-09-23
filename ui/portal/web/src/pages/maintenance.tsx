@@ -10,7 +10,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 function MaintenanceApplet() {
   const { theme } = useTheme();
   return (
-    <div className="w-full flex flex-1 justify-center items-center p-4 flex-col gap-6 text-center pb-[76px] min-h-svh text-primary-900">
+    <div className="w-full flex flex-1 justify-center items-center p-4 flex-col gap-6 text-center pb-[76px] min-h-svh text-ink-primary-900">
       <img
         src={`/images/union${theme === "dark" ? "-dark" : ""}.png`}
         alt="bg-image"
@@ -23,7 +23,7 @@ function MaintenanceApplet() {
           <img
             src={`/images/dango${theme === "dark" ? "-dark" : ""}.svg`}
             alt="Dango"
-            className="max-w-[12rem] lg:max-w-[18rem]"
+            className="max-w-[12rem] lg:max-w-[18rem] select-none"
           />
         </div>
       </div>
@@ -33,10 +33,10 @@ function MaintenanceApplet() {
         className="w-full max-w-[14.75rem] md:max-w-[22.5rem] opacity-80"
       />
       <div className="flex flex-col gap-2 items-center justify-center">
-        <h1 className="text-center font-exposure text-[30px] md:text-[60px] font-extrabold text-secondary-700 italic">
+        <h1 className="text-center font-exposure text-[30px] md:text-[60px] font-extrabold text-ink-secondary-700 italic">
           {m["maintenance.title"]()}
         </h1>
-        <p className="text-tertiary-500 diatype-m-regular max-w-xl">
+        <p className="text-ink-tertiary-500 diatype-m-regular max-w-xl">
           {m["maintenance.description"]()}
         </p>
       </div>

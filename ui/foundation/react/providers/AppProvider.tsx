@@ -12,8 +12,6 @@ export type AppState = {
   config: ReturnType<typeof useAppConfig>;
   isSidebarVisible: boolean;
   setSidebarVisibility: (visibility: boolean) => void;
-  isNotificationMenuVisible: boolean;
-  setNotificationMenuVisibility: (visibility: boolean) => void;
   isSearchBarVisible: boolean;
   setSearchBarVisibility: (visibility: boolean) => void;
   isTradeBarVisible: boolean;
@@ -26,6 +24,9 @@ export type AppState = {
   changeSettings: (settings: Partial<AppState["settings"]>) => void;
   settings: {
     chart: "tradingview" | "chartiq";
+    timeFormat: "hh:mm a" | "hh:mm aa" | "HH:mm";
+    dateFormat: "MM/dd/yyyy" | "dd/MM/yyyy" | "yyyy/MM/dd";
+    timeZone: "local" | "utc";
     showWelcome: boolean;
     isFirstVisit: boolean;
     useSessionKey: boolean;
@@ -48,25 +49,25 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
 }) => {
   // Global component state
   const [isSidebarVisible, setSidebarVisibility] = useState(false);
-  const [isNotificationMenuVisible, setNotificationMenuVisibility] = useState(false);
   const [isSearchBarVisible, setSearchBarVisibility] = useState(false);
   const [isTradeBarVisible, setTradeBarVisibility] = useState(false);
   const [isQuestBannerVisible, setQuestBannerVisibility] = useState(false);
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.4,
+    version: 1.6,
     initialValue: {
       chart: "tradingview",
       showWelcome: true,
       isFirstVisit: true,
       useSessionKey: true,
+      timeFormat: "hh:mm a",
+      dateFormat: "MM/dd/yyyy",
+      timeZone: "local",
       formatNumberOptions: {
         mask: 1,
+        maximumTotalDigits: 8,
         language: "en-US",
-        maxFractionDigits: 4,
-        minFractionDigits: 0,
-        notation: "standard",
       },
     },
     sync: true,
@@ -77,6 +78,20 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
       },
       1.3: (state: AppState["settings"]) => {
         state.chart = "tradingview";
+        return state;
+      },
+      1.4: (state: AppState["settings"]) => {
+        state.timeFormat = "hh:mm a";
+        state.dateFormat = "MM/dd/yyyy";
+        state.timeZone = "local";
+        return state;
+      },
+      1.5: (state: AppState["settings"]) => {
+        state.formatNumberOptions = {
+          mask: state.formatNumberOptions.mask,
+          maximumTotalDigits: 8,
+          language: state.formatNumberOptions.language,
+        };
         return state;
       },
     },
@@ -107,8 +122,6 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
         subscriptions,
         isSidebarVisible,
         setSidebarVisibility,
-        isNotificationMenuVisible,
-        setNotificationMenuVisibility,
         isSearchBarVisible,
         setSearchBarVisibility,
         isTradeBarVisible,

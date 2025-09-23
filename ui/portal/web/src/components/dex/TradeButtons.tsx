@@ -67,7 +67,7 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
                   </Button>
                 </div>
               ) : (
-                <Button className="flex-1 h-full" onClick={() => navigate({ to: "/signin" })}>
+                <Button className="flex-1 h-[44px]" onClick={() => navigate({ to: "/signin" })}>
                   Connect
                 </Button>
               )}

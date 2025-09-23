@@ -9,8 +9,6 @@ import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Sheet } from "react-modal-sheet";
 
-import { useNotifications } from "~/hooks/useNotifications";
-
 import { motion } from "framer-motion";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -36,7 +34,7 @@ import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";
 import { AssetCard } from "./AssetCard";
 import { EmptyPlaceholder } from "./EmptyPlaceholder";
-import { Notifications } from "../notifications/Notifications";
+import { Activities } from "../activities/Activities";
 
 import { Direction } from "@left-curve/dango/types";
 
@@ -128,13 +126,13 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
   if (!account) return null;
 
   return (
-    <div className="w-full flex items-center flex-col gap-6 relative md:pt-4">
+    <div className="w-full flex items-center flex-col gap-6 relative md:pt-4 flex-1 h-full">
       <div className="flex flex-col w-full items-center gap-5">
         {backAllowed ? (
           <div className="w-full flex gap-2">
             <IconButton variant="link" onClick={() => history.go(-1)}>
               <IconChevronDown className="rotate-90" />
-              <span className="h4-bold text-primary-900">{m["common.accounts"]()} </span>
+              <span className="h4-bold text-ink-primary-900">{m["common.accounts"]()} </span>
             </IconButton>
           </div>
         ) : null}
@@ -178,10 +176,14 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
 
 const Desktop: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
-  const { setSidebarVisibility, isSidebarVisible, isQuestBannerVisible } = useApp();
+  const { setSidebarVisibility, isSidebarVisible, isQuestBannerVisible, modal } = useApp();
 
   useClickAway(menuRef, (e) => {
-    if (e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) return;
+    if (
+      (e.target instanceof HTMLElement && e.target.closest("[dng-connect-button]")) ||
+      modal.modal
+    )
+      return;
     setSidebarVisibility(false);
   });
 
@@ -195,7 +197,7 @@ const Desktop: React.FC = () => {
       )}
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">
-        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-secondary-gray overflow-hidden">
+        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-overlay-secondary-gray overflow-hidden">
           <Menu />
         </div>
       </div>
@@ -232,7 +234,7 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
   const [activeTab, setActiveTab] = useState("wallet");
 
   return (
-    <div className="flex flex-col w-full gap-6 items-center">
+    <div className="flex flex-col w-full gap-6 items-center h-full">
       <div className="md:self-end flex gap-2 items-center justify-center w-full px-4">
         <Button
           fullWidth
@@ -275,13 +277,13 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
       </div>
       <motion.div
         key={activeTab}
-        className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full max-h-[calc(100svh-20rem)]"
+        className="flex flex-col w-full overflow-hidden overflow-y-scroll scrollbar-none pb-4 h-full"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeInOut" }}
       >
         {activeTab === "wallet" ? <WalletTab /> : null}
-        {activeTab === "activities" ? <NotificationsTab /> : null}
+        {activeTab === "activities" ? <ActivityTab /> : null}
       </motion.div>
     </div>
   );
@@ -292,7 +294,7 @@ export const WalletTab: React.FC = () => {
   const balances = Object.entries(context.balances);
 
   return (
-    <div className="flex flex-col w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none pb-10">
+    <div className="flex flex-col w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none">
       {balances.length > 0 ? (
         balances.map(([denom, amount]) => <AssetCard key={denom} coin={{ denom, amount }} />)
       ) : (
@@ -304,38 +306,10 @@ export const WalletTab: React.FC = () => {
   );
 };
 
-export const NotificationsTab: React.FC = () => {
-  const navigate = useNavigate();
-  const { setSidebarVisibility } = useApp();
-
-  const { totalNotifications } = useNotifications({});
-
+export const ActivityTab: React.FC = () => {
   return (
-    <div className="pb-[2.5rem] flex flex-col">
-      {totalNotifications > 0 ? (
-        <>
-          <Notifications
-            className="max-h-[41rem] overflow-y-scroll scrollbar-none"
-            maxNotifications={5}
-          />
-          <div className="p-4 flex items-center justify-center">
-            <Button
-              variant="link"
-              className="py-0 h-fit"
-              onClick={() => [navigate({ to: "/notifications" }), setSidebarVisibility(false)]}
-            >
-              {m["common.viewAll"]()}
-            </Button>
-          </div>
-        </>
-      ) : (
-        <div className="px-4">
-          <EmptyPlaceholder
-            component={m["notifications.noNotifications.title"]()}
-            className="p-4"
-          />
-        </div>
-      )}
+    <div className="flex flex-col pb-[12rem]">
+      <Activities className="overflow-y-scroll scrollbar-none" />
     </div>
   );
 };
@@ -381,7 +355,7 @@ const Selector: React.FC<SelectorProps> = ({ onBack }) => {
             ))}
         </div>
         <div className="absolute h-2 w-full bottom-[1.5rem] z-50 max-w-[22.5rem] md:max-w-[20.5rem] pointer-events-none left-1/2 -translate-x-1/2">
-          <div className="bg-gradient-to-b from-transparent from-20% to-bg-primary-rice h-[3rem] w-full rounded-b-2xl" />
+          <div className="bg-gradient-to-b from-transparent from-20% to-bg-surface-primary-rice h-[3rem] w-full rounded-b-2xl" />
         </div>
       </div>
     </div>

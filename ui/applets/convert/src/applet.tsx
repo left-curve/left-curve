@@ -8,6 +8,7 @@ import {
   useSubmitTx,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 import {
   Badge,
@@ -17,20 +18,26 @@ import {
   Input,
   Modals,
   Skeleton,
+  useDebounce,
   type useApp,
 } from "@left-curve/applets-kit";
 import HippoSvg from "@left-curve/foundation/images/characters/hippo.svg";
+import { RangeWithButtons } from "./components/RangeWithButtons";
 
 import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
-import { formatNumber, formatUnits, parseUnits, withResolvers } from "@left-curve/dango/utils";
+import {
+  Decimal,
+  formatNumber,
+  formatUnits,
+  parseUnits,
+  withResolvers,
+} from "@left-curve/dango/utils";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { type PropsWithChildren, useEffect, useState } from "react";
-
+import type { PropsWithChildren } from "react";
 import type { Address } from "@left-curve/dango/types";
 import type { UseConvertStateParameters, UseSubmitTxReturnType } from "@left-curve/store";
 import type React from "react";
-import { RangeWithButtons } from "./components/RangeWithButtons";
 
 const [ConvertProvider, useConvert] = createContext<{
   state: ReturnType<typeof useConvertState>;
@@ -56,12 +63,8 @@ const ConvertContainer: React.FC<
 
   const submission = useSubmitTx({
     toast: {
-      success: () => toast.success({ title: m["dex.convert.convertSuccessfully"]() }),
       error: () =>
-        toast.error(
-          { title: m["dex.convert.errors.failure"]() },
-          { duration: Number.POSITIVE_INFINITY },
-        ),
+        toast.error({ title: m["common.error"](), description: m["dex.convert.errors.failure"]() }),
     },
     submission: {
       success: m["dex.convert.convertSuccessfully"](),
@@ -126,21 +129,21 @@ const ConvertHeader: React.FC = () => {
     <div className="flex flex-col gap-3 rounded-3xl bg-surface-tertiary-rice shadow-account-card p-4 relative overflow-hidden mb-4">
       <div className="flex gap-2 items-center relative z-10">
         <img src={quote.logoURI} alt="token" className="h-6 w-6" />
-        <p className="text-secondary-700 h4-bold">{quote.symbol}</p>
+        <p className="text-ink-secondary-700 h4-bold">{quote.symbol}</p>
         <Badge text="Stable Strategy" color="green" size="s" />
       </div>
       <div className="flex items-center justify-between gap-2 relative z-10 min-h-[22px]">
         <div className="flex items-center gap-2">
-          <p className="text-tertiary-500 diatype-xs-medium">{m["dex.apy"]()}</p>
-          <p className="text-secondary-700 diatype-xs-bold">{apy}</p>
+          <p className="text-ink-tertiary-500 diatype-xs-medium">{m["dex.apy"]()}</p>
+          <p className="text-ink-secondary-700 diatype-xs-bold">{apy}</p>
         </div>
         <div className="flex items-center gap-2">
-          <p className="text-tertiary-500 diatype-xs-medium">{m["dex.24h"]()}</p>
-          <p className="text-secondary-700 diatype-xs-bold">{volume}</p>
+          <p className="text-ink-tertiary-500 diatype-xs-medium">{m["dex.24h"]()}</p>
+          <p className="text-ink-secondary-700 diatype-xs-bold">{volume}</p>
         </div>
         <div className="flex items-center gap-2">
-          <p className="text-tertiary-500 diatype-xs-medium">{m["dex.tvl"]()}</p>
-          <p className="text-secondary-700 diatype-xs-bold">{tvl}</p>
+          <p className="text-ink-tertiary-500 diatype-xs-medium">{m["dex.tvl"]()}</p>
+          <p className="text-ink-secondary-700 diatype-xs-bold">{tvl}</p>
         </div>
       </div>
       <img
@@ -177,38 +180,47 @@ const ConvertForm: React.FC = () => {
     Object.keys(pairs.data).includes(c.denom),
   );
 
-  useEffect(() => {
-    if ((baseAmount === "0" && quoteAmount === "0") || !activeInput || !pair) return;
-    (async () => {
-      const request =
+  useDebounce(
+    () => {
+      if ((baseAmount === "0" && quoteAmount === "0") || !activeInput || !pair) return;
+      const checkAmount =
         activeInput === "base"
-          ? {
-              amount: baseAmount,
-              input: base,
-              target: "quote",
-              output: quote,
-            }
-          : {
-              amount: quoteAmount,
-              input: quote,
-              target: "base",
-              output: base,
-            };
+          ? parseUnits(baseAmount, base.decimals)
+          : parseUnits(quoteAmount, quote.decimals);
+      if (Decimal(simulation.variables?.input?.amount || "0").eq(checkAmount)) return;
+      (async () => {
+        const request =
+          activeInput === "base"
+            ? {
+                amount: baseAmount,
+                input: base,
+                target: "quote",
+                output: quote,
+              }
+            : {
+                amount: quoteAmount,
+                input: quote,
+                target: "base",
+                output: base,
+              };
 
-      const { output } = await simulation.simulate({
-        pair,
-        input: {
-          amount: parseUnits(request.amount, request.input.decimals).toString(),
-          denom: request.input.denom,
-        },
-      });
+        const { output } = await simulation.simulate({
+          pair,
+          input: {
+            amount: parseUnits(request.amount, request.input.decimals).toString(),
+            denom: request.input.denom,
+          },
+        });
 
-      if (output) {
-        setValue(request.target, formatUnits(output.amount, request.output.decimals));
-      }
-      revalidate();
-    })();
-  }, [baseAmount, quoteAmount, pair]);
+        if (output) {
+          setValue(request.target, formatUnits(output.amount, request.output.decimals));
+        }
+        revalidate();
+      })();
+    },
+    [baseAmount, quoteAmount, pair],
+    300,
+  );
 
   return (
     <form
@@ -253,10 +265,10 @@ const ConvertForm: React.FC = () => {
         }
         insideBottomComponent={
           <div className="flex flex-col w-full gap-2 pl-4">
-            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular">
+            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
               <div className="flex items-center gap-2">
                 <p>
-                  {baseBalance} {base.symbol}
+                  {formatNumber(baseBalance, formatNumberOptions)} {base.symbol}
                 </p>
               </div>
               <div>
@@ -265,7 +277,7 @@ const ConvertForm: React.FC = () => {
                 ) : (
                   getPrice(baseAmount, base.denom, {
                     format: true,
-                    formatOptions: formatNumberOptions,
+                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
                   })
                 )}
               </div>
@@ -285,13 +297,13 @@ const ConvertForm: React.FC = () => {
       <button
         type="button"
         disabled={isPending}
-        className="flex items-center justify-center border border-gray-300 rounded-full h-5 w-5 cursor-pointer mt-4"
+        className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5 cursor-pointer mt-4"
         onClick={() => {
           toggleDirection();
           setActiveInput(activeInput === "base" ? "quote" : "base");
         }}
       >
-        <IconArrowDown className="h-3 w-3 text-gray-300" />
+        <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
       </button>
       <Input
         isDisabled={isPending}
@@ -331,10 +343,10 @@ const ConvertForm: React.FC = () => {
         }
         insideBottomComponent={
           <div className="flex flex-col w-full gap-2 pl-4">
-            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-tertiary-500 diatype-sm-regular">
+            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
               <div className="flex items-center gap-2">
                 <p>
-                  {quoteBalance} {quote.symbol}
+                  {formatNumber(quoteBalance, formatNumberOptions)} {quote.symbol}
                 </p>
               </div>
               <div>
@@ -343,7 +355,7 @@ const ConvertForm: React.FC = () => {
                 ) : (
                   getPrice(quoteAmount, quote.denom, {
                     format: true,
-                    formatOptions: formatNumberOptions,
+                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
                   })
                 )}
               </div>
@@ -385,27 +397,27 @@ const ConvertDetails: React.FC = () => {
   return (
     <div className="flex flex-col gap-1 w-full">
       <div className="flex w-full gap-2 items-center justify-between">
-        <p className="text-tertiary-500 diatype-sm-regular">
+        <p className="text-ink-tertiary-500 diatype-sm-regular">
           {m["dex.fee"]()} ({Number(pair?.params.swapFeeRate || 0) * 100}%)
         </p>
         {isPending ? (
           <Skeleton className="w-14 h-4" />
         ) : (
-          <p className="text-secondary-700 diatype-sm-medium">
+          <p className="text-ink-secondary-700 diatype-sm-medium">
             {formatNumber(fee, { ...formatNumberOptions, currency: "usd" })}
           </p>
         )}
       </div>
       <div className="flex w-full gap-2 items-center justify-between">
-        <p className="text-tertiary-500 diatype-sm-regular">{m["dex.convert.rate"]()}</p>
+        <p className="text-ink-tertiary-500 diatype-sm-regular">{m["dex.convert.rate"]()}</p>
         {isPending ? (
           <Skeleton className="w-36 h-4" />
         ) : (
-          <p className="text-secondary-700 diatype-sm-medium">
+          <p className="text-ink-secondary-700 diatype-sm-medium">
             1 {inputCoin.symbol} ≈{" "}
-            {formatNumber(Number(outputAmount) / Number(inputAmount), {
+            {formatNumber(Decimal(outputAmount).div(inputAmount).toFixed(), {
               ...formatNumberOptions,
-              maxFractionDigits: outputCoin.decimals,
+              maximumTotalDigits: 10,
             })}{" "}
             {outputCoin.symbol}
           </p>

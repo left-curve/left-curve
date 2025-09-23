@@ -1,7 +1,7 @@
 use {
     crate::{
-        MAX_ORACLE_STALENESS, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK,
-        VOLUMES, VOLUMES_BY_USER,
+        MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
+        RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders},
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
@@ -12,15 +12,15 @@ use {
         account_factory::Username,
         dex::{
             CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
-            Paused, ReplyMsg, RestingOrderBookState, TimeInForce,
+            Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
         },
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, MultiplyFraction,
-        MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder, Response, StdError,
-        StdResult, Storage, SubMessage, SubMsgResult, SudoCtx, TransferBuilder, Udec128, Udec128_6,
-        Udec128_24,
+        Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        PrimaryKey, Response, StdError, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx,
+        Timestamp, TransferBuilder, Udec128, Udec128_6,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
@@ -70,6 +70,9 @@ pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Respon
 }
 
 pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let now = std::time::Instant::now();
+
     let app_cfg = ctx.querier.query_dango_config()?;
 
     let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier)
@@ -107,6 +110,13 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         )?;
 
         ORDERS.remove(ctx.storage, (denoms, direction, price, order_id))?;
+
+        #[cfg(feature = "metrics")]
+        {
+            if order.amount > order.remaining.into_int_floor() {
+                metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+            }
+        }
     }
 
     // Loop through all trading pairs. Match and clear the orders for each of them.
@@ -132,20 +142,33 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         )?;
     }
 
+    // Calculate the timestamp of `MAX_VOLUME_AGE` ago. Volume data older than
+    // this timestamp are to be purged from storage.
+    // Use `saturating_sub` because tests sometimes use small timestamps.
+    let cutoff = ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE);
+
     // Save the updated volumes.
     for (address, volume) in volumes {
         VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
-        // TODO: purge volume data that are too old.
+
+        purge_old_volume_data(VOLUMES, &address, ctx.storage, cutoff)?;
     }
 
     for (username, volume) in volumes_by_username {
         VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
-        // TODO: purge volume data that are too old.
+
+        purge_old_volume_data(VOLUMES_BY_USER, &username, ctx.storage, cutoff)?;
     }
 
     // Round refunds and fee to integer amounts. Round _down_ in both cases.
     let refunds = refunds.into_batch();
     let fees = fees.into_coins_floor();
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_AUCTION_DURATION,)
+            .record(now.elapsed().as_secs_f64());
+    }
 
     Ok(Response::new()
         .may_add_message(if !refunds.is_empty() {
@@ -178,7 +201,7 @@ fn clear_orders_of_pair(
     taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
-    bucket_sizes: &BTreeSet<NonZero<Udec128_24>>,
+    bucket_sizes: &BTreeSet<NonZero<Price>>,
     events: &mut EventBuilder,
     refunds: &mut TransferBuilder<DecCoins<6>>,
     fees: &mut DecCoins<6>,
@@ -419,6 +442,21 @@ fn clear_orders_of_pair(
     let mut inflows = DecCoins::new();
     let mut outflows = DecCoins::new();
 
+    #[cfg(feature = "metrics")]
+    let mut metric_volume = HashMap::new();
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::counter!(crate::metrics::LABEL_TRADES).increment(filling_outcomes.len() as u64);
+
+        metrics::histogram!(
+            crate::metrics::LABEL_TRADES_PER_BLOCK,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string()
+        )
+        .record(filling_outcomes.len() as f64);
+    }
+
     // Handle order filling outcomes for the user placed orders.
     for FillingOutcome {
         order,
@@ -471,6 +509,11 @@ fn clear_orders_of_pair(
                                 order.id,
                             ),
                         )?;
+
+                        #[cfg(feature = "metrics")]
+                        {
+                            metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+                        }
                     } else {
                         ORDERS.save(
                             storage,
@@ -496,6 +539,11 @@ fn clear_orders_of_pair(
                             order.id,
                         ),
                     )?;
+
+                    #[cfg(feature = "metrics")]
+                    {
+                        metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+                    }
                 },
             }
         } else {
@@ -539,6 +587,50 @@ fn clear_orders_of_pair(
             volumes,
             volumes_by_username,
         )?;
+
+        #[cfg(feature = "metrics")]
+        {
+            let filled_base = filled_base.into_int_floor();
+            let filled_quote = filled_quote.into_int_floor();
+            metric_volume
+                .entry((&base_denom, &quote_denom, &base_denom))
+                .or_insert(grug::Int::ZERO)
+                .checked_add_assign(filled_base)?;
+
+            metric_volume
+                .entry((&base_denom, &quote_denom, &quote_denom))
+                .or_insert(grug::Int::ZERO)
+                .checked_add_assign(filled_quote)?;
+
+            metrics::histogram!(
+                crate::metrics::LABEL_VOLUME_PER_TRADE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "token" => base_denom.to_string(),
+            )
+            .record(filled_base.into_inner() as f64);
+
+            metrics::histogram!(
+                crate::metrics::LABEL_VOLUME_PER_TRADE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "token" => quote_denom.to_string(),
+            )
+            .record(filled_quote.into_inner() as f64);
+        }
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        for ((bd, qd, token), amount) in metric_volume {
+            metrics::histogram!(
+                crate::metrics::LABEL_VOLUME_PER_BLOCK,
+                "base_denom" => bd.to_string(),
+                "quote_denom" => qd.to_string(),
+                "token" => token.to_string(),
+            )
+            .record(amount.into_inner() as f64);
+        }
     }
 
     // Update the pool reserve.
@@ -832,6 +924,41 @@ fn update_trading_volumes(
             },
         }
     }
+
+    Ok(())
+}
+
+/// Delete all volume data older than the `cutoff` timestamp, except the most
+/// recent one among them.
+/// We keep the most recent one, such that we can compute the volume between
+/// that time and now (by subtracting the cumulative volume now with the volume
+/// of that time).
+fn purge_old_volume_data<'a, K>(
+    map: Map<'static, (&'a K, Timestamp), Udec128_6>,
+    prefix: &'a K,
+    storage: &mut dyn Storage,
+    cutoff: Timestamp,
+) -> StdResult<()>
+where
+    &'a K: PrimaryKey,
+{
+    // Find the most recent volume data no newer than the `cutoff` timestamp.
+    let max = map
+        .prefix(prefix)
+        .keys(
+            storage,
+            None,
+            Some(Bound::Inclusive(cutoff)),
+            IterationOrder::Descending,
+        )
+        .next()
+        .transpose()?
+        .unwrap_or(cutoff);
+
+    // Delete all volume data older (exclusive) than the most recent one.
+    // Use exclusive such that the most recent one is retained.
+    map.prefix(prefix)
+        .clear(storage, None, Some(Bound::Exclusive(max)));
 
     Ok(())
 }

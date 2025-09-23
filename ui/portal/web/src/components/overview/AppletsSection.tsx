@@ -21,7 +21,7 @@ export function AppletsSection() {
             <div className="flex flex-col items-center gap-2">
               <Link
                 to={applet.path}
-                className="h-16 w-16 md:h-20 md:w-20 shadow-account-card bg-primary-red hover:bg-surface-secondary-red transition-all rounded-xl p-[10px]"
+                className="h-16 w-16 md:h-20 md:w-20 shadow-account-card bg-surface-primary-red hover:bg-surface-secondary-red transition-all rounded-xl p-[10px]"
               >
                 <img src={applet.img} alt={applet.title} className="w-full h-full" />
               </Link>
@@ -35,7 +35,7 @@ export function AppletsSection() {
         <button
           type="button"
           onClick={() => setSearchBarVisibility(true)}
-          className="h-16 w-16 md:h-20 md:w-20 shadow-account-card border-[1.43px] border-tertiary-rice text-tertiary-rice bg-foreground-primary-rice hover:bg-foreground-secondary-rice transition-all rounded-xl p-[10px] flex items-center justify-center cursor-pointer"
+          className="h-16 w-16 md:h-20 md:w-20 shadow-account-card border-[1.43px] border-overlay-tertiary-rice text-overlay-tertiary-rice bg-surface-primary-rice hover:bg-surface-secondary-rice transition-all rounded-xl p-[10px] flex items-center justify-center cursor-pointer"
         >
           <IconAddCross />
         </button>

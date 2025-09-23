@@ -26,8 +26,16 @@ export {
 /* -------------------------------------------------------------------------- */
 
 export type { PolymorphicComponent, PolymorphicRenderFunction } from "./types/polymorph.js";
-export type { ToastMsg, ToastOptions, ToastProps, ToastController } from "./types/toast.js";
+export type {
+  ToastDefinition,
+  ToastMessage,
+  ToastOptions,
+  ToastHandler,
+  ToastController,
+  ToastStore,
+} from "./types/toast.js";
 export { Modals, type ModalRef, type ModalDefinition } from "./types/modals.js";
+export type { Renderable } from "./types/react.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Utils                                   */
@@ -39,6 +47,7 @@ export {
   type CreateContextReturn,
 } from "./utils/context.js";
 
+export { formatDate } from "./utils/dates.js";
 export { twMerge } from "./utils/twMerge.js";
 export { mergeRefs } from "./utils/mergeRefs.js";
 export { forwardRefPolymorphic } from "./utils/polymorph.js";

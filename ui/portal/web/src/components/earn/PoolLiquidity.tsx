@@ -80,7 +80,7 @@ const PoolLiquidityHeader: React.FC = () => {
     >
       <div className="flex gap-2 items-center">
         <PairAssets assets={[base, quote]} />
-        <p className="text-secondary-700 h4-bold">
+        <p className="text-ink-secondary-700 h4-bold">
           {base.symbol}/{quote.symbol}
         </p>
         <Badge color="green" size="s" text="Stable Strategy" />
@@ -95,24 +95,24 @@ const PoolLiquidityHeader: React.FC = () => {
             "lg:flex-row lg:gap-1 lg:items-center": userHasLiquidity,
           })}
         >
-          <p className="text-tertiary-500 diatype-xs-medium">{m["poolLiquidity.apy"]()}</p>
-          <p className="text-secondary-700 diatype-sm-bold">-</p>
+          <p className="text-ink-tertiary-500 diatype-xs-medium">{m["poolLiquidity.apy"]()}</p>
+          <p className="text-ink-secondary-700 diatype-sm-bold">-</p>
         </div>
         <div
           className={twMerge("flex flex-col items-center gap-0 ", {
             "lg:flex-row lg:gap-1": userHasLiquidity,
           })}
         >
-          <p className="text-tertiary-500 diatype-xs-medium">{m["poolLiquidity.24hVol"]()}</p>
-          <p className="text-secondary-700 diatype-sm-bold">-</p>
+          <p className="text-ink-tertiary-500 diatype-xs-medium">{m["poolLiquidity.24hVol"]()}</p>
+          <p className="text-ink-secondary-700 diatype-sm-bold">-</p>
         </div>
         <div
           className={twMerge("flex flex-col items-end gap-0 ", {
             "lg:flex-row lg:gap-1 lg:items-center": userHasLiquidity,
           })}
         >
-          <p className="text-tertiary-500 diatype-xs-medium">{m["poolLiquidity.tvl"]()}</p>
-          <p className="text-secondary-700 diatype-sm-bold">-</p>
+          <p className="text-ink-tertiary-500 diatype-xs-medium">{m["poolLiquidity.tvl"]()}</p>
+          <p className="text-ink-secondary-700 diatype-sm-bold">-</p>
         </div>
       </div>
       <img
@@ -131,7 +131,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   const { coins, userHasLiquidity, userLiquidity } = state;
   const { base, quote } = coins;
 
-  const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+  const { getPrice } = usePrices();
 
   if (userLiquidity.isLoading)
     return <Skeleton className="h-[9rem] rounded-xl shadow-account-card flex-1" />;
@@ -151,18 +151,18 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   return (
     <div className="flex p-4 flex-col gap-4 rounded-xl bg-surface-secondary-rice shadow-account-card flex-1 h-fit lg:max-w-[373.5px]">
       <div className="flex items-center justify-between">
-        <p className="exposure-sm-italic text-tertiary-500">{m["poolLiquidity.liquidity"]()}</p>
-        <p className="h4-bold text-primary-900">{totalPrice}</p>
+        <p className="exposure-sm-italic text-ink-tertiary-500">{m["poolLiquidity.liquidity"]()}</p>
+        <p className="h4-bold text-ink-primary-900">{totalPrice}</p>
       </div>
       <div className="flex flex-col w-full gap-2">
         <div className="flex items-center justify-between">
           <div className="flex gap-1 items-center justify-center">
             <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
-            <p className="text-tertiary-500 diatype-m-regular">{base.symbol}</p>
+            <p className="text-ink-tertiary-500 diatype-m-regular">{base.symbol}</p>
           </div>
-          <p className="text-secondary-700 diatype-m-regular">
+          <p className="text-ink-secondary-700 diatype-m-regular">
             {formatNumber(innerBase, formatNumberOptions)}{" "}
-            <span className="text-tertiary-500">
+            <span className="text-ink-tertiary-500">
               ({formatNumber(basePrice, { ...formatNumberOptions, currency: "USD" })})
             </span>
           </p>
@@ -170,11 +170,11 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex gap-1 items-center justify-center">
             <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8" />
-            <p className="text-tertiary-500 diatype-m-regular">{quote.symbol}</p>
+            <p className="text-ink-tertiary-500 diatype-m-regular">{quote.symbol}</p>
           </div>
-          <p className="text-secondary-700 diatype-m-regular">
+          <p className="text-ink-secondary-700 diatype-m-regular">
             {formatNumber(innerQuote, formatNumberOptions)}{" "}
-            <span className="text-tertiary-500">
+            <span className="text-ink-tertiary-500">
               ({formatNumber(quotePrice, { ...formatNumberOptions, currency: "USD" })})
             </span>
           </p>
@@ -199,7 +199,7 @@ const PoolLiquidityDeposit: React.FC = () => {
   return (
     <>
       <div className="flex flex-col gap-2">
-        <p className="exposure-sm-italic text-secondary-700">{m["poolLiquidity.deposit"]()}</p>
+        <p className="exposure-sm-italic text-ink-secondary-700">{m["poolLiquidity.deposit"]()}</p>
         <div className="flex flex-col rounded-xl bg-surface-secondary-rice shadow-account-card">
           <Input
             {...register("baseAmount", {
@@ -216,7 +216,7 @@ const PoolLiquidityDeposit: React.FC = () => {
             startContent={
               <div className="flex items-center gap-2 pl-4">
                 <img src={base.logoURI} alt={base.symbol} className="w-8 h-8 rounded-full" />
-                <p className="text-tertiary-500 diatype-lg-medium">{base.symbol}</p>
+                <p className="text-ink-tertiary-500 diatype-lg-medium">{base.symbol}</p>
               </div>
             }
             classNames={{
@@ -226,27 +226,27 @@ const PoolLiquidityDeposit: React.FC = () => {
             }}
             insideBottomComponent={
               <div className="w-full flex justify-between pl-4 h-[22px]">
-                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
+                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-ink-tertiary-500">
                   <span>
-                    {base.balance} {base.symbol}
+                    {formatNumber(base.balance, formatNumberOptions)} {base.symbol}
                   </span>
                   <Button
                     type="button"
                     variant="secondary"
                     size="xs"
-                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
                     onClick={() => setValue("baseAmount", base.balance)}
                   >
                     {m["common.max"]()}
                   </Button>
                 </div>
-                <p className="text-tertiary-500 diatype-sm-regular">
+                <p className="text-ink-tertiary-500 diatype-sm-regular">
                   {getPrice(base.amount, base.denom, { format: true })}
                 </p>
               </div>
             }
           />
-          <span className="w-full h-[1px] bg-secondary-gray" />
+          <span className="w-full h-[1px] bg-overlay-secondary-gray" />
           <Input
             {...register("quoteAmount", {
               mask: numberMask,
@@ -262,7 +262,7 @@ const PoolLiquidityDeposit: React.FC = () => {
             startContent={
               <div className="flex items-center gap-2 pl-4">
                 <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8 rounded-full" />
-                <p className="text-tertiary-500 diatype-lg-medium">{quote.symbol}</p>
+                <p className="text-ink-tertiary-500 diatype-lg-medium">{quote.symbol}</p>
               </div>
             }
             classNames={{
@@ -272,28 +272,28 @@ const PoolLiquidityDeposit: React.FC = () => {
             }}
             insideBottomComponent={
               <div className="w-full flex justify-between pl-4 h-[22px]">
-                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
+                <div className="flex gap-1 items-center justify-center diatype-sm-regular text-ink-tertiary-500">
                   <span>
-                    {quote.balance} {quote.symbol}
+                    {formatNumber(quote.balance, formatNumberOptions)} {quote.symbol}
                   </span>
                   <Button
                     type="button"
                     variant="secondary"
                     size="xs"
-                    className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                    className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
                     onClick={() => setValue("quoteAmount", quote.balance)}
                   >
                     {m["common.max"]()}
                   </Button>
                 </div>
-                <p className="text-tertiary-500 diatype-sm-regular">
+                <p className="text-ink-tertiary-500 diatype-sm-regular">
                   {getPrice(quote.amount, quote.denom, { format: true })}
                 </p>
               </div>
             }
           />
         </div>
-        <div className="diatype-sm-regular text-error-500">
+        <div className="diatype-sm-regular text-status-fail">
           {errors && (
             <p>
               {errors.baseAmount && (
@@ -341,11 +341,11 @@ const PoolLiquidityWithdraw: React.FC = () => {
     <>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <p className="exposure-sm-italic text-secondary-700">
+          <p className="exposure-sm-italic text-ink-secondary-700">
             {m["poolLiquidity.withdrawAmount"]()}
           </p>
           <div className="flex rounded-xl bg-surface-secondary-rice shadow-account-card flex-col gap-2 p-4 items-center">
-            <p className="h1-regular text-secondary-700">{withdrawPercent}%</p>
+            <p className="h1-regular text-ink-secondary-700">{withdrawPercent}%</p>
             <Range
               isDisabled={withdraw.isPending}
               minValue={0}

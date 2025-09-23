@@ -122,6 +122,9 @@ export type {
   WithId,
   Flatten,
   Range,
+  ValueFunction,
+  ValueOrFunction,
+  Require,
 } from "./utils.js";
 
 export type {

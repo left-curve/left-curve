@@ -68,7 +68,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         className={twMerge(
           styles.item(),
           !hasPreviousPage && "opacity-60",
-          "mr-3 text-secondary-blue",
+          "mr-3 text-ink-secondary-blue",
         )}
       >
         <IconChevronLeft className="w-5 h-5" />
@@ -127,7 +127,11 @@ export const Pagination: React.FC<PaginationProps> = ({
         type="button"
         onClick={nextPage}
         disabled={!hasNextPage || isDisabled}
-        className={twMerge(styles.item(), !hasNextPage && "opacity-60", "ml-3 text-secondary-blue")}
+        className={twMerge(
+          styles.item(),
+          !hasNextPage && "opacity-60",
+          "ml-3 text-ink-secondary-blue",
+        )}
       >
         <IconChevronRight className="w-5 h-5" />
       </button>
@@ -204,7 +208,7 @@ const PaginationItem: React.FC<PaginationItemProps> = ({ page, setCurrentPage, i
     >
       <span className="relative z-10">{page}</span>
       {isCurrent && (
-        <motion.span className="absolute left-0 top-0 w-full h-full rounded-sm bg-primary-blue" />
+        <motion.span className="absolute left-0 top-0 w-full h-full rounded-sm bg-surface-primary-blue" />
       )}
     </motion.button>
   );
@@ -217,13 +221,13 @@ type TruncateElementProps = {
 const TruncateElement: React.FC<TruncateElementProps> = ({ isVisible }) => {
   if (!isVisible) return null;
 
-  return <span className="px-2 text-secondary-blue select-none">...</span>;
+  return <span className="px-2 text-ink-secondary-blue select-none">...</span>;
 };
 
 const paginationVariants = tv(
   {
     slots: {
-      base: " text-secondary-blue  exposure-sm-italic",
+      base: " text-ink-secondary-blue  exposure-sm-italic",
       item: "flex items-center justify-center w-8 h-8 rounded-sm hover:bg-surface-secondary-blue disabled:hover:bg-transparent transition-all exposure-sm-italic",
     },
     variants: {

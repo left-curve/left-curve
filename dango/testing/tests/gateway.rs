@@ -321,7 +321,7 @@ fn native_denom() {
 
     // Register the validator set for the remote domain.
     {
-        let validator_set = MockValidatorSet::new_preset(remote_domain);
+        let validator_set = MockValidatorSet::new_preset(remote_domain, false);
 
         suite
             .execute(

@@ -10,15 +10,15 @@ use {
         },
         dex::{
             self, CreateOrderRequest, Direction, PairId, PairParams, PairUpdate, PassiveLiquidity,
-            SwapRoute, Xyk,
+            Price, SwapRoute, Xyk,
         },
         gateway::Remote,
     },
     grug::{
         Addressable, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero, MaxLength, Message,
         MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt, Signed,
-        Signer, Udec128, Udec128_24, Uint128, UniqueVec, ZeroInclusiveOneExclusive, btree_map,
-        btree_set, coins,
+        Signer, Udec128, Uint128, UniqueVec, ZeroInclusiveOneExclusive, btree_map, btree_set,
+        coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -182,7 +182,7 @@ pub enum DexAction {
         quote_denom: Denom,
         direction: Direction,
         amount: Uint128,
-        price: Udec128_24,
+        price: Price,
     },
     CreateMarketOrder {
         base_denom: Denom,
@@ -303,7 +303,7 @@ impl DexAction {
                         }
                         let best_ask_price = resting_order_book.best_ask_price.unwrap();
 
-                        let one_add_max_slippage = Udec128_24::ONE.saturating_add(*max_slippage);
+                        let one_add_max_slippage = Price::ONE.saturating_add(*max_slippage);
                         let price = best_ask_price.saturating_mul(one_add_max_slippage);
 
                         Coin {
@@ -511,7 +511,7 @@ fn amount() -> impl Strategy<Value = Uint128> {
 }
 
 /// Proptest strategy for generating a price as [-3, 3] permille from 1.0
-fn price() -> impl Strategy<Value = Udec128_24> {
+fn price() -> impl Strategy<Value = Price> {
     (-3i128..3i128).prop_map(|price_diff| {
         (Dec128_24::ONE - Dec128_24::new_permille(price_diff))
             .checked_into_unsigned()
@@ -520,9 +520,9 @@ fn price() -> impl Strategy<Value = Udec128_24> {
 }
 
 // Proptest strategy for generating an arbitrary price between 0.00000000000000001 and 10000000000
-// fn price() -> impl Strategy<Value = Udec128_24> {
+// fn price() -> impl Strategy<Value = Price> {
 //     (10_000_000u128..10_000_000_000_000_000_000_000_000_000_000_000u128)
-//         .prop_map(|raw_price| Udec128_24::raw(Uint128::new(raw_price)))
+//         .prop_map(|raw_price| Price::raw(Uint128::new(raw_price)))
 // }
 
 /// Proptest strategy for generating a SwapRoute
@@ -827,7 +827,7 @@ fn test_dex_actions(
             .should_succeed();
     }
 
-    let bucket_sizes: BTreeSet<NonZero<Udec128_24>> = btree_set! {
+    let bucket_sizes: BTreeSet<NonZero<Price>> = btree_set! {
         NonZero::new_unchecked(ONE_HUNDREDTH),
         NonZero::new_unchecked(ONE_TENTH),
         NonZero::new_unchecked(ONE),

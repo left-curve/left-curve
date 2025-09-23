@@ -1,16 +1,15 @@
-import { useRef } from "react";
 import { useAccount } from "@left-curve/store";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useApp, useMediaQuery } from "@left-curve/applets-kit";
 
 import { Button, IconButton, IconWallet, twMerge } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { NotificationsMenu } from "../notifications/NotificationsMenu";
 import { AccountMenu } from "./AccountMenu";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { TestnetBanner } from "./TestnetBanner";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -23,7 +22,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { location } = useRouterState();
   const navigate = useNavigate();
   const { isLg } = useMediaQuery();
-  const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
   const isProSwap = location.pathname.includes("trade");
 
@@ -32,7 +30,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   return (
     <header
       className={twMerge(
-        "fixed bottom-0 lg:top-0 left-0 right-0 bg-transparent z-50 transition-all w-[calc(100vw-11px)]",
+        "fixed bottom-0 lg:top-0 left-0 right-0 bg-transparent z-50 transition-all w-full",
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",
@@ -40,12 +38,14 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
       )}
     >
       {isLg ? <div id="quest-banner" /> : null}
+      {isLg ? <TestnetBanner /> : null}
+
       <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
             src="/favicon.svg"
             alt="dango logo"
-            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card"
+            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card select-none"
           />
         </Link>
         <div
@@ -98,7 +98,6 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             )}
           </Button>
         </div>
-        <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
       <AccountMenu />
     </header>
