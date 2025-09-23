@@ -36,7 +36,11 @@ fn handler() {
         .address;
 
     let price_source = btree_map!(
-        btc::DENOM.clone() => PriceSource::Pyth { id: 1, precision: 8, channel: Channel::RealTime }
+        btc::DENOM.clone() => PriceSource::Pyth {
+            id: 1,
+            precision: 8,
+            channel: Channel::RealTime,
+        },
     );
 
     suite
@@ -94,8 +98,9 @@ where
             received_data += 1;
 
             if let Some(previous) = previous_data {
-                assert!(data != previous, "Data should change over time");
+                assert_ne!(data, previous, "Data should change over time");
             }
+
             previous_data = Some(data);
 
             // Now that we have read the data, the next iteration should be empty
