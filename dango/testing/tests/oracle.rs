@@ -52,6 +52,20 @@ fn pyth_lazer() {
         )
         .should_succeed();
 
+    // The trusted signer was set in genesis. For the purpose of this test,
+    // remove it for now, to test what happens if we submit price data from an
+    // untrusted signer.
+    suite
+        .execute(
+            &mut accounts.owner,
+            oracle,
+            &ExecuteMsg::RemoveTrustedSigner {
+                public_key: trusted_signer.clone(),
+            },
+            Coins::default(),
+        )
+        .should_succeed();
+
     // Try to feed price from Pyth Lazer. Should fail because the signer is not trusted.
     suite
         .execute(
@@ -86,6 +100,7 @@ fn pyth_lazer() {
         })
         .unwrap();
     assert_eq!(trusted_signers.len(), 1);
+
     let (signer, timestamp) = trusted_signers.iter().next().unwrap();
     assert_eq!(signer, &trusted_signer);
     assert_eq!(
