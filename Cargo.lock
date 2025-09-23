@@ -2639,7 +2639,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 [[package]]
 name = "clickhouse"
 version = "0.13.3"
-source = "git+https://github.com/ClickHouse/clickhouse-rs#8cf3d2e138dd121367fa10e875d3f91374b075b2"
+source = "git+https://github.com/ClickHouse/clickhouse-rs?rev=8cf3d2e138dd121367fa10e875d3f91374b075b2#8cf3d2e138dd121367fa10e875d3f91374b075b2"
 dependencies = [
  "bstr",
  "bytes",
@@ -2668,7 +2668,7 @@ dependencies = [
 [[package]]
 name = "clickhouse-derive"
 version = "0.2.0"
-source = "git+https://github.com/ClickHouse/clickhouse-rs#8cf3d2e138dd121367fa10e875d3f91374b075b2"
+source = "git+https://github.com/ClickHouse/clickhouse-rs?rev=8cf3d2e138dd121367fa10e875d3f91374b075b2#8cf3d2e138dd121367fa10e875d3f91374b075b2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2679,7 +2679,7 @@ dependencies = [
 [[package]]
 name = "clickhouse-types"
 version = "0.1.0"
-source = "git+https://github.com/ClickHouse/clickhouse-rs#8cf3d2e138dd121367fa10e875d3f91374b075b2"
+source = "git+https://github.com/ClickHouse/clickhouse-rs?rev=8cf3d2e138dd121367fa10e875d3f91374b075b2#8cf3d2e138dd121367fa10e875d3f91374b075b2"
 dependencies = [
  "bytes",
  "thiserror 2.0.12",
