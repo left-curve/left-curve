@@ -36,7 +36,9 @@ const TOKEN: &str = "inser_lazer_token_here";
 #[tokio::test]
 async fn test_lazer_stream() {
     setup_tracing_subscriber(Level::INFO);
+
     let client = PythClient::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN).unwrap();
+
     test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
         ETH_USD_ID,
         ATOM_USD_ID,
@@ -142,7 +144,6 @@ struct AppState {
     connections: Arc<Mutex<Vec<SubscriptionId>>>,
     // Number of reconnection attempts.
     reconnection_attempts: Arc<Mutex<usize>>,
-
     keep_connection_alive: bool,
 }
 
@@ -224,7 +225,7 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
             print_info = false;
         } else {
             // New connection.
-            info!("Client sent ids {:#?}", price_ids);
+            info!("Client sent ids {price_ids:#?}");
             connections.push(subscription_id);
 
             // Increment the number of reconnection attempts.
