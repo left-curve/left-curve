@@ -11,6 +11,10 @@ use {
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
+        QueryMsg::TrustedSigners { start_after, limit } => {
+            let res = query_trusted_signers(ctx, start_after, limit)?;
+            Ok(res.to_json_value()?)
+        },
         QueryMsg::Price { denom } => {
             let res = query_price(ctx, denom)?;
             Ok(res.to_json_value()?)
@@ -27,11 +31,25 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_price_sources(ctx, start_after, limit)?;
             Ok(res.to_json_value()?)
         },
-        QueryMsg::TrustedSigners { start_after, limit } => {
-            let res = query_trusted_signers(ctx, start_after, limit)?;
-            Ok(res.to_json_value()?)
-        },
     }
+}
+
+fn query_trusted_signers(
+    ctx: ImmutableCtx,
+    start_after: Option<Binary>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<Binary, Timestamp>> {
+    let start = start_after.as_ref().map(|b| Bound::Exclusive(b.as_ref()));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    PYTH_LAZER_TRUSTED_SIGNERS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|res| {
+            let (key, value) = res?;
+            Ok((Binary::from_inner(key.to_vec()), value))
+        })
+        .collect()
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
@@ -80,23 +98,5 @@ fn query_price_sources(
     PRICE_SOURCES
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
-        .collect()
-}
-
-fn query_trusted_signers(
-    ctx: ImmutableCtx,
-    start_after: Option<Binary>,
-    limit: Option<u32>,
-) -> StdResult<BTreeMap<Binary, Timestamp>> {
-    let start = start_after.as_ref().map(|b| Bound::Exclusive(b.as_ref()));
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    PYTH_LAZER_TRUSTED_SIGNERS
-        .range(ctx.storage, start, None, Order::Ascending)
-        .take(limit)
-        .map(|res| {
-            let (key, value) = res?;
-            Ok((Binary::from_inner(key.to_vec()), value))
-        })
         .collect()
 }

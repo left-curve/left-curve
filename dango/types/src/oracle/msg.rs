@@ -29,6 +29,12 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, QueryRequest)]
 pub enum QueryMsg {
+    /// Query Pyth Lazer trusted signers and their expiration times.
+    #[returns(BTreeMap<Binary, Timestamp>)]
+    TrustedSigners {
+        start_after: Option<Binary>,
+        limit: Option<u32>,
+    },
     /// Query the price of the given denom.
     #[returns(PrecisionedPrice)]
     Price { denom: Denom },
@@ -45,12 +51,6 @@ pub enum QueryMsg {
     #[returns(BTreeMap<Denom, PriceSource>)]
     PriceSources {
         start_after: Option<Denom>,
-        limit: Option<u32>,
-    },
-    /// Query the trusted signers for Pyth Lazer.
-    #[returns(BTreeMap<Binary, Timestamp>)]
-    TrustedSigners {
-        start_after: Option<Binary>,
         limit: Option<u32>,
     },
 }
