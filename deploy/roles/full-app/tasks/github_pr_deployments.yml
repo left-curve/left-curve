@@ -77,8 +77,8 @@
     | Name | Result |
     | ---- | ------ |
     | **Status** | ✅ |
-    | **Dango Frontend** | [http://{{ tailscale_ip }}:{{ dango_frontend_port }}](http://{{ public_ip }}:{{ dango_frontend_port }}) |
-    | **Dango GraphQL** | [http://{{ tailscale_ip }}:{{ dango_port }}/graphql](http://{{ public_ip }}:{{ dango_port }}/graphql) |
+    | **Dango Frontend** | [http://{{ public_ip }}:{{ dango_frontend_port }}](http://{{ public_ip }}:{{ dango_frontend_port }}) |
+    | **Dango GraphQL** | [http://{{ public_ip }}:{{ dango_port }}/graphql](http://{{ public_ip }}:{{ dango_port }}/graphql) |
     | **Dango metrics** | [http://{{ tailscale_ip }}:{{ dango_metrics_port }}/metrics](http://{{ tailscale_ip }}:{{ dango_metrics_port }}/metrics) |
     | **Faucet bot** | [http://{{ tailscale_ip }}:{{ faucet_port }}](http://{{ tailscale_ip }}:{{ faucet_port }}) |
     | **CometBFT P2P** | [http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}](http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}) |
