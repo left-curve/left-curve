@@ -39,33 +39,30 @@ impl StartCmd {
         // Open disk DB.
         let db = DiskDbLite::open(app_dir.data_dir())?;
 
-        // Create Rust VM.
-
         // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
-        RustVm::genesis_codes();
+        let _codes = RustVm::genesis_codes();
+
+        // Create Rust VM.
         let vm = RustVm::new(
             // Below are parameters if we want to switch to `HybridVm`:
             // cfg.grug.wasm_cache_capacity,
-            // {
-            //     let codes = HybridVm::genesis_codes();
-            //     [
-            //         codes.account_factory.to_bytes().hash256(),
-            //         codes.account_margin.to_bytes().hash256(),
-            //         codes.account_multi.to_bytes().hash256(),
-            //         codes.account_spot.to_bytes().hash256(),
-            //         codes.bank.to_bytes().hash256(),
-            //         codes.dex.to_bytes().hash256(),
-            //         codes.gateway.to_bytes().hash256(),
-            //         codes.hyperlane.ism.to_bytes().hash256(),
-            //         codes.hyperlane.mailbox.to_bytes().hash256(),
-            //         codes.hyperlane.va.to_bytes().hash256(),
-            //         codes.lending.to_bytes().hash256(),
-            //         codes.oracle.to_bytes().hash256(),
-            //         codes.taxman.to_bytes().hash256(),
-            //         codes.vesting.to_bytes().hash256(),
-            //         codes.warp.to_bytes().hash256(),
-            //     ]
-            // },
+            // [
+            //     codes.account_factory.to_bytes().hash256(),
+            //     codes.account_margin.to_bytes().hash256(),
+            //     codes.account_multi.to_bytes().hash256(),
+            //     codes.account_spot.to_bytes().hash256(),
+            //     codes.bank.to_bytes().hash256(),
+            //     codes.dex.to_bytes().hash256(),
+            //     codes.gateway.to_bytes().hash256(),
+            //     codes.hyperlane.ism.to_bytes().hash256(),
+            //     codes.hyperlane.mailbox.to_bytes().hash256(),
+            //     codes.hyperlane.va.to_bytes().hash256(),
+            //     codes.lending.to_bytes().hash256(),
+            //     codes.oracle.to_bytes().hash256(),
+            //     codes.taxman.to_bytes().hash256(),
+            //     codes.vesting.to_bytes().hash256(),
+            //     codes.warp.to_bytes().hash256(),
+            // ]
         );
 
         // Create the base app instance for HTTP server
