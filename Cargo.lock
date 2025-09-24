@@ -1375,8 +1375,9 @@ dependencies = [
 
 [[package]]
 name = "assertor"
-version = "0.0.3"
-source = "git+https://github.com/google/assertor#65fe1b5f640f4b42fc31ec9f013d266842050ee7"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ff24d87260733dc86d38a11c60d9400ce4a74a05d0dafa2a6f5ab249cd857cb"
 dependencies = [
  "num-traits",
 ]
