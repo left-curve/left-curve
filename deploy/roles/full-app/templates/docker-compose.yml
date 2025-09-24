@@ -182,6 +182,11 @@ services:
       app_settings__price_percent__min: 0.05
       app_settings__price_percent__max: 0.2
       app_settings__order_type: market
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/dango_dex_app_healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
 {% endif %}
 
   cometbft:
