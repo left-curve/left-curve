@@ -34,8 +34,8 @@
     status_code: [200, 201]
   register: deployment_results
   loop:
-    - { name: "dango-frontend", description: "Frontend", url: "http://{{ tailscale_ip }}:{{ dango_frontend_port }}" }
-    - { name: "dango-api", description: "Dango API", url: "http://{{ tailscale_ip }}:{{ dango_port }}" }
+    - { name: "dango-frontend", description: "Frontend", url: "http://{{ public_ip }}:{{ dango_frontend_port }}" }
+    - { name: "dango-api", description: "Dango API", url: "http://{{ public_ip }}:{{ dango_port }}" }
     - { name: "faucet-bot", description: "Faucet", url: "http://{{ tailscale_ip }}:{{ faucet_port }}" }
 
 - name: Set deployment statuses
@@ -67,8 +67,8 @@
     | Name | Result |
     | ---- | ------ |
     | **Status** | ✅ |
-    | **Dango Frontend** | [http://{{ tailscale_ip }}:{{ dango_frontend_port }}](http://{{ tailscale_ip }}:{{ dango_frontend_port }}) |
-    | **Dango GraphQL** | [http://{{ tailscale_ip }}:{{ dango_port }}/graphql](http://{{ tailscale_ip }}:{{ dango_port }}/graphql) |
+    | **Dango Frontend** | [http://{{ public_ip }}:{{ dango_frontend_port }}](http://{{ tailscale_ip }}:{{ dango_frontend_port }}) |
+    | **Dango GraphQL** | [http://{{ public_ip }}:{{ dango_port }}/graphql](http://{{ tailscale_ip }}:{{ dango_port }}/graphql) |
     | **Faucet bot** | [http://{{ tailscale_ip }}:{{ faucet_port }}](http://{{ tailscale_ip }}:{{ faucet_port }}) |
     | **Deployment name** | `{{ deployment_name }}` |
     | **Commit** | `{{ dango_image_tag }}` |
