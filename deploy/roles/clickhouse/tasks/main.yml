@@ -51,6 +51,8 @@
     restart_policy: unless-stopped
     state: started
     recreate: true
+    networks:
+      - name: clickhouse
     env:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
     # Not sure I still need to bind outside

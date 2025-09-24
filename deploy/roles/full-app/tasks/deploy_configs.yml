@@ -14,5 +14,6 @@
         - { src: "{{ dango_network}}/config/dango/app.toml", dest: "dango/config/app.toml" }
         - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
         - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }
+        - { src: "clickhouse/init.sh", dest: "clickhouse/init.sh" }
         - { src: "docker-compose.yml", dest: "docker-compose.yml" }
         - { src: "env.j2", dest: ".env" }

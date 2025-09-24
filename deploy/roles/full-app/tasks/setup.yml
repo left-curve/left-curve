@@ -18,9 +18,9 @@
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
   register: env_file_exists
 
-- name: Read existing ports from .env as key=value pairs
+- name: Read .env values
   shell: |
-    grep -E '^(DB_METRICS_PORT|DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_ABCI_PORT|COMETBFT_METRICS_PORT)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+    grep -E '^(CLICKHOUSE_DATABASE|POSTGRES_DATABASE|DB_METRICS_PORT|DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_ABCI_PORT|COMETBFT_METRICS_PORT)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
     awk -F= '{print tolower($1) "=" $2}'
   register: existing_port_pairs
   when: env_file_exists.stat.exists
