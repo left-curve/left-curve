@@ -112,7 +112,7 @@ bnum                        = "0.13"
 borsh                       = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
-clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs" } # TODO: use crates.io once the latest version is published
+clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs", rev = "8cf3d2e138dd121367fa10e875d3f91374b075b2" } # TODO: use crates.io once the latest version is published
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"

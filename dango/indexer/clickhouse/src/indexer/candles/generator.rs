@@ -28,11 +28,11 @@ impl CandleGenerator {
         let mut inserter = self
             .context
             .clickhouse_client()
-            .inserter::<Candle>("candles")?
+            .inserter::<Candle>("candles")
             .with_max_rows(candles.len() as u64);
 
         for candle in candles {
-            inserter.write(&candle).inspect_err(|_err| {
+            inserter.write(&candle).await.inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write candle: {candle:#?}: {_err}");
             })?;
@@ -81,7 +81,7 @@ impl CandleGenerator {
         let mut inserter = self
             .context
             .clickhouse_client()
-            .inserter::<PairPrice>("pair_prices")?
+            .inserter::<PairPrice>("pair_prices")
             .with_max_rows(pair_prices.len() as u64);
 
         for pair_price in pair_prices.iter() {
@@ -92,7 +92,7 @@ impl CandleGenerator {
                 pair_price.clearing_price,
             );
 
-            inserter.write(pair_price).inspect_err(|_err| {
+            inserter.write(pair_price).await.inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write pair price: {pair_price:#?}: {_err}");
             })?;
