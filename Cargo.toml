@@ -96,7 +96,7 @@ alloy                       = "1"
 anyhow                      = "1"
 anymap                      = "0.12"
 assert-json-diff            = "2"
-assertor                    = { version = "0.0", git = "https://github.com/google/assertor" }
+assertor                    = "0.0.4"
 async-graphql-actix-web     = "7.0"
 async-std                   = { version = "1", features = ["attributes", "tokio1"] }
 async-stream                = "0"
