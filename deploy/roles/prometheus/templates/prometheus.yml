@@ -70,6 +70,22 @@ scrape_configs:
       target_label: instance
       replacement: 'ovh3:9080'
 
+  - job_name: 'preview-clickhouse'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-clickhouse.yml']
+
+  - job_name: 'preview-postgres'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-postgres.yml']
+
+  - job_name: 'preview-dango'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-dango.yml']
+
+  - job_name: 'preview-cometbft'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-cometbft.yml']
+
   - job_name: 'clickhouse'
     static_configs:
       - targets: ['ovh1:9126']
@@ -87,6 +103,7 @@ scrape_configs:
           service: 'dango'
           environment: 'production'
           network: 'devnet'
+          dango_network: 'devnet'
       # - targets: ['ovh2:9191'] # ovh2
       #   labels:
       #     service: 'dango'
@@ -98,6 +115,7 @@ scrape_configs:
       - targets: ['ovh1:26660'] # ovh1
         labels:
           environment: 'production'
+          dango_network: 'devnet'
           network: 'devnet'
       # - targets: ['ovh2:26660'] # ovh2
       #   labels:

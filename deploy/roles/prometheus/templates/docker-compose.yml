@@ -19,6 +19,7 @@ services:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./config/alert-rules.yml:/etc/prometheus/alert-rules.yml
       - ./data:/prometheus
+      - ./targets:/etc/prometheus/targets
     restart: unless-stopped
     depends_on:
       - alertmanager

@@ -5,43 +5,28 @@ ssh_users:
   - zexsor
 deploy_user: deploy
 dango:
-  devnet:
-    dex_bot:
-      # NOTE: those are public from the genesis file
-      # Signer
-      username: "user8"
-      address: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
-      private_key: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
-      mint_user: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
-      mint_amount: 1000000
-      liquidity_amount: 1000000000
+  dex_bot:
+    # NOTE: those are public from the genesis file
+    # Signer
+    username: "user8"
+    address: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
+    private_key: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
+    mint_user: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
+    mint_amount: 1000000
+    liquidity_amount: 1000000000
 ports:
-  testnet:
-    dango_port: 8080
-    dango_metrics_port: 9191
-    quest_port: 8083
-    faucet_port: 8082
-    dango_frontend_port: 8081
-    cometbft_p2p_port: 26656
-    cometbft_rpc_port: 26657
-    cometbft_abci_port: 26658
-    cometbft_metrics_port: 26660
-    db_metrics_port: 9187
-    chain_id: "dev-6"
-    # cometbft_abci_port: 26658
-  devnet:
-    dango_port: 8080
-    dango_metrics_port: 9191
-    quest_port: 8083
-    faucet_port: 8082
-    dango_frontend_port: 8081
-    cometbft_p2p_port: 26656
-    cometbft_rpc_port: 26657
-    cometbft_abci_port: 26658
-    cometbft_metrics_port: 26660
-    db_metrics_port: 9187
-    chain_id: "dev-9"
-    # cometbft_abci_port: 26658
+  dango_port: 8080
+  dango_metrics_port: 9191
+  quest_port: 8083
+  faucet_port: 8082
+  dango_frontend_port: 8081
+  cometbft_p2p_port: 26656
+  cometbft_rpc_port: 26657
+  cometbft_abci_port: 26658
+  cometbft_metrics_port: 26660
+  db_metrics_port: 9187
+  clickhouse_metrics_port: 9126
+  # cometbft_abci_port: 26658
 
 # in summary cometbft needs to expose:
 # 26656, to anyone

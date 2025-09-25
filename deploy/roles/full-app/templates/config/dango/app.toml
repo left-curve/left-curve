@@ -103,7 +103,7 @@ abci_addr = "0.0.0.0:26658"
 [transactions]
 
 # Chain identifier.
-chain_id = "dev-9"
+chain_id = "{{ chain_id }}"
 
 # Scaling factor to apply to simulated gas consumption.
 gas_adjustment = 1.4

@@ -71,6 +71,15 @@
         <collect_interval_milliseconds>1000</collect_interval_milliseconds>
     </metric_log>
 
+    <!-- Prometheus -->
+    <prometheus>
+      <endpoint>/metrics</endpoint>
+      <port>9126</port>
+      <metrics>true</metrics>
+      <events>true</events>
+      <asynchronous_metrics>true</asynchronous_metrics>
+    </prometheus>
+
     <!-- Part log settings -->
     <part_log>
         <database>system</database>

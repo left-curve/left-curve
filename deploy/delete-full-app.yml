@@ -38,3 +38,18 @@
             volumes: yes
             builder_cache: yes
       when: deployment_dir.stat.exists
+
+- hosts: monitoring
+  become: true
+  become_user: "{{ deploy_user }}"
+  tags: monitoring
+  vars:
+      deployment_name: "{{ hostvars[groups['full-app'][0]]['deployment_name'] }}"
+  tasks:
+    - name: Load prometheus vars
+      include_vars: roles/prometheus/defaults/main.yml
+    - name: Remove deployment targets
+      become: true
+      become_user: root
+      shell: rm -f {{ prometheus_dir }}/targets/{{ deployment_name }}-*
+      ignore_errors: true
