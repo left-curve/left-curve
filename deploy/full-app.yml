@@ -49,7 +49,6 @@
         stored_clickhouse_metrics_port: "{{ clickhouse_metrics_port }}"
         stored_cometbft_metrics_port: "{{ cometbft_metrics_port }}"
         stored_db_metrics_port: "{{ db_metrics_port }}"
-        stored_clickhouse_metrics_port: "{{ clickhouse_metrics_port }}"
 
 - hosts: monitoring
   become: true
@@ -60,7 +59,6 @@
       dango_network: "{{ hostvars[groups['full-app'][0]]['stored_dango_network'] }}"
       tailscale_ip: "{{ hostvars[groups['full-app'][0]]['stored_tailscale_ip'] }}"
       dango_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_dango_metrics_port'] }}"
-      clickhouse_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_clickhouse_metrics_port'] }}"
       cometbft_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_cometbft_metrics_port'] }}"
       db_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_db_metrics_port'] }}"
       clickhouse_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_clickhouse_metrics_port'] }}"
