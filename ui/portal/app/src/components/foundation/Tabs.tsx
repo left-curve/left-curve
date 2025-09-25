@@ -98,6 +98,7 @@ export const Tabs: React.FC<React.PropsWithChildren<TabsProps>> = ({
         return (
           <Pressable
             key={`navLink-${elemKey}`}
+            accessibilityLabel={`tabs-${elemKey}`}
             disabled={!!isDisabled}
             onPress={() => setActiveTab(elemKey)}
             onLayout={onTabLayout(elemKey)}
