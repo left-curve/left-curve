@@ -37,7 +37,7 @@ const Overview: React.FC = () => {
       style={{ height: height - 100 }}
     >
       <View className="w-full items-center">
-        <Logo width={200} height={80} className="text-primary-900" />
+        <Logo width={200} height={80} className="text-ink-primary-900" />
       </View>
 
       <View className="w-full pb-[4rem]">
@@ -55,13 +55,11 @@ const SectionRice: React.FC = () => {
     >
       <View className="w-full max-w-[1216px] self-center flex-col lg:flex-row items-center lg:justify-between">
         <View className="max-w-[640px] self-center">
-          <GlobalText className="display-heading-l text-[#9C4D21] dark:text-foreground-primary-rice">
-            Trade
-          </GlobalText>
-          <GlobalText className="display-heading-l text-[#9C4D21] dark:text-foreground-primary-rice">
+          <GlobalText className="display-heading-l text-fg-primary-rice">Trade</GlobalText>
+          <GlobalText className="display-heading-l text-fg-primary-rice">
             crypto assets, real world assets, and derivatives on Dango’s blazingly fast exchange.
           </GlobalText>
-          <GlobalText className="display-heading-l text-[#9C4D21] dark:text-foreground-primary-rice">
+          <GlobalText className="display-heading-l text-fg-primary-rice">
             Enjoy deep liquidity, fast execution, and fair prices.
           </GlobalText>
         </View>
@@ -80,11 +78,11 @@ const SectionRed: React.FC = () => {
     >
       <View className="w-full max-w-[1216px] self-center px-0">
         <View className="max-w-[640px] self-start">
-          <GlobalText className="display-heading-l text-tertiary-red">Leverage up</GlobalText>
-          <GlobalText className="diatype-m-regular mt-2 text-tertiary-red">
+          <GlobalText className="display-heading-l text-ink-tertiary-red">Leverage up</GlobalText>
+          <GlobalText className="diatype-m-regular mt-2 text-ink-tertiary-red">
             with Dango’s unified trading account with low cost and high capital efficiency.
           </GlobalText>
-          <GlobalText className="diatype-m-regular mt-2 text-tertiary-red">
+          <GlobalText className="diatype-m-regular mt-2 text-ink-tertiary-red">
             Spot, perps, vaults; one account, under a unified margin system.
           </GlobalText>
         </View>
@@ -103,10 +101,10 @@ const SectionGreen: React.FC = () => {
     >
       <View className="w-full max-w-[1216px] self-center flex-col lg:flex-row items-center lg:justify-between">
         <View className="max-w-[640px] self-center">
-          <GlobalText className="display-heading-l text-green-bean-800 dark:text-foreground-primary-green">
+          <GlobalText className="display-heading-l text-primitives-green-light-800 dark:text-fg-primary-green">
             Earn
           </GlobalText>
-          <GlobalText className="diatype-m-regular mt-2 text-green-bean-800 dark:text-foreground-primary-green">
+          <GlobalText className="diatype-m-regular mt-2 text-primitives-green-light-800 dark:text-fg-primary-green">
             passive yields on your idle assets, by participating in Dango’s passive market making
             vaults.
           </GlobalText>

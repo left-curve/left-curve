@@ -25,7 +25,7 @@ const coins = {
   },
   "bridge/eth": {
     type: "native",
-    name: "Ether",
+    name: "Ethereum",
     logoURI:
       "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/ethereum/images/eth.svg",
     symbol: "ETH",
@@ -45,7 +45,7 @@ const coins = {
   },
   "bridge/usdc": {
     type: "native",
-    name: "Ethereum USD Circle",
+    name: "Ethereum USDC",
     logoURI:
       "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
     symbol: "USDC",

@@ -123,7 +123,8 @@ export function passkey(parameters: PasskeyConnectorParameters = {}) {
         });
       },
       async isAuthorized() {
-        return true;
+        const accounts = await this.getAccounts();
+        return accounts.length > 0;
       },
       async signArbitrary(payload) {
         const { message } = payload;

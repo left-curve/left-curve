@@ -1,10 +1,4 @@
-import {
-  type AppState,
-  createContext,
-  type ToastController,
-  type ToastMsg,
-  type ToastOptions,
-} from "@left-curve/foundation";
+import { type AppState, createContext, type ToastController } from "@left-curve/foundation";
 import { requestRemote, useAppConfig, useConfig, type WindowDangoStore } from "@left-curve/store";
 import { useTheme } from "../hooks/useTheme";
 
@@ -32,10 +26,10 @@ const showModal = (modalName: string, props?: Record<string, unknown>) => {
 };
 
 const toast = {
-  success: (toastMsg?: ToastMsg, options?: ToastOptions) => {
+  success: (toastMsg, options) => {
     requestRemote<string>("toast", "success", toastMsg, options);
   },
-  error: (toastMsg?: ToastMsg, options?: ToastOptions) => {
+  error: (toastMsg, options) => {
     requestRemote<string>("toast", "error", toastMsg, options);
   },
 } as ToastController;

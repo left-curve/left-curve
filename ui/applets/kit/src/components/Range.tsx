@@ -34,9 +34,11 @@ export type RangeProps = {
   label?: string | ReactNode;
   isDisabled?: boolean;
   showSteps?: boolean | StepObject[];
+  showPercentage?: boolean;
   classNames?: {
     base?: string;
     input?: string;
+    inputWrapper?: string;
   };
   withInput?: boolean;
   inputEndContent?: ReactNode;
@@ -55,6 +57,7 @@ export const Range: React.FC<RangeProps> = ({
   classNames,
   withInput = false,
   inputEndContent,
+  showPercentage = false,
 }) => {
   const [value, setValue] = useControlledState(controlledValue, onChange, () => {
     const initial = defaultValue !== undefined ? defaultValue : minValue;
@@ -67,7 +70,7 @@ export const Range: React.FC<RangeProps> = ({
   const getPercentage = useCallback(
     (val: number) => {
       if (maxValue === minValue) return 0;
-      return ((val - minValue) / (maxValue - minValue)) * 100;
+      return Math.min(((val - minValue) / (maxValue - minValue)) * 100, 100);
     },
     [minValue, maxValue],
   );
@@ -195,15 +198,21 @@ export const Range: React.FC<RangeProps> = ({
     <div
       className={twMerge("w-full flex flex-col mt-1", { "gap-3": !withInput }, classNames?.base)}
     >
-      {label && <div className="text-tertiary-500 exposure-xs-italic">{label}</div>}
+      {label && <div className="text-ink-tertiary-500 exposure-xs-italic">{label}</div>}
 
       <div className="flex items-center gap-3">
-        <div className="flex flex-col flex-1 px-[10px]">
+        <div
+          className={twMerge(
+            "flex flex-col flex-1",
+            { "mt-4": showPercentage },
+            classNames?.inputWrapper,
+          )}
+        >
           <div
             ref={sliderRef}
             className={twMerge(
               "relative h-1 rounded-full",
-              isDisabled ? "bg-surface-disabled-gray" : "bg-secondary-gray cursor-pointer",
+              isDisabled ? "bg-surface-disabled-gray" : "bg-outline-secondary-gray cursor-pointer",
             )}
             onMouseDown={handleSliderMouseDown}
             onTouchStart={handleSliderMouseDown}
@@ -211,19 +220,20 @@ export const Range: React.FC<RangeProps> = ({
             <div
               className={twMerge(
                 "absolute top-0 left-0 h-full rounded-full",
-                isDisabled ? "bg-gray-400" : "bg-red-bean-400",
+                isDisabled ? "bg-primitives-gray-light-400" : "bg-primitives-red-light-400",
               )}
               style={{ width: `${currentPercentage}%` }}
             />
+
             <div
               className={twMerge(
-                "absolute top-1/2 w-4 h-4 rounded-full shadow-md focus:outline-none focus:border-red-bean-600",
+                "absolute top-1/2 w-4 h-4 rounded-full shadow-md focus:outline-none focus:border-primitives-red-light-600",
                 isDisabled
-                  ? "bg-gray-300 border-2 border-gray-500"
-                  : "bg-white border-2 border-red-bean-500 cursor-grab active:cursor-grabbing",
+                  ? "bg-primitives-gray-light-300 border-2 border-primitives-gray-light-500"
+                  : "bg-white border-2 border-primitives-red-light-500 cursor-grab active:cursor-grabbing",
               )}
               style={{
-                left: `calc(${currentPercentage}% - 10px)`,
+                left: `calc(${currentPercentage}% - ${currentPercentage < 2 ? "0px" : "16px"})`,
                 transform: "translateY(-50%)",
               }}
               tabIndex={isDisabled ? -1 : 0}
@@ -242,7 +252,13 @@ export const Range: React.FC<RangeProps> = ({
                 if (!isDisabled) setIsDragging(true);
               }}
               onKeyDown={handleThumbKeyDown}
-            />
+            >
+              {showPercentage && (
+                <p className="absolute -top-5 text-ink-tertiary-500 exposure-xs-italic select-none">
+                  {currentPercentage.toFixed(0)}%
+                </p>
+              )}
+            </div>
           </div>
           {showSteps && stepsToDisplay.length > 0 && (
             <div className="flex justify-between mt-2 px-1">
@@ -250,7 +266,7 @@ export const Range: React.FC<RangeProps> = ({
                 return (
                   <span
                     key={`stepper-${s.value}`}
-                    className="text-tertiary-500 diatype-xs-regular cursor-pointer"
+                    className="text-ink-tertiary-500 diatype-xs-regular cursor-pointer"
                     onClick={() => setValue(s.value)}
                   >
                     {s.label}
@@ -270,7 +286,9 @@ export const Range: React.FC<RangeProps> = ({
             disabled={isDisabled}
             placeholder={minValue.toString()}
             endContent={
-              inputEndContent ? <span className="text-tertiary-500">{inputEndContent}</span> : null
+              inputEndContent ? (
+                <span className="text-ink-tertiary-500">{inputEndContent}</span>
+              ) : null
             }
             onChange={(e) => {
               const rawValue = e.target.value;

@@ -118,6 +118,27 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.ActivityTransfer]: {
+    component: lazy(() =>
+      import("./activities/ActivityTransferModal").then(({ ActivityTransferModal }) => ({
+        default: ActivityTransferModal,
+      })),
+    ),
+  },
+  [Modals.ActivityConvert]: {
+    component: lazy(() =>
+      import("./activities/ActivityConvertModal").then(({ ActivityConvertModal }) => ({
+        default: ActivityConvertModal,
+      })),
+    ),
+  },
+  [Modals.ActivitySpotOrder]: {
+    component: lazy(() =>
+      import("./activities/ActivitySpotOrderModal").then(({ ActivitySpotOrderModal }) => ({
+        default: ActivitySpotOrderModal,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {
@@ -133,7 +154,7 @@ export const RootModal: React.FC = () => {
   const { isMd } = useMediaQuery();
 
   const sheetRef = useRef<SheetRef>();
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const outlineRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<{ triggerOnClose: () => void } | null>(null);
 
   const { modal: activeModal, props: modalProps } = modal;
@@ -166,7 +187,7 @@ export const RootModal: React.FC = () => {
                 <Button variant="link" onClick={hideModal}>
                   {m["common.cancel"]()}
                 </Button>
-                <p className="mt-1 text-tertiary-500 font-semibold">{options.header}</p>
+                <p className="mt-1 text-ink-tertiary-500 font-semibold">{options.header}</p>
                 <div className="w-[66px]" />
               </div>
             ) : null}
@@ -185,11 +206,11 @@ export const RootModal: React.FC = () => {
   return (
     <AnimatePresence initial={false} mode="wait" onExitComplete={() => null}>
       <motion.div
-        ref={overlayRef}
+        ref={outlineRef}
         onClick={(e) => {
-          if (e.target === overlayRef.current && !options.disableClosing) closeModal();
+          if (e.target === outlineRef.current && !options.disableClosing) closeModal();
         }}
-        className="backdrop-blur-[10px] bg-gray-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
+        className="backdrop-blur-[10px] bg-primitives-gray-light-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

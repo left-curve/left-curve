@@ -1,8 +1,8 @@
 use {
-    crate::{entity, error::Result},
+    crate::{block_to_index::BlockToIndex, entity, error::Result},
     grug_types::{
-        Addr, Block, BlockOutcome, CommitmentStatus, EventId, Extractable, FlatCategory,
-        FlatEventInfo, FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
+        Addr, Block, CommitmentStatus, EventId, Extractable, FlatCategory, FlatEventInfo,
+        FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
     },
     sea_orm::{Set, TryIntoModel, prelude::*, sqlx::types::chrono::NaiveDateTime},
     std::{
@@ -23,7 +23,10 @@ pub struct Models {
 }
 
 impl Models {
-    pub fn build(block: &Block, block_outcome: &BlockOutcome) -> Result<Self> {
+    pub fn build(block_to_index: &BlockToIndex) -> Result<Self> {
+        let block = &block_to_index.block;
+        let block_outcome = &block_to_index.block_outcome;
+
         let created_at = block.info.timestamp.to_naive_date_time();
 
         let mut event_id = EventId::new(block.info.height, FlatCategory::Cron, 0, 0);
@@ -65,7 +68,8 @@ impl Models {
                 let transaction_id = Uuid::new_v4();
 
                 let sender = tx.sender.to_string();
-                let new_transaction = entity::transactions::ActiveModel {
+                #[allow(unused_mut)]
+                let mut new_transaction = entity::transactions::ActiveModel {
                     id: Set(transaction_id),
                     transaction_idx: Set(transaction_idx as i32),
                     transaction_type: Set(FlatCategory::Tx),
@@ -79,7 +83,17 @@ impl Models {
                     data: Set(tx.data.clone().into_inner()),
                     sender: Set(sender.clone()),
                     credential: Set(tx.credential.clone().into_inner()),
+                    http_request_details: Set(None),
                 };
+
+                #[cfg(feature = "http-request-details")]
+                {
+                    new_transaction.http_request_details = Set(block_to_index
+                        .http_request_details
+                        .get(&tx_hash.to_string())
+                        .and_then(|d| d.to_json_value().ok())
+                        .map(|v| v.into_inner()));
+                }
 
                 transactions.push(new_transaction);
 

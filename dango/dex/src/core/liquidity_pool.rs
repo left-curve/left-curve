@@ -2,10 +2,10 @@ use {
     super::{geometric, xyk},
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
-    dango_types::dex::{PairParams, PassiveLiquidity},
+    dango_types::dex::{PairParams, PassiveLiquidity, Price},
     grug::{
         Coin, CoinPair, Denom, IsZero, MultiplyFraction, NextNumber, Number, NumberConst,
-        PrevNumber, Sign, Udec128, Udec128_24, Uint128,
+        PrevNumber, Sign, Udec128, Uint128,
     },
     std::ops::Sub,
 };
@@ -133,8 +133,8 @@ pub trait PassiveLiquidityPool {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>, // bids: price => amount in base asset
-        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>, // asks: price => amount in base asset
+        Box<dyn Iterator<Item = (Price, Uint128)>>, // bids: price => amount in base asset
+        Box<dyn Iterator<Item = (Price, Uint128)>>, // asks: price => amount in base asset
     )>;
 }
 
@@ -238,7 +238,6 @@ impl PassiveLiquidityPool for PairParams {
             // and use into_next() to avoid overflows.
             // Otherwise the fee rate could be 0 even if very low amount of tokens are deposited even unbalance.
             // Since we don't have gas price, this can be an attack vector.
-            // TODO: This is a temporary fix, we should find a better solution.
             abs_diff(a.checked_mul(reserve_b)?, b.checked_mul(reserve_a)?)
                 .checked_div(deposit_value.checked_add(reserve_value)?)?
                 .checked_mul(self.swap_fee_rate.into_next())?
@@ -378,8 +377,8 @@ impl PassiveLiquidityPool for PairParams {
         quote_denom: Denom,
         reserve: &CoinPair,
     ) -> anyhow::Result<(
-        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
-        Box<dyn Iterator<Item = (Udec128_24, Uint128)>>,
+        Box<dyn Iterator<Item = (Price, Uint128)>>,
+        Box<dyn Iterator<Item = (Price, Uint128)>>,
     )> {
         let base_reserve = reserve.amount_of(&base_denom)?;
         let quote_reserve = reserve.amount_of(&quote_denom)?;
@@ -632,6 +631,7 @@ mod tests {
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+            min_order_size: Uint128::ZERO,
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
@@ -639,12 +639,10 @@ mod tests {
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -694,6 +692,7 @@ mod tests {
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(Udec128::new_percent(1)).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+            min_order_size: Uint128::ZERO,
         };
 
         let reserve = coins! {
@@ -707,12 +706,10 @@ mod tests {
         let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -760,12 +757,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -793,12 +788,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -826,12 +819,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -859,12 +850,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -892,12 +881,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -925,12 +912,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -958,12 +943,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -991,12 +974,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1025,6 +1006,7 @@ mod tests {
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+            min_order_size: Uint128::ZERO,
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
@@ -1057,12 +1039,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1090,12 +1070,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1123,12 +1101,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1156,12 +1132,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(100),
-                Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1189,12 +1163,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1222,12 +1194,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1255,12 +1225,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1288,12 +1256,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1321,12 +1287,10 @@ mod tests {
         hash_map! {
             eth::DENOM.clone() => PrecisionedPrice::new(
                 Udec128::new_percent(200),
-                Udec128::new_percent(200),
                 Timestamp::from_seconds(1730802926),
                 6,
             ),
             usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
                 Udec128::new_percent(100),
                 Timestamp::from_seconds(1730802926),
                 6,
@@ -1355,6 +1319,7 @@ mod tests {
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+            min_order_size: Uint128::ZERO,
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.

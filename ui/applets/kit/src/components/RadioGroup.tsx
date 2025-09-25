@@ -56,7 +56,7 @@ export const Group: React.FC<PropsWithChildren<RadioGroupProps>> = ({
     <RadioGroupProvider value={context}>
       <div role="radiogroup" aria-labelledby={`${groupName}-label`}>
         {label && (
-          <span id={`${groupName}-label`} className="exposure-m-italic text-secondary-700">
+          <span id={`${groupName}-label`} className="exposure-m-italic text-ink-secondary-700">
             {label}
           </span>
         )}
@@ -106,8 +106,8 @@ export const Item: React.FC<RadioProps> = ({
         className={twMerge(
           "w-4 h-4 rounded-full flex items-center justify-center transition-all border-2",
           isSelected
-            ? "border-red-bean-500 bg-red-bean-500"
-            : "border-secondary-gray bg-transparent",
+            ? "border-primitives-red-light-500 bg-primitives-red-light-500"
+            : "border-outline-secondary-gray bg-transparent",
         )}
       >
         {isSelected && (
@@ -120,7 +120,7 @@ export const Item: React.FC<RadioProps> = ({
           />
         )}
       </motion.div>
-      <span className="diatype-sm-medium text-gray-800">{label}</span>
+      <span className="diatype-sm-medium text-primitives-gray-light-800">{label}</span>
     </label>
   );
 };

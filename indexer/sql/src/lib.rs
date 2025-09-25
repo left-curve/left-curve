@@ -6,7 +6,9 @@ pub mod context;
 pub mod dataloaders;
 pub mod entity;
 pub mod error;
+mod event_cache;
 pub mod hooks;
+mod http_request_details;
 pub mod indexer;
 pub mod indexer_path;
 #[cfg(feature = "metrics")]
@@ -15,8 +17,6 @@ pub mod pubsub;
 #[cfg(feature = "async-graphql")]
 pub mod scalars;
 pub mod serde_iso8601;
-
-mod event_cache;
 
 pub use {
     context::Context,

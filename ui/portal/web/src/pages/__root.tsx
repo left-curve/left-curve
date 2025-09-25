@@ -6,8 +6,7 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useNotifications } from "../hooks/useNotifications";
-import { useAccount, useSessionKey } from "@left-curve/store";
+import { useAccount, useActivities, useSessionKey } from "@left-curve/store";
 
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
@@ -67,11 +66,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       }
     }, [username, connector]);
 
-    // Initialize notifications
-    const { startNotifications } = useNotifications();
+    // Initialize activities
+    const { startActivities } = useActivities();
     useEffect(() => {
-      const stopNotifications = startNotifications();
-      return stopNotifications;
+      const stopActivities = startActivities();
+      return stopActivities;
     }, [account]);
 
     // Track session key expiration

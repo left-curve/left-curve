@@ -29,9 +29,9 @@ export const TruncateText: React.FC<Props & TextProps> = ({
 
   return (
     <GlobalText className={twMerge("flex-row", className)} {...props}>
-      <GlobalText>{text.slice(0, start)}</GlobalText>
-      <GlobalText>…</GlobalText>
-      <GlobalText>{text.slice(text.length - end)}</GlobalText>
+      <GlobalText className={twMerge(className)}>{text.slice(0, start)}</GlobalText>
+      <GlobalText className={twMerge(className)}>…</GlobalText>
+      <GlobalText className={twMerge(className)}>{text.slice(text.length - end)}</GlobalText>
     </GlobalText>
   );
 };

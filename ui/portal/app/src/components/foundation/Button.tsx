@@ -36,34 +36,34 @@ const buttonVariants = tv({
   variants: {
     variant: {
       primary: {
-        base: "bg-red-bean-400",
+        base: "bg-primitives-red-light-400",
         icons: "text-surface-primary-rice",
         text: "text-surface-primary-rice",
       },
       secondary: {
-        base: "bg-primary-blue",
-        icons: "text-secondary-blue",
-        text: "text-secondary-blue",
+        base: "bg-surface-primary-blue",
+        icons: "text-ink-secondary-blue",
+        text: "text-ink-secondary-blue",
       },
       tertiary: {
-        base: "bg-button-green",
+        base: "bg-surface-button-green",
         icons: "text-surface-primary-rice",
         text: "text-surface-primary-rice",
       },
       "tertiary-red": {
         base: "bg-surface-primary-red",
-        icons: "text-tertiary-red",
-        text: "text-tertiary-red",
+        icons: "text-ink-tertiary-red",
+        text: "text-ink-tertiary-red",
       },
       utility: {
         base: "bg-surface-quaternary-rice !rounded-md",
-        icons: "text-secondary-rice",
-        text: "text-secondary-rice",
+        icons: "text-ink-secondary-rice",
+        text: "text-ink-secondary-rice",
       },
       link: {
         base: "bg-transparent",
-        icons: "text-secondary-blue",
-        text: "text-secondary-blue",
+        icons: "text-ink-secondary-blue",
+        text: "text-ink-secondary-blue",
       },
     },
     radius: {
@@ -98,7 +98,7 @@ const buttonVariants = tv({
         text: "exposure-sm-italic",
       },
       md: {
-        base: "h-[40px] py-[10px] px-3",
+        base: "h-[40px] py-[8px] px-3",
         icons: "",
         text: "exposure-sm-italic text-md",
       },
@@ -276,7 +276,11 @@ export const Button: React.FC<PropsWithChildren<ButtonProps>> = ({
 
   return (
     <ButtonShadow radius={radius} variant={variant}>
-      <Pressable disabled={isDisabled || isLoading} onPress={onPress}>
+      <Pressable
+        disabled={isDisabled || isLoading}
+        onPress={onPress}
+        className={twMerge("flex flex-row items-center justify-center", classNames?.base)}
+      >
         {isLoading ? (
           <ActivityIndicator color="white" size="small" />
         ) : (

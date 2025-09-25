@@ -100,9 +100,10 @@ export function session(parameters: SessionConnectorParameters = {}) {
         });
       },
       async isAuthorized() {
+        const accounts = await this.getAccounts();
         const session = await storage.getItem<"session", SigningSession, undefined>("session");
         const isExpired = Number(session?.sessionInfo.expireAt || 0) < Date.now();
-        return !isExpired;
+        return !isExpired && accounts.length > 0;
       },
       async signArbitrary(payload) {
         const provider = await this.getProvider();

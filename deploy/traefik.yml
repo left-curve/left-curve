@@ -4,6 +4,7 @@
   vars:
     tailscale_iface: tailscale0
     tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
+    traefik_dir: "{{ ansible_env.HOME }}/traefik"
   collections:
     - community.docker
   roles:

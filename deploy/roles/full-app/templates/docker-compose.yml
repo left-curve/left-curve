@@ -1,17 +1,22 @@
 x-common-labels: &common-labels
-  environment: "{{ deploy_env }}"
-  project: "{{ deployment_name }}"
+  environment: "${DEPLOY_ENV}"
+  project: "${DEPLOYMENT_NAME}"
+  dango_network: "${DANGO_NETWORK}"
 
 services:
-  db:
+{% if deploy_includes_postgres %}
+  postgres:
     image: postgres:17
     shm_size: 1gb
     labels:
       <<: *common-labels
+      service_name: "postgres"
     environment:
-      - POSTGRES_DB=dango_prod
-      - POSTGRES_USER={{ lookup('env','DB_USER', default='postgres') }}
-      - POSTGRES_PASSWORD={{ db_password }}
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - "${DEPLOYMENT_DIR}/postgres/data:/var/lib/postgresql/data"
     tty: true
     healthcheck:
       test: ["CMD", "pg_isready", "-q"]
@@ -19,52 +24,83 @@ services:
       timeout: 5s
       retries: 10
 
+  postgres-prometheus:
+    image: prometheuscommunity/postgres-exporter:latest
+    labels:
+      <<: *common-labels
+      service_name: "postgres-prometheus"
+{% if expose_ports %}
+    ports:
+      - "${BINDING_IP}:${DB_METRICS_PORT:-0}:9187"
+{% endif %}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATA_SOURCE_NAME=${POSTGRES_DATA_SOURCE}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9187/metrics"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+{% endif %}
+
+{% if deploy_includes_clickhouse %}
   clickhouse:
     image: clickhouse/clickhouse-server:latest
+    labels:
+      <<: *common-labels
+      service_name: "clickhouse"
     restart: unless-stopped
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
+      - "${DEPLOYMENT_DIR}/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
+      - "${DEPLOYMENT_DIR}/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
+      - "${DEPLOYMENT_DIR}/clickhouse/data:/var/lib/clickhouse"
+      - "${DEPLOYMENT_DIR}/clickhouse/init.sh:/docker-entrypoint-initdb.d/init.sh"
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     ulimits:
       nofile:
         soft: 262144
         hard: 262144
     healthcheck:
-      test:
-        [
-          "CMD",
-          "clickhouse-client",
-          "--user",
-          "default",
-          "--password",
-          "{{ clickhouse_password }}",
-          "--query",
-          "SELECT 1"
-        ]
+      test: >
+        bash -c 'clickhouse-client --user default --password "$$CLICKHOUSE_PASSWORD" --query "SELECT 1"'
       interval: 5s
       timeout: 5s
       retries: 10
+{% endif %}
 
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
     labels:
       <<: *common-labels
+      service_name: "dango"
     depends_on:
-      db:
+{% if deploy_includes_postgres %}
+      postgres:
         condition: service_healthy
+{% endif %}
+{% if deploy_includes_clickhouse %}
       clickhouse:
         condition: service_healthy
+{% endif %}
+{% if expose_ports %}
     ports:
-      - "{{ tailscale_ip }}:${DANGO_PORT:-0}:8080"
+      - "${DANGO_PORT:-0}:8080"
+      - "${BINDING_IP}:${DANGO_METRICS_PORT:-0}:9191"
+{% endif %}
+    networks:
+      - default
+      - traefik
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/dango:/root/.dango/config"
+      - "${DEPLOYMENT_DIR}/dango:/root/.dango"
     environment:
-      - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres:{{ db_password }}@db:5432/dango_prod}
+      - INDEXER__DATABASE__URL=${POSTGRES_DATABASE_URL}
       - INDEXER__CLICKHOUSE__USER=default
-      - INDEXER__CLICKHOUSE__PASSWORD={{ clickhouse_password }}
-      - INDEXER__CLICKHOUSE__DATABASE=default
+      - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD}
+      - INDEXER__CLICKHOUSE__DATABASE=${CLICKHOUSE_DATABASE}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
@@ -76,11 +112,17 @@ services:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
     labels:
       <<: *common-labels
+      service_name: "dango-frontend"
     depends_on:
       dango:
         condition: service_healthy
+{% if expose_ports %}
     ports:
-      - "{{ tailscale_ip }}:${DANGO_FRONTEND_PORT:-0}:80"
+      - "${DANGO_FRONTEND_PORT:-0}:80"
+{% endif %}
+    networks:
+      - default
+      - traefik
     environment:
       INDEXER_URL: ${INDEXER_URL}
       FAUCET_URL: ${FAUCET_URL}
@@ -97,29 +139,76 @@ services:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
     labels:
       <<: *common-labels
+      service_name: "faucet_bot"
     depends_on:
       dango:
         condition: service_healthy
+{% if expose_ports %}
     ports:
-      - "{{ tailscale_ip }}:${FAUCET_PORT:-0}:8082"
+      - "${FAUCET_PORT:-0}:8082"
+{% endif %}
+    networks:
+      - default
+      - traefik
     environment:
       - HOME=/app
     tty: true
-    command: ["faucet", "--provider-url", "http://dango:8080", "--chain-id", "{{ chain_id }}"]
+    command: ["faucet", "--provider-url", "http://dango:8080", "--chain-id", "${CHAIN_ID}"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8082/health"]
       interval: 10s
       timeout: 5s
       retries: 3
 
+{% if dex_bot_enabled %}
+  dex-bot:
+    image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
+    depends_on:
+      dango:
+        condition: service_healthy
+    restart: always
+    environment:
+      # NOTE: those are public and only used for development and testnets
+      username: ${DEX_BOT_USERNAME}
+      address: ${DEX_BOT_ADDRESS}
+      key__privatekey: ${DEX_BOT_PRIVATE_KEY}
+      http_url: "http://dango:8080"
+      chain_id: ${CHAIN_ID}
+      # Mandatory else fails with `file not found: /root/.dango-dex/config.json`
+      app_settings__sleep__min: 1s
+      app_settings__sleep__max: 2s
+      app_settings__size_percent__min: 0.5
+      app_settings__size_percent__max: 3.0
+      app_settings__price_percent__min: 0.05
+      app_settings__price_percent__max: 0.2
+      app_settings__order_type: market
+      app_settings__healthcheck_file: /tmp/dango_dex_app_healthcheck
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/dango_dex_app_healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+{% endif %}
+
   cometbft:
-    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
+    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-latest}
     labels:
       <<: *common-labels
+      service_name: "cometbft"
     depends_on:
       - dango
     volumes:
-      - "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/configs/cometbft:/root/.cometbft/config"
+      - "${DEPLOYMENT_DIR}/cometbft:/root/.cometbft"
+{% if expose_ports %}
+    ports:
+      - "${BINDING_IP}:${COMETBFT_P2P_PORT:-0}:26656"
+      - "${BINDING_IP}:${COMETBFT_RPC_PORT:-0}:26657"
+      - "${BINDING_IP}:${COMETBFT_ABCI_PORT:-0}:26658"
+      - "${BINDING_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
+{% endif %}
+    networks:
+      - default
+      - traefik
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
@@ -133,3 +222,15 @@ services:
       printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
       exec cometbft start
       "
+
+networks:
+  traefik:
+    external: true
+{% if not deploy_includes_postgres %}
+  postgres:
+    external: true
+{% endif %}
+{% if not deploy_includes_clickhouse %}
+  clickhouse:
+    external: true
+{% endif %}

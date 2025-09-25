@@ -31,16 +31,16 @@ const badgeVariants = tv(
     variants: {
       color: {
         blue: {
-          base: "bg-surface-secondary-blue border-tertiary-blue",
-          text: "text-foreground-primary-blue",
+          base: "bg-surface-secondary-blue",
+          text: "text-fg-primary-blue",
         },
         red: {
           base: "bg-surface-secondary-red border-secondary-red",
-          text: "text-foreground-primary-red",
+          text: "text-fg-primary-red",
         },
         green: {
           base: "bg-surface-tertiary-green border-surface-primary-green",
-          text: "text-foreground-primary-green",
+          text: "text-fg-primary-green",
         },
       },
       size: {

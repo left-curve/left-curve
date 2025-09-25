@@ -1,6 +1,7 @@
 use {
     crate::{
         event_cache::EventCacheWriter,
+        http_request_details::HttpRequestDetailsCache,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
     },
     indexer_sql_migration::{Migrator, MigratorTrait},
@@ -8,7 +9,7 @@ use {
         ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
         sqlx::{self},
     },
-    std::sync::Arc,
+    std::sync::{Arc, Mutex},
 };
 
 #[derive(Clone)]
@@ -16,6 +17,18 @@ pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub event_cache: EventCacheWriter,
+    pub transaction_hash_details: Arc<Mutex<HttpRequestDetailsCache>>,
+}
+
+impl std::fmt::Debug for Context {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Context")
+            .field("db", &self.db)
+            .field("pubsub", &"<PubSub trait object>")
+            .field("event_cache", &"<EventCacheWriter>")
+            .field("transaction_hash_details", &self.transaction_hash_details)
+            .finish()
+    }
 }
 
 impl Context {
@@ -43,6 +56,7 @@ impl Context {
             db: self.db.clone(),
             pubsub: new_pubsub,
             event_cache: self.event_cache.clone(),
+            transaction_hash_details: Arc::new(Mutex::new(HttpRequestDetailsCache::default())),
         })
     }
 

@@ -5,7 +5,7 @@
     "outDir": "build",
     "rootDir": "src"
   },
-  "include": ["src", "env.d.ts"],
+  "include": ["src", "env.d.ts", "exports.ts"],
   "exclude": ["node_modules"],
   "references": [
     {

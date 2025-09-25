@@ -1,0 +1,29 @@
+- name: Check if liquidity setup already done
+  stat:
+    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/bot_liquidity_setup_done"
+  register: liquidity_setup_flag
+
+- name: Setup liquidity (mint and provide)
+  when: not liquidity_setup_flag.stat.exists
+  block:
+    - set_fact:
+        mint_command: "dex liquidity mint --url http://dango:8080/ {{ dango[dango_network].dex_bot.mint_amount }} {{ dango[dango_network].dex_bot.mint_user }} --address {{ dango[dango_network].dex_bot.address }} --username {{ dango[dango_network].dex_bot.username }} --private-key {{ dango[dango_network].dex_bot.private_key }}"
+        provide_liquidity_command: "dex liquidity provide --url http://dango:8080/ {{ dango[dango_network].dex_bot.liquidity_amount }} --address {{ dango[dango_network].dex_bot.address }} --username {{ dango[dango_network].dex_bot.username }} --private-key {{ dango[dango_network].dex_bot.private_key }}"
+
+    - debug:
+        msg: "Calling: {{ provide_liquidity_command }} ; {{ mint_command }}"
+
+    - name: Run both liquidity commands in sequence
+      community.docker.docker_compose_v2_exec:
+        project_name: "{{ deployment_name }}"
+        project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+        service: dex-bot
+        command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
+        tty: yes
+      retries: 3
+      delay: 5
+
+    - name: Mark liquidity setup as done
+      file:
+        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/bot_liquidity_setup_done"
+        state: touch

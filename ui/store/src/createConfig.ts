@@ -345,7 +345,8 @@ export function createConfig<
 
     return {
       type: "lp",
-      symbol: `${baseCoin.symbol}-${quoteCoin.symbol}`,
+      symbol: `${baseCoin.symbol}-${quoteCoin.symbol} LP`,
+      name: `${baseCoin.symbol}-${quoteCoin.symbol} Liquidity Shares`,
       denom,
       decimals: 0,
       base: baseCoin,

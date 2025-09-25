@@ -125,5 +125,3 @@ export function useStorage<T = undefined>(
 
   return [data as any, setValue];
 }
-
-export default useStorage;

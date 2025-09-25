@@ -373,8 +373,9 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
             accountType
             createdAt
             createdBlockHeight
+            createdTxHash
           }
-          edges { node { id address accountIndex accountType createdAt createdBlockHeight } cursor }
+          edges { node { id address accountIndex accountType createdAt createdBlockHeight createdTxHash } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -482,6 +483,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
             accountType
             createdAt
             createdBlockHeight
+            createdTxHash
             users { username }
         }
       }
@@ -506,9 +508,6 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                 &codes,
                 &format!("foo{idx}"),
             );
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -618,9 +617,6 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
             // Create a new account with the original user
             let _test_account2 =
                 add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });

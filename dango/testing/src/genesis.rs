@@ -18,14 +18,14 @@ use {
             bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
         },
         dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
-        gateway::{Remote, WithdrawalFee},
+        gateway::{Origin, Remote, WithdrawalFee},
         lending::InterestRateModel,
         taxman,
     },
     grug::{
-        Addressable, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NonZero, NumberConst, Udec128, Uint128,
-        btree_map, btree_set, coins,
+        Addressable, Binary, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NonZero, NumberConst, Timestamp, Udec128,
+        Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -34,7 +34,7 @@ use {
         constants::{arbitrum, base, ethereum, optimism, solana},
         isms::multisig::ValidatorSet,
     },
-    pyth_types::constants::GUARDIAN_SETS,
+    pyth_types::constants::LAZER_TRUSTED_SIGNER,
     std::{collections::BTreeSet, str::FromStr},
 };
 
@@ -348,6 +348,7 @@ impl Preset for DexOption {
                         }),
                         bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO, /* TODO: for mainnet, a minimum of $10 is sensible */
                     },
                 },
                 PairUpdate {
@@ -369,6 +370,7 @@ impl Preset for DexOption {
                             NonZero::new_unchecked(ONE_HUNDRED),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -390,6 +392,7 @@ impl Preset for DexOption {
                             NonZero::new_unchecked(ONE_HUNDRED),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -409,6 +412,7 @@ impl Preset for DexOption {
                             NonZero::new_unchecked(TEN),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
             ],
@@ -420,43 +424,43 @@ impl Preset for GatewayOption {
     fn preset_test() -> Self {
         GatewayOption {
             warp_routes: btree_set! {
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: arbitrum::DOMAIN,
                     contract: arbitrum::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: base::DOMAIN,
                     contract: base::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: optimism::DOMAIN,
                     contract: optimism::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: arbitrum::DOMAIN,
                     contract: arbitrum::WETH_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: base::DOMAIN,
                     contract: base::WETH_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::WETH_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: optimism::DOMAIN,
                     contract: optimism::WETH_WARP,
                 }),
-                (sol::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(sol::SUBDENOM.clone()), Remote::Warp {
                     domain: solana::DOMAIN,
                     contract: solana::SOL_WARP,
                 }),
@@ -593,7 +597,10 @@ impl Preset for OracleOption {
     fn preset_test() -> Self {
         OracleOption {
             pyth_price_sources: PYTH_PRICE_SOURCES.clone(),
-            wormhole_guardian_sets: GUARDIAN_SETS.clone(),
+            pyth_trusted_signers: {
+                let trused_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
+                btree_map! { trused_signer => Timestamp::from_nanos(u128::MAX) } // FIXME: what's the appropriate expiration time for this?
+            },
         }
     }
 }

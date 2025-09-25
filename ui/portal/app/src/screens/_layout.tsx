@@ -9,6 +9,7 @@ export default function RootLayout() {
         name="search"
         options={{ headerShown: false, presentation: "containedModal" }}
       />
+      <Stack.Screen name="account-menu" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>
   );
 }

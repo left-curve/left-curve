@@ -4,8 +4,14 @@ set positional-arguments
 default:
   @just --list
 
+# ------------------------------------ Git -------------------------------------
+
+# Fetch latest main branch from origin without checking out to it
+fetch-main:
+  git fetch origin main
+
 # Delete all local git branches except for main
-clean-branches:
+git-clear-branches:
   git branch | grep -v "main" | xargs git branch -D
 
 # ------------------------------------ Rust ------------------------------------

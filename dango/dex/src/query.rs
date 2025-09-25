@@ -1,24 +1,25 @@
 use {
     crate::{
-        DEPTHS, LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK,
-        VOLUMES, VOLUMES_BY_USER,
+        DEPTHS, MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, ORDERS, PAIRS, PAUSED, RESERVES,
+        RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
     },
+    anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::Username,
         dex::{
             Direction, LiquidityDepth, LiquidityDepthResponse, OrderId, OrderResponse,
-            OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams, PairUpdate, QueryMsg,
-            ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
+            OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams, PairUpdate, Price,
+            QueryMsg, ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
             RestingOrderBookStatesResponse, SwapRoute,
         },
     },
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
         JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult,
-        Timestamp, Udec128_6, Udec128_24, Uint128,
+        Timestamp, Udec128_6, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -152,7 +153,7 @@ fn query_liquidity_depth(
     ctx: ImmutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
-    bucket_size: Udec128_24,
+    bucket_size: Price,
     limit: usize,
 ) -> anyhow::Result<LiquidityDepthResponse> {
     // load the pair params
@@ -322,7 +323,7 @@ fn query_resting_order_book_states(
 
 fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse> {
     let (((base_denom, quote_denom), direction, price, _), order) =
-        LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+        ORDERS.idx.order_id.load(ctx.storage, order_id)?;
 
     Ok(OrderResponse {
         base_denom,
@@ -343,7 +344,7 @@ fn query_orders(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    LIMIT_ORDERS
+    ORDERS
         .idx
         .order_id
         .range(ctx.storage, start, None, IterationOrder::Ascending)
@@ -372,14 +373,13 @@ fn query_orders_by_pair(
 ) -> StdResult<BTreeMap<OrderId, OrdersByPairResponse>> {
     let start = start_after
         .map(|order_id| -> StdResult<_> {
-            let ((_, direction, price, _), _) =
-                LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+            let ((_, direction, price, _), _) = ORDERS.idx.order_id.load(ctx.storage, order_id)?;
             Ok(Bound::Exclusive((direction, price, order_id)))
         })
         .transpose()?;
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    LIMIT_ORDERS
+    ORDERS
         .prefix((base_denom, quote_denom))
         .range(ctx.storage, start, None, IterationOrder::Ascending)
         .take(limit)
@@ -405,13 +405,13 @@ fn query_orders_by_user(
     let start = start_after
         .map(|order_id| -> StdResult<_> {
             let ((pair, direction, price, _), _) =
-                LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+                ORDERS.idx.order_id.load(ctx.storage, order_id)?;
             Ok(Bound::Exclusive((pair, direction, price, order_id)))
         })
         .transpose()?;
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    LIMIT_ORDERS
+    ORDERS
         .idx
         .user
         .prefix(user)
@@ -432,7 +432,19 @@ fn query_orders_by_user(
 }
 
 #[inline]
-fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Udec128_6> {
+fn query_volume(
+    ctx: ImmutableCtx,
+    user: Addr,
+    since: Option<Timestamp>,
+) -> anyhow::Result<Udec128_6> {
+    // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
+    if let Some(since) = since {
+        ensure!(
+            ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE) <= since,
+            "the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago"
+        );
+    }
+
     let volume_now = VOLUMES
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
@@ -463,7 +475,15 @@ fn query_volume_by_user(
     ctx: ImmutableCtx,
     user: Username,
     since: Option<Timestamp>,
-) -> StdResult<Udec128_6> {
+) -> anyhow::Result<Udec128_6> {
+    // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
+    if let Some(since) = since {
+        ensure!(
+            ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE) <= since,
+            "the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago"
+        );
+    }
+
     let volume_now = VOLUMES_BY_USER
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)

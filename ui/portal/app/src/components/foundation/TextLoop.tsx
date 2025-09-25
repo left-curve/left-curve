@@ -40,7 +40,7 @@ export const TextLoop: React.FC<TextLoopProps> = ({ texts, intervalMs = 2000, cl
           }}
         >
           <Text
-            className={twMerge("text-primary-rice exposure-m-italic", className)}
+            className={twMerge("text-ink-secondary-rice exposure-m-italic", className)}
             numberOfLines={1}
           >
             {safeTexts[index]}

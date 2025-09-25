@@ -538,9 +538,6 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                     NonEmpty::new_unchecked(msgs),
                 )
                 .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -686,9 +683,6 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                     NonEmpty::new_unchecked(msgs),
                 )
                 .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });

@@ -41,7 +41,7 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
   }, []);
 
   return (
-    <div className="h-svh xl:h-screen w-screen flex items-center justify-center bg-surface-primary-rice text-primary-900">
+    <div className="h-svh xl:h-screen w-screen flex items-center justify-center bg-surface-primary-rice text-ink-primary-900">
       <div className="flex items-center justify-center flex-1">
         <ResizerContainer layoutId="signin" className="w-full max-w-[22.5rem]">
           {children}
@@ -84,7 +84,10 @@ const CredentialStep: React.FC = () => {
         }
         nextStep();
       } catch (err) {
-        toast.error({ title: m["errors.failureRequest"]() });
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.failedSigningIn"](),
+        });
         console.log(err);
       }
     },
@@ -123,7 +126,7 @@ const CredentialStep: React.FC = () => {
         ) : (
           <Button
             fullWidth
-            onClick={() => showModal(Modals.SignWithDesktop)}
+            onClick={() => showModal(Modals.SignWithDesktop, { navigate })}
             className="gap-2"
             variant="secondary"
           >
@@ -198,12 +201,16 @@ const UsernameStep: React.FC = () => {
         {existUsernames ? (
           <>
             <h1 className="h2-heavy">{m["signin.usernamesFound"]()}</h1>
-            <p className="text-tertiary-500 diatype-m-medium">{m["signin.chooseCredential"]()}</p>
+            <p className="text-ink-tertiary-500 diatype-m-medium">
+              {m["signin.chooseCredential"]()}
+            </p>
           </>
         ) : (
           <>
             <h1 className="h2-heavy">{m["signin.noUsernamesFound"]()}</h1>
-            <p className="text-tertiary-500 diatype-m-medium">{m["signin.noUsernameMessage"]()}</p>
+            <p className="text-ink-tertiary-500 diatype-m-medium">
+              {m["signin.noUsernameMessage"]()}
+            </p>
           </>
         )}
       </div>
@@ -220,7 +227,7 @@ const UsernameStep: React.FC = () => {
         </div>
       ) : (
         <Button variant="link" onClick={previousStep}>
-          <IconLeft className="w-[22px] h-[22px] text-blue-500" />
+          <IconLeft className="w-[22px] h-[22px] text-primitives-blue-light-500" />
           <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
         </Button>
       )}

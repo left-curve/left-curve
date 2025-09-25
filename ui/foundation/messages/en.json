@@ -22,6 +22,9 @@
     "switch": "Switch",
     "hi": "Hi",
     "to": "To",
+    "for": "for",
+    "at": "at",
+    "width": "width",
     "error": "Error",
     "confirm": "Confirm",
     "signinWithDesktop": "Sign in with Desktop",
@@ -29,7 +32,20 @@
     "motto": "Dango–the one app for everything DeFi",
     "notWalletDetected": "No wallet detected",
     "overview": "Overview",
+    "advice": "You are using {environment}",
+    "environment": [
+      {
+        "declarations": ["input environment"],
+        "selectors": ["environment"],
+        "match": {
+          "environment=dev": "devnet",
+          "environment=test": "testnet"
+        }
+      }
+    ],
+    "devnet": { "advice": "you are using devnet" },
     "testnet": {
+      "advice": "you are using testnet",
       "title": "Message from the founder",
       "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
     },
@@ -152,14 +168,6 @@
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
-    "notifications": {
-      "id": "notifications",
-      "img": "/images/emojis/simple/notifications.svg",
-      "title": "Notifications",
-      "description": "View recent transactions.",
-      "path": "/notifications",
-      "keywords": "notifications,alerts"
-    },
     "devtool": {
       "id": "devtool",
       "img": "/images/emojis/simple/factory-2.svg",
@@ -176,7 +184,7 @@
         "title": "Block not found",
         "description": "We couldn’t find the block you were looking for. If it’s a valid block, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
       },
-      "cronsOutcomes": "Crons Outcomes",
+      "cronsOutcomes": "Cron Outcomes",
       "details": {
         "blockDetails": "Block {height}",
         "blockHash": "Block Hash",
@@ -275,6 +283,11 @@
         "balances": "Balances:"
       }
     }
+  },
+  "appUpdate": {
+    "title": "Update Available",
+    "description": "A new version of the app is available. Please update to the latest version to continue using the app.",
+    "updateButton": "Update Now"
   },
   "modals": {
     "qrconnect": {
@@ -492,13 +505,13 @@
       ]
     }
   },
-  "notifications": {
-    "title": "Notifications",
-    "noNotifications": {
-      "title": "No notifications yet",
-      "description": "When you approve, trade, or transfer tokens, your transaction will appear here"
+  "activities": {
+    "title": "Activities",
+    "noActivities": {
+      "title": "No activity yet",
+      "description": "When you trade, transfer tokens, or perform other activities, updates will appear here"
     },
-    "notification": {
+    "activity": {
       "transfer": {
         "title": [
           {
@@ -511,31 +524,70 @@
           }
         ],
         "direction": {
-          "first": [
-            {
-              "declarations": ["input direction"],
-              "selectors": ["direction"],
-              "match": {
-                "direction=sent": "from",
-                "direction=received": "in"
-              }
-            }
-          ],
-          "second": [
-            {
-              "declarations": ["input direction"],
-              "selectors": ["direction"],
-              "match": {
-                "direction=sent": "to",
-                "direction=received": "from"
-              }
-            }
-          ]
+          "first": "from",
+          "second": "to"
         }
       },
       "account": {
-        "title": "{accountType} Account Created"
-      }
+        "title": "Account created"
+      },
+      "orderCreated": {
+        "title": "Order created",
+        "description": "{orderType} {action} in ",
+        "atPrice": "at price "
+      },
+      "orderCanceled": {
+        "title": "Order canceled",
+        "description": "{orderType} {action} in ",
+        "atPrice": "at price "
+      },
+      "orderFilled": {
+        "title": "Order {isFullfilled}",
+        "remaining": "remaining",
+        "isFullfilled": [
+          {
+            "declarations": ["input isFullfilled"],
+            "selectors": ["isFullfilled"],
+            "match": {
+              "isFullfilled=true": "fulfilled",
+              "isFullfilled=false": "partially fulfilled"
+            }
+          }
+        ]
+      },
+      "modal": {
+        "blockHeight": "Block Height",
+        "spotOrderAction": "Order {status}",
+        "spotOrderBuy": "{orderType} ∙ Buy",
+        "spotOrderSell": "{orderType} ∙ Sell",
+        "swapped": "Swapped",
+        "received": "Received",
+        "sent": "Sent ",
+        "to": "To",
+        "from": "From",
+        "fee": "Fee",
+        "time": "Time",
+        "amount": "Amount",
+        "tokenReceived": "Token Received",
+        "limitPrice": "Limit Price",
+        "id": "ID",
+        "timeCreated": "Time Created",
+        "timeCanceled": "Time Canceled",
+        "timeUpdated": "Time Updated",
+        "filledAmount": "Filled / Amount",
+        "averagePrice": "Avg / Price",
+        "transaction": "Transaction"
+      },
+      "link": [
+        {
+          "declarations": ["input link"],
+          "selectors": ["link"],
+          "match": {
+            "link=txHash": "Transaction",
+            "link=blockHeight": "BlockHeight"
+          }
+        }
+      ]
     }
   },
   "sendAndReceive": {
@@ -653,6 +705,9 @@
       }
     ],
     "number": "Number Format",
+    "time": "Time Format",
+    "date": "Date Format",
+    "timeZone": "Time Zone",
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Key Management",
@@ -729,7 +784,9 @@
           }
         }
       ],
+      "openOrders": "Open Orders",
       "tradeHistory": {
+        "title": "Trade History",
         "pair": "Pair",
         "direction": "Direction",
         "type": "Type",
@@ -745,6 +802,7 @@
         "limitPrice": "Limit Price",
         "remaining": "Remaining ({symbol})",
         "type": "Type",
+        "total": "Total ({symbol})",
         "size": "Size ({symbol})",
         "direction": "Direction",
         "dateAndTime": "Date & Time",

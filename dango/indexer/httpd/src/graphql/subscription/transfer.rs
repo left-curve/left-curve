@@ -107,13 +107,15 @@ impl TransferSubscription {
             "subscription",
         ));
 
+        let stream = app_ctx.pubsub.subscribe().await?;
+
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
             async move { Self::get_transfers(app_ctx, block_range, a, u).await }
         })
-        .chain(app_ctx.pubsub.subscribe().await?.then(move |block_height| {
+        .chain(stream.then(move |block_height| {
             let a = address.clone();
             let u = username.clone();
 

@@ -15,6 +15,9 @@ export const Modals = {
   ProSwapEditedSL: "pro-edited-sl",
   PoolAddLiquidity: "pool-add-liquidity",
   PoolWithdrawLiquidity: "pool-withdraw-liquidity",
+  ActivityTransfer: "activity-transfer",
+  ActivityConvert: "activity-convert",
+  ActivitySpotOrder: "activity-spot-order",
 };
 
 export type ModalRef = {

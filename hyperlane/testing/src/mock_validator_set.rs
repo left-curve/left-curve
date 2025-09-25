@@ -10,40 +10,75 @@ use {
         multisig_hash,
     },
     k256::ecdsa::SigningKey,
-    std::collections::HashMap,
+    rand::Rng,
+    std::collections::{BTreeSet, HashMap},
 };
 
 pub struct MockValidatorSets(HashMap<Domain, MockValidatorSet>);
 
 impl MockValidatorSets {
-    pub fn new_preset() -> Self {
+    pub fn new_preset(random_nonce: bool) -> Self {
         Self(hash_map! {
-            arbitrum::DOMAIN => MockValidatorSet::new_preset(arbitrum::DOMAIN),
-            base::DOMAIN     => MockValidatorSet::new_preset(base::DOMAIN),
-            ethereum::DOMAIN => MockValidatorSet::new_preset(ethereum::DOMAIN),
-            optimism::DOMAIN => MockValidatorSet::new_preset(optimism::DOMAIN),
-            solana::DOMAIN   => MockValidatorSet::new_preset(solana::DOMAIN),
+            arbitrum::DOMAIN => MockValidatorSet::new_preset(arbitrum::DOMAIN, random_nonce),
+            base::DOMAIN     => MockValidatorSet::new_preset(base::DOMAIN, random_nonce),
+            ethereum::DOMAIN => MockValidatorSet::new_preset(ethereum::DOMAIN, random_nonce),
+            optimism::DOMAIN => MockValidatorSet::new_preset(optimism::DOMAIN, random_nonce),
+            solana::DOMAIN   => MockValidatorSet::new_preset(solana::DOMAIN, random_nonce),
         })
     }
 
     pub fn get(&self, domain: Domain) -> Option<&MockValidatorSet> {
         self.0.get(&domain)
     }
+
+    pub fn insert(&mut self, domain: Domain, validator_set: MockValidatorSet) {
+        self.0.insert(domain, validator_set);
+    }
 }
 
+pub enum Nonce {
+    Random,
+    Sequential(u32),
+}
+
+impl Nonce {
+    pub fn new(random_nonce: bool) -> Self {
+        if random_nonce {
+            Self::Random
+        } else {
+            Self::Sequential(0)
+        }
+    }
+
+    /// Get the next nonce.
+    pub fn next_nonce(&mut self) -> u32 {
+        match self {
+            Self::Random => rand::thread_rng().gen(),
+            Self::Sequential(nonce) => {
+                *nonce += 1;
+                *nonce
+            },
+        }
+    }
+}
 /// A mock up Hyperlane validator set for testing purpose.
 #[derive(Clone)]
 pub struct MockValidatorSet {
     domain: Domain,
     validators: Vec<k256::ecdsa::SigningKey>,
     merkle_tree_address: Addr32,
-    merkle_tree_and_nonce: Shared<(IncrementalMerkleTree, u32)>,
+    merkle_tree_and_nonce: Shared<(IncrementalMerkleTree, Nonce)>,
 }
 
 impl MockValidatorSet {
     /// Create new a mock validator set of a domain with the given validators
     /// signing keys.
-    pub fn new<I>(domain: Domain, merkle_tree_address: Addr32, signing_keys: I) -> Self
+    pub fn new<I>(
+        domain: Domain,
+        merkle_tree_address: Addr32,
+        signing_keys: I,
+        random_nonce: bool,
+    ) -> Self
     where
         I: IntoIterator<Item = eth_utils::SigningKey>,
     {
@@ -58,16 +93,20 @@ impl MockValidatorSet {
             domain,
             validators,
             merkle_tree_address,
-            merkle_tree_and_nonce: Shared::new((IncrementalMerkleTree::default(), 0)),
+            merkle_tree_and_nonce: Shared::new((
+                IncrementalMerkleTree::default(),
+                Nonce::new(random_nonce),
+            )),
         }
     }
 
     /// Create a new mock validator set of a domain with a preset validator set.
-    pub fn new_preset(domain: Domain) -> Self {
+    pub fn new_preset(domain: Domain, random_nonce: bool) -> Self {
         Self::new(
             domain,
             MOCK_HYPERLANE_REMOTE_MERKLE_TREE,
             MOCK_HYPERLANE_VALIDATOR_SIGNING_KEYS,
+            random_nonce,
         )
     }
 
@@ -117,6 +156,13 @@ impl MockValidatorSet {
         (message_id, raw_message, raw_metadata)
     }
 
+    pub fn validator_addresses(&self) -> BTreeSet<HexByteArray<20>> {
+        self.validators
+            .iter()
+            .map(|sk| HexByteArray::from_inner(eth_utils::derive_address(sk.verifying_key())))
+            .collect()
+    }
+
     /// Increment the nonce and insert the message into the merkle tree.
     ///
     /// Returns:
@@ -137,13 +183,13 @@ impl MockValidatorSet {
             // syntax look cleaner.
             let (merkle_tree, nonce) = &mut *guard;
 
-            // Increment the nonce.
-            *nonce += 1;
+            // Get the next nonce.
+            let next_nonce = nonce.next_nonce();
 
             // Compose the Hyperlane message and encode it to raw bytes.
             let raw_message = mailbox::Message {
                 version: MAILBOX_VERSION,
-                nonce: *nonce,
+                nonce: next_nonce,
                 origin_domain: self.domain,
                 sender,
                 destination_domain,

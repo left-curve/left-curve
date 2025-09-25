@@ -19,7 +19,7 @@ function WelcomeComponent() {
         <div className="flex flex-col gap-6 items-center">
           <div className="flex flex-col gap-2 items-center justify-center text-center">
             <h1 className="display-heading-xl">{m["welcome.title"]()}</h1>
-            <p className="text-tertiary-500 diatype-lg-regular">{m["welcome.description"]()}</p>
+            <p className="text-ink-tertiary-500 diatype-lg-regular">{m["welcome.description"]()}</p>
           </div>
           <Button as={Link} className="w-full md:w-[260px]" to="/">
             {m["common.continue"]()}

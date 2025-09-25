@@ -117,7 +117,7 @@ export const Carousel: React.FC<CarouselProps> = ({
       <div className="w-full max-w-[18rem] flex items-center justify-center lg:justify-between gap-3">
         <IconChevronLeftCarousel
           onClick={prevSlide}
-          className="hidden lg:block w-[20px] h-[20px] text-blue-500 cursor-pointer"
+          className="hidden lg:block w-[20px] h-[20px] text-primitives-blue-light-500 cursor-pointer"
         />
 
         <div className="flex space-x-2">
@@ -128,7 +128,9 @@ export const Carousel: React.FC<CarouselProps> = ({
               onClick={() => goToSlide(idx)}
               className={twMerge(
                 "w-[10px] h-[10px] rounded-full cursor-pointer transition-colors duration-200 ease-in-out",
-                idx === currentIndex ? "bg-blue-500" : "bg-blue-200 hover:bg-blue-300",
+                idx === currentIndex
+                  ? "bg-primitives-blue-light-500"
+                  : "bg-primitives-blue-light-200 hover:bg-primitives-blue-light-300",
               )}
             />
           ))}
@@ -136,7 +138,7 @@ export const Carousel: React.FC<CarouselProps> = ({
 
         <IconChevronRightCarousel
           onClick={nextSlide}
-          className="hidden lg:block w-[20px] h-[20px] text-blue-500 cursor-pointer"
+          className="hidden lg:block w-[20px] h-[20px] text-primitives-blue-light-500 cursor-pointer"
         />
       </div>
     </div>

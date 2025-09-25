@@ -83,6 +83,19 @@ export type {
 } from "./safe.js";
 
 export type {
+  IndexedEvent,
+  EventStatus,
+  CommitmentStatus,
+  EventData,
+  ContractEvent,
+  TransferEvent,
+  ExecuteEvent,
+  OrderCreatedEvent,
+  OrderCanceledEvent,
+  OrderFilledEvent,
+} from "./event.js";
+
+export type {
   SigningSession,
   SigningSessionInfo,
   SessionResponse,
@@ -124,15 +137,23 @@ export type {
   PairParams,
   PairUpdate,
   CancelOrderRequest,
-  CreateLimitOrderRequest,
-  CreateMarketOrderRequest,
+  CreateOrderRequest,
+  PriceOption,
+  AmountOption,
   GetDexExecuteMsg,
   GetDexQueryMsg,
   OrderId,
   Candle,
   CandleIntervals,
   Trade,
+  TimeInForceOptions,
+  OrderTypes,
+  RestingOrderBookState,
+  LiquidityDepth,
+  LiquidityDepthResponse,
 } from "./dex.js";
+
+export type { WithPrice } from "./utils.js";
 
 export type { GraphqlPagination, GraphqlQueryResult } from "./graphql.js";
 
@@ -146,4 +167,4 @@ export { PoolType } from "./pool.js";
 
 export { Vote } from "./safe.js";
 
-export { Direction, CandleInterval } from "./dex.js";
+export { Direction, CandleInterval, TimeInForceOption, OrderType } from "./dex.js";

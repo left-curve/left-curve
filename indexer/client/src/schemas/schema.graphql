@@ -3,6 +3,7 @@ type Account {
 	address: String!
 	accountType: AccountType!
 	createdBlockHeight: Int!
+	createdTxHash: String!
 	"""
 	Returns the account creation timestamp in ISO 8601 format with time zone.
 	"""
@@ -380,11 +381,6 @@ ISO 8601 combined date and time without timezone.
 """
 scalar NaiveDateTime
 
-enum OrderKind {
-	limit
-	market
-}
-
 """
 Information about pagination in a connection
 """
@@ -648,6 +644,48 @@ type Subscription {
 	Get all trades, this will not include past trades but only new ones since you subscribed.
 	"""
 	trades(baseDenom: String!, quoteDenom: String!): Trade!
+	queryApp(
+		"""
+		Request as JSON
+		"""
+		request: GrugQueryInput!,
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): JSON!
+	queryStore(
+		"""
+		Key as B64 string
+		"""
+		key: String!,		prove: Boolean! = false,
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): Store!
+	queryStatus(
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): Status!
+}
+
+enum TimeInForce {
+	"""
+	Good-Til-Canceled (GTC): indicates that if the order is not fully filled
+	in the first auction, its remaining portion is to be persisted in the
+	order book, and made available for future auctions, where it becomes a
+	maker order (an order is a taker in its first auction).
+	"""
+	GTC
+	"""
+	Immediate-Or-Cancel (IOC): indicates that if the order is not fully
+	filled in the first auction, it is to be canceled, and the remaining
+	portion refunded to the user.
+	"""
+	IOC
 }
 
 type Trade {
@@ -655,7 +693,7 @@ type Trade {
 	quoteDenom: String!
 	baseDenom: String!
 	direction: Direction!
-	orderType: OrderKind!
+	timeInForce: TimeInForce!
 	blockHeight: Int!
 	"""
 	Returns the block timestamp in ISO 8601 format with time zone.

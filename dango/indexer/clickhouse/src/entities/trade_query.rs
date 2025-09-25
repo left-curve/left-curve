@@ -96,7 +96,7 @@ impl TradeQueryBuilder {
             quote_denom,
             base_denom,
             direction,
-            order_type,
+            time_in_force,
             filled_base,
             filled_quote,
             refund_base,

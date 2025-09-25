@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS trades (
     quote_denom String,
     base_denom String,
     direction UInt8,
-    order_type UInt8,
+    time_in_force UInt8,
     filled_base UInt128,
     filled_quote UInt128,
     refund_base UInt128,

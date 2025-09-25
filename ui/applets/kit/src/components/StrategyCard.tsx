@@ -87,13 +87,13 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
           </div>
           <div className="flex flex-col gap-1">
             <p className="exposure-h3-italic">{`${baseCoin.symbol} ${labels.party}!`}</p>
-            <p className="diatype-lg-medium text-tertiary-500">
+            <p className="diatype-lg-medium text-ink-tertiary-500">
               {labels.deposit}{" "}
               <span className="font-bold">
                 {baseCoin.symbol}-{quoteCoin.symbol}
               </span>
             </p>
-            <p className="diatype-lg-medium text-tertiary-500">
+            <p className="diatype-lg-medium text-ink-tertiary-500">
               {labels.earn} {quoteCoin.symbol}
             </p>
           </div>
@@ -107,14 +107,14 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
           >
             {labels.select}
           </Button>
-          <div className="p-2 rounded-xl bg-overlay-rice flex items-center justify-between">
+          <div className="p-2 rounded-xl bg-outline-primary-rice flex items-center justify-between">
             <div className="flex gap-2 items-center">
-              <span className="text-tertiary-500 diatype-xs-medium">{labels.apy}</span>
-              <span className="text-secondary-700 diatype-sm-bold">-</span>
+              <span className="text-ink-tertiary-500 diatype-xs-medium">{labels.apy}</span>
+              <span className="text-ink-secondary-700 diatype-sm-bold">-</span>
             </div>
             <div className="flex gap-2 items-center">
-              <span className="text-tertiary-500 diatype-xs-medium">{labels.tvl}</span>
-              <span className="text-secondary-700 diatype-sm-bold">-</span>
+              <span className="text-ink-tertiary-500 diatype-xs-medium">{labels.tvl}</span>
+              <span className="text-ink-secondary-700 diatype-sm-bold">-</span>
             </div>
           </div>
         </div>

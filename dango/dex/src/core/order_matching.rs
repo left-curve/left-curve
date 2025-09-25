@@ -1,7 +1,6 @@
 use {
-    dango_types::dex::Order,
-    grug::{IsZero, Number, NumberConst, StdResult, Udec128_6, Udec128_24},
-    std::cmp::Ordering,
+    dango_types::dex::{Order, Price},
+    grug::{Number, NumberConst, StdResult, Udec128_6},
 };
 
 pub struct MatchingOutcome {
@@ -10,25 +9,13 @@ pub struct MatchingOutcome {
     ///
     /// All prices in this range achieve the same volume. It's up to the caller
     /// to decide which price to use: the lowest, the highest, or the midpoint.
-    pub range: Option<(Udec128_24, Udec128_24)>,
+    pub range: Option<(Price, Price)>,
     /// The amount of trading volume, measured as the amount of the base asset.
     pub volume: Udec128_6,
     /// The BUY orders that have found a match.
-    pub bids: Vec<(Udec128_24, Order)>,
+    pub bids: Vec<(Price, Order)>,
     /// The SELL orders that have found a match.
-    pub asks: Vec<(Udec128_24, Order)>,
-    /// If the last bid that found a match was only partially matched, it's returned here.
-    ///
-    /// Since this order is only partially matched, it will remain in the book,
-    /// and becomes the best available bid at the beginning of the next block.
-    /// It is used to determine the resting order book state.
-    pub last_partial_matched_bid: Option<(Udec128_24, Order)>,
-    /// If the last ask that found a match was only partially matched, it's returned here.
-    pub last_partial_matched_ask: Option<(Udec128_24, Order)>,
-    /// If a bid was popped out of the iterator but wasn't matched, it's returned here.
-    pub unmatched_bid: Option<(Udec128_24, Order)>,
-    /// If an ask was popped out of the iterator but wasn't matched, it's returned here.
-    pub unmatched_ask: Option<(Udec128_24, Order)>,
+    pub asks: Vec<(Price, Order)>,
 }
 
 /// Given the standing BUY and SELL orders in the book, find range of prices
@@ -44,8 +31,8 @@ pub struct MatchingOutcome {
 ///   follows the price-time priority.
 pub fn match_orders<B, A>(bid_iter: &mut B, ask_iter: &mut A) -> StdResult<MatchingOutcome>
 where
-    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
-    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    B: Iterator<Item = StdResult<(Price, Order)>>,
+    A: Iterator<Item = StdResult<(Price, Order)>>,
 {
     let mut bid = bid_iter.next().transpose()?;
     let mut bids = Vec::new();
@@ -100,29 +87,10 @@ where
     // The volume is the smaller between bid and ask volumes.
     let volume = bid_volume.min(ask_volume);
 
-    // - If 0 < bid volume < ask volume, the last ask is partially filled.
-    // - If 0 < ask volume < bid volume, the last bid is partially filled.
-    // - If 0 < bid volume = ask volume, both last bid and ask are fully filled;
-    //   return `None` for both.
-    // - if 0 = bid volume = ask volume, no match found; return `None` for both.
-    let (last_partial_matched_bid, last_partial_matched_ask) = if volume.is_non_zero() {
-        match bid_volume.cmp(&ask_volume) {
-            Ordering::Less => (None, asks.last().cloned()),
-            Ordering::Greater => (bids.last().cloned(), None),
-            Ordering::Equal => (None, None),
-        }
-    } else {
-        (None, None)
-    };
-
     Ok(MatchingOutcome {
         range,
         volume,
         bids,
         asks,
-        last_partial_matched_bid,
-        last_partial_matched_ask,
-        unmatched_bid: bid.take_if(|_| bid_is_new),
-        unmatched_ask: ask.take_if(|_| ask_is_new),
     })
 }

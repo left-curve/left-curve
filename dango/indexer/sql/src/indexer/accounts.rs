@@ -49,15 +49,20 @@ pub(crate) async fn save_accounts(
     // - KeyOwned: a username, key and key hash. We should update the users entry with the new key.
     // - KeyDisowned: a username and key hash. We should delete that key hash attached to that user.
 
-    for tx in block.block_outcome.tx_outcomes.iter() {
-        if tx.result.is_err() {
+    for ((_tx, tx_hash), tx_outcome) in block
+        .block
+        .txs
+        .iter()
+        .zip(block.block_outcome.tx_outcomes.iter())
+    {
+        if tx_outcome.result.is_err() {
             #[cfg(feature = "tracing")]
             tracing::debug!("Tx failed, skipping");
 
             continue;
         }
 
-        let flat = tx.events.clone().flat();
+        let flat = tx_outcome.events.clone().flat();
 
         for event in flat {
             if event.commitment_status != FlatCommitmentStatus::Committed {
@@ -78,28 +83,28 @@ pub(crate) async fn save_accounts(
                         continue;
                     };
 
-                    user_registered_events.push(event.clone());
+                    user_registered_events.push((event, tx_hash));
                 },
                 AccountRegistered::EVENT_NAME => {
                     let Ok(event) = event.data.deserialize_json::<AccountRegistered>() else {
                         continue;
                     };
 
-                    account_registered_events.push(event);
+                    account_registered_events.push((event, tx_hash));
                 },
                 KeyOwned::EVENT_NAME => {
                     let Ok(event) = event.data.deserialize_json::<KeyOwned>() else {
                         continue;
                     };
 
-                    account_key_added_events.push(event);
+                    account_key_added_events.push((event, tx_hash));
                 },
                 KeyDisowned::EVENT_NAME => {
                     let Ok(event) = event.data.deserialize_json::<KeyDisowned>() else {
                         continue;
                     };
 
-                    account_key_removed_events.push(event);
+                    account_key_removed_events.push((event, tx_hash));
                 },
                 _ => {},
             }
@@ -140,7 +145,7 @@ pub(crate) async fn save_accounts(
         for user_register_events in user_registered_events.chunks(chunk_size) {
             let new_users = user_register_events
                 .iter()
-                .map(|user_register_event| entity::users::ActiveModel {
+                .map(|(user_register_event, _)| entity::users::ActiveModel {
                     id: Set(Uuid::new_v4()),
                     username: Set(user_register_event.username.to_string()),
                     created_at: Set(created_at),
@@ -150,15 +155,17 @@ pub(crate) async fn save_accounts(
 
             let new_public_keys = user_register_events
                 .iter()
-                .map(|user_register_event| entity::public_keys::ActiveModel {
-                    id: Set(Uuid::new_v4()),
-                    username: Set(user_register_event.username.to_string()),
-                    key_hash: Set(user_register_event.key_hash.to_string()),
-                    public_key: Set(user_register_event.key.to_string()),
-                    key_type: Set(user_register_event.key.ty()),
-                    created_at: Set(created_at),
-                    created_block_height: Set(block.block.info.height as i64),
-                })
+                .map(
+                    |(user_register_event, _)| entity::public_keys::ActiveModel {
+                        id: Set(Uuid::new_v4()),
+                        username: Set(user_register_event.username.to_string()),
+                        key_hash: Set(user_register_event.key_hash.to_string()),
+                        public_key: Set(user_register_event.key.to_string()),
+                        key_type: Set(user_register_event.key.ty()),
+                        created_at: Set(created_at),
+                        created_block_height: Set(block.block.info.height as i64),
+                    },
+                )
                 .collect::<Vec<_>>();
 
             for users in new_users
@@ -191,7 +198,7 @@ pub(crate) async fn save_accounts(
         #[cfg(feature = "tracing")]
         tracing::info!("Detected `account_registered_events`: {account_registered_events:?}");
 
-        for account_registered_event in account_registered_events {
+        for (account_registered_event, tx_hash) in account_registered_events {
             let new_account_id = Uuid::new_v4();
             let new_account = entity::accounts::ActiveModel {
                 id: Set(new_account_id),
@@ -200,6 +207,7 @@ pub(crate) async fn save_accounts(
                 account_index: Set(account_registered_event.index as i32),
                 created_at: Set(created_at),
                 created_block_height: Set(block.block.info.height as i64),
+                created_tx_hash: Set(tx_hash.to_string()),
             };
 
             entity::accounts::Entity::insert(new_account)
@@ -263,7 +271,7 @@ pub(crate) async fn save_accounts(
         #[cfg(feature = "tracing")]
         tracing::info!("Detected `account_key_added_events`: {account_key_added_events:?}");
 
-        for account_key_added_event in account_key_added_events {
+        for (account_key_added_event, _) in account_key_added_events {
             let model = entity::public_keys::ActiveModel {
                 id: Set(Uuid::new_v4()),
                 username: Set(account_key_added_event.username.to_string()),
@@ -282,7 +290,7 @@ pub(crate) async fn save_accounts(
         #[cfg(feature = "tracing")]
         tracing::info!("Detected `account_key_removed_events`: {account_key_removed_events:?}");
 
-        for account_key_removed_event in account_key_removed_events {
+        for (account_key_removed_event, _) in account_key_removed_events {
             entity::public_keys::Entity::delete_many()
                 .filter(
                     entity::public_keys::Column::Username

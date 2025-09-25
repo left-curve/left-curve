@@ -123,16 +123,16 @@ export function createChartIQDataFeed(parameters: CreateChartIQDataFeedParameter
       DT: new Date(candle.timeStart),
       Open: +Decimal(candle.open)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(5),
+        .toFixed(),
       High: +Decimal(candle.high)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(5),
+        .toFixed(),
       Low: +Decimal(candle.low)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(5),
+        .toFixed(),
       Close: +Decimal(candle.close)
         .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-        .toFixed(5),
+        .toFixed(),
     }));
   }
 
