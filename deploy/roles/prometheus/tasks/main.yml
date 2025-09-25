@@ -1,9 +1,9 @@
 - name: Ensure directories exists
   file:
-    path: "{{ item }}"
+    path: "{{ prometheus_dir }}/{{ item }}"
     state: directory
     mode: '0755'
-  loop: ["{{ prometheus_dir }}/config", "{{ prometheus_dir }}/data", "{{ prometheus_dir }}/alertmanager-data"]
+  loop: ["config", "data", "alertmanager-data", "targets",]
 
 - name: Copy files
   become: true
