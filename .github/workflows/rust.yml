@@ -557,7 +557,7 @@ jobs:
           cd deploy
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true}' -e deploy_env=production -e github_sha=${{ env.GIT_COMMIT }}
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false}' -e deploy_env=production -e github_sha=${{ env.GIT_COMMIT }}
           fi
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
