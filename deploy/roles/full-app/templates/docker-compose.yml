@@ -29,6 +29,9 @@ services:
     labels:
       <<: *common-labels
       service_name: "postgres-prometheus"
+    networks:
+      - default
+      - traefik
 {% if expose_ports %}
     ports:
       - "${BINDING_IP}:${DB_METRICS_PORT:-0}:9187"
@@ -57,6 +60,9 @@ services:
       - "${DEPLOYMENT_DIR}/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
       - "${DEPLOYMENT_DIR}/clickhouse/data:/var/lib/clickhouse"
       - "${DEPLOYMENT_DIR}/clickhouse/init.sh:/docker-entrypoint-initdb.d/init.sh"
+    networks:
+      - default
+      - traefik
 {% if expose_ports %}
     ports:
       # - "127.0.0.1:8123:8123" # HTTP interface
