@@ -12,6 +12,7 @@ export { Skeleton } from "./Skeleton";
 export { Badge } from "./Badge";
 export { AccountCard } from "../AccountMenu/AccountCard";
 export { TextCopy } from "./TextCopy";
+export { Tabs } from "./Tabs";
 
 /* ---------------------------------- Icons --------------------------------- */
 
