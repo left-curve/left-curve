@@ -2,19 +2,16 @@ import { IconClose, Marquee, twMerge } from "@left-curve/applets-kit";
 
 import type React from "react";
 
-import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useState } from "react";
 
 import { motion } from "framer-motion";
 
 export const TestnetBanner: React.FC = () => {
   const [testBannerVisibility, setTestBannerVisibility] = useState(true);
-  const env = import.meta.env.CONFIG_ENVIRONMENT;
 
-  const showBanner = ["dev"].includes(env);
-  const text = m["common.advice"]({ environment: m["common.environment"]({ environment: env }) });
+  const text = window.dango?.banner;
 
-  if (!testBannerVisibility || !showBanner) return null;
+  if (!testBannerVisibility || !text) return null;
   const isLandingPage = location.pathname === "/";
 
   return (
