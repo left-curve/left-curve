@@ -243,4 +243,4 @@ jobs:
       - name: Cleanup actual containers
         run: |
           cd deploy
-          ansible-playbook delete-full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }} --tags monitoring
+          ansible-playbook delete-full-app.yml -e deployment_name=pr-${{ github.event.pull_request.number }}
