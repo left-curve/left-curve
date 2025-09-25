@@ -76,7 +76,7 @@
                   deployment: '{{ deployment_name }}'
                   service: 'dango'
                   environment: 'preview'
-                  dango_network: '{{ deployment_name }}'
+                  dango_network: '{{ dango_network }}'
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-dango.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
@@ -88,7 +88,7 @@
                   deployment: '{{ deployment_name }}'
                   service: 'cometbft'
                   environment: 'preview'
-                  dango_network: '{{ deployment_name }}'
+                  dango_network: '{{ dango_network }}'
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-cometbft.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
@@ -100,7 +100,7 @@
                   deployment: '{{ deployment_name }}'
                   service: 'postgres'
                   environment: 'preview'
-                  dango_network: '{{ deployment_name }}'
+                  dango_network: '{{ dango_network }}'
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-postgres.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
@@ -112,7 +112,7 @@
                   deployment: '{{ deployment_name }}'
                   service: 'clickhouse'
                   environment: 'preview'
-                  dango_network: '{{ deployment_name }}'
+                  dango_network: '{{ dango_network }}'
             dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-clickhouse.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
