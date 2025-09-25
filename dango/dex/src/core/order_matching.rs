@@ -13,9 +13,9 @@ pub struct MatchingOutcome {
     /// The amount of trading volume, measured as the amount of the base asset.
     pub volume: Udec128_6,
     /// The BUY orders that have found a match.
-    pub bids: Vec<(Price, Order)>,
+    pub bids: Vec<Order>,
     /// The SELL orders that have found a match.
-    pub asks: Vec<(Price, Order)>,
+    pub asks: Vec<Order>,
 }
 
 /// Given the standing BUY and SELL orders in the book, find range of prices
@@ -31,8 +31,8 @@ pub struct MatchingOutcome {
 ///   follows the price-time priority.
 pub fn match_orders<B, A>(bid_iter: &mut B, ask_iter: &mut A) -> StdResult<MatchingOutcome>
 where
-    B: Iterator<Item = StdResult<(Price, Order)>>,
-    A: Iterator<Item = StdResult<(Price, Order)>>,
+    B: Iterator<Item = StdResult<Order>>,
+    A: Iterator<Item = StdResult<Order>>,
 {
     let mut bid = bid_iter.next().transpose()?;
     let mut bids = Vec::new();
@@ -45,27 +45,27 @@ where
     let mut range = None;
 
     loop {
-        let Some((bid_price, bid_order)) = bid else {
+        let Some(bid_order) = bid else {
             break;
         };
 
-        let Some((ask_price, ask_order)) = ask else {
+        let Some(ask_order) = ask else {
             break;
         };
 
-        if bid_price < ask_price {
+        if bid_order.price < ask_order.price {
             break;
         }
 
-        range = Some((ask_price, bid_price));
+        range = Some((ask_order.price, bid_order.price));
 
         if bid_is_new {
-            bids.push((bid_price, bid_order));
+            bids.push(bid_order);
             bid_volume.checked_add_assign(bid_order.remaining)?;
         }
 
         if ask_is_new {
-            asks.push((ask_price, ask_order));
+            asks.push(ask_order);
             ask_volume.checked_add_assign(ask_order.remaining)?;
         }
 

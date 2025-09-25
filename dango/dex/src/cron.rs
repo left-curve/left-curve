@@ -348,19 +348,11 @@ fn clear_orders_of_pair(
     let mut bid_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Descending)
-        .map(|res| {
-            let ((price, _order_id), order) = res?;
-            Ok((price, order))
-        });
+        .values(storage, None, None, IterationOrder::Descending);
     let mut ask_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let ((price, _order_id), order) = res?;
-            Ok((price, order))
-        });
+        .values(storage, None, None, IterationOrder::Ascending);
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
