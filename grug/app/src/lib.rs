@@ -7,6 +7,7 @@ mod execute;
 mod gas;
 mod indexer;
 mod macros;
+mod metrics;
 mod proposal_preparer;
 mod providers;
 mod query;
