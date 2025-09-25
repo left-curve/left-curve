@@ -128,6 +128,7 @@ services:
       FAUCET_URL: ${FAUCET_URL}
       UP_URL: ${UP_URL}
       QUEST_URL: ${QUEST_URL}
+      BANNER: ${FRONTEND_BANNER}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
