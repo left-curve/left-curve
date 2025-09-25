@@ -169,7 +169,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
       </div>
       <div className="flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
         <div className="asks-container flex flex-1 flex-col w-full gap-1">
-          {asks.records.map((ask) => (
+          {[...asks.records].reverse().map((ask) => (
             <OrderRow key={`ask-${ask.price}`} type="ask" {...ask} max={asks.total} />
           ))}
         </div>

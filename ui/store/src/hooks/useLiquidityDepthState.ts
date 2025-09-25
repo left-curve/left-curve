@@ -8,50 +8,56 @@ import {
 } from "@left-curve/dango/encoding";
 import { Decimal, parseUnits } from "@left-curve/dango/utils";
 
-import type {
-  LiquidityDepth,
-  LiquidityDepthResponse,
-  PairId,
-  QueryRequest,
+import {
+  Direction,
+  type Directions,
+  type LiquidityDepth,
+  type LiquidityDepthResponse,
+  type PairId,
+  type QueryRequest,
 } from "@left-curve/dango/types";
 import type { AnyCoin } from "../types/coin.js";
 import { create } from "zustand";
 
 function liquidityDepthMapper(parameters: {
   records: [string, LiquidityDepth][];
+  direction: Directions;
   coins: { base: AnyCoin; quote: AnyCoin };
   bucketSizeCoin: "base" | "quote";
   bucketRecords: number;
 }) {
-  const { coins, records, bucketSizeCoin, bucketRecords } = parameters;
+  const { coins, records, direction, bucketSizeCoin, bucketRecords } = parameters;
   const { base, quote } = coins;
 
   const isBase = bucketSizeCoin === "base";
 
-  return records
-    .sort(([priceA], [priceB]) => (Decimal(priceA).gt(priceB) ? -1 : 1))
-    .slice(0, bucketRecords)
-    .reduce(
-      (acc, [price, liquidityDepth]) => {
-        const parsedPrice = parseUnits(price, base.decimals - quote.decimals);
+  const sortedRecords = records
+    .sort(([priceA], [priceB]) => {
+      if (direction === Direction.Buy) return Decimal(priceA).gt(priceB) ? -1 : 1;
+      return Decimal(priceA).gt(priceB) ? 1 : -1;
+    })
+    .slice(0, bucketRecords);
+  return sortedRecords.reduce(
+    (acc, [price, liquidityDepth]) => {
+      const parsedPrice = parseUnits(price, base.decimals - quote.decimals);
 
-        const size = Decimal(isBase ? liquidityDepth.depthBase : liquidityDepth.depthQuote).div(
-          Decimal(10).pow(isBase ? base.decimals : quote.decimals),
-        );
+      const size = Decimal(isBase ? liquidityDepth.depthBase : liquidityDepth.depthQuote).div(
+        Decimal(10).pow(isBase ? base.decimals : quote.decimals),
+      );
 
-        const total = Decimal(acc.total).plus(size).toFixed();
+      const total = Decimal(acc.total).plus(size).toFixed();
 
-        acc.records.push({
-          price: parsedPrice,
-          size: size.toFixed(),
-          total: total,
-        });
+      acc.records.push({
+        price: parsedPrice,
+        size: size.toFixed(),
+        total: total,
+      });
 
-        acc.total = total;
-        return acc;
-      },
-      Object.assign({ records: [], total: "0" }),
-    );
+      acc.total = total;
+      return acc;
+    },
+    Object.assign({ records: [], total: "0" }),
+  );
 }
 
 type LiquidityDepthOverview = {
@@ -117,6 +123,7 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
 
         const asks = liquidityDepthMapper({
           records: liquidityDepth.askDepth || [],
+          direction: Direction.Sell,
           coins: { base: baseCoin, quote: quoteCoin },
           bucketSizeCoin,
           bucketRecords,
@@ -124,6 +131,7 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
 
         const bids = liquidityDepthMapper({
           records: liquidityDepth.bidDepth || [],
+          direction: Direction.Buy,
           coins: { base: baseCoin, quote: quoteCoin },
           bucketSizeCoin,
           bucketRecords,
