@@ -30,8 +30,8 @@
     github_deployments_enabled: false
     deploy_includes_postgres: true
     deploy_includes_clickhouse: true
-    postgres_database: "dango_{{ dango_network }}_{{ timestamp }}"
-    clickhouse_database: "dango_{{ dango_network }}_{{ timestamp }}"
+    postgres_database: "dango_{{ timestamp }}"
+    clickhouse_database: "dango_{{ timestamp }}"
     deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
     pyth_access_token: "{{ lookup('env', 'PYTH_ACCESS_TOKEN') }}"
   collections:

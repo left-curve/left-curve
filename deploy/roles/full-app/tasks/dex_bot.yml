@@ -7,8 +7,8 @@
   when: not liquidity_setup_flag.stat.exists
   block:
     - set_fact:
-        mint_command: "dex liquidity mint --url http://dango:8080/ {{ dango[dango_network].dex_bot.mint_amount }} {{ dango[dango_network].dex_bot.mint_user }} --address {{ dango[dango_network].dex_bot.address }} --username {{ dango[dango_network].dex_bot.username }} --private-key {{ dango[dango_network].dex_bot.private_key }}"
-        provide_liquidity_command: "dex liquidity provide --url http://dango:8080/ {{ dango[dango_network].dex_bot.liquidity_amount }} --address {{ dango[dango_network].dex_bot.address }} --username {{ dango[dango_network].dex_bot.username }} --private-key {{ dango[dango_network].dex_bot.private_key }}"
+        mint_command: "dex liquidity mint --url http://dango:8080/ {{ dango.dex_bot.mint_amount }} {{ dango.dex_bot.mint_user }} --address {{ dango.dex_bot.address }} --username {{ dango.dex_bot.username }} --private-key {{ dango.dex_bot.private_key }}"
+        provide_liquidity_command: "dex liquidity provide --url http://dango:8080/ {{ dango.dex_bot.liquidity_amount }} --address {{ dango.dex_bot.address }} --username {{ dango.dex_bot.username }} --private-key {{ dango.dex_bot.private_key }}"
 
     - debug:
         msg: "Calling: {{ provide_liquidity_command }} ; {{ mint_command }}"

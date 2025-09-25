@@ -1,6 +1,6 @@
 - name: Set port facts from local variable
   set_fact:
-    "{{ item }}": "{{ ports[dango_network][item] }}"
+    "{{ item }}": "{{ ports[item] }}"
   loop:
     - db_metrics_port
     - clickhouse_metrics_port
