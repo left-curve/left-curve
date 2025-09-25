@@ -1,11 +1,9 @@
 #[cfg(all(feature = "abci", feature = "tracing"))]
 use data_encoding::BASE64;
-use grug_metrics::metric;
 #[cfg(any(feature = "abci", feature = "tracing"))]
 use grug_types::JsonSerExt;
 #[cfg(feature = "abci")]
 use grug_types::{HashExt, JsonDeExt};
-
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
@@ -64,7 +62,10 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
         query_gas_limit: u64,
         upgrade_handler: Option<UpgradeHandler<VM>>,
     ) -> Self {
-        metric!(crate::metrics::init_metrics());
+        #[cfg(feature = "metrics")]
+        {
+            crate::metrics::init_metrics();
+        }
 
         Self {
             db,
@@ -194,7 +195,8 @@ where
     }
 
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
-        metric!(let prepare_proposal_duration = grug_metrics::TimerGuard::now(crate::metrics::LABEL_DURATION_PREPARE_PROPOSAL));
+        #[cfg(feature = "metrics")]
+        let prepare_proposal_duration = std::time::Instant::now();
 
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unnecessary_lazy_evaluations))]
         let txs = self
@@ -214,7 +216,11 @@ where
             .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
             .unwrap();
 
-        metric!(prepare_proposal_duration.end());
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_DURATION_PREPARE_PROPOSAL)
+                .record(prepare_proposal_duration.elapsed().as_secs_f64());
+        }
 
         bytes
     }
@@ -244,7 +250,8 @@ where
     // 5. flush (but not commit) state changes to DB
     // 5. indexer `index_block`
     pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
-        metric!(let block_duration = grug_metrics::TimerGuard::now(crate::metrics::LABEL_DURATION_BLOCK));
+        #[cfg(feature = "metrics")]
+        let block_duration = std::time::Instant::now();
 
         let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
@@ -289,10 +296,10 @@ where
         self.indexer
             .pre_indexing(block.info.height, &mut indexer_ctx)?;
 
-        metric!(
-            grug_metrics::histogram!(crate::metrics::LABEL_TX_PER_BLOCK)
-                .record(block.txs.len() as f64)
-        );
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_TX_PER_BLOCK).record(block.txs.len() as f64);
+        }
 
         // Process transactions one-by-one.
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
@@ -300,7 +307,8 @@ where
             #[cfg(feature = "tracing")]
             tracing::debug!(idx = _idx, "Processing transaction");
 
-            metric!(let tx_duration = grug_metrics::TimerGuard::now(crate::metrics::LABEL_DURATION_TX));
+            #[cfg(feature = "metrics")]
+            let tx_duration = std::time::Instant::now();
 
             let tx_outcome = process_tx(
                 self.vm.clone(),
@@ -311,14 +319,17 @@ where
                 TraceOption::LOUD,
             );
 
-            metric!({
-                tx_duration.end();
+            #[cfg(feature = "metrics")]
+            {
+                metrics::histogram!(crate::metrics::LABEL_DURATION_TX)
+                    .record(tx_duration.elapsed().as_secs_f64());
+
                 if tx_outcome.result.is_ok() {
-                    grug_metrics::counter!(crate::metrics::LABEL_SUCCESSFUL_TX).increment(1);
+                    metrics::counter!(crate::metrics::LABEL_SUCCESSFUL_TX).increment(1);
                 } else {
-                    grug_metrics::counter!(crate::metrics::LABEL_FAILED_TX).increment(1);
+                    metrics::counter!(crate::metrics::LABEL_FAILED_TX).increment(1);
                 }
-            });
+            };
 
             tx_outcomes.push(tx_outcome);
         }
@@ -451,13 +462,19 @@ where
         self.indexer
             .index_block(&block, &block_outcome, &mut indexer_ctx)?;
 
-        metric!(block_duration.end());
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_DURATION_BLOCK)
+                .record(block_duration.elapsed().as_secs_f64());
+        }
 
         Ok(block_outcome)
     }
 
     pub fn do_commit(&self) -> AppResult<()> {
-        metric!(let commit_duration = grug_metrics::TimerGuard::now(crate::metrics::LABEL_DURATION_COMMIT));
+        #[cfg(feature = "metrics")]
+        let commit_duration = std::time::Instant::now();
+
         self.db.commit()?;
 
         #[cfg(feature = "tracing")]
@@ -484,7 +501,11 @@ where
                 })?;
         }
 
-        metric!(commit_duration.end());
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_DURATION_COMMIT)
+                .record(commit_duration.elapsed().as_secs_f64());
+        }
 
         Ok(())
     }
@@ -1044,7 +1065,10 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    metric!(grug_metrics::counter!(crate::metrics::LABEL_PROCESSED_MSGS).increment(1));
+    #[cfg(feature = "metrics")]
+    {
+        metrics::counter!(crate::metrics::LABEL_PROCESSED_MSGS).increment(1);
+    }
 
     match msg {
         Message::Configure(msg) => {
@@ -1123,7 +1147,10 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    metric!(grug_metrics::counter!(crate::metrics::LABEL_PROCESSED_QUERIES).increment(1));
+    #[cfg(feature = "metrics")]
+    {
+        metrics::counter!(crate::metrics::LABEL_PROCESSED_QUERIES).increment(1);
+    }
 
     match req {
         Query::Status(_req) => {

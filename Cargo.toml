@@ -36,7 +36,6 @@ members = [
   "grug/jellyfish-merkle",
   "grug/macros",
   "grug/math",
-  "grug/metrics",
   "grug/mocks/account",
   "grug/mocks/bank",
   "grug/mocks/taxman",
@@ -232,7 +231,6 @@ grug-httpd                  = { path = "grug/httpd" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }
 grug-macros                 = { path = "grug/macros" }
 grug-math                   = { path = "grug/math" }
-grug-metrics                = { path = "grug/metrics" }
 grug-mock-account           = { path = "grug/mocks/account" }
 grug-mock-bank              = { path = "grug/mocks/bank" }
 grug-mock-taxman            = { path = "grug/mocks/taxman" }
