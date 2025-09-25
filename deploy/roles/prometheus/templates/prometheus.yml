@@ -72,19 +72,19 @@ scrape_configs:
 
   - job_name: 'preview-clickhouse'
     file_sd_configs:
-      - files: ['/etc/prometheus/targets/pr-*-clickhouse.yml']
+      - files: ['/etc/prometheus/targets/*-clickhouse.yml']
 
   - job_name: 'preview-postgres'
     file_sd_configs:
-      - files: ['/etc/prometheus/targets/pr-*-postgres.yml']
+      - files: ['/etc/prometheus/targets/*-postgres.yml']
 
   - job_name: 'preview-dango'
     file_sd_configs:
-      - files: ['/etc/prometheus/targets/pr-*-dango.yml']
+      - files: ['/etc/prometheus/targets/*-dango.yml']
 
   - job_name: 'preview-cometbft'
     file_sd_configs:
-      - files: ['/etc/prometheus/targets/pr-*-cometbft.yml']
+      - files: ['/etc/prometheus/targets/*-cometbft.yml']
 
   - job_name: 'clickhouse'
     static_configs:

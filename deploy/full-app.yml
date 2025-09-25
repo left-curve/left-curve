@@ -39,3 +39,84 @@
     - community.clickhouse
   roles:
     - full-app
+  post_tasks:
+    - name: Store vars for monitoring
+      set_fact:
+        stored_deployment_name: "{{ deployment_name }}"
+        stored_dango_network: "{{ dango_network }}"
+        stored_tailscale_ip: "{{ tailscale_ip }}"
+        stored_dango_metrics_port: "{{ dango_metrics_port }}"
+        stored_clickhouse_metrics_port: "{{ clickhouse_metrics_port }}"
+        stored_cometbft_metrics_port: "{{ cometbft_metrics_port }}"
+        stored_db_metrics_port: "{{ db_metrics_port }}"
+        stored_clickhouse_metrics_port: "{{ clickhouse_metrics_port }}"
+
+- hosts: monitoring
+  become: true
+  become_user: "{{ deploy_user }}"
+  tags: monitoring
+  vars:
+      deployment_name: "{{ hostvars[groups['full-app'][0]]['stored_deployment_name'] }}"
+      dango_network: "{{ hostvars[groups['full-app'][0]]['stored_dango_network'] }}"
+      tailscale_ip: "{{ hostvars[groups['full-app'][0]]['stored_tailscale_ip'] }}"
+      dango_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_dango_metrics_port'] }}"
+      clickhouse_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_clickhouse_metrics_port'] }}"
+      cometbft_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_cometbft_metrics_port'] }}"
+      db_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_db_metrics_port'] }}"
+      clickhouse_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_clickhouse_metrics_port'] }}"
+  tasks:
+    - block:
+        - name: Load prometheus vars
+          include_vars: roles/prometheus/defaults/main.yml
+        - name: Create Dango prometheus targets
+          copy:
+            content: |
+              - targets: ['{{ tailscale_ip }}:{{ dango_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'dango'
+                  environment: 'preview'
+                  dango_network: 'preview'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-dango.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+        - name: Create Cometbft prometheus targets
+          copy:
+            content: |
+              - targets: ['{{ tailscale_ip }}:{{ cometbft_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'cometbft'
+                  environment: 'preview'
+                  dango_network: 'preview'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-cometbft.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+        - name: Create Postgres prometheus targets
+          copy:
+            content: |
+              - targets: ['{{ tailscale_ip }}:{{ db_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'postgres'
+                  environment: 'preview'
+                  dango_network: 'preview'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-postgres.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+        - name: Create Clickhouse prometheus targets
+          copy:
+            content: |
+              - targets: ['{{ tailscale_ip }}:{{ clickhouse_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'clickhouse'
+                  environment: 'preview'
+                  dango_network: 'preview'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-clickhouse.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+      when:
+        - hostvars[groups['full-app'][0]]['expose_ports'] == true
+      become: true
+      become_user: root

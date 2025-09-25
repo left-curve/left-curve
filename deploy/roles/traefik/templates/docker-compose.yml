@@ -39,6 +39,7 @@ services:
       - --entrypoints.traefik.address=:8888
       - --entrypoints.homer.address=:80
       - --entrypoints.devnet-db-metrics.address=:9187
+      - --entrypoints.devnet-clickhouse-metrics.address=:9126
       - --entrypoints.devnet-dango.address=:8080
       - --entrypoints.devnet-dango-metrics.address=:9191
       - --entrypoints.devnet-frontend.address=:8081

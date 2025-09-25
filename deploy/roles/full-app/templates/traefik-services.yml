@@ -36,6 +36,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-postgres-prometheus-1:9187"
+    {{ dango_network }}-clickhouse-metrics:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-clickhouse-1:9126"
 
   routers:
     {{ dango_network }}-dango:
@@ -91,3 +95,9 @@ http:
       entryPoints:
         - "{{ dango_network }}-db-metrics"
       service: "{{ dango_network }}-db-metrics"
+
+    {{ dango_network }}-clickhouse-metrics:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-clickhouse-metrics"
+      service: "{{ dango_network }}-clickhouse-metrics"
