@@ -12,12 +12,14 @@ version       = { workspace = true }
 [features]
 abci    = ["data-encoding", "tendermint", "tower", "tower-abci"]
 ibc     = ["ics23"]
+metrics = ["grug-metrics/metrics"]
 tracing = ["dep:tracing", "grug-types/chrono"]
 
 [dependencies]
 borsh         = { workspace = true }
 data-encoding = { workspace = true, optional = true }
 dyn-event     = { workspace = true }
+grug-metrics  = { workspace = true }
 grug-storage  = { workspace = true }
 grug-types    = { workspace = true }
 http          = { workspace = true }

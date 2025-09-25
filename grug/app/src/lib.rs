@@ -7,6 +7,7 @@ mod execute;
 mod gas;
 mod indexer;
 mod macros;
+#[cfg(feature = "metrics")]
 mod metrics;
 mod proposal_preparer;
 mod providers;
