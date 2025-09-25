@@ -225,7 +225,6 @@
 
 
   /* Shadows & gradients */
-
   --shadow-card: 0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);
   --shadow-btn-shadow-gradient: 0px 0px 8px -2px #FFFFFF7A inset, 0px 3px 6px -2px #FFFFFFA3 inset, 0px 4px 6px 0px #0000000A, 0px 4px 6px 0px #0000000A;
   --shadow-btn-secondary-shadow-gradient: 0px -1px 3px -2px #00000012 inset, 0px 2px 3px -1px #FFFFFF12 inset, 0px 1px 1px -0.5px #0000000A;
