@@ -1,6 +1,6 @@
 x-common-labels: &common-labels
   environment: "${DEPLOY_ENV}"
-  project: "${DEPLOYMENT_NAME}"
+  deployment: "${DEPLOYMENT_NAME}"
   dango_network: "${DANGO_NETWORK}"
 
 services:
