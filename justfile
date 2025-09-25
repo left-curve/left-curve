@@ -7,7 +7,7 @@ default:
 # ------------------------------------ Git -------------------------------------
 
 # Fetch latest main branch from origin without checking out to it
-fetch-main:
+git-fetch-main:
   git fetch origin main
 
 # Delete all local git branches except for main
@@ -100,7 +100,7 @@ docker-build-builder-images:
   # Push the manifest
   docker manifest push ghcr.io/left-curve/left-curve/native-builder:latest
 
-# ------------------------------- Debug --------------------------------
+# ----------------------------------- Debug ------------------------------------
 
 check-candles:
   INDEXER__CLICKHOUSE__URL="http://localhost:8123" \
