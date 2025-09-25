@@ -6,7 +6,11 @@ pub mod liquidity_depth;
 pub mod metrics;
 mod query;
 mod state;
+#[cfg(feature = "metrics")]
+pub mod timed_iterator;
 
+#[cfg(feature = "metrics")]
+pub use timed_iterator::*;
 pub use {cron::*, execute::*, query::*, state::*};
 
 /// If an oracle price is older than this, it is not used for the logics in this contract.
