@@ -1077,11 +1077,11 @@ where
     }
 }
 
-pub trait MetricsIterTrait<'a>: Sized {
+pub trait MetricsIterExt<'a>: Sized {
     fn with_metrics(self, base_denom: &'a Denom, quote_denom: &'a Denom) -> MetricsIter<'a, Self>;
 }
 
-impl<'a, T> MetricsIterTrait<'a> for Box<dyn Iterator<Item = T> + 'a> {
+impl<'a, T> MetricsIterExt<'a> for Box<dyn Iterator<Item = T> + 'a> {
     fn with_metrics(self, base_denom: &'a Denom, quote_denom: &'a Denom) -> MetricsIter<'a, Self> {
         MetricsIter {
             iter: self,
