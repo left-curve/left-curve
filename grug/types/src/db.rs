@@ -62,6 +62,15 @@ pub enum Order {
     Descending = 2,
 }
 
+impl Order {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Order::Ascending => "ascending",
+            Order::Descending => "descending",
+        }
+    }
+}
+
 // We need to convert Order into a primitive type such as `i32` so that it can
 // be passed over FFI.
 impl From<Order> for i32 {
