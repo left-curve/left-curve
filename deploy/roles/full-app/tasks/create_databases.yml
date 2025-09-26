@@ -58,7 +58,7 @@
         login_port: "{{ clickhouse_tcp_port }}"
         login_user: "{{ clickhouse_user }}"
         login_password: "{{ clickhouse_password }}"
-        name: "{{ clickouse_dango_user }}"
+        name: "{{ clickhouse_dango_user }}"
         password: "{{ clickhouse_dango_password }}"
         update_password: always
 
@@ -69,9 +69,6 @@
         login_port: "{{ clickhouse_tcp_port }}"
         login_user: "{{ clickhouse_user }}"
         login_password: "{{ clickhouse_password }}"
-      loop: "{{ dango_networks }}"
-      loop_control:
-        loop_var: dango_network
 
     - name: Configure dango user settings
       community.clickhouse.clickhouse_client:
@@ -80,7 +77,7 @@
         login_user: "{{ clickhouse_user }}"
         login_password: "{{ clickhouse_password }}"
         execute: >
-          ALTER USER dango
+          ALTER USER {{ clickhouse_dango_user }}
           SETTINGS
             max_concurrent_queries_for_user = 0,
             max_memory_usage = 32000000000,
