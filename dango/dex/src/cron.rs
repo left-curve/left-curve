@@ -348,11 +348,13 @@ fn clear_orders_of_pair(
     let mut bid_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .values(storage, None, None, IterationOrder::Descending);
+        .values(storage, None, None, IterationOrder::Descending)
+        .with_metrics(&base_denom, &quote_denom);
     let mut ask_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .values(storage, None, None, IterationOrder::Ascending);
+        .values(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(&base_denom, &quote_denom);
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
@@ -715,6 +717,7 @@ fn clear_orders_of_pair(
         .prefix(TimeInForce::ImmediateOrCancel)
         .append((base_denom.clone(), quote_denom.clone()))
         .values(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(&base_denom, &quote_denom)
         .collect::<StdResult<Vec<_>>>()?
     {
         ORDERS.remove(
@@ -758,6 +761,7 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
         .keys(storage, None, None, IterationOrder::Descending)
+        .with_metrics(&base_denom, &quote_denom)
         .next()
         .transpose()?
         .map(|(price, _order_id)| price);
@@ -765,6 +769,7 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .keys(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(&base_denom, &quote_denom)
         .next()
         .transpose()?
         .map(|(price, _order_id)| price);
@@ -1033,6 +1038,57 @@ where
         .clear(storage, None, Some(Bound::Exclusive(max)));
 
     Ok(())
+}
+
+// ---------------------------------- metrics ----------------------------------
+
+/// A wrapper over an iterator that emits metrics when the iterator is advanced.
+pub struct MetricsIter<'a, I> {
+    iter: I,
+    // Quick hack: make these two fields public, so clippy doesn't complain they
+    // are unused when `metrics` feature is disabled.
+    pub base_denom: &'a Denom,
+    pub quote_denom: &'a Denom,
+}
+
+impl<'a, I> Iterator for MetricsIter<'a, I>
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let item = self.iter.next();
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(
+                crate::metrics::LABEL_DURATION_ITER_NEXT,
+                "base_denom" => self.base_denom.to_string(),
+                "quote_denom" => self.quote_denom.to_string()
+            )
+            .record(duration.elapsed().as_secs_f64());
+        }
+
+        item
+    }
+}
+
+pub trait MetricsIterExt<'a>: Sized {
+    fn with_metrics(self, base_denom: &'a Denom, quote_denom: &'a Denom) -> MetricsIter<'a, Self>;
+}
+
+impl<'a, T> MetricsIterExt<'a> for Box<dyn Iterator<Item = T> + 'a> {
+    fn with_metrics(self, base_denom: &'a Denom, quote_denom: &'a Denom) -> MetricsIter<'a, Self> {
+        MetricsIter {
+            iter: self,
+            base_denom,
+            quote_denom,
+        }
+    }
 }
 
 // ----------------------------------- tests -----------------------------------

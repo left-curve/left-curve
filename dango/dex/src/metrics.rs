@@ -29,6 +29,8 @@ pub const LABEL_DURATION_UPDATE_REST_STATE: &str = "dango.contract.dex.update_re
 
 pub const LABEL_DURATION_STORE_VOLUME: &str = "dango.contract.dex.store_volume.duration";
 
+pub const LABEL_DURATION_ITER_NEXT: &str = "dango.contract.dex.iterator_next.duration";
+
 pub fn init_metrics() {
     static ONCE: Once = Once::new();
 
@@ -76,5 +78,10 @@ pub fn init_metrics() {
         );
 
         describe_histogram!(LABEL_DURATION_STORE_VOLUME, "Time spent on storing volume");
+
+        describe_histogram!(
+            LABEL_DURATION_ITER_NEXT,
+            "Time spent on advancing an iterator"
+        );
     });
 }
