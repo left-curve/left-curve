@@ -44,6 +44,10 @@
     mode: '0755'
     owner: '{{ deploy_user }}'
 
+- name: Create clickhouse network
+  docker_network:
+    name: clickhouse
+
 - name: Deploy clickhouse container
   docker_container:
     name: "{{ container_name }}"

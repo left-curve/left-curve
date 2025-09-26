@@ -91,6 +91,7 @@ services:
     labels:
       <<: *common-labels
       service_name: "dango"
+{% if deploy_includes_postgres or deploy_includes_clickhouse %}
     depends_on:
 {% if deploy_includes_postgres %}
       postgres:
@@ -100,6 +101,7 @@ services:
       clickhouse:
         condition: service_healthy
 {% endif %}
+{% endif %}
 {% if expose_ports %}
     ports:
       - "${DANGO_PORT:-0}:8080"
@@ -108,6 +110,12 @@ services:
     networks:
       - default
       - traefik
+{% if not deploy_includes_postgres %}
+      - postgres
+{% endif %}
+{% if not deploy_includes_clickhouse %}
+      - clickhouse
+{% endif %}
     volumes:
       - "${DEPLOYMENT_DIR}/dango:/root/.dango"
     environment:

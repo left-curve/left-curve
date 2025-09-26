@@ -1,5 +1,4 @@
 - name: Install psycopg2 so Ansible can talk to Postgres
-  tags: setup
   become: true
   become_user: root
   apt:
@@ -7,29 +6,26 @@
     state: present
 - block:
     - name: Create postgres Dango DB user
-      tags: setup
       community.postgresql.postgresql_user:
         name: "{{ postgres_dango_user }}"
         password: "{{ postgres_dango_password }}"
         login_user: "{{ postgres_user }}"
         login_password: "{{ postgres_password }}"
-        login_host: "{{ postgres_host }}"
+        login_host: "{{ postgres_external_host }}"
         login_port: "{{ postgres_port }}"
         state: present
 
     - name: Create postgres Dango production database
-      tags: setup
       community.postgresql.postgresql_db:
         name: "{{ postgres_database }}"
         owner: "{{ postgres_dango_user }}"
         login_user: "{{ postgres_user }}"
         login_password: "{{ postgres_password }}"
-        login_host: "{{ postgres_host }}"
+        login_host: "{{ postgres_external_host }}"
         login_port: "{{ postgres_port }}"
         state: present
 
     - name: Grant psql ALL privileges on the Dango database to the Dango user
-      tags: setup
       community.postgresql.postgresql_privs:
         type: database
         privs: ALL
@@ -37,7 +33,7 @@
         login_db: "{{ postgres_database }}"
         login_user: "{{ postgres_user }}"
         login_password: "{{ postgres_password }}"
-        login_host: "{{ postgres_host }}"
+        login_host: "{{ postgres_external_host }}"
         login_port: "{{ postgres_port }}"
         state: present
   when: not deploy_includes_postgres
@@ -47,14 +43,14 @@
       community.clickhouse.clickhouse_db:
         name: "{{ clickhouse_database }}"
         state: present
-        login_host: "{{ clickhouse_host }}"
+        login_host: "{{ clickhouse_external_host }}"
         login_port: "{{ clickhouse_tcp_port }}"
         login_user: "{{ clickhouse_user }}"
         login_password: "{{ clickhouse_password }}"
 
     - name: Create clickhouse dango user
       community.clickhouse.clickhouse_user:
-        login_host: "{{ clickhouse_host }}"
+        login_host: "{{ clickhouse_external_host }}"
         login_port: "{{ clickhouse_tcp_port }}"
         login_user: "{{ clickhouse_user }}"
         login_password: "{{ clickhouse_password }}"
@@ -65,14 +61,14 @@
     - name: Grant clickhouse database access to user
       community.clickhouse.clickhouse_client:
         execute: "GRANT ALL ON {{ clickhouse_database }}.* TO {{ clickhouse_dango_user }}"
-        login_host: "{{ clickhouse_host }}"
+        login_host: "{{ clickhouse_external_host }}"
         login_port: "{{ clickhouse_tcp_port }}"
         login_user: "{{ clickhouse_user }}"
         login_password: "{{ clickhouse_password }}"
 
     - name: Configure dango user settings
       community.clickhouse.clickhouse_client:
-        login_host: "{{ clickhouse_host }}"
+        login_host: "{{ clickhouse_external_host }}"
         login_port: "{{ clickhouse_tcp_port }}"
         login_user: "{{ clickhouse_user }}"
         login_password: "{{ clickhouse_password }}"
