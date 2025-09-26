@@ -349,12 +349,12 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
         .values(storage, None, None, IterationOrder::Descending)
-        .with_metrics();
+        .with_metrics(&base_denom, &quote_denom);
     let mut ask_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .values(storage, None, None, IterationOrder::Ascending)
-        .with_metrics();
+        .with_metrics(&base_denom, &quote_denom);
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
@@ -717,7 +717,7 @@ fn clear_orders_of_pair(
         .prefix(TimeInForce::ImmediateOrCancel)
         .append((base_denom.clone(), quote_denom.clone()))
         .values(storage, None, None, IterationOrder::Ascending)
-        .with_metrics()
+        .with_metrics(&base_denom, &quote_denom)
         .collect::<StdResult<Vec<_>>>()?
     {
         ORDERS.remove(
@@ -761,7 +761,7 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
         .keys(storage, None, None, IterationOrder::Descending)
-        .with_metrics()
+        .with_metrics(&base_denom, &quote_denom)
         .next()
         .transpose()?
         .map(|(price, _order_id)| price);
@@ -769,7 +769,7 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .keys(storage, None, None, IterationOrder::Ascending)
-        .with_metrics()
+        .with_metrics(&base_denom, &quote_denom)
         .next()
         .transpose()?
         .map(|(price, _order_id)| price);
@@ -1043,11 +1043,13 @@ where
 // ---------------------------------- metrics ----------------------------------
 
 /// A wrapper over an iterator that emits metrics when the iterator is advanced.
-pub struct MetricsIter<I> {
+pub struct MetricsIter<'a, I> {
     iter: I,
+    base_denom: &'a Denom,
+    quote_denom: &'a Denom,
 }
 
-impl<I> Iterator for MetricsIter<I>
+impl<'a, I> Iterator for MetricsIter<'a, I>
 where
     I: Iterator,
 {
@@ -1061,8 +1063,12 @@ where
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(crate::metrics::LABEL_DURATION_ITER_NEXT)
-                .record(duration.elapsed().as_secs_f64());
+            metrics::histogram!(
+                crate::metrics::LABEL_DURATION_ITER_NEXT,
+                "base_denom" => self.base_denom.to_string(),
+                "quote_denom" => self.quote_denom.to_string()
+            )
+            .record(duration.elapsed().as_secs_f64());
         }
 
         item
@@ -1070,17 +1076,29 @@ where
 }
 
 pub trait MetricsIterTrait<'a, T>: Sized {
-    fn with_metrics(self) -> Box<dyn Iterator<Item = T> + 'a>
+    fn with_metrics(
+        self,
+        base_denom: &'a Denom,
+        quote_denom: &'a Denom,
+    ) -> Box<dyn Iterator<Item = T> + 'a>
     where
         Self: 'a;
 }
 
 impl<'a, T> MetricsIterTrait<'a, T> for Box<dyn Iterator<Item = T> + 'a> {
-    fn with_metrics(self) -> Box<dyn Iterator<Item = T> + 'a>
+    fn with_metrics(
+        self,
+        base_denom: &'a Denom,
+        quote_denom: &'a Denom,
+    ) -> Box<dyn Iterator<Item = T> + 'a>
     where
         Self: 'a,
     {
-        Box::new(MetricsIter { iter: self })
+        Box::new(MetricsIter {
+            iter: self,
+            base_denom,
+            quote_denom,
+        })
     }
 }
 
