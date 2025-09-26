@@ -1045,8 +1045,10 @@ where
 /// A wrapper over an iterator that emits metrics when the iterator is advanced.
 pub struct MetricsIter<'a, I> {
     iter: I,
-    base_denom: &'a Denom,
-    quote_denom: &'a Denom,
+    // Quick hack: make these two fields public, so clippy doesn't complain they
+    // are unused when `metrics` feature is disabled.
+    pub base_denom: &'a Denom,
+    pub quote_denom: &'a Denom,
 }
 
 impl<'a, I> Iterator for MetricsIter<'a, I>
