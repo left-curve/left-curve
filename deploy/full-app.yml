@@ -29,7 +29,9 @@
     dex_bot_enabled: false
     github_deployments_enabled: false
     deploy_includes_postgres: true
+    delete_postgres_database_at_merge: false
     deploy_includes_clickhouse: true
+    delete_clickhouse_database_at_merge: false
     postgres_database: "dango_{{ timestamp }}"
     clickhouse_database: "dango_{{ timestamp }}"
     deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
@@ -39,6 +41,13 @@
     - community.clickhouse
   roles:
     - full-app
+  pre_tasks:
+    - name: Load postgres vars
+      include_vars: "roles/full-app/vars/included_postgres.yml"
+      when: deploy_includes_postgres
+    - name: Load clickhouse vars
+      include_vars: "roles/full-app/vars/included_clickhouse.yml"
+      when: deploy_includes_clickhouse
   post_tasks:
     - name: Store vars for monitoring
       set_fact:
