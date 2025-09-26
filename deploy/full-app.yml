@@ -58,6 +58,8 @@
         stored_clickhouse_metrics_port: "{{ clickhouse_metrics_port }}"
         stored_cometbft_metrics_port: "{{ cometbft_metrics_port }}"
         stored_db_metrics_port: "{{ db_metrics_port }}"
+        stored_deploy_includes_postgres: "{{ deploy_includes_postgres }}"
+        stored_deploy_includes_clickhouse: "{{ deploy_includes_clickhouse }}"
 
 - hosts: monitoring
   become: true
@@ -71,6 +73,8 @@
       cometbft_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_cometbft_metrics_port'] }}"
       db_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_db_metrics_port'] }}"
       clickhouse_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_clickhouse_metrics_port'] }}"
+      deploy_includes_postgres: "{{ stored_deploy_includes_postgres }}"
+      deploy_includes_clickhouse: "{{ stored_deploy_includes_clickhouse }}"
   tasks:
     - block:
         - name: Load prometheus vars
@@ -100,6 +104,7 @@
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
         - name: Create Postgres prometheus targets
+          when: deploy_includes_postgres
           copy:
             content: |
               - targets: ['{{ tailscale_ip }}:{{ db_metrics_port }}']
@@ -112,6 +117,7 @@
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
         - name: Create Clickhouse prometheus targets
+          when: deploy_includes_clickhouse
           copy:
             content: |
               - targets: ['{{ tailscale_ip }}:{{ clickhouse_metrics_port }}']
