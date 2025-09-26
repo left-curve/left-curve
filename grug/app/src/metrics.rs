@@ -1,5 +1,5 @@
 use {
-    grug_metrics::{describe_counter, describe_histogram},
+    metrics::{describe_counter, describe_histogram},
     std::sync::Once,
 };
 
@@ -26,16 +26,24 @@ pub(crate) fn init_metrics() {
 
     ONCE.call_once(|| {
         describe_counter!(LABEL_SUCCESSFUL_TX, "Number of successful transactions");
+
         describe_counter!(LABEL_FAILED_TX, "Number of failed transactions");
+
         describe_counter!(LABEL_PROCESSED_MSGS, "Number of processed messages");
+
         describe_counter!(LABEL_PROCESSED_QUERIES, "Number of processed queries");
+
         describe_histogram!(LABEL_TX_PER_BLOCK, "Number of transactions per block");
+
         describe_histogram!(LABEL_DURATION_BLOCK, "Duration of finalized block");
+
         describe_histogram!(LABEL_DURATION_TX, "Duration of a transaction");
+
         describe_histogram!(
             LABEL_DURATION_PREPARE_PROPOSAL,
             "Duration of prepare proposal"
         );
+
         describe_histogram!(LABEL_DURATION_COMMIT, "Duration of commit");
     });
 }
