@@ -19,7 +19,7 @@ services:
       - "${DEPLOYMENT_DIR}/postgres/data:/var/lib/postgresql/data"
     tty: true
     healthcheck:
-      test: ["CMD", "pg_isready", "-q", "-U", "${POSTGRES_USER}"]
+      test: ["CMD", "pg_isready", "-q", "-U", "${POSTGRES_DANGO_USER}", "-d", "${POSTGRES_DATABASE}"]
       interval: 2s
       timeout: 5s
       retries: 10

@@ -73,8 +73,8 @@
       cometbft_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_cometbft_metrics_port'] }}"
       db_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_db_metrics_port'] }}"
       clickhouse_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_clickhouse_metrics_port'] }}"
-      deploy_includes_postgres: "{{ stored_deploy_includes_postgres }}"
-      deploy_includes_clickhouse: "{{ stored_deploy_includes_clickhouse }}"
+      deploy_includes_postgres: "{{ hostvars[groups['full-app'][0]]['stored_deploy_includes_postgres'] }}"
+      deploy_includes_clickhouse: "{{ hostvars[groups['full-app'][0]]['stored_deploy_includes_clickhouse'] }}"
   tasks:
     - block:
         - name: Load prometheus vars
