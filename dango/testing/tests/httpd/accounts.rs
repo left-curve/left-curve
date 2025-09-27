@@ -23,7 +23,7 @@ use {
         call_paginated_graphql, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     std::collections::BTreeSet,
-    tokio::sync::mpsc,
+    tokio::{sync::mpsc, time::sleep},
     tracing::Level,
 };
 
@@ -294,6 +294,34 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
+                // Trying to figure out a bug
+                for _ in 0..10 {
+                    let app = build_actix_app(dango_httpd_context.clone());
+
+                    let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                        app,
+                        request_body.clone(),
+                    )
+                    .await?;
+
+                    let received_accounts = response
+                        .data
+                        .edges
+                        .into_iter()
+                        .map(|e| e.node)
+                        .collect::<Vec<_>>();
+
+                    if received_accounts.len() == 2 {
+                        break;
+                    }
+
+                    tracing::error!(
+                        "Expected 2 accounts, got {received_accounts:#?}. Retrying...",
+                    );
+
+                    sleep(std::time::Duration::from_millis(1000)).await;
+                }
+
                 let app = build_actix_app(dango_httpd_context);
 
                 let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
