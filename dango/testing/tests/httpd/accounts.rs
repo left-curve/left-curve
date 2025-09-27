@@ -253,7 +253,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =
-        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user187");
 
     let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
 
