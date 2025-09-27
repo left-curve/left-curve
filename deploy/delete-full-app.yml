@@ -4,6 +4,31 @@
   collections:
     - community.docker
   tasks:
+    - name: Load role defaults
+      include_vars: "roles/full-app/defaults/main.yml"
+
+    - name: Check if deployment already exists
+      stat:
+        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+      register: env_file_exists
+
+    - name: Read .env values
+      shell: |
+        grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE|DELETE_POSTGRES_DATABASE_AT_MERGE|DELETE_CLICKHOUSE_DATABASE_AT_MERGE)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+        awk -F= '{print tolower($1) "=" $2}'
+      register: existing_env_variables
+      when: env_file_exists.stat.exists
+
+    - set_fact:
+        delete_postgres_database_at_merge: false
+        delete_clickhouse_database_at_merge: false
+
+    - name: Set facts from existing .env
+      set_fact:
+        "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
+      loop: "{{ existing_env_variables.stdout_lines }}"
+      when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0
+
     - name: Check if deployment directory exists
       stat:
         path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
@@ -38,6 +63,26 @@
             volumes: yes
             builder_cache: yes
       when: deployment_dir.stat.exists
+
+    - name: Delete Postgres Dango production database
+      when: delete_postgres_database_at_merge
+      community.postgresql.postgresql_db:
+        name: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: absent
+
+    - name: Delete clickhouse database
+      when: delete_clickhouse_database_at_merge
+      community.clickhouse.clickhouse_db:
+        name: "{{ clickhouse_database }}"
+        state: absent
+        login_host: "{{ clickhouse_external_host }}"
+        login_port: "{{ clickhouse_tcp_port }}"
+        login_user: "{{ clickhouse_user }}"
+        login_password: "{{ clickhouse_password }}"
 
 - hosts: monitoring
   become: true

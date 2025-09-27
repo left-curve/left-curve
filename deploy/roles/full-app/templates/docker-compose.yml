@@ -13,13 +13,13 @@ services:
       service_name: "postgres"
     environment:
       - POSTGRES_DB=${POSTGRES_DATABASE}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_DANGO_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_DANGO_PASSWORD}
     volumes:
       - "${DEPLOYMENT_DIR}/postgres/data:/var/lib/postgresql/data"
     tty: true
     healthcheck:
-      test: ["CMD", "pg_isready", "-q"]
+      test: ["CMD", "pg_isready", "-q", "-U", "${POSTGRES_DANGO_USER}", "-d", "${POSTGRES_DATABASE}"]
       interval: 2s
       timeout: 5s
       retries: 10
@@ -59,7 +59,7 @@ services:
       - "${DEPLOYMENT_DIR}/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro"
       - "${DEPLOYMENT_DIR}/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro"
       - "${DEPLOYMENT_DIR}/clickhouse/data:/var/lib/clickhouse"
-      - "${DEPLOYMENT_DIR}/clickhouse/init.sh:/docker-entrypoint-initdb.d/init.sh"
+      - "${DEPLOYMENT_DIR}/clickhouse/init.sh:/docker-entrypoint-initdb.d/init.sh:ro"
     networks:
       - default
       - traefik
@@ -91,6 +91,7 @@ services:
     labels:
       <<: *common-labels
       service_name: "dango"
+{% if deploy_includes_postgres or deploy_includes_clickhouse %}
     depends_on:
 {% if deploy_includes_postgres %}
       postgres:
@@ -100,6 +101,7 @@ services:
       clickhouse:
         condition: service_healthy
 {% endif %}
+{% endif %}
 {% if expose_ports %}
     ports:
       - "${DANGO_PORT:-0}:8080"
@@ -108,13 +110,20 @@ services:
     networks:
       - default
       - traefik
+{% if not deploy_includes_postgres %}
+      - postgres
+{% endif %}
+{% if not deploy_includes_clickhouse %}
+      - clickhouse
+{% endif %}
     volumes:
       - "${DEPLOYMENT_DIR}/dango:/root/.dango"
     environment:
       - INDEXER__DATABASE__URL=${POSTGRES_DATABASE_URL}
-      - INDEXER__CLICKHOUSE__USER=default
-      - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD}
+      - INDEXER__CLICKHOUSE__USER=${CLICKHOUSE_DANGO_USER}
+      - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_DANGO_PASSWORD}
       - INDEXER__CLICKHOUSE__DATABASE=${CLICKHOUSE_DATABASE}
+      - INDEXER__CLICKHOUSE__URL=${CLICKHOUSE_URL}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]

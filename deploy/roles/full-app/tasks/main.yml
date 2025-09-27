@@ -18,6 +18,7 @@
 - import_tasks: cometbft_keys.yml
   when: cometbft_generate_keys
 - import_tasks: deploy_configs.yml
+- import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
 - import_tasks: dex_bot.yml
   when: dex_bot_enabled

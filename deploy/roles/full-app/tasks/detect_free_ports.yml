@@ -1,4 +1,4 @@
-- name: Generate random identifiers
+- name: Generate random identifiers for free port scripts
   set_fact:
     port_start: "{{ (30000 + (1000 | random)) }}"
     script_name: "find_ports_{{ ansible_date_time.epoch }}_{{ 999999 | random }}.sh"

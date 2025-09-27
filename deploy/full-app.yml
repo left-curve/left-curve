@@ -29,7 +29,9 @@
     dex_bot_enabled: false
     github_deployments_enabled: false
     deploy_includes_postgres: true
+    delete_postgres_database_at_merge: false
     deploy_includes_clickhouse: true
+    delete_clickhouse_database_at_merge: false
     postgres_database: "dango_{{ timestamp }}"
     clickhouse_database: "dango_{{ timestamp }}"
     deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
@@ -39,6 +41,13 @@
     - community.clickhouse
   roles:
     - full-app
+  pre_tasks:
+    - name: Load postgres vars
+      include_vars: "roles/full-app/vars/included_postgres.yml"
+      when: deploy_includes_postgres
+    - name: Load clickhouse vars
+      include_vars: "roles/full-app/vars/included_clickhouse.yml"
+      when: deploy_includes_clickhouse
   post_tasks:
     - name: Store vars for monitoring
       set_fact:
@@ -49,6 +58,8 @@
         stored_clickhouse_metrics_port: "{{ clickhouse_metrics_port }}"
         stored_cometbft_metrics_port: "{{ cometbft_metrics_port }}"
         stored_db_metrics_port: "{{ db_metrics_port }}"
+        stored_deploy_includes_postgres: "{{ deploy_includes_postgres }}"
+        stored_deploy_includes_clickhouse: "{{ deploy_includes_clickhouse }}"
 
 - hosts: monitoring
   become: true
@@ -62,6 +73,8 @@
       cometbft_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_cometbft_metrics_port'] }}"
       db_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_db_metrics_port'] }}"
       clickhouse_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_clickhouse_metrics_port'] }}"
+      deploy_includes_postgres: "{{ hostvars[groups['full-app'][0]]['stored_deploy_includes_postgres'] }}"
+      deploy_includes_clickhouse: "{{ hostvars[groups['full-app'][0]]['stored_deploy_includes_clickhouse'] }}"
   tasks:
     - block:
         - name: Load prometheus vars
@@ -91,6 +104,7 @@
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
         - name: Create Postgres prometheus targets
+          when: deploy_includes_postgres
           copy:
             content: |
               - targets: ['{{ tailscale_ip }}:{{ db_metrics_port }}']
@@ -103,6 +117,7 @@
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
         - name: Create Clickhouse prometheus targets
+          when: deploy_includes_clickhouse
           copy:
             content: |
               - targets: ['{{ tailscale_ip }}:{{ clickhouse_metrics_port }}']

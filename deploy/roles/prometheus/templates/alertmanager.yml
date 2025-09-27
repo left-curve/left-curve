@@ -8,6 +8,11 @@ route:
   group_interval: 10s
   repeat_interval: 1h
   receiver: discord_webhook
+  routes:
+  # No alert for this one since we potentially don't deploy it
+  - match:
+      instance: 'ovh1:9188'
+    receiver: 'null'
 
 receivers:
 - name: 'discord_webhook'

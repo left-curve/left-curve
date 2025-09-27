@@ -89,6 +89,14 @@ scrape_configs:
   - job_name: 'postgres'
     static_configs:
       - targets: ['ovh1:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+      - targets: ['ovh1:9188']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+          dango_network: 'devnet'
       - targets: ['ovh2:9187']
 
   - job_name: 'dango'
