@@ -277,7 +277,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     "#;
 
     let variables = serde_json::json!({
-        "username": "user",
+        "username": "user187",
     })
     .as_object()
     .unwrap()
@@ -348,7 +348,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                     "address": test_account2.address.inner().to_string(),
                     "users": [
                         {
-                            "username": "user",
+                            "username": "user187",
                         },
                     ],
                 });
@@ -361,7 +361,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                     "address": test_account1.address.inner().to_string(),
                     "users": [
                         {
-                            "username": "user",
+                            "username": "user187",
                         },
                     ],
                 });
