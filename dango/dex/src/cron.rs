@@ -345,12 +345,12 @@ fn clear_orders_of_pair(
     //
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
-    let mut bid_iter = ORDERS
+    let bid_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
         .values(storage, None, None, IterationOrder::Descending)
         .with_metrics(&base_denom, &quote_denom, IterationOrder::Descending);
-    let mut ask_iter = ORDERS
+    let ask_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .values(storage, None, None, IterationOrder::Ascending)
@@ -362,13 +362,7 @@ fn clear_orders_of_pair(
         volume,
         bids,
         asks,
-    } = match_orders(&mut bid_iter, &mut ask_iter)?;
-
-    // Drop the iterators, which hold immutable references to the storage,
-    // so that we can write to storage later.
-    // The Rust compiler isn't smart enough to do this on its own.
-    drop(bid_iter);
-    drop(ask_iter);
+    } = match_orders(bid_iter, ask_iter)?;
 
     #[cfg(feature = "tracing")]
     {
