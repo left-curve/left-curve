@@ -1,0 +1,11 @@
+{
+  "address": "CACC1184F611DECE7FC2420933EB1A93729406DF",
+  "pub_key": {
+    "type": "tendermint/PubKeyEd25519",
+    "value": "DrvNNAbM+pvJ+bD0jdZMdI/qphX3PfiwGmY2/uVwyVk="
+  },
+  "priv_key": {
+    "type": "tendermint/PrivKeyEd25519",
+    "value": "DC/tsfqZTzKwCv/We9iiA72RBC5UzZj6fXo91yjU5k0Ou800Bsz6m8n5sPSN1kx0j+qmFfc9+LAaZjb+5XDJWQ=="
+  }
+}

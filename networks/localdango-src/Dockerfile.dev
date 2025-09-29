@@ -1,0 +1,16 @@
+# Dockerfile.dev
+FROM rust:1.89-slim
+
+# toolchain e dipendenze comuni (openssl ecc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config libssl-dev ca-certificates build-essential curl git \
+    clang llvm llvm-dev libclang-dev cmake \
+  && rm -rf /var/lib/apt/lists/*
+
+# opzionale ma comodo per hot-reload
+RUN cargo install cargo-watch
+
+WORKDIR /app
+ENV CARGO_TERM_COLOR=always
+ENV PATH="/usr/local/cargo/bin:${PATH}"
+
