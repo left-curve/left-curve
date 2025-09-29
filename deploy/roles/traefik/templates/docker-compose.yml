@@ -1,20 +1,31 @@
 services:
   traefik:
     image: traefik:v3.5
-    ports:
-      - "80:80"
-      # traefik dashboard
-      - "{{ tailscale_ip }}:8888:8888"
-      # devnet
-      - "8080:8080"
-      - "8081:8081"
-      - "8082:8082"
-      - "{{ tailscale_ip }}:9191:9191"
-      - "26656:26656"
-      - "{{ tailscale_ip }}:26657:26657"
-      - "{{ tailscale_ip }}:26658:26658"
-      - "{{ tailscale_ip }}:26660:26660"
-      - "{{ tailscale_ip }}:9188:9187"
+    network_mode: host
+    # ports:
+    #   - "80:80"
+    #   # traefik dashboard
+    #   - "{{ tailscale_ip }}:8888:8888"
+    #   # devnet
+    #   - "8080:8080"
+    #   - "8081:8081"
+    #   - "8082:8082"
+    #   - "{{ tailscale_ip }}:9191:9191"
+    #   - "26656:26656"
+    #   - "{{ tailscale_ip }}:26657:26657"
+    #   - "{{ tailscale_ip }}:26658:26658"
+    #   - "{{ tailscale_ip }}:26660:26660"
+    #   - "{{ tailscale_ip }}:9188:9187"
+    #   # mainnet
+    #   - "8090:8090"
+    #   - "8091:8091"
+    #   - "8092:8092"
+    #   - "{{ tailscale_ip }}:9291:9291"
+    #   - "27656:27656"
+    #   - "{{ tailscale_ip }}:27657:27657"
+    #   - "{{ tailscale_ip }}:27658:27658"
+    #   - "{{ tailscale_ip }}:27660:27660"
+    #   - "{{ tailscale_ip }}:9288:9288"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - "{{ traefik_dir }}/config:/config:ro"
@@ -48,6 +59,16 @@ services:
       - --entrypoints.devnet-cometbft_rpc.address=:26657
       - --entrypoints.devnet-cometbft_abci.address=:26658
       - --entrypoints.devnet-cometbft_metrics.address=:26660
+      - --entrypoints.mainnet-db-metrics.address=:9288
+      - --entrypoints.mainnet-clickhouse-metrics.address=:9326
+      - --entrypoints.mainnet-dango.address=:8090
+      - --entrypoints.mainnet-dango-metrics.address=:9291
+      - --entrypoints.mainnet-frontend.address=:8091
+      - --entrypoints.mainnet-faucet_bot.address=:8092
+      - --entrypoints.mainnet-cometbft_p2p.address=:27656
+      - --entrypoints.mainnet-cometbft_rpc.address=:27657
+      - --entrypoints.mainnet-cometbft_abci.address=:27658
+      - --entrypoints.mainnet-cometbft_metrics.address=:27660
       # Metrics
       - --metrics.prometheus=true
       # Tracing

@@ -4,16 +4,27 @@
   block:
     - template:
         src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "config/cometbft/config.toml", dest: "{{ cometbft_directory }}/config/config.toml" }
+        - { src: "config/cometbft/genesis.json", dest: "{{ cometbft_directory }}/config/genesis.json" }
+        - { src: "config/cometbft/node_key.json", dest: "{{ cometbft_directory }}/config/node_key.json" }
+        - { src: "config/cometbft/priv_validator_key.json", dest: "{{ cometbft_directory }}/config/priv_validator_key.json" }
+        - { src: "config/dango/app.toml", dest: "{{ dango_directory }}/config/app.toml" }
+        - { src: "docker-compose.yml", dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/docker-compose.yml" }
+        - { src: "env.j2", dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env" }
+
+- name: Deploy clickhouse configuration files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
         dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item.dest }}"
         owner: "{{ deploy_user }}"
       loop:
-        - { src: "config/cometbft/config.toml", dest: "cometbft/config/config.toml" }
-        - { src: "config/cometbft/genesis.json", dest: "cometbft/config/genesis.json" }
-        - { src: "config/cometbft/node_key.json", dest: "cometbft/config/node_key.json" }
-        - { src: "config/cometbft/priv_validator_key.json", dest: "cometbft/config/priv_validator_key.json" }
-        - { src: "config/dango/app.toml", dest: "dango/config/app.toml" }
         - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
         - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }
         - { src: "clickhouse/init.sh", dest: "clickhouse/init.sh" }
-        - { src: "docker-compose.yml", dest: "docker-compose.yml" }
-        - { src: "env.j2", dest: ".env" }
+      when: deploy_includes_clickhouse

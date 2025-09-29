@@ -2,7 +2,6 @@
   become: true
   become_user: "{{ deploy_user }}"
   vars:
-    traefik_dir: "{{ ansible_env.HOME }}/traefik"
     tailscale_iface: tailscale0
     tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
     github_sha: "{{ lookup('pipe','git rev-parse HEAD') }}"
@@ -25,6 +24,7 @@
     dango_network: "devnet"
     # When traefik is enabled it will be used for routing, keeping the same port
     traefik_enabled: false
+    traefik_dir: "{{ ansible_env.HOME }}/traefik"
     expose_ports: false
     dex_bot_enabled: false
     github_deployments_enabled: false
@@ -35,6 +35,11 @@
     postgres_database: "dango_{{ timestamp }}"
     clickhouse_database: "dango_{{ timestamp }}"
     deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    dango_directory: "{{ deployment_dir }}/dango"
+    cometbft_directory: "{{ deployment_dir }}/cometbft"
+    # should we use system wide dango and cometbft directories instead of contained in the deploy
+    system_wide_directories: false
+    keep_databases: false
     pyth_access_token: "{{ lookup('env', 'PYTH_ACCESS_TOKEN') }}"
   collections:
     - community.docker
