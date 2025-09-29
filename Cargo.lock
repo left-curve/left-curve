@@ -7595,9 +7595,9 @@ dependencies = [
 
 [[package]]
 name = "pyth-lazer-client"
-version = "8.0.1"
+version = "8.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69c9f6a5834d47ee4c400eaaaf971cb4f8fe5304e746216ed9282809f9ce8815"
+checksum = "44bda75272a21bc3250bed6e950c4b1342cc2841e6e0d7f65632a8966c96e7d7"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -7622,9 +7622,9 @@ dependencies = [
 
 [[package]]
 name = "pyth-lazer-protocol"
-version = "0.15.1"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d91dc5606c70529bf14769034738bc8773d359b4313be3c44449dd3b442096d"
+checksum = "409449853d2d574fbc24788fc334f1f6d65fbd2d98136ce5619ef30042af7269"
 dependencies = [
  "anyhow",
  "byteorder",
