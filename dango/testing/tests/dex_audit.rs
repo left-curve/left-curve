@@ -6,8 +6,9 @@ use {
     dango_types::{
         constants::{ONE, ONE_TENTH, dango, usdc},
         dex::{
-            self, AmountOption, CreateOrderRequest, Geometric, LiquidityDepth, PairParams,
-            PairUpdate, PassiveLiquidity, Price, PriceOption, TimeInForce,
+            self, AmountOption, CreateOrderRequest, Direction, Geometric, LiquidityDepth, OrderId,
+            OrdersByUserResponse, PairParams, PairUpdate, PassiveLiquidity, Price, PriceOption,
+            TimeInForce,
         },
         oracle::{self, PriceSource},
     },
@@ -117,6 +118,32 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             )]),
         });
 
+    // Query the orders placed by the DEX itself.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByUserRequest {
+            user: contracts.dex,
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map! {
+            OrderId::from(!1) => OrdersByUserResponse {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                price: Price::new(199_400_000),
+                amount: Uint128::new(10),
+                remaining: Udec128_6::new(10),
+            },
+            OrderId::from(2) => OrdersByUserResponse {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                price: Price::new(200_600_000),
+                amount: Uint128::new(10),
+                remaining: Udec128_6::new(10),
+            },
+        });
+
     // Now place an order that consumes some of the ask side liquidity.
     suite
         .execute(
@@ -153,8 +180,34 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
                 depth_quote: Udec128_6::new(1_994_000_000),
             })]),
             ask_depth: Some(vec![(Price::new(200_600_000), LiquidityDepth {
-                depth_base: Udec128_6::new(5),
-                depth_quote: Udec128_6::new(200_600_000 * 7),
+                depth_base: Udec128_6::new(7),                // decreased!
+                depth_quote: Udec128_6::new(200_600_000 * 7), // decreased!
             })]),
+        });
+
+    // Check the orders as well.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByUserRequest {
+            user: contracts.dex,
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map! {
+            OrderId::from(!4) => OrdersByUserResponse {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Bid,
+                price: Price::new(199_400_000),
+                amount: Uint128::new(10),
+                remaining: Udec128_6::new(10),
+            },
+            OrderId::from(5) => OrdersByUserResponse {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                price: Price::new(200_600_000),
+                amount: Uint128::new(10),
+                remaining: Udec128_6::new(7), // decreased!
+            },
         });
 }
