@@ -39,7 +39,8 @@ services:
         condition: service_healthy
     ports:
       - 127.0.0.1:${DANGO_PORT:-8080}:8080
-      - 127.0.0.1:${DANGO_PORT:-26658}:26658
+      - 127.0.0.1:${COMETBFT_ABCI_PORT:-26658}:26658
+      - 127.0.0.1:${DANGO_METRICS_PORT:-9191}:9191
     volumes:
       - ./configs/dango/config:/root/.dango/config
       - dango_data:/root/.dango/data
@@ -52,6 +53,8 @@ services:
       - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres@db:5432/grug_dev}
       - INDEXER__CLICKHOUSE__URL=${INDEXER__CLICKHOUSE__URL:-http://clickhouse:8123}
       - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - TENDERMINT__RPC_ADDR=${TENDERMINT__RPC_ADDR:-http://cometbft:26657}
+      - PYTH__ACCESS_TOKEN=${PYTH_ACCESS_TOKEN:-}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]

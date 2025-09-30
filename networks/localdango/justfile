@@ -11,14 +11,13 @@ default:
 start-dango:
     set -a; source .env; set +a; \
     export PYTH__ACCESS_TOKEN="$PYTH_ACCESS_TOKEN"; \
-    cargo run --bin dango start
+    cargo run --bin dango start --home ./configs/dango
 
 # Start the localnet
-start:
+start-inner profiles="":
   #!/usr/bin/env bash
   set -e
 
-  # Set up traps to handle errors, SIGINT, and SIGTERM.
   cleanup() {
     local exit_code=$?
     case "$1" in
@@ -36,7 +35,6 @@ start:
     esac
 
     docker compose down --remove-orphans
-
     exit $exit_code
   }
 
@@ -44,8 +42,14 @@ start:
   trap 'cleanup SIGTERM' TERM
   trap 'cleanup' ERR
 
-  docker compose --profile analytics --profile faucet up -d --wait
+  docker compose {{profiles}} up -d --wait
   docker compose logs -f
+
+start-src:
+  just start-inner "--profile analytics --profile faucet"
+
+start:
+  just start-inner "--profile analytics --profile faucet --profile dango"
 
 # Stop the localnet
 stop:
@@ -56,11 +60,11 @@ logs:
 
 # Delete the generate data in order to restart a new localnet from scratch
 reset:
-  rm -rfv ~/.dango/data
-  rm -rfv ~/.dango/indexer
-  docker volume rm localdango_cometbft_data
-  # docker volume rm localdango_dango_data
-  # docker volume rm localdango_dango_indexer
+  rm -rfv ./configs/dango/data
+  rm -rfv ./configs/dango/indexer
+  docker volume rm localdango_cometbft_data || true
+  docker volume rm localdango_dango_data || true
+  docker volume rm localdango_dango_indexer || true
 
 # Run the development database
 run-dev-db:
