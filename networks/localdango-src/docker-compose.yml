@@ -14,7 +14,7 @@ services:
       - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
     volumes:
       - db_data:/var/lib/postgresql/data
-      - ./configs/psql/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../localdango/configs/psql/init.sql:/docker-entrypoint-initdb.d/init.sql
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -36,11 +36,11 @@ services:
       [
         "/bin/bash",
         "-lc",
-        "export LIBCLANG_PATH=$(llvm-config --libdir) && /usr/local/cargo/bin/cargo run -- start",
+        "export LIBCLANG_PATH=$(llvm-config --libdir) && /usr/local/cargo/bin/cargo run --release -- start",
       ]
     volumes:
       - ../..:/app
-      - ./configs/dango/config:/root/.dango/config
+      - ../localdango/configs/dango/config:/root/.dango/config
       - dango_data:/root/.dango/data
       - dango_indexer:/root/.dango/indexer
       # cache target folder
@@ -106,7 +106,7 @@ services:
     ports:
       - 127.0.0.1:${COMETBFT_PORT:-26657}:26657
     volumes:
-      - ./configs/cometbft/config:/root/.cometbft/config
+      - ../localdango/configs/cometbft/config:/root/.cometbft/config
       - cometbft_data:/root/.cometbft/data
     tty: true
     healthcheck:
@@ -151,8 +151,8 @@ services:
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./monitoring/prometheus/alerts:/etc/prometheus/alerts
+      - ../localdango/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../localdango/monitoring/prometheus/alerts:/etc/prometheus/alerts
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -166,7 +166,7 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ../localdango/monitoring/grafana/provisioning:/etc/grafana/provisioning
       - grafana_data:/var/lib/grafana
     environment:
       GF_SECURITY_ADMIN_USER: admin
@@ -182,7 +182,7 @@ services:
     ports:
       - "127.0.0.1:9093:9093"
     volumes:
-      - ./monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ../localdango/monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
       - alertmanager_data:/alertmanager
     command:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
@@ -227,9 +227,9 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server
-      - ./configs/clickhouse/backups:/backups
-      - ./configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro
-      - ./configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro
+      - ../localdango/configs/clickhouse/backups:/backups
+      - ../localdango/configs/clickhouse/config.xml:/etc/clickhouse-server/config.xml:ro
+      - ../localdango/configs/clickhouse/users.xml:/etc/clickhouse-server/users.xml:ro
     environment:
       CLICKHOUSE_DB: grug_dev
       CLICKHOUSE_USER: default
@@ -254,7 +254,7 @@ services:
     ports:
       - "127.0.0.1:3100:3100"
     volumes:
-      - ./monitoring/loki:/etc/loki
+      - ../localdango/monitoring/loki:/etc/loki
       - loki_data:/loki
     command: -config.file=/etc/loki/loki-config.yml
 
@@ -268,7 +268,7 @@ services:
       - /var/log:/var/log:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./monitoring/promtail:/etc/promtail
+      - ../localdango/monitoring/promtail:/etc/promtail
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
