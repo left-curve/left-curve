@@ -85,21 +85,25 @@ scrape_configs:
     static_configs:
       - targets: ['ovh1:9126']
         labels:
-          service: 'postgres'
+          service: 'clickhouse'
+          environment: 'production'
+      - targets: ['ovh2:9126']
+        labels:
+          service: 'clickhouse'
           environment: 'production'
       - targets: ['ovh1:8085']
         labels:
-          service: 'postgres'
+          service: 'clickhouse'
           environment: 'production'
           dango_network: 'devnet'
-      - targets: ['ovh2:9126']
-        labels:
-          service: 'postgres'
-          environment: 'production'
 
   - job_name: 'postgres'
     static_configs:
       - targets: ['ovh1:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+      - targets: ['ovh2:9187']
         labels:
           service: 'postgres'
           environment: 'production'
@@ -108,7 +112,6 @@ scrape_configs:
           service: 'postgres'
           environment: 'production'
           dango_network: 'devnet'
-      - targets: ['ovh2:9187']
 
   - job_name: 'dango'
     static_configs:
