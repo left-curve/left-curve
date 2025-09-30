@@ -11,4 +11,4 @@ pub const PYTH_RECONNECTION_ATTEMPTS: &str = "pyth.lazer.reconnection_attempts";
 pub const PYTH_MESSAGES_RECEIVED: &str = "pyth.lazer.messages_received";
 
 /// Number of times data was read from Pyth Lazer.
-pub const PYTH_DATA_READ: &str = "pyth.lazer.data_read";
+pub const PYTH_DATA_READ: &str = "pyth.lazer.data_read.count";
