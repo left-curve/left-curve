@@ -505,6 +505,9 @@ fn clear_orders_of_pair(
         clearing_price,
     } in filling_outcomes
     {
+        // If the order is from a user, update refunds and fees.
+        // Otherwise, if it's from the DEX contract itself (a "passive order"),
+        // update the pool inflow/outflow.
         if order.user != dex_addr {
             fill_user_order(
                 order.user,
@@ -518,54 +521,35 @@ fn clear_orders_of_pair(
                 fees,
                 fee_payments,
             )?;
+        } else {
+            fill_passive_order(
+                &base_denom,
+                &quote_denom,
+                order.direction,
+                filled_base,
+                filled_quote,
+                &mut inflows,
+                &mut outflows,
+            )?;
+        };
 
-            // For limit orders, delete it from storage if fully filled, or
-            // update if partially filled.
-            // For market orders, delete it from storage, and refund the user
-            // the remaining amount, as market orders are immediate-or-cancel.
-            match order.time_in_force {
-                TimeInForce::GoodTilCanceled => {
-                    decrease_liquidity_depths(
-                        storage,
-                        &base_denom,
-                        &quote_denom,
-                        order.direction,
-                        order.price,
-                        filled_base,
-                        bucket_sizes,
-                    )?;
+        // For limit orders, delete it from storage if fully filled, or
+        // update if partially filled.
+        // For market orders, delete it from storage, and refund the user
+        // the remaining amount, as market orders are immediate-or-cancel.
+        match order.time_in_force {
+            TimeInForce::GoodTilCanceled => {
+                decrease_liquidity_depths(
+                    storage,
+                    &base_denom,
+                    &quote_denom,
+                    order.direction,
+                    order.price,
+                    filled_base,
+                    bucket_sizes,
+                )?;
 
-                    if order.remaining.is_zero() {
-                        ORDERS.remove(
-                            storage,
-                            (
-                                (base_denom.clone(), quote_denom.clone()),
-                                order.direction,
-                                order.price,
-                                order.id,
-                            ),
-                        )?;
-
-                        #[cfg(feature = "metrics")]
-                        {
-                            metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
-                        }
-                    } else {
-                        ORDERS.save(
-                            storage,
-                            (
-                                (base_denom.clone(), quote_denom.clone()),
-                                order.direction,
-                                order.price,
-                                order.id,
-                            ),
-                            &order,
-                        )?;
-                    }
-                },
-                TimeInForce::ImmediateOrCancel => {
-                    refund_ioc_order(&base_denom, &quote_denom, order, events, refunds)?;
-
+                if order.remaining.is_zero() {
                     ORDERS.remove(
                         storage,
                         (
@@ -580,19 +564,38 @@ fn clear_orders_of_pair(
                     {
                         metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
                     }
-                },
-            }
-        } else {
-            fill_passive_order(
-                &base_denom,
-                &quote_denom,
-                order.direction,
-                filled_base,
-                filled_quote,
-                &mut inflows,
-                &mut outflows,
-            )?;
-        };
+                } else {
+                    ORDERS.save(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            order.direction,
+                            order.price,
+                            order.id,
+                        ),
+                        &order,
+                    )?;
+                }
+            },
+            TimeInForce::ImmediateOrCancel => {
+                refund_ioc_order(&base_denom, &quote_denom, order, events, refunds)?;
+
+                ORDERS.remove(
+                    storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        order.direction,
+                        order.price,
+                        order.id,
+                    ),
+                )?;
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+                }
+            },
+        }
 
         // Emit event for filled orders to be used by the frontend.
         events.push(OrderFilled {
