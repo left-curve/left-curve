@@ -1,0 +1,71 @@
+api:
+  dashboard: true
+  insecure: true
+
+ping: true
+
+providers:
+  docker:
+    exposedByDefault: false
+  file:
+    directory: /config
+    watch: true
+
+entryPoints:
+  # Public (all interfaces)
+  devnet-dango:
+    address: :8080
+  devnet-frontend:
+    address: :8081
+  devnet-faucet_bot:
+    address: :8082
+  devnet-cometbft_p2p:
+    address: :26656
+  testnet-dango:
+    address: :8050
+  testnet-frontend:
+    address: :8051
+  testnet-faucet_bot:
+    address: :8052
+  testnet-cometbft_p2p:
+    address: :36656
+
+  # Tailscale/VPN only
+  homer:
+    address: :80
+  traefik:
+    address: :8888
+  devnet-dango-metrics:
+    address: :8083
+  devnet-db-metrics:
+    address: :8084
+  devnet-clickhouse-metrics:
+    address: :8085
+  devnet-cometbft_rpc:
+    address: :26657
+  devnet-cometbft_abci:
+    address: :26658
+  devnet-cometbft_metrics:
+    address: :26660
+  testnet-dango-metrics:
+    address: :8053
+  testnet-db-metrics:
+    address: :8054
+  testnet-clickhouse-metrics:
+    address: :8055
+  testnet-cometbft_rpc:
+    address: :36657
+  testnet-cometbft_abci:
+    address: :36658
+  testnet-cometbft_metrics:
+    address: :36660
+
+metrics:
+  prometheus: {}
+
+log:
+  level: INFO
+  format: json
+
+accessLog:
+  format: json

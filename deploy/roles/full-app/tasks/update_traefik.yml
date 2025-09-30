@@ -14,5 +14,6 @@
             "current_deployment": "{{ deployment_name }}",
             "deployed_at": "{{ ansible_date_time.iso8601 }}"
           }
+
         dest: "{{ ansible_env.HOME }}/deployments/{{ dango_network }}.json"
         owner: "{{ deploy_user }}"

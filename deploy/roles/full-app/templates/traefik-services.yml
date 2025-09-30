@@ -1,3 +1,16 @@
+tcp:
+  services:
+    {{ dango_network }}-cometbft_p2p:
+      loadBalancer:
+        servers:
+          - address: "{{ deployment_name }}-cometbft-1:26656"
+  routers:
+    {{ dango_network }}-cometbft_p2p:
+      rule: "HostSNI(`*`)"
+      entryPoints:
+        - "{{ dango_network }}-cometbft_p2p"
+      service: "{{ dango_network }}-cometbft_p2p"
+
 http:
   services:
     {{ dango_network }}-dango:
@@ -16,10 +29,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-faucet-bot-1:8082"
-    {{ dango_network }}-cometbft_p2p:
-      loadBalancer:
-        servers:
-          - url: "http://{{ deployment_name }}-cometbft-1:26656"
     {{ dango_network }}-cometbft_rpc:
       loadBalancer:
         servers:
@@ -65,12 +74,6 @@ http:
       entryPoints:
         - "{{ dango_network }}-faucet_bot"
       service: "{{ dango_network }}-faucet_bot"
-
-    {{ dango_network }}-cometbft_p2p:
-      rule: "PathPrefix(`/`)"
-      entryPoints:
-        - "{{ dango_network }}-cometbft_p2p"
-      service: "{{ dango_network }}-cometbft_p2p"
 
     {{ dango_network }}-cometbft_rpc:
       rule: "PathPrefix(`/`)"

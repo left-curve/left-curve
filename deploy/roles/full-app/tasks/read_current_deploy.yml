@@ -26,7 +26,7 @@
 
 - name: Read .env values
   shell: |
-    grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE)=' {{ current_deployment }}/.env | \
+    grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE)=' {{ ansible_env.HOME }}/deployments/{{ current_deployment }}/.env | \
     awk -F= '{print tolower($1) "=" $2}'
   register: existing_env_variables
   when: env_file_exists.stat.exists and keep_databases
@@ -35,4 +35,4 @@
   set_fact:
     "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
   loop: "{{ existing_env_variables.stdout_lines }}"
-  when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0 and keep_databases
+  when: env_file_exists.stat.exists and keep_databases
