@@ -25,6 +25,7 @@ scrape_configs:
   - job_name: 'traefik'
     static_configs:
       - targets: ['ovh1:8888']
+      - targets: ['ovh2:8888']
 
   - job_name: 'alertmanager'
     static_configs:
@@ -91,11 +92,6 @@ scrape_configs:
         labels:
           service: 'clickhouse'
           environment: 'production'
-      - targets: ['ovh1:8085']
-        labels:
-          service: 'clickhouse'
-          environment: 'production'
-          dango_network: 'devnet'
 
   - job_name: 'postgres'
     static_configs:
@@ -107,11 +103,6 @@ scrape_configs:
         labels:
           service: 'postgres'
           environment: 'production'
-      - targets: ['ovh1:8084']
-        labels:
-          service: 'postgres'
-          environment: 'production'
-          dango_network: 'devnet'
 
   - job_name: 'dango'
     static_configs:
@@ -121,20 +112,20 @@ scrape_configs:
           environment: 'production'
           network: 'devnet'
           dango_network: 'devnet'
-      # - targets: ['ovh2:9191'] # ovh2
-      #   labels:
-      #     service: 'dango'
-      #     environment: 'production'
-      #     network: 'testnet'
+      - targets: ['ovh2:8053']
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'testnet'
 
   - job_name: 'cometbft'
     static_configs:
-      - targets: ['ovh1:26660'] # ovh1
+      - targets: ['ovh1:26660']
         labels:
           environment: 'production'
           dango_network: 'devnet'
           network: 'devnet'
-      # - targets: ['ovh2:26660'] # ovh2
-      #   labels:
-      #     environment: 'production'
-      #     network: 'testnet'
+      - targets: ['ovh2:36660']
+        labels:
+          environment: 'production'
+          network: 'testnet'
