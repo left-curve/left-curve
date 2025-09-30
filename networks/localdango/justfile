@@ -9,7 +9,9 @@ default:
   @just --list
 
 start-dango:
-  cargo run --bin dango start
+    set -a; source .env; set +a; \
+    export PYTH__ACCESS_TOKEN="$PYTH_ACCESS_TOKEN"; \
+    cargo run --bin dango start
 
 # Start the localnet
 start:
@@ -42,7 +44,7 @@ start:
   trap 'cleanup SIGTERM' TERM
   trap 'cleanup' ERR
 
-  docker compose up -d --wait
+  docker compose --profile analytics --profile faucet up -d --wait
   docker compose logs -f
 
 # Stop the localnet
@@ -57,8 +59,8 @@ reset:
   rm -rfv ~/.dango/data
   rm -rfv ~/.dango/indexer
   docker volume rm localdango_cometbft_data
-  docker volume rm localdango_dango_data
-  docker volume rm localdango_dango_indexer
+  # docker volume rm localdango_dango_data
+  # docker volume rm localdango_dango_indexer
 
 # Run the development database
 run-dev-db:
