@@ -8,6 +8,9 @@ DB_NAME := "grug_dev"
 default:
   @just --list
 
+start-dango:
+  cargo run --bin dango start
+
 # Start the localnet
 start:
   #!/usr/bin/env bash
@@ -51,7 +54,11 @@ logs:
 
 # Delete the generate data in order to restart a new localnet from scratch
 reset:
-  rm -rfv ./data
+  rm -rfv ~/.dango/data
+  rm -rfv ~/.dango/indexer
+  docker volume rm localdango_cometbft_data
+  docker volume rm localdango_dango_data
+  docker volume rm localdango_dango_indexer
 
 # Run the development database
 run-dev-db:

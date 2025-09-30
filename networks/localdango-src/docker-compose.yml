@@ -76,6 +76,7 @@ services:
 
   frontend:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
+    profiles: ["ui"]
     labels:
       <<: *common-labels
     depends_on:
