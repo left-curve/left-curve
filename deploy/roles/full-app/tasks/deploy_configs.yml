@@ -1,3 +1,18 @@
+- set_fact:
+    indexer_url: "http://{{ tailscale_ip }}:{{ dango_port }}/graphql"
+    faucet_url: "http://{{ tailscale_ip }}:{{ faucet_port }}/mint"
+    quest_url: "http://{{ tailscale_ip }}:{{ quest_port }}/check_username"
+    up_url: "http://{{ tailscale_ip }}:{{ dango_port }}/up"
+  when: not traefik_enabled
+
+- set_fact:
+    indexer_url: "http://{{ public_ip }}:{{ traefik[dango_network].ports.dango_port }}/graphql"
+    faucet_url: "http://{{ public_ip }}:{{ traefik[dango_network].ports.faucet_port }}/mint"
+    quest_url: "http://{{ public_ip }}:{{ traefik[dango_network].ports.faucet_port }}/to_fix"
+    up_url: "http://{{ public_ip }}:{{ traefik[dango_network].ports.dango_port }}/up"
+  when: not traefik_enabled
+  when: traefik_enabled
+
 - name: Deploy configuration files
   become: true
   become_user: root

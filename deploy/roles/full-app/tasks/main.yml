@@ -27,7 +27,7 @@
 - import_tasks: update_traefik.yml
   when: traefik_enabled
 - import_tasks: delete_old_deploy.yml
-  when: current_deployment is defined and github_deployments_enabled
+  when: current_deployment is defined
 - import_tasks: github_pr_deployments.yml
   when: github_pr_number is defined
   ignore_errors: true

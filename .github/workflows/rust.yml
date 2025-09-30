@@ -556,11 +556,11 @@ jobs:
           cd deploy
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": true, "delete_clickhouse_database_at_merge": true, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false}' -e deploy_env=production -e github_sha=${{ env.GIT_COMMIT }}
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": true, "delete_clickhouse_database_at_merge": true, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false}' -e deploy_env=production -e github_sha=${{ env.GIT_COMMIT }} --limit 100.96.253.40
           fi
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}"}' -e deploy_env=preview
+          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}"}' -e deploy_env=preview --limit 100.96.253.40
           fi
 
   localdango:

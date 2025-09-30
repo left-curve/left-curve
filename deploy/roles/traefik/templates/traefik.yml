@@ -14,21 +14,21 @@ providers:
 entryPoints:
   # Public (all interfaces)
   devnet-dango:
-    address: :8080
+    address: ":{{ traefik.devnet.ports.dango_port }}"
   devnet-frontend:
-    address: :8081
+    address: ":{{ traefik.devnet.ports.dango_frontend_port }}"
   devnet-faucet_bot:
-    address: :8082
+    address: ":{{ traefik.devnet.ports.faucet_port }}"
   devnet-cometbft_p2p:
-    address: :26656
+    address: ":{{ traefik.devnet.ports.cometbft_p2p_port }}"
   testnet-dango:
-    address: :8050
+    address: ":{{ traefik.testnet.ports.dango_port }}"
   testnet-frontend:
-    address: :8051
+    address: ":{{ traefik.testnet.ports.dango_frontend_port }}"
   testnet-faucet_bot:
-    address: :8052
+    address: ":{{ traefik.testnet.ports.faucet_port }}"
   testnet-cometbft_p2p:
-    address: :36656
+    address: ":{{ traefik.testnet.ports.cometbft_p2p_port }}"
 
   # Tailscale/VPN only
   homer:
