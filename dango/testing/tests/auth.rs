@@ -13,6 +13,8 @@ use {
 ///
 /// Instead, we enforce that the first ever nonce can't be bigger than `MAX_NONCE_INCREASE`,
 /// which is set to 100.
+///
+/// cargo test --package dango-testing --test auth --all-features -- first_nonce_too_big --exact --show-output --nocapture
 #[test]
 fn first_nonce_too_big() {
     let (suite, accounts, ..) = setup_test_naive(Default::default());

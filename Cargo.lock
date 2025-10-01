@@ -3637,7 +3637,7 @@ dependencies = [
  "grug-app",
  "grug-client",
  "grug-db-disk-lite",
- "grug-db-memory",
+ "grug-db-memory-lite",
  "grug-testing",
  "grug-types",
  "grug-vm-hybrid",
@@ -4779,6 +4779,16 @@ dependencies = [
  "grug-app",
  "grug-jmt",
  "grug-types",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "grug-db-memory-lite"
+version = "0.0.0"
+dependencies = [
+ "grug-app",
+ "grug-types",
+ "sha2 0.10.9",
  "thiserror 2.0.12",
 ]
 
