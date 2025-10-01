@@ -1,0 +1,23 @@
+- name: Wait for CometBFT to sync
+  uri:
+    url: "http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/status"
+    return_content: yes
+  register: cometbft_status
+  until: not (cometbft_status.json.result.sync_info.catching_up | default(true))
+  retries: 30
+  delay: 10
+
+- name: Check peer connections
+  uri:
+    url: "http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/net_info"
+    return_content: yes
+  register: cometbft_net_info
+
+- name: Display sync info
+  debug:
+    msg: |
+      Node: {{ inventory_hostname }}
+      Catching up: {{ (cometbft_status.json.result.sync_info.catching_up | default(true)) }}
+      Latest block height: {{ cometbft_status.json.result.sync_info.latest_block_height }}
+      Latest block time: {{ cometbft_status.json.result.sync_info.latest_block_time }}
+      Connected peers: {{ cometbft_net_info.json.result.n_peers }}
