@@ -15,5 +15,24 @@
   when: traefik_json.stat.exists and current_deployment_raw is defined
 
 - debug:
-    msg: "Current existing deployment is {{ current_deployment }}"
+    msg: "Current existing deployment is {{ current_deployment }} and keep_databases: {{ keep_databases }}"
   when: current_deployment is defined
+
+- name: Check if deployment already exists
+  stat:
+    path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}/.env"
+  register: env_file_exists
+  when: current_deployment is defined and keep_databases
+
+- name: Read .env values
+  shell: |
+    grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE)=' {{ ansible_env.HOME }}/deployments/{{ current_deployment }}/.env | \
+    awk -F= '{print tolower($1) "=" $2}'
+  register: existing_env_variables
+  when: current_deployment is defined and env_file_exists.stat.exists and keep_databases
+
+- name: Set facts from existing .env
+  set_fact:
+    "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
+  loop: "{{ existing_env_variables.stdout_lines }}"
+  when: current_deployment is defined and env_file_exists.stat.exists and keep_databases

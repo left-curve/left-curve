@@ -1,16 +1,15 @@
 - set_fact:
-    cometbft_user_dir: /root/.cometbft
-    cometbft_local_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/cometbft"
+    cometbft_container_dir: /root/.cometbft
 
 - name: Generate CometBFT keys
   when: cometbft_generate_keys and not validator_private_key_exists
   command: >
     docker run --rm
-    -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
+    -v {{ cometbft_directory }}:{{ cometbft_container_dir }}
     ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
     sh -c "
-    if [ ! -f {{ cometbft_user_dir }}/config/node_key.json ]; then
-      cometbft init --home {{ cometbft_user_dir }} && echo 'Initialized'
+    if [ ! -f {{ cometbft_container_dir }}/config/node_key.json ]; then
+      cometbft init --home {{ cometbft_container_dir }} && echo 'Initialized'
     else
       echo 'Already initialized'
     fi"
@@ -20,25 +19,25 @@
     - name: Get CometBFT node ID
       command: >
         docker run --rm
-        -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
+        -v {{ cometbft_directory }}:{{ cometbft_container_dir }}
         ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
-        cometbft show-node-id --home {{ cometbft_user_dir }}
+        cometbft show-node-id --home {{ cometbft_container_dir }}
       register: cometbft_node_id_result
 
     - name: Get validator public key
       command: >
         docker run --rm
-        -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
+        -v {{ cometbft_directory }}:{{ cometbft_container_dir }}
         ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
-        cometbft show-validator --home {{ cometbft_user_dir }}
+        cometbft show-validator --home {{ cometbft_container_dir }}
       register: cometbft_validator_public_key_result
 
     - name: Get validator private key
       command: >
         docker run --rm
-        -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
+        -v {{ cometbft_directory }}:{{ cometbft_container_dir }}
         ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
-        cat {{ cometbft_user_dir }}/config/priv_validator_key.json
+        cat {{ cometbft_container_dir }}/config/priv_validator_key.json
       register: cometbft_priv_validator_key_result
 
     - name: Calculate validator address
@@ -56,9 +55,9 @@
     - name: Read and parse node_key.json
       command: >
         docker run --rm
-        -v {{ cometbft_local_dir }}:{{ cometbft_user_dir }}
+        -v {{ cometbft_directory }}:{{ cometbft_container_dir }}
         ghcr.io/left-curve/left-curve/cometbft:{{ cometbft_tag }}
-        cat {{ cometbft_user_dir }}/config/node_key.json
+        cat {{ cometbft_container_dir }}/config/node_key.json
       register: cometbft_node_key_result
 
     - name: Extract node key value
