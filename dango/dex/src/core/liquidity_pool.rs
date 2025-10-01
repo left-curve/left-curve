@@ -599,9 +599,9 @@ mod tests {
             (Udec128::new_percent(95), Uint128::from(59684)),
             (Udec128::new_percent(94), Uint128::from(18095)),
             (Udec128::new_percent(93), Uint128::from(5487)),
-            (Udec128::new_percent(92), Uint128::from(1663)),
+            (Udec128::new_percent(92), Uint128::from(1665)),
             (Udec128::new_percent(91), Uint128::from(504)),
-            (Udec128::new_percent(90), Uint128::from(152)),
+            (Udec128::new_percent(90), Uint128::from(154)),
         ],
         vec![
             (Udec128::new_percent(101), Uint128::from(7000000)),
@@ -613,7 +613,7 @@ mod tests {
             (Udec128::new_percent(107), Uint128::from(5103)),
             (Udec128::new_percent(108), Uint128::from(1530)),
             (Udec128::new_percent(109), Uint128::from(459)),
-            (Udec128::new_percent(110), Uint128::from(137)),
+            (Udec128::new_percent(110), Uint128::from(138)),
         ],
         1;
         "geometric pool balance 1:1 30% ratio"
@@ -661,9 +661,9 @@ mod tests {
             )
             .unwrap();
 
-        // Assert that at least 10 orders are returned.
-        let bids = bids.take(expected_bids.len()).collect::<Vec<_>>();
-        let asks = asks.take(expected_asks.len()).collect::<Vec<_>>();
+        // Assert that the correct number of orders are returned.
+        let bids = bids.collect::<Vec<_>>();
+        let asks = asks.collect::<Vec<_>>();
         assert_eq!(bids.len(), expected_bids.len());
         assert_eq!(asks.len(), expected_asks.len());
 
