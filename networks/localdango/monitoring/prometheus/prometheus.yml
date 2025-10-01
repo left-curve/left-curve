@@ -3,28 +3,28 @@ global:
   evaluation_interval: 15s
 
 rule_files:
-  - 'alerts/*.yml'
+  - "alerts/*.yml"
 
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: ['alertmanager:9093']
+        - targets: ["alertmanager:9093"]
 
 scrape_configs:
-  - job_name: 'dango'
+  - job_name: "dango"
     scrape_interval: 1s
     static_configs:
-      - targets: ['host.docker.internal:9191']
-    metrics_path: '/metrics'
+      - targets: ["dango:9191", "host.docker.internal:9191"]
+    metrics_path: "/metrics"
 
-  - job_name: 'prometheus'
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['localhost:9090']
+      - targets: ["localhost:9090"]
 
-  - job_name: 'cometbft'
+  - job_name: "cometbft"
     static_configs:
-      - targets: ['cometbft:26660']
+      - targets: ["cometbft:26660"]
 
-  - job_name: 'node'
+  - job_name: "node"
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ["node-exporter:9100"]

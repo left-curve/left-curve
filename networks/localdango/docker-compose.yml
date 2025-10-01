@@ -39,8 +39,6 @@ services:
         condition: service_healthy
     ports:
       - 127.0.0.1:${DANGO_PORT:-8080}:8080
-      - 127.0.0.1:${COMETBFT_ABCI_PORT:-26658}:26658
-      - 127.0.0.1:${DANGO_METRICS_PORT:-9191}:9191
     volumes:
       - ./configs/dango/config:/root/.dango/config
       - dango_data:/root/.dango/data
@@ -53,7 +51,6 @@ services:
       - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres@db:5432/grug_dev}
       - INDEXER__CLICKHOUSE__URL=${INDEXER__CLICKHOUSE__URL:-http://clickhouse:8123}
       - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD:-}
-      - TENDERMINT__RPC_ADDR=${TENDERMINT__RPC_ADDR:-http://cometbft:26657}
       - PYTH__ACCESS_TOKEN=${PYTH_ACCESS_TOKEN:-}
     tty: true
     healthcheck:
@@ -101,9 +98,8 @@ services:
       mkdir -p /root/.cometbft/data &&
       [ -f /root/.cometbft/data/priv_validator_state.json ] ||
       printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
-      exec cometbft start --proxy_app=${DANGO_ABCI_ENDPOINT:-tcp://dango:26658}
+      exec cometbft start --proxy_app=$${DANGO_ABCI_ENDPOINT}
       "
-
   faucet:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
     profiles: ["faucet"]
@@ -114,17 +110,14 @@ services:
       <<: *common-labels
     environment:
       - HOME=/app
+      - FACUET_DANGO_ENDPOINT=${FACUET_DANGO_ENDPOINT:-http://dango:8080}
     tty: true
     ports:
       - 127.0.0.1:${FAUCET_PORT:-8082}:8082
-    command:
-      [
-        "faucet",
-        "--provider-url",
-        "http://host.docker.internal:8080",
-        "--chain-id",
-        "dev-6",
-      ]
+    command: >
+      sh -c "
+      faucet --provider-url $${FACUET_DANGO_ENDPOINT} --chain-id dev-6
+      "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8082/health"]
       interval: 10s

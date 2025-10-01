@@ -34,7 +34,7 @@ keep_blocks = true
 [indexer.database]
 
 # URL to the SQL database to be used by the indexer.
-url = "postgres://postgres@localhost:5432/grug_dev"
+url = "postgres://postgres@db:5432/grug_dev"
 
 # How many connections to keep in the connection pool.
 max_connections = 10
@@ -42,7 +42,7 @@ max_connections = 10
 [indexer.clickhouse]
 
 # URL to the Clickhouse database to be used by the indexer.
-url = "http://localhost:8123"
+url = "http://clickhouse:8123"
 
 user = "default"
 
@@ -85,7 +85,7 @@ port = 9191
 [tendermint]
 
 # Tendermint RPC listening address.
-rpc_addr = "http://localhost:26657"
+rpc_addr = "http://cometbft:26657"
 
 # Tendermint ABCI listening address.
 abci_addr = "0.0.0.0:26658"
