@@ -29,6 +29,7 @@ services:
 
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
+    profiles: ["dango"]
     labels:
       <<: *common-labels
     depends_on:
@@ -50,6 +51,7 @@ services:
       - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres@db:5432/grug_dev}
       - INDEXER__CLICKHOUSE__URL=${INDEXER__CLICKHOUSE__URL:-http://clickhouse:8123}
       - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - PYTH__ACCESS_TOKEN=${PYTH_ACCESS_TOKEN:-}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
@@ -61,9 +63,6 @@ services:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
     labels:
       <<: *common-labels
-    depends_on:
-      dango:
-        condition: service_healthy
     ports:
       - "127.0.0.1:${DANGO_FRONTEND_PORT:-5081}:80"
     environment:
@@ -81,13 +80,13 @@ services:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
     labels:
       <<: *common-labels
-    depends_on:
-      - dango
     ports:
       - 127.0.0.1:${COMETBFT_PORT:-26657}:26657
     volumes:
       - ./configs/cometbft/config:/root/.cometbft/config
       - cometbft_data:/root/.cometbft/data
+    environment:
+      - DANGO_ABCI_ENDPOINT=${DANGO_ABCI_ENDPOINT:-tcp://dango:26658}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
@@ -99,45 +98,26 @@ services:
       mkdir -p /root/.cometbft/data &&
       [ -f /root/.cometbft/data/priv_validator_state.json ] ||
       printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
-      exec cometbft start
+      exec cometbft start --proxy_app=$${DANGO_ABCI_ENDPOINT}
       "
-
-  # Need to create the database
-  # quest:
-  #   image: ghcr.io/left-curve/bots/quest-2:${QUEST_VERSION:-latest}
-  #   profiles: ["quest"]
-  #   depends_on:
-  #     - db
-  #     - cometbft
-  #   restart: always
-  #   ports:
-  #     - 127.0.0.1:${QUEST_PORT:-8081}:8081
-  #   environment:
-  #     httpd_url: "http://cometbft:26657"
-  #     rest_url: "0.0.0.0:8081"
-  #     db_url: postgres://myuser:mypassword@db:5432/mydb
-  #     initial_loops: 9
-  #     max_loops: 3
-  #     trading_volume_threshold: 1000000000000
-  #     trading_pairs_threshold: 3
-  #     eth_txs_threshold: 10
-  #     eth_txs_cache_ttl: 30s
-  #     eth_rpc_url: "${ETH_RPC_URL}"
-
   faucet:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
     profiles: ["faucet"]
+    depends_on:
+      cometbft:
+        condition: service_healthy
     labels:
       <<: *common-labels
-    depends_on:
-      dango:
-        condition: service_healthy
     environment:
       - HOME=/app
+      - FAUCET_DANGO_ENDPOINT=${FAUCET_DANGO_ENDPOINT:-http://dango:8080}
     tty: true
     ports:
       - 127.0.0.1:${FAUCET_PORT:-8082}:8082
-    command: ["faucet", "--provider-url", "http://dango:8080", "--chain-id", "{{ chain_id }}"]
+    command: >
+      sh -c "
+      faucet --provider-url $${FAUCET_DANGO_ENDPOINT} --chain-id dev-6
+      "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8082/health"]
       interval: 10s
