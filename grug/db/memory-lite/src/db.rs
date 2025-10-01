@@ -85,7 +85,7 @@ impl Db for MemDbLite {
     type StateStorage = StateStorage;
 
     fn state_commitment(&self) -> Self::StateCommitment {
-        unimplemented!("`DiskDbLite` does not support state commitment");
+        unimplemented!("`MemDbLite` does not support state commitment");
     }
 
     fn state_storage(&self, version: Option<u64>) -> DbResult<StateStorage> {
