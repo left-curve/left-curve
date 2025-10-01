@@ -249,21 +249,3 @@ impl Storage for StateStorage {
         unreachable!("write function called on read-only storage");
     }
 }
-
-#[cfg(test)]
-mod test {
-    use {grug_app::Db, grug_types::Storage};
-
-    use crate::MemDbLite;
-
-    #[test]
-    fn test_read() {
-        let db = MemDbLite::new();
-
-        let storage = db.state_storage(None).unwrap();
-
-        let val = storage.read(&[1]);
-
-        println!("val: {:?}", val);
-    }
-}
