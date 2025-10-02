@@ -3306,6 +3306,7 @@ dependencies = [
  "grug-app",
  "grug-client",
  "grug-db-disk-lite",
+ "grug-db-memory-lite",
  "grug-httpd",
  "grug-types",
  "grug-vm-rust",

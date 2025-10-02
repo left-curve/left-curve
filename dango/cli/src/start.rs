@@ -8,7 +8,7 @@ use {
     config_parser::parse_config,
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer},
+    grug_app::{App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer},
     grug_client::TendermintRpcClient,
     grug_db_disk_lite::DiskDbLite,
     grug_httpd::context::Context as HttpdContext,
@@ -40,6 +40,7 @@ impl StartCmd {
 
         // Open disk DB.
         let db = DiskDbLite::open(app_dir.data_dir())?;
+        // let db = grug_db_memory_lite::MemDbLite::new();
 
         // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
         let _codes = RustVm::genesis_codes();
@@ -215,19 +216,24 @@ impl StartCmd {
     }
 
     /// Setup the hooked indexer with both SQL and Dango indexers, and prepare contexts for HTTP servers
-    async fn setup_indexer_stack(
+    async fn setup_indexer_stack<DB>(
         &self,
         cfg: &Config,
         sql_indexer: indexer_sql::Indexer,
         indexer_context: indexer_sql::context::Context,
         indexer_path: IndexerPath,
-        app: Arc<App<DiskDbLite, RustVm, NaiveProposalPreparer, NullIndexer>>,
+        app: Arc<App<DB, RustVm, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(
         HookedIndexer,
         indexer_httpd::context::Context,
         dango_httpd::context::Context,
-    )> {
+    )>
+    where
+        DB: Db + Send + Sync + 'static,
+        AppError: From<<DB as grug_app::Db>::Error>,
+        DB::Error: std::error::Error + Send + Sync + 'static,
+    {
         let mut hooked_indexer = HookedIndexer::new();
 
         // Create a separate context for dango indexer (shares DB but has independent pubsub)
@@ -341,17 +347,19 @@ impl StartCmd {
             })
     }
 
-    async fn run_with_indexer<ID>(
+    async fn run_with_indexer<ID, DB>(
         self,
         grug_cfg: GrugConfig,
         tendermint_cfg: TendermintConfig,
         pyth_lazer_cfg: PythLazerConfig,
-        db: DiskDbLite,
+        db: DB,
         vm: RustVm,
         indexer: ID,
     ) -> anyhow::Result<()>
     where
         ID: Indexer + Send + 'static,
+        DB: Db + Send + Sync + 'static,
+        AppError: From<<DB as grug_app::Db>::Error>,
     {
         let app = App::new(
             db,

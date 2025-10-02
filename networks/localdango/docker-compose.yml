@@ -100,6 +100,7 @@ services:
       printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
       exec cometbft start --proxy_app=$${DANGO_ABCI_ENDPOINT}
       "
+
   faucet:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
     profiles: ["faucet"]

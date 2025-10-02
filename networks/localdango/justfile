@@ -67,7 +67,7 @@ logs:
 reset:
   rm -rfv ./configs/dango/data
   rm -rfv ./configs/dango/indexer
-  docker volume rm $(docker volume ls -q | grep localdango_)
+  docker volume rm $(docker volume ls -q | grep localdango_ | grep -v localdango_grafana_data)
 
 # Run the development database
 run-dev-db:

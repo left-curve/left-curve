@@ -241,6 +241,9 @@ fn clear_orders_of_pair(
                     let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
                     order_id = !order_id; // See the docs of the `OrderId` type on why we invert this.
 
+                    #[cfg(feature = "metrics")]
+                    metrics::histogram!("passive_bids", "base_denom" => base_denom.to_string(), "quote_denom" => quote_denom.to_string()).record(amount.checked_mul_dec(price)?.into_inner() as f64);
+
                     let remaining = amount.checked_into_dec()?;
 
                     increase_liquidity_depths(
@@ -277,6 +280,9 @@ fn clear_orders_of_pair(
                 for (price, amount) in passive_asks {
                     let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
                     let remaining = amount.checked_into_dec()?;
+
+                    #[cfg(feature = "metrics")]
+                    metrics::histogram!("passive_asks", "base_denom" => base_denom.to_string(), "quote_denom" => quote_denom.to_string()).record(amount.checked_mul_dec(price)?.into_inner() as f64);
 
                     increase_liquidity_depths(
                         storage,

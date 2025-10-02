@@ -6,13 +6,22 @@ use {
     anyhow::anyhow,
     chrono::{DateTime, Utc},
     clap::Parser,
-    dango_genesis::{GenesisCodes, GenesisOption, build_genesis},
+    dango_genesis::{DexOption, GenesisCodes, GenesisOption, build_genesis},
     dango_testing::Preset,
-    grug::{Inner, Json, JsonDeExt, JsonSerExt},
+    dango_types::{
+        constants::*,
+        dex::{Geometric, PairParams, PairUpdate, PassiveLiquidity},
+    },
+    grug::{
+        Bounded, Dec, Denom, Inner, Json, JsonDeExt, JsonSerExt, NonZero, NumberConst, Udec128,
+        Uint128, btree_set,
+    },
     grug_vm_rust::RustVm,
     std::{
+        collections::BTreeSet,
         fs,
         path::{Path, PathBuf},
+        str::FromStr,
     },
 };
 
@@ -34,8 +43,95 @@ struct Cli {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    let (genesis_state, contracts, addresses) =
-        build_genesis(RustVm::genesis_codes(), GenesisOption::preset_test())?;
+    let (genesis_state, contracts, addresses) = build_genesis(
+        RustVm::genesis_codes(),
+        GenesisOption {
+            dex: DexOption {
+                pairs: vec![
+                    PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                            pool_type: PassiveLiquidity::Geometric(Geometric {
+                                limit: 1,
+                                spacing: Udec128::new_bps(1),
+                                ratio: Bounded::new_unchecked(Dec::ONE),
+                            }),
+                            bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
+                            swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(1)),
+                            min_order_size: Uint128::ZERO, /* TODO: for mainnet, a minimum of $10 is sensible */
+                        },
+                    },
+                    PairUpdate {
+                        base_denom: btc::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
+                            pool_type: PassiveLiquidity::Geometric(Geometric {
+                                limit: 1,
+                                spacing: Udec128::new_bps(1),
+                                ratio: Bounded::new_unchecked(Dec::ONE),
+                            }),
+                            bucket_sizes: btree_set! {
+                                NonZero::new_unchecked(ONE_HUNDREDTH),
+                                NonZero::new_unchecked(ONE_TENTH),
+                                NonZero::new_unchecked(ONE),
+                                NonZero::new_unchecked(TEN),
+                                NonZero::new_unchecked(FIFTY),
+                                NonZero::new_unchecked(ONE_HUNDRED),
+                            },
+                            swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(1)),
+                            min_order_size: Uint128::ZERO,
+                        },
+                    },
+                    PairUpdate {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
+                            pool_type: PassiveLiquidity::Geometric(Geometric {
+                                limit: 1,
+                                spacing: Udec128::new_bps(1),
+                                ratio: Bounded::new_unchecked(Dec::ONE),
+                            }),
+                            bucket_sizes: btree_set! {
+                                NonZero::new_unchecked(ONE_HUNDREDTH),
+                                NonZero::new_unchecked(ONE_TENTH),
+                                NonZero::new_unchecked(ONE),
+                                NonZero::new_unchecked(TEN),
+                                NonZero::new_unchecked(FIFTY),
+                                NonZero::new_unchecked(ONE_HUNDRED),
+                            },
+                            swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(1)),
+                            min_order_size: Uint128::ZERO,
+                        },
+                    },
+                    PairUpdate {
+                        base_denom: sol::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
+                            pool_type: PassiveLiquidity::Geometric(Geometric {
+                                limit: 1,
+                                spacing: Udec128::new_bps(1),
+                                ratio: Bounded::new_unchecked(Dec::ONE),
+                            }),
+                            bucket_sizes: btree_set! {
+                                NonZero::new_unchecked(ONE_HUNDREDTH),
+                                NonZero::new_unchecked(ONE_TENTH),
+                                NonZero::new_unchecked(ONE),
+                                NonZero::new_unchecked(TEN),
+                            },
+                            swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(1)),
+                            min_order_size: Uint128::ZERO,
+                        },
+                    },
+                ],
+            },
+            ..Preset::preset_test()
+        },
+    )?;
 
     println!("genesis_state = {}", genesis_state.to_json_string_pretty()?);
     println!("\ncontracts = {}", contracts.to_json_string_pretty()?);
@@ -51,7 +147,13 @@ fn main() -> anyhow::Result<()> {
             genesis_state.clone(),
             chain_id.clone(),
             genesis_time.clone(),
-        )?;
+        )
+        .map_err(|e| {
+            anyhow!(
+                "failed to update genesis file at:{} \nreson: {e}",
+                path.display()
+            )
+        })?;
     }
 
     Ok(())
@@ -86,6 +188,7 @@ fn update_genesis_file(
     output.push('\n'); // add a newline to end of file: https://stackoverflow.com/questions/729692/
 
     fs::write(path, output)?;
+
     println!("updated genesis file written to: {}", path.display());
 
     Ok(())

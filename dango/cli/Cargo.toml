@@ -33,6 +33,7 @@ futures                     = { workspace = true }
 grug-app                    = { workspace = true, features = ["abci", "metrics", "tracing"] }
 grug-client                 = { workspace = true }
 grug-db-disk-lite           = { workspace = true }
+grug-db-memory-lite         = { workspace = true }
 grug-httpd                  = { workspace = true }
 grug-types                  = { workspace = true }
 grug-vm-rust                = { workspace = true }
