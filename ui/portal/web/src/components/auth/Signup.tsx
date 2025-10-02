@@ -1,4 +1,15 @@
-import { ensureErrorMessage, useApp, useInputs, useWizard } from "@left-curve/applets-kit";
+import {
+  ensureErrorMessage,
+  IconApple,
+  IconEmail,
+  IconGoogle,
+  IconPasskey,
+  IconWallet,
+  Modals,
+  useApp,
+  useInputs,
+  useWizard,
+} from "@left-curve/applets-kit";
 import {
   useAccount,
   useConfig,
@@ -57,9 +68,9 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
     <>
       <Mobile />
       <div className="h-screen w-screen flex items-center justify-center bg-surface-primary-rice text-ink-primary-900">
-        <div className="flex items-center justify-center flex-1">
-          <ResizerContainer layoutId="signup" className="w-full max-w-[22.5rem]">
-            <div className="flex items-center justify-center gap-8 px-4 lg:px-0 flex-col w-full">
+        <div className="flex items-center justify-center flex-1 min-w-fit">
+          <ResizerContainer layoutId="signup" className="w-full max-w-[24.5rem]">
+            <div className="flex items-center justify-center gap-8 px-4 flex-col w-full">
               <div className="flex flex-col gap-7 items-center justify-center w-full">
                 <img
                   src="./favicon.svg"
@@ -160,7 +171,7 @@ const Mobile: React.FC = () => {
 };
 
 const Credential: React.FC = () => {
-  const { toast } = useApp();
+  const { toast, showModal } = useApp();
   const { nextStep, setData } = useWizard();
   const connectors = useConnectors();
 
@@ -225,7 +236,55 @@ const Credential: React.FC = () => {
     },
   });
 
-  return <AuthOptions action={createCredential} isPending={isPending} mode="signup" />;
+  return (
+    <div className="flex flex-col gap-6 w-full">
+      <Input
+        fullWidth
+        type="email"
+        startContent={<IconEmail />}
+        endContent={
+          <Button variant="link" className="p-0">
+            Submit
+          </Button>
+        }
+        placeholder={
+          <span>
+            Enter your <span className="exposure-m-italic text-ink-secondary-rice">email</span>
+          </span>
+        }
+      />
+
+      <div className="w-full flex items-center justify-center gap-3">
+        <span className="h-[1px] bg-outline-secondary-gray flex-1 " />
+        <p className="min-w-fit text-ink-placeholder-400">OR</p>
+        <span className="h-[1px] bg-outline-secondary-gray flex-1 " />
+      </div>
+      <div className="flex flex-col items-center w-full gap-4">
+        <div className="grid grid-cols-2 gap-3 w-full">
+          <Button onClick={nextStep} variant="secondary" fullWidth>
+            <IconGoogle />
+          </Button>
+          <Button onClick={nextStep} variant="secondary" fullWidth>
+            <IconApple />
+          </Button>
+        </div>
+        <Button fullWidth isLoading={isPending} className="gap-2" variant="secondary">
+          <IconPasskey className="w-6 h-6" />
+          <p className="min-w-20"> {m["common.signWithPasskey"]({ action: "signin" })}</p>
+        </Button>
+        <Button
+          fullWidth
+          onClick={() => showModal(Modals.ConnectWallet)}
+          isLoading={isPending}
+          className="gap-2"
+          variant="secondary"
+        >
+          <IconWallet className="w-6 h-6" />
+          <p className="min-w-20">Connect wallet</p>
+        </Button>
+      </div>
+    </div>
+  );
 };
 
 const Username: React.FC = () => {
