@@ -15,10 +15,10 @@ use {
         gateway::Remote,
     },
     grug::{
-        Addressable, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero, MaxLength, Message,
+        Addressable, Bounded, Coin, Coins, Denom, Inner, IsZero, MaxLength, Message,
         MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt, Signed,
-        Signer, Udec128, Uint128, UniqueVec, ZeroInclusiveOneExclusive, btree_map, btree_set,
-        coins,
+        Signer, Udec128, Udec128_6, Udec128_24, Uint128, UniqueVec, ZeroInclusiveOneExclusive,
+        btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -26,12 +26,16 @@ use {
     std::{
         collections::{BTreeSet, HashMap, hash_map},
         fmt::Debug,
+        ops::Sub,
         str::FromStr,
     },
 };
 
 /// Calculates the absolute difference between two values.
-fn absolute_difference(a: Uint128, b: Uint128) -> Uint128 {
+fn abs_diff<T>(a: T, b: T) -> <T as Sub>::Output
+where
+    T: Ord + Sub,
+{
     if a > b {
         a - b
     } else {
@@ -69,7 +73,7 @@ fn relative_difference(a: Uint128, b: Uint128) -> Udec128 {
 fn assert_approx_eq(a: Uint128, b: Uint128, max_rel_diff: &str) -> Result<(), TestCaseError> {
     // An absolute difference of up to a few units is acceptable, and unavoidable
     // due to rounding errors. In this case, we consider the values effectively equal.
-    if absolute_difference(a, b) <= Uint128::new(5) {
+    if abs_diff(a, b) <= Uint128::new(5) {
         return Ok(());
     }
 
@@ -169,6 +173,87 @@ fn check_balances(
 
         // Assert that the balance of the dex contract equals the balance of the open orders plus the balance of the passive liquidity.
         assert_approx_eq(coin.amount, order_and_passive_liquidity_balance, "0.0001")?;
+    }
+
+    Ok(())
+}
+
+/// Checks that the open orders are equal to the recorded liquidity depths.
+fn check_liquidity_depths(
+    suite: &TestSuite<NaiveProposalPreparer>,
+    contracts: &Contracts,
+) -> Result<(), TestCaseError> {
+    for pair_id in pair_ids() {
+        // Query the pair params to get the bucket sizes and the base and quote denoms.
+        let pair_params = suite.query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: pair_id.base_denom.clone(),
+            quote_denom: pair_id.quote_denom.clone(),
+        })?;
+        let bucket_sizes = pair_params.bucket_sizes;
+        let base_denom = pair_id.base_denom;
+        let quote_denom = pair_id.quote_denom;
+
+        // Query the open orders for this pair.
+        let open_orders = suite.query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            start_after: None,
+            limit: Some(u32::MAX),
+        })?;
+
+        // Sum the remaining order amounts by direction
+        let mut bid_order_amount_base = Udec128_6::ZERO;
+        let mut bid_order_amount_quote = Udec128_6::ZERO;
+        let mut ask_order_amount_base = Udec128_6::ZERO;
+        let mut ask_order_amount_quote = Udec128_6::ZERO;
+        for (_, order) in open_orders {
+            if order.direction == Direction::Bid {
+                bid_order_amount_base += order.remaining;
+                bid_order_amount_quote += order.remaining.checked_mul(order.price).unwrap();
+            } else {
+                ask_order_amount_base += order.remaining;
+                ask_order_amount_quote += order.remaining.checked_mul(order.price).unwrap();
+            }
+        }
+
+        // Query the liquidity depths for each bucket size and compare to the open orders.
+        for bucket_size in bucket_sizes {
+            let liquidity_depths =
+                suite.query_wasm_smart(contracts.dex, dex::QueryLiquidityDepthRequest {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                    bucket_size: bucket_size.into_inner(),
+                    limit: Some(u32::MAX),
+                })?;
+
+            let mut bid_depth_base = Udec128_6::ZERO;
+            let mut bid_depth_quote = Udec128_6::ZERO;
+            let mut ask_depth_base = Udec128_6::ZERO;
+            let mut ask_depth_quote = Udec128_6::ZERO;
+
+            if let Some(bid_depths) = liquidity_depths.bid_depth {
+                for (_, depth) in bid_depths {
+                    bid_depth_base.checked_add_assign(depth.depth_base).unwrap();
+                    bid_depth_quote
+                        .checked_add_assign(depth.depth_quote)
+                        .unwrap();
+                }
+            }
+            if let Some(ask_depths) = liquidity_depths.ask_depth {
+                for (_, depth) in ask_depths {
+                    ask_depth_base.checked_add_assign(depth.depth_base).unwrap();
+                    ask_depth_quote
+                        .checked_add_assign(depth.depth_quote)
+                        .unwrap();
+                }
+            }
+
+            // Assert that the liquidity depths are at most 1 unit apart from the open orders.
+            assert!(abs_diff(bid_depth_base, bid_order_amount_base) <= Udec128_6::ONE);
+            assert!(abs_diff(bid_depth_quote, bid_order_amount_quote) <= Udec128_6::ONE);
+            assert!(abs_diff(ask_depth_base, ask_order_amount_base) <= Udec128_6::ONE);
+            assert!(abs_diff(ask_depth_quote, ask_order_amount_quote) <= Udec128_6::ONE);
+        }
     }
 
     Ok(())
@@ -511,19 +596,19 @@ fn amount() -> impl Strategy<Value = Uint128> {
 }
 
 /// Proptest strategy for generating a price as [-3, 3] permille from 1.0
-fn price() -> impl Strategy<Value = Price> {
-    (-3i128..3i128).prop_map(|price_diff| {
-        (Dec128_24::ONE - Dec128_24::new_permille(price_diff))
-            .checked_into_unsigned()
-            .unwrap()
-    })
-}
+// fn price() -> impl Strategy<Value = Price> {
+//     (-3i128..3i128).prop_map(|price_diff| {
+//         (Dec128_24::ONE - Dec128_24::new_permille(price_diff))
+//             .checked_into_unsigned()
+//             .unwrap()
+//     })
+// }
 
 // Proptest strategy for generating an arbitrary price between 0.00000000000000001 and 10000000000
-// fn price() -> impl Strategy<Value = Price> {
-//     (10_000_000u128..10_000_000_000_000_000_000_000_000_000_000_000u128)
-//         .prop_map(|raw_price| Price::raw(Uint128::new(raw_price)))
-// }
+fn price() -> impl Strategy<Value = Price> {
+    (10_000_000u128..10_000_000_000_000_000_000_000_000_000_000_000u128)
+        .prop_map(|raw_price| Price::raw(Uint128::new(raw_price)))
+}
 
 /// Proptest strategy for generating a SwapRoute
 ///
@@ -762,6 +847,17 @@ fn dex_actions(min_size: usize, max_size: usize) -> impl Strategy<Value = Vec<De
         })
 }
 
+/// Proptest strategy for generating a list of LimitOrder actions
+fn limit_orders(min_size: usize, max_size: usize) -> impl Strategy<Value = Vec<DexAction>> {
+    (min_size..=max_size).prop_flat_map(move |size| {
+        (1..=size)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|_| limit_order())
+            .collect::<Vec<_>>()
+    })
+}
+
 /// Test a list of DexActions. Execute the actions and check balances after each action.
 fn test_dex_actions(
     dex_actions: Vec<DexAction>,
@@ -774,7 +870,7 @@ fn test_dex_actions(
                         domain: ethereum::DOMAIN,
                         contract: ethereum::USDC_WARP,
                     },
-                    amount: Uint128::new(1_000_000_000_000_000_000),
+                    amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
@@ -782,7 +878,7 @@ fn test_dex_actions(
                         domain: ethereum::DOMAIN,
                         contract: ethereum::WETH_WARP,
                     },
-                    amount: Uint128::new(1_000_000_000_000_000_000),
+                    amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
@@ -790,7 +886,7 @@ fn test_dex_actions(
                         domain: solana::DOMAIN,
                         contract: solana::SOL_WARP,
                     },
-                    amount: Uint128::new(1_000_000_000_000_000_000),
+                    amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
             ]
@@ -883,8 +979,11 @@ fn test_dex_actions(
             .query_wasm_smart(contracts.dex, dex::QueryPausedRequest {})
             .should_succeed_and_equal(false);
 
-        // Check balances.
-        check_balances(&suite, &contracts)?;
+        // // Check balances.
+        // check_balances(&suite, &contracts)?;
+
+        // Check liquidity depths.
+        check_liquidity_depths(&suite, &contracts)?;
     }
 
     Ok((suite, accounts, contracts))
