@@ -20,6 +20,33 @@ const LATEST_VERSION_KEY: &str = "version";
 
 const LATEST_BATCH_HASH_KEY: &str = "hash";
 
+#[cfg(feature = "metrics")]
+pub const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite";
+
+#[cfg(feature = "metrics")]
+pub const DISK_DB_LITE_ITERATOR_LABEL: &str = "grug.db.disk_lite.iterator";
+
+macro_rules! record {
+    ($duration:ident, $label:expr, $operation:expr) => {
+        {
+            metrics::histogram!($label, "operation" => $operation)
+                .record($duration.elapsed().as_secs_f64());
+        }
+    };
+}
+
+macro_rules! record_storage {
+    ($duration:ident, $operation:expr) => {
+        record!($duration, DISK_DB_LITE_LABEL, $operation);
+    };
+}
+
+macro_rules! record_iterator {
+    ($duration:ident, $operation:expr) => {
+        record!($duration, DISK_DB_LITE_ITERATOR_LABEL, $operation);
+    };
+}
+
 pub struct DiskDbLite {
     inner: Arc<DiskDbLiteInner>,
 }
@@ -143,6 +170,9 @@ impl Db for DiskDbLite {
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         // A pending data can't already exist.
         if self.inner.pending_data.read()?.is_some() {
             return Err(DbError::PendingDataAlreadySet);
@@ -164,10 +194,16 @@ impl Db for DiskDbLite {
             batch,
         });
 
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "flush_but_not_commit");
+
         Ok((version, Some(hash)))
     }
 
     fn commit(&self) -> DbResult<()> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         // A pending data must already exists.
         let pending = self
             .inner
@@ -193,7 +229,12 @@ impl Db for DiskDbLite {
         batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
         batch.put_cf(&cf, LATEST_BATCH_HASH_KEY, pending.hash);
 
-        Ok(self.inner.db.write(batch)?)
+        self.inner.db.write(batch)?;
+
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "commit");
+
+        Ok(())
     }
 }
 
@@ -207,12 +248,21 @@ pub struct StateStorage {
 
 impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.inner
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let result = self
+            .inner
             .db
             .get_cf(&cf_handle(&self.inner.db, self.cf_name), key)
             .unwrap_or_else(|err| {
                 panic!("failed to read from DB! cf: {}, err: {}", self.cf_name, err);
-            })
+            });
+
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "read");
+
+        result
     }
 
     fn scan<'a>(
@@ -221,12 +271,16 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = grug_types::Record> + 'a> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
             .inner
             .db
             .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
+            .with_metrics()
             .map(|item| {
                 let (k, v) = item.unwrap_or_else(|err| {
                     panic!(
@@ -237,6 +291,9 @@ impl Storage for StateStorage {
                 (k.to_vec(), v.to_vec())
             });
 
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "scan");
+
         Box::new(iter)
     }
 
@@ -246,12 +303,16 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
             .inner
             .db
             .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
+            .with_metrics()
             .map(|item| {
                 let (k, _) = item.unwrap_or_else(|err| {
                     panic!(
@@ -262,6 +323,9 @@ impl Storage for StateStorage {
                 k.to_vec()
             });
 
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "scan_keys");
+
         Box::new(iter)
     }
 
@@ -271,12 +335,16 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
             .inner
             .db
             .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
+            .with_metrics()
             .map(|item| {
                 let (_, v) = item.unwrap_or_else(|err| {
                     panic!(
@@ -286,6 +354,9 @@ impl Storage for StateStorage {
                 });
                 v.to_vec()
             });
+
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "scan_values");
 
         Box::new(iter)
     }
@@ -343,6 +414,42 @@ fn cf_handle<'a>(
     db.cf_handle(name).unwrap_or_else(|| {
         panic!("failed to create handle for `{name}` column family");
     })
+}
+
+pub trait WithMetrics<T: Iterator> {
+    fn with_metrics(self) -> MetricIter<T>;
+}
+
+impl<T> WithMetrics<T> for T
+where
+    T: Iterator,
+{
+    fn with_metrics(self) -> MetricIter<T> {
+        MetricIter { iter: self }
+    }
+}
+
+pub struct MetricIter<T: Iterator> {
+    iter: T,
+}
+
+impl<T> Iterator for MetricIter<T>
+where
+    T: Iterator,
+{
+    type Item = T::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let item = self.iter.next();
+
+        #[cfg(feature = "metrics")]
+        record_iterator!(duration, "next");
+
+        item
+    }
 }
 
 // ----------------------------------- tests -----------------------------------

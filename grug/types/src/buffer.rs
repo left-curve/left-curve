@@ -8,6 +8,45 @@ use {
     },
 };
 
+#[cfg(feature = "metrics")]
+use metrics::histogram;
+
+#[cfg(feature = "metrics")]
+pub const BUFFER_LABEL: &str = "grug.types.buffer";
+
+#[cfg(feature = "metrics")]
+pub const MERGED_LABEL: &str = "grug.types.merged";
+
+macro_rules! time {
+    ($self:ident) => {
+        $self.name.map(|_| std::time::Instant::now())
+    };
+}
+
+macro_rules! record {
+    ($self:ident, $duration:ident, $label:expr, $operation:expr) => {
+
+        {
+            if let Some(duration) = $duration {
+                histogram!($label, "name" => $self.name.unwrap(), "operation" => $operation)
+                    .record(duration.elapsed().as_secs_f64());
+            }
+        }
+    };
+}
+
+macro_rules! record_buffer {
+    ($self:ident, $duration:ident, $operation:expr) => {
+        record!($self, $duration, BUFFER_LABEL, $operation);
+    };
+}
+
+macro_rules! record_merged {
+    ($self:ident, $duration:ident, $operation:expr) => {
+        record!($self, $duration, MERGED_LABEL, $operation);
+    };
+}
+
 /// A key-value storage with an in-memory write buffer.
 ///
 /// Adapted from cw-multi-test:
@@ -16,14 +55,16 @@ use {
 pub struct Buffer<S> {
     base: S,
     pending: Batch,
+    name: Option<&'static str>,
 }
 
 impl<S> Buffer<S> {
     /// Create a new buffer storage with an optional write batch.
-    pub fn new(base: S, pending: Option<Batch>) -> Self {
+    pub fn new(base: S, pending: Option<Batch>, name: Option<&'static str>) -> Self {
         Self {
             base,
             pending: pending.unwrap_or_default(),
+            name,
         }
     }
 
@@ -40,14 +81,28 @@ where
 {
     /// Flush pending ops to the underlying store.
     pub fn commit(&mut self) {
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
         let pending = mem::take(&mut self.pending);
+
         self.base.flush(pending);
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "commit");
     }
 
     /// Consume self, flush pending ops to the underlying store, return the
     /// underlying store.
     pub fn consume(mut self) -> S {
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
         self.base.flush(self.pending);
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "consume");
+
         self.base
     }
 }
@@ -57,11 +112,21 @@ where
     S: Storage + Clone,
 {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        match self.pending.get(key) {
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
+        let pending = self.pending.get(key);
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "read");
+
+        let result = match pending {
             Some(Op::Insert(value)) => Some(value.clone()),
             Some(Op::Delete) => None,
             None => self.base.read(key),
-        }
+        };
+
+        result
     }
 
     fn scan<'a>(
@@ -80,13 +145,23 @@ where
 
         let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
         let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
+
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
         let pending_raw = self.pending.range((min, max));
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "scan");
+
         let pending: Box<dyn Iterator<Item = _>> = match order {
             Order::Ascending => Box::new(pending_raw),
             Order::Descending => Box::new(pending_raw.rev()),
         };
 
-        Box::new(Merged::new(base, pending, order))
+        let result = Box::new(Merged::new(base, pending, order, self.name));
+
+        result
     }
 
     fn scan_keys<'a>(
@@ -98,7 +173,10 @@ where
         // Currently we simply iterate both keys and values, and discard the
         // values. This isn't efficient.
         // TODO: optimize this
-        Box::new(self.scan(min, max, order).map(|(k, _)| k))
+
+        let result = Box::new(self.scan(min, max, order).map(|(k, _)| k));
+
+        result
     }
 
     fn scan_values<'a>(
@@ -107,16 +185,36 @@ where
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        Box::new(self.scan(min, max, order).map(|(_, v)| v))
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
+        let result = Box::new(self.scan(min, max, order).map(|(_, v)| v));
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "scan_values");
+
+        result
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
         self.pending
             .insert(key.to_vec(), Op::Insert(value.to_vec()));
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "write");
     }
 
     fn remove(&mut self, key: &[u8]) {
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
         self.pending.insert(key.to_vec(), Op::Delete);
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "remove");
     }
 
     fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
@@ -132,13 +230,25 @@ where
             .map(|key| (key, Op::Delete))
             .collect::<Vec<_>>();
 
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
         self.pending.extend(deletes);
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "remove_range");
     }
 
     fn flush(&mut self, batch: Batch) {
         // When we do `a.extend(b)`, while `a` and `b` have common keys, the
         // values in `b` are chosen. This is exactly what we want.
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
         self.pending.extend(batch);
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "flush");
     }
 }
 
@@ -150,6 +260,7 @@ where
     base: Peekable<B>,
     pending: Peekable<P>,
     order: Order,
+    name: Option<&'static str>,
 }
 
 impl<'a, B, P> Merged<'a, B, P>
@@ -157,16 +268,23 @@ where
     B: Iterator<Item = Record>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
 {
-    pub fn new(base: B, pending: P, order: Order) -> Self {
+    pub fn new(base: B, pending: P, order: Order, name: Option<&'static str>) -> Self {
         Self {
             base: base.peekable(),
             pending: pending.peekable(),
             order,
+            name,
         }
     }
 
     fn take_pending(&mut self) -> Option<Record> {
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
         let (key, op) = self.pending.next()?;
+
+        #[cfg(feature = "metrics")]
+        record_merged!(self, duration, "take_pending");
+
         match op {
             Op::Insert(value) => Some((key.clone(), value.clone())),
             Op::Delete => self.next(),
@@ -182,7 +300,15 @@ where
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match (self.base.peek(), self.pending.peek()) {
+        #[cfg(feature = "metrics")]
+        let duration = time!(self);
+
+        let pending_peek = self.pending.peek();
+
+        #[cfg(feature = "metrics")]
+        record_merged!(self, duration, "pending_peek");
+
+        let result = match (self.base.peek(), pending_peek) {
             (Some((base_key, _)), Some((pending_key, _))) => {
                 let ordering_raw = base_key.cmp(pending_key);
                 let ordering = match self.order {
@@ -202,7 +328,9 @@ where
             (None, Some(_)) => self.take_pending(),
             (Some(_), None) => self.base.next(),
             (None, None) => None,
-        }
+        };
+
+        result
     }
 }
 
@@ -226,7 +354,7 @@ mod tests {
         base.write(&[6], &[6]);
         base.write(&[7], &[7]);
 
-        let mut buffer = Buffer::new(base, None);
+        let mut buffer = Buffer::new(base, None, None);
         buffer.remove(&[2]);
         buffer.write(&[3], &[3]);
         buffer.write(&[6], &[255]);
