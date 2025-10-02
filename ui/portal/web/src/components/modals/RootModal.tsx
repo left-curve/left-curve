@@ -139,6 +139,11 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.ConnectWallet]: {
+    component: lazy(() =>
+      import("./ConnectWallet").then(({ ConnectWallet }) => ({ default: ConnectWallet })),
+    ),
+  },
 };
 
 type ModalDefinition = {

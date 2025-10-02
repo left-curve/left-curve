@@ -13,6 +13,7 @@ export { Table, type TableColumn, type TableClassNames, type ColumnFiltersState 
 export { Cell } from "./Cell";
 export { Tabs, Tab } from "./Tabs";
 export { Input } from "./Input";
+export { OtpInput } from "./OtpInput";
 export { Stepper } from "./Stepper";
 export { Carousel } from "./Carousel";
 export { ResizerContainer } from "./ResizerContainer";
@@ -94,3 +95,6 @@ export { IconMarketOrder } from "./icons/IconMarketOrder";
 export { IconNewAccount } from "./icons/IconNewAccount";
 export { IconCalendar } from "./icons/IconCalendar";
 export { IconTools } from "./icons/IconTools";
+export { IconApple } from "./icons/IconApple";
+export { IconGoogle } from "./icons/IconGoogle";
+export { IconEmail } from "./icons/IconEmail";
