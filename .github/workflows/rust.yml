@@ -590,7 +590,7 @@ jobs:
           COMETBFT_TAG: v0.38.17
         run: |
           cd networks/localdango
-          docker compose down -v
+          docker compose --profile dango down -v
           docker compose --profile dango up -d --wait || {
             echo "Services failed to become healthy"
             docker compose ps
@@ -601,4 +601,4 @@ jobs:
         if: always()
         run: |
           cd networks/localdango
-          docker compose down -v || true
+          docker compose --profile dango down -v || true
