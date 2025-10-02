@@ -258,8 +258,9 @@ pub fn reflect_curve(
                 return None;
             }
 
+            let quote_used = size.checked_mul_dec_floor(price).ok()?;
             maybe_price = price.checked_sub(params.spacing).ok();
-            remaining_quote.checked_sub_assign(size_in_quote).ok()?;
+            remaining_quote.checked_sub_assign(quote_used).ok()?;
 
             Some((price, size))
         })
