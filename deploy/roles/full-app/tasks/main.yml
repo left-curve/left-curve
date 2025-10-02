@@ -10,15 +10,10 @@
 # 3. `ansible-playbook full-app.yml -e traefik_enabled=true`
 
 - import_tasks: validate.yml
-- import_tasks: setup.yml
-- import_tasks: detect_free_ports.yml
-  when: expose_ports and not skip_port_discovery
 - import_tasks: read_current_deploy.yml
   when: traefik_enabled
 - import_tasks: stop_previous.yml
   when: system_wide_directories
-- import_tasks: cometbft_keys.yml
-  when: cometbft_generate_keys
 - import_tasks: deploy_configs.yml
 - import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
@@ -36,3 +31,4 @@
   ignore_errors: true
 - import_tasks: summary.yml
   when: expose_ports
+- import_tasks: check_cometbft_sync.yml
