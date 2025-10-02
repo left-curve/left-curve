@@ -33,6 +33,8 @@ impl StartCmd {
         // This should be done as soon as possible to capture all events.
         let metrics_handler = PrometheusBuilder::new().install_recorder()?;
 
+        tracing::info!("Metrics handler initialized");
+
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
 

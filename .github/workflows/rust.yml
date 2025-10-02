@@ -591,7 +591,7 @@ jobs:
         run: |
           cd networks/localdango
           docker compose down -v
-          docker compose up -d --wait || {
+          docker compose --profile dango up -d --wait || {
             echo "Services failed to become healthy"
             docker compose ps
             docker compose logs
