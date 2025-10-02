@@ -90,11 +90,10 @@ pub fn decrease_liquidity_depths(
             depth_base.checked_sub_assign(amount_base)?;
             depth_quote.checked_sub_assign(amount_quote)?;
 
-            // If the depth of either base or quote is zero, delete it from
-            // storage.
-            // It's possible one is zero while the other is non-zero, due to
-            // rounding error.
-            if depth_base.is_non_zero() || depth_quote.is_non_zero() {
+            // Remove the entry if depth base is zero.
+            // Since the depth quote is a multiplication of depth base and price,
+            // it could have some rounding error and be non-zero when depth base is zero.
+            if depth_base.is_non_zero() {
                 Ok(Some((depth_base, depth_quote)))
             } else {
                 Ok(None)

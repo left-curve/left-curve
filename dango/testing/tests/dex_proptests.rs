@@ -1,4 +1,5 @@
 use {
+    dango_dex::liquidity_depth::get_bucket,
     dango_genesis::Contracts,
     dango_testing::{
         BridgeOp, TestAccounts, TestOption, TestSuite, constants::MOCK_GENESIS_TIMESTAMP,
@@ -10,15 +11,15 @@ use {
         },
         dex::{
             self, CreateOrderRequest, Direction, PairId, PairParams, PairUpdate, PassiveLiquidity,
-            Price, SwapRoute, Xyk,
+            Price, QueryLiquidityDepthRequest, SwapRoute, Xyk,
         },
         gateway::Remote,
     },
     grug::{
         Addressable, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero, MaxLength, Message,
         MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt, Signed,
-        Signer, Udec128, Uint128, UniqueVec, ZeroInclusiveOneExclusive, btree_map, btree_set,
-        coins,
+        Signer, Udec128, Udec128_6, Uint128, UniqueVec, ZeroInclusiveOneExclusive, btree_map,
+        btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -29,6 +30,10 @@ use {
         str::FromStr,
     },
 };
+
+// Confidence interval for comparing liquidity depth quote
+const CONFIDENCE_MIN: &str = "0.9999";
+const CONFIDENCE_MAX: &str = "1.0001";
 
 /// Calculates the absolute difference between two values.
 fn absolute_difference(a: Uint128, b: Uint128) -> Uint128 {
@@ -169,6 +174,114 @@ fn check_balances(
 
         // Assert that the balance of the dex contract equals the balance of the open orders plus the balance of the passive liquidity.
         assert_approx_eq(coin.amount, order_and_passive_liquidity_balance, "0.0001")?;
+    }
+
+    Ok(())
+}
+
+/// Check that the liquidity depth is the sum of the order book.
+fn check_liquidity_depth(
+    suite: &TestSuite<NaiveProposalPreparer>,
+    contracts: &Contracts,
+) -> Result<(), TestCaseError> {
+    let pairs = suite.query_wasm_smart(contracts.dex, dex::QueryPairsRequest {
+        start_after: None,
+        limit: None,
+    })?;
+
+    for pair in pairs {
+        // Query the open orders.
+        let orders = suite.query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: pair.base_denom.clone(),
+            quote_denom: pair.quote_denom.clone(),
+            start_after: None,
+            limit: Some(u32::MAX),
+        })?;
+
+        // Sum per bucket
+        for bucket_size in pair.params.bucket_sizes {
+            let mut bid_depth = btree_map!();
+            let mut ask_depth = btree_map!();
+
+            for (_, order) in orders.clone() {
+                let bucket = get_bucket(bucket_size.into_inner(), order.direction, order.price)?;
+
+                let entry = match order.direction {
+                    Direction::Bid => &mut bid_depth,
+                    Direction::Ask => &mut ask_depth,
+                }
+                .entry(bucket)
+                .or_insert((Udec128_6::ZERO, Udec128_6::ZERO));
+
+                entry.0.checked_add_assign(order.remaining)?;
+                entry
+                    .1
+                    .checked_add_assign(order.remaining.checked_mul(order.price)?)?;
+            }
+
+            // Retrieve the liquidity depth from the contract.
+            let contract_depth =
+                suite.query_wasm_smart(contracts.dex, QueryLiquidityDepthRequest {
+                    base_denom: pair.base_denom.clone(),
+                    quote_denom: pair.quote_denom.clone(),
+                    bucket_size: bucket_size.into_inner(),
+                    limit: None,
+                })?;
+
+            // Compare the calculated depth with the contract depth.
+            let confindence_min = Udec128_6::from_str(CONFIDENCE_MIN).unwrap();
+            let confindence_max = Udec128_6::from_str(CONFIDENCE_MAX).unwrap();
+
+            if let Some(contract_bid_depth) = contract_depth.bid_depth {
+                for (price, liquidity_depth) in contract_bid_depth {
+                    assert!(bid_depth.contains_key(&price));
+
+                    assert_eq!(
+                        bid_depth[&price].0, liquidity_depth.depth_base,
+                        "Bid depth base mismatch for price {}: expected {}, got {}",
+                        price, bid_depth[&price].0, liquidity_depth.depth_base
+                    );
+
+                    let ratio = bid_depth[&price]
+                        .0
+                        .checked_div(liquidity_depth.depth_base)
+                        .unwrap();
+
+                    assert!(
+                        ratio >= confindence_min && ratio <= confindence_max,
+                        "Bid depth quote mismatch for price {}: expected {}, got {}",
+                        price,
+                        bid_depth[&price].1,
+                        liquidity_depth.depth_quote
+                    );
+                }
+            }
+
+            if let Some(contract_ask_depth) = contract_depth.ask_depth {
+                for (price, liquidity_depth) in contract_ask_depth {
+                    assert!(ask_depth.contains_key(&price));
+
+                    assert_eq!(
+                        ask_depth[&price].0, liquidity_depth.depth_base,
+                        "Ask depth base mismatch for price {}: expected {}, got {}",
+                        price, ask_depth[&price].0, liquidity_depth.depth_base
+                    );
+
+                    let ratio = ask_depth[&price]
+                        .0
+                        .checked_div(liquidity_depth.depth_base)
+                        .unwrap();
+
+                    assert!(
+                        ratio >= confindence_min && ratio <= confindence_max,
+                        "Ask depth quote mismatch for price {}: expected {}, got {}",
+                        price,
+                        ask_depth[&price].1,
+                        liquidity_depth.depth_quote
+                    );
+                }
+            }
+        }
     }
 
     Ok(())
@@ -885,6 +998,9 @@ fn test_dex_actions(
 
         // Check balances.
         check_balances(&suite, &contracts)?;
+
+        // Check liquidity depth.
+        check_liquidity_depth(&suite, &contracts)?;
     }
 
     Ok((suite, accounts, contracts))

@@ -1,6 +1,9 @@
 use {
     dango_client::SingleSigner,
-    dango_types::dex::{self, Geometric, PassiveLiquidity},
+    dango_types::{
+        config::AppConfig,
+        dex::{self, Geometric, PassiveLiquidity},
+    },
     grug::{
         Addr, Bounded, BroadcastClientExt, Coins, GasOption, JsonSerExt, QueryClientExt, Udec128,
         addr,
@@ -10,8 +13,6 @@ use {
     std::str::FromStr,
 };
 
-const CHAIN_ID: &str = "dev-6";
-
 const OWNER: Addr = addr!("33361de42571d6aa20c37daa6da4b5ab67bfaad9");
 
 const OWNER_USERNAME: &str = "owner";
@@ -20,11 +21,17 @@ const OWNER_USERNAME: &str = "owner";
 const OWNER_PRIVATE_KEY: [u8; 32] =
     hex!("8a8b0ab692eb223f6a2927ad56e63c2ae22a8bc9a5bdfeb1d8127819ddcce177");
 
-const DEX: Addr = addr!("8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f");
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = HttpClient::new("https://testnet.dango.exchange")?;
+    let client = HttpClient::new("https://graphql.dango.exchange")?;
+
+    let dex = client
+        .query_app_config::<AppConfig>(None)
+        .await?
+        .addresses
+        .dex;
+
+    let chain_id = client.query_status(None).await?.chain_id;
 
     let mut owner = SingleSigner::from_private_key(OWNER_USERNAME, OWNER, OWNER_PRIVATE_KEY)?
         .with_query_nonce(&client)
@@ -33,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
     // Query the current pair params.
     let mut pairs = client
         .query_wasm_smart(
-            DEX,
+            dex,
             dex::QueryPairsRequest {
                 start_after: None,
                 limit: None,
@@ -55,11 +62,11 @@ async fn main() -> anyhow::Result<()> {
     let outcome = client
         .execute(
             &mut owner,
-            DEX,
+            dex,
             &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(pairs)),
             Coins::new(),
             GasOption::Predefined { gas_limit: 100_000 },
-            CHAIN_ID,
+            &chain_id,
         )
         .await?;
     println!("{}", outcome.to_json_string_pretty()?);
