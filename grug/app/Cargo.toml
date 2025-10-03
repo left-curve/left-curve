@@ -12,7 +12,7 @@ version       = { workspace = true }
 [features]
 abci    = ["data-encoding", "tendermint", "tower", "tower-abci"]
 ibc     = ["ics23"]
-metrics = ["dep:metrics"]
+metrics = ["dep:metrics", "grug-types/metrics"]
 tracing = ["dep:tracing", "grug-types/chrono"]
 
 [dependencies]

@@ -25,6 +25,9 @@ use {
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
+#[cfg(feature = "metrics")]
+use grug::MetricsIterExt;
+
 const HALF: Udec128 = Udec128::new_percent(50);
 
 /// Match and fill orders using the uniform price auction strategy.
@@ -348,13 +351,26 @@ fn clear_orders_of_pair(
     let bid_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .values(storage, None, None, IterationOrder::Descending)
-        .with_metrics(&base_denom, &quote_denom, IterationOrder::Descending);
+        .values(storage, None, None, IterationOrder::Descending);
+
+    #[cfg(feature = "metrics")]
+    let bid_iter = bid_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+        ("base_denom", base_denom.to_string()),
+        ("quote_denom", quote_denom.to_string()),
+        ("iteration_order", IterationOrder::Descending.to_string()),
+    ]);
+
     let ask_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .values(storage, None, None, IterationOrder::Ascending)
-        .with_metrics(&base_denom, &quote_denom, IterationOrder::Ascending);
+        .values(storage, None, None, IterationOrder::Ascending);
+
+    #[cfg(feature = "metrics")]
+    let ask_iter = ask_iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+        ("base_denom", base_denom.to_string()),
+        ("quote_denom", quote_denom.to_string()),
+        ("iteration_order", IterationOrder::Ascending.to_string()),
+    ]);
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
@@ -708,15 +724,22 @@ fn clear_orders_of_pair(
 
     // ------------------------- 5. Cancel IOC orders --------------------------
 
-    for order in ORDERS
+    let iter = ORDERS
         .idx
         .time_in_force
         .prefix(TimeInForce::ImmediateOrCancel)
-        .append((base_denom.clone(), quote_denom.clone()))
-        .values(storage, None, None, IterationOrder::Ascending)
-        .with_metrics(&base_denom, &quote_denom, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?
-    {
+        .append((base_denom.clone(), quote_denom.clone()));
+
+    let iter = iter.values(storage, None, None, IterationOrder::Ascending);
+
+    #[cfg(feature = "metrics")]
+    let iter = iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+        ("base_denom", base_denom.to_string()),
+        ("quote_denom", quote_denom.to_string()),
+        ("iteration_order", IterationOrder::Ascending.to_string()),
+    ]);
+
+    for order in iter.collect::<StdResult<Vec<_>>>()? {
         ORDERS.remove(
             storage,
             (
@@ -753,23 +776,45 @@ fn clear_orders_of_pair(
 
     // ----------------- 6. Save the resting order book state ------------------
 
+    let mut iter = {
+        let iter = ORDERS
+            .prefix((base_denom.clone(), quote_denom.clone()))
+            .append(Direction::Bid)
+            .keys(storage, None, None, IterationOrder::Descending);
+
+        #[cfg(feature = "metrics")]
+        let iter = iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Descending.to_string()),
+        ]);
+        iter
+    };
+
     // Find the best bid and ask prices that remains after all the previous steps.
-    let best_bid_price = ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Bid)
-        .keys(storage, None, None, IterationOrder::Descending)
-        .with_metrics(&base_denom, &quote_denom, IterationOrder::Descending)
-        .next()
-        .transpose()?
-        .map(|(price, _order_id)| price);
-    let best_ask_price = ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Ask)
-        .keys(storage, None, None, IterationOrder::Ascending)
-        .with_metrics(&base_denom, &quote_denom, IterationOrder::Ascending)
-        .next()
-        .transpose()?
-        .map(|(price, _order_id)| price);
+    let best_bid_price = iter.next().transpose()?.map(|(price, _order_id)| price);
+
+    drop(iter);
+
+    let mut iter = {
+        let iter = ORDERS
+            .prefix((base_denom.clone(), quote_denom.clone()))
+            .append(Direction::Ask)
+            .keys(storage, None, None, IterationOrder::Ascending);
+
+        #[cfg(feature = "metrics")]
+        let iter = iter.with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Ascending.to_string()),
+        ]);
+
+        iter
+    };
+
+    let best_ask_price = iter.next().transpose()?.map(|(price, _order_id)| price);
+
+    drop(iter);
 
     // Determine the mid price:
     // - if both best bid and ask prices exist, then take the average of them;
@@ -1035,70 +1080,6 @@ where
         .clear(storage, None, Some(Bound::Exclusive(max)));
 
     Ok(())
-}
-
-// ---------------------------------- metrics ----------------------------------
-
-/// A wrapper over an iterator that emits metrics when the iterator is advanced.
-pub struct MetricsIter<'a, I> {
-    iter: I,
-    // Quick hack: make these two fields public, so clippy doesn't complain they
-    // are unused when `metrics` feature is disabled.
-    pub base_denom: &'a Denom,
-    pub quote_denom: &'a Denom,
-    pub iteration_order: IterationOrder,
-}
-
-impl<'a, I> Iterator for MetricsIter<'a, I>
-where
-    I: Iterator,
-{
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        #[cfg(feature = "metrics")]
-        let duration = std::time::Instant::now();
-
-        let item = self.iter.next();
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::histogram!(
-                crate::metrics::LABEL_DURATION_ITER_NEXT,
-                "base_denom" => self.base_denom.to_string(),
-                "quote_denom" => self.quote_denom.to_string(),
-                "iteration_order" => self.iteration_order.as_str(),
-            )
-            .record(duration.elapsed().as_secs_f64());
-        }
-
-        item
-    }
-}
-
-pub trait MetricsIterExt<'a>: Sized {
-    fn with_metrics(
-        self,
-        base_denom: &'a Denom,
-        quote_denom: &'a Denom,
-        iteration_order: IterationOrder,
-    ) -> MetricsIter<'a, Self>;
-}
-
-impl<'a, T> MetricsIterExt<'a> for Box<dyn Iterator<Item = T> + 'a> {
-    fn with_metrics(
-        self,
-        base_denom: &'a Denom,
-        quote_denom: &'a Denom,
-        iteration_order: IterationOrder,
-    ) -> MetricsIter<'a, Self> {
-        MetricsIter {
-            iter: self,
-            base_denom,
-            quote_denom,
-            iteration_order,
-        }
-    }
 }
 
 // ----------------------------------- tests -----------------------------------

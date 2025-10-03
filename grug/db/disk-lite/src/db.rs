@@ -12,6 +12,9 @@ use {
     },
 };
 
+#[cfg(feature = "metrics")]
+use grug_types::MetricsIterExt;
+
 const CF_NAME_DEFAULT: &str = "default";
 
 const CF_NAME_METADATA: &str = "metadata";
@@ -19,6 +22,19 @@ const CF_NAME_METADATA: &str = "metadata";
 const LATEST_VERSION_KEY: &str = "version";
 
 const LATEST_BATCH_HASH_KEY: &str = "hash";
+
+#[cfg(feature = "metrics")]
+const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite.duration";
+
+#[cfg(feature = "metrics")]
+macro_rules! record_storage {
+    ($duration:ident, $operation:expr) => {
+        {
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => $operation)
+                .record($duration.elapsed().as_secs_f64());
+        }
+    };
+}
 
 pub struct DiskDbLite {
     inner: Arc<DiskDbLiteInner>,
@@ -143,6 +159,9 @@ impl Db for DiskDbLite {
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         // A pending data can't already exist.
         if self.inner.pending_data.read()?.is_some() {
             return Err(DbError::PendingDataAlreadySet);
@@ -164,10 +183,16 @@ impl Db for DiskDbLite {
             batch,
         });
 
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "flush_but_not_commit");
+
         Ok((version, Some(hash)))
     }
 
     fn commit(&self) -> DbResult<()> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         // A pending data must already exists.
         let pending = self
             .inner
@@ -193,7 +218,12 @@ impl Db for DiskDbLite {
         batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
         batch.put_cf(&cf, LATEST_BATCH_HASH_KEY, pending.hash);
 
-        Ok(self.inner.db.write(batch)?)
+        self.inner.db.write(batch)?;
+
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "commit");
+
+        Ok(())
     }
 }
 
@@ -205,14 +235,41 @@ pub struct StateStorage {
     cf_name: &'static str,
 }
 
+impl StateStorage {
+    fn create_iterator<'a>(
+        &'a self,
+        opts: ReadOptions,
+        mode: IteratorMode<'static>,
+    ) -> Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>), rocksdb::Error>> + 'a> {
+        let iter =
+            self.inner
+                .db
+                .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode);
+
+        #[cfg(feature = "metrics")]
+        let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [("operation", "next")]);
+
+        Box::new(iter)
+    }
+}
+
 impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.inner
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let result = self
+            .inner
             .db
             .get_cf(&cf_handle(&self.inner.db, self.cf_name), key)
             .unwrap_or_else(|err| {
                 panic!("failed to read from DB! cf: {}, err: {}", self.cf_name, err);
-            })
+            });
+
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "read");
+
+        result
     }
 
     fn scan<'a>(
@@ -221,21 +278,24 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = grug_types::Record> + 'a> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .map(|item| {
-                let (k, v) = item.unwrap_or_else(|err| {
-                    panic!(
-                        "failed to iterate in DB! cf: {}, err: {}",
-                        self.cf_name, err
-                    );
-                });
-                (k.to_vec(), v.to_vec())
+
+        let iter = self.create_iterator(opts, mode).map(|item| {
+            let (k, v) = item.unwrap_or_else(|err| {
+                panic!(
+                    "failed to iterate in DB! cf: {}, err: {}",
+                    self.cf_name, err
+                );
             });
+            (k.to_vec(), v.to_vec())
+        });
+
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "scan");
 
         Box::new(iter)
     }
@@ -246,21 +306,23 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .map(|item| {
-                let (k, _) = item.unwrap_or_else(|err| {
-                    panic!(
-                        "failed to iterate in DB! cf: {}, err: {}",
-                        self.cf_name, err
-                    );
-                });
-                k.to_vec()
+        let iter = self.create_iterator(opts, mode).map(|item| {
+            let (k, _) = item.unwrap_or_else(|err| {
+                panic!(
+                    "failed to iterate in DB! cf: {}, err: {}",
+                    self.cf_name, err
+                );
             });
+            k.to_vec()
+        });
+
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "scan_keys");
 
         Box::new(iter)
     }
@@ -271,21 +333,23 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .map(|item| {
-                let (_, v) = item.unwrap_or_else(|err| {
-                    panic!(
-                        "failed to iterate in DB! cf: {}, err: {}",
-                        self.cf_name, err
-                    );
-                });
-                v.to_vec()
+        let iter = self.create_iterator(opts, mode).map(|item| {
+            let (_, v) = item.unwrap_or_else(|err| {
+                panic!(
+                    "failed to iterate in DB! cf: {}, err: {}",
+                    self.cf_name, err
+                );
             });
+            v.to_vec()
+        });
+
+        #[cfg(feature = "metrics")]
+        record_storage!(duration, "scan_values");
 
         Box::new(iter)
     }
