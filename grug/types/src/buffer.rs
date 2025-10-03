@@ -327,7 +327,7 @@ where
     }
 }
 
-/// A trait that rappresent a Iterator::Item that rappresent a key.
+/// A trait that represent a Iterator::Item that represent a key.
 trait AsKey {
     fn from_key_value(key: &[u8], value: &[u8]) -> Self;
     fn as_key(&self) -> &[u8];
