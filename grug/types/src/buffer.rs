@@ -1,5 +1,7 @@
+#[cfg(feature = "metrics")]
+use std::time::Instant;
 use {
-    crate::{Batch, Op, Order, Record, Storage},
+    crate::{Batch, MetricsIterExt, Op, Order, Record, Storage, btree_map},
     std::{
         cmp::Ordering,
         iter::{self, Peekable},
@@ -8,42 +10,14 @@ use {
     },
 };
 
-#[cfg(feature = "metrics")]
-use metrics::histogram;
-
-#[cfg(feature = "metrics")]
-pub const BUFFER_LABEL: &str = "grug.types.buffer";
-
-#[cfg(feature = "metrics")]
-pub const MERGED_LABEL: &str = "grug.types.merged";
-
-macro_rules! time {
-    ($self:ident) => {
-        $self.name.map(|_| std::time::Instant::now())
-    };
-}
-
-macro_rules! record {
-    ($self:ident, $duration:ident, $label:expr, $operation:expr) => {
-
-        {
-            if let Some(duration) = $duration {
-                histogram!($label, "name" => $self.name.unwrap(), "operation" => $operation)
-                    .record(duration.elapsed().as_secs_f64());
-            }
-        }
-    };
-}
+pub const BUFFER_LABEL: &str = "grug.types.buffer.duration";
 
 macro_rules! record_buffer {
     ($self:ident, $duration:ident, $operation:expr) => {
-        record!($self, $duration, BUFFER_LABEL, $operation);
-    };
-}
-
-macro_rules! record_merged {
-    ($self:ident, $duration:ident, $operation:expr) => {
-        record!($self, $duration, MERGED_LABEL, $operation);
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => $self.name.unwrap_or("unknown"), "operation" => $operation)
+                .record($duration.elapsed().as_secs_f64());
+        }
     };
 }
 
@@ -82,7 +56,7 @@ where
     /// Flush pending ops to the underlying store.
     pub fn commit(&mut self) {
         #[cfg(feature = "metrics")]
-        let duration = time!(self);
+        let duration = Instant::now();
 
         let pending = mem::take(&mut self.pending);
 
@@ -96,7 +70,7 @@ where
     /// underlying store.
     pub fn consume(mut self) -> S {
         #[cfg(feature = "metrics")]
-        let duration = time!(self);
+        let duration = Instant::now();
 
         self.base.flush(self.pending);
 
@@ -113,20 +87,18 @@ where
 {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         #[cfg(feature = "metrics")]
-        let duration = time!(self);
+        let duration = Instant::now();
 
         let pending = self.pending.get(key);
 
         #[cfg(feature = "metrics")]
         record_buffer!(self, duration, "read");
 
-        let result = match pending {
+        match pending {
             Some(Op::Insert(value)) => Some(value.clone()),
             Some(Op::Delete) => None,
             None => self.base.read(key),
-        };
-
-        result
+        }
     }
 
     fn scan<'a>(
@@ -147,7 +119,7 @@ where
         let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
 
         #[cfg(feature = "metrics")]
-        let duration = time!(self);
+        let duration = Instant::now();
 
         let pending_raw = self.pending.range((min, max));
 
@@ -159,7 +131,12 @@ where
             Order::Descending => Box::new(pending_raw.rev()),
         };
 
-        let result = Box::new(Merged::new(base, pending, order, self.name));
+        let pending = pending.with_metrics(
+            BUFFER_LABEL,
+            btree_map!("operation" => "next", "name" => self.name.unwrap()),
+        );
+
+        let result = Box::new(Merged::new(base, pending, order));
 
         result
     }
@@ -174,7 +151,13 @@ where
         // values. This isn't efficient.
         // TODO: optimize this
 
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
         let result = Box::new(self.scan(min, max, order).map(|(k, _)| k));
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, "scan_keys");
 
         result
     }
@@ -186,7 +169,7 @@ where
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
         #[cfg(feature = "metrics")]
-        let duration = time!(self);
+        let duration = Instant::now();
 
         let result = Box::new(self.scan(min, max, order).map(|(_, v)| v));
 
@@ -198,7 +181,7 @@ where
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
         #[cfg(feature = "metrics")]
-        let duration = time!(self);
+        let duration = Instant::now();
 
         self.pending
             .insert(key.to_vec(), Op::Insert(value.to_vec()));
@@ -209,7 +192,7 @@ where
 
     fn remove(&mut self, key: &[u8]) {
         #[cfg(feature = "metrics")]
-        let duration = time!(self);
+        let duration = Instant::now();
 
         self.pending.insert(key.to_vec(), Op::Delete);
 
@@ -231,7 +214,7 @@ where
             .collect::<Vec<_>>();
 
         #[cfg(feature = "metrics")]
-        let duration = time!(self);
+        let duration = Instant::now();
 
         self.pending.extend(deletes);
 
@@ -243,7 +226,7 @@ where
         // When we do `a.extend(b)`, while `a` and `b` have common keys, the
         // values in `b` are chosen. This is exactly what we want.
         #[cfg(feature = "metrics")]
-        let duration = time!(self);
+        let duration = Instant::now();
 
         self.pending.extend(batch);
 
@@ -260,7 +243,6 @@ where
     base: Peekable<B>,
     pending: Peekable<P>,
     order: Order,
-    name: Option<&'static str>,
 }
 
 impl<'a, B, P> Merged<'a, B, P>
@@ -268,22 +250,16 @@ where
     B: Iterator<Item = Record>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
 {
-    pub fn new(base: B, pending: P, order: Order, name: Option<&'static str>) -> Self {
+    pub fn new(base: B, pending: P, order: Order) -> Self {
         Self {
             base: base.peekable(),
             pending: pending.peekable(),
             order,
-            name,
         }
     }
 
     fn take_pending(&mut self) -> Option<Record> {
-        #[cfg(feature = "metrics")]
-        let duration = time!(self);
         let (key, op) = self.pending.next()?;
-
-        #[cfg(feature = "metrics")]
-        record_merged!(self, duration, "take_pending");
 
         match op {
             Op::Insert(value) => Some((key.clone(), value.clone())),
@@ -300,15 +276,7 @@ where
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
-        #[cfg(feature = "metrics")]
-        let duration = time!(self);
-
-        let pending_peek = self.pending.peek();
-
-        #[cfg(feature = "metrics")]
-        record_merged!(self, duration, "pending_peek");
-
-        let result = match (self.base.peek(), pending_peek) {
+        let result = match (self.base.peek(), self.pending.peek()) {
             (Some((base_key, _)), Some((pending_key, _))) => {
                 let ordering_raw = base_key.cmp(pending_key);
                 let ordering = match self.order {

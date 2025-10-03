@@ -1,7 +1,7 @@
 use {
     crate::{DbError, DbResult, digest::batch_hash},
     grug_app::Db,
-    grug_types::{Batch, Empty, Hash256, Op, Order, Storage},
+    grug_types::{Batch, Empty, Hash256, MetricsIterExt, Op, Order, Storage, btree_map},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -20,30 +20,16 @@ const LATEST_VERSION_KEY: &str = "version";
 
 const LATEST_BATCH_HASH_KEY: &str = "hash";
 
-#[cfg(feature = "metrics")]
-pub const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite";
+pub const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite.duration";
 
-#[cfg(feature = "metrics")]
-pub const DISK_DB_LITE_ITERATOR_LABEL: &str = "grug.db.disk_lite.iterator";
-
-macro_rules! record {
-    ($duration:ident, $label:expr, $operation:expr) => {
-        {
-            metrics::histogram!($label, "operation" => $operation)
-                .record($duration.elapsed().as_secs_f64());
-        }
-    };
-}
+pub const DISK_DB_LITE_ITERATOR_LABEL: &str = "grug.db.disk_lite.iterator.duration";
 
 macro_rules! record_storage {
     ($duration:ident, $operation:expr) => {
-        record!($duration, DISK_DB_LITE_LABEL, $operation);
-    };
-}
-
-macro_rules! record_iterator {
-    ($duration:ident, $operation:expr) => {
-        record!($duration, DISK_DB_LITE_ITERATOR_LABEL, $operation);
+        {
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => $operation)
+                .record($duration.elapsed().as_secs_f64());
+        }
     };
 }
 
@@ -280,7 +266,10 @@ impl Storage for StateStorage {
             .inner
             .db
             .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .with_metrics()
+            .with_metrics(
+                DISK_DB_LITE_ITERATOR_LABEL,
+                btree_map!("operation" => "next"),
+            )
             .map(|item| {
                 let (k, v) = item.unwrap_or_else(|err| {
                     panic!(
@@ -312,7 +301,10 @@ impl Storage for StateStorage {
             .inner
             .db
             .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .with_metrics()
+            .with_metrics(
+                DISK_DB_LITE_ITERATOR_LABEL,
+                btree_map!("operation" => "next"),
+            )
             .map(|item| {
                 let (k, _) = item.unwrap_or_else(|err| {
                     panic!(
@@ -344,7 +336,10 @@ impl Storage for StateStorage {
             .inner
             .db
             .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .with_metrics()
+            .with_metrics(
+                DISK_DB_LITE_ITERATOR_LABEL,
+                btree_map!("operation" => "next"),
+            )
             .map(|item| {
                 let (_, v) = item.unwrap_or_else(|err| {
                     panic!(
@@ -414,42 +409,6 @@ fn cf_handle<'a>(
     db.cf_handle(name).unwrap_or_else(|| {
         panic!("failed to create handle for `{name}` column family");
     })
-}
-
-pub trait WithMetrics<T: Iterator> {
-    fn with_metrics(self) -> MetricIter<T>;
-}
-
-impl<T> WithMetrics<T> for T
-where
-    T: Iterator,
-{
-    fn with_metrics(self) -> MetricIter<T> {
-        MetricIter { iter: self }
-    }
-}
-
-pub struct MetricIter<T: Iterator> {
-    iter: T,
-}
-
-impl<T> Iterator for MetricIter<T>
-where
-    T: Iterator,
-{
-    type Item = T::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        #[cfg(feature = "metrics")]
-        let duration = std::time::Instant::now();
-
-        let item = self.iter.next();
-
-        #[cfg(feature = "metrics")]
-        record_iterator!(duration, "next");
-
-        item
-    }
 }
 
 // ----------------------------------- tests -----------------------------------
