@@ -134,7 +134,7 @@ where
 
         let pending = pending.with_metrics(
             BUFFER_LABEL,
-            btree_map!("operation" => "next", "name" => self.name.unwrap()),
+            btree_map!("operation" => "next", "name" => self.name.unwrap_or("unknown")),
         );
 
         let result = Box::new(Merged::new(base, pending, order));
