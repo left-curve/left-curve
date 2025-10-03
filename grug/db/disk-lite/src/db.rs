@@ -1,7 +1,7 @@
 use {
     crate::{DbError, DbResult, digest::batch_hash},
     grug_app::Db,
-    grug_types::{Batch, Empty, Hash256, MetricsIterExt, Op, Order, Storage},
+    grug_types::{Batch, Empty, Hash256, Op, Order, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -11,6 +11,9 @@ use {
         sync::{Arc, RwLock},
     },
 };
+
+#[cfg(feature = "metrics")]
+use grug_types::MetricsIterExt;
 
 const CF_NAME_DEFAULT: &str = "default";
 
@@ -24,6 +27,7 @@ pub const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite.duration";
 
 pub const DISK_DB_LITE_ITERATOR_LABEL: &str = "grug.db.disk_lite.iterator.duration";
 
+#[cfg(feature = "metrics")]
 macro_rules! record_storage {
     ($duration:ident, $operation:expr) => {
         {
