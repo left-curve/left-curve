@@ -1,7 +1,7 @@
 #[cfg(feature = "metrics")]
-use std::time::Instant;
+use {crate::MetricsIterExt, std::time::Instant};
 use {
-    crate::{Batch, MetricsIterExt, Op, Order, Record, Storage, btree_map},
+    crate::{Batch, Op, Order, Record, Storage},
     std::{
         cmp::Ordering,
         iter::{self, Peekable},
@@ -30,6 +30,7 @@ macro_rules! record_buffer {
 pub struct Buffer<S> {
     base: S,
     pending: Batch,
+    #[allow(dead_code)]
     name: Option<&'static str>,
 }
 
@@ -132,10 +133,11 @@ where
             Order::Descending => Box::new(pending_raw.rev()),
         };
 
-        let pending = pending.with_metrics(
-            BUFFER_LABEL,
-            btree_map!("operation" => "next", "name" => self.name.unwrap_or("unknown")),
-        );
+        #[cfg(feature = "metrics")]
+        let pending = pending.with_metrics(BUFFER_LABEL, [
+            ("operation", "next"),
+            ("name", self.name.unwrap_or("unknown")),
+        ]);
 
         let result = Box::new(Merged::new(base, pending, order));
 

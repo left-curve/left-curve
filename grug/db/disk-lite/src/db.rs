@@ -1,7 +1,7 @@
 use {
     crate::{DbError, DbResult, digest::batch_hash},
     grug_app::Db,
-    grug_types::{Batch, Empty, Hash256, MetricsIterExt, Op, Order, Storage, btree_map},
+    grug_types::{Batch, Empty, Hash256, MetricsIterExt, Op, Order, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -232,6 +232,24 @@ pub struct StateStorage {
     cf_name: &'static str,
 }
 
+impl StateStorage {
+    fn create_iterator<'a>(
+        &'a self,
+        opts: ReadOptions,
+        mode: IteratorMode<'static>,
+    ) -> Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>), rocksdb::Error>> + 'a> {
+        let iter =
+            self.inner
+                .db
+                .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode);
+
+        #[cfg(feature = "metrics")]
+        let iter = iter.with_metrics(DISK_DB_LITE_ITERATOR_LABEL, [("operation", "next")]);
+
+        Box::new(iter)
+    }
+}
+
 impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         #[cfg(feature = "metrics")]
@@ -262,23 +280,16 @@ impl Storage for StateStorage {
 
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .with_metrics(
-                DISK_DB_LITE_ITERATOR_LABEL,
-                btree_map!("operation" => "next"),
-            )
-            .map(|item| {
-                let (k, v) = item.unwrap_or_else(|err| {
-                    panic!(
-                        "failed to iterate in DB! cf: {}, err: {}",
-                        self.cf_name, err
-                    );
-                });
-                (k.to_vec(), v.to_vec())
+
+        let iter = self.create_iterator(opts, mode).map(|item| {
+            let (k, v) = item.unwrap_or_else(|err| {
+                panic!(
+                    "failed to iterate in DB! cf: {}, err: {}",
+                    self.cf_name, err
+                );
             });
+            (k.to_vec(), v.to_vec())
+        });
 
         #[cfg(feature = "metrics")]
         record_storage!(duration, "scan");
@@ -297,23 +308,15 @@ impl Storage for StateStorage {
 
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .with_metrics(
-                DISK_DB_LITE_ITERATOR_LABEL,
-                btree_map!("operation" => "next"),
-            )
-            .map(|item| {
-                let (k, _) = item.unwrap_or_else(|err| {
-                    panic!(
-                        "failed to iterate in DB! cf: {}, err: {}",
-                        self.cf_name, err
-                    );
-                });
-                k.to_vec()
+        let iter = self.create_iterator(opts, mode).map(|item| {
+            let (k, _) = item.unwrap_or_else(|err| {
+                panic!(
+                    "failed to iterate in DB! cf: {}, err: {}",
+                    self.cf_name, err
+                );
             });
+            k.to_vec()
+        });
 
         #[cfg(feature = "metrics")]
         record_storage!(duration, "scan_keys");
@@ -332,23 +335,15 @@ impl Storage for StateStorage {
 
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .with_metrics(
-                DISK_DB_LITE_ITERATOR_LABEL,
-                btree_map!("operation" => "next"),
-            )
-            .map(|item| {
-                let (_, v) = item.unwrap_or_else(|err| {
-                    panic!(
-                        "failed to iterate in DB! cf: {}, err: {}",
-                        self.cf_name, err
-                    );
-                });
-                v.to_vec()
+        let iter = self.create_iterator(opts, mode).map(|item| {
+            let (_, v) = item.unwrap_or_else(|err| {
+                panic!(
+                    "failed to iterate in DB! cf: {}, err: {}",
+                    self.cf_name, err
+                );
             });
+            v.to_vec()
+        });
 
         #[cfg(feature = "metrics")]
         record_storage!(duration, "scan_values");

@@ -1,22 +1,13 @@
-pub struct MetricsIter<I, L> {
-    iter: I,
-    pub name: &'static str,
-    pub labels: L,
-}
-
-#[cfg(not(feature = "metrics"))]
-impl<I, L> Iterator for MetricsIter<I, L>
+pub struct MetricsIter<I, L>
 where
     I: Iterator,
+    for<'a> &'a L: metrics::IntoLabels,
 {
-    type Item = I::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
+    iter: I,
+    name: &'static str,
+    labels: L,
 }
 
-#[cfg(feature = "metrics")]
 impl<I, L> Iterator for MetricsIter<I, L>
 where
     I: Iterator,
@@ -35,15 +26,20 @@ where
     }
 }
 
-pub trait MetricsIterExt<'a>: Sized {
-    fn with_metrics<L>(self, name: &'static str, labels: L) -> MetricsIter<Self, L>;
+pub trait MetricsIterExt: Sized + Iterator {
+    fn with_metrics<L>(self, name: &'static str, labels: L) -> MetricsIter<Self, L>
+    where
+        for<'a> &'a L: metrics::IntoLabels;
 }
 
-impl<'a, T> MetricsIterExt<'a> for T
+impl<T> MetricsIterExt for T
 where
     T: Iterator,
 {
-    fn with_metrics<L>(self, name: &'static str, labels: L) -> MetricsIter<Self, L> {
+    fn with_metrics<L>(self, name: &'static str, labels: L) -> MetricsIter<Self, L>
+    where
+        for<'a> &'a L: metrics::IntoLabels,
+    {
         MetricsIter {
             iter: self,
             name,
