@@ -10,7 +10,8 @@ use {
     },
 };
 
-pub const BUFFER_LABEL: &str = "grug.types.buffer.duration";
+#[cfg(feature = "metrics")]
+const BUFFER_LABEL: &str = "grug.types.buffer.duration";
 
 #[cfg(feature = "metrics")]
 macro_rules! record_buffer {

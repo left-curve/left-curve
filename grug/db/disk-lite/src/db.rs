@@ -23,9 +23,8 @@ const LATEST_VERSION_KEY: &str = "version";
 
 const LATEST_BATCH_HASH_KEY: &str = "hash";
 
-pub const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite.duration";
-
-pub const DISK_DB_LITE_ITERATOR_LABEL: &str = "grug.db.disk_lite.iterator.duration";
+#[cfg(feature = "metrics")]
+const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite.duration";
 
 #[cfg(feature = "metrics")]
 macro_rules! record_storage {
@@ -248,7 +247,7 @@ impl StateStorage {
                 .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode);
 
         #[cfg(feature = "metrics")]
-        let iter = iter.with_metrics(DISK_DB_LITE_ITERATOR_LABEL, [("operation", "next")]);
+        let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [("operation", "next")]);
 
         Box::new(iter)
     }
