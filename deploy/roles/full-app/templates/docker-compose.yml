@@ -152,6 +152,7 @@ services:
       UP_URL: ${UP_URL}
       QUEST_URL: ${QUEST_URL}
       BANNER: ${FRONTEND_BANNER}
+      CHAIN_ID: ${CHAIN_ID}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
