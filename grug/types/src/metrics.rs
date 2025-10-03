@@ -1,7 +1,7 @@
 pub struct MetricsIter<I, L> {
     iter: I,
-    name: &'static str,
-    labels: L,
+    pub name: &'static str,
+    pub labels: L,
 }
 
 #[cfg(not(feature = "metrics"))]
@@ -12,7 +12,7 @@ where
     type Item = I::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let item = self.iter.next();
+        self.iter.next()
     }
 }
 
