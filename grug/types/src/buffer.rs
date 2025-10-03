@@ -82,6 +82,53 @@ where
 
         self.base
     }
+
+    fn scan_as<'a, B, I>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+        base: B,
+        _operation: &'static str,
+    ) -> Box<dyn Iterator<Item = I> + 'a>
+    where
+        B: Fn() -> Box<dyn Iterator<Item = I> + 'a>,
+        I: AsKey + 'a,
+    {
+        if let (Some(min), Some(max)) = (min, max) {
+            if min > max {
+                return Box::new(iter::empty());
+            }
+        }
+
+        let base = base();
+
+        let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
+        let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
+
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
+        let pending_raw = self.pending.range((min, max));
+
+        #[cfg(feature = "metrics")]
+        record_buffer!(self, duration, _operation);
+
+        let pending: Box<dyn Iterator<Item = _>> = match order {
+            Order::Ascending => Box::new(pending_raw),
+            Order::Descending => Box::new(pending_raw.rev()),
+        };
+
+        #[cfg(feature = "metrics")]
+        let pending = pending.with_metrics(BUFFER_LABEL, [
+            ("operation", "next"),
+            ("name", self.name.unwrap_or("unknown")),
+        ]);
+
+        let result = Box::new(Merged::new(base, pending, order));
+
+        result
+    }
 }
 
 impl<S> Storage for Buffer<S>
@@ -110,39 +157,13 @@ where
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        if let (Some(min), Some(max)) = (min, max) {
-            if min > max {
-                return Box::new(iter::empty());
-            }
-        }
-
-        let base = self.base.scan(min, max, order);
-
-        let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
-        let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
-
-        #[cfg(feature = "metrics")]
-        let duration = Instant::now();
-
-        let pending_raw = self.pending.range((min, max));
-
-        #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "scan");
-
-        let pending: Box<dyn Iterator<Item = _>> = match order {
-            Order::Ascending => Box::new(pending_raw),
-            Order::Descending => Box::new(pending_raw.rev()),
-        };
-
-        #[cfg(feature = "metrics")]
-        let pending = pending.with_metrics(BUFFER_LABEL, [
-            ("operation", "next"),
-            ("name", self.name.unwrap_or("unknown")),
-        ]);
-
-        let result = Box::new(Merged::new(base, pending, order));
-
-        result
+        self.scan_as(
+            min,
+            max,
+            order,
+            || Box::new(self.base.scan(min, max, order)),
+            "scan",
+        )
     }
 
     fn scan_keys<'a>(
@@ -151,19 +172,13 @@ where
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        // Currently we simply iterate both keys and values, and discard the
-        // values. This isn't efficient.
-        // TODO: optimize this
-
-        #[cfg(feature = "metrics")]
-        let duration = Instant::now();
-
-        let result = Box::new(self.scan(min, max, order).map(|(k, _)| k));
-
-        #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "scan_keys");
-
-        result
+        self.scan_as(
+            min,
+            max,
+            order,
+            || Box::new(self.base.scan_keys(min, max, order)),
+            "scan_keys",
+        )
     }
 
     fn scan_values<'a>(
@@ -172,15 +187,18 @@ where
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        #[cfg(feature = "metrics")]
-        let duration = Instant::now();
-
-        let result = Box::new(self.scan(min, max, order).map(|(_, v)| v));
-
-        #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "scan_values");
-
-        result
+        // Is not possible to use scan_value for the base.
+        // We need to have the key for compare with pending in Merged.
+        Box::new(
+            self.scan_as(
+                min,
+                max,
+                order,
+                || Box::new(self.base.scan(min, max, order)),
+                "scan_values",
+            )
+            .map(|(_, v)| v),
+        )
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
@@ -239,20 +257,22 @@ where
     }
 }
 
-struct Merged<'a, B, P>
+struct Merged<'a, B, P, I>
 where
-    B: Iterator<Item = Record>,
+    B: Iterator<Item = I>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
+    I: AsKey,
 {
     base: Peekable<B>,
     pending: Peekable<P>,
     order: Order,
 }
 
-impl<'a, B, P> Merged<'a, B, P>
+impl<'a, B, P, I> Merged<'a, B, P, I>
 where
-    B: Iterator<Item = Record>,
+    B: Iterator<Item = I>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
+    I: AsKey,
 {
     pub fn new(base: B, pending: P, order: Order) -> Self {
         Self {
@@ -262,27 +282,28 @@ where
         }
     }
 
-    fn take_pending(&mut self) -> Option<Record> {
+    fn take_pending(&mut self) -> Option<I> {
         let (key, op) = self.pending.next()?;
 
         match op {
-            Op::Insert(value) => Some((key.clone(), value.clone())),
+            Op::Insert(value) => Some(I::from_key_value(key, value)),
             Op::Delete => self.next(),
         }
     }
 }
 
-impl<'a, B, P> Iterator for Merged<'a, B, P>
+impl<'a, B, P, I> Iterator for Merged<'a, B, P, I>
 where
-    B: Iterator<Item = Record>,
+    B: Iterator<Item = I>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
+    I: AsKey,
 {
-    type Item = Record;
+    type Item = I;
 
     fn next(&mut self) -> Option<Self::Item> {
         let result = match (self.base.peek(), self.pending.peek()) {
-            (Some((base_key, _)), Some((pending_key, _))) => {
-                let ordering_raw = base_key.cmp(pending_key);
+            (Some(i), Some((pending_key, _))) => {
+                let ordering_raw = i.as_key().cmp(pending_key);
                 let ordering = match self.order {
                     Order::Ascending => ordering_raw,
                     Order::Descending => ordering_raw.reverse(),
@@ -303,6 +324,32 @@ where
         };
 
         result
+    }
+}
+
+/// A trait that rappresent a Iterator::Item that rappresent a key.
+trait AsKey {
+    fn from_key_value(key: &[u8], value: &[u8]) -> Self;
+    fn as_key(&self) -> &[u8];
+}
+
+impl AsKey for Vec<u8> {
+    fn from_key_value(key: &[u8], _value: &[u8]) -> Self {
+        key.to_vec()
+    }
+
+    fn as_key(&self) -> &[u8] {
+        self.as_slice()
+    }
+}
+
+impl AsKey for Record {
+    fn from_key_value(key: &[u8], value: &[u8]) -> Self {
+        (key.to_vec(), value.to_vec())
+    }
+
+    fn as_key(&self) -> &[u8] {
+        self.0.as_slice()
     }
 }
 
