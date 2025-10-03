@@ -31,7 +31,6 @@ pub const LABEL_DURATION_STORE_VOLUME: &str = "dango.contract.dex.store_volume.d
 
 pub const LABEL_DURATION_ITER_NEXT: &str = "dango.contract.dex.iterator_next.duration";
 
-#[cfg(feature = "metrics")]
 pub fn init_metrics() {
     static ONCE: Once = Once::new();
 

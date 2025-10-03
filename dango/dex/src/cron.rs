@@ -18,12 +18,15 @@ use {
     },
     grug::{
         Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
-        MetricsIterExt, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
-        Order as IterationOrder, PrimaryKey, Response, StdError, StdResult, Storage, SubMessage,
-        SubMsgResult, SudoCtx, Timestamp, TransferBuilder, Udec128, Udec128_6,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        PrimaryKey, Response, StdError, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx,
+        Timestamp, TransferBuilder, Udec128, Udec128_6,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
+
+#[cfg(feature = "metrics")]
+use grug::MetricsIterExt;
 
 const HALF: Udec128 = Udec128::new_percent(50);
 
