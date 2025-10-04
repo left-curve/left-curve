@@ -8,9 +8,9 @@ dango:
   dex_bot:
     # NOTE: those are public from the genesis file
     # Signer
-    username: "user8"
-    address: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
-    private_key: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
+    username: "user4"
+    address: "0x5a7213b5a8f12e826e88d67c083be371a442689c"
+    private_key: "126b714bfe7ace5aac396aa63ff5c92c89a2d894debe699576006202c63a9cf6"
     mint_user: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
     mint_amount: 1000000
     liquidity_amount: 1000000000
