@@ -12,7 +12,8 @@ use {
             self, CancelOrderRequest, CreateOrderRequest, Direction, Geometric, OrderId,
             OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity, Price,
             QueryLiquidityDepthRequest, QueryOrdersByPairRequest, QueryOrdersRequest,
-            QueryReserveRequest, QueryRestingOrderBookStateRequest, RestingOrderBookState, Xyk,
+            QueryReserveRequest, QueryRestingOrderBookStateRequest, RestingOrderBookState,
+            SwapRoute, Xyk,
         },
         gateway::Remote,
         oracle::{self, PrecisionlessPrice, PriceSource},
@@ -7617,4 +7618,78 @@ fn create_and_cancel_order_with_remainder() {
     suite.balances().should_change(&accounts.user1, btree_map! {
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     });
+}
+
+#[test]
+fn liquidity_operations_are_not_allowed_when_dex_is_paused() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::SetPaused(true)),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't provide liquidity when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::WithdrawLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't withdraw liquidity when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountIn {
+                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                minimum_output: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't swap when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                output: NonZero::new_unchecked(Coin::new(eth::DENOM.clone(), 100).unwrap()),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't swap when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![],
+                cancels: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't update orders when trading is paused");
 }
