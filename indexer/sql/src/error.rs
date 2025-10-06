@@ -1,8 +1,4 @@
-use {
-    crate::pubsub::error::PubSubError,
-    grug_app::AppError,
-    grug_types::{Backtraceable, BacktracedError, StdError},
-};
+use {crate::pubsub::error::PubSubError, grug_app::AppError, grug_types::StdError};
 
 #[grug_macros::backtrace]
 pub enum IndexerError {
@@ -64,7 +60,7 @@ pub enum IndexerError {
     Sqlx(sqlx::Error),
 
     #[error(transparent)]
-    PubSub(#[from] PubSubError),
+    PubSub(PubSubError),
 }
 
 macro_rules! parse_error {
@@ -80,39 +76,6 @@ macro_rules! parse_error {
             backtrace: $bt,
         }
     };
-}
-
-impl From<IndexerError> for AppError {
-    fn from(err: IndexerError) -> Self {
-        let indexer_error = match err {
-            IndexerError::SeaOrm(e) => parse_error!(Database, e),
-            IndexerError::Anyhow(e) => parse_error!(Generic, e),
-            IndexerError::Join(e) => parse_error!(Generic, e),
-            IndexerError::Indexing { error, backtrace } => parse_error!(Generic, error, backtrace),
-            IndexerError::Poison { error, backtrace } => parse_error!(Generic, error, backtrace),
-            IndexerError::Runtime { error, backtrace } => parse_error!(Generic, error, backtrace),
-            IndexerError::TryFromInt(e) => parse_error!(Generic, e),
-            IndexerError::App(be) => {
-                // For App errors, just wrap as generic since it's already processed
-                grug_app::IndexerError::Generic {
-                    error: "nested app error".to_string(),
-                    backtrace: be.backtrace,
-                }
-            },
-            IndexerError::Std(e) => parse_error!(Generic, e),
-            IndexerError::Io(e) => parse_error!(Io, e),
-            IndexerError::Persist(e) => parse_error!(Io, e),
-            IndexerError::Persistence(e) => parse_error!(Storage, e),
-            IndexerError::Hooks { error, backtrace } => parse_error!(Hook, error, backtrace),
-            IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
-            IndexerError::Parse(e) => parse_error!(Generic, e),
-            IndexerError::Sqlx(e) => parse_error!(Database, e),
-            IndexerError::PubSub(e) => parse_error!(Generic, e),
-        };
-
-        let bt = indexer_error.backtrace();
-        AppError::Indexer(BacktracedError::new_with_bt(indexer_error, bt))
-    }
 }
 
 impl From<IndexerError> for grug_app::IndexerError {

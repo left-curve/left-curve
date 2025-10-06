@@ -181,7 +181,7 @@ impl SearchTxClient for HttpClient {
             .transactions
             .nodes;
 
-        let res = response.pop().ok_or(anyhow!("no tx found"))?;
+        let res = response.pop().ok_or(anyhow!("Tx not found: {hash}"))?;
 
         if !response.is_empty() {
             bail!("multiple txs found for hash: {hash}")
