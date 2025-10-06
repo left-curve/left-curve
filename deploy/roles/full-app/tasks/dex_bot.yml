@@ -31,6 +31,7 @@
       register: liquidity_result
       retries: 3
       delay: 5
+      run_once: true
 
     - name: Show stdout
       debug:
