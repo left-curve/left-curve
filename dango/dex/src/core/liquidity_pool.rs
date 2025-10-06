@@ -738,9 +738,6 @@ mod tests {
             .map(|(price, amount)| amount.checked_mul_dec_floor(*price).unwrap())
             .sum::<Uint128>();
         let ask_sum_base = asks.iter().map(|(_, amount)| *amount).sum::<Uint128>();
-        println!("bid_sum_quote: {:?}", bid_sum_quote);
-        println!("ask_sum_base: {:?}", ask_sum_base);
-        println!("reserve: {:?}", reserve);
 
         assert!(
             reserve.amount_of(&usdc::DENOM).unwrap().into_inner() - bid_sum_quote.into_inner() <= 1
