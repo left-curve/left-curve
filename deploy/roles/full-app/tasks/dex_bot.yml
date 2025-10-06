@@ -15,8 +15,8 @@
     - not (current_liquidity_setup_flag.stat.exists | default(false))
   block:
     - set_fact:
-        mint_command: "dex liquidity mint --url http://dango:8080/ {{ dango.dex_bot.mint_amount }} {{ dango.dex_bot.mint_user }} --address {{ dango.dex_bot.address }} --username {{ dango.dex_bot.username }} --private-key {{ dango.dex_bot.private_key }}"
-        provide_liquidity_command: "dex liquidity provide --url http://dango:8080/ {{ dango.dex_bot.liquidity_amount }} --address {{ dango.dex_bot.address }} --username {{ dango.dex_bot.username }} --private-key {{ dango.dex_bot.private_key }}"
+        mint_command: "dex liquidity mint --url http://dango:8080/ {{ dango.dex_bot.mint_amount }} {{ dango.dex_bot.address }} --address {{ dango.dex_bot.minter_address }} --username {{ dango.dex_bot.minter_username }} --private-key {{ dango.dex_bot.minter_private_key }}"
+        provide_liquidity_command: "dex liquidity provide --url http://dango:8080/ {{ dango.dex_bot.liquidity_amount }} --address {{ dango.dex_bot.minter_address }} --username {{ dango.dex_bot.minter_username }} --private-key {{ dango.dex_bot.minter_private_key }}"
 
     - debug:
         msg: "Calling: {{ provide_liquidity_command }} ; {{ mint_command }}"
@@ -31,6 +31,7 @@
       register: liquidity_result
       retries: 3
       delay: 5
+      run_once: true
 
     - name: Show stdout
       debug:
