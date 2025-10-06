@@ -152,6 +152,7 @@ services:
       UP_URL: ${UP_URL}
       QUEST_URL: ${QUEST_URL}
       BANNER: ${FRONTEND_BANNER}
+      CHAIN_ID: ${CHAIN_ID}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
@@ -205,6 +206,8 @@ services:
       app_settings__size_percent__max: 3.0
       app_settings__price_percent__min: 0.05
       app_settings__price_percent__max: 0.2
+      app_settings__order_number__min: 1
+      app_settings__order_number__max: 5
       app_settings__order_type: market
       app_settings__healthcheck_file: /tmp/dango_dex_app_healthcheck
     healthcheck:

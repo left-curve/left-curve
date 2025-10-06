@@ -515,19 +515,7 @@ jobs:
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_BRANCH: ${{ github.event.pull_request.head.ref }}
-      DANGO_DB_PASSWORD: ${{ secrets.DANGO_DB_PASSWORD }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DANGO_CLICKHOUSE_PASSWORD: ${{ secrets.DANGO_CLICKHOUSE_PASSWORD }}
-      CLICKHOUSE_PASSWORD: ${{ secrets.CLICKHOUSE_PASSWORD }}
-      DEVNET_COMETBFT_NODE_KEY: ${{ secrets.DEVNET_COMETBFT_NODE_KEY }}
-      DEVNET_COMETBFT_VALIDATOR_ADDRESS: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_ADDRESS }}
-      DEVNET_COMETBFT_VALIDATOR_PUB_KEY: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_PUB_KEY }}
-      DEVNET_COMETBFT_VALIDATOR_PRIVATE_KEY: ${{ secrets.DEVNET_COMETBFT_VALIDATOR_PRIVATE_KEY }}
-      SENTRY__DSN: ${{ secrets.SENTRY__DSN }}
-      # Still using this as ENV for the bots ansible playbook to login properly
-      GITHUB_USER: ${{ github.actor }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      PYTH_ACCESS_TOKEN: ${{ secrets.PYTH_ACCESS_TOKEN }}
+      ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -556,11 +544,11 @@ jobs:
           cd deploy
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": true, "delete_clickhouse_database_at_merge": true, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false}' -e deploy_env=production -e github_sha=${{ env.GIT_COMMIT }} --limit 100.96.253.40
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": true, "delete_clickhouse_database_at_merge": true, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false}' -e deploy_env=production -e github_sha=${{ env.GIT_COMMIT }}
           fi
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}"}' -e deploy_env=preview --limit 100.96.253.40
+          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}"}' -e deploy_env=preview
           fi
 
   localdango:
@@ -590,7 +578,7 @@ jobs:
           COMETBFT_TAG: v0.38.17
         run: |
           cd networks/localdango
-          docker compose down -v
+          docker compose --profile dango down -v
           docker compose --profile dango up -d --wait || {
             echo "Services failed to become healthy"
             docker compose ps
@@ -601,4 +589,4 @@ jobs:
         if: always()
         run: |
           cd networks/localdango
-          docker compose down -v || true
+          docker compose --profile dango down -v || true

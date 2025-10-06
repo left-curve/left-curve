@@ -1,1 +1,3 @@
+---
 loki_url: "http://loki:3100"
+tailscale_ip: "100.122.37.57"

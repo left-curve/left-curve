@@ -34,7 +34,6 @@
 
 - set_fact:
     skip_port_discovery: false
-    validator_private_key_exists: false
 
 - name: Set facts from existing .env
   set_fact:
@@ -42,16 +41,6 @@
     skip_port_discovery: true
   loop: "{{ existing_port_pairs.stdout_lines }}"
   when: env_file_exists.stat.exists and existing_port_pairs.stdout_lines | length > 0
-
-- name: Check if cometbft keys already exists
-  stat:
-    path: "{{ cometbft_directory }}/config/priv_validator_key.json"
-  register: validator_private_key_file_exists
-
-- name: Set port facts from existing .env
-  set_fact:
-    validator_private_key_exists: true
-  when: validator_private_key_file_exists.stat.exists
 
 - file:
     path: "{{ item }}"

@@ -309,13 +309,13 @@
                   "lp_denom": "dex/pool/dango/usdc",
                   "min_order_size": "0",
                   "pool_type": {
-                    "xyk": {
-                      "limit": 30,
-                      "reserve_ratio": "0",
-                      "spacing": "1"
+                    "geometric": {
+                      "limit": 1,
+                      "ratio": "1",
+                      "spacing": "0.0001"
                     }
                   },
-                  "swap_fee_rate": "0.003"
+                  "swap_fee_rate": "0.0001"
                 },
                 "quote_denom": "bridge/usdc"
               },
@@ -333,13 +333,13 @@
                   "lp_denom": "dex/pool/btc/usdc",
                   "min_order_size": "0",
                   "pool_type": {
-                    "xyk": {
-                      "limit": 30,
-                      "reserve_ratio": "0",
-                      "spacing": "1"
+                    "geometric": {
+                      "limit": 1,
+                      "ratio": "1",
+                      "spacing": "0.0001"
                     }
                   },
-                  "swap_fee_rate": "0.003"
+                  "swap_fee_rate": "0.0001"
                 },
                 "quote_denom": "bridge/usdc"
               },
@@ -357,13 +357,13 @@
                   "lp_denom": "dex/pool/eth/usdc",
                   "min_order_size": "0",
                   "pool_type": {
-                    "xyk": {
-                      "limit": 30,
-                      "reserve_ratio": "0",
-                      "spacing": "1"
+                    "geometric": {
+                      "limit": 1,
+                      "ratio": "1",
+                      "spacing": "0.0001"
                     }
                   },
-                  "swap_fee_rate": "0.003"
+                  "swap_fee_rate": "0.0001"
                 },
                 "quote_denom": "bridge/usdc"
               },
@@ -379,13 +379,13 @@
                   "lp_denom": "dex/pool/sol/usdc",
                   "min_order_size": "0",
                   "pool_type": {
-                    "xyk": {
-                      "limit": 30,
-                      "reserve_ratio": "0",
-                      "spacing": "1"
+                    "geometric": {
+                      "limit": 1,
+                      "ratio": "1",
+                      "spacing": "0.0001"
                     }
                   },
-                  "swap_fee_rate": "0.003"
+                  "swap_fee_rate": "0.0001"
                 },
                 "quote_denom": "bridge/usdc"
               }
