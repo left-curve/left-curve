@@ -122,11 +122,7 @@ impl grug_app::Indexer for Indexer {
             }
         });
 
-        self.runtime_handler.block_on(async {
-            handle
-                .await
-                .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?
-        })?;
+        self.runtime_handler.block_on(async { handle.await? })?;
 
         #[cfg(feature = "metrics")]
         histogram!("indexer.dango.hooks.duration").record(start.elapsed().as_secs_f64());

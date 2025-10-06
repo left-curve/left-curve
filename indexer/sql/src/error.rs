@@ -2,7 +2,6 @@ use {
     crate::pubsub::error::PubSubError,
     grug_app::AppError,
     grug_types::{Backtraceable, BacktracedError, StdError},
-,
 };
 
 #[grug_macros::backtrace]
@@ -108,6 +107,7 @@ impl From<IndexerError> for AppError {
             IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
             IndexerError::Parse(e) => parse_error!(Generic, e),
             IndexerError::Sqlx(e) => parse_error!(Database, e),
+            IndexerError::PubSub(e) => parse_error!(Generic, e),
         };
 
         let bt = indexer_error.backtrace();
@@ -140,6 +140,7 @@ impl From<IndexerError> for grug_app::IndexerError {
             IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
             IndexerError::Parse(e) => parse_error!(Generic, e),
             IndexerError::Sqlx(e) => parse_error!(Database, e),
+            IndexerError::PubSub(e) => parse_error!(Generic, e),
         }
     }
 }

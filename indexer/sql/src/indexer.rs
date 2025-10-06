@@ -513,7 +513,7 @@ impl IndexerTrait for Indexer {
             .context
             .transaction_hash_details
             .lock()
-            .map_err(|_| grug_app::IndexerError::MutexPoisoned)?;
+            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?;
         http_request_details.extend(block.txs.iter().filter_map(|tx| {
             let tx_hash = tx.1.to_string();
             transaction_hash_details

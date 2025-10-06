@@ -1,6 +1,9 @@
-use {grug_app::AppError, grug_types::StdError, thiserror::Error};
+use {
+    grug_app::AppError,
+    grug_types::{Backtraceable, StdError},
+};
 
-#[derive(Debug, Error)]
+#[grug_macros::backtrace]
 pub enum DbError {
     #[error(transparent)]
     Std(#[from] StdError),
@@ -20,7 +23,11 @@ pub enum DbError {
 
 impl From<DbError> for AppError {
     fn from(err: DbError) -> Self {
-        AppError::Db(err.to_string())
+        let err = err.into_generic_backtraced_error();
+        AppError::Db {
+            error: err.to_string(),
+            backtrace: err.backtrace(),
+        }
     }
 }
 

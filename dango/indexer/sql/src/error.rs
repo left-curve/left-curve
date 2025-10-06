@@ -20,6 +20,7 @@ pub enum Error {
     PubSub(#[from] PubSubError),
 
     #[error(transparent)]
+    #[backtrace(new)]
     Join(#[from] tokio::task::JoinError),
 }
 
