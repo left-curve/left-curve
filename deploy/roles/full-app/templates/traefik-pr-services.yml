@@ -1,0 +1,33 @@
+http:
+  services:
+    {{ dango_network }}-dango:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-dango-1:8080"
+    {{ dango_network }}-frontend:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-dango-frontend-1:80"
+    {{ dango_network }}-faucet_bot:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-faucet-bot-1:8082"
+
+  routers:
+    {{ dango_network }}-main-frontend:
+      rule: "Host(`frontend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`frontend.{{ dango_network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-frontend"
+
+    {{ dango_network }}-main-backend:
+      rule: "Host(`backend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`backend.{{ dango_network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-dango"
+
+    {{ dango_network }}-main-faucet_bot:
+      rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-faucet_bot"
