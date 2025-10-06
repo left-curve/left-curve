@@ -225,6 +225,11 @@ fn provide_liquidity(
     let (reserve, lp_mint_amount) =
         pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
 
+    ensure!(
+        lp_mint_amount.is_non_zero(),
+        "lp mint amount must be non-zero"
+    );
+
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
 
