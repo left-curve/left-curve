@@ -676,7 +676,7 @@ fn clear_orders_of_pair(
         }
 
         metrics::histogram!(
-            crate::metrics::LABEL_DURATION_HANDLE_FILLED,
+            crate::metrics::LABEL_DURATION_ORDER_FILLING,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
         )
