@@ -2,8 +2,6 @@
 github_sha: "{{ lookup('pipe','git rev-parse HEAD') }}"
 dango_image_tag: "{{ github_sha }}"
 dex_bot_tag: "latest"
-ghcr_user: "{{ lookup('env','GITHUB_USER') }}"
-ghcr_token: "{{ lookup('env','GITHUB_TOKEN') }}"
 cometbft_node_key: ""
 cometbft_validator_address: ""
 cometbft_validator_public_key: ""
@@ -33,4 +31,3 @@ cometbft_directory: "{{ deployment_dir }}/cometbft"
 # should we use system wide dango and cometbft directories instead of contained in the deploy
 system_wide_directories: false
 keep_databases: false
-pyth_access_token: "{{ lookup('env', 'PYTH_ACCESS_TOKEN') }}"
