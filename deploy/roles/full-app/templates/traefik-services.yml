@@ -1,3 +1,16 @@
+tcp:
+  services:
+    {{ dango_network }}-cometbft_p2p:
+      loadBalancer:
+        servers:
+          - address: "{{ deployment_name }}-cometbft-1:26656"
+  routers:
+    {{ dango_network }}-cometbft_p2p:
+      rule: "HostSNI(`*`)"
+      entryPoints:
+        - "{{ dango_network }}-cometbft_p2p"
+      service: "{{ dango_network }}-cometbft_p2p"
+
 http:
   services:
     {{ dango_network }}-dango:
@@ -16,10 +29,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-faucet-bot-1:8082"
-    {{ dango_network }}-cometbft_p2p:
-      loadBalancer:
-        servers:
-          - url: "http://{{ deployment_name }}-cometbft-1:26656"
     {{ dango_network }}-cometbft_rpc:
       loadBalancer:
         servers:
@@ -36,6 +45,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-postgres-prometheus-1:9187"
+    {{ dango_network }}-clickhouse-metrics:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-clickhouse-1:9126"
 
   routers:
     {{ dango_network }}-dango:
@@ -62,12 +75,6 @@ http:
         - "{{ dango_network }}-faucet_bot"
       service: "{{ dango_network }}-faucet_bot"
 
-    {{ dango_network }}-cometbft_p2p:
-      rule: "PathPrefix(`/`)"
-      entryPoints:
-        - "{{ dango_network }}-cometbft_p2p"
-      service: "{{ dango_network }}-cometbft_p2p"
-
     {{ dango_network }}-cometbft_rpc:
       rule: "PathPrefix(`/`)"
       entryPoints:
@@ -91,3 +98,9 @@ http:
       entryPoints:
         - "{{ dango_network }}-db-metrics"
       service: "{{ dango_network }}-db-metrics"
+
+    {{ dango_network }}-clickhouse-metrics:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "{{ dango_network }}-clickhouse-metrics"
+      service: "{{ dango_network }}-clickhouse-metrics"

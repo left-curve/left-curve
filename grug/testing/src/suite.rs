@@ -659,6 +659,10 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
     Self: Querier,
 {
+    pub fn balances(&mut self) -> BalanceTracker<'_, DB, VM, PP, ID> {
+        BalanceTracker { suite: self }
+    }
+
     pub fn query_status(&self) -> StdResult<QueryStatusResponse> {
         <Self as QuerierExt>::query_status(self)
     }
@@ -678,7 +682,20 @@ where
         <Self as QuerierExt>::query_balances(self, address, None, Some(u32::MAX))
     }
 
-    pub fn balances(&mut self) -> BalanceTracker<'_, DB, VM, PP, ID> {
-        BalanceTracker { suite: self }
+    pub fn query_supply<D>(&self, denom: D) -> StdResult<Uint128>
+    where
+        D: TryInto<Denom>,
+        StdError: From<D::Error>,
+    {
+        let denom = denom.try_into()?;
+        <Self as QuerierExt>::query_supply(self, denom)
+    }
+
+    pub fn query_supplies(
+        &self,
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    ) -> StdResult<Coins> {
+        <Self as QuerierExt>::query_supplies(self, start_after, limit)
     }
 }

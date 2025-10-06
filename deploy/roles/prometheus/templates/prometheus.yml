@@ -24,12 +24,8 @@ scrape_configs:
 
   - job_name: 'traefik'
     static_configs:
-      - targets: ['traefik:8888']
-    relabel_configs:
-    - source_labels: [__address__]
-      regex: 'traefik:8888'
-      target_label: instance
-      replacement: 'ovh3:8888'
+      - targets: ['ovh1:8888']
+      - targets: ['ovh2:8888']
 
   - job_name: 'alertmanager'
     static_configs:
@@ -70,36 +66,66 @@ scrape_configs:
       target_label: instance
       replacement: 'ovh3:9080'
 
+  - job_name: 'preview-clickhouse'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-clickhouse.yml']
+
+  - job_name: 'preview-postgres'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-postgres.yml']
+
+  - job_name: 'preview-dango'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-dango.yml']
+
+  - job_name: 'preview-cometbft'
+    file_sd_configs:
+      - files: ['/etc/prometheus/targets/*-cometbft.yml']
+
   - job_name: 'clickhouse'
     static_configs:
       - targets: ['ovh1:9126']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
       - targets: ['ovh2:9126']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
 
   - job_name: 'postgres'
     static_configs:
       - targets: ['ovh1:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
       - targets: ['ovh2:9187']
+        labels:
+          service: 'postgres'
+          environment: 'production'
 
   - job_name: 'dango'
     static_configs:
-      - targets: ['ovh1:9191'] # ovh1
+      - targets: ['ovh1:8083']
         labels:
           service: 'dango'
           environment: 'production'
           network: 'devnet'
-      # - targets: ['ovh2:9191'] # ovh2
-      #   labels:
-      #     service: 'dango'
-      #     environment: 'production'
-      #     network: 'testnet'
+          dango_network: 'devnet'
+      - targets: ['ovh2:8053']
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'testnet'
 
   - job_name: 'cometbft'
     static_configs:
-      - targets: ['ovh1:26660'] # ovh1
+      - targets: ['ovh1:26660']
         labels:
           environment: 'production'
+          dango_network: 'devnet'
           network: 'devnet'
-      # - targets: ['ovh2:26660'] # ovh2
-      #   labels:
-      #     environment: 'production'
-      #     network: 'testnet'
+      - targets: ['ovh2:36660']
+        labels:
+          environment: 'production'
+          network: 'testnet'

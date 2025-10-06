@@ -49,10 +49,15 @@ const urls =
         upUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/up")}`,
       };
 
+const banner = {
+  dev: "You are using devnet",
+}[environment];
+
 const envConfig = `window.dango = ${JSON.stringify(
   {
     chain,
     urls,
+    banner,
   },
   null,
   2,

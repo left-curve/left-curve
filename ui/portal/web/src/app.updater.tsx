@@ -14,33 +14,39 @@ export const AppUpdater: React.FC = () => {
       wb.addEventListener("waiting", (event) => {
         if (!event.sw) return;
         const { sw } = event;
-        toast.maintenance(
-          {
-            title: m["appUpdate.title"](),
-            description: ({ id }) => (
-              <div className="text-ink-tertiary-500 diatype-xs-medium">
-                <span>{m["appUpdate.description"]()}</span>
-                <Button
-                  as="span"
-                  variant="link"
-                  size="xs"
-                  className="min-w-20"
-                  onClick={() => {
-                    if (!sw) return;
-                    sw.postMessage({ type: "SKIP_WAITING" });
-                    toast.dismiss(id);
-                    setTimeout(() => {
-                      window.location.reload();
-                    }, 1000);
-                  }}
-                >
-                  {m["appUpdate.updateButton"]()}
-                </Button>
-              </div>
-            ),
-          },
-          { duration: Number.POSITIVE_INFINITY },
-        );
+        if (navigator.serviceWorker.controller) {
+          toast.maintenance(
+            {
+              title: m["appUpdate.title"](),
+              description: ({ id }) => (
+                <div className="text-ink-tertiary-500 diatype-xs-medium">
+                  <span>{m["appUpdate.description"]()}</span>
+                  <Button
+                    as="span"
+                    variant="link"
+                    size="xs"
+                    className="min-w-20"
+                    onClick={() => {
+                      sw.postMessage({ type: "SKIP_WAITING" });
+                      toast.dismiss(id);
+                      setTimeout(() => {
+                        window.location.reload();
+                      }, 1000);
+                    }}
+                  >
+                    {m["appUpdate.updateButton"]()}
+                  </Button>
+                </div>
+              ),
+            },
+            { duration: Number.POSITIVE_INFINITY },
+          );
+        } else {
+          sw.postMessage({ type: "SKIP_WAITING" });
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+        }
       });
 
       wb.register();

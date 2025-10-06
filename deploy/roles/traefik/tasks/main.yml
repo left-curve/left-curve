@@ -4,13 +4,14 @@
     state: directory
     mode: '0755'
 
-- name: Generate docker-compose.yml
+- name: Generate templates
   become: true
   become_user: root
   template:
-    src: docker-compose.yml
+    src: "{{ item }}"
     dest: "{{ traefik_dir }}"
     owner: "{{ deploy_user }}"
+  loop: ["docker-compose.yml", "traefik.yml"]
 
 - name: Deploy all
   community.docker.docker_compose_v2:

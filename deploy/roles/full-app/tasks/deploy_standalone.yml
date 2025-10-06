@@ -7,3 +7,22 @@
     pull: always
   retries: 3
   delay: 5
+  register: deploy_result
+  ignore_errors: yes
+
+- name: Get all container logs on failure
+  command: docker compose -p {{ deployment_name }} logs --tail=100
+  args:
+    chdir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+  when: deploy_result.failed
+  register: all_logs
+
+- name: Show all logs
+  debug:
+    var: all_logs.stdout_lines
+  when: deploy_result.failed
+
+- name: Fail with context
+  fail:
+    msg: "Deployment failed. See container logs above."
+  when: deploy_result.failed

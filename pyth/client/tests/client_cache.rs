@@ -1,52 +1,51 @@
-mod common_function;
+pub mod common_function;
 
 use {
-    common_function::{test_latest_vaas, test_stream},
-    grug::{Binary, NonEmpty},
+    crate::common_function::test_stream,
+    grug::NonEmpty,
     indexer_disk_saver::persistence::DiskPersistence,
-    pyth_client::{PYTH_CACHE_SAMPLES, PythClientCache, PythClientTrait},
-    pyth_types::constants::{
-        ATOM_USD_ID, BNB_USD_ID, BTC_USD_ID, ETH_USD_ID, PYTH_IDS_ALL, PYTH_URL,
+    pyth_client::{PYTH_CACHE_SAMPLES, PythClientCache},
+    pyth_types::{
+        LeEcdsaMessage,
+        constants::{
+            ATOM_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LAZER_ENDPOINTS_TEST, LAZER_ID_ALL,
+        },
     },
 };
 
-#[test]
-fn latest_vaas_cache() {
-    let pyth_client = PythClientCache::new(PYTH_URL).unwrap();
-    test_latest_vaas(pyth_client, vec![BTC_USD_ID, ETH_USD_ID]);
-}
-
 #[tokio::test]
-async fn test_sse_stream_cache() {
-    let client = PythClientCache::new(PYTH_URL).unwrap();
-    test_stream(client, vec![BTC_USD_ID, ETH_USD_ID], vec![
+async fn test_lazer_stream() {
+    let client =
+        PythClientCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer-token").unwrap();
+
+    test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
+        ETH_USD_ID,
         ATOM_USD_ID,
-        BNB_USD_ID,
     ])
     .await;
 }
 
-// This test is used to create the cache files for the Pyth.
-// To update the cache files, delete the cached files in pyth/client/testdata/*.
+// This test is used to create the cache files for Pyth Lazer.
+// To update the cache files, delete the cached files in pyth/client/testdata/lazer/*.
 #[ignore = "rely on network calls"]
 #[test]
 fn create_cache() {
-    let update_ids = PYTH_IDS_ALL;
+    let update_ids = LAZER_ID_ALL;
 
-    let client = PythClientCache::new(PYTH_URL).unwrap();
-    client
-        .get_latest_vaas(NonEmpty::new_unchecked(update_ids))
-        .unwrap();
+    let mut client =
+        PythClientCache::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), "lazer_token").unwrap();
+    client.load_or_retrieve_data(NonEmpty::new_unchecked(update_ids.clone()));
 
-    for id in update_ids {
-        let filename = PythClientCache::cache_filename(&id.to_string());
+    for subscription_details in update_ids {
+        let id = subscription_details.id;
+        let filename = PythClientCache::cache_filename(&id);
 
         let mut cache_file = DiskPersistence::new(filename, true);
 
         assert!(cache_file.exists(), "Cache file for {id} not found");
 
         // Load the cache file to ensure it was created correctly.
-        let data = cache_file.load::<Vec<Vec<Binary>>>().unwrap();
+        let data = cache_file.load::<Vec<Vec<LeEcdsaMessage>>>().unwrap();
 
         assert_eq!(
             data.len(),

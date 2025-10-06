@@ -25,8 +25,8 @@ pub struct FillingOutcome {
 
 /// Clear the orders given a clearing price and volume.
 pub fn fill_orders(
-    bids: Vec<(Price, Order)>,
-    asks: Vec<(Price, Order)>,
+    bids: Vec<Order>,
+    asks: Vec<Order>,
     clearing_price: Price,
     volume: Udec128_6,
     current_block_height: u64,
@@ -58,7 +58,7 @@ pub fn fill_orders(
 
 /// Fill the BUY orders given a clearing price and volume.
 fn fill_bids(
-    bids: Vec<(Price, Order)>,
+    bids: Vec<Order>,
     clearing_price: Price,
     mut volume: Udec128_6,
     current_block_height: u64,
@@ -67,7 +67,7 @@ fn fill_bids(
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(bids.len());
 
-    for (order_price, mut order) in bids {
+    for mut order in bids {
         // Compute how much of the order can be filled.
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
@@ -97,7 +97,7 @@ fn fill_bids(
         // For quote, in case the order is filled at a price better than the
         // limit price, refund the unused deposit.
         let refund_base = filled_base.checked_sub(fee_base)?;
-        let refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
+        let refund_quote = filled_base.checked_mul(order.price - clearing_price)?;
 
         outcome.push(FillingOutcome {
             order,
@@ -120,7 +120,7 @@ fn fill_bids(
 
 /// Fill the SELL orders given a clearing price and volume.
 fn fill_asks(
-    asks: Vec<(Price, Order)>,
+    asks: Vec<Order>,
     clearing_price: Price,
     mut volume: Udec128_6,
     current_block_height: u64,
@@ -129,7 +129,7 @@ fn fill_asks(
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(asks.len());
 
-    for (_, mut order) in asks {
+    for mut order in asks {
         // Compute how much of the order can be filled.
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.

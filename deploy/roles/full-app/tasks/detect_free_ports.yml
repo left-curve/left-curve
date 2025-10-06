@@ -1,4 +1,4 @@
-- name: Generate random identifiers
+- name: Generate random identifiers for free port scripts
   set_fact:
     port_start: "{{ (30000 + (1000 | random)) }}"
     script_name: "find_ports_{{ ansible_date_time.epoch }}_{{ 999999 | random }}.sh"
@@ -9,8 +9,8 @@
     dest: "/tmp/{{ script_name }}"
     mode: '0755'
 
-- name: Find 10 available ports
-  command: "/tmp/{{ script_name }} {{ port_start }} 10"
+- name: Find 11 available ports
+  command: "/tmp/{{ script_name }} {{ port_start }} 11"
   register: available_ports_result
 
 - name: Set available ports as list
@@ -34,3 +34,4 @@
     db_metrics_port: "{{ available_ports[7] }}"
     dango_frontend_port: "{{ available_ports[8] }}"
     quest_port: "{{ available_ports[9] }}"
+    clickhouse_metrics_port: "{{ available_ports[10] }}"

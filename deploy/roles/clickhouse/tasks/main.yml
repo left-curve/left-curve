@@ -44,6 +44,10 @@
     mode: '0755'
     owner: '{{ deploy_user }}'
 
+- name: Create clickhouse network
+  docker_network:
+    name: clickhouse
+
 - name: Deploy clickhouse container
   docker_container:
     name: "{{ container_name }}"
@@ -51,6 +55,8 @@
     restart_policy: unless-stopped
     state: started
     recreate: true
+    networks:
+      - name: clickhouse
     env:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
     # Not sure I still need to bind outside

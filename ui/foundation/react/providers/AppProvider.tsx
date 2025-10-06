@@ -55,7 +55,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.6,
+    version: 1.7,
     initialValue: {
       chart: "tradingview",
       showWelcome: true,
@@ -72,21 +72,12 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
     },
     sync: true,
     migrations: {
-      1.2: (state: AppState["settings"]) => {
-        state.showWelcome = true;
-        return state;
-      },
-      1.3: (state: AppState["settings"]) => {
-        state.chart = "tradingview";
-        return state;
-      },
-      1.4: (state: AppState["settings"]) => {
-        state.timeFormat = "hh:mm a";
-        state.dateFormat = "MM/dd/yyyy";
-        state.timeZone = "local";
-        return state;
-      },
-      1.5: (state: AppState["settings"]) => {
+      "*": (state: AppState["settings"]) => {
+        state.showWelcome = Object.hasOwn(state, "showWelcome") ? state.showWelcome : true;
+        state.chart = state.chart || "tradingview";
+        state.timeFormat = state.timeFormat || "hh:mm a";
+        state.dateFormat = state.dateFormat || "MM/dd/yyyy";
+        state.timeZone = state.timeZone || "local";
         state.formatNumberOptions = {
           mask: state.formatNumberOptions.mask,
           maximumTotalDigits: 8,

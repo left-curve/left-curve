@@ -142,6 +142,9 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         )?;
     }
 
+    #[cfg(feature = "metrics")]
+    let now_volume = std::time::Instant::now();
+
     // Calculate the timestamp of `MAX_VOLUME_AGE` ago. Volume data older than
     // this timestamp are to be purged from storage.
     // Use `saturating_sub` because tests sometimes use small timestamps.
@@ -160,13 +163,19 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
         purge_old_volume_data(VOLUMES_BY_USER, &username, ctx.storage, cutoff)?;
     }
 
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_DURATION_STORE_VOLUME)
+            .record(now_volume.elapsed().as_secs_f64());
+    }
+
     // Round refunds and fee to integer amounts. Round _down_ in both cases.
     let refunds = refunds.into_batch();
     let fees = fees.into_coins_floor();
 
     #[cfg(feature = "metrics")]
     {
-        metrics::histogram!(crate::metrics::LABEL_AUCTION_DURATION,)
+        metrics::histogram!(crate::metrics::LABEL_DURATION_AUCTION)
             .record(now.elapsed().as_secs_f64());
     }
 
@@ -209,6 +218,9 @@ fn clear_orders_of_pair(
     volumes: &mut HashMap<Addr, Udec128_6>,
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
+    #[cfg(feature = "metrics")]
+    let mut now = std::time::Instant::now();
+
     // --------------------- 1. Update passive pool orders ---------------------
 
     // Generate updated passive orders and insert them into the book.
@@ -315,28 +327,34 @@ fn clear_orders_of_pair(
         }
     }
 
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_REFLECT_CURVE,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string()
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
+
     // ----------------------- 2. Perform order matching -----------------------
 
     // Create iterators over orders.
     //
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
-    let mut bid_iter = ORDERS
+    let bid_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Descending)
-        .map(|res| {
-            let ((price, _order_id), order) = res?;
-            Ok((price, order))
-        });
-    let mut ask_iter = ORDERS
+        .values(storage, None, None, IterationOrder::Descending)
+        .with_metrics(&base_denom, &quote_denom, IterationOrder::Descending);
+    let ask_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let ((price, _order_id), order) = res?;
-            Ok((price, order))
-        });
+        .values(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(&base_denom, &quote_denom, IterationOrder::Ascending);
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
@@ -344,7 +362,7 @@ fn clear_orders_of_pair(
         volume,
         bids,
         asks,
-    } = match_orders(&mut bid_iter, &mut ask_iter)?;
+    } = match_orders(bid_iter, ask_iter)?;
 
     #[cfg(feature = "tracing")]
     {
@@ -364,11 +382,17 @@ fn clear_orders_of_pair(
         );
     }
 
-    // Drop the iterators, which hold immutable references to the storage,
-    // so that we can write to storage later.
-    // The Rust compiler isn't smart enough to do this on its own.
-    drop(bid_iter);
-    drop(ask_iter);
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_ORDER_MATCHING,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
 
     // ----------------------- 3. Perform order filling ------------------------
 
@@ -429,6 +453,18 @@ fn clear_orders_of_pair(
         );
     }
 
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_ORDER_FILLING,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
+
     // ------------------------ 4. Handle filled orders ------------------------
 
     // In the previous step, we ran the order filling algorithm. However, the
@@ -469,6 +505,9 @@ fn clear_orders_of_pair(
         clearing_price,
     } in filling_outcomes
     {
+        // If the order is from a user, update refunds and fees.
+        // Otherwise, if it's from the DEX contract itself (a "passive order"),
+        // update the pool inflow/outflow.
         if order.user != dex_addr {
             fill_user_order(
                 order.user,
@@ -482,54 +521,35 @@ fn clear_orders_of_pair(
                 fees,
                 fee_payments,
             )?;
+        } else {
+            fill_passive_order(
+                &base_denom,
+                &quote_denom,
+                order.direction,
+                filled_base,
+                filled_quote,
+                &mut inflows,
+                &mut outflows,
+            )?;
+        };
 
-            // For limit orders, delete it from storage if fully filled, or
-            // update if partially filled.
-            // For market orders, delete it from storage, and refund the user
-            // the remaining amount, as market orders are immediate-or-cancel.
-            match order.time_in_force {
-                TimeInForce::GoodTilCanceled => {
-                    decrease_liquidity_depths(
-                        storage,
-                        &base_denom,
-                        &quote_denom,
-                        order.direction,
-                        order.price,
-                        filled_base,
-                        bucket_sizes,
-                    )?;
+        // For limit orders, delete it from storage if fully filled, or
+        // update if partially filled.
+        // For market orders, delete it from storage, and refund the user
+        // the remaining amount, as market orders are immediate-or-cancel.
+        match order.time_in_force {
+            TimeInForce::GoodTilCanceled => {
+                decrease_liquidity_depths(
+                    storage,
+                    &base_denom,
+                    &quote_denom,
+                    order.direction,
+                    order.price,
+                    filled_base,
+                    bucket_sizes,
+                )?;
 
-                    if order.remaining.is_zero() {
-                        ORDERS.remove(
-                            storage,
-                            (
-                                (base_denom.clone(), quote_denom.clone()),
-                                order.direction,
-                                order.price,
-                                order.id,
-                            ),
-                        )?;
-
-                        #[cfg(feature = "metrics")]
-                        {
-                            metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
-                        }
-                    } else {
-                        ORDERS.save(
-                            storage,
-                            (
-                                (base_denom.clone(), quote_denom.clone()),
-                                order.direction,
-                                order.price,
-                                order.id,
-                            ),
-                            &order,
-                        )?;
-                    }
-                },
-                TimeInForce::ImmediateOrCancel => {
-                    refund_ioc_order(&base_denom, &quote_denom, order, events, refunds)?;
-
+                if order.remaining.is_zero() {
                     ORDERS.remove(
                         storage,
                         (
@@ -544,19 +564,38 @@ fn clear_orders_of_pair(
                     {
                         metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
                     }
-                },
-            }
-        } else {
-            fill_passive_order(
-                &base_denom,
-                &quote_denom,
-                order.direction,
-                filled_base,
-                filled_quote,
-                &mut inflows,
-                &mut outflows,
-            )?;
-        };
+                } else {
+                    ORDERS.save(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            order.direction,
+                            order.price,
+                            order.id,
+                        ),
+                        &order,
+                    )?;
+                }
+            },
+            TimeInForce::ImmediateOrCancel => {
+                refund_ioc_order(&base_denom, &quote_denom, order, events, refunds)?;
+
+                ORDERS.remove(
+                    storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        order.direction,
+                        order.price,
+                        order.id,
+                    ),
+                )?;
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+                }
+            },
+        }
 
         // Emit event for filled orders to be used by the frontend.
         events.push(OrderFilled {
@@ -592,6 +631,7 @@ fn clear_orders_of_pair(
         {
             let filled_base = filled_base.into_int_floor();
             let filled_quote = filled_quote.into_int_floor();
+
             metric_volume
                 .entry((&base_denom, &quote_denom, &base_denom))
                 .or_insert(grug::Int::ZERO)
@@ -620,19 +660,6 @@ fn clear_orders_of_pair(
         }
     }
 
-    #[cfg(feature = "metrics")]
-    {
-        for ((bd, qd, token), amount) in metric_volume {
-            metrics::histogram!(
-                crate::metrics::LABEL_VOLUME_PER_BLOCK,
-                "base_denom" => bd.to_string(),
-                "quote_denom" => qd.to_string(),
-                "token" => token.to_string(),
-            )
-            .record(amount.into_inner() as f64);
-        }
-    }
-
     // Update the pool reserve.
     if inflows.is_non_empty() || outflows.is_non_empty() {
         RESERVES.update(storage, (&base_denom, &quote_denom), |mut reserve| {
@@ -657,6 +684,28 @@ fn clear_orders_of_pair(
         );
     }
 
+    #[cfg(feature = "metrics")]
+    {
+        for ((bd, qd, token), amount) in metric_volume {
+            metrics::histogram!(
+                crate::metrics::LABEL_VOLUME_PER_BLOCK,
+                "base_denom" => bd.to_string(),
+                "quote_denom" => qd.to_string(),
+                "token" => token.to_string(),
+            )
+            .record(amount.into_inner() as f64);
+        }
+
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_HANDLE_FILLED,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
+
     // ------------------------- 5. Cancel IOC orders --------------------------
 
     for order in ORDERS
@@ -665,6 +714,7 @@ fn clear_orders_of_pair(
         .prefix(TimeInForce::ImmediateOrCancel)
         .append((base_denom.clone(), quote_denom.clone()))
         .values(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(&base_denom, &quote_denom, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
         ORDERS.remove(
@@ -689,6 +739,18 @@ fn clear_orders_of_pair(
         );
     }
 
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_CANCEL_IOC,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
+
     // ----------------- 6. Save the resting order book state ------------------
 
     // Find the best bid and ask prices that remains after all the previous steps.
@@ -696,6 +758,7 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
         .keys(storage, None, None, IterationOrder::Descending)
+        .with_metrics(&base_denom, &quote_denom, IterationOrder::Descending)
         .next()
         .transpose()?
         .map(|(price, _order_id)| price);
@@ -703,6 +766,7 @@ fn clear_orders_of_pair(
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
         .keys(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(&base_denom, &quote_denom, IterationOrder::Ascending)
         .next()
         .transpose()?
         .map(|(price, _order_id)| price);
@@ -736,6 +800,16 @@ fn clear_orders_of_pair(
             ?mid_price,
             "Saved resting order book state"
         )
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_UPDATE_REST_STATE,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
     }
 
     Ok(())
@@ -961,6 +1035,70 @@ where
         .clear(storage, None, Some(Bound::Exclusive(max)));
 
     Ok(())
+}
+
+// ---------------------------------- metrics ----------------------------------
+
+/// A wrapper over an iterator that emits metrics when the iterator is advanced.
+pub struct MetricsIter<'a, I> {
+    iter: I,
+    // Quick hack: make these two fields public, so clippy doesn't complain they
+    // are unused when `metrics` feature is disabled.
+    pub base_denom: &'a Denom,
+    pub quote_denom: &'a Denom,
+    pub iteration_order: IterationOrder,
+}
+
+impl<'a, I> Iterator for MetricsIter<'a, I>
+where
+    I: Iterator,
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let item = self.iter.next();
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(
+                crate::metrics::LABEL_DURATION_ITER_NEXT,
+                "base_denom" => self.base_denom.to_string(),
+                "quote_denom" => self.quote_denom.to_string(),
+                "iteration_order" => self.iteration_order.as_str(),
+            )
+            .record(duration.elapsed().as_secs_f64());
+        }
+
+        item
+    }
+}
+
+pub trait MetricsIterExt<'a>: Sized {
+    fn with_metrics(
+        self,
+        base_denom: &'a Denom,
+        quote_denom: &'a Denom,
+        iteration_order: IterationOrder,
+    ) -> MetricsIter<'a, Self>;
+}
+
+impl<'a, T> MetricsIterExt<'a> for Box<dyn Iterator<Item = T> + 'a> {
+    fn with_metrics(
+        self,
+        base_denom: &'a Denom,
+        quote_denom: &'a Denom,
+        iteration_order: IterationOrder,
+    ) -> MetricsIter<'a, Self> {
+        MetricsIter {
+            iter: self,
+            base_denom,
+            quote_denom,
+            iteration_order,
+        }
+    }
 }
 
 // ----------------------------------- tests -----------------------------------

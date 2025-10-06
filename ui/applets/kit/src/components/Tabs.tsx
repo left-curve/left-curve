@@ -111,9 +111,9 @@ const tabsVariants = tv({
     },
     color: {
       green: {
-        base: "bg-surface-secondary-green",
+        base: "bg-surface-tertiary-green",
         "animated-element":
-          "bg-surface-button-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+          "bg-surface-primary-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       red: {
         base: "bg-surface-secondary-red",
@@ -189,17 +189,7 @@ const tabVariants = tv({
     {
       isActive: true,
       color: "green",
-      class: "text-surface-primary-rice",
-    },
-    {
-      isActive: true,
-      color: "red",
-      class: "text-surface-primary-rice",
-    },
-    {
-      isActive: false,
-      color: "red",
-      class: "text-fg-tertiary-400",
+      class: "text-ink-secondary-700",
     },
     {
       isActive: false,
@@ -208,8 +198,18 @@ const tabVariants = tv({
     },
     {
       isActive: true,
+      color: "red",
+      class: "text-surface-primary-rice",
+    },
+    {
+      isActive: false,
+      color: "red",
+      class: "text-fg-tertiary-400",
+    },
+    {
+      isActive: true,
       color: "light-green",
-      class: "text-ink-secondary-700",
+      class: "text-surface-primary-rice",
     },
     {
       isActive: false,

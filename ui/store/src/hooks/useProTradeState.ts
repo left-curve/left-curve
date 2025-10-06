@@ -208,7 +208,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         const price: PriceOption =
           operation === "market"
             ? { market: { maxSlippage: "0.001" } }
-            : { limit: parseUnits(priceValue, baseCoin.decimals - quoteCoin.decimals) };
+            : { limit: formatUnits(priceValue, baseCoin.decimals - quoteCoin.decimals) };
 
         const order: CreateOrderRequest = {
           baseDenom,

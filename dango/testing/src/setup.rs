@@ -15,7 +15,7 @@ use {
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk_lite::DiskDbLite,
-    grug_db_memory::MemDb,
+    grug_db_memory_lite::MemDbLite,
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
@@ -64,20 +64,20 @@ pub struct BridgeOp {
 
 pub type TestSuite<
     PP = ProposalPreparer<PythClientCache>,
-    DB = MemDb,
+    DB = MemDbLite,
     VM = RustVm,
     ID = NullIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
 pub type TestSuiteWithIndexer<
     PP = ProposalPreparer<PythClientCache>,
-    DB = MemDb,
+    DB = MemDbLite,
     VM = RustVm,
     ID = HookedIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
-/// `ContractWrapper` codes.
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` with cached
+/// Pyth Lazer client, and `ContractWrapper` codes.
 ///
 /// Used for running regular tests.
 pub fn setup_test(
@@ -90,7 +90,7 @@ pub fn setup_test(
     MockValidatorSets,
 ) {
     setup_suite_with_db_and_vm(
-        MemDb::new(),
+        MemDbLite::new(),
         RustVm::new(),
         ProposalPreparer::new_with_cache(),
         NullIndexer,
@@ -128,7 +128,7 @@ pub fn setup_test_naive_with_custom_genesis(
     MockValidatorSets,
 ) {
     setup_suite_with_db_and_vm(
-        MemDb::new(),
+        MemDbLite::new(),
         RustVm::new(),
         NaiveProposalPreparer,
         NullIndexer,
@@ -209,7 +209,7 @@ pub async fn setup_test_with_indexer(
     );
     hooked_indexer.add_indexer(clickhouse_indexer).unwrap();
 
-    let db = MemDb::new();
+    let db = MemDbLite::new();
     let vm = RustVm::new();
 
     let (suite, accounts, codes, contracts, validator_sets) = setup_suite_with_db_and_vm(
