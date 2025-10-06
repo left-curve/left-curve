@@ -384,6 +384,17 @@ fn clear_orders_of_pair(
 
     #[cfg(feature = "metrics")]
     {
+        let num_trades = bids.len() + asks.len();
+
+        metrics::counter!(crate::metrics::LABEL_TRADES).increment(num_trades as u64);
+
+        metrics::histogram!(
+            crate::metrics::LABEL_TRADES_PER_BLOCK,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string()
+        )
+        .record(num_trades as f64);
+
         metrics::histogram!(
             crate::metrics::LABEL_DURATION_ORDER_MATCHING,
             "base_denom" => base_denom.to_string(),
@@ -429,20 +440,6 @@ fn clear_orders_of_pair(
             clearing_price,
             volume,
         })?;
-
-        #[cfg(feature = "metrics")]
-        {
-            let num_trades = bids.len() + asks.len();
-
-            metrics::counter!(crate::metrics::LABEL_TRADES).increment(num_trades as u64);
-
-            metrics::histogram!(
-                crate::metrics::LABEL_TRADES_PER_BLOCK,
-                "base_denom" => base_denom.to_string(),
-                "quote_denom" => quote_denom.to_string()
-            )
-            .record(num_trades as f64);
-        }
 
         Box::new(fill_orders(
             bids,

@@ -1,6 +1,6 @@
 use {
     dango_types::dex::{Order, Price},
-    grug::{Number, NumberConst, StdResult, Udec128, Udec128_6},
+    grug::{MathResult, Number, NumberConst, Udec128, Udec128_6},
 };
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ pub fn fill_orders<B, A>(
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
-) -> impl Iterator<Item = StdResult<FillingOutcome>>
+) -> impl Iterator<Item = MathResult<FillingOutcome>>
 where
     B: IntoIterator<Item = Order> + 'static,
     A: IntoIterator<Item = Order> + 'static,
@@ -63,7 +63,7 @@ fn fill_bids<B>(
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
-) -> impl Iterator<Item = StdResult<FillingOutcome>>
+) -> impl Iterator<Item = MathResult<FillingOutcome>>
 where
     B: IntoIterator<Item = Order>,
 {
@@ -120,7 +120,7 @@ fn fill_asks<A>(
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
-) -> impl Iterator<Item = StdResult<FillingOutcome>>
+) -> impl Iterator<Item = MathResult<FillingOutcome>>
 where
     A: IntoIterator<Item = Order>,
 {
