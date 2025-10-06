@@ -655,13 +655,6 @@ fn clear_orders_of_pair(
 
     #[cfg(feature = "metrics")]
     {
-        metrics::histogram!(
-            crate::metrics::LABEL_DURATION_ORDER_FILLING,
-            "base_denom" => base_denom.to_string(),
-            "quote_denom" => quote_denom.to_string(),
-        )
-        .record(now.elapsed().as_secs_f64());
-
         for ((bd, qd, token), amount) in metric_volume {
             metrics::histogram!(
                 crate::metrics::LABEL_VOLUME_PER_BLOCK,
