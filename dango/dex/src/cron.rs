@@ -682,7 +682,7 @@ fn clear_orders_of_pair(
         now = std::time::Instant::now();
     }
 
-    // ------------------------- 5. Cancel IOC orders --------------------------
+    // ------------------------- 4. Cancel IOC orders --------------------------
 
     for order in ORDERS
         .idx
@@ -727,7 +727,7 @@ fn clear_orders_of_pair(
         now = std::time::Instant::now();
     }
 
-    // ----------------- 6. Save the resting order book state ------------------
+    // ----------------- 5. Save the resting order book state ------------------
 
     // Find the best bid and ask prices that remains after all the previous steps.
     let best_bid_price = ORDERS
