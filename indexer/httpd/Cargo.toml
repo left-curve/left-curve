@@ -41,6 +41,7 @@ futures                     = { workspace = true }
 futures-util                = { workspace = true, optional = true }
 grug-app                    = { workspace = true }
 grug-httpd                  = { workspace = true }
+grug-macros                 = { workspace = true }
 grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
 indexer-sql                 = { workspace = true, features = ["async-graphql"] }

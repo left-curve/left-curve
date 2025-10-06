@@ -17,11 +17,11 @@ pub enum Error {
     Std(grug::StdError),
 
     #[error(transparent)]
-    PubSub(#[from] PubSubError),
+    PubSub(PubSubError),
 
     #[error(transparent)]
     #[backtrace(new)]
-    Join(#[from] tokio::task::JoinError),
+    Join(tokio::task::JoinError),
 }
 
 impl From<Error> for grug_app::IndexerError {

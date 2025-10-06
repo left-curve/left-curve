@@ -6,7 +6,7 @@ use {
 #[grug_macros::backtrace]
 pub enum DbError {
     #[error(transparent)]
-    Std(#[from] StdError),
+    Std(StdError),
 
     #[error("cannot flush when changeset is already set")]
     ChangeSetAlreadySet,

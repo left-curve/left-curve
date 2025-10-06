@@ -41,7 +41,6 @@ pub enum IndexerError {
     Persist(tempfile::PersistError),
 
     #[error(transparent)]
-    #[backtrace(new)]
     Persistence(indexer_disk_saver::error::Error),
 
     #[error("hooks error: {error}")]

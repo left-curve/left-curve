@@ -5,11 +5,11 @@ pub enum PubSubError {
 
     #[error(transparent)]
     #[backtrace(new)]
-    Sqlx(#[from] sqlx::Error),
+    Sqlx(sqlx::Error),
 
     #[error(transparent)]
     #[backtrace(new)]
-    SerdeJson(#[from] serde_json::Error),
+    SerdeJson(serde_json::Error),
 }
 
 pub type Result<T> = core::result::Result<T, PubSubError>;

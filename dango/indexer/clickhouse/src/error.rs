@@ -4,17 +4,17 @@ use {grug::Backtraceable, indexer_sql::pubsub::error::PubSubError};
 pub enum IndexerError {
     #[error(transparent)]
     #[backtrace(new)]
-    Io(#[from] std::io::Error),
+    Io(std::io::Error),
 
     #[error(transparent)]
-    Std(#[from] grug::StdError),
+    Std(grug::StdError),
 
     #[error(transparent)]
-    Math(#[from] grug::MathError),
+    Math(grug::MathError),
 
     #[error(transparent)]
     #[backtrace(new)]
-    Clickhouse(#[from] clickhouse::error::Error),
+    Clickhouse(clickhouse::error::Error),
 
     #[error("missing block or block outcome")]
     MissingBlockOrBlockOutcome,
@@ -24,14 +24,14 @@ pub enum IndexerError {
 
     #[error(transparent)]
     #[backtrace(new)]
-    ChronoParse(#[from] chrono::ParseError),
+    ChronoParse(chrono::ParseError),
 
     #[error(transparent)]
     #[backtrace(new)]
-    SerdeJson(#[from] serde_json::Error),
+    SerdeJson(serde_json::Error),
 
     #[error(transparent)]
-    PubSub(#[from] PubSubError),
+    PubSub(PubSubError),
 }
 
 macro_rules! parse_error {
