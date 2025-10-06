@@ -109,9 +109,9 @@ fn backtrace() {
         .to_string();
 
     // on wasm, backtrace is empty but the chain capture the backtrace later.
-    // there are not any grug_tester word in the backtrace.
+    // there are not any grug_tester function name in the backtrace.
     assert!(!backtrace.is_empty());
-    assert!(!backtrace.contains("grug_tester"));
+    assert!(!backtrace.contains("grug_tester::query::failing_query"));
 
     let backtrace = suite
         .query_wasm_smart(rust_tester, QueryFailingQueryRequest {
@@ -123,5 +123,5 @@ fn backtrace() {
         .to_string();
 
     assert!(!backtrace.is_empty());
-    assert!(backtrace.contains("grug_tester"));
+    assert!(backtrace.contains("grug_tester::query::failing_query"));
 }

@@ -127,7 +127,6 @@ jobs:
       POSTGRES_PORT: 6432
       CLICKHOUSE_DATABASE: grug_test
       CLICKHOUSE_USER: default
-      RUST_BACKTRACE: 1
     services:
       postgres:
         image: postgres:17
