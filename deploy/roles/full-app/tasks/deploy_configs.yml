@@ -1,8 +1,16 @@
 - set_fact:
+    indexer_url: "http://backend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql"
+    faucet_url: "http://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/mint"
+    quest_url: "http://quest.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/to_fix"
+    up_url: "http://backend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/up"
+  when: not traefik_enabled
+
+- set_fact:
     indexer_url: "http://backend.{{ dango_network }}.{{ dango_domain }}/graphql"
     faucet_url: "http://faucet.{{ dango_network }}.{{ dango_domain }}/mint"
     quest_url: "http://quest.{{ dango_network }}.{{ dango_domain }}/to_fix"
     up_url: "http://backend.{{ dango_network }}.{{ dango_domain }}/up"
+  when: traefik_enabled
 
 - name: Deploy configuration files
   become: true
