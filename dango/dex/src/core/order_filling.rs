@@ -34,8 +34,8 @@ pub fn fill_orders<B, A>(
     taker_fee_rate: Udec128,
 ) -> impl Iterator<Item = MathResult<FillingOutcome>>
 where
-    B: IntoIterator<Item = Order> + 'static,
-    A: IntoIterator<Item = Order> + 'static,
+    B: IntoIterator<Item = Order>,
+    A: IntoIterator<Item = Order>,
 {
     fill_bids(
         bids,
