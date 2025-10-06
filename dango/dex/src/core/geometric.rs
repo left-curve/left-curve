@@ -258,6 +258,11 @@ pub fn reflect_curve(
                 return None;
             }
 
+            // Fix: recompute the amount of quote asset used.
+            // The order size is denominated in the base asset, so the actual
+            // amount of quote asset used needs to be recomputed from the base amount.
+            let size_in_quote = size.checked_mul_dec_floor(price).ok()?;
+
             maybe_price = price.checked_sub(params.spacing).ok();
             remaining_quote.checked_sub_assign(size_in_quote).ok()?;
 

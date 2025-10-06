@@ -1,2 +1,2 @@
-dango_networks:
-  - devnet
+---
+tailscale_ip: 100.96.253.40

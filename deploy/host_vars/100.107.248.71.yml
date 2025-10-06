@@ -1,2 +1,2 @@
-dango_networks:
-  - testnet
+---
+tailscale_ip: 100.107.248.71

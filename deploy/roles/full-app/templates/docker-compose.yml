@@ -117,7 +117,7 @@ services:
       - clickhouse
 {% endif %}
     volumes:
-      - "${DEPLOYMENT_DIR}/dango:/root/.dango"
+      - "${DANGO_DIRECTORY}:/root/.dango"
     environment:
       - INDEXER__DATABASE__URL=${POSTGRES_DATABASE_URL}
       - INDEXER__CLICKHOUSE__USER=${CLICKHOUSE_DANGO_USER}
@@ -152,6 +152,7 @@ services:
       UP_URL: ${UP_URL}
       QUEST_URL: ${QUEST_URL}
       BANNER: ${FRONTEND_BANNER}
+      CHAIN_ID: ${CHAIN_ID}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
@@ -205,6 +206,8 @@ services:
       app_settings__size_percent__max: 3.0
       app_settings__price_percent__min: 0.05
       app_settings__price_percent__max: 0.2
+      app_settings__order_number__min: 1
+      app_settings__order_number__max: 5
       app_settings__order_type: market
       app_settings__healthcheck_file: /tmp/dango_dex_app_healthcheck
     healthcheck:
@@ -222,7 +225,7 @@ services:
     depends_on:
       - dango
     volumes:
-      - "${DEPLOYMENT_DIR}/cometbft:/root/.cometbft"
+      - "${COMETBFT_DIRECTORY}:/root/.cometbft"
 {% if expose_ports %}
     ports:
       - "${BINDING_IP}:${COMETBFT_P2P_PORT:-0}:26656"

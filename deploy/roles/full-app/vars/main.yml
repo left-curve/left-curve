@@ -1,0 +1,33 @@
+---
+github_sha: "{{ lookup('pipe','git rev-parse HEAD') }}"
+dango_image_tag: "{{ github_sha }}"
+dex_bot_tag: "latest"
+cometbft_node_key: ""
+cometbft_validator_address: ""
+cometbft_validator_public_key: ""
+cometbft_validator_private_key: ""
+dango_host: "dango"
+cometbft_host: "cometbft"
+cometbft_tag: "v0.38.17"
+cometbft_generate_keys: false
+deploy_env: "staging"
+chain_id: "dev-10"
+dango_network: "devnet"
+# When traefik is enabled it will be used for routing, keeping the same port
+traefik_enabled: false
+traefik_dir: "{{ ansible_env.HOME }}/traefik"
+expose_ports: false
+dex_bot_enabled: false
+github_deployments_enabled: false
+deploy_includes_postgres: true
+delete_postgres_database_at_merge: false
+deploy_includes_clickhouse: true
+delete_clickhouse_database_at_merge: false
+postgres_database: "dango_{{ timestamp }}"
+clickhouse_database: "dango_{{ timestamp }}"
+deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+dango_directory: "{{ deployment_dir }}/dango"
+cometbft_directory: "{{ deployment_dir }}/cometbft"
+# should we use system wide dango and cometbft directories instead of contained in the deploy
+system_wide_directories: false
+keep_databases: false

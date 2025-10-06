@@ -14,6 +14,12 @@
     - cometbft_abci_port
     - cometbft_metrics_port
 
+- name: Set dango and cometbft directories
+  set_fact:
+    dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
+    cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/cometbft"
+  when: system_wide_directories
+
 - name: Check if deployment already exists
   stat:
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
@@ -28,7 +34,6 @@
 
 - set_fact:
     skip_port_discovery: false
-    validator_private_key_exists: false
 
 - name: Set facts from existing .env
   set_fact:
@@ -37,22 +42,16 @@
   loop: "{{ existing_port_pairs.stdout_lines }}"
   when: env_file_exists.stat.exists and existing_port_pairs.stdout_lines | length > 0
 
-- name: Check if cometbft keys already exists
-  stat:
-    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/cometbft/config/priv_validator_key.json"
-  register: validator_private_key_file_exists
+- file:
+    path: "{{ item }}"
+    state: directory
+  loop: ["{{ dango_directory }}/config", "{{ cometbft_directory }}/config", "{{ deployment_dir }}"]
 
-- name: Set port facts from existing .env
-  set_fact:
-    validator_private_key_exists: true
-  when: validator_private_key_file_exists.stat.exists
-
-- name: Create deployment directories
-  file:
+- file:
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item }}"
     state: directory
-  loop: ["dango/config", "clickhouse", "cometbft/config"]
-  when: not env_file_exists.stat.exists
+  loop: ["clickhouse"]
+  when: deploy_includes_clickhouse
 
 - name: Login to GHCR
   community.docker.docker_login:

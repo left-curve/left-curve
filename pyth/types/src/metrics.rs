@@ -7,5 +7,8 @@ pub const PYTH_UPTIME: &str = "pyth.lazer.uptime";
 /// Number of reconnection attempts made to Pyth Lazer.
 pub const PYTH_RECONNECTION_ATTEMPTS: &str = "pyth.lazer.reconnection_attempts";
 
-/// Number of data messages received from Pyth Lazer.
-pub const PYTH_DATA_RECEIVED: &str = "pyth.lazer.data_received";
+/// Number of messages received from Pyth Lazer.
+pub const PYTH_MESSAGES_RECEIVED: &str = "pyth.lazer.messages_received";
+
+/// Number of times data was read from Pyth Lazer.
+pub const PYTH_DATA_READ: &str = "pyth.lazer.data_read.count";

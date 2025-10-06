@@ -1,41 +1,62 @@
+
+- name: Generate keys on all nodes and build peer list
+  hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  gather_facts: yes
+  tasks:
+    - name: Generate shared timestamp
+      set_fact:
+        timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+      run_once: true
+
+    - name: Set timestamp on all hosts
+      set_fact:
+        timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+        deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+
+    - name: Run setup tasks
+      include_role:
+        name: full-app
+        tasks_from: setup.yml
+
+    - name: Detect free ports
+      include_role:
+        name: full-app
+        tasks_from: detect_free_ports.yml
+      when: expose_ports and not skip_port_discovery
+
+    - name: Generate keys
+      include_role:
+        name: full-app
+        tasks_from: cometbft_keys.yml
+
+    - name: Build persistent_peers list
+      set_fact:
+        persistent_peers: "{{ peer_list }}"
+      vars:
+        peer_list: |-
+          {%- set peers = [] -%}
+          {%- for host in groups['full-app'] -%}
+          {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
+          {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].tailscale_ip ~ ':' ~ hostvars[host].cometbft_p2p_port -%}
+          {{- peers.append(peer) or '' -}}
+          {%- endif -%}
+          {%- endfor -%}
+          {{- peers | join(',') -}}
+      when: cometbft_node_id is defined
+
+    - name: Debug peer configuration
+      debug:
+        msg: "Persistent peers for {{ inventory_hostname }}: {{ persistent_peers }}"
+      when: persistent_peers is defined
+
+    # Stop for debugging
+    # - meta: end_play
+
 - hosts: full-app
   become: true
   become_user: "{{ deploy_user }}"
-  vars:
-    traefik_dir: "{{ ansible_env.HOME }}/traefik"
-    tailscale_iface: tailscale0
-    tailscale_ip: "{{ hostvars[inventory_hostname]['ansible_' + tailscale_iface].ipv4.address }}"
-    github_sha: "{{ lookup('pipe','git rev-parse HEAD') }}"
-    dango_image_tag: "{{ github_sha }}"
-    dex_bot_tag: "latest"
-    ghcr_user: "{{ lookup('env','GITHUB_USER') }}"
-    ghcr_token: "{{ lookup('env','GITHUB_TOKEN') }}"
-    timestamp: "{{ ansible_date_time.year }}{{ ansible_date_time.month }}{{ ansible_date_time.day }}{{ ansible_date_time.hour }}{{ ansible_date_time.minute }}{{ ansible_date_time.second }}"
-    deployment_name: "{{ timestamp }}"
-    cometbft_node_key: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_NODE_KEY') }}"
-    cometbft_validator_address: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_VALIDATOR_ADDRESS') }}"
-    cometbft_validator_public_key: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_VALIDATOR_PUB_KEY') }}"
-    cometbft_validator_private_key: "{{ lookup('env', (dango_network|upper) ~ '_COMETBFT_VALIDATOR_PRIVATE_KEY') }}"
-    dango_host: "dango"
-    cometbft_host: "cometbft"
-    cometbft_tag: "v0.38.17"
-    cometbft_generate_keys: false
-    deploy_env: "staging"
-    chain_id: "dev-9"
-    dango_network: "devnet"
-    # When traefik is enabled it will be used for routing, keeping the same port
-    traefik_enabled: false
-    expose_ports: false
-    dex_bot_enabled: false
-    github_deployments_enabled: false
-    deploy_includes_postgres: true
-    delete_postgres_database_at_merge: false
-    deploy_includes_clickhouse: true
-    delete_clickhouse_database_at_merge: false
-    postgres_database: "dango_{{ timestamp }}"
-    clickhouse_database: "dango_{{ timestamp }}"
-    deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
-    pyth_access_token: "{{ lookup('env', 'PYTH_ACCESS_TOKEN') }}"
   collections:
     - community.docker
     - community.clickhouse

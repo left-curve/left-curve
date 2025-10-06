@@ -309,6 +309,10 @@ impl PythClient {
                         last_data_received.insert(update.subscription_id.0, Instant::now());
                     }
 
+                    #[cfg(feature = "metrics")]
+                    histogram!(pyth_types::metrics::PYTH_MESSAGES_RECEIVED)
+                        .record(update.messages.len() as f64);
+
                     // Analyze the messages received.
                     for msg in update.messages {
                         match msg {
@@ -510,7 +514,7 @@ impl PythClientTrait for PythClient {
                 };
 
                 #[cfg(feature = "metrics")]
-                histogram!(pyth_types::metrics::PYTH_DATA_RECEIVED).record(data_count as f64);
+                counter!(pyth_types::metrics::PYTH_DATA_READ).increment(1);
 
                 // Analyze the data received.
                 Self::analyze_data(
@@ -577,7 +581,12 @@ pub fn init_metrics() {
     );
 
     describe_histogram!(
-        pyth_types::metrics::PYTH_DATA_RECEIVED,
+        pyth_types::metrics::PYTH_MESSAGES_RECEIVED,
         "Number of data messages received from Pyth Lazer"
+    );
+
+    describe_counter!(
+        pyth_types::metrics::PYTH_DATA_READ,
+        "Number of times data was read from Pyth Lazer"
     );
 }
