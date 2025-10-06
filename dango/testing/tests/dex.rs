@@ -7618,3 +7618,23 @@ fn create_and_cancel_order_with_remainder() {
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     });
 }
+
+#[test]
+fn cannot_mint_zero_lp_tokens() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Provide liquidity with zero amount of one side
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            coins! {
+                dango::DENOM.clone() => 100_000,
+            },
+        )
+        .should_fail_with_error("lp mint amount must be non-zero");
+}
