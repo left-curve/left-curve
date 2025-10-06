@@ -1,6 +1,6 @@
 use {
     dango_types::dex::{Order, Price},
-    grug::{IsZero, Number, NumberConst, StdResult, Udec128, Udec128_6},
+    grug::{Number, NumberConst, StdResult, Udec128, Udec128_6},
 };
 
 #[derive(Debug)]
@@ -24,50 +24,52 @@ pub struct FillingOutcome {
 }
 
 /// Clear the orders given a clearing price and volume.
-pub fn fill_orders(
-    bids: Vec<Order>,
-    asks: Vec<Order>,
+pub fn fill_orders<B, A>(
+    bids: B,
+    asks: A,
     clearing_price: Price,
     volume: Udec128_6,
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
-) -> StdResult<Vec<FillingOutcome>> {
-    let mut outcome = Vec::with_capacity(bids.len() + asks.len());
-
-    outcome.extend(fill_bids(
-        bids,
-        clearing_price,
-        volume,
-        current_block_height,
-        maker_fee_rate,
-        taker_fee_rate,
-    )?);
-
-    outcome.extend(fill_asks(
-        asks,
-        clearing_price,
-        volume,
-        current_block_height,
-        maker_fee_rate,
-        taker_fee_rate,
-    )?);
-
-    Ok(outcome)
+) -> Box<dyn Iterator<Item = StdResult<FillingOutcome>>>
+where
+    B: IntoIterator<Item = Order> + 'static,
+    A: IntoIterator<Item = Order> + 'static,
+{
+    Box::new(
+        fill_bids(
+            bids,
+            clearing_price,
+            volume,
+            current_block_height,
+            maker_fee_rate,
+            taker_fee_rate,
+        )
+        .chain(fill_asks(
+            asks,
+            clearing_price,
+            volume,
+            current_block_height,
+            maker_fee_rate,
+            taker_fee_rate,
+        )),
+    )
 }
 
 /// Fill the BUY orders given a clearing price and volume.
-fn fill_bids(
-    bids: Vec<Order>,
+fn fill_bids<B>(
+    bids: B,
     clearing_price: Price,
     mut volume: Udec128_6,
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
-) -> StdResult<Vec<FillingOutcome>> {
-    let mut outcome = Vec::with_capacity(bids.len());
-
-    for mut order in bids {
+) -> impl Iterator<Item = StdResult<FillingOutcome>>
+where
+    B: IntoIterator<Item = Order>,
+{
+    bids.into_iter().map(move |mut order| {
         // Compute how much of the order can be filled.
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
@@ -99,7 +101,7 @@ fn fill_bids(
         let refund_base = filled_base.checked_sub(fee_base)?;
         let refund_quote = filled_base.checked_mul(order.price - clearing_price)?;
 
-        outcome.push(FillingOutcome {
+        Ok(FillingOutcome {
             order,
             filled_base,
             filled_quote,
@@ -108,28 +110,23 @@ fn fill_bids(
             fee_base,
             fee_quote,
             clearing_price,
-        });
-
-        if volume.is_zero() {
-            break;
-        }
-    }
-
-    Ok(outcome)
+        })
+    })
 }
 
 /// Fill the SELL orders given a clearing price and volume.
-fn fill_asks(
-    asks: Vec<Order>,
+fn fill_asks<A>(
+    asks: A,
     clearing_price: Price,
     mut volume: Udec128_6,
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
-) -> StdResult<Vec<FillingOutcome>> {
-    let mut outcome = Vec::with_capacity(asks.len());
-
-    for mut order in asks {
+) -> impl Iterator<Item = StdResult<FillingOutcome>>
+where
+    A: IntoIterator<Item = Order>,
+{
+    asks.into_iter().map(move |mut order| {
         // Compute how much of the order can be filled.
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
@@ -161,7 +158,7 @@ fn fill_asks(
         let refund_base = Udec128_6::ZERO;
         let refund_quote = filled_quote.checked_sub(fee_quote)?;
 
-        outcome.push(FillingOutcome {
+        Ok(FillingOutcome {
             order,
             filled_base,
             filled_quote,
@@ -170,12 +167,6 @@ fn fill_asks(
             fee_base,
             fee_quote,
             clearing_price,
-        });
-
-        if volume.is_zero() {
-            break;
-        }
-    }
-
-    Ok(outcome)
+        })
+    })
 }

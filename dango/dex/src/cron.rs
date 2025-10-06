@@ -438,41 +438,10 @@ fn clear_orders_of_pair(
             current_block_height,
             maker_fee_rate,
             taker_fee_rate,
-        )?
-    } else {
-        vec![]
-    };
-
-    #[cfg(feature = "tracing")]
-    {
-        tracing::info!(
-            base_denom = base_denom.to_string(),
-            quote_denom = quote_denom.to_string(),
-            num_filling_outcomes = filling_outcomes.len(),
-            "Filled orders"
-        );
-    }
-
-    #[cfg(feature = "metrics")]
-    {
-        metrics::histogram!(
-            crate::metrics::LABEL_DURATION_ORDER_FILLING,
-            "base_denom" => base_denom.to_string(),
-            "quote_denom" => quote_denom.to_string(),
         )
-        .record(now.elapsed().as_secs_f64());
-
-        now = std::time::Instant::now();
-    }
-
-    // ------------------------ 4. Handle filled orders ------------------------
-
-    // In the previous step, we ran the order filling algorithm. However, the
-    // algorithm is a pure function with no side effects. Now, we must execute
-    // the desired side effects:
-    // - update order and reserve status in the contract store;
-    // - refund appropriate amounts of tokens to users;
-    // - emit events.
+    } else {
+        Box::new(std::iter::empty())
+    };
 
     // Track the inflows and outflows of the dex.
     let mut inflows = DecCoins::new();
@@ -481,30 +450,31 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     let mut metric_volume = HashMap::new();
 
-    #[cfg(feature = "metrics")]
-    {
-        metrics::counter!(crate::metrics::LABEL_TRADES).increment(filling_outcomes.len() as u64);
+    // #[cfg(feature = "metrics")]
+    // {
+    //     metrics::counter!(crate::metrics::LABEL_TRADES).increment(filling_outcomes.len() as u64);
 
-        metrics::histogram!(
-            crate::metrics::LABEL_TRADES_PER_BLOCK,
-            "base_denom" => base_denom.to_string(),
-            "quote_denom" => quote_denom.to_string()
-        )
-        .record(filling_outcomes.len() as f64);
-    }
+    //     metrics::histogram!(
+    //         crate::metrics::LABEL_TRADES_PER_BLOCK,
+    //         "base_denom" => base_denom.to_string(),
+    //         "quote_denom" => quote_denom.to_string()
+    //     )
+    //     .record(filling_outcomes.len() as f64);
+    // }
 
     // Handle order filling outcomes for the user placed orders.
-    for FillingOutcome {
-        order,
-        filled_base,
-        filled_quote,
-        refund_base,
-        refund_quote,
-        fee_base,
-        fee_quote,
-        clearing_price,
-    } in filling_outcomes
-    {
+    for res in filling_outcomes {
+        let FillingOutcome {
+            order,
+            filled_base,
+            filled_quote,
+            refund_base,
+            refund_quote,
+            fee_base,
+            fee_quote,
+            clearing_price,
+        } = res?;
+
         // If the order is from a user, update refunds and fees.
         // Otherwise, if it's from the DEX contract itself (a "passive order"),
         // update the pool inflow/outflow.
@@ -680,12 +650,19 @@ fn clear_orders_of_pair(
         tracing::info!(
             base_denom = base_denom.to_string(),
             quote_denom = quote_denom.to_string(),
-            "Handled filled orders"
+            "Filled orders"
         );
     }
 
     #[cfg(feature = "metrics")]
     {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_ORDER_FILLING,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
         for ((bd, qd, token), amount) in metric_volume {
             metrics::histogram!(
                 crate::metrics::LABEL_VOLUME_PER_BLOCK,
