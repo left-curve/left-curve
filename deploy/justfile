@@ -4,6 +4,9 @@ set positional-arguments
 default:
   @just --list
 
+edit-secrets:
+  ansible-vault edit group_vars/all/vault.yml
+
 cold-provision:
   ansible-playbook playbook.yml
 
