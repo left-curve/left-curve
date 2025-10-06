@@ -44,6 +44,7 @@
         api_token: "{{ cloudflare_api_token }}"
         state: absent
       loop: ["frontend", "backend", "faucet", "cometbft"]
+      ignore_errors: true
 
     - name: Cleanup deployment
       block:
