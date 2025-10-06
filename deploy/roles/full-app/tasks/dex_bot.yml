@@ -10,9 +10,9 @@
   register: liquidity_setup_flag
 
 - name: Setup liquidity (mint and provide)
-  # when:
-    # - not liquidity_setup_flag.stat.exists
-    # - not (current_liquidity_setup_flag.stat.exists | default(false))
+  when:
+    - not liquidity_setup_flag.stat.exists
+    - not (current_liquidity_setup_flag.stat.exists | default(false))
   block:
     - set_fact:
         mint_command: "dex liquidity mint --url http://dango:8080/ {{ dango.dex_bot.mint_amount }} {{ dango.dex_bot.address }} --address {{ dango.dex_bot.minter_address }} --username {{ dango.dex_bot.minter_username }} --private-key {{ dango.dex_bot.minter_private_key }}"
