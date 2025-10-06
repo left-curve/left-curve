@@ -1,4 +1,4 @@
-import { Button, twMerge, useMediaQuery, usePortalTarget } from "@left-curve/applets-kit";
+import { Button, twMerge, useApp, useMediaQuery, usePortalTarget } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
 import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useAccount } from "@left-curve/store";
@@ -6,17 +6,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { useApp } from "~/hooks/useApp";
-
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text }) => {
   return (
     <div className="flex items-center gap-1 diatype-sm-medium">
       <div
         className={twMerge(
-          "h-4 w-4 flex items-center justify-center rounded-full bg-green-bean-400",
-          { "bg-gray-400": !completed },
+          "h-4 w-4 flex items-center justify-center rounded-full bg-primitives-green-light-400",
+          { "bg-primitives-gray-light-400": !completed },
         )}
       >
         {completed ? (
@@ -25,7 +23,7 @@ const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text
           <IconClose className="h-4 w-4 text-white" />
         )}
       </div>
-      <p className={twMerge({ "text-tertiary-500": !completed })}>{text}</p>
+      <p className={twMerge({ "text-ink-tertiary-500": !completed })}>{text}</p>
     </div>
   );
 };
@@ -120,7 +118,7 @@ export const QuestBanner: React.FC = () => {
           </Button>
         ) : null}
         <IconClose
-          className="absolute top-4 right-4 lg:static h-6 w-6 text-tertiary-500 cursor-pointer"
+          className="absolute top-4 right-4 lg:static h-6 w-6 text-ink-tertiary-500 cursor-pointer"
           onClick={() => setQuestBannerVisibility(false)}
         />
       </div>

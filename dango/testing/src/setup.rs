@@ -15,7 +15,7 @@ use {
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
     grug_db_disk_lite::DiskDbLite,
-    grug_db_memory::MemDb,
+    grug_db_memory_lite::MemDbLite,
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
     grug_vm_wasm::WasmVm,
@@ -64,20 +64,20 @@ pub struct BridgeOp {
 
 pub type TestSuite<
     PP = ProposalPreparer<PythClientCache>,
-    DB = MemDb,
+    DB = MemDbLite,
     VM = RustVm,
     ID = NullIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
 pub type TestSuiteWithIndexer<
     PP = ProposalPreparer<PythClientCache>,
-    DB = MemDb,
+    DB = MemDbLite,
     VM = RustVm,
     ID = HookedIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
-/// `ContractWrapper` codes.
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` with cached
+/// Pyth Lazer client, and `ContractWrapper` codes.
 ///
 /// Used for running regular tests.
 pub fn setup_test(
@@ -90,7 +90,7 @@ pub fn setup_test(
     MockValidatorSets,
 ) {
     setup_suite_with_db_and_vm(
-        MemDb::new(),
+        MemDbLite::new(),
         RustVm::new(),
         ProposalPreparer::new_with_cache(),
         NullIndexer,
@@ -128,7 +128,7 @@ pub fn setup_test_naive_with_custom_genesis(
     MockValidatorSets,
 ) {
     setup_suite_with_db_and_vm(
-        MemDb::new(),
+        MemDbLite::new(),
         RustVm::new(),
         NaiveProposalPreparer,
         NullIndexer,
@@ -153,7 +153,7 @@ pub async fn setup_test_with_indexer(
     MockValidatorSets,
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
-    indexer_clickhouse::context::Context,
+    dango_indexer_clickhouse::context::Context,
 ) {
     let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
@@ -183,7 +183,7 @@ pub async fn setup_test_with_indexer(
     let dango_indexer =
         dango_indexer_sql::indexer::Indexer::new(shared_runtime_handle, dango_context.clone());
 
-    let mut clickhouse_context = indexer_clickhouse::context::Context::new(
+    let mut clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         format!(
             "http://{}:{}",
             std::env::var("CLICKHOUSE_HOST").unwrap_or("localhost".to_string()),
@@ -203,13 +203,13 @@ pub async fn setup_test_with_indexer(
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
-    let clickhouse_indexer = indexer_clickhouse::indexer::Indexer::new(
+    let clickhouse_indexer = dango_indexer_clickhouse::indexer::Indexer::new(
         shared_runtime_handle2,
         clickhouse_context.clone(),
     );
     hooked_indexer.add_indexer(clickhouse_indexer).unwrap();
 
-    let db = MemDb::new();
+    let db = MemDbLite::new();
     let vm = RustVm::new();
 
     let (suite, accounts, codes, contracts, validator_sets) = setup_suite_with_db_and_vm(
@@ -222,7 +222,7 @@ pub async fn setup_test_with_indexer(
         GenesisOption::preset_test(),
     );
 
-    clickhouse_context.start_candle_cache().await.unwrap();
+    clickhouse_context.start_cache().await.unwrap();
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
@@ -382,7 +382,7 @@ where
     // Create the mock validator sets.
     // TODO: For now, we always use the preset mock. It may not match the ones
     // in the genesis state. We should generate this based on the `genesis_opt`.
-    let validator_sets = MockValidatorSets::new_preset();
+    let validator_sets = MockValidatorSets::new_preset(false);
 
     for op in (test_opt.bridge_ops)(&accounts) {
         match op.remote {

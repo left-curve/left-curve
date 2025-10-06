@@ -1,0 +1,34 @@
+# When changing this file, you have to check 3 scenarios:
+#
+# Classic deploy, used for PRs
+# 1. `ansible-playbook full-app.yml -e expose_ports=true`
+#
+# Classic deploy, used for already deployed PRs
+# 2. `ansible-playbook full-app.yml -e expose_ports=true -e deployment_name=<existing deploy>`
+#
+# Used to deploy devnet
+# 3. `ansible-playbook full-app.yml -e traefik_enabled=true`
+
+- import_tasks: validate.yml
+- import_tasks: read_current_deploy.yml
+  when: traefik_enabled
+- import_tasks: stop_previous.yml
+  when: system_wide_directories
+- import_tasks: deploy_configs.yml
+- import_tasks: create_databases.yml
+- import_tasks: deploy_standalone.yml
+- import_tasks: dex_bot.yml
+  when: dex_bot_enabled
+- import_tasks: update_traefik.yml
+  when: traefik_enabled
+- import_tasks: delete_old_deploy.yml
+  when: current_deployment is defined
+- import_tasks: github_pr_deployments.yml
+  when: github_pr_number is defined
+  ignore_errors: true
+- import_tasks: github_main_deployments.yml
+  when: not (github_pr_number is defined) and github_deployments_enabled
+  ignore_errors: true
+- import_tasks: summary.yml
+  when: expose_ports
+- import_tasks: check_cometbft_sync.yml

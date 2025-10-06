@@ -1,7 +1,7 @@
 use {
     digest::{consts::U32, generic_array::GenericArray},
     grug::ByteArray,
-    grug_crypto::Identity256,
+    identity::Identity256,
     k256::{
         ecdsa::{Signature, SigningKey, signature::DigestSigner},
         elliptic_curve::rand_core::OsRng,

@@ -1,17 +1,16 @@
 import { useConfig, usePrices, usePublicClient, useQueryWithPagination } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import { Badge, TextCopy } from "@left-curve/applets-kit";
+import { Badge, TextCopy, useApp } from "@left-curve/applets-kit";
 import { ContractCard } from "../foundation/ContractCard";
 import { AssetsTable } from "./AssetsTable";
 import { HeaderExplorer } from "./HeaderExplorer";
 import { TransactionsTable } from "./TransactionsTable";
 
-import type { Address, Coins, ContractInfo, IndexedTransaction } from "@left-curve/dango/types";
+import type { Address, Coins, ContractInfo } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type React from "react";
 import type { PropsWithChildren } from "react";
@@ -88,27 +87,27 @@ const Details: React.FC = () => {
     <div className="flex flex-col gap-4 lg:flex-row">
       <ContractCard address={address} balance={totalBalance} />
       <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
-        <h4 className="h4-bold text-primary-900">
+        <h4 className="h4-bold text-ink-primary-900">
           {m["explorer.contracts.details.contractDetails"]()}
         </h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.codeHash"]()}
             </p>
             <p className="diatype-sm-medium break-all whitespace-normal">
               {codeHash}
-              <TextCopy className="w-4 h-4 text-tertiary-500 ml-1" copyText={codeHash} />
+              <TextCopy className="w-4 h-4 text-ink-tertiary-500 ml-1" copyText={codeHash} />
             </p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
             <p className="diatype-sm-medium">{admin ? admin : "None"}</p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.balances"]()}
             </p>
             <Badge color="green" size="m" text={`${totalBalance} (${totalCoins} Assets)`} />
@@ -127,10 +126,10 @@ const NotFound: React.FC = () => {
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center">
-          <h3 className="exposure-m-italic text-secondary-700">
+          <h3 className="exposure-m-italic text-ink-secondary-700">
             {m["explorer.contracts.notFound.title"]()}
           </h3>
-          <p className="diatype-m-medium max-w-[42.5rem] text-center text-tertiary-500 ">
+          <p className="diatype-m-medium max-w-[42.5rem] text-center text-ink-tertiary-500 ">
             {m["explorer.contracts.notFound.pre"]()}
             <span className="break-all overflow-hidden underline"> {address}</span>{" "}
             {m["explorer.contracts.notFound.description"]()}

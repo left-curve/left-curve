@@ -1,0 +1,156 @@
+
+- name: Generate keys on all nodes and build peer list
+  hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  gather_facts: yes
+  tasks:
+    - name: Generate shared timestamp
+      set_fact:
+        timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+      run_once: true
+
+    - name: Set timestamp on all hosts
+      set_fact:
+        timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+        deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+
+    - name: Run setup tasks
+      include_role:
+        name: full-app
+        tasks_from: setup.yml
+
+    - name: Detect free ports
+      include_role:
+        name: full-app
+        tasks_from: detect_free_ports.yml
+      when: expose_ports and not skip_port_discovery
+
+    - name: Generate keys
+      include_role:
+        name: full-app
+        tasks_from: cometbft_keys.yml
+
+    - name: Build persistent_peers list
+      set_fact:
+        persistent_peers: "{{ peer_list }}"
+      vars:
+        peer_list: |-
+          {%- set peers = [] -%}
+          {%- for host in groups['full-app'] -%}
+          {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
+          {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].tailscale_ip ~ ':' ~ hostvars[host].cometbft_p2p_port -%}
+          {{- peers.append(peer) or '' -}}
+          {%- endif -%}
+          {%- endfor -%}
+          {{- peers | join(',') -}}
+      when: cometbft_node_id is defined
+
+    - name: Debug peer configuration
+      debug:
+        msg: "Persistent peers for {{ inventory_hostname }}: {{ persistent_peers }}"
+      when: persistent_peers is defined
+
+    # Stop for debugging
+    # - meta: end_play
+
+- hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+    - community.clickhouse
+  roles:
+    - full-app
+  pre_tasks:
+    - name: Load postgres vars
+      include_vars: "roles/full-app/vars/included_postgres.yml"
+      when: deploy_includes_postgres
+    - name: Load clickhouse vars
+      include_vars: "roles/full-app/vars/included_clickhouse.yml"
+      when: deploy_includes_clickhouse
+  post_tasks:
+    - name: Store vars for monitoring
+      set_fact:
+        stored_deployment_name: "{{ deployment_name }}"
+        stored_dango_network: "{{ dango_network }}"
+        stored_tailscale_ip: "{{ tailscale_ip }}"
+        stored_dango_metrics_port: "{{ dango_metrics_port }}"
+        stored_clickhouse_metrics_port: "{{ clickhouse_metrics_port }}"
+        stored_cometbft_metrics_port: "{{ cometbft_metrics_port }}"
+        stored_db_metrics_port: "{{ db_metrics_port }}"
+        stored_deploy_includes_postgres: "{{ deploy_includes_postgres }}"
+        stored_deploy_includes_clickhouse: "{{ deploy_includes_clickhouse }}"
+
+- hosts: monitoring
+  become: true
+  become_user: "{{ deploy_user }}"
+  tags: monitoring
+  vars:
+      deployment_name: "{{ hostvars[groups['full-app'][0]]['stored_deployment_name'] }}"
+      dango_network: "{{ hostvars[groups['full-app'][0]]['stored_dango_network'] }}"
+      tailscale_ip: "{{ hostvars[groups['full-app'][0]]['stored_tailscale_ip'] }}"
+      dango_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_dango_metrics_port'] }}"
+      cometbft_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_cometbft_metrics_port'] }}"
+      db_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_db_metrics_port'] }}"
+      clickhouse_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_clickhouse_metrics_port'] }}"
+      deploy_includes_postgres: "{{ hostvars[groups['full-app'][0]]['stored_deploy_includes_postgres'] }}"
+      deploy_includes_clickhouse: "{{ hostvars[groups['full-app'][0]]['stored_deploy_includes_clickhouse'] }}"
+  tasks:
+    - block:
+        - name: Load prometheus vars
+          include_vars: roles/prometheus/defaults/main.yml
+        - name: Create Dango prometheus targets
+          copy:
+            content: |
+              - targets: ['{{ tailscale_ip }}:{{ dango_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'dango'
+                  environment: 'preview'
+                  dango_network: '{{ dango_network }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-dango.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+        - name: Create Cometbft prometheus targets
+          copy:
+            content: |
+              - targets: ['{{ tailscale_ip }}:{{ cometbft_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'cometbft'
+                  environment: 'preview'
+                  dango_network: '{{ dango_network }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-cometbft.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+        - name: Create Postgres prometheus targets
+          when: deploy_includes_postgres
+          copy:
+            content: |
+              - targets: ['{{ tailscale_ip }}:{{ db_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'postgres'
+                  environment: 'preview'
+                  dango_network: '{{ dango_network }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-postgres.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+        - name: Create Clickhouse prometheus targets
+          when: deploy_includes_clickhouse
+          copy:
+            content: |
+              - targets: ['{{ tailscale_ip }}:{{ clickhouse_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'clickhouse'
+                  environment: 'preview'
+                  dango_network: '{{ dango_network }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-clickhouse.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+      when:
+        - hostvars[groups['full-app'][0]]['expose_ports'] == true
+      become: true
+      become_user: root

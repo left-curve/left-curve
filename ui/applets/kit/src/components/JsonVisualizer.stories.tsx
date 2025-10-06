@@ -22,7 +22,7 @@ type Store = StoryObj<typeof JsonVisualizer>;
 
 export const Default: Store = {
   args: {
-    json: `{
+    string: `{
       "name": "John Doe",
       "age": 30,
       "location": {

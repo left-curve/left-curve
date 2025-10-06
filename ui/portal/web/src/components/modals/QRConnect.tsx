@@ -3,12 +3,11 @@ import { Actions } from "@left-curve/dango/utils";
 import { useAccount, useConnectorClient, useDataChannel } from "@left-curve/store";
 import { captureException } from "@sentry/react";
 import { forwardRef, useId, useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { IconButton, IconClose, IconMobile, QRCode } from "@left-curve/applets-kit";
+import { IconButton, IconClose, IconMobile, QRCode, useApp } from "@left-curve/applets-kit";
 
 import { WEBRTC_URI } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { JsonValue } from "@left-curve/dango/types";
 
@@ -20,10 +19,9 @@ export const QRConnect = forwardRef((_props, _ref) => {
     key: id,
   });
 
-  const { toast } = useApp();
+  const { toast, hideModal } = useApp();
   const { data: signingClient } = useConnectorClient();
   const { username } = useAccount();
-  const { hideModal } = useApp();
 
   dataChannel?.subscribe(async (msg) => {
     if (!signingClient || isLoadingCredential) return;
@@ -70,17 +68,17 @@ export const QRConnect = forwardRef((_props, _ref) => {
         <IconClose />
       </IconButton>
       <div className="p-4 flex flex-col gap-4">
-        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+        <div className="w-12 h-12 rounded-full bg-primitives-blue-light-100 flex items-center justify-center text-primitives-blue-light-600">
           <IconMobile />
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="h4-bold text-primary-900">{m["modals.qrconnect.title"]()}</h3>
-          <p className="text-tertiary-500 diatype-m-regular">
+          <h3 className="h4-bold text-ink-primary-900">{m["modals.qrconnect.title"]()}</h3>
+          <p className="text-ink-tertiary-500 diatype-m-regular">
             {m["modals.qrconnect.description"]()}
           </p>
         </div>
       </div>
-      <span className="w-full h-[1px] bg-secondary-gray my-2" />
+      <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
       <div className="flex justify-center items-center p-8">
         <QRCode
           className="bg-surface-primary-rice"

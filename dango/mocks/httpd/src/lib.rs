@@ -35,7 +35,7 @@ pub async fn run(
         genesis_opt,
         keep_blocks,
         database_url,
-        |_, _, _, _| {},
+        |_, _, _, _, _| {},
     )
     .await
 }
@@ -51,7 +51,14 @@ pub async fn run_with_callback<C>(
     callback: C,
 ) -> Result<(), Error>
 where
-    C: FnOnce(TestAccounts, Codes<ContractWrapper>, Contracts, MockValidatorSets) + Send + Sync,
+    C: FnOnce(
+            TestAccounts,
+            Codes<ContractWrapper>,
+            Contracts,
+            MockValidatorSets,
+            indexer_sql::context::Context,
+        ) + Send
+        + Sync,
 {
     let indexer = indexer_sql::IndexerBuilder::default();
 
@@ -92,20 +99,28 @@ where
         dango_context.clone(),
     );
 
+    let indexer_context_callback = indexer.context.clone();
+
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
         MemDb::new(),
         RustVm::new(),
-        ProposalPreparer::new(),
+        ProposalPreparer::new([""], ""), // FIXME: endpoints and access token
         hooked_indexer,
         RustVm::genesis_codes(),
         test_opt,
         genesis_opt,
     );
 
-    callback(test, codes, contracts, mock_validator_sets);
+    callback(
+        test,
+        codes,
+        contracts,
+        mock_validator_sets,
+        indexer_context_callback,
+    );
 
     let suite = Arc::new(Mutex::new(suite));
 
@@ -120,7 +135,7 @@ where
         indexer_path,
     );
 
-    let indexer_clickhouse_context = indexer_clickhouse::context::Context::new(
+    let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         "http://localhost:8123".to_string(),
         "default".to_string(),
         "default".to_string(),

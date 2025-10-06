@@ -22,7 +22,7 @@ const NEW_OWNER: Addr = addr!("747a4f43c538ac55445bc948209cf2c05855f584");
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = ClientWrapper::new(Arc::new(HttpClient::new("http://ovh2:8080")));
+    let client = ClientWrapper::new(Arc::new(HttpClient::new("http://ovh2:8080")?));
 
     let mut current_owner = SingleSigner::from_private_key(
         CURRENT_OWNER_USERNAME,

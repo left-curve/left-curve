@@ -23,7 +23,7 @@ use {
         call_paginated_graphql, call_ws_graphql_stream, parse_graphql_subscription_response,
     },
     std::collections::BTreeSet,
-    tokio::sync::mpsc,
+    tokio::{sync::mpsc, time::sleep},
     tracing::Level,
 };
 
@@ -253,7 +253,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
     let mut test_account1 =
-        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user");
+        create_user_and_account(&mut suite, &mut accounts, &contracts, &codes, "user187");
 
     let test_account2 = add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
 
@@ -277,7 +277,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     "#;
 
     let variables = serde_json::json!({
-        "username": "user",
+        "username": "user187",
     })
     .as_object()
     .unwrap()
@@ -294,6 +294,34 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
+                // Trying to figure out a bug
+                for _ in 0..10 {
+                    let app = build_actix_app(dango_httpd_context.clone());
+
+                    let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
+                        app,
+                        request_body.clone(),
+                    )
+                    .await?;
+
+                    let received_accounts = response
+                        .data
+                        .edges
+                        .into_iter()
+                        .map(|e| e.node)
+                        .collect::<Vec<_>>();
+
+                    if received_accounts.len() == 2 {
+                        break;
+                    }
+
+                    tracing::error!(
+                        "Expected 2 accounts, got {received_accounts:#?}. Retrying...",
+                    );
+
+                    sleep(std::time::Duration::from_millis(1000)).await;
+                }
+
                 let app = build_actix_app(dango_httpd_context);
 
                 let response = call_graphql::<PaginatedResponse<serde_json::Value>, _, _, _>(
@@ -320,7 +348,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                     "address": test_account2.address.inner().to_string(),
                     "users": [
                         {
-                            "username": "user",
+                            "username": "user187",
                         },
                     ],
                 });
@@ -333,7 +361,7 @@ async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
                     "address": test_account1.address.inner().to_string(),
                     "users": [
                         {
-                            "username": "user",
+                            "username": "user187",
                         },
                     ],
                 });
@@ -376,8 +404,9 @@ async fn graphql_paginate_accounts() -> anyhow::Result<()> {
             accountType
             createdAt
             createdBlockHeight
+            createdTxHash
           }
-          edges { node { id address accountIndex accountType createdAt createdBlockHeight } cursor }
+          edges { node { id address accountIndex accountType createdAt createdBlockHeight createdTxHash } cursor }
           pageInfo { hasPreviousPage hasNextPage startCursor endCursor }
         }
       }
@@ -485,6 +514,7 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
             accountType
             createdAt
             createdBlockHeight
+            createdTxHash
             users { username }
         }
       }
@@ -509,9 +539,6 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                 &codes,
                 &format!("foo{idx}"),
             );
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -520,14 +547,15 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::accounts::Model>,
-                >(framed, name)
+                let response = parse_graphql_subscription_response::<Vec<entity::accounts::Model>>(
+                    &mut framed,
+                    name,
+                )
                 .await?;
 
                 assert_that!(
@@ -542,9 +570,10 @@ async fn graphql_subscribe_to_accounts() -> anyhow::Result<()> {
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (_, response) = parse_graphql_subscription_response::<
-                    Vec<entity::accounts::Model>,
-                >(framed, name)
+                let response = parse_graphql_subscription_response::<Vec<entity::accounts::Model>>(
+                    &mut framed,
+                    name,
+                )
                 .await?;
 
                 assert_that!(
@@ -619,9 +648,6 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
             // Create a new account with the original user
             let _test_account2 =
                 add_account_with_existing_user(&mut suite, &contracts, &mut test_account1);
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -631,7 +657,7 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
     local_set
         .run_until(async {
             tokio::task::spawn_local(async move {
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
@@ -644,9 +670,11 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
                 });
 
                 // 1st response is always accounts from the last block if any
-                let (framed, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 let account = response
                     .data
@@ -658,9 +686,11 @@ async fn graphql_subscribe_to_accounts_with_username() -> anyhow::Result<()> {
                 create_account_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (_, response) =
-                    parse_graphql_subscription_response::<Vec<serde_json::Value>>(framed, name)
-                        .await?;
+                let response = parse_graphql_subscription_response::<Vec<serde_json::Value>>(
+                    &mut framed,
+                    name,
+                )
+                .await?;
 
                 let account = response
                     .data

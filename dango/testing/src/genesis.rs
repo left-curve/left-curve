@@ -14,17 +14,18 @@ use {
         auth::Key,
         bank::Metadata,
         constants::{
-            PYTH_PRICE_SOURCES, atom, bch, bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
+            FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, PYTH_PRICE_SOURCES, TEN, atom, bch,
+            bnb, btc, dango, doge, eth, ltc, sol, usdc, xrp,
         },
-        dex::{PairParams, PairUpdate, PassiveLiquidity},
-        gateway::{Remote, WithdrawalFee},
+        dex::{PairParams, PairUpdate, PassiveLiquidity, Xyk},
+        gateway::{Origin, Remote, WithdrawalFee},
         lending::InterestRateModel,
         taxman,
     },
     grug::{
-        Addressable, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NumberConst, Udec128, Uint128, btree_map,
-        btree_set, coins,
+        Addressable, Binary, BlockInfo, Bounded, Coin, Denom, Duration, GENESIS_BLOCK_HASH,
+        GENESIS_BLOCK_HEIGHT, HashExt, LengthBounded, NonZero, NumberConst, Timestamp, Udec128,
+        Uint128, btree_map, btree_set, coins,
     },
     hyperlane_testing::constants::{
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
@@ -33,8 +34,8 @@ use {
         constants::{arbitrum, base, ethereum, optimism, solana},
         isms::multisig::ValidatorSet,
     },
-    pyth_types::constants::GUARDIAN_SETS,
-    std::str::FromStr,
+    pyth_types::constants::LAZER_TRUSTED_SIGNER,
+    std::{collections::BTreeSet, str::FromStr},
 };
 
 /// Describing a data that has a preset value for testing purposes.
@@ -208,7 +209,7 @@ impl Preset for AccountOption {
                 user1::USERNAME.clone() => GenesisUser {
                     key: Key::Secp256k1(user1::PUBLIC_KEY.into()),
                     key_hash: user1::PUBLIC_KEY.hash256(),
-                    dango_balance: Uint128::new(100_000_000_000_000),
+                    dango_balance: Uint128::new(1_000_000_000_000_000_000),
                 },
                 user2::USERNAME.clone() => GenesisUser {
                     key: Key::Secp256k1(user2::PUBLIC_KEY.into()),
@@ -340,11 +341,14 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk {
-                            order_spacing: Udec128::ONE,
+                        pool_type: PassiveLiquidity::Xyk(Xyk {
+                            spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
-                        },
+                            limit: 30,
+                        }),
+                        bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO, /* TODO: for mainnet, a minimum of $10 is sensible */
                     },
                 },
                 PairUpdate {
@@ -352,11 +356,21 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk {
-                            order_spacing: Udec128::ONE,
+                        pool_type: PassiveLiquidity::Xyk(Xyk {
+                            spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                            limit: 30,
+                        }),
+                        bucket_sizes: btree_set! {
+                            NonZero::new_unchecked(ONE_HUNDREDTH),
+                            NonZero::new_unchecked(ONE_TENTH),
+                            NonZero::new_unchecked(ONE),
+                            NonZero::new_unchecked(TEN),
+                            NonZero::new_unchecked(FIFTY),
+                            NonZero::new_unchecked(ONE_HUNDRED),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -364,11 +378,21 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/eth/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk {
-                            order_spacing: Udec128::ONE,
+                        pool_type: PassiveLiquidity::Xyk(Xyk {
+                            spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                            limit: 30,
+                        }),
+                        bucket_sizes: btree_set! {
+                            NonZero::new_unchecked(ONE_HUNDREDTH),
+                            NonZero::new_unchecked(ONE_TENTH),
+                            NonZero::new_unchecked(ONE),
+                            NonZero::new_unchecked(TEN),
+                            NonZero::new_unchecked(FIFTY),
+                            NonZero::new_unchecked(ONE_HUNDRED),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -376,11 +400,19 @@ impl Preset for DexOption {
                     quote_denom: usdc::DENOM.clone(),
                     params: PairParams {
                         lp_denom: Denom::from_str("dex/pool/sol/usdc").unwrap(),
-                        pool_type: PassiveLiquidity::Xyk {
-                            order_spacing: Udec128::ONE,
+                        pool_type: PassiveLiquidity::Xyk(Xyk {
+                            spacing: Udec128::ONE,
                             reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                            limit: 30,
+                        }),
+                        bucket_sizes: btree_set! {
+                            NonZero::new_unchecked(ONE_HUNDREDTH),
+                            NonZero::new_unchecked(ONE_TENTH),
+                            NonZero::new_unchecked(ONE),
+                            NonZero::new_unchecked(TEN),
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
                     },
                 },
             ],
@@ -392,43 +424,43 @@ impl Preset for GatewayOption {
     fn preset_test() -> Self {
         GatewayOption {
             warp_routes: btree_set! {
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: arbitrum::DOMAIN,
                     contract: arbitrum::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: base::DOMAIN,
                     contract: base::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: optimism::DOMAIN,
                     contract: optimism::USDC_WARP,
                 }),
-                (usdc::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(usdc::SUBDENOM.clone()), Remote::Warp {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: arbitrum::DOMAIN,
                     contract: arbitrum::WETH_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: base::DOMAIN,
                     contract: base::WETH_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::WETH_WARP,
                 }),
-                (eth::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(eth::SUBDENOM.clone()), Remote::Warp {
                     domain: optimism::DOMAIN,
                     contract: optimism::WETH_WARP,
                 }),
-                (sol::SUBDENOM.clone(), Remote::Warp {
+                (Origin::Remote(sol::SUBDENOM.clone()), Remote::Warp {
                     domain: solana::DOMAIN,
                     contract: solana::SOL_WARP,
                 }),
@@ -565,7 +597,10 @@ impl Preset for OracleOption {
     fn preset_test() -> Self {
         OracleOption {
             pyth_price_sources: PYTH_PRICE_SOURCES.clone(),
-            wormhole_guardian_sets: GUARDIAN_SETS.clone(),
+            pyth_trusted_signers: {
+                let trused_signer = Binary::from_str(LAZER_TRUSTED_SIGNER).unwrap();
+                btree_map! { trused_signer => Timestamp::from_nanos(u128::MAX) } // FIXME: what's the appropriate expiration time for this?
+            },
         }
     }
 }

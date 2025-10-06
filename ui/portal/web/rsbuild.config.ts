@@ -1,13 +1,15 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fs from "fs-extra";
 
 import { defineConfig } from "@rsbuild/core";
 import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
+import { pluginSvgr } from "@rsbuild/plugin-svgr";
 
-import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
+import { GenerateSW } from "workbox-webpack-plugin";
 
 import { devnet, local, testnet } from "@left-curve/dango";
 
@@ -19,6 +21,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { publicVars } = loadEnv();
 
 const environment = process.env.CONFIG_ENVIRONMENT || "local";
+
+const workspaceRoot = path.resolve(__dirname, "../../../");
+
+fs.copySync(
+  path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
+  path.resolve(__dirname, "public/images"),
+  { overwrite: true },
+);
 
 const chain = {
   local: local,
@@ -39,10 +49,15 @@ const urls =
         upUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/up")}`,
       };
 
+const banner = {
+  dev: "You are using devnet",
+}[environment];
+
 const envConfig = `window.dango = ${JSON.stringify(
   {
     chain,
     urls,
+    banner,
   },
   null,
   2,
@@ -53,11 +68,12 @@ export default defineConfig({
     aliasStrategy: "prefer-alias",
     alias: {
       // Order matters
-      "~/paraglide": path.resolve(__dirname, "./.paraglide"),
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
+      "~/images": path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
       "~/chartiq": path.resolve(__dirname, "./chartiq.config.ts"),
+      "~/datafeed": path.resolve(__dirname, "./datafeed.config.ts"),
       "~": path.resolve(__dirname, "./src"),
     },
   },
@@ -84,6 +100,16 @@ export default defineConfig({
     distPath: {
       root: "build",
     },
+    copy: [
+      {
+        from: path.resolve(
+          workspaceRoot,
+          "node_modules",
+          "@left-curve/tradingview/charting_library",
+        ),
+        to: "./static/charting_library",
+      },
+    ],
     minify: {
       jsOptions: {
         exclude: [],
@@ -93,7 +119,7 @@ export default defineConfig({
       },
     },
   },
-  plugins: [pluginReact()],
+  plugins: [pluginReact(), pluginSvgr()],
   tools: {
     rspack: (config, { rspack }) => {
       config.plugins ??= [];
@@ -107,15 +133,6 @@ export default defineConfig({
           sourcemaps: {
             filesToDeleteAfterUpload: ["build/**/*.map"],
           },
-        }),
-        paraglideRspackPlugin({
-          outdir: "./.paraglide",
-          emitGitIgnore: false,
-          emitPrettierIgnore: false,
-          includeEslintDisableComment: false,
-          project: "../../config/project.inlang",
-          strategy: ["localStorage", "preferredLanguage", "baseLocale"],
-          localStorageKey: "dango.locale",
         }),
         TanStackRouterRspack({
           routesDirectory: "./src/pages",
@@ -137,6 +154,26 @@ export default defineConfig({
           },
         },
       );
+
+      if (process.env.NODE_ENV === "production") {
+        config.plugins.push(
+          new GenerateSW({
+            cacheId: "leftcurve-portal",
+            clientsClaim: true,
+            skipWaiting: false,
+            cleanupOutdatedCaches: true,
+            runtimeCaching: [
+              {
+                urlPattern: ({ request }) => request.mode === "navigate",
+                handler: "NetworkFirst",
+                options: {
+                  cacheName: "html-cache",
+                },
+              },
+            ],
+          }),
+        );
+      }
 
       config.devtool = "source-map";
       return config;

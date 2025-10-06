@@ -5,7 +5,7 @@ import type {
   Signer,
   SubscriptionCallbacks,
   Transport,
-} from "#types/index.js";
+} from "../../../types/index.js";
 
 export type BlockSubscriptionParameters = SubscriptionCallbacks<{
   block: Omit<IndexedBlock, "transactions">;

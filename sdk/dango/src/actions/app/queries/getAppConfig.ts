@@ -1,7 +1,7 @@
 import type { Client, Transport } from "@left-curve/sdk/types";
 
 import { getAction, queryApp } from "@left-curve/sdk/actions";
-import type { AppConfig, Chain, Signer } from "#types/index.js";
+import type { AppConfig, Chain, Signer } from "../../../types/index.js";
 
 export type GetAppConfigParameters = {
   height?: number;

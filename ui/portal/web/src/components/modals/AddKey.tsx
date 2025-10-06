@@ -1,11 +1,10 @@
 import { useAccount, useConnectors, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { IconButton, IconClose, IconKey } from "@left-curve/applets-kit";
+import { IconButton, IconClose, IconKey, useApp } from "@left-curve/applets-kit";
 import { AuthOptions } from "../auth/AuthOptions";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const AddKeyModal = forwardRef((_props, _ref) => {
   const connectors = useConnectors();
@@ -45,19 +44,19 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
         <IconClose />
       </IconButton>
       <div className="p-4 flex flex-col gap-4">
-        <div className="w-12 h-12 rounded-full bg-secondary-green flex items-center justify-center text-green-bean-600">
+        <div className="w-12 h-12 rounded-full bg-surface-secondary-green flex items-center justify-center text-primitives-green-light-600">
           <IconKey />
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="h4-bold text-primary-900">
+          <h3 className="h4-bold text-ink-primary-900">
             {m["settings.keyManagement.management.add.title"]()}
           </h3>
-          <p className="text-tertiary-500 diatype-m-regular">
+          <p className="text-ink-tertiary-500 diatype-m-regular">
             {m["settings.keyManagement.management.add.description"]()}
           </p>
         </div>
       </div>
-      <span className="w-full h-[1px] bg-secondary-gray my-2" />
+      <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
       <div className="p-4">
         <AuthOptions mode="signin" action={addKey} isPending={isPending} />
       </div>

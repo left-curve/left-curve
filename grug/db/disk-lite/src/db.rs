@@ -1,5 +1,5 @@
 use {
-    crate::{DbError, DbResult, batch_hash},
+    crate::{DbError, DbResult, digest::batch_hash},
     grug_app::Db,
     grug_types::{Batch, Empty, Hash256, Op, Order, Storage},
     rocksdb::{

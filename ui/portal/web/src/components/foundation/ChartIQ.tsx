@@ -1,16 +1,14 @@
 // @ts-nocheck
 
 import "@left-curve/chartiq/js/standard";
-import "@left-curve/chartiq/js/advanced";
 import "@left-curve/chartiq/js/componentUI";
 import "@left-curve/chartiq/js/addOns";
 
-import { useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { CIQ } from "@left-curve/chartiq/js/components";
 import { useConfig, usePublicClient, useStorage } from "@left-curve/store";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { createChartIQConfig, createChartIQDataFeed } from "~/chartiq";
-import { useApp } from "~/hooks/useApp";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Decimal, formatNumber } from "@left-curve/dango/utils";
@@ -117,10 +115,10 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
 
     stx.formatYAxisPrice = (price, params) => {
       if (params?.display?.includes("-")) {
-        return formatNumber(price, { ...formatNumberOptions, maxSignificantDigits: 5 });
+        return formatNumber(price, formatNumberOptions);
       }
 
-      return formatNumber(price, { ...formatNumberOptions, notation: "compact" });
+      return formatNumber(price, { ...formatNumberOptions, maximumTotalDigits: 3 });
     };
 
     stx.candleWidthPercent = 0.9;
@@ -174,7 +172,7 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
         });
         stx.createYAxisLabel(
           stx.chart.panel,
-          formatNumber(price, { ...formatNumberOptions, maxSignificantDigits: 5 }),
+          formatNumber(price, formatNumberOptions),
           stx.pixelFromTransformedValue(price),
           color,
           "white",
@@ -222,7 +220,7 @@ export const ChartIQ: React.FC<ChartIQProps> = ({ coins, orders }) => {
   }, [pairSymbol]);
 
   return (
-    <div className="w-full min-h-[23.1375rem] lg:min-h-[52vh] h-full relative">
+    <div className="w-full min-h-[23.1375rem] lg:min-h-[33.875rem] h-full relative">
       <cq-context ref={container} className="chart-context">
         <cq-chart-instructions />
 

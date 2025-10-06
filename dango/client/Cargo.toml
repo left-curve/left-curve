@@ -16,7 +16,7 @@ async-trait = { workspace = true }
 bip32       = { workspace = true }
 dango-types = { workspace = true }
 grug        = { workspace = true }
-grug-crypto = { workspace = true }
+identity    = { workspace = true }
 k256        = { workspace = true }
 pbkdf2      = { workspace = true }
 rand        = { workspace = true }

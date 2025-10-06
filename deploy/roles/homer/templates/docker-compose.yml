@@ -1,0 +1,16 @@
+services:
+  homer:
+    image: b4bz/homer
+    container_name: homer
+    networks:
+      - traefik
+    volumes:
+      - {{ homer_directory }}/assets:/www/assets
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+    environment:
+      - INIT_ASSETS=1
+    restart: unless-stopped
+
+networks:
+  traefik:
+    external: true

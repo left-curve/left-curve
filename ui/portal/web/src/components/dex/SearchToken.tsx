@@ -13,7 +13,7 @@ import {
 import { Sheet } from "react-modal-sheet";
 import { SearchTokenTable } from "./SearchTokenTable";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PopoverRef } from "@left-curve/applets-kit";
 import type { PairId } from "@left-curve/dango/types";
@@ -32,12 +32,12 @@ const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId, isOpen })
   return (
     <div className="flex gap-2 items-center">
       <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="h-6 w-6 drag-none select-none" />
-      <p className="diatype-lg-heavy text-secondary-700 min-w-fit">
+      <p className="diatype-lg-heavy text-ink-secondary-700 min-w-fit">
         {`${baseCoin.symbol}-${quoteCoin.symbol}`}
       </p>
       <IconChevronDownFill
         className={twMerge(
-          "text-tertiary-500 w-4 h-4 transition-all lg:hidden",
+          "text-ink-tertiary-500 w-4 h-4 transition-all lg:hidden",
           isOpen ? "rotate-180" : "",
         )}
       />
@@ -54,13 +54,15 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
     <div className="flex flex-col gap-2">
       <Input
         fullWidth
-        startContent={<IconSearch className="w-5 h-5 text-tertiary-500" />}
+        startContent={<IconSearch className="w-5 h-5 text-ink-tertiary-500" />}
         value={searchText}
         onChange={(e) => setSearchText(e.target.value)}
         placeholder={
           <div className="flex gap-1 items-center">
-            <p className="text-tertiary-500 diatype-m-regular mt-[2px]">{m["dex.searchFor"]()}</p>
-            <p className="exposure-m-italic text-secondary-rice">{m["dex.tokens"]()}</p>
+            <p className="text-ink-tertiary-500 diatype-m-regular mt-[2px]">
+              {m["dex.searchFor"]()}
+            </p>
+            <p className="exposure-m-italic text-ink-secondary-rice">{m["dex.tokens"]()}</p>
           </div>
         }
       />
@@ -74,7 +76,7 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
           classNames={{ base: "z-10" }}
         />
 
-        <span className="w-full absolute h-[2px] bg-secondary-gray bottom-[0px] z-0" />
+        <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
       <SearchTokenTable>
         <SearchTokenTable.Spot

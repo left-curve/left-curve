@@ -3,8 +3,8 @@ import type { Client, Denom, Transport } from "@left-curve/sdk/types";
 
 import { getAction, getAppConfig } from "@left-curve/sdk/actions";
 import type { Chain, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "#types/app.js";
-import type { DexQueryMsg, PairParams } from "#types/dex.js";
+import type { AppConfig } from "../../../types/app.js";
+import type { DexQueryMsg, PairParams } from "../../../types/dex.js";
 
 export type GetPairParameters = {
   quoteDenom: Denom;

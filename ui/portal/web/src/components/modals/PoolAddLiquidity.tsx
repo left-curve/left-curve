@@ -1,11 +1,10 @@
-import { Badge, Button, IconButton, IconClose, PairAssets } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
+import { Badge, Button, IconButton, IconClose, PairAssets, useApp } from "@left-curve/applets-kit";
 
 import { forwardRef, useImperativeHandle } from "react";
 import type { AnyCoin, WithAmount } from "@left-curve/store/types";
 import { usePrices } from "@left-curve/store";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 type PoolAddLiquidityProps = {
   confirmAddLiquidity: () => void;
@@ -31,41 +30,41 @@ export const PoolAddLiquidity = forwardRef(
     }));
 
     return (
-      <div className="flex flex-col bg-surface-primary-rice md:border border-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
-        <p className="text-primary-900 diatype-lg-medium w-full text-center">
+      <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
+        <p className="text-ink-primary-900 diatype-lg-medium w-full text-center">
           {m["poolLiquidity.modal.addLiquidity"]()}
         </p>
         <div className=" flex flex-col gap-8">
           <div className="flex gap-2 items-center">
             <PairAssets assets={[base, quote]} />
-            <p className="text-secondary-700 h4-bold">
+            <p className="text-ink-secondary-700 h4-bold">
               {base.symbol}/{quote.symbol}
             </p>
             <Badge color="green" size="s" text="Stable Strategy" />
           </div>
           <div className="flex flex-col gap-4">
-            <p className="exposure-sm-italic text-gray-300 font-normal">
+            <p className="exposure-sm-italic text-primitives-gray-light-300 font-normal">
               {m["poolLiquidity.modal.depositing"]()}
             </p>
             <div className="flex flex-col">
               <div className="w-full flex items-center justify-between">
-                <p className="text-secondary-700 h3-bold">
+                <p className="text-ink-secondary-700 h3-bold">
                   {base.amount} {base.symbol}
                 </p>
                 <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
               </div>
-              <p className="text-tertiary-500 diatype-sm-regular">
+              <p className="text-ink-tertiary-500 diatype-sm-regular">
                 {getPrice(base.amount, base.denom, { format: true })}
               </p>
             </div>
             <div className="flex flex-col">
               <div className="w-full flex items-center justify-between">
-                <p className="text-secondary-700 h3-bold">
+                <p className="text-ink-secondary-700 h3-bold">
                   {quote.amount} {quote.symbol}
                 </p>
                 <img src={quote.logoURI} alt={quote.symbol} className="w-8 h-8" />
               </div>
-              <p className="text-tertiary-500 diatype-sm-regular">
+              <p className="text-ink-tertiary-500 diatype-sm-regular">
                 {getPrice(quote.amount, quote.denom, { format: true })}
               </p>
             </div>

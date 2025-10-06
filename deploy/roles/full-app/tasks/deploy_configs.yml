@@ -1,0 +1,44 @@
+- set_fact:
+    indexer_url: "http://{{ tailscale_ip }}:{{ dango_port }}/graphql"
+    faucet_url: "http://{{ tailscale_ip }}:{{ faucet_port }}/mint"
+    quest_url: "http://{{ tailscale_ip }}:{{ quest_port }}/check_username"
+    up_url: "http://{{ tailscale_ip }}:{{ dango_port }}/up"
+  when: not traefik_enabled
+
+- set_fact:
+    indexer_url: "http://{{ public_ip }}:{{ traefik[dango_network].ports.dango_port }}/graphql"
+    faucet_url: "http://{{ public_ip }}:{{ traefik[dango_network].ports.faucet_port }}/mint"
+    quest_url: "http://{{ public_ip }}:{{ traefik[dango_network].ports.faucet_port }}/to_fix"
+    up_url: "http://{{ public_ip }}:{{ traefik[dango_network].ports.dango_port }}/up"
+  when: traefik_enabled
+
+- name: Deploy configuration files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "config/cometbft/config.toml", dest: "{{ cometbft_directory }}/config/config.toml" }
+        - { src: "config/cometbft/genesis.json", dest: "{{ cometbft_directory }}/config/genesis.json" }
+        - { src: "config/cometbft/node_key.json", dest: "{{ cometbft_directory }}/config/node_key.json" }
+        - { src: "config/cometbft/priv_validator_key.json", dest: "{{ cometbft_directory }}/config/priv_validator_key.json" }
+        - { src: "config/dango/app.toml", dest: "{{ dango_directory }}/config/app.toml" }
+        - { src: "docker-compose.yml", dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/docker-compose.yml" }
+        - { src: "env.j2", dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env" }
+
+- name: Deploy clickhouse configuration files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }
+        - { src: "clickhouse/users.xml", dest: "clickhouse/users.xml" }
+        - { src: "clickhouse/init.sh", dest: "clickhouse/init.sh" }
+      when: deploy_includes_clickhouse

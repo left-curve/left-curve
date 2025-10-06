@@ -16,6 +16,7 @@ export {
   mayTransform,
   sortObject,
   invertObject,
+  plainObject,
 } from "./mappers.js";
 
 export {

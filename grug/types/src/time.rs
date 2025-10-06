@@ -3,7 +3,7 @@ use chrono::{DateTime, NaiveDateTime, SecondsFormat, Utc};
 use {
     crate::Inner,
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_math::{Dec, Int, IsZero, NumberConst, Uint128},
+    grug_math::{Dec, Int, IsZero, MathResult, Number, NumberConst, Uint128},
     serde::{Deserialize, Serialize},
     std::ops::{Add, Mul, Sub},
 };
@@ -208,6 +208,40 @@ where
 
     fn mul(self, rhs: U) -> Self::Output {
         Self(self.0 * Dec::<u128, 9>::new(rhs.into().into_inner()))
+    }
+}
+
+impl Number for Duration {
+    fn checked_add(self, other: Self) -> MathResult<Self> {
+        self.0.checked_add(other.0).map(Self)
+    }
+
+    fn checked_sub(self, other: Self) -> MathResult<Self> {
+        self.0.checked_sub(other.0).map(Self)
+    }
+
+    fn checked_mul(self, other: Self) -> MathResult<Self> {
+        self.0.checked_mul(other.0).map(Self)
+    }
+
+    fn checked_div(self, other: Self) -> MathResult<Self> {
+        self.0.checked_div(other.0).map(Self)
+    }
+
+    fn checked_rem(self, other: Self) -> MathResult<Self> {
+        self.0.checked_rem(other.0).map(Self)
+    }
+
+    fn saturating_add(self, other: Self) -> Self {
+        Self(self.0.saturating_add(other.0))
+    }
+
+    fn saturating_sub(self, other: Self) -> Self {
+        Self(self.0.saturating_sub(other.0))
+    }
+
+    fn saturating_mul(self, other: Self) -> Self {
+        Self(self.0.saturating_mul(other.0))
     }
 }
 

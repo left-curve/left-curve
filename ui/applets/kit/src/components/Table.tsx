@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-table";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import { Fragment } from "react";
 import { Skeleton } from "./Skeleton";
@@ -82,7 +82,7 @@ export const Table = <T,>({
           "scrollbar-none w-full min-w-fit whitespace-nowrap overflow-hidden relative overflow-x-scroll ",
         )}
       >
-        <thead>
+        <thead className="sticky top-0 bg-surface-primary-rice z-10">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
@@ -170,13 +170,13 @@ const tabsVariants = tv({
       default: {
         base: "bg-surface-secondary-rice shadow-account-card px-4 pt-4 gap-4",
         header:
-          "p-4 last:text-end bg-secondary-green text-tertiary-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
+          "p-4 last:text-end bg-surface-secondary-green text-ink-tertiary-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
         cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end text-start",
-        row: "border-b border-secondary-gray last:border-b-0",
+        row: "border-b border-outline-secondary-gray last:border-b-0",
       },
       simple: {
-        base: "text-tertiary-500 border-separate gap-2",
-        header: "p-2 text-tertiary-500 diatype-xs-regular last:text-end text-start",
+        base: "text-ink-tertiary-500 border-separate gap-2",
+        header: "p-2 text-ink-tertiary-500 diatype-xs-regular last:text-end text-start",
         cell: "px-2 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-surface-tertiary-rice",
         row: "rounded-xl group",
       },

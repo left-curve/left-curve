@@ -1,6 +1,8 @@
 use {
+    crate::pubsub::error::PubSubError,
     grug_app::AppError,
     grug_types::{Backtraceable, BacktracedError, StdError},
+,
 };
 
 #[grug_macros::backtrace]
@@ -61,6 +63,9 @@ pub enum IndexerError {
     #[error(transparent)]
     #[backtrace(new)]
     Sqlx(sqlx::Error),
+
+    #[error(transparent)]
+    PubSub(#[from] PubSubError),
 }
 
 macro_rules! parse_error {

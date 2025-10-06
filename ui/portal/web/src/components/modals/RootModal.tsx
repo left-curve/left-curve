@@ -1,32 +1,12 @@
 import { AnimatePresence } from "framer-motion";
 import { motion } from "framer-motion";
 import { Suspense, lazy, useMemo, useRef } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { Button, useMediaQuery } from "@left-curve/applets-kit";
+import { Button, Modals, useApp, useMediaQuery } from "@left-curve/applets-kit";
 import type React from "react";
 import { Sheet, type SheetRef } from "react-modal-sheet";
 
-import { m } from "~/paraglide/messages";
-
-export const Modals = {
-  AddKey: "add-key",
-  RemoveKey: "remove-key",
-  QRConnect: "qr-connect",
-  ConfirmSend: "confirm-send",
-  ConfirmAccount: "confirm-account",
-  SignWithDesktop: "sign-with-desktop",
-  ConfirmSwap: "confirm-swap",
-  RenewSession: "renew-session",
-  ProTradeCloseAll: "pro-trade-close-all",
-  ProTradeCloseOrder: "pro-trade-close-order",
-  ProTradeLimitClose: "pro-trade-limit-close",
-  ProSwapMarketClose: "pro-swap-market-close",
-  ProSwapEditTPSL: "pro-edit-tpsl",
-  ProSwapEditedSL: "pro-edited-sl",
-  PoolAddLiquidity: "pool-add-liquidity",
-  PoolWithdrawLiquidity: "pool-withdraw-liquidity",
-};
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export type ModalRef = {
   triggerOnClose: () => void;
@@ -138,6 +118,27 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.ActivityTransfer]: {
+    component: lazy(() =>
+      import("./activities/ActivityTransferModal").then(({ ActivityTransferModal }) => ({
+        default: ActivityTransferModal,
+      })),
+    ),
+  },
+  [Modals.ActivityConvert]: {
+    component: lazy(() =>
+      import("./activities/ActivityConvertModal").then(({ ActivityConvertModal }) => ({
+        default: ActivityConvertModal,
+      })),
+    ),
+  },
+  [Modals.ActivitySpotOrder]: {
+    component: lazy(() =>
+      import("./activities/ActivitySpotOrderModal").then(({ ActivitySpotOrderModal }) => ({
+        default: ActivitySpotOrderModal,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {
@@ -153,7 +154,7 @@ export const RootModal: React.FC = () => {
   const { isMd } = useMediaQuery();
 
   const sheetRef = useRef<SheetRef>();
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const outlineRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<{ triggerOnClose: () => void } | null>(null);
 
   const { modal: activeModal, props: modalProps } = modal;
@@ -186,7 +187,7 @@ export const RootModal: React.FC = () => {
                 <Button variant="link" onClick={hideModal}>
                   {m["common.cancel"]()}
                 </Button>
-                <p className="mt-1 text-tertiary-500 font-semibold">{options.header}</p>
+                <p className="mt-1 text-ink-tertiary-500 font-semibold">{options.header}</p>
                 <div className="w-[66px]" />
               </div>
             ) : null}
@@ -205,11 +206,11 @@ export const RootModal: React.FC = () => {
   return (
     <AnimatePresence initial={false} mode="wait" onExitComplete={() => null}>
       <motion.div
-        ref={overlayRef}
+        ref={outlineRef}
         onClick={(e) => {
-          if (e.target === overlayRef.current && !options.disableClosing) closeModal();
+          if (e.target === outlineRef.current && !options.disableClosing) closeModal();
         }}
-        className="backdrop-blur-[10px] bg-gray-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
+        className="backdrop-blur-[10px] bg-primitives-gray-light-900/10 w-screen h-screen fixed top-0 z-[60] flex items-center justify-center p-4"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

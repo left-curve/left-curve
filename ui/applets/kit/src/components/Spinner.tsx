@@ -2,11 +2,13 @@ import { type VariantProps, tv } from "tailwind-variants";
 
 export type SpinnerProps = {
   className?: string;
+  fullContainer?: boolean;
 } & SpinnerVariantProps;
 
-const Spinner: React.FC<SpinnerProps> = ({ className, color, size }) => {
-  const { base, wrapper, circle1, circle2 } = spinner();
-  return (
+const Spinner: React.FC<SpinnerProps> = ({ className, color, size, fullContainer }) => {
+  const { base, wrapper, circle1, circle2 } = styles();
+
+  const spinner = (
     <div className={base({ color, size })}>
       <div className={wrapper({ color, size, className })}>
         <i className={circle1({ color, size })} />
@@ -14,14 +16,18 @@ const Spinner: React.FC<SpinnerProps> = ({ className, color, size }) => {
       </div>
     </div>
   );
+
+  if (!fullContainer) return spinner;
+
+  return <div className="w-full h-full flex items-center justify-center">{spinner}</div>;
 };
 
-export type SpinnerVariantProps = VariantProps<typeof spinner>;
-export type SpinnerSlots = keyof ReturnType<typeof spinner>;
+export type SpinnerVariantProps = VariantProps<typeof styles>;
+export type SpinnerSlots = keyof ReturnType<typeof styles>;
 
 export { Spinner };
 
-const spinner = tv({
+const styles = tv({
   slots: {
     base: "relative inline-flex flex-col gap-2 items-center justify-center",
     circle1: [
@@ -85,24 +91,24 @@ const spinner = tv({
         circle2: "border-b-current",
       },
       gray: {
-        circle1: "border-b-gray-500",
-        circle2: "border-b-gray-500",
+        circle1: "border-b-primitives-gray-light-500",
+        circle2: "border-b-primitives-gray-light-500",
       },
       white: {
         circle1: "border-b-white",
         circle2: "border-b-white",
       },
       green: {
-        circle1: "border-b-green-bean-300",
-        circle2: "border-b-green-bean-300",
+        circle1: "border-b-primitives-green-light-300",
+        circle2: "border-b-primitives-green-light-300",
       },
       pink: {
-        circle1: "border-b-red-bean-300",
-        circle2: "border-b-red-bean-300",
+        circle1: "border-b-primitives-red-light-300",
+        circle2: "border-b-primitives-red-light-300",
       },
       blue: {
-        circle1: "border-b-blue-300",
-        circle2: "border-b-blue-500",
+        circle1: "border-b-primitives-blue-light-300",
+        circle2: "border-b-primitives-blue-light-500",
       },
     },
   },

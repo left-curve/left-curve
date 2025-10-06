@@ -1,5 +1,5 @@
 use {
-    crate::context::Context,
+    crate::{context::Context, error::Error},
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
     grug::Storage,
     grug_app::QuerierProvider,
@@ -118,7 +118,7 @@ impl grug_app::Indexer for Indexer {
                         counter!("indexer.dango.hooks.pubsub.errors.total").increment(1);
                     })?;
 
-                Ok::<(), grug_app::IndexerError>(())
+                Ok::<(), Error>(())
             }
         });
 

@@ -1,45 +1,97 @@
-import { Spinner } from "./Spinner";
+import { AnimatePresence, motion } from "framer-motion";
 import { IconChecked } from "./icons/IconChecked";
 import { IconClose } from "./icons/IconClose";
 
-import type { ToastProps } from "#utils/toaster.js";
+import { useToastStore, toast as toaster } from "../providers/toast";
+import { createPortal } from "react-dom";
+
+import type { ToastDefinition } from "@left-curve/foundation";
+import type { Prettify } from "@left-curve/dango/types";
+import { useMediaQuery } from "../hooks/useMediaQuery";
+import { IconTools } from "./icons/IconTools";
+import { IconInfo } from "./icons/IconInfo";
 
 const Icon = {
   success: (
-    <div className="min-h-6 min-w-6 rounded-full bg-surface-quaternary-green text-secondary-green flex items-center justify-center">
-      <IconChecked className="w-3 h-3" />
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-green text-primitives-green-light-100 flex items-center justify-center">
+      <IconChecked className="w-4 h-4" />
     </div>
   ),
   error: (
-    <div className="min-h-6 min-w-6 rounded-full bg-red-bean-300 text-red-bean-100 flex items-center justify-center">
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-primitives-red-light-300 text-primitives-red-light-100 flex items-center justify-center">
       <IconClose className="w-4 h-4" />
     </div>
   ),
-  loading: (
-    <div className="text-blue-500 min-h-6 min-w-6  flex items-center justify-center">
-      <Spinner size="sm" color="current" />
+  maintenance: (
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-rice text-ink-secondary-rice flex items-center justify-center">
+      <IconTools className="w-4 h-4" />
+    </div>
+  ),
+  info: (
+    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-fg-tertiary-blue flex items-center justify-center">
+      <IconInfo className="w-4 h-4" />
     </div>
   ),
 };
 
-export const Toast: React.FC<ToastProps> = ({ title, description, type, close }) => {
+export type ToastProps = Prettify<{
+  toast: ToastDefinition;
+}>;
+
+export const Toast: React.FC<ToastProps> = ({ toast }) => {
+  const { id, title: Title, description: Description, type } = toast;
+  const { isLg } = useMediaQuery();
+
+  const y = isLg ? 20 : -10;
+
   return (
-    <div className="w-fit min-w-[12rem] max-w-[20rem] py-4 pl-4 pr-10 rounded-[20px] bg-surface-primary-rice border border-secondary-gray transition-all duration-500 shadow-account-card flex items-start gap-2 relative">
-      {Icon[type]}
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <p className="text-primary-900 diatype-sm-medium">{title}</p>
-        {description && (
-          <p className="text-tertiary-500 diatype-xs-medium break-all">{description}</p>
-        )}
+    <motion.div
+      initial={{ opacity: 0, y }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y }}
+      className="relative w-full h-full"
+    >
+      <div className="absolute pointer-events-auto w-full lg:w-auto top-0 lg:top-auto lg:bottom-4 lg:right-4 bg-surface-primary-rice rounded-b-md lg:rounded-md border lg:min-w-[18rem] lg:max-w-[26rem] border-outline-secondary-gray shadow-account-card">
+        <div className="w-fit py-4 pl-4 pr-10 transition-all duration-500 flex items-start gap-2">
+          {Icon[type]}
+          <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+            {typeof Title === "string" ? (
+              <p className="text-ink-primary-900 diatype-sm-medium">{Title}</p>
+            ) : typeof Title === "function" ? (
+              <Title {...toast} />
+            ) : null}
+
+            {typeof Description === "string" ? (
+              <p className="text-ink-tertiary-500 diatype-xs-medium break-all">{Description}</p>
+            ) : typeof Description === "function" ? (
+              <Description {...toast} />
+            ) : null}
+          </div>
+          <button
+            aria-label="Close Notification"
+            className="absolute top-4 right-4 transition-all duration-200"
+            onClick={() => toaster.dismiss(id)}
+            type="button"
+          >
+            <IconClose className="w-6 h-6 text-ink-tertiary-500 hover:text-ink-primary-900" />
+          </button>
+        </div>
       </div>
-      <button
-        aria-label="Close Notification"
-        className="absolute top-4 right-4 transition-all duration-200"
-        onClick={close}
-        type="button"
-      >
-        <IconClose className="w-6 h-6 text-tertiary-500 hover:text-primary-900" />
-      </button>
-    </div>
+    </motion.div>
+  );
+};
+
+export const Toaster: React.FC = () => {
+  const { toasts } = useToastStore();
+
+  return createPortal(
+    <div className="fixed inset-0 z-[90] pointer-events-none">
+      <AnimatePresence mode="wait">
+        {toasts.map((toast) => (
+          <Toast key={toast.id} toast={toast} />
+        ))}
+      </AnimatePresence>
+    </div>,
+    document.body,
   );
 };

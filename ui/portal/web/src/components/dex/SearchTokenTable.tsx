@@ -1,13 +1,12 @@
 import { useConfig, usePrices } from "@left-curve/store";
 import { useMemo } from "react";
 
-import { Cell, Table } from "@left-curve/applets-kit";
+import { Cell, Table, useApp } from "@left-curve/applets-kit";
 
 import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { PairId, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { useApp } from "~/hooks/useApp";
 
 const SearchTokenTableContainer: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;

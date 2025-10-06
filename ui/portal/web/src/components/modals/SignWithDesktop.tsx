@@ -1,15 +1,19 @@
 import { useSigninWithDesktop } from "@left-curve/store";
 import { forwardRef, useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { Spinner } from "@left-curve/applets-kit";
+import { Spinner, useApp } from "@left-curve/applets-kit";
 import { Scanner } from "@yudiel/react-qr-scanner";
 
 import { WEBRTC_URI } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ socketId }, _ref) => {
-  const { router, toast, hideModal } = useApp();
+import type { useNavigate } from "@tanstack/react-router";
+
+export const SignWithDesktop = forwardRef<
+  unknown,
+  { socketId: string; navigate: ReturnType<typeof useNavigate> }
+>(({ socketId, navigate }, _ref) => {
+  const { toast, hideModal } = useApp();
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
     url: WEBRTC_URI,
@@ -22,7 +26,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
     },
     mutation: {
       onSuccess: () => {
-        router.navigate({ to: "/" });
+        navigate({ to: "/" });
         hideModal();
       },
     },
@@ -42,7 +46,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
       ) : (
         <>
           <div className="flex justify-center items-center py-12">
-            <p className="diatype-m-medium text-tertiary-500 p-4 text-center">
+            <p className="diatype-m-medium text-ink-tertiary-500 p-4 text-center">
               {m["signin.qrInstructions"]({ domain: window.location.hostname })}
             </p>
           </div>
@@ -58,7 +62,7 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
             classNames={{ container: "qr-container", video: "bg-surface-primary-rice" }}
           />
           <div className="py-20 flex items-center justify-center">
-            <p className="text-tertiary-500 diatype-m-medium" />
+            <p className="text-ink-tertiary-500 diatype-m-medium" />
           </div>
         </>
       )}

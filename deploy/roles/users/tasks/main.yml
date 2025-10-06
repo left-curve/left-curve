@@ -1,11 +1,35 @@
-- name: Create users
-  user:
-    name: "{{ item }}"
-    shell: /bin/bash
-    groups: sudo
-    append: yes
-    state: present
-    create_home: yes
+- name: Create users and enable lingering
+  block:
+    - name: Create users
+      user:
+        name: "{{ item }}"
+        shell: /bin/bash
+        groups: sudo
+        append: yes
+        state: present
+        create_home: yes
+
+    - name: Enable lingering
+      command: loginctl enable-linger "{{ item }}"
+      become: yes
+
+    - name: Ensure .ssh directory exists for ssh_users
+      file:
+        path: "/home/{{ item }}/.ssh"
+        state: directory
+        owner: "{{ item }}"
+        group: "{{ item }}"
+        mode: '0700'
+      loop: "{{ ssh_users }}"
+
+    - name: Copy ssh keys for ssh_users
+      authorized_key:
+        user: "{{ item }}"
+        state: present
+        key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
+      vars:
+        ssh_key_path: "{{ item }}.pub"
+  with_items: "{{ ssh_users }}"
   loop: "{{ ssh_users }}"
 
 - name: Create deploy user
@@ -16,24 +40,6 @@
     append: yes
     state: present
     create_home: yes
-
-- name: Ensure .ssh directory exists for ssh_users
-  file:
-    path: "/home/{{ item }}/.ssh"
-    state: directory
-    owner: "{{ item }}"
-    group: "{{ item }}"
-    mode: '0700'
-  loop: "{{ ssh_users }}"
-
-- name: Copy ssh keys for ssh_users
-  authorized_key:
-    user: "{{ item }}"
-    state: present
-    key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
-  vars:
-    ssh_key_path: "{{ item }}.pub"
-  with_items: "{{ ssh_users }}"
 
 - name: Copy deploy ssh keys user
   authorized_key:
@@ -87,7 +93,6 @@
     regexp: "^{{ item }}\\s+ALL=\\(ALL\\) NOPASSWD:ALL$"
     backup: yes
   with_items: "{{ ssh_users }}"
-
 
 - name: Reload SSH
   service:

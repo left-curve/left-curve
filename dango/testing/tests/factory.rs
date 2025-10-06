@@ -524,6 +524,22 @@ fn update_key() {
             key_hash => pk,
         });
 
+    // It shouldn't be able to add the same key more than once.
+    suite
+        .execute(
+            &mut user,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateKey {
+                key: Op::Insert(pk),
+                key_hash,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "key is already associated with username `{}`",
+            user.username
+        ));
+
     // Delete the first key should be possible since there is another key.
     suite
         .execute(

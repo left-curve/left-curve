@@ -11,6 +11,7 @@ members = [
   "dango/dex",
   "dango/gateway",
   "dango/genesis",
+  "dango/indexer/clickhouse",
   "dango/indexer/httpd",
   "dango/indexer/sql",
   "dango/indexer/sql-migration",
@@ -31,6 +32,7 @@ members = [
   "grug/db/disk",
   "grug/db/disk-lite",
   "grug/db/memory",
+  "grug/db/memory-lite",
   "grug/ffi",
   "grug/httpd",
   "grug/jellyfish-merkle",
@@ -50,7 +52,6 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
-  "indexer/clickhouse",
   "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
@@ -62,6 +63,8 @@ members = [
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",
+  "utils/eth",
+  "utils/identity",
   "utils/temp-rocksdb",
 ]
 resolver = "2"
@@ -89,19 +92,19 @@ actix-service               = "2"
 actix-test                  = "0.1"
 actix-web                   = "4"
 actix-web-lab               = "0"
-actix-web-metrics           = "0"
+actix-web-metrics           = "0.2"
 aes-gcm                     = "0.10"
 alloy                       = "1"
 anyhow                      = "1"
 anymap                      = "0.12"
 assert-json-diff            = "2"
-assertor                    = { version = "0.0", git = "https://github.com/google/assertor" }
+assertor                    = "0.0.4"
 async-graphql-actix-web     = "7.0"
 async-std                   = { version = "1", features = ["attributes", "tokio1"] }
 async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
-axum                        = "0.8"
+axum                        = { version = "0.8", features = ["ws"] }
 backtrace                   = "0.3"
 base64                      = "0.22"
 bigdecimal                  = "0.4"
@@ -110,10 +113,9 @@ blake2                      = "0.10"
 blake3                      = "1"
 bnum                        = "0.13"
 borsh                       = "1"
-byteorder                   = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
-clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs" } # TODO: use crates.io once the latest version is published
+clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs", rev = "8cf3d2e138dd121367fa10e875d3f91374b075b2" } # TODO: use crates.io once the latest version is published
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
@@ -127,6 +129,7 @@ dyn-clone                   = "1"
 dyn-event                   = { path = "utils/dyn-event" }
 ed25519-dalek               = "2"
 elsa                        = "1"
+eth-utils                   = { path = "utils/eth" }
 futures                     = "0.3"
 futures-util                = "0.3"
 glob                        = "0.3"
@@ -136,6 +139,7 @@ hex-literal                 = "0.4" # requires rust edition 2024 in order to upg
 home                        = "0.5"
 http                        = "1"
 ics23                       = "0.12"
+identity                    = { path = "utils/identity" }
 itertools                   = "0.14"
 k256                        = "0.13"
 lzma-rs                     = "0.3"
@@ -150,8 +154,8 @@ proc-macro2                 = "1"
 prometheus                  = "0.13"
 proptest                    = "1"
 prost                       = "0.13"
-pyth-sdk                    = "0.8"
-pythnet-sdk                 = { git = "https://github.com/pyth-network/pyth-crosschain", rev = "6077910" } # TODO: use crates.io once published
+pyth-lazer-client           = "8.2.0"
+pyth-lazer-protocol         = "0.16.0"
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                     = { version = "0.12", features = ["stream"] }
@@ -204,6 +208,7 @@ dango-dex                   = { path = "dango/dex" }
 dango-gateway               = { path = "dango/gateway" }
 dango-genesis               = { path = "dango/genesis" }
 dango-httpd                 = { path = "dango/indexer/httpd" }
+dango-indexer-clickhouse    = { path = "dango/indexer/clickhouse" }
 dango-indexer-sql           = { path = "dango/indexer/sql" }
 dango-indexer-sql-migration = { path = "dango/indexer/sql-migration" }
 dango-lending               = { path = "dango/lending" }
@@ -225,6 +230,7 @@ grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
 grug-db-disk-lite           = { path = "grug/db/disk-lite" }
 grug-db-memory              = { path = "grug/db/memory" }
+grug-db-memory-lite         = { path = "grug/db/memory-lite" }
 grug-ffi                    = { path = "grug/ffi" }
 grug-httpd                  = { path = "grug/httpd" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }
@@ -245,7 +251,6 @@ hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
-indexer-clickhouse          = { path = "indexer/clickhouse" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }

@@ -1,7 +1,7 @@
 use {
     crate::{
         Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, Query,
-        QueryRequest, QueryResponse, StdError, TxOutcome, UnsignedTx,
+        QueryRequest, QueryResponse, QueryStatusResponse, StdError, TxOutcome, UnsignedTx,
     },
     async_trait::async_trait,
     grug_math::Uint128,
@@ -32,6 +32,12 @@ pub trait QueryClient: Send + Sync {
 
 #[async_trait]
 pub trait QueryClientExt: QueryClient {
+    async fn query_status(&self, height: Option<u64>) -> Result<QueryStatusResponse, Self::Error> {
+        self.query_app(Query::status(), height)
+            .await
+            .map(|res| res.as_status())
+    }
+
     async fn query_config(&self, height: Option<u64>) -> Result<Config, Self::Error> {
         self.query_app(Query::config(), height)
             .await

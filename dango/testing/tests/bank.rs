@@ -2,16 +2,17 @@ use {
     dango_testing::setup_test_naive,
     dango_types::{
         bank::{
-            OrphanedTransferResponseItem, QueryOrphanedTransfersByRecipientRequest,
+            self, OrphanedTransferResponseItem, QueryOrphanedTransfersByRecipientRequest,
             QueryOrphanedTransfersBySenderRequest, QueryOrphanedTransfersRequest, Received, Sent,
             TransferOrphaned,
         },
-        constants::{dango, usdc},
+        constants::{dango, eth, usdc},
     },
     grug::{
-        Addressable, BalanceChange, CheckedContractEvent, JsonDeExt, QuerierExt, ResultExt,
-        SearchEvent, addr, btree_map, coins,
+        Addressable, BalanceChange, CheckedContractEvent, Coins, Denom, JsonDeExt, LengthBounded,
+        Part, QuerierExt, ResultExt, SearchEvent, addr, btree_map, coins,
     },
+    std::collections::BTreeSet,
 };
 
 #[test]
@@ -279,4 +280,319 @@ where
 
     // If `b` is left empty, then all elements are matched.
     b.is_empty()
+}
+
+#[test]
+fn set_namespace_owner_can_only_be_called_by_owner() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Attempt to set namespace owner as non-owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::SetNamespaceOwner {
+                namespace: Part::new_unchecked("test"),
+                owner: accounts.user2.address(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("you don't have the right, O you don't have the right");
+
+    // Attempt to set namespace owner as owner. Should succeed.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.bank,
+            &bank::ExecuteMsg::SetNamespaceOwner {
+                namespace: Part::new_unchecked("test"),
+                owner: accounts.user2.address(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+}
+
+#[test]
+fn set_metadata_can_only_be_called_by_non_namespace_owner() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Attempt to set metadata as non-namespace owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::SetMetadata {
+                denom: Denom::new_unchecked(["testing", "test"]),
+                metadata: bank::Metadata {
+                    name: LengthBounded::new_unchecked("Very testy token".to_string()),
+                    symbol: LengthBounded::new_unchecked("TESTY".to_string()),
+                    description: None,
+                    decimals: 6,
+                },
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("sender does not own the namespace `testing`");
+
+    // Set user1 as namespace owner of testing
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.bank,
+            &bank::ExecuteMsg::SetNamespaceOwner {
+                namespace: Part::new_unchecked("testing"),
+                owner: accounts.user1.address(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Attempt to set metadata as user1. Should succeed.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::SetMetadata {
+                denom: Denom::new_unchecked(["testing", "test"]),
+
+                metadata: bank::Metadata {
+                    name: LengthBounded::new_unchecked("Very testy token".to_string()),
+                    symbol: LengthBounded::new_unchecked("TESTY".to_string()),
+                    description: None,
+                    decimals: 6,
+                },
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Assert metadata is set correctly
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryMetadataRequest {
+            denom: Denom::new_unchecked(["testing", "test"]),
+        })
+        .should_succeed_and_equal(bank::Metadata {
+            name: LengthBounded::new_unchecked("Very testy token".to_string()),
+            symbol: LengthBounded::new_unchecked("TESTY".to_string()),
+            description: None,
+            decimals: 6,
+        });
+}
+
+#[test]
+fn set_namespace_owner_works() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Query namespace owner of testing. Should fail because it's not set.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnerRequest {
+            namespace: Part::new_unchecked("testing"),
+        })
+        .should_fail_with_error(
+            "msg: data not found! type: grug_types::encoded_bytes::EncodedBytes",
+        );
+
+    // Set user1 as namespace owner of testing
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.bank,
+            &bank::ExecuteMsg::SetNamespaceOwner {
+                namespace: Part::new_unchecked("testing"),
+                owner: accounts.user1.address(),
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Query namespace owner of testing. Should succeed.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnerRequest {
+            namespace: Part::new_unchecked("testing"),
+        })
+        .should_succeed_and_equal(accounts.user1.address());
+}
+
+#[test]
+fn query_namespace_owners_works() {
+    let (suite, _, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Query namespace owners. Should succeed.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map! {
+            Part::new_unchecked("dex") => contracts.dex,
+            Part::new_unchecked("lending") => contracts.lending,
+            Part::new_unchecked("bridge") => contracts.gateway,
+        });
+
+    // Query namespace owners with start_after. Should succeed.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
+            start_after: Some(Part::new_unchecked("bridge")),
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map! {
+            Part::new_unchecked("lending") => contracts.lending,
+            Part::new_unchecked("dex") => contracts.dex,
+        });
+
+    // Query namespace owners with limit. Should succeed.
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryNamespaceOwnersRequest {
+            start_after: None,
+            limit: Some(2),
+        })
+        .should_succeed_and_equal(btree_map! {
+            Part::new_unchecked("dex") => contracts.dex,
+            Part::new_unchecked("bridge") => contracts.gateway,
+        });
+}
+
+#[test]
+fn query_metadatas_works() {
+    let (suite, _, _, contracts, _) = setup_test_naive(Default::default());
+
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|metadatas| {
+            metadatas.keys().collect::<BTreeSet<_>>()
+                == BTreeSet::from([
+                    &Denom::new_unchecked(["bridge", "atom"]),
+                    &Denom::new_unchecked(["bridge", "bch"]),
+                    &Denom::new_unchecked(["bridge", "bnb"]),
+                    &Denom::new_unchecked(["bridge", "btc"]),
+                    &Denom::new_unchecked(["bridge", "doge"]),
+                    &Denom::new_unchecked(["bridge", "eth"]),
+                    &Denom::new_unchecked(["bridge", "ltc"]),
+                    &Denom::new_unchecked(["bridge", "sol"]),
+                    &Denom::new_unchecked(["bridge", "usdc"]),
+                    &Denom::new_unchecked(["bridge", "xrp"]),
+                    &Denom::new_unchecked(["dango"]),
+                ])
+        });
+
+    // Start after btc
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
+            start_after: Some(Denom::new_unchecked(["bridge", "btc"])),
+            limit: None,
+        })
+        .should_succeed_and(|metadatas| {
+            metadatas.keys().collect::<BTreeSet<_>>()
+                == BTreeSet::from([
+                    &Denom::new_unchecked(["bridge", "doge"]),
+                    &Denom::new_unchecked(["bridge", "eth"]),
+                    &Denom::new_unchecked(["bridge", "ltc"]),
+                    &Denom::new_unchecked(["bridge", "sol"]),
+                    &Denom::new_unchecked(["bridge", "usdc"]),
+                    &Denom::new_unchecked(["bridge", "xrp"]),
+                    &Denom::new_unchecked(["dango"]),
+                ])
+        });
+
+    // Limit 3
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryMetadatasRequest {
+            start_after: None,
+            limit: Some(3),
+        })
+        .should_succeed_and(|metadatas| {
+            metadatas.keys().collect::<BTreeSet<_>>()
+                == BTreeSet::from([
+                    &Denom::new_unchecked(["bridge", "atom"]),
+                    &Denom::new_unchecked(["bridge", "bch"]),
+                    &Denom::new_unchecked(["bridge", "bnb"]),
+                ])
+        });
+}
+
+#[test]
+fn force_transfer_can_only_be_called_by_taxman() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Attempt to force transfer as non-taxman. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::ForceTransfer {
+                from: accounts.user2.address(),
+                to: accounts.user3.address(),
+                coins: coins! { dango::DENOM.clone() => 100 },
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("you don't have the right, O you don't have the right");
+}
+
+#[test]
+fn top_level_denom_cannot_be_minted_or_burned_by_non_chain_owner() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Attempt to mint as non-owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::Mint {
+                to: accounts.user2.address(),
+                coins: coins! { dango::DENOM.clone() => 100 },
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(
+            "only chain owner can mint, burn, or set metadata of top-level denoms",
+        );
+
+    // Attempt to burn as non-owner. Should fail.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.bank,
+            &bank::ExecuteMsg::Burn {
+                from: accounts.user2.address(),
+                coins: coins! { dango::DENOM.clone() => 100 },
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(
+            "only chain owner can mint, burn, or set metadata of top-level denoms",
+        );
+}
+
+#[test]
+fn query_supplies_works() {
+    let (suite, ..) = setup_test_naive(Default::default());
+
+    suite
+        .query_supplies(None, None)
+        .should_succeed_and_equal(coins! {
+            dango::DENOM.clone() => 1000900000000000000,
+            usdc::DENOM.clone() => 1000000000000,
+            eth::DENOM.clone() => 20000000200000000000,
+        });
+
+    // Start after eth
+    suite
+        .query_supplies(Some(eth::DENOM.clone()), None)
+        .should_succeed_and_equal(coins! {
+            usdc::DENOM.clone() => 1000000000000,
+            dango::DENOM.clone() => 1000900000000000000,
+        });
+
+    // Limit 2
+    suite
+        .query_supplies(None, Some(2))
+        .should_succeed_and_equal(coins! {
+            usdc::DENOM.clone() => 1000000000000,
+            eth::DENOM.clone() => 20000000200000000000,
+        });
 }

@@ -2,10 +2,10 @@ use {
     dango_testing::{generate_random_key, setup_test},
     dango_types::constants::{dango, usdc},
     grug::{
-        Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, JsonDeExt, QuerierExt,
+        Addr, Addressable, CheckedContractEvent, Coins, HexByteArray, Inner, JsonDeExt, QuerierExt,
         ResultExt, SearchEvent, UniqueVec, btree_set, coins,
     },
-    hyperlane_testing::{constants::MOCK_HYPERLANE_LOCAL_DOMAIN, eth_utils},
+    hyperlane_testing::constants::MOCK_HYPERLANE_LOCAL_DOMAIN,
     hyperlane_types::{
         announcement_hash, domain_hash, eip191_hash,
         mailbox::Domain,
@@ -47,7 +47,7 @@ impl MockAnnouncement {
         ));
 
         // Sign the message.
-        let signature = eth_utils::sign(message_hash, &sk);
+        let signature = eth_utils::sign_digest(message_hash.into_inner(), &sk);
 
         Self {
             sk,

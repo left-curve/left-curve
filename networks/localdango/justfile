@@ -8,12 +8,19 @@ DB_NAME := "grug_dev"
 default:
   @just --list
 
+start-dango:
+    set -a; source .env; set +a; \
+    export PYTH__ACCESS_TOKEN="$PYTH_ACCESS_TOKEN"; \
+    INDEXER__CLICKHOUSE__URL="http://localhost:8123" \
+    INDEXER__DATABASE__URL="postgres://postgres@localhost:5432/grug_dev" \
+    TENDERMINT__RPC_ADDR="http://localhost:26657" \
+    cargo run --bin dango start --home ./configs/dango
+
 # Start the localnet
-start:
+start-inner profiles="":
   #!/usr/bin/env bash
   set -e
 
-  # Set up traps to handle errors, SIGINT, and SIGTERM.
   cleanup() {
     local exit_code=$?
     case "$1" in
@@ -30,8 +37,7 @@ start:
         ;;
     esac
 
-    docker compose down --remove-orphans
-
+    docker compose --profile analytics --profile faucet --profile dango down --remove-orphans
     exit $exit_code
   }
 
@@ -39,8 +45,16 @@ start:
   trap 'cleanup SIGTERM' TERM
   trap 'cleanup' ERR
 
-  docker compose up -d --wait
+  docker compose {{profiles}} up -d --wait
   docker compose logs -f
+
+start-src:
+      FAUCET_DANGO_ENDPOINT=http://host.docker.internal:8080 \
+      DANGO_ABCI_ENDPOINT=tcp://host.docker.internal:26658 \
+      just start-inner "--profile analytics --profile faucet"
+
+start:
+  just start-inner "--profile analytics --profile faucet --profile dango"
 
 # Stop the localnet
 stop:
@@ -51,7 +65,9 @@ logs:
 
 # Delete the generate data in order to restart a new localnet from scratch
 reset:
-  rm -rfv ./data
+  rm -rfv ./configs/dango/data
+  rm -rfv ./configs/dango/indexer
+  docker volume rm $(docker volume ls -q | grep localdango_)
 
 # Run the development database
 run-dev-db:
@@ -60,6 +76,9 @@ run-dev-db:
 # Check whether the deveopment database is running
 check-dev-db:
   docker compose run --rm db pg_isready -h {{DB_HOST}} -p {{DB_PORT}} -U {{DB_USER}}
+
+restore-clickhouse filename:
+  docker compose exec clickhouse clickhouse-client --query "RESTORE DATABASE testnet_dango_production FROM File('/var/log/clickhouse-server/backups/{{filename}}')"
 
 # Create the development database
 create-dev-db:

@@ -9,6 +9,7 @@ declare global {
         questUrl: string;
         upUrl: string;
       };
+      banner?: string;
     };
   }
 }

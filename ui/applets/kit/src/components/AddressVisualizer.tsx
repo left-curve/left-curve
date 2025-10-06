@@ -1,15 +1,10 @@
 /** biome-ignore-all lint/suspicious/noTemplateCurlyInString: it uses template literals for URL replacement */
 
-import {
-  useAccount,
-  useAppConfig,
-  useConfig,
-  usePublicClient,
-  useStorage,
-} from "@left-curve/store";
+import { useAccount, useAppConfig, useConfig, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
+import { useStorage } from "@left-curve/store";
 
 import { TruncateResponsive } from "./TruncateResponsive";
 import { IconLink } from "./icons/IconLink";
@@ -151,7 +146,7 @@ export const AddressVisualizer: React.FC<AddressVisualizerProps> = ({
         onClick={() => onClick?.(blockExplorer.accountPage.replace("${address}", address))}
       >
         {withIcon ? (
-          <IconUserCircle className="w-4 h-4 fill-rice-50 text-rice-500 rounded-full overflow-hidden" />
+          <IconUserCircle className="w-4 h-4 fill-primitives-rice-light-50 text-primitives-rice-light-500 rounded-full overflow-hidden" />
         ) : null}
         <span className={twMerge("diatype-m-bold", classNames?.text)}>{account.name}</span>
         {isClickable ? <IconLink className="w-4 h-4" /> : null}

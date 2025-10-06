@@ -15,11 +15,13 @@
 
 pub mod bridge;
 mod msgs;
+mod origin;
 mod remote;
 
 pub use {
     hyperlane_types::{Addr32, mailbox::Domain},
     msgs::*,
+    origin::*,
     remote::*,
 };
 

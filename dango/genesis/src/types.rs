@@ -5,14 +5,13 @@ use {
         bank,
         config::Hyperlane,
         dex::PairUpdate,
-        gateway::{RateLimit, Remote, WithdrawalFee},
+        gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         lending::InterestRateModel,
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Coin, Coins, Denom, Duration, Hash256, Part, Uint128},
+    grug::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, Timestamp, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
-    pyth_types::{GuardianSet, GuardianSetIndex},
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -101,7 +100,7 @@ pub struct DexOption {
 pub struct GatewayOption {
     // Note: these are only the Hyperlane Warp routes. No need to specify the
     // bitcoin bridge route here.
-    pub warp_routes: BTreeSet<(Part, Remote)>,
+    pub warp_routes: BTreeSet<(Origin, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub rate_limit_refresh_period: Duration,
     pub withdrawal_fees: Vec<WithdrawalFee>,
@@ -124,8 +123,8 @@ pub struct LendingOption {
 pub struct OracleOption {
     /// Oracle price sources.
     pub pyth_price_sources: BTreeMap<Denom, PriceSource>,
-    /// Wormhole guardian sets that will sign Pyth VAA messages.
-    pub wormhole_guardian_sets: BTreeMap<GuardianSetIndex, GuardianSet>,
+    /// Pyth Lazer trusted signers: public key and expiration timestamp.
+    pub pyth_trusted_signers: BTreeMap<Binary, Timestamp>,
 }
 
 pub struct VestingOption {

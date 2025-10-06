@@ -1,0 +1,16 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+description   = "Utility functions related to Ethereum types"
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "eth-utils"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[dependencies]
+identity = { workspace = true }
+k256     = { workspace = true }
+sha3     = { workspace = true }

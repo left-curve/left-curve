@@ -6,11 +6,13 @@ import {
   useRouterState,
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useAccount, useActivities, useSessionKey } from "@left-curve/store";
 
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 
-import { twMerge, useTheme } from "@left-curve/applets-kit";
+import * as Sentry from "@sentry/react";
+import { Modals, Spinner, twMerge, useApp, useTheme } from "@left-curve/applets-kit";
 import { createPortal } from "react-dom";
 
 import type { RouterContext } from "~/app.router";
@@ -30,19 +32,74 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   component: () => {
     const navigate = useNavigate();
     const { location } = useRouterState();
+    const { modal, settings, showModal } = useApp();
     const [isReady, setIsReady] = useState(false);
+
     useEffect(() => {
       if (location.pathname === "/maintenance") navigate({ to: "/" });
-      // Check chain is up
-      fetch(window.dango.urls.upUrl)
-        .then(({ ok }) => {
-          if (!ok) navigate({ to: "/maintenance" });
-        })
-        .catch(() => navigate({ to: "/maintenance" }))
-        .finally(() => setIsReady(true));
+      (async () => {
+        try {
+          // Check chain is up
+          const response = await fetch(window.dango.urls.upUrl);
+          if (!response.ok) throw new Error("request failed");
+          const { is_running } = await response.json();
+          if (!is_running) navigate({ to: "/maintenance" });
+        } catch (_) {
+          navigate({ to: "/maintenance" });
+        } finally {
+          setIsReady(true);
+        }
+      })();
     }, []);
 
-    if (!isReady) return null;
+    // Track user errors
+    const { username, connector, account, isConnected } = useAccount();
+    useEffect(() => {
+      if (!username) Sentry.setUser(null);
+      else {
+        Sentry.setUser({ username });
+        Sentry.setContext("connector", {
+          id: connector?.id,
+          name: connector?.name,
+          type: connector?.type,
+        });
+      }
+    }, [username, connector]);
+
+    // Initialize activities
+    const { startActivities } = useActivities();
+    useEffect(() => {
+      const stopActivities = startActivities();
+      return stopActivities;
+    }, [account]);
+
+    // Track session key expiration
+    const { session } = useSessionKey();
+    useEffect(() => {
+      const intervalId = setInterval(() => {
+        if (
+          (!session || Date.now() > Number(session.sessionInfo.expireAt)) &&
+          isConnected &&
+          settings.useSessionKey &&
+          connector &&
+          connector.type !== "session"
+        ) {
+          if (modal.modal !== Modals.RenewSession) {
+            showModal(Modals.RenewSession);
+          }
+        }
+      }, 1000);
+      return () => {
+        clearInterval(intervalId);
+      };
+    }, [session, modal, settings.useSessionKey, connector, isConnected]);
+
+    if (!isReady)
+      return (
+        <div className="flex h-screen w-screen items-center justify-center">
+          <Spinner size="lg" color="pink" />
+        </div>
+      );
 
     return (
       <>

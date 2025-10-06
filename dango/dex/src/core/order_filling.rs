@@ -1,11 +1,10 @@
 use {
-    dango_types::dex::{Direction, Order, OrderTrait},
-    grug::{IsZero, Number, NumberConst, StdResult, Udec128, Udec128_6, Udec128_24},
+    dango_types::dex::{Order, Price},
+    grug::{IsZero, Number, NumberConst, StdResult, Udec128, Udec128_6},
 };
 
 #[derive(Debug)]
 pub struct FillingOutcome {
-    pub order_direction: Direction,
     /// The order with the `filled` amount updated.
     pub order: Order,
     /// Amount this order was filled for, in base asset.
@@ -20,13 +19,15 @@ pub struct FillingOutcome {
     pub fee_base: Udec128_6,
     /// Fee charged in quote asset.
     pub fee_quote: Udec128_6,
+    /// The price at which the order was filled.
+    pub clearing_price: Price,
 }
 
 /// Clear the orders given a clearing price and volume.
 pub fn fill_orders(
-    bids: Vec<(Udec128_24, Order)>,
-    asks: Vec<(Udec128_24, Order)>,
-    clearing_price: Udec128_24,
+    bids: Vec<Order>,
+    asks: Vec<Order>,
+    clearing_price: Price,
     volume: Udec128_6,
     current_block_height: u64,
     maker_fee_rate: Udec128,
@@ -57,8 +58,8 @@ pub fn fill_orders(
 
 /// Fill the BUY orders given a clearing price and volume.
 fn fill_bids(
-    bids: Vec<(Udec128_24, Order)>,
-    clearing_price: Udec128_24,
+    bids: Vec<Order>,
+    clearing_price: Price,
     mut volume: Udec128_6,
     current_block_height: u64,
     maker_fee_rate: Udec128,
@@ -66,11 +67,11 @@ fn fill_bids(
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(bids.len());
 
-    for (order_price, mut order) in bids {
+    for mut order in bids {
         // Compute how much of the order can be filled.
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
-        let filled_base = *order.remaining().min(&volume);
+        let filled_base = order.remaining.min(volume);
         let filled_quote = filled_base.checked_mul(clearing_price)?;
 
         // Deduct the amount filled from the order and the volume.
@@ -81,7 +82,7 @@ fn fill_bids(
         // - if it's a passive order, it's not charged any fee;
         // - if it was created at a previous block height, then it's charged the maker fee rate;
         // - otherwise, it's charged the taker fee rate.
-        let fee_rate = match order.created_at_block_height() {
+        let fee_rate = match order.created_at_block_height {
             None => Udec128::ZERO,
             Some(block_height) if block_height < current_block_height => maker_fee_rate,
             Some(_) => taker_fee_rate,
@@ -96,10 +97,9 @@ fn fill_bids(
         // For quote, in case the order is filled at a price better than the
         // limit price, refund the unused deposit.
         let refund_base = filled_base.checked_sub(fee_base)?;
-        let refund_quote = filled_base.checked_mul(order_price - clearing_price)?;
+        let refund_quote = filled_base.checked_mul(order.price - clearing_price)?;
 
         outcome.push(FillingOutcome {
-            order_direction: Direction::Bid,
             order,
             filled_base,
             filled_quote,
@@ -107,6 +107,7 @@ fn fill_bids(
             refund_quote,
             fee_base,
             fee_quote,
+            clearing_price,
         });
 
         if volume.is_zero() {
@@ -119,8 +120,8 @@ fn fill_bids(
 
 /// Fill the SELL orders given a clearing price and volume.
 fn fill_asks(
-    asks: Vec<(Udec128_24, Order)>,
-    clearing_price: Udec128_24,
+    asks: Vec<Order>,
+    clearing_price: Price,
     mut volume: Udec128_6,
     current_block_height: u64,
     maker_fee_rate: Udec128,
@@ -128,11 +129,11 @@ fn fill_asks(
 ) -> StdResult<Vec<FillingOutcome>> {
     let mut outcome = Vec::with_capacity(asks.len());
 
-    for (_, mut order) in asks {
+    for mut order in asks {
         // Compute how much of the order can be filled.
         // This would be the order's remaining amount, or the remaining volume,
         // whichever is smaller.
-        let filled_base = *order.remaining().min(&volume);
+        let filled_base = order.remaining.min(volume);
         let filled_quote = filled_base.checked_mul(clearing_price)?;
 
         // Deduct the amount filled from the order and the volume.
@@ -144,7 +145,7 @@ fn fill_asks(
         // - if it's a passive order, it's not charged any fee;
         // - if it was created at a previous block height, then it's charged the maker fee rate;
         // - otherwise, it's charged the taker fee rate.
-        let fee_rate = match order.created_at_block_height() {
+        let fee_rate = match order.created_at_block_height {
             None => Udec128::ZERO,
             Some(block_height) if block_height < current_block_height => maker_fee_rate,
             Some(_) => taker_fee_rate,
@@ -161,7 +162,6 @@ fn fill_asks(
         let refund_quote = filled_quote.checked_sub(fee_quote)?;
 
         outcome.push(FillingOutcome {
-            order_direction: Direction::Ask,
             order,
             filled_base,
             filled_quote,
@@ -169,6 +169,7 @@ fn fill_asks(
             refund_quote,
             fee_base,
             fee_quote,
+            clearing_price,
         });
 
         if volume.is_zero() {

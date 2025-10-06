@@ -10,7 +10,7 @@ import type {
   SubscribeFn,
   Transport,
 } from "@left-curve/sdk/types";
-import type { GraphQLClientResponse, GraphqlOperation } from "#types/graphql.js";
+import type { GraphQLClientResponse, GraphqlOperation } from "../types/graphql.js";
 
 export type GraphqlTransportConfig = {
   /**

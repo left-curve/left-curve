@@ -1,0 +1,60 @@
+- name: Set port facts from local variable
+  set_fact:
+    "{{ item }}": "{{ ports[item] }}"
+  loop:
+    - db_metrics_port
+    - clickhouse_metrics_port
+    - dango_port
+    - dango_frontend_port
+    - dango_metrics_port
+    - faucet_port
+    - quest_port
+    - cometbft_p2p_port
+    - cometbft_rpc_port
+    - cometbft_abci_port
+    - cometbft_metrics_port
+
+- name: Set dango and cometbft directories
+  set_fact:
+    dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
+    cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/cometbft"
+  when: system_wide_directories
+
+- name: Check if deployment already exists
+  stat:
+    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+  register: env_file_exists
+
+- name: Read .env values
+  shell: |
+    grep -E '^(CLICKHOUSE_DATABASE|POSTGRES_DATABASE|CLICKHOUSE_METRICS_PORT|DB_METRICS_PORT|DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_ABCI_PORT|COMETBFT_METRICS_PORT)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+    awk -F= '{print tolower($1) "=" $2}'
+  register: existing_port_pairs
+  when: env_file_exists.stat.exists
+
+- set_fact:
+    skip_port_discovery: false
+
+- name: Set facts from existing .env
+  set_fact:
+    "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
+    skip_port_discovery: true
+  loop: "{{ existing_port_pairs.stdout_lines }}"
+  when: env_file_exists.stat.exists and existing_port_pairs.stdout_lines | length > 0
+
+- file:
+    path: "{{ item }}"
+    state: directory
+  loop: ["{{ dango_directory }}/config", "{{ cometbft_directory }}/config", "{{ deployment_dir }}"]
+
+- file:
+    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item }}"
+    state: directory
+  loop: ["clickhouse"]
+  when: deploy_includes_clickhouse
+
+- name: Login to GHCR
+  community.docker.docker_login:
+    registry: ghcr.io
+    username: "{{ ghcr_user }}"
+    password: "{{ ghcr_token }}"

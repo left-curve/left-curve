@@ -1,12 +1,17 @@
 use {
-    crate::{entity, error::Result},
+    crate::{block_to_index::BlockToIndex, entity, error::Result},
     grug_types::{
-        Block, BlockOutcome, CommitmentStatus, EventId, FlatCategory, FlatEventInfo, FlattenStatus,
-        Inner, JsonSerExt, flatten_commitment_status,
+        Addr, Block, CommitmentStatus, EventId, Extractable, FlatCategory, FlatEventInfo,
+        FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
     },
-    sea_orm::{Set, prelude::*, sqlx::types::chrono::NaiveDateTime},
-    std::collections::HashMap,
+    sea_orm::{Set, TryIntoModel, prelude::*, sqlx::types::chrono::NaiveDateTime},
+    std::{
+        collections::{HashMap, HashSet},
+        sync::Arc,
+    },
 };
+#[cfg(feature = "metrics")]
+use {metrics::describe_histogram, metrics::histogram, std::time::Instant};
 
 #[derive(Debug, Default)]
 pub struct Models {
@@ -14,10 +19,14 @@ pub struct Models {
     pub transactions: Vec<entity::transactions::ActiveModel>,
     pub messages: Vec<entity::messages::ActiveModel>,
     pub events: Vec<entity::events::ActiveModel>,
+    pub events_by_address: HashMap<Addr, Vec<Arc<entity::events::Model>>>,
 }
 
 impl Models {
-    pub fn build(block: &Block, block_outcome: &BlockOutcome) -> Result<Self> {
+    pub fn build(block_to_index: &BlockToIndex) -> Result<Self> {
+        let block = &block_to_index.block;
+        let block_outcome = &block_to_index.block_outcome;
+
         let created_at = block.info.timestamp.to_naive_date_time();
 
         let mut event_id = EventId::new(block.info.height, FlatCategory::Cron, 0, 0);
@@ -25,6 +34,7 @@ impl Models {
         let mut transactions = vec![];
         let mut messages = vec![];
         let mut events = vec![];
+        let mut events_by_address = HashMap::new();
 
         // 1. Storing cron events
         {
@@ -33,6 +43,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
+                    &mut events_by_address,
                     &mut event_id,
                     cron_outcome.cron_event.clone(),
                     None,
@@ -57,7 +68,8 @@ impl Models {
                 let transaction_id = Uuid::new_v4();
 
                 let sender = tx.sender.to_string();
-                let new_transaction = entity::transactions::ActiveModel {
+                #[allow(unused_mut)]
+                let mut new_transaction = entity::transactions::ActiveModel {
                     id: Set(transaction_id),
                     transaction_idx: Set(transaction_idx as i32),
                     transaction_type: Set(FlatCategory::Tx),
@@ -76,7 +88,17 @@ impl Models {
                     data: Set(tx.data.clone().into_inner()),
                     sender: Set(sender.clone()),
                     credential: Set(tx.credential.clone().into_inner()),
+                    http_request_details: Set(None),
                 };
+
+                #[cfg(feature = "http-request-details")]
+                {
+                    new_transaction.http_request_details = Set(block_to_index
+                        .http_request_details
+                        .get(&tx_hash.to_string())
+                        .and_then(|d| d.to_json_value().ok())
+                        .map(|v| v.into_inner()));
+                }
 
                 transactions.push(new_transaction);
 
@@ -84,6 +106,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
+                    &mut events_by_address,
                     &mut event_id,
                     tx_outcome.events.withhold.clone(),
                     Some(transaction_id),
@@ -95,6 +118,7 @@ impl Models {
 
                 let active_models = flatten_events(
                     block,
+                    &mut events_by_address,
                     &mut event_id,
                     tx_outcome.events.authenticate.clone(),
                     Some(transaction_id),
@@ -144,6 +168,7 @@ impl Models {
                 {
                     let active_models = flatten_events(
                         block,
+                        &mut events_by_address,
                         &mut event_id,
                         tx_outcome.events.msgs_and_backrun.clone(),
                         Some(transaction_id),
@@ -155,6 +180,7 @@ impl Models {
 
                     let active_models = flatten_events(
                         block,
+                        &mut events_by_address,
                         &mut event_id,
                         tx_outcome.events.finalize.clone(),
                         Some(transaction_id),
@@ -181,12 +207,14 @@ impl Models {
             events,
             transactions,
             messages,
+            events_by_address,
         })
     }
 }
 
 fn flatten_events<T>(
     block: &Block,
+    events_by_address: &mut HashMap<Addr, Vec<Arc<entity::events::Model>>>,
     next_id: &mut EventId,
     commitment: CommitmentStatus<T>,
     transaction_id: Option<uuid::Uuid>,
@@ -220,6 +248,26 @@ where
             None => None,
         };
 
+        // For now, we assume most events contains less than 10 addresses.
+        // With an initial capacity of 10, we only need to 1 heap allocation for
+        // the entire event.
+        // If later we find that most events contain more than 10 addresses and
+        // the reallocation has a noticeable performance impact, we can increase
+        // the initial capacity.
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        let mut addresses = HashSet::with_capacity(10);
+        event.event.extract_addresses(&mut addresses);
+
+        #[cfg(feature = "metrics")]
+        {
+            histogram!("indexer.events.extract_addresses.duration.seconds")
+                .record(start.elapsed().as_secs_f64());
+
+            histogram!("indexer.events.extract_addresses.count").record(addresses.len() as f64);
+        }
+
         events_ids.insert(event.id.event_index, db_event_id);
 
         let db_event = build_event_active_model(
@@ -232,7 +280,16 @@ where
             created_at,
         )?;
 
-        active_models.push(db_event);
+        active_models.push(db_event.clone());
+
+        let db_event = Arc::new(db_event.try_into_model()?);
+
+        for addr in addresses {
+            events_by_address
+                .entry(addr)
+                .or_default()
+                .push(db_event.clone());
+        }
     }
 
     Ok(active_models)
@@ -288,4 +345,17 @@ fn build_event_active_model(
         event_idx: Set(index_event.id.event_index as i32),
         block_height: Set(block.info.height.try_into()?),
     })
+}
+
+#[cfg(feature = "metrics")]
+pub fn init_metrics() {
+    describe_histogram!(
+        "indexer.events.extract_addresses.count",
+        "Number of addresses found in an event"
+    );
+
+    describe_histogram!(
+        "indexer.events.extract_addresses.duration.seconds",
+        "Time consumed extracting addresses from an event"
+    )
 }

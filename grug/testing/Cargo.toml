@@ -13,7 +13,6 @@ version       = { workspace = true }
 anyhow             = { workspace = true }
 async-trait        = { workspace = true }
 grug-app           = { workspace = true, features = ["abci", "tracing"] }
-grug-crypto        = { workspace = true }
 grug-db-memory     = { workspace = true }
 grug-math          = { workspace = true }
 grug-mock-account  = { workspace = true, features = ["library"] }
@@ -21,6 +20,7 @@ grug-mock-bank     = { workspace = true, features = ["library"] }
 grug-mock-taxman   = { workspace = true, features = ["library"] }
 grug-types         = { workspace = true }
 grug-vm-rust       = { workspace = true }
+identity           = { workspace = true }
 k256               = { workspace = true }
 rand               = { workspace = true }
 serde              = { workspace = true }

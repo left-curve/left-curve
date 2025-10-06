@@ -3,6 +3,8 @@ import {
   ExpandOptions,
   IconPasskey,
   IconQR,
+  Modals,
+  useApp,
   useMediaQuery,
   useWizard,
 } from "@left-curve/applets-kit";
@@ -16,17 +18,15 @@ import {
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import { Button, IconLeft, ResizerContainer } from "@left-curve/applets-kit";
 import { Link } from "@tanstack/react-router";
-import { Modals } from "../modals/RootModal";
 import { AuthCarousel } from "./AuthCarousel";
 import { AuthOptions } from "./AuthOptions";
 import { UsernamesList } from "./UsernamesList";
 
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Hex, SigningSession, Username } from "@left-curve/dango/types";
 import type React from "react";
@@ -41,7 +41,7 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
   }, []);
 
   return (
-    <div className="h-svh xl:h-screen w-screen flex items-center justify-center bg-surface-primary-rice text-primary-900">
+    <div className="h-svh xl:h-screen w-screen flex items-center justify-center bg-surface-primary-rice text-ink-primary-900">
       <div className="flex items-center justify-center flex-1">
         <ResizerContainer layoutId="signin" className="w-full max-w-[22.5rem]">
           {children}
@@ -84,7 +84,10 @@ const CredentialStep: React.FC = () => {
         }
         nextStep();
       } catch (err) {
-        toast.error({ title: m["errors.failureRequest"]() });
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.failedSigningIn"](),
+        });
         console.log(err);
       }
     },
@@ -123,7 +126,7 @@ const CredentialStep: React.FC = () => {
         ) : (
           <Button
             fullWidth
-            onClick={() => showModal(Modals.SignWithDesktop)}
+            onClick={() => showModal(Modals.SignWithDesktop, { navigate })}
             className="gap-2"
             variant="secondary"
           >
@@ -198,12 +201,16 @@ const UsernameStep: React.FC = () => {
         {existUsernames ? (
           <>
             <h1 className="h2-heavy">{m["signin.usernamesFound"]()}</h1>
-            <p className="text-tertiary-500 diatype-m-medium">{m["signin.chooseCredential"]()}</p>
+            <p className="text-ink-tertiary-500 diatype-m-medium">
+              {m["signin.chooseCredential"]()}
+            </p>
           </>
         ) : (
           <>
             <h1 className="h2-heavy">{m["signin.noUsernamesFound"]()}</h1>
-            <p className="text-tertiary-500 diatype-m-medium">{m["signin.noUsernameMessage"]()}</p>
+            <p className="text-ink-tertiary-500 diatype-m-medium">
+              {m["signin.noUsernameMessage"]()}
+            </p>
           </>
         )}
       </div>
@@ -220,7 +227,7 @@ const UsernameStep: React.FC = () => {
         </div>
       ) : (
         <Button variant="link" onClick={previousStep}>
-          <IconLeft className="w-[22px] h-[22px] text-blue-500" />
+          <IconLeft className="w-[22px] h-[22px] text-primitives-blue-light-500" />
           <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
         </Button>
       )}

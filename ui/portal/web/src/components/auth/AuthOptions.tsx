@@ -3,7 +3,7 @@ import { useConnectors } from "@left-curve/store";
 import { motion } from "framer-motion";
 import type React from "react";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 interface Props {
   action: (method: string) => void;
@@ -39,7 +39,9 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
           );
         })
       ) : (
-        <p className="text-center text-blue-400">{m["common.notWalletDetected"]()}</p>
+        <p className="text-center text-primitives-blue-light-400">
+          {m["common.notWalletDetected"]()}
+        </p>
       )}
     </div>
   );

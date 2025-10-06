@@ -27,8 +27,8 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     refetchInterval = 60 * 1000 * 5,
     formatter = formatNumber,
     defaultFormatOptions = {
-      maximumFractionDigits: 2,
-      minFractionDigits: 2,
+      maximumTotalDigits: 5,
+      minimumTotalDigits: 2,
       language: navigator.language,
       mask: 1,
     },

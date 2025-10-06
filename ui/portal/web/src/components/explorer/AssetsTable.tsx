@@ -1,6 +1,5 @@
-import { Cell, Table } from "@left-curve/applets-kit";
+import { Cell, Table, useApp } from "@left-curve/applets-kit";
 import { useConfig, usePrices } from "@left-curve/store";
-import { useApp } from "~/hooks/useApp";
 
 import { formatUnits } from "@left-curve/dango/utils";
 

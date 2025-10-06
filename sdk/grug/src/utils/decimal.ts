@@ -29,6 +29,10 @@ class Decimal {
     return new Decimal(value);
   }
 
+  round(dp: number, rm: number): Decimal {
+    return new Decimal(this.inner.round(dp, rm as Big.RoundingMode));
+  }
+
   plus(num: string | number | Decimal): Decimal {
     const other = Decimal.from(num);
     const result = this.inner.plus(other.inner);
