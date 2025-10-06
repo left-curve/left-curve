@@ -19,6 +19,8 @@
 - import_tasks: deploy_standalone.yml
 - import_tasks: dex_bot.yml
   when: dex_bot_enabled
+- import_tasks: cloudflare.yml
+  when: traefik_enabled
 - import_tasks: update_traefik.yml
   when: traefik_enabled
 - import_tasks: delete_old_deploy.yml

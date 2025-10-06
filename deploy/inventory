@@ -29,8 +29,8 @@ ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 100.107.248.71 ansible_user=debian
 
 [full-app]
-100.96.253.40 ansible_user=debian public_ip=15.204.196.152 ansible_user=debian
-100.107.248.71 ansible_user=debian public_ip=15.204.250.4 ansible_user=debian
+100.96.253.40 ansible_user=debian public_ip=15.204.196.152 ansible_user=debian hostname=ovh1
+100.107.248.71 ansible_user=debian public_ip=15.204.250.4 ansible_user=debian hostname=ovh2
 
 [traefik]
 100.96.253.40 ansible_user=debian
