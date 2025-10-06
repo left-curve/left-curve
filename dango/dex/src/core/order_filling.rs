@@ -32,29 +32,27 @@ pub fn fill_orders<B, A>(
     current_block_height: u64,
     maker_fee_rate: Udec128,
     taker_fee_rate: Udec128,
-) -> Box<dyn Iterator<Item = StdResult<FillingOutcome>>>
+) -> impl Iterator<Item = StdResult<FillingOutcome>>
 where
     B: IntoIterator<Item = Order> + 'static,
     A: IntoIterator<Item = Order> + 'static,
 {
-    Box::new(
-        fill_bids(
-            bids,
-            clearing_price,
-            volume,
-            current_block_height,
-            maker_fee_rate,
-            taker_fee_rate,
-        )
-        .chain(fill_asks(
-            asks,
-            clearing_price,
-            volume,
-            current_block_height,
-            maker_fee_rate,
-            taker_fee_rate,
-        )),
+    fill_bids(
+        bids,
+        clearing_price,
+        volume,
+        current_block_height,
+        maker_fee_rate,
+        taker_fee_rate,
     )
+    .chain(fill_asks(
+        asks,
+        clearing_price,
+        volume,
+        current_block_height,
+        maker_fee_rate,
+        taker_fee_rate,
+    ))
 }
 
 /// Fill the BUY orders given a clearing price and volume.

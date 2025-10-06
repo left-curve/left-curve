@@ -430,7 +430,21 @@ fn clear_orders_of_pair(
             volume,
         })?;
 
-        fill_orders(
+        #[cfg(feature = "metrics")]
+        {
+            let num_trades = bids.len() + asks.len();
+
+            metrics::counter!(crate::metrics::LABEL_TRADES).increment(num_trades as u64);
+
+            metrics::histogram!(
+                crate::metrics::LABEL_TRADES_PER_BLOCK,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string()
+            )
+            .record(num_trades as f64);
+        }
+
+        Box::new(fill_orders(
             bids,
             asks,
             clearing_price,
@@ -438,9 +452,9 @@ fn clear_orders_of_pair(
             current_block_height,
             maker_fee_rate,
             taker_fee_rate,
-        )
+        ))
     } else {
-        Box::new(std::iter::empty())
+        Box::new(std::iter::empty()) as Box<dyn Iterator<Item = _>>
     };
 
     // Track the inflows and outflows of the dex.
@@ -449,18 +463,6 @@ fn clear_orders_of_pair(
 
     #[cfg(feature = "metrics")]
     let mut metric_volume = HashMap::new();
-
-    // #[cfg(feature = "metrics")]
-    // {
-    //     metrics::counter!(crate::metrics::LABEL_TRADES).increment(filling_outcomes.len() as u64);
-
-    //     metrics::histogram!(
-    //         crate::metrics::LABEL_TRADES_PER_BLOCK,
-    //         "base_denom" => base_denom.to_string(),
-    //         "quote_denom" => quote_denom.to_string()
-    //     )
-    //     .record(filling_outcomes.len() as f64);
-    // }
 
     // Handle order filling outcomes for the user placed orders.
     for res in filling_outcomes {
