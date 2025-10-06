@@ -2,7 +2,8 @@ services:
   traefik:
     image: traefik:v3.5
     ports:
-      - "{{ tailscale_ip }}:80:80"
+      - "80:80"
+      - "443:443"
       # traefik dashboard
       - "{{ tailscale_ip }}:8888:8888"
       # devnet

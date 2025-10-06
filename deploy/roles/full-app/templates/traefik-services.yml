@@ -51,6 +51,24 @@ http:
           - url: "http://{{ deployment_name }}-clickhouse-1:9126"
 
   routers:
+    {{ dango_network }}-main-frontend:
+      rule: "Host(`frontend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`frontend.{{ dango_network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-frontend"
+
+    {{ dango_network }}-main-backend:
+      rule: "Host(`backend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`backend.{{ dango_network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-dango"
+
+    {{ dango_network }}-main-faucet_bot:
+      rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-faucet_bot"
+
     {{ dango_network }}-dango:
       rule: "PathPrefix(`/`)"
       entryPoints:

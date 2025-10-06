@@ -4,6 +4,7 @@ ssh_users:
   - larry
   - zexsor
 deploy_user: deploy
+dango_domain: "dango.zone"
 dango:
   dex_bot:
     # NOTE: those are public from the genesis file
