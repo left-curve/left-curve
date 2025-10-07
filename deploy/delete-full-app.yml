@@ -7,6 +7,13 @@
     - name: Load role defaults
       include_vars: "roles/full-app/defaults/main.yml"
 
+    - name: Delete Traefik dynamic config
+      file:
+        path: "{{ traefik_dir }}/config/{{ deployment_name }}.yml"
+        state: absent
+      become: true
+      become_user: root
+
     - name: Check if deployment already exists
       stat:
         path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"

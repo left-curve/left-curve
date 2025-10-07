@@ -26,6 +26,8 @@
   when: not traefik_enabled
 - import_tasks: delete_old_deploy.yml
   when: current_deployment is defined
+- import_tasks: cloudflare_cache.yml
+  when: traefik_enabled
 - import_tasks: github_pr_deployments.yml
   when: github_pr_number is defined
   ignore_errors: true

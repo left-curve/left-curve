@@ -15,7 +15,6 @@ chain_id: "dev-10"
 dango_network: "devnet"
 # When traefik is enabled it will be used for routing, keeping the same port
 traefik_enabled: false
-traefik_dir: "{{ ansible_env.HOME }}/traefik"
 expose_ports: false
 dex_bot_enabled: false
 github_deployments_enabled: false

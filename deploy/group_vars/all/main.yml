@@ -1,3 +1,4 @@
+traefik_dir: "{{ ansible_env.HOME }}/traefik"
 ssh_users:
   - penso
   - rhaki
