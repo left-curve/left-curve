@@ -89,23 +89,20 @@ services:
     items:
       - name: "Frontend"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/reactjs.png"
-        subtitle: "Port 8081"
         tag: "testnet"
-        url: "http://ovh2:8081"
+        url: "http://www.testnet.dango.zone"
         target: "_blank"
 
       - name: "Dango API"
         icon: "fas fa-project-diagram"
-        subtitle: "Port 8080"
         tag: "testnet"
-        url: "http://ovh2:8080"
+        url: "http://api.testnet.dango.zone/graphql"
         target: "_blank"
 
       - name: "Faucet"
         icon: "fas fa-faucet"
-        subtitle: "Port 8082"
         tag: "testnet"
-        url: "http://ovh2:8082"
+        url: "http://faucet.testnet.dango.zone/mint"
         target: "_blank"
 
       - name: "CometBFT P2P"
@@ -134,23 +131,20 @@ services:
     items:
       - name: "Frontend"
         logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/reactjs.png"
-        subtitle: "Port 8081"
         tag: "devnet"
-        url: "http://ovh1:8081"
+        url: "http://www.devnet.dango.zone"
         target: "_blank"
 
       - name: "Dango API"
         icon: "fas fa-project-diagram"
-        subtitle: "Port 8080"
         tag: "devnet"
-        url: "http://ovh1:8080"
+        url: "http://api.devnet.dango.zone/graphql"
         target: "_blank"
 
       - name: "Faucet"
         icon: "fas fa-faucet"
-        subtitle: "Port 8082"
         tag: "devnet"
-        url: "http://ovh1:8082"
+        url: "http://faucet.devnet.dango.zone/mint"
         target: "_blank"
 
       - name: "CometBFT P2P"

@@ -1,4 +1,10 @@
 http:
+  middlewares:
+    {{ dango_network }}-graphiql-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/graphql"
+
   services:
     {{ dango_network }}-dango:
       loadBalancer:
@@ -12,8 +18,21 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-faucet-bot-1:8082"
+    {{ dango_network }}-graphiql:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-graphiql-1:80"
 
   routers:
+    {{ dango_network }}-main-graphiql:
+      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)) && PathPrefix(`/graphql`) && Method(`GET`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-graphiql"
+      middlewares:
+        - "{{ dango_network }}-graphiql-stripprefix"
+      priority: 100
+
     {{ dango_network }}-main-frontend:
       rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`www.{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
@@ -25,6 +44,7 @@ http:
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"
+      priority: 1
 
     {{ dango_network }}-main-faucet_bot:
       rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
