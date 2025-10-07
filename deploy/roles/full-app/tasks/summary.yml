@@ -1,8 +1,8 @@
 - name: Display URLs
   debug:
     msg:
-      - "Dango Frontend: http://frontend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
-      - "Dango GraphQL: http://backend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql"
+      - "Dango Frontend: http://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
+      - "Dango GraphQL: http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql"
       - "Dango metrics: http://{{ tailscale_ip }}:{{ dango_metrics_port }}"
       - "Faucet bot: http://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/mint"
       - "CometBFT P2P: http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}"

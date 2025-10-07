@@ -43,7 +43,7 @@
         value: "{{ hostname }}.{{ dango_domain }}."
         api_token: "{{ cloudflare_api_token }}"
         state: absent
-      loop: ["frontend", "backend", "faucet", "cometbft"]
+      loop: ["www", "api", "faucet", "cometbft"]
       ignore_errors: true
 
     - name: Cleanup deployment

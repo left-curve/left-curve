@@ -15,13 +15,13 @@ http:
 
   routers:
     {{ dango_network }}-main-frontend:
-      rule: "Host(`frontend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`frontend.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`www.{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-main-backend:
-      rule: "Host(`backend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`backend.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"

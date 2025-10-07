@@ -34,8 +34,8 @@
     status_code: [200, 201]
   register: deployment_results
   loop:
-    - { name: "dango-frontend", description: "Frontend", url: "http://frontend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}" }
-    - { name: "dango-api", description: "Dango API", url: "http://backend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql" }
+    - { name: "dango-frontend", description: "Frontend", url: "http://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}" }
+    - { name: "dango-api", description: "Dango API", url: "http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql" }
     - { name: "faucet-bot", description: "Faucet", url: "http://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/mint" }
 
 - name: Set deployment statuses
@@ -67,8 +67,8 @@
     | Name | Result |
     | ---- | ------ |
     | **Status** | ✅ |
-    | **Dango Frontend** | [http://frontend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}](http://frontend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}) |
-    | **Dango GraphQL** | [http://backend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql](http://backend.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql) |
+    | **Dango Frontend** | [http://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}](http://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}) |
+    | **Dango GraphQL** | [http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql](http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql) |
     | **Faucet bot** | [http://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/mint](http://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/mint) |
     | **Deployment name** | `{{ deployment_name }}` |
     | **Commit** | `{{ dango_image_tag }}` |
