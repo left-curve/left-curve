@@ -1,4 +1,10 @@
 http:
+  middlewares:
+    {{ dango_network }}-graphiql-stripprefix:
+      stripPrefix:
+        prefixes:
+          - "/graphql"
+
   services:
     {{ dango_network }}-dango:
       loadBalancer:
@@ -19,10 +25,12 @@ http:
 
   routers:
     {{ dango_network }}-main-graphiql:
-      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)) && Path(`/graphiql`) && Method(`GET`)"
+      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)) && Path(`/graphql`) && Method(`GET`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-graphiql"
+      middlewares:
+        - "{{ dango_network }}-graphiql-stripprefix"
       priority: 100
 
     {{ dango_network }}-main-frontend:
