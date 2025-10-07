@@ -1,0 +1,4 @@
+VERSION := "latest"
+
+build:
+  docker buildx build --platform linux/arm64,linux/amd64 --push --tag ghcr.io/left-curve/graphiql:{{VERSION}} .

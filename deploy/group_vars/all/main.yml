@@ -1,9 +1,11 @@
+traefik_dir: "{{ ansible_env.HOME }}/traefik"
 ssh_users:
   - penso
   - rhaki
   - larry
   - zexsor
 deploy_user: deploy
+dango_domain: "dango.zone"
 dango:
   dex_bot:
     # NOTE: those are public from the genesis file
@@ -29,6 +31,7 @@ ports:
   clickhouse_metrics_port: 9126
   db_metrics_port: 9187
   dango_metrics_port: 9191
+  graphiql_port: 4000
 traefik:
   devnet:
     ports:

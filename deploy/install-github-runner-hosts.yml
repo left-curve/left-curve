@@ -5,7 +5,7 @@
     reinstall_runner: true
     github_account: left-curve
     runner_org: yes
-    access_token: "{{ lookup('env', 'RUNNERS_GITHUB_TOKEN') }}"
+    access_token: "{{ runners_github_token }}"
     custom_env: |
       PATH=/home/{{ runner_user }}/.cargo/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       CARGO_HOME=/home/{{ runner_user }}/.cargo

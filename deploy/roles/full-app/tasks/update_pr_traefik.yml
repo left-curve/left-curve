@@ -1,0 +1,8 @@
+- become: true
+  become_user: root
+  block:
+    - name: Update Traefik dynamic config
+      template:
+        src: traefik-pr-services.yml
+        dest: "{{ traefik_dir }}/config/{{ dango_network }}.yml"
+        owner: "{{ deploy_user }}"
