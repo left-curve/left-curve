@@ -1,7 +1,10 @@
 use {
     crate::DEPTHS,
     dango_types::dex::{Direction, Price},
-    grug::{Decimal, Denom, IsZero, MathResult, NonZero, Number, StdResult, Storage, Udec128_6},
+    grug::{
+        Decimal, Denom, IsZero, MathResult, NextNumber, NonZero, Number, PrevNumber, StdResult,
+        Storage, Udec128_6,
+    },
     std::collections::BTreeSet,
 };
 
@@ -9,10 +12,13 @@ use {
 /// For asks, return the bucket that is immediately larger than the price.
 pub fn get_bucket(bucket_size: Price, direction: Direction, price: Price) -> MathResult<Price> {
     // This is the bucket immediately smaller than the price.
+
     let lower = price
-        .checked_div(bucket_size)?
+        .into_next()
+        .checked_div(bucket_size.into_next())?
         .checked_floor()?
-        .checked_mul(bucket_size)?;
+        .checked_mul(bucket_size.into_next())?
+        .checked_into_prev()?;
 
     debug_assert!(
         lower <= price,
