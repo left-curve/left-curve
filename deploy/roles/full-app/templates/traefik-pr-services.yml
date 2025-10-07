@@ -25,7 +25,7 @@ http:
 
   routers:
     {{ dango_network }}-main-graphiql:
-      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)) && Path(`/graphql`) && Method(`GET`)"
+      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)) && PathPrefix(`/graphql`) && Method(`GET`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-graphiql"
