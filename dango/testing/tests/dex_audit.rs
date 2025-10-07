@@ -264,7 +264,7 @@ fn depth_quote_rounding_error() {
     let bid_order = CreateOrderRequest {
         base_denom: base_denom.clone(),
         quote_denom: quote_denom.clone(),
-        price: PriceOption::Limit(NonZero::new_unchecked(Price::new(1))), // 1e-18 USDC per wei
+        price: PriceOption::Limit(NonZero::new_unchecked(Price::raw(Uint128::new(1)))), /* 1e-18 USDC per wei */
         amount: AmountOption::Bid {
             quote: NonZero::new_unchecked(Uint128::new(1_000_000)), // 1 USDC
         },
@@ -379,7 +379,7 @@ fn depth_quote_rounding_error() {
             let mut bid_amounts = HashMap::new();
             let mut ask_amounts = HashMap::new();
 
-            for (_, order) in &open_orders {
+            for order in open_orders.values() {
                 let amounts = match order.direction {
                     Direction::Bid => &mut bid_amounts,
                     Direction::Ask => &mut ask_amounts,
@@ -409,38 +409,37 @@ fn depth_quote_rounding_error() {
                 })
                 .unwrap();
 
-            if let Some(bid_depth) = depth.bid_depth {
-                for (price, liquidity) in bid_depth {
-                    let (expected_base, expected_quote) = bid_amounts
-                        .get(&price)
-                        .unwrap_or(&(Udec128_6::ZERO, Udec128_6::ZERO));
+            let bid_depth = depth.bid_depth.unwrap();
 
-                    assert_eq!(
-                        &liquidity.depth_base, expected_base,
-                        "mismatched bid depth base for bucket size {bucket_size} at price {price}"
-                    );
-                    assert_eq!(
-                        &liquidity.depth_quote, expected_quote,
-                        "mismatched bid depth quote for bucket size {bucket_size} at price {price}"
-                    );
-                }
+            for (price, liquidity) in bid_depth {
+                let (expected_base, expected_quote) = bid_amounts
+                    .get(&price)
+                    .unwrap_or(&(Udec128_6::ZERO, Udec128_6::ZERO));
+
+                assert_eq!(
+                    &liquidity.depth_base, expected_base,
+                    "mismatched bid depth base for bucket size {bucket_size} at price {price}"
+                );
+                assert_eq!(
+                    &liquidity.depth_quote, expected_quote,
+                    "mismatched bid depth quote for bucket size {bucket_size} at price {price}"
+                );
             }
 
-            if let Some(ask_depth) = depth.ask_depth {
-                for (price, liquidity) in ask_depth {
-                    let (expected_base, expected_quote) = ask_amounts
-                        .get(&price)
-                        .unwrap_or(&(Udec128_6::ZERO, Udec128_6::ZERO));
+            let ask_depth = depth.ask_depth.unwrap();
+            for (price, liquidity) in ask_depth {
+                let (expected_base, expected_quote) = ask_amounts
+                    .get(&price)
+                    .unwrap_or(&(Udec128_6::ZERO, Udec128_6::ZERO));
 
-                    assert_eq!(
-                        &liquidity.depth_base, expected_base,
-                        "mismatched ask depth base for bucket size {bucket_size} at price {price}"
-                    );
-                    assert_eq!(
-                        &liquidity.depth_quote, expected_quote,
-                        "mismatched ask depth quote for bucket size {bucket_size} at price {price}"
-                    );
-                }
+                assert_eq!(
+                    &liquidity.depth_base, expected_base,
+                    "mismatched ask depth base for bucket size {bucket_size} at price {price}"
+                );
+                assert_eq!(
+                    &liquidity.depth_quote, expected_quote,
+                    "mismatched ask depth quote for bucket size {bucket_size} at price {price}"
+                );
             }
         }
     }
