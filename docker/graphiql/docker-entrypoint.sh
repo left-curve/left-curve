@@ -9,21 +9,18 @@ CONFIG_FILE="$CONFIG_DIR/config.js"
 # Ensure the config directory exists
 mkdir -p "$CONFIG_DIR"
 
-# Resolve endpoint only if provided; otherwise leave empty to auto-detect
-ENDPOINT=${GRAPHQL_ENDPOINT:-}
+# Resolve endpoint (allow override via env)
+ENDPOINT=${GRAPHQL_ENDPOINT:-http://localhost:4000/graphql}
 
 # Write runtime config used by index.html
-if [ -n "$ENDPOINT" ]; then
-  cat > "$CONFIG_FILE" <<EOF
+cat > "$CONFIG_FILE" <<EOF
 window.GRAPHIQL_CONFIG = {
   endpoint: "${ENDPOINT}"
 };
 EOF
-  echo "Wrote runtime config to $CONFIG_FILE (endpoint=$ENDPOINT)"
-else
-  echo "window.GRAPHIQL_CONFIG = {};" > "$CONFIG_FILE"
-  echo "Wrote runtime config to $CONFIG_FILE (no endpoint; app will auto-detect current path)"
-fi
+
+echo "Wrote runtime config to $CONFIG_FILE (endpoint=$ENDPOINT)"
 
 # Start nginx in foreground
 exec nginx -g "daemon off;"
+
