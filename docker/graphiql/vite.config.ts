@@ -2,6 +2,8 @@ import react from "@vitejs/plugin-react";
 import {defineConfig} from "vite";
 import sri from '@vividlemon/vite-plugin-sri'
 export default defineConfig({
+    // Use relative paths so the app can be served under a subpath
+    base: './',
     plugins: [
         react(),
         sri()
