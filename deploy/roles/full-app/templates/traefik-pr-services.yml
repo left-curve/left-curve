@@ -15,7 +15,7 @@ http:
     {{ dango_network }}-graphiql:
       loadBalancer:
         servers:
-          - url: "http://{{ deployment_name }}-graphiql-1:4000"
+          - url: "http://{{ deployment_name }}-graphiql-1:80"
 
   routers:
     {{ dango_network }}-main-graphiql:

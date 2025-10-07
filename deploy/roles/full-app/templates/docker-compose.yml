@@ -250,10 +250,10 @@ services:
       exec cometbft start
       "
   graphiql:
-    image: graphql/graphiql
+    image: ghcr.io/left-curve/graphiql:${GRAPHIQL_TAG:-latest}
 {% if expose_ports %}
     ports:
-      - "${GRAPHIQL_PORT:-0}:4000"
+      - "${GRAPHIQL_PORT:-0}:80"
 {% endif %}
     environment:
       - GRAPHQL_ENDPOINT=${INDEXER_URL}
