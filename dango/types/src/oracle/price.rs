@@ -1,7 +1,9 @@
 use {
+    bnum::types::U256,
     grug::{
-        Dec, Defined, Exponentiate, FixedPoint, MathResult, MaybeDefined, MultiplyFraction, Number,
-        NumberConst, PrevNumber, Timestamp, Udec128, Uint128, Uint256, Undefined,
+        Dec, Defined, Exponentiate, FixedPoint, MathResult, MaybeDefined, MultiplyFraction,
+        NextNumber, Number, NumberConst, PrevNumber, Timestamp, Udec128, Uint128, Uint256,
+        Undefined,
     },
     pyth_types::{PayloadFeedData, PayloadPropertyValue},
     std::cmp::Ordering,
@@ -85,6 +87,19 @@ impl PrecisionedPrice {
             .checked_mul(Dec::<u128, S>::checked_from_ratio(
                 unit_amount,
                 10u128.pow(self.precision.into_inner() as u32),
+            )?)
+    }
+
+    pub fn value_of_unit_amount_256<const S: u32>(
+        &self,
+        unit_amount: Uint128,
+    ) -> MathResult<Dec<U256, S>> {
+        self.humanized_price
+            .into_next()
+            .convert_precision()?
+            .checked_mul(Dec::<U256, S>::checked_from_ratio(
+                unit_amount.into_next(),
+                Uint256::new_from_u128(10u128.pow(self.precision.into_inner() as u32)),
             )?)
     }
 

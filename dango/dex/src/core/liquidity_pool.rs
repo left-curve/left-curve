@@ -213,20 +213,12 @@ impl PassiveLiquidityPool for PairParams {
         // Our oracle approach is more generalizable to different pool types.
         let fee_rate = {
             let price = oracle_querier.query_price(reserve.first().denom, None)?;
-            let a = price
-                .value_of_unit_amount::<24>(*deposit.first().amount)?
-                .into_next();
-            let reserve_a = price
-                .value_of_unit_amount::<24>(*reserve.first().amount)?
-                .into_next();
+            let a = price.value_of_unit_amount_256::<24>(*deposit.first().amount)?;
+            let reserve_a = price.value_of_unit_amount_256::<24>(*reserve.first().amount)?;
 
             let price = oracle_querier.query_price(reserve.second().denom, None)?;
-            let b = price
-                .value_of_unit_amount::<24>(*deposit.second().amount)?
-                .into_next();
-            let reserve_b = price
-                .value_of_unit_amount::<24>(*reserve.second().amount)?
-                .into_next();
+            let b = price.value_of_unit_amount_256::<24>(*deposit.second().amount)?;
+            let reserve_b = price.value_of_unit_amount_256::<24>(*reserve.second().amount)?;
 
             let deposit_value = a.checked_add(b)?;
             let reserve_value = reserve_a.checked_add(reserve_b)?;
