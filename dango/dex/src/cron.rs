@@ -18,14 +18,14 @@ use {
     },
     grug::{
         Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
-        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
-        PrimaryKey, Response, StdError, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx,
-        Timestamp, TransferBuilder, Udec128, Udec128_6,
+        MultiplyFraction, MutableCtx, NextNumber, NonZero, Number, NumberConst,
+        Order as IterationOrder, PrevNumber, PrimaryKey, Response, StdError, StdResult, Storage,
+        SubMessage, SubMsgResult, SudoCtx, Timestamp, TransferBuilder, Udec128, Udec128_6, Udec256,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
 
-const HALF: Udec128 = Udec128::new_percent(50);
+const HALF: Udec256 = Udec256::new_percent(50);
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -431,7 +431,11 @@ fn clear_orders_of_pair(
                     mid_price
                 }
             },
-            None => lower_price.checked_add(upper_price)?.checked_mul(HALF)?,
+            None => lower_price
+                .into_next()
+                .checked_add(upper_price.into_next())?
+                .checked_mul(HALF)?
+                .checked_into_prev()?,
         };
 
         events.push(OrdersMatched {
@@ -745,7 +749,12 @@ fn clear_orders_of_pair(
     // - if only one of them exists, then use that price;
     // - if none of them exists, then `None`.
     let mid_price = match (best_bid_price, best_ask_price) {
-        (Some(bid), Some(ask)) => Some(bid.checked_add(ask)?.checked_mul(HALF)?),
+        (Some(bid), Some(ask)) => Some(
+            bid.into_next()
+                .checked_add(ask.into_next())?
+                .checked_mul(HALF)?
+                .checked_into_prev()?,
+        ),
         (Some(bid), None) => Some(bid),
         (None, Some(ask)) => Some(ask),
         (None, None) => None,
