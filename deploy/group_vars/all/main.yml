@@ -30,6 +30,7 @@ ports:
   clickhouse_metrics_port: 9126
   db_metrics_port: 9187
   dango_metrics_port: 9191
+  graphiql_port: 4000
 traefik:
   devnet:
     ports:

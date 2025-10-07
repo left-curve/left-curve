@@ -249,6 +249,16 @@ services:
       printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
       exec cometbft start
       "
+  graphiql:
+    image: graphql/graphiql
+{% if expose_ports %}
+    ports:
+      - "${GRAPHIQL_PORT:-0}:4000"
+{% endif %}
+    environment:
+      - GRAPHQL_ENDPOINT=${INDEXER_URL}
+    networks:
+      - traefik
 
 networks:
   traefik:
