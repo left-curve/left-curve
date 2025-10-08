@@ -15,7 +15,7 @@ dango:
     minter_username: "user9"
     minter_address: "0x6f95c4f169f38f598dd571084daa5c799c5743de"
     minter_private_key: "c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3"
-    mint_amount: 1000000
+    mint_amount: 1000000000
     liquidity_amount: 1000000000
 ports:
   dango_port: 8080
