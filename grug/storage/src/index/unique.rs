@@ -47,6 +47,10 @@ where
         }
     }
 
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.index_map.is_empty(storage)
+    }
+
     /// Given an index value, which may or may not exist, load the corresponding
     /// key.
     pub fn may_load_key(&self, storage: &dyn Storage, idx: IK) -> StdResult<Option<PK::Output>> {
@@ -262,5 +266,9 @@ where
         let idx = (self.indexer)(&pk, old_data);
 
         self.index_map.remove(storage, idx)
+    }
+
+    fn clear_all(&self, storage: &mut dyn Storage) {
+        self.index_map.clear(storage, None, None)
     }
 }
