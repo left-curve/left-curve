@@ -22,6 +22,7 @@ sea-orm = ["dep:sea-orm"]
 # - tendermint::abci::types::ExecTxResult -> TxOutcome
 # - tendermint::abci::Event -> CronOutcome
 # - tendermint_rpc::endpoint::tx::Response -> SearchTxOutcome
+metrics    = ["dep:metrics"]
 tendermint = ["dep:tendermint", "tendermint-rpc"]
 
 [dependencies]
@@ -34,6 +35,7 @@ digest         = { workspace = true }
 dyn-clone      = { workspace = true }
 grug-math      = { workspace = true }
 hex-literal    = { workspace = true }
+metrics        = { workspace = true, optional = true }
 paste          = { workspace = true }
 prost          = { workspace = true }
 ripemd         = { workspace = true }

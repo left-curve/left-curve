@@ -58,6 +58,12 @@ pub use {
     utils::*,
 };
 
+#[cfg(feature = "metrics")]
+mod metrics;
+
+#[cfg(feature = "metrics")]
+pub use metrics::*;
+
 // ---------------------------------- testing ----------------------------------
 
 #[cfg(not(target_arch = "wasm32"))]
