@@ -1106,7 +1106,7 @@ fn test_dex_actions(
         }
 
         // Ensure dex is not paused after executing the last action.
-        assert_eq!(is_paused, false);
+        assert!(!is_paused);
 
         // Check balances.
         check_balances(&suite, &contracts)?;
