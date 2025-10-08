@@ -4,17 +4,17 @@
 use {
     dango_testing::setup_test_naive,
     dango_types::{
-        constants::{ONE, ONE_TENTH, dango, usdc},
+        constants::{ONE, ONE_TENTH, dango, eth, usdc},
         dex::{
             self, AmountOption, CreateOrderRequest, Direction, Geometric, LiquidityDepth, OrderId,
             OrdersByUserResponse, PairParams, PairUpdate, PassiveLiquidity, Price, PriceOption,
-            TimeInForce,
+            SwapRoute, TimeInForce,
         },
         oracle::{self, PriceSource},
     },
     grug::{
-        Bounded, Coins, Denom, NonZero, NumberConst, QuerierExt, ResultExt, Timestamp, Udec128,
-        Udec128_6, Uint128, btree_map, btree_set, coins,
+        Bounded, Coin, Coins, Denom, NonZero, NumberConst, QuerierExt, ResultExt, Timestamp,
+        Udec128, Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coins,
     },
     std::str::FromStr,
 };
@@ -230,4 +230,78 @@ fn issue_6_cannot_mint_zero_lp_tokens() {
             },
         )
         .should_fail_with_error("lp mint amount must be non-zero");
+}
+
+#[test]
+fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::SetPaused(true)),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't provide liquidity when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::WithdrawLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't withdraw liquidity when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountIn {
+                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                minimum_output: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't swap when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                output: NonZero::new_unchecked(Coin::new(eth::DENOM.clone(), 100).unwrap()),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't swap when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![],
+                cancels: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't update orders when trading is paused");
 }
