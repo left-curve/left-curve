@@ -189,6 +189,12 @@ fn provide_liquidity(
     base_denom: Denom,
     quote_denom: Denom,
 ) -> anyhow::Result<Response> {
+    // Providing liquidity is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't provide liquidity when trading is paused"
+    );
+
     // Get the deposited funds.
     let deposit = ctx
         .funds
@@ -281,6 +287,12 @@ fn withdraw_liquidity(
     base_denom: Denom,
     quote_denom: Denom,
 ) -> anyhow::Result<Response> {
+    // Withdrawing liquidity is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't withdraw liquidity when trading is paused"
+    );
+
     // Load the pair params.
     let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
 
@@ -327,6 +339,12 @@ fn swap_exact_amount_in(
     route: UniqueVec<PairId>,
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
+    // Swapping is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't swap when trading is paused"
+    );
+
     let input = ctx.funds.into_one_coin()?;
     let app_cfg = ctx.querier.query_dango_config()?;
 
@@ -389,6 +407,12 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
+    // Swapping is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't swap when trading is paused"
+    );
+
     let app_cfg = ctx.querier.query_dango_config()?;
 
     // Create the oracle querier with max staleness.
