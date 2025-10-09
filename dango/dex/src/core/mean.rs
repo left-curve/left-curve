@@ -2,9 +2,12 @@ use grug::{
     Exponentiate, MathResult, NextNumber, Number, PrevNumber, Udec128_24, Udec256_24, Uint128,
 };
 
-pub fn arithmetic_mean(a: Udec128_24, b: Udec128_24) -> MathResult<Udec128_24> {
-    // First try computing the mean in 128-bit. If it doesn't work,
-    // try escalating to 256-bit.
+/// Computes the arithmetic mean `(a + b) / 2` while safely handles the case that
+/// `a + b` overflows.
+///
+/// First try computing the mean in 128-bit. If it doesn't work, escalate the
+/// numbers to 256-bit and try again.
+pub fn safe_arithmetic_mean(a: Udec128_24, b: Udec128_24) -> MathResult<Udec128_24> {
     arithmetic_mean_128(a, b).or_else(|_| arithmetic_mean_256(a, b))
 }
 
@@ -25,7 +28,12 @@ fn arithmetic_mean_256(a: Udec128_24, b: Udec128_24) -> MathResult<Udec128_24> {
         .checked_into_prev()
 }
 
-pub fn geometric_mean(a: Uint128, b: Uint128) -> MathResult<Uint128> {
+/// Computes the geometric mean `sqrt(a * b)` while safely handles the case that
+/// `a * b` overflows.
+///
+/// First try computing the mean in 128-bit. If it doesn't work, escalate the
+/// numbers to 256-bit and try again.
+pub fn safe_geometric_mean(a: Uint128, b: Uint128) -> MathResult<Uint128> {
     geometric_mean_128(a, b).or_else(|_| geometric_mean_256(a, b))
 }
 

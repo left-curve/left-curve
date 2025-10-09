@@ -4,7 +4,7 @@ use {
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders,
-            mean::arithmetic_mean,
+            mean::safe_arithmetic_mean,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
@@ -432,7 +432,10 @@ fn clear_orders_of_pair(
                     mid_price
                 }
             },
-            None => arithmetic_mean(lower_price, upper_price)?,
+            // Note: with extreme prices, calculating the middle point of the
+            // range may overflow. We use the "safe" arithmetic mean function
+            // which handles this case.
+            None => safe_arithmetic_mean(lower_price, upper_price)?,
         };
 
         events.push(OrdersMatched {
@@ -746,7 +749,10 @@ fn clear_orders_of_pair(
     // - if only one of them exists, then use that price;
     // - if none of them exists, then `None`.
     let mid_price = match (best_bid_price, best_ask_price) {
-        (Some(bid), Some(ask)) => Some(arithmetic_mean(bid, ask)?),
+        // Note: with extreme prices, computing the average of the best bid and
+        // ask prices may overflow. We use the "safe" arithmetic mean function
+        // which handles this case.
+        (Some(bid), Some(ask)) => Some(safe_arithmetic_mean(bid, ask)?),
         (Some(bid), None) => Some(bid),
         (None, Some(ask)) => Some(ask),
         (None, None) => None,

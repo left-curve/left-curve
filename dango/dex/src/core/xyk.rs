@@ -1,5 +1,5 @@
 use {
-    crate::core::mean::geometric_mean,
+    crate::core::mean::safe_geometric_mean,
     anyhow::ensure,
     dango_types::dex::{Price, Xyk},
     grug::{
@@ -219,7 +219,8 @@ pub fn normalized_invariant(reserve: &CoinPair) -> MathResult<Uint128> {
     let a = *reserve.first().amount;
     let b = *reserve.second().amount;
 
-    geometric_mean(a, b)
+    // Use the "safe" function which handles that case that a * b overflows.
+    safe_geometric_mean(a, b)
 }
 
 // ----------------------------------- tests -----------------------------------
