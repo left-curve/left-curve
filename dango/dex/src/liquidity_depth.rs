@@ -1,7 +1,7 @@
 use {
     crate::DEPTHS,
     dango_types::dex::{Direction, Price},
-    grug::{Decimal, Denom, IsZero, MathResult, NonZero, Number, StdResult, Storage, Udec128_6},
+    grug::{Denom, Fraction, IsZero, MathResult, NonZero, Number, StdResult, Storage, Udec128_6},
     std::collections::BTreeSet,
 };
 
@@ -9,10 +9,18 @@ use {
 /// For asks, return the bucket that is immediately larger than the price.
 pub fn get_bucket(bucket_size: Price, direction: Direction, price: Price) -> MathResult<Price> {
     // This is the bucket immediately smaller than the price.
-    let lower = price
-        .checked_div(bucket_size)?
-        .checked_floor()?
-        .checked_mul(bucket_size)?;
+    let lower = {
+        // Note: instead of the decimal, we work with the integer numerators of
+        // the price and bucket size. This minimizes the number of mul/div
+        // operations (which are expensive) and also, more importantly,
+        // eliminates a possible overflow (see the `no_overflow` test at the
+        // bottom of this file).
+        let numerator = price
+            .numerator()
+            .checked_div(bucket_size.numerator())?
+            .checked_mul(bucket_size.numerator())?;
+        Price::raw(numerator)
+    };
 
     debug_assert!(
         lower <= price,
@@ -103,4 +111,117 @@ pub fn decrease_liquidity_depths(
     }
 
     Ok(())
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_types::constants::{
+            FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, ONE_THOUSANDTH, TEN,
+        },
+        grug::Uint128,
+        std::str::FromStr,
+        test_case::test_case,
+    };
+
+    #[test_case(
+        ONE_THOUSANDTH,
+        Direction::Bid,
+        Price::from_str("123.45").unwrap()
+        => Price::from_str("123.450").unwrap()
+    )]
+    #[test_case(
+        ONE_HUNDREDTH,
+        Direction::Bid,
+        Price::from_str("123.45").unwrap()
+        => Price::from_str("123.45").unwrap()
+    )]
+    #[test_case(
+        ONE_TENTH,
+        Direction::Bid,
+        Price::from_str("123.45").unwrap()
+        => Price::from_str("123.4").unwrap()
+    )]
+    #[test_case(
+        ONE,
+        Direction::Bid,
+        Price::from_str("123.45").unwrap()
+        => Price::new(123)
+    )]
+    #[test_case(
+        TEN,
+        Direction::Bid,
+        Price::from_str("123.45").unwrap()
+        => Price::new(120)
+    )]
+    #[test_case(
+        FIFTY,
+        Direction::Bid,
+        Price::from_str("123.45").unwrap()
+        => Price::new(100)
+    )]
+    #[test_case(
+        ONE_HUNDRED,
+        Direction::Bid,
+        Price::from_str("123.456").unwrap()
+        => Price::new(100)
+    )]
+    #[test_case(
+        ONE_THOUSANDTH,
+        Direction::Ask,
+        Price::from_str("123.45").unwrap()
+        => Price::from_str("123.450").unwrap()
+    )]
+    #[test_case(
+        ONE_HUNDREDTH,
+        Direction::Ask,
+        Price::from_str("123.45").unwrap()
+        => Price::from_str("123.45").unwrap()
+    )]
+    #[test_case(
+        ONE_TENTH,
+        Direction::Ask,
+        Price::from_str("123.45").unwrap()
+        => Price::from_str("123.5").unwrap() // ceil
+    )]
+    #[test_case(
+        ONE,
+        Direction::Ask,
+        Price::from_str("123.45").unwrap()
+        => Price::new(124) // ceil
+    )]
+    #[test_case(
+        TEN,
+        Direction::Ask,
+        Price::from_str("123.45").unwrap()
+        => Price::new(130)// ceil
+    )]
+    #[test_case(
+        FIFTY,
+        Direction::Ask,
+        Price::from_str("123.45").unwrap()
+        => Price::new(150)// ceil
+    )]
+    #[test_case(
+        ONE_HUNDRED,
+        Direction::Ask,
+        Price::from_str("123.45").unwrap()
+        => Price::new(200) // ceil
+    )]
+    fn getting_bucket(bucket_size: Price, direction: Direction, price: Price) -> Price {
+        get_bucket(bucket_size, direction, price).unwrap()
+    }
+
+    #[test]
+    fn no_overflow() {
+        get_bucket(
+            ONE_HUNDREDTH,
+            Direction::Bid,
+            Price::raw(Uint128::new(4368614282292957095945129368187275851)),
+        )
+        .unwrap();
+    }
 }
