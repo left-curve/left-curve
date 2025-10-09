@@ -189,6 +189,12 @@ fn provide_liquidity(
     base_denom: Denom,
     quote_denom: Denom,
 ) -> anyhow::Result<Response> {
+    // Providing liquidity is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't provide liquidity when trading is paused"
+    );
+
     // Get the deposited funds.
     let deposit = ctx
         .funds
@@ -224,6 +230,19 @@ fn provide_liquidity(
     // Compute the amount of LP tokens to mint.
     let (reserve, lp_mint_amount) =
         pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
+
+    // Ensure LP mint amount must be non-zero.
+    // Otherwise, we're vulnerable to a griefing attack, for example:
+    // - A new xyk pool is created.
+    // - Attacker adds liquidity to this pool with only one of the two assets.
+    // - Zero LP is minted to the attacker.
+    // - This leads to all subsequent additions of liquidity also have zero LP
+    //   token minted, even with non-zero assets provided.
+    // This was discovered in the Sherlock audit contest (issue #6).
+    ensure!(
+        lp_mint_amount.is_non_zero(),
+        "lp mint amount must be non-zero"
+    );
 
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
@@ -268,6 +287,12 @@ fn withdraw_liquidity(
     base_denom: Denom,
     quote_denom: Denom,
 ) -> anyhow::Result<Response> {
+    // Withdrawing liquidity is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't withdraw liquidity when trading is paused"
+    );
+
     // Load the pair params.
     let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
 
@@ -314,6 +339,12 @@ fn swap_exact_amount_in(
     route: UniqueVec<PairId>,
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
+    // Swapping is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't swap when trading is paused"
+    );
+
     let input = ctx.funds.into_one_coin()?;
     let app_cfg = ctx.querier.query_dango_config()?;
 
@@ -376,6 +407,12 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
+    // Swapping is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't swap when trading is paused"
+    );
+
     let app_cfg = ctx.querier.query_dango_config()?;
 
     // Create the oracle querier with max staleness.

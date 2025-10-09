@@ -9,14 +9,14 @@ use {
         dex::{
             self, AmountOption, CreateOrderRequest, Direction, ExecuteMsg, Geometric,
             LiquidityDepth, OrderId, OrdersByUserResponse, PairParams, PairUpdate,
-            PassiveLiquidity, Price, PriceOption, QueryPairRequest, TimeInForce,
+            PassiveLiquidity, Price, PriceOption, QueryPairRequest, SwapRoute, TimeInForce,
         },
         gateway::Remote,
         oracle::{self, PriceSource},
     },
     grug::{
-        Bounded, Coins, Denom, Inner, NonZero, Number, NumberConst, QuerierExt, ResultExt,
-        Timestamp, Udec128, Udec128_6, Uint128, btree_map, btree_set, coins,
+        Bounded, Coin, Coins, Denom, Inner, NonZero, Number, NumberConst, QuerierExt, ResultExt,
+        Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coins,
     },
     grug_types::Addressable,
     hyperlane_types::constants::ethereum,
@@ -217,10 +217,104 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
         });
 }
 
+#[test]
+fn issue_6_cannot_mint_zero_lp_tokens() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Provide liquidity with zero amount of one side
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            coins! {
+                dango::DENOM.clone() => 100_000,
+            },
+        )
+        .should_fail_with_error("lp mint amount must be non-zero");
+}
+
+#[test]
+fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::SetPaused(true)),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't provide liquidity when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::WithdrawLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't withdraw liquidity when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountIn {
+                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                minimum_output: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't swap when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                output: NonZero::new_unchecked(Coin::new(eth::DENOM.clone(), 100).unwrap()),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't swap when trading is paused");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![],
+                cancels: None,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("can't update orders when trading is paused");
+}
+
 /// Prior to the fix, the depth quote amount was subject to rounding errors when
 /// a limit order was partially filled and the error kept increasing over time.
 #[test]
-fn depth_quote_rounding_error() {
+fn issue_156_depth_quote_rounding_error() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
         bridge_ops: |accounts| {
             vec![
