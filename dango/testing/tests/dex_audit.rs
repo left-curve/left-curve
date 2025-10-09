@@ -23,8 +23,9 @@ use {
         oracle::{self, PriceSource},
     },
     grug::{
-        Bounded, Coin, CoinPair, Coins, Denom, Inner, NonZero, Number, NumberConst, QuerierExt,
-        ResultExt, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coins,
+        BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, NonZero, Number, NumberConst,
+        QuerierExt, ResultExt, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map,
+        btree_set, coins,
     },
     grug_types::Addressable,
     hyperlane_types::constants::ethereum,
@@ -550,6 +551,9 @@ fn issue_156_depth_quote_rounding_error() {
     }
 }
 
+/// In `cancel_all_orders`, we refund all orders. However, actually, passive
+/// orders don't need to be refunded. Refunding it leads to error because the
+/// DEX contract doesn't implement the `receive` entry point.
 #[test]
 fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
     // ------------------------------- 1. Setup --------------------------------
@@ -733,11 +737,44 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             &dex::ExecuteMsg::Owner(dex::OwnerMsg::ForceCancelOrders {}),
             Coins::new(),
         )
-        .should_succeed();
+        .should_succeed(); // Prior to the fix, this errors.
 
     // --------------- 4. Check contract state after cancelation ---------------
 
     // Ensure token balances and in/outflows.
+    suite.balances().should_change(&contracts.dex, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Decreased(1),
+        usdc::DENOM.clone() => BalanceChange::Decreased(195),
+    });
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Increased(1),
+        usdc::DENOM.clone() => BalanceChange::Increased(195),
+    });
 
     // Ensure reserves are unchanged.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(CoinPair::new_unchecked(
+            Coin {
+                denom: usdc::DENOM.clone(),
+                amount: Uint128::new(1000),
+            },
+            Coin {
+                denom: dango::DENOM.clone(),
+                amount: Uint128::new(5),
+            },
+        ));
+
+    // Ensure orders are emptied.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|orders| orders.is_empty());
 }
