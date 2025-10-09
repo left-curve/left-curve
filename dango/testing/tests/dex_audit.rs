@@ -5,7 +5,11 @@ use {
     dango_dex::liquidity_depth::get_bucket,
     dango_testing::{BridgeOp, TestOption, setup_test_naive},
     dango_types::{
-        constants::{ONE, ONE_TENTH, dango, eth, usdc},
+        constants::{
+            dango, eth,
+            mock::{ONE, ONE_TENTH},
+            usdc,
+        },
         dex::{
             self, AmountOption, CreateOrderRequest, Direction, ExecuteMsg, Geometric,
             LiquidityDepth, OrderId, OrdersByUserResponse, PairParams, PairUpdate,
@@ -351,7 +355,7 @@ fn issue_156_depth_quote_rounding_error() {
         })
         .unwrap();
 
-    let denominator = Uint128::new(10_u128.pow((eth::DECIMAL - usdc::DECIMAL) as u32));
+    let denominator = Uint128::new(10_u128.pow(eth::DECIMAL - usdc::DECIMAL));
 
     // Open a Bid order at really small price and a Ask order at a really large price
     // in order to non delete all depth from contract.

@@ -21,7 +21,7 @@ use {
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order,
         QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Uint128,
-        UniqueVec, btree_map, coin_pair, coins,
+        UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
@@ -6902,7 +6902,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
             }),
         ]),
     },
-    Some(    dex::LiquidityDepthResponse {
+    Some(dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
             (Price::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
@@ -6960,6 +6960,28 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
 ) {
     // Setup test environment
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Configure the ETH-USDC pair with the bucket size we want to test.
+    let mut params = suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed();
+    params.bucket_sizes = btree_set! { NonZero::new_unchecked(bucket_size) };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params,
+            }])),
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Register oracle price sources for ETH and USDC
     suite
