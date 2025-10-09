@@ -247,10 +247,10 @@ fn check_liquidity_depths(
             }
 
             // Assert that the liquidity depths are at most 1 unit apart from the open orders.
-            assert!(abs_diff(bid_depth_base, bid_order_amount_base) <= Udec128_6::ONE);
-            assert!(abs_diff(bid_depth_quote, bid_order_amount_quote) <= Udec128_6::ONE);
-            assert!(abs_diff(ask_depth_base, ask_order_amount_base) <= Udec128_6::ONE);
-            assert!(abs_diff(ask_depth_quote, ask_order_amount_quote) <= Udec128_6::ONE);
+            assert!(bid_depth_base == bid_order_amount_base);
+            assert!(bid_depth_quote == bid_order_amount_quote);
+            assert!(ask_depth_base == ask_order_amount_base);
+            assert!(ask_depth_quote == ask_order_amount_quote);
         }
     }
 
