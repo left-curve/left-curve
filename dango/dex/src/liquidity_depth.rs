@@ -116,7 +116,7 @@ pub fn decrease_liquidity_depths(
 mod tests {
     use {
         super::*,
-        dango_types::constants::{
+        dango_types::constants::mock::{
             FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, ONE_THOUSANDTH, TEN,
         },
         grug::Uint128,

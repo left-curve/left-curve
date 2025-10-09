@@ -323,12 +323,12 @@
                 "base_denom": "bridge/btc",
                 "params": {
                   "bucket_sizes": [
+                    "0.0001",
+                    "0.001",
                     "0.01",
                     "0.1",
-                    "1",
-                    "10",
-                    "50",
-                    "100"
+                    "0.5",
+                    "1"
                   ],
                   "lp_denom": "dex/pool/btc/usdc",
                   "min_order_size": "0",
@@ -347,12 +347,12 @@
                 "base_denom": "bridge/eth",
                 "params": {
                   "bucket_sizes": [
-                    "0.01",
-                    "0.1",
-                    "1",
-                    "10",
-                    "50",
-                    "100"
+                    "0.00000000000001",
+                    "0.0000000000001",
+                    "0.000000000001",
+                    "0.00000000001",
+                    "0.00000000005",
+                    "0.0000000001"
                   ],
                   "lp_denom": "dex/pool/eth/usdc",
                   "min_order_size": "0",
@@ -371,10 +371,10 @@
                 "base_denom": "bridge/sol",
                 "params": {
                   "bucket_sizes": [
-                    "0.01",
-                    "0.1",
-                    "1",
-                    "10"
+                    "0.00001",
+                    "0.0001",
+                    "0.001",
+                    "0.01"
                   ],
                   "lp_denom": "dex/pool/sol/usdc",
                   "min_order_size": "0",
