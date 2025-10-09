@@ -6,9 +6,9 @@ default:
 
 # ------------------------------------ Git -------------------------------------
 
-# Fetch latest main branch from origin without checking out to it
+# Sync the `main` branch with the origin
 git-fetch-main:
-  git fetch origin main
+  git fetch origin main:main
 
 # Delete all local git branches except for main
 git-clear-branches:
