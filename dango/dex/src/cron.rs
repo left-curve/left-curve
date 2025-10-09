@@ -2,7 +2,10 @@ use {
     crate::{
         MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
-        core::{FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders},
+        core::{
+            FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders,
+            mean::arithmetic_mean,
+        },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
     dango_account_factory::AccountQuerier,
@@ -18,14 +21,12 @@ use {
     },
     grug::{
         Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
-        MultiplyFraction, MutableCtx, NextNumber, NonZero, Number, NumberConst,
-        Order as IterationOrder, PrevNumber, PrimaryKey, Response, StdError, StdResult, Storage,
-        SubMessage, SubMsgResult, SudoCtx, Timestamp, TransferBuilder, Udec128, Udec128_6, Udec256,
+        MultiplyFraction, MutableCtx, NonZero, Number, NumberConst, Order as IterationOrder,
+        PrimaryKey, Response, StdError, StdResult, Storage, SubMessage, SubMsgResult, SudoCtx,
+        Timestamp, TransferBuilder, Udec128, Udec128_6,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
-
-const HALF: Udec256 = Udec256::new_percent(50);
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -431,11 +432,7 @@ fn clear_orders_of_pair(
                     mid_price
                 }
             },
-            None => lower_price
-                .into_next()
-                .checked_add(upper_price.into_next())?
-                .checked_mul(HALF)?
-                .checked_into_prev()?,
+            None => arithmetic_mean(lower_price, upper_price)?,
         };
 
         events.push(OrdersMatched {
@@ -749,12 +746,7 @@ fn clear_orders_of_pair(
     // - if only one of them exists, then use that price;
     // - if none of them exists, then `None`.
     let mid_price = match (best_bid_price, best_ask_price) {
-        (Some(bid), Some(ask)) => Some(
-            bid.into_next()
-                .checked_add(ask.into_next())?
-                .checked_mul(HALF)?
-                .checked_into_prev()?,
-        ),
+        (Some(bid), Some(ask)) => Some(arithmetic_mean(bid, ask)?),
         (Some(bid), None) => Some(bid),
         (None, Some(ask)) => Some(ask),
         (None, None) => None,

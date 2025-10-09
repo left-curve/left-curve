@@ -1,10 +1,10 @@
 use {
+    crate::core::mean::geometric_mean,
     anyhow::ensure,
     dango_types::dex::{Price, Xyk},
     grug::{
-        Bounded, CoinPair, Exponentiate, IsZero, MathResult, MultiplyFraction, MultiplyRatio,
-        NextNumber, Number, NumberConst, PrevNumber, Udec128, Uint128, Uint256,
-        ZeroExclusiveOneExclusive,
+        Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, MultiplyRatio, NextNumber, Number,
+        NumberConst, PrevNumber, Udec128, Uint128, Uint256, ZeroExclusiveOneExclusive,
     },
     std::{cmp, iter},
 };
@@ -219,10 +219,7 @@ pub fn normalized_invariant(reserve: &CoinPair) -> MathResult<Uint128> {
     let a = *reserve.first().amount;
     let b = *reserve.second().amount;
 
-    a.into_next()
-        .checked_mul(b.into_next())?
-        .checked_sqrt()?
-        .checked_into_prev()
+    geometric_mean(a, b)
 }
 
 // ----------------------------------- tests -----------------------------------
