@@ -355,7 +355,7 @@ fn issue_156_depth_quote_rounding_error() {
         })
         .unwrap();
 
-    let denominator = Uint128::new(10_u128.pow((eth::DECIMAL - usdc::DECIMAL) as u32));
+    let denominator = Uint128::new(10_u128.pow(eth::DECIMAL - usdc::DECIMAL));
 
     // Open a Bid order at really small price and a Ask order at a really large price
     // in order to non delete all depth from contract.
