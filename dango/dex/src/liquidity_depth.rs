@@ -13,8 +13,8 @@ pub fn get_bucket(bucket_size: Price, direction: Direction, price: Price) -> Mat
         // Note: instead of the decimal, we work with the integer numerators of
         // the price and bucket size. This minimizes the number of mul/div
         // operations (which are expensive) and also, more importantly,
-        // eliminates a possible overflow (see the `no_overflow` test at the
-        // bottom of this file).
+        // eliminates a possible overflow (see the test cases named "no overflow"
+        // at the bottom of this file).
         let numerator = price
             .numerator()
             .checked_div(bucket_size.numerator())?
@@ -197,13 +197,13 @@ mod tests {
         TEN,
         Direction::Ask,
         Price::from_str("123.45").unwrap()
-        => Price::new(130)// ceil
+        => Price::new(130) // ceil
     )]
     #[test_case(
         FIFTY,
         Direction::Ask,
         Price::from_str("123.45").unwrap()
-        => Price::new(150)// ceil
+        => Price::new(150) // ceil
     )]
     #[test_case(
         ONE_HUNDRED,
@@ -211,17 +211,33 @@ mod tests {
         Price::from_str("123.45").unwrap()
         => Price::new(200) // ceil
     )]
+    // This is an error case we found via proptesting.
+    //
+    // Prior to PR #1208, we compute `lower` as follows:
+    //
+    // ```rust
+    // let lower = price
+    //     .checked_div(bucket_size)?
+    //     .checked_floor()?
+    //     .checked_mul(bucket_size)?;
+    // ```
+    //
+    // With the following input, it would panic at the `.checked_div` step.
+    #[test_case(
+        ONE_HUNDREDTH,
+        Direction::Bid,
+        Price::raw(Uint128::new(4368614282292957095945129368187275851))
+        => Price::from_str("4368614282292.95").unwrap(); // floor
+        "no overflow - bid"
+    )]
+    #[test_case(
+        ONE_HUNDREDTH,
+        Direction::Ask,
+        Price::raw(Uint128::new(4368614282292957095945129368187275851))
+        => Price::from_str("4368614282292.96").unwrap(); // ceil
+        "no overflow - ask"
+    )]
     fn getting_bucket(bucket_size: Price, direction: Direction, price: Price) -> Price {
         get_bucket(bucket_size, direction, price).unwrap()
-    }
-
-    #[test]
-    fn no_overflow() {
-        get_bucket(
-            ONE_HUNDREDTH,
-            Direction::Bid,
-            Price::raw(Uint128::new(4368614282292957095945129368187275851)),
-        )
-        .unwrap();
     }
 }
