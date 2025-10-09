@@ -250,6 +250,57 @@ fn issue_6_cannot_mint_zero_lp_tokens() {
 }
 
 #[test]
+fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Provide liquidity with owner account
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            coins! {
+                eth::DENOM.clone() => 100_000,
+                usdc::DENOM.clone() => 100_000,
+            },
+        )
+        .should_succeed();
+
+    // Record user balance
+    suite.balances().record(&accounts.user1);
+
+    // Swap exact amount out
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: SwapRoute::new_unchecked(
+                    UniqueVec::new(vec![dex::PairId {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    }])
+                    .unwrap(),
+                ),
+                output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
+            },
+            coins! {
+                eth::DENOM.clone() => 103,
+            },
+        )
+        .should_succeed();
+
+    // Assert that the user's balance has changed correctly
+    suite.balances().should_change(&accounts.user1, btree_map! {
+    eth::DENOM.clone() => BalanceChange::Decreased(103),
+    usdc::DENOM.clone() => BalanceChange::Increased(100),
+    });
+}
+
+#[test]
 fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
