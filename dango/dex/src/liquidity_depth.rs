@@ -295,7 +295,7 @@ mod tests {
         *eth_usdc::FIFTY,
         Direction::Ask,
         Price::from_str("0.00000000431614").unwrap() // $4316.14
-        => Price::from_str("0.000000004350").unwrap() // $4300
+        => Price::from_str("0.000000004350").unwrap() // $4350
     )]
     #[test_case(
         *eth_usdc::ONE_HUNDRED,
