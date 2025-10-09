@@ -90,6 +90,10 @@ impl PrecisionedPrice {
             )?)
     }
 
+    /// Similar to `Self::value_of_unit_amount`, but returns the value as a
+    /// 256-bit, 24-decimal number. This is for use in the DEX contract, where
+    /// extreme price or amount multiplied together can overflow the limit of
+    /// 128-bit numbers.
     pub fn value_of_unit_amount_256<const S: u32>(
         &self,
         unit_amount: Uint128,
