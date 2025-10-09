@@ -2,21 +2,26 @@
 //! September 15-30, 2025.
 
 use {
-    dango_testing::setup_test_naive,
+    dango_dex::liquidity_depth::get_bucket,
+    dango_testing::{BridgeOp, TestOption, setup_test_naive},
     dango_types::{
         constants::{ONE, ONE_TENTH, dango, eth, usdc},
         dex::{
-            self, AmountOption, CreateOrderRequest, Direction, Geometric, LiquidityDepth, OrderId,
-            OrdersByUserResponse, PairParams, PairUpdate, PassiveLiquidity, Price, PriceOption,
-            SwapRoute, TimeInForce,
+            self, AmountOption, CreateOrderRequest, Direction, ExecuteMsg, Geometric,
+            LiquidityDepth, OrderId, OrdersByUserResponse, PairParams, PairUpdate,
+            PassiveLiquidity, Price, PriceOption, QueryPairRequest, SwapRoute, TimeInForce,
         },
+        gateway::Remote,
         oracle::{self, PriceSource},
     },
     grug::{
-        Bounded, Coin, Coins, Denom, NonZero, NumberConst, QuerierExt, ResultExt, Timestamp,
-        Udec128, Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coins,
+        Bounded, Coin, Coins, Denom, Inner, NonZero, Number, NumberConst, QuerierExt, ResultExt,
+        Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coins,
     },
-    std::str::FromStr,
+    grug_types::Addressable,
+    hyperlane_types::constants::ethereum,
+    rand::Rng,
+    std::{collections::HashMap, str::FromStr},
 };
 
 /// Prior to the fix, liquidity depth from orders placed by the passive pool wasn't
@@ -304,4 +309,232 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             Coins::new(),
         )
         .should_fail_with_error("can't update orders when trading is paused");
+}
+
+/// Prior to the fix, the depth quote amount was subject to rounding errors when
+/// a limit order was partially filled and the error kept increasing over time.
+#[test]
+fn issue_156_depth_quote_rounding_error() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
+        bridge_ops: |accounts| {
+            vec![
+                BridgeOp {
+                    remote: Remote::Warp {
+                        domain: ethereum::DOMAIN,
+                        contract: ethereum::USDC_WARP,
+                    },
+                    amount: Uint128::new(1_000_000_000_000_000_000),
+                    recipient: accounts.user1.address(),
+                },
+                BridgeOp {
+                    remote: Remote::Warp {
+                        domain: ethereum::DOMAIN,
+                        contract: ethereum::WETH_WARP,
+                    },
+                    amount: Uint128::new(1_000_000_000_000_000_000),
+                    recipient: accounts.user1.address(),
+                },
+            ]
+        },
+        ..Default::default()
+    });
+
+    let balance = suite.query_balances(&accounts.user1.address()).unwrap();
+
+    let base_denom = eth::DENOM.clone();
+    let quote_denom = usdc::DENOM.clone();
+
+    let pair_info = suite
+        .query_wasm_smart(contracts.dex, QueryPairRequest {
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+        })
+        .unwrap();
+
+    let denominator = Uint128::new(10_u128.pow((eth::DECIMAL - usdc::DECIMAL) as u32));
+
+    // Open a Bid order at really small price and a Ask order at a really large price
+    // in order to non delete all depth from contract.
+    let bid_order = CreateOrderRequest {
+        base_denom: base_denom.clone(),
+        quote_denom: quote_denom.clone(),
+        price: PriceOption::Limit(NonZero::new_unchecked(Price::raw(Uint128::new(1)))), /* 1e-18 USDC per wei */
+        amount: AmountOption::Bid {
+            quote: NonZero::new_unchecked(Uint128::new(1_000_000)), // 1 USDC
+        },
+        time_in_force: TimeInForce::GoodTilCanceled,
+    };
+
+    let ask_order = CreateOrderRequest {
+        base_denom: base_denom.clone(),
+        quote_denom: quote_denom.clone(),
+        price: PriceOption::Limit(NonZero::new_unchecked(Price::new(10u128.pow(10)))), /* 1e6 USDC per wei */
+        amount: AmountOption::Ask {
+            base: NonZero::new_unchecked(Uint128::new(1_000_000_000_000)), // 1 ETH
+        },
+        time_in_force: TimeInForce::GoodTilCanceled,
+    };
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &ExecuteMsg::BatchUpdateOrders {
+                creates: vec![bid_order, ask_order],
+                cancels: None,
+            },
+            coins!(
+                base_denom.clone() => Uint128::new(1_000_000_000_000),
+                quote_denom.clone() => Uint128::new(1_000_000),
+            ),
+        )
+        .should_succeed();
+
+    // Create some matching orders:
+    // open 1 ask limit order with size x and price p;
+    // open 2 buy limit order with size x/2 and price p.
+    let min_price = Price::checked_from_ratio(500, denominator).unwrap();
+    let max_price = Price::checked_from_ratio(4_000, denominator).unwrap();
+
+    for _ in 0..100 {
+        let mut orders = vec![];
+
+        let price = Price::raw(Uint128::new(
+            rand::thread_rng().gen_range(min_price.0.into_inner()..max_price.0.into_inner()),
+        ));
+
+        let sell_amount = Uint128::new(
+            rand::thread_rng()
+                .gen_range(1_000u128..=balance.amount_of(&base_denom).into_inner().div_ceil(2)),
+        );
+
+        // buy_amount = sell_amount * price / 2
+        let buy_amount = Udec128_6::checked_from_ratio(sell_amount, Uint128::new(2))
+            .unwrap()
+            .checked_mul(price)
+            .unwrap()
+            .into_int();
+
+        let sell_order = CreateOrderRequest {
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            price: PriceOption::Limit(NonZero::new_unchecked(price)),
+            amount: AmountOption::Ask {
+                base: NonZero::new_unchecked(sell_amount),
+            },
+            time_in_force: TimeInForce::GoodTilCanceled,
+        };
+
+        let buy_order = CreateOrderRequest {
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            price: PriceOption::Limit(NonZero::new_unchecked(price)),
+            amount: AmountOption::Bid {
+                quote: NonZero::new_unchecked(buy_amount),
+            },
+            time_in_force: TimeInForce::GoodTilCanceled,
+        };
+
+        orders.push(sell_order);
+        orders.push(buy_order.clone());
+        orders.push(buy_order);
+
+        suite
+            .execute(
+                &mut accounts.user1,
+                contracts.dex,
+                &ExecuteMsg::BatchUpdateOrders {
+                    creates: orders,
+                    cancels: None,
+                },
+                coins!(
+                    base_denom.clone() => sell_amount,
+                    quote_denom.clone() => buy_amount * Uint128::new(2),
+                ),
+            )
+            .should_succeed();
+
+        // Check the liquidity depth.
+
+        // Query the open orders for this pair.
+        let open_orders = suite
+            .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+                base_denom: base_denom.clone(),
+                quote_denom: quote_denom.clone(),
+                start_after: None,
+                limit: Some(u32::MAX),
+            })
+            .unwrap();
+
+        // Ensure open orders are not empty.
+        assert!(!open_orders.is_empty());
+
+        for bucket_size in &pair_info.bucket_sizes {
+            let mut bid_amounts = HashMap::new();
+            let mut ask_amounts = HashMap::new();
+
+            for order in open_orders.values() {
+                let amounts = match order.direction {
+                    Direction::Bid => &mut bid_amounts,
+                    Direction::Ask => &mut ask_amounts,
+                };
+
+                let bucket =
+                    get_bucket(bucket_size.into_inner(), order.direction, order.price).unwrap();
+
+                let entry = amounts
+                    .entry(bucket)
+                    .or_insert((Udec128_6::ZERO, Udec128_6::ZERO));
+
+                entry.0.checked_add_assign(order.remaining).unwrap();
+                entry
+                    .1
+                    .checked_add_assign(order.remaining.checked_mul(order.price).unwrap())
+                    .unwrap();
+            }
+
+            // Retrieve liquidity from the contract.
+            let depth = suite
+                .query_wasm_smart(contracts.dex, dex::QueryLiquidityDepthRequest {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                    bucket_size: bucket_size.into_inner(),
+                    limit: None,
+                })
+                .unwrap();
+
+            let bid_depth = depth.bid_depth.unwrap();
+
+            for (price, liquidity) in bid_depth {
+                let (expected_base, expected_quote) = bid_amounts
+                    .get(&price)
+                    .unwrap_or(&(Udec128_6::ZERO, Udec128_6::ZERO));
+
+                assert_eq!(
+                    &liquidity.depth_base, expected_base,
+                    "mismatched bid depth base for bucket size {bucket_size} at price {price}"
+                );
+                assert_eq!(
+                    &liquidity.depth_quote, expected_quote,
+                    "mismatched bid depth quote for bucket size {bucket_size} at price {price}"
+                );
+            }
+
+            let ask_depth = depth.ask_depth.unwrap();
+            for (price, liquidity) in ask_depth {
+                let (expected_base, expected_quote) = ask_amounts
+                    .get(&price)
+                    .unwrap_or(&(Udec128_6::ZERO, Udec128_6::ZERO));
+
+                assert_eq!(
+                    &liquidity.depth_base, expected_base,
+                    "mismatched ask depth base for bucket size {bucket_size} at price {price}"
+                );
+                assert_eq!(
+                    &liquidity.depth_quote, expected_quote,
+                    "mismatched ask depth quote for bucket size {bucket_size} at price {price}"
+                );
+            }
+        }
+    }
 }

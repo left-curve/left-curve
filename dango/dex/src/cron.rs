@@ -512,16 +512,20 @@ fn clear_orders_of_pair(
         // the remaining amount, as market orders are immediate-or-cancel.
         match order.time_in_force {
             TimeInForce::GoodTilCanceled => {
+                // Remove all liquidity previously added by this order, i.e.
+                // order.remaining + filled_base, to avoid rounding errors
+                // in the liquidity depth quote.
                 decrease_liquidity_depths(
                     storage,
                     &base_denom,
                     &quote_denom,
                     order.direction,
                     order.price,
-                    filled_base,
+                    order.remaining + filled_base,
                     bucket_sizes,
                 )?;
 
+                // If the order is fully filled, remove it from storage.
                 if order.remaining.is_zero() {
                     ORDERS.remove(
                         storage,
@@ -547,6 +551,17 @@ fn clear_orders_of_pair(
                             order.id,
                         ),
                         &order,
+                    )?;
+
+                    // Update the liquidity with the remaining amount.
+                    increase_liquidity_depths(
+                        storage,
+                        &base_denom,
+                        &quote_denom,
+                        order.direction,
+                        order.price,
+                        order.remaining,
+                        bucket_sizes,
                     )?;
                 }
             },
