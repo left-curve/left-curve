@@ -2,7 +2,10 @@ use {
     crate::{
         MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
-        core::{FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders},
+        core::{
+            FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders,
+            mean::safe_arithmetic_mean,
+        },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
     dango_account_factory::AccountQuerier,
@@ -24,8 +27,6 @@ use {
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
-
-const HALF: Udec128 = Udec128::new_percent(50);
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -431,7 +432,10 @@ fn clear_orders_of_pair(
                     mid_price
                 }
             },
-            None => lower_price.checked_add(upper_price)?.checked_mul(HALF)?,
+            // Note: with extreme prices, calculating the middle point of the
+            // range may overflow. We use the "safe" arithmetic mean function
+            // which handles this case.
+            None => safe_arithmetic_mean(lower_price, upper_price)?,
         };
 
         events.push(OrdersMatched {
@@ -745,7 +749,10 @@ fn clear_orders_of_pair(
     // - if only one of them exists, then use that price;
     // - if none of them exists, then `None`.
     let mid_price = match (best_bid_price, best_ask_price) {
-        (Some(bid), Some(ask)) => Some(bid.checked_add(ask)?.checked_mul(HALF)?),
+        // Note: with extreme prices, computing the average of the best bid and
+        // ask prices may overflow. We use the "safe" arithmetic mean function
+        // which handles this case.
+        (Some(bid), Some(ask)) => Some(safe_arithmetic_mean(bid, ask)?),
         (Some(bid), None) => Some(bid),
         (None, Some(ask)) => Some(ask),
         (None, None) => None,
