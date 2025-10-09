@@ -116,8 +116,9 @@ pub fn decrease_liquidity_depths(
 mod tests {
     use {
         super::*,
-        dango_types::constants::mock::{
-            FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, ONE_THOUSANDTH, TEN,
+        dango_types::constants::{
+            eth_usdc,
+            mock::{FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, ONE_THOUSANDTH, TEN},
         },
         grug::Uint128,
         std::str::FromStr,
@@ -233,6 +234,56 @@ mod tests {
         Price::raw(Uint128::new(4368614282292957095945129368187275851))
         => Price::from_str("4368614282292.96").unwrap(); // ceil
         "no overflow - ask"
+    )]
+    // A few tests of real world scenario with Ether, which is tricky due to its
+    // 18 decimal places. We took the actual price of ETH from GoinGecko.
+    #[test_case(
+        *eth_usdc::ONE_HUNDREDTH,
+        Direction::Bid,
+        Price::from_str("0.00000000431614").unwrap() // this corresponds to $4216.14
+        => Price::from_str("0.00000000431614").unwrap()
+    )]
+    #[test_case(
+        *eth_usdc::ONE_HUNDREDTH,
+        Direction::Ask,
+        Price::from_str("0.00000000431614").unwrap() // this corresponds to $4216.14
+        => Price::from_str("0.00000000431614").unwrap()
+    )]
+    #[test_case(
+        *eth_usdc::ONE_TENTH,
+        Direction::Bid,
+        Price::from_str("0.00000000431614").unwrap() // this corresponds to $4216.14
+        => Price::from_str("0.0000000043161").unwrap()
+    )]
+    #[test_case(
+        *eth_usdc::ONE_TENTH,
+        Direction::Ask,
+        Price::from_str("0.00000000431614").unwrap() // this corresponds to $4216.14
+        => Price::from_str("0.0000000043162").unwrap()
+    )]
+    #[test_case(
+        *eth_usdc::ONE,
+        Direction::Bid,
+        Price::from_str("0.00000000431614").unwrap() // this corresponds to $4216.14
+        => Price::from_str("0.000000004316").unwrap()
+    )]
+    #[test_case(
+        *eth_usdc::ONE,
+        Direction::Ask,
+        Price::from_str("0.00000000431614").unwrap() // this corresponds to $4216.14
+        => Price::from_str("0.000000004317").unwrap()
+    )]
+    #[test_case(
+        *eth_usdc::TEN,
+        Direction::Bid,
+        Price::from_str("0.00000000431614").unwrap() // this corresponds to $4216.14
+        => Price::from_str("0.000000004310").unwrap()
+    )]
+    #[test_case(
+        *eth_usdc::TEN,
+        Direction::Ask,
+        Price::from_str("0.00000000431614").unwrap() // this corresponds to $4216.14
+        => Price::from_str("0.000000004320").unwrap()
     )]
     fn getting_bucket(bucket_size: Price, direction: Direction, price: Price) -> Price {
         get_bucket(bucket_size, direction, price).unwrap()
