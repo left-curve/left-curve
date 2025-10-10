@@ -3,7 +3,10 @@
 
 use {
     dango_dex::liquidity_depth::get_bucket,
-    dango_testing::{BridgeOp, TestOption, setup_test_naive},
+    dango_genesis::{DexOption, GenesisOption, OracleOption},
+    dango_testing::{
+        BridgeOp, Preset, TestOption, setup_test_naive, setup_test_naive_with_custom_genesis,
+    },
     dango_types::{
         constants::{
             dango, eth,
@@ -12,20 +15,25 @@ use {
         },
         dex::{
             self, AmountOption, CreateOrderRequest, Direction, ExecuteMsg, Geometric,
-            LiquidityDepth, OrderId, OrdersByUserResponse, PairParams, PairUpdate,
-            PassiveLiquidity, Price, PriceOption, QueryPairRequest, SwapRoute, TimeInForce,
+            LiquidityDepth, OrderId, OrdersByPairResponse, OrdersByUserResponse, PairParams,
+            PairUpdate, PassiveLiquidity, Price, PriceOption, QueryPairRequest, SwapRoute,
+            TimeInForce,
         },
         gateway::Remote,
         oracle::{self, PriceSource},
     },
     grug::{
-        Bounded, Coin, Coins, Denom, Inner, NonZero, Number, NumberConst, QuerierExt, ResultExt,
-        Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coins,
+        BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, NonZero, Number, NumberConst,
+        QuerierExt, ResultExt, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map,
+        btree_set, coins,
     },
     grug_types::Addressable,
     hyperlane_types::constants::ethereum,
     rand::Rng,
-    std::{collections::HashMap, str::FromStr},
+    std::{
+        collections::{BTreeSet, HashMap},
+        str::FromStr,
+    },
 };
 
 /// Prior to the fix, liquidity depth from orders placed by the passive pool wasn't
@@ -541,4 +549,232 @@ fn issue_156_depth_quote_rounding_error() {
             }
         }
     }
+}
+
+/// In `cancel_all_orders`, we refund all orders. However, actually, passive
+/// orders don't need to be refunded. Refunding it leads to error because the
+/// DEX contract doesn't implement the `receive` entry point.
+#[test]
+fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
+    // ------------------------------- 1. Setup --------------------------------
+
+    // Set up DANGO-USDC pair with geometric pool and oracle feed.
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                pairs: vec![PairUpdate {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    params: PairParams {
+                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        pool_type: PassiveLiquidity::Geometric(Geometric {
+                            spacing: Udec128::new_percent(1),
+                            ratio: Bounded::new_unchecked(Udec128::new(1)),
+                            limit: 1,
+                        }),
+                        bucket_sizes: BTreeSet::new(),
+                        swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size: Uint128::ZERO,
+                    },
+                }],
+            },
+            oracle: OracleOption {
+                pyth_price_sources: btree_map! {
+                    dango::DENOM.clone() => PriceSource::Fixed {
+                        humanized_price: Udec128::new(200),
+                        precision: 0,
+                        timestamp: Timestamp::from_nanos(u128::MAX),
+                    },
+                    usdc::DENOM.clone() => PriceSource::Fixed {
+                        humanized_price: Udec128::new(1),
+                        precision: 0,
+                        timestamp: Timestamp::from_nanos(u128::MAX),
+                    },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
+
+    // Provide some liquidity to the pool.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+            },
+            coins! {
+                dango::DENOM.clone() => 5,
+                usdc::DENOM.clone() => 1000,
+            },
+        )
+        .should_succeed();
+
+    // For realism, also create some user orders.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![
+                    CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Bid,
+                        NonZero::new_unchecked(Price::new(195)),
+                        NonZero::new_unchecked(Uint128::new(195)),
+                    ),
+                    CreateOrderRequest::new_limit(
+                        dango::DENOM.clone(),
+                        usdc::DENOM.clone(),
+                        Direction::Ask,
+                        NonZero::new_unchecked(Price::new(205)),
+                        NonZero::new_unchecked(Uint128::new(1)),
+                    ),
+                ],
+                cancels: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1,
+                usdc::DENOM.clone() => 195,
+            },
+        )
+        .should_succeed();
+
+    // Pause trading. We want to ensure that forced order cancelations works
+    // when trading is paused (while all other operations that affect liquidity
+    // are disabled).
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::SetPaused(true)),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // -------------- 2. Ensure contract state before cancelation --------------
+
+    // Check the DEX contract's balances.
+    // Should equal the liquidity provided + user orders.
+    suite
+        .query_balance(&contracts.dex, dango::DENOM.clone())
+        .should_succeed_and_equal(Uint128::new(5 + 1));
+    suite
+        .query_balance(&contracts.dex, usdc::DENOM.clone())
+        .should_succeed_and_equal(Uint128::new(1000 + 195));
+
+    // Check the pool's reserves. Should equal the liquidity provided.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(CoinPair::new_unchecked(
+            Coin {
+                denom: usdc::DENOM.clone(),
+                amount: Uint128::new(1000),
+            },
+            Coin {
+                denom: dango::DENOM.clone(),
+                amount: Uint128::new(5),
+            },
+        ));
+
+    // Check orders. Should be two user orders, two passive orders.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map! {
+            // Two user orders:
+            OrderId::new(!3) => OrdersByPairResponse {
+                user: accounts.user1.address(),
+                direction: Direction::Bid,
+                price: Price::new(195),
+                amount: Uint128::new(1),
+                remaining: Udec128_6::new(1),
+            },
+            OrderId::new(4) => OrdersByPairResponse {
+                user: accounts.user1.address(),
+                direction: Direction::Ask,
+                price: Price::new(205),
+                amount: Uint128::new(1),
+                remaining: Udec128_6::new(1),
+            },
+            // Two passive orders:
+            OrderId::new(!5) => OrdersByPairResponse {
+                user: contracts.dex,
+                direction: Direction::Bid,
+                price: Price::from_str("199.4").unwrap(), // = oracle_price * (1 - swap_fee_rate) = 200 * (1 - 0.003) = 199.4
+                amount: Uint128::new(5), // = floor(quote_reserve / price) = floor(1000 / 199.4) = 5
+                remaining: Udec128_6::new(5),
+            },
+            OrderId::new(6) => OrdersByPairResponse {
+                user: contracts.dex,
+                direction: Direction::Ask,
+                price: Price::from_str("200.6").unwrap(), // = oracle_price * (1 + swap_fee_rate) = 200 * (1 + 0.003) = 200.6
+                amount: Uint128::new(5), // = base_reserve = 5
+                remaining: Udec128_6::new(5),
+            },
+        });
+
+    // --------------- 3. Perform the forced order cancelations ----------------
+
+    suite
+        .balances()
+        .record_many([&contracts.dex, &accounts.user1.address()]);
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::ForceCancelOrders {}),
+            Coins::new(),
+        )
+        .should_succeed(); // Prior to the fix, this errors.
+
+    // --------------- 4. Check contract state after cancelation ---------------
+
+    // Ensure token balances and in/outflows.
+    suite.balances().should_change(&contracts.dex, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Decreased(1),
+        usdc::DENOM.clone() => BalanceChange::Decreased(195),
+    });
+    suite.balances().should_change(&accounts.user1, btree_map! {
+        dango::DENOM.clone() => BalanceChange::Increased(1),
+        usdc::DENOM.clone() => BalanceChange::Increased(195),
+    });
+
+    // Ensure reserves are unchanged.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryReserveRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed_and_equal(CoinPair::new_unchecked(
+            Coin {
+                denom: usdc::DENOM.clone(),
+                amount: Uint128::new(1000),
+            },
+            Coin {
+                denom: dango::DENOM.clone(),
+                amount: Uint128::new(5),
+            },
+        ));
+
+    // Ensure orders are emptied.
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and(|orders| orders.is_empty());
 }

@@ -138,6 +138,7 @@ fn batch_update_orders(
             for order_id in order_ids {
                 order_cancellation::cancel_order_from_user(
                     ctx.storage,
+                    ctx.contract,
                     ctx.sender,
                     order_id,
                     &mut events,
@@ -149,6 +150,7 @@ fn batch_update_orders(
         Some(CancelOrderRequest::All) => {
             order_cancellation::cancel_all_orders_from_user(
                 ctx.storage,
+                ctx.contract,
                 ctx.sender,
                 &mut events,
                 &mut refunds,
@@ -464,7 +466,7 @@ fn swap_exact_amount_out(
 }
 
 fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage)?;
+    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage, ctx.contract)?;
 
     Ok(Response::new()
         .add_events(events)?
