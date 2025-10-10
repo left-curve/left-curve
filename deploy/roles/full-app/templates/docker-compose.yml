@@ -189,6 +189,9 @@ services:
 {% if dex_bot_enabled %}
   dex-bot:
     image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
+    labels:
+      <<: *common-labels
+      service_name: "dex_bot"
     depends_on:
       dango:
         condition: service_healthy
