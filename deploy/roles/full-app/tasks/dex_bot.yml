@@ -36,10 +36,12 @@
     - name: Show stdout
       debug:
         var: liquidity_result.stdout
+      run_once: true
 
     - name: Show stderr
       debug:
         var: liquidity_result.stderr
+      run_once: true
 
 - name: Mark liquidity setup as done
   file:
