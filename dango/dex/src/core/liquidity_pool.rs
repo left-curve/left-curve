@@ -623,7 +623,8 @@ mod tests {
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
-            min_order_size: Uint128::ZERO,
+            min_order_size_quote: Uint128::ZERO,
+            min_order_size_base: Uint128::ZERO,
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
@@ -686,7 +687,8 @@ mod tests {
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
-            min_order_size: Uint128::ZERO,
+            min_order_size_quote: Uint128::ZERO,
+            min_order_size_base: Uint128::ZERO,
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
@@ -746,7 +748,8 @@ mod tests {
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(Udec128::new_percent(1)).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
-            min_order_size: Uint128::ZERO,
+            min_order_size_quote: Uint128::ZERO,
+            min_order_size_base: Uint128::ZERO,
         };
 
         let reserve = coins! {
@@ -1060,7 +1063,8 @@ mod tests {
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
-            min_order_size: Uint128::ZERO,
+            min_order_size_quote: Uint128::ZERO,
+            min_order_size_base: Uint128::ZERO,
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
@@ -1373,7 +1377,8 @@ mod tests {
             bucket_sizes: BTreeSet::new(),
             swap_fee_rate: Bounded::new(fee_rate).unwrap(),
             lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
-            min_order_size: Uint128::ZERO,
+            min_order_size_quote: Uint128::ZERO,
+            min_order_size_base: Uint128::ZERO,
         };
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.

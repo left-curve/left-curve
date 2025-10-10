@@ -101,11 +101,19 @@ pub(super) fn create_order(
 
     // Ensure the order's size isn't too small.
     ensure!(
-        amount_in_quote >= pair.min_order_size,
+        amount >= pair.min_order_size_base,
+        "order size ({} {}) is less than the minimum ({} {})",
+        amount,
+        order.base_denom,
+        pair.min_order_size_base,
+        order.base_denom
+    );
+    ensure!(
+        amount_in_quote >= pair.min_order_size_quote,
         "order size ({} {}) is less than the minimum ({} {})",
         amount_in_quote,
         order.quote_denom,
-        pair.min_order_size,
+        pair.min_order_size_quote,
         order.quote_denom
     );
 
