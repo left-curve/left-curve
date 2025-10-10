@@ -18,7 +18,6 @@ export const Modals = {
   ActivityTransfer: "activity-transfer",
   ActivityConvert: "activity-convert",
   ActivitySpotOrder: "activity-spot-order",
-  ConnectWallet: "connect-wallet",
 };
 
 export type ModalRef = {

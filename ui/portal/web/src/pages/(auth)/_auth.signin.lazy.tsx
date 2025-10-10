@@ -20,7 +20,6 @@ function SigninApplet() {
   return (
     <WizardProvider wrapper={<Signin />}>
       <Signin.Credential />
-      <Signin.VerifyEmail />
       <Signin.Username />
     </WizardProvider>
   );

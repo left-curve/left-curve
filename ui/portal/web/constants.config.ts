@@ -4,6 +4,9 @@ import type { AppletMetadata } from "@left-curve/store/types";
 
 export const DEFAULT_SESSION_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
 
+export const PRIVY_APP_ID = import.meta.env.PUBLIC_PRIVY_APP_ID;
+export const PRIVY_CLIENT_ID = import.meta.env.PUBLIC_PRIVY_CLIENT_ID;
+
 export const WEBRTC_URI = import.meta.env.PUBLIC_WEBRTC_URI;
 
 const translations = m as unknown as Record<string, () => string>;
