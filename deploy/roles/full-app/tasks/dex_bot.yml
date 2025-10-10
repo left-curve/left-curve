@@ -1,18 +1,26 @@
+- debug: msg="{{ inventory_hostname }} => {{ dex_bot_host }}"
+
 - name: Check if liquidity setup already done (current deployment)
   stat:
     path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}/bot_liquidity_setup_done"
   register: current_liquidity_setup_flag
   when: current_deployment is defined and system_wide_directories
+  run_once: true
+  delegate_to: "{{ dex_bot_host }}"
 
 - name: Check if liquidity setup already done
   stat:
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/bot_liquidity_setup_done"
   register: liquidity_setup_flag
+  run_once: true
+  delegate_to: "{{ dex_bot_host }}"
 
 - name: Setup liquidity (mint and provide)
   when:
     - not liquidity_setup_flag.stat.exists
     - not (current_liquidity_setup_flag.stat.exists | default(false))
+  run_once: true
+  delegate_to: "{{ dex_bot_host }}"
   block:
     - set_fact:
         mint_command: "dex liquidity mint --url http://dango:8080/ {{ dango.dex_bot.mint_amount }} {{ dango.dex_bot.address }} --address {{ dango.dex_bot.minter_address }} --username {{ dango.dex_bot.minter_username }} --private-key {{ dango.dex_bot.minter_private_key }}"

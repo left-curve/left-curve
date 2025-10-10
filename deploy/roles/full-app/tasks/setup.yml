@@ -17,8 +17,8 @@
 
 - name: Set dango and cometbft directories
   set_fact:
-    dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/dango"
-    cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/cometbft"
+    dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
+    cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
   when: system_wide_directories
 
 - name: Check if deployment already exists
@@ -28,7 +28,7 @@
 
 - name: Read .env values
   shell: |
-    grep -E '^(CLICKHOUSE_DATABASE|POSTGRES_DATABASE|CLICKHOUSE_METRICS_PORT|DB_METRICS_PORT|DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|GRAPHIQL_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_ABCI_PORT|COMETBFT_METRICS_PORT)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+    grep -E '^(CLICKHOUSE_DATABASE|POSTGRES_DATABASE|CLICKHOUSE_METRICS_PORT|DB_METRICS_PORT|DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|GRAPHIQL_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_ABCI_PORT|COMETBFT_METRICS_PORT|DANGO_DIRECTORY|COMETBFT_DIRECTORY)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
     awk -F= '{print tolower($1) "=" $2}'
   register: existing_port_pairs
   when: env_file_exists.stat.exists
