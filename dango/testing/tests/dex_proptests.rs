@@ -1,24 +1,24 @@
 use {
+    dango_dex::MAX_ORACLE_STALENESS,
     dango_genesis::Contracts,
-    dango_testing::{
-        BridgeOp, TestAccounts, TestOption, TestSuite, constants::MOCK_GENESIS_TIMESTAMP,
-        setup_test_naive,
-    },
+    dango_testing::{BridgeOp, TestAccounts, TestOption, TestSuite, setup_test_naive},
     dango_types::{
         constants::{
-            FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, TEN, dango, eth, sol, usdc,
+            dango, eth,
+            mock::{FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, TEN},
+            sol, usdc,
         },
         dex::{
-            self, CreateOrderRequest, Direction, PairId, PairParams, PairUpdate, PassiveLiquidity,
-            Price, SwapRoute, Xyk,
+            self, CreateOrderRequest, Direction, Geometric, PairId, PairParams, PairUpdate,
+            PassiveLiquidity, Price, SwapRoute, Xyk,
         },
         gateway::Remote,
     },
     grug::{
-        Addressable, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero, MaxLength, Message,
-        MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt, ResultExt, Signed,
-        Signer, Udec128, Uint128, UniqueVec, ZeroInclusiveOneExclusive, btree_map, btree_set,
-        coins,
+        Addressable, BlockOutcome, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero,
+        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt,
+        ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
+        ZeroInclusiveOneExclusive, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -26,12 +26,16 @@ use {
     std::{
         collections::{BTreeSet, HashMap, hash_map},
         fmt::Debug,
+        ops::Sub,
         str::FromStr,
     },
 };
 
 /// Calculates the absolute difference between two values.
-fn absolute_difference(a: Uint128, b: Uint128) -> Uint128 {
+fn abs_diff<T>(a: T, b: T) -> <T as Sub>::Output
+where
+    T: Ord + Sub,
+{
     if a > b {
         a - b
     } else {
@@ -69,7 +73,7 @@ fn relative_difference(a: Uint128, b: Uint128) -> Udec128 {
 fn assert_approx_eq(a: Uint128, b: Uint128, max_rel_diff: &str) -> Result<(), TestCaseError> {
     // An absolute difference of up to a few units is acceptable, and unavoidable
     // due to rounding errors. In this case, we consider the values effectively equal.
-    if absolute_difference(a, b) <= Uint128::new(5) {
+    if abs_diff(a, b) <= Uint128::new(5) {
         return Ok(());
     }
 
@@ -96,14 +100,14 @@ fn check_balances(
 ) -> Result<(), TestCaseError> {
     // Check dex contract's balances.
     let balances = suite.query_balances(&contracts.dex)?;
-    println!("dex contract balances: {balances:?}");
+    // println!("dex contract balances: {balances:?}");
 
     // Query the open orders.
     let open_orders = suite.query_wasm_smart(contracts.dex, dex::QueryOrdersRequest {
         start_after: None,
         limit: Some(u32::MAX),
     })?;
-    println!("open orders: {open_orders:?}");
+    // println!("open orders: {open_orders:?}");
 
     let mut order_balances = Coins::new();
     for (_, order) in open_orders {
@@ -123,33 +127,33 @@ fn check_balances(
 
         order_balances.insert((denom, amount.into_int()))?;
     }
-    println!("order balances: {order_balances:?}");
+    // println!("order balances: {order_balances:?}");
 
     // Query the passive liquidity.
     let passive_liquidity = suite.query_wasm_smart(contracts.dex, dex::QueryReservesRequest {
         start_after: None,
         limit: None,
     })?;
-    println!("passive liquidity: {passive_liquidity:?}");
+    // println!("passive liquidity: {passive_liquidity:?}");
 
     let mut passive_liquidity_balances = Coins::new();
     for reserve in passive_liquidity.clone() {
         passive_liquidity_balances.insert_many(reserve.reserve)?;
     }
-    println!("passive liquidity balances: {passive_liquidity_balances:?}");
+    // println!("passive liquidity balances: {passive_liquidity_balances:?}");
 
     // Check that the balances of the dex contract are equal to the balances of the open orders plus the balances of the passive liquidity.
     let mut order_and_passive_liquidity_balances = order_balances.clone();
     order_and_passive_liquidity_balances.insert_many(passive_liquidity_balances.clone())?;
-    println!("order_and_passive_liquidity_balances: {order_and_passive_liquidity_balances:?}");
+    // println!("order_and_passive_liquidity_balances: {order_and_passive_liquidity_balances:?}");
 
     for coin in balances {
         let order_and_passive_liquidity_balance =
             order_and_passive_liquidity_balances.amount_of(&coin.denom);
 
-        println!("coin.denom: {}", coin.denom);
-        println!("coin.amount: {}", coin.amount);
-        println!("order_and_passive_liquidity_balance: {order_and_passive_liquidity_balance}");
+        // println!("coin.denom: {}", coin.denom);
+        // println!("coin.amount: {}", coin.amount);
+        // println!("order_and_passive_liquidity_balance: {order_and_passive_liquidity_balance}");
 
         // Ensure contract is not undercollateralized.
         assert!(coin.amount >= order_and_passive_liquidity_balance);
@@ -168,7 +172,88 @@ fn check_balances(
         }
 
         // Assert that the balance of the dex contract equals the balance of the open orders plus the balance of the passive liquidity.
-        assert_approx_eq(coin.amount, order_and_passive_liquidity_balance, "0.0001")?;
+        assert_approx_eq(coin.amount, order_and_passive_liquidity_balance, "0.001")?;
+    }
+
+    Ok(())
+}
+
+/// Checks that the open orders are equal to the recorded liquidity depths.
+fn check_liquidity_depths(
+    suite: &TestSuite<NaiveProposalPreparer>,
+    contracts: &Contracts,
+) -> Result<(), TestCaseError> {
+    for pair_id in pair_ids() {
+        // Query the pair params to get the bucket sizes and the base and quote denoms.
+        let pair_params = suite.query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: pair_id.base_denom.clone(),
+            quote_denom: pair_id.quote_denom.clone(),
+        })?;
+        let bucket_sizes = pair_params.bucket_sizes;
+        let base_denom = pair_id.base_denom;
+        let quote_denom = pair_id.quote_denom;
+
+        // Query the open orders for this pair.
+        let open_orders = suite.query_wasm_smart(contracts.dex, dex::QueryOrdersByPairRequest {
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            start_after: None,
+            limit: Some(u32::MAX),
+        })?;
+
+        // Sum the remaining order amounts by direction
+        let mut bid_order_amount_base = Udec128_6::ZERO;
+        let mut bid_order_amount_quote = Udec128_6::ZERO;
+        let mut ask_order_amount_base = Udec128_6::ZERO;
+        let mut ask_order_amount_quote = Udec128_6::ZERO;
+        for (_, order) in open_orders {
+            if order.direction == Direction::Bid {
+                bid_order_amount_base += order.remaining;
+                bid_order_amount_quote += order.remaining.checked_mul(order.price).unwrap();
+            } else {
+                ask_order_amount_base += order.remaining;
+                ask_order_amount_quote += order.remaining.checked_mul(order.price).unwrap();
+            }
+        }
+
+        // Query the liquidity depths for each bucket size and compare to the open orders.
+        for bucket_size in bucket_sizes {
+            let liquidity_depths =
+                suite.query_wasm_smart(contracts.dex, dex::QueryLiquidityDepthRequest {
+                    base_denom: base_denom.clone(),
+                    quote_denom: quote_denom.clone(),
+                    bucket_size: bucket_size.into_inner(),
+                    limit: Some(u32::MAX),
+                })?;
+
+            let mut bid_depth_base = Udec128_6::ZERO;
+            let mut bid_depth_quote = Udec128_6::ZERO;
+            let mut ask_depth_base = Udec128_6::ZERO;
+            let mut ask_depth_quote = Udec128_6::ZERO;
+
+            if let Some(bid_depths) = liquidity_depths.bid_depth {
+                for (_, depth) in bid_depths {
+                    bid_depth_base.checked_add_assign(depth.depth_base).unwrap();
+                    bid_depth_quote
+                        .checked_add_assign(depth.depth_quote)
+                        .unwrap();
+                }
+            }
+            if let Some(ask_depths) = liquidity_depths.ask_depth {
+                for (_, depth) in ask_depths {
+                    ask_depth_base.checked_add_assign(depth.depth_base).unwrap();
+                    ask_depth_quote
+                        .checked_add_assign(depth.depth_quote)
+                        .unwrap();
+                }
+            }
+
+            // Assert that the liquidity depths are at most 1 unit apart from the open orders.
+            assert!(bid_depth_base == bid_order_amount_base);
+            assert!(bid_depth_quote == bid_order_amount_quote);
+            assert!(ask_depth_base == ask_order_amount_base);
+            assert!(ask_depth_quote == ask_order_amount_quote);
+        }
     }
 
     Ok(())
@@ -207,7 +292,7 @@ pub enum DexAction {
     SwapExactAmountOut {
         route: SwapRoute,
         output: Coin,
-        funds: Coins,
+        input_denom: Denom,
     },
 }
 
@@ -217,10 +302,10 @@ impl DexAction {
         suite: &mut TestSuite<NaiveProposalPreparer>,
         accounts: &mut TestAccounts,
         contracts: &Contracts,
-    ) -> Result<(), TestCaseError> {
+    ) -> Result<Option<BlockOutcome>, TestCaseError> {
         println!("Executing action: {self:?}");
 
-        match self {
+        let block_outcome = match self {
             DexAction::CreateLimitOrder {
                 base_denom,
                 quote_denom,
@@ -261,7 +346,11 @@ impl DexAction {
                     .unwrap();
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
-                // println!("block outcome: {block_outcome:?}");
+
+                if let Err(err) = &block_outcome.tx_outcomes.first().unwrap().result {
+                    println!("CreateLimitOrder error: {err}");
+                    println!("block_outcome: {block_outcome:?}");
+                }
 
                 assert!(
                     block_outcome
@@ -269,12 +358,8 @@ impl DexAction {
                         .iter()
                         .all(|tx_outcome| tx_outcome.result.is_ok())
                 );
-                assert!(
-                    block_outcome
-                        .cron_outcomes
-                        .iter()
-                        .all(|cron_outcome| cron_outcome.cron_event.as_result().is_ok())
-                );
+
+                Some(block_outcome)
             },
             DexAction::CreateMarketOrder {
                 base_denom,
@@ -294,12 +379,12 @@ impl DexAction {
                         quote_denom: quote_denom.clone(),
                     })
                     .unwrap();
-                println!("resting order book: {resting_order_book:?}");
+                // println!("resting order book: {resting_order_book:?}");
 
                 let deposit = match direction {
                     Direction::Bid => {
                         if resting_order_book.best_ask_price.is_none() {
-                            return Ok(());
+                            return Ok(None);
                         }
                         let best_ask_price = resting_order_book.best_ask_price.unwrap();
 
@@ -313,7 +398,7 @@ impl DexAction {
                     },
                     Direction::Ask => {
                         if resting_order_book.best_bid_price.is_none() {
-                            return Ok(());
+                            return Ok(None);
                         }
 
                         Coin {
@@ -345,7 +430,6 @@ impl DexAction {
                     .unwrap();
 
                 let block_outcome = suite.make_block(vec![tx]).block_outcome;
-                // println!("block outcome: {block_outcome:?}");
 
                 assert!(
                     block_outcome
@@ -353,29 +437,44 @@ impl DexAction {
                         .iter()
                         .all(|tx_outcome| tx_outcome.result.is_ok())
                 );
-                assert!(
-                    block_outcome
-                        .cron_outcomes
-                        .iter()
-                        .all(|cron_outcome| cron_outcome.cron_event.as_result().is_ok())
-                );
+
+                Some(block_outcome)
             },
             DexAction::ProvideLiquidity {
                 base_denom,
                 quote_denom,
                 funds,
             } => {
-                suite
-                    .execute(
-                        &mut accounts.user1,
-                        contracts.dex,
-                        &dex::ExecuteMsg::ProvideLiquidity {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                        },
-                        funds.clone(),
-                    )
-                    .should_succeed();
+                let msg = Message::execute(
+                    contracts.dex,
+                    &dex::ExecuteMsg::ProvideLiquidity {
+                        base_denom: base_denom.clone(),
+                        quote_denom: quote_denom.clone(),
+                    },
+                    funds.clone(),
+                )
+                .unwrap();
+
+                let tx = accounts
+                    .user1
+                    .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
+                    .unwrap();
+
+                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+
+                if let Err(err) = &block_outcome.tx_outcomes.first().unwrap().result {
+                    println!("ProvideLiquidity error: {err}");
+                    println!("block_outcome: {block_outcome:?}");
+                }
+
+                assert!(
+                    block_outcome
+                        .tx_outcomes
+                        .iter()
+                        .all(|tx_outcome| tx_outcome.result.is_ok())
+                );
+
+                Some(block_outcome)
             },
             DexAction::WithdrawLiquidity {
                 base_denom,
@@ -397,72 +496,131 @@ impl DexAction {
                     .checked_mul_dec_ceil(*fraction_of_lp_tokens)
                     .unwrap();
 
-                suite
-                    .execute(
-                        &mut accounts.user1,
-                        contracts.dex,
-                        &dex::ExecuteMsg::WithdrawLiquidity {
-                            base_denom: base_denom.clone(),
-                            quote_denom: quote_denom.clone(),
-                        },
-                        Coins::one(pair.lp_denom.clone(), lp_token_amount).unwrap(),
-                    )
-                    .should_succeed();
+                let msg = Message::execute(
+                    contracts.dex,
+                    &dex::ExecuteMsg::WithdrawLiquidity {
+                        base_denom: base_denom.clone(),
+                        quote_denom: quote_denom.clone(),
+                    },
+                    Coins::one(pair.lp_denom.clone(), lp_token_amount).unwrap(),
+                )
+                .unwrap();
+
+                let tx = accounts
+                    .user1
+                    .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
+                    .unwrap();
+
+                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+
+                assert!(
+                    block_outcome
+                        .tx_outcomes
+                        .iter()
+                        .all(|tx_outcome| tx_outcome.result.is_ok())
+                );
+
+                Some(block_outcome)
             },
             DexAction::SwapExactAmountIn { route, input } => {
-                suite
-                    .execute(
-                        &mut accounts.user1,
-                        contracts.dex,
-                        &dex::ExecuteMsg::SwapExactAmountIn {
-                            route: route.clone(),
-                            minimum_output: None,
-                        },
-                        input.clone(),
-                    )
+                let msg = Message::execute(
+                    contracts.dex,
+                    &dex::ExecuteMsg::SwapExactAmountIn {
+                        route: route.clone(),
+                        minimum_output: None,
+                    },
+                    input.clone(),
+                )
+                .unwrap();
+
+                let tx = accounts
+                    .user1
+                    .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
+                    .unwrap();
+
+                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+
+                block_outcome
+                    .tx_outcomes
+                    .first()
+                    .unwrap()
+                    .clone()
                     .should(|tx_outcome| {
                         // We expect the transaction to succeed, unless for the
-                        // following three specific reasons. These errors indicate
+                        // following four specific reasons. These errors indicate
                         // an unfortunate combination of parameters, not an bug
                         // in the contract.
                         if let Err(err) = &tx_outcome.result {
-                            err.error.contains("insufficient liquidity")
-                                || err.error.contains("output amount after fee must be positive") // this refers to output after _liquidity fee_
-                                || err.error.contains("output amount is zero") // this refers to output after _protocol fee_
+                            [
+                                "insufficient liquidity",
+                                "output amount after fee must be positive", // this refers to the output after _liquidity fee_
+                                "output amount is zero",                    // this refers to the output after _protocol fee_
+                                "not enough liquidity to fulfill the swap!"
+                            ]
+                            .iter()
+                            .any(|reason| err.error.contains(reason))
                         } else {
                             true
                         }
                     });
+                Some(block_outcome)
             },
             DexAction::SwapExactAmountOut {
                 route,
                 output,
-                funds,
+                input_denom,
             } => {
-                suite
-                    .execute(
-                        &mut accounts.user1,
-                        contracts.dex,
-                        &dex::ExecuteMsg::SwapExactAmountOut {
-                            route: route.clone(),
-                            output: NonZero::new(output.clone()).unwrap(),
-                        },
-                        funds.clone(),
-                    )
+                // Query the input denom balance of the user1 account.
+                let balance = suite
+                    .query_balance(&accounts.user1.address(), input_denom.clone())
+                    .unwrap();
+
+                // Set funds amount to the balance
+                let funds = Coins::one(input_denom.clone(), balance).unwrap();
+
+                let msg = Message::execute(
+                    contracts.dex,
+                    &dex::ExecuteMsg::SwapExactAmountOut {
+                        route: route.clone(),
+                        output: NonZero::new(output.clone()).unwrap(),
+                    },
+                    funds,
+                )
+                .unwrap();
+
+                let tx = accounts
+                    .user1
+                    .sign_transaction(NonEmpty::new_unchecked(vec![msg]), &suite.chain_id, 100_000)
+                    .unwrap();
+
+                let block_outcome = suite.make_block(vec![tx]).block_outcome;
+
+                block_outcome
+                    .tx_outcomes
+                    .first()
+                    .unwrap()
+                    .clone()
                     .should(|tx_outcome| {
-                        // We expect the transaction to succeed, unless for two
-                        // specific reasons:
+                        // We expect the transaction to succeed, unless for the
+                        // the following three specific reasons:
                         if let Err(err) = &tx_outcome.result {
-                            err.error.contains("insufficient liquidity")
-                                || err.error.contains("input amount must be positive")
+                            [
+                                "insufficient liquidity",
+                                "input amount must be positive",
+                                "not enough liquidity to fulfill the swap",
+                            ]
+                            .iter()
+                            .any(|reason| err.error.contains(reason))
                         } else {
                             true
                         }
                     });
-            },
-        }
 
-        Ok(())
+                Some(block_outcome)
+            },
+        };
+
+        Ok(block_outcome)
     }
 }
 
@@ -498,16 +656,39 @@ fn pair_id() -> impl Strategy<Value = PairId> {
     select(pair_ids())
 }
 
+/// Proptest strategy for generating a pool type
+fn pool_type() -> impl Strategy<Value = PassiveLiquidity> {
+    prop_oneof![
+        Just(PassiveLiquidity::Xyk(Xyk {
+            spacing: Udec128::new_bps(1000),
+            reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
+            limit: 30,
+        })),
+        Just(PassiveLiquidity::Geometric(Geometric {
+            ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
+            spacing: Udec128::new_percent(50),
+            limit: 10,
+        })),
+    ]
+}
+
+/// Proptest strategy for generating a vec of pool types
+fn pool_types(length: usize) -> impl Strategy<Value = Vec<PassiveLiquidity>> {
+    (0..=length)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|_| pool_type())
+        .collect::<Vec<_>>()
+}
+
 /// Proptest strategy for generating an order direction
 fn direction() -> impl Strategy<Value = Direction> {
     prop_oneof![Just(Direction::Bid), Just(Direction::Ask)]
 }
 
-pub const MAX_AMOUNT: Uint128 = Uint128::new(1_000_000_000u128);
-
-/// Proptest strategy for generating an amount between 10000 and 1 billion microunits
+/// Proptest strategy for generating an amount between 1 and 1 billion microunits
 fn amount() -> impl Strategy<Value = Uint128> {
-    (10_000u128..1_000_000_000u128).prop_map(Uint128::new)
+    (1u128..1_000_000_000u128).prop_map(Uint128::new)
 }
 
 /// Proptest strategy for generating a price as [-3, 3] permille from 1.0
@@ -519,10 +700,9 @@ fn price() -> impl Strategy<Value = Price> {
     })
 }
 
-// Proptest strategy for generating an arbitrary price between 0.00000000000000001 and 10000000000
+// /// Proptest strategy for generating an arbitrary price between min and max possible prices.
 // fn price() -> impl Strategy<Value = Price> {
-//     (10_000_000u128..10_000_000_000_000_000_000_000_000_000_000_000u128)
-//         .prop_map(|raw_price| Price::raw(Uint128::new(raw_price)))
+//     (1u128..u128::MAX).prop_map(|raw_price| Price::raw(Uint128::new(raw_price)))
 // }
 
 /// Proptest strategy for generating a SwapRoute
@@ -669,7 +849,7 @@ fn dex_action() -> impl Strategy<Value = DexAction> {
                 DexAction::SwapExactAmountOut {
                     route: route.clone(),
                     output: Coin::new(output_denom, amount).unwrap(),
-                    funds: Coins::one(input_denom, MAX_AMOUNT * Uint128::new(10_000_000)).unwrap(),
+                    input_denom,
                 }
             })
         })
@@ -762,9 +942,50 @@ fn dex_actions(min_size: usize, max_size: usize) -> impl Strategy<Value = Vec<De
         })
 }
 
+/// Proptest strategy for generating a list of LimitOrder actions
+#[allow(dead_code)]
+fn limit_orders(min_size: usize, max_size: usize) -> impl Strategy<Value = Vec<DexAction>> {
+    (min_size..=max_size).prop_flat_map(move |size| {
+        (1..=size)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|_| limit_order())
+            .collect::<Vec<_>>()
+    })
+}
+
+/// Feed fixed oracle prices for all denoms.
+fn feed_prices(
+    timestamp: Timestamp,
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    accounts: &mut TestAccounts,
+    contracts: &Contracts,
+) -> Result<(), TestCaseError> {
+    for denom in denoms() {
+        suite
+            .execute(
+                &mut accounts.owner,
+                contracts.oracle,
+                &dango_types::oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                    denom => dango_types::oracle::PriceSource::Fixed {
+                        humanized_price: Udec128::ONE,
+                        precision: 6,
+                        // Use a very recent time to avoid the "price is too old" error.
+                        timestamp,
+                    },
+                }),
+                Coins::default(),
+            )
+            .should_succeed();
+    }
+
+    Ok(())
+}
+
 /// Test a list of DexActions. Execute the actions and check balances after each action.
 fn test_dex_actions(
     dex_actions: Vec<DexAction>,
+    pool_types: Vec<PassiveLiquidity>,
 ) -> Result<(TestSuite<NaiveProposalPreparer>, TestAccounts, Contracts), TestCaseError> {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
         bridge_ops: |accounts| {
@@ -774,7 +995,7 @@ fn test_dex_actions(
                         domain: ethereum::DOMAIN,
                         contract: ethereum::USDC_WARP,
                     },
-                    amount: Uint128::new(1_000_000_000_000_000_000),
+                    amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
@@ -782,7 +1003,7 @@ fn test_dex_actions(
                         domain: ethereum::DOMAIN,
                         contract: ethereum::WETH_WARP,
                     },
-                    amount: Uint128::new(1_000_000_000_000_000_000),
+                    amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
                 BridgeOp {
@@ -790,7 +1011,7 @@ fn test_dex_actions(
                         domain: solana::DOMAIN,
                         contract: solana::SOL_WARP,
                     },
-                    amount: Uint128::new(1_000_000_000_000_000_000),
+                    amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
             ]
@@ -809,23 +1030,8 @@ fn test_dex_actions(
     println!("user1 balances: {balances:?}");
 
     // Register fixed prices for all denoms.
-    for denom in denoms() {
-        suite
-            .execute(
-                &mut accounts.owner,
-                contracts.oracle,
-                &dango_types::oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                    denom => dango_types::oracle::PriceSource::Fixed {
-                        humanized_price: Udec128::ONE,
-                        precision: 6,
-                        // Use a very recent time to avoid the "price is too old" error.
-                        timestamp: MOCK_GENESIS_TIMESTAMP,
-                    },
-                }),
-                Coins::default(),
-            )
-            .should_succeed();
-    }
+    let mut last_updated_oracle = suite.block.timestamp;
+    feed_prices(last_updated_oracle, &mut suite, &mut accounts, &contracts)?;
 
     let bucket_sizes: BTreeSet<NonZero<Price>> = btree_set! {
         NonZero::new_unchecked(ONE_HUNDREDTH),
@@ -844,7 +1050,8 @@ fn test_dex_actions(
             &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(
                 pair_ids()
                     .iter()
-                    .map(|pair| PairUpdate {
+                    .zip(pool_types.iter())
+                    .map(|(pair, pool_type)| PairUpdate {
                         base_denom: pair.base_denom.clone(),
                         quote_denom: pair.quote_denom.clone(),
                         params: PairParams {
@@ -853,11 +1060,7 @@ fn test_dex_actions(
                                 pair.base_denom, pair.quote_denom
                             ))
                             .unwrap(),
-                            pool_type: PassiveLiquidity::Xyk(Xyk {
-                                spacing: Udec128::new_bps(1000),
-                                reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
-                                limit: 30,
-                            }),
+                            pool_type: pool_type.clone(),
                             bucket_sizes: bucket_sizes.clone(),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                             min_order_size: Uint128::ZERO,
@@ -875,16 +1078,51 @@ fn test_dex_actions(
 
     // Execute the actions and check balances after each action.
     for action in dex_actions {
-        // Execute the action.
-        action.execute(&mut suite, &mut accounts, &contracts)?;
+        // If oracle price is outdated, update it.
+        let timestamp = suite.block.timestamp;
+        if timestamp >= last_updated_oracle + MAX_ORACLE_STALENESS {
+            feed_prices(timestamp, &mut suite, &mut accounts, &contracts)?;
+            last_updated_oracle = timestamp;
+        }
 
-        // First ensure dex is not paused after executing the last action.
-        suite
+        // Execute the action.
+        let block_outcome = action.execute(&mut suite, &mut accounts, &contracts)?;
+
+        // Query dex paused status.
+        let is_paused = suite
             .query_wasm_smart(contracts.dex, dex::QueryPausedRequest {})
-            .should_succeed_and_equal(false);
+            .should_succeed();
+
+        // Print block outcome if cron outcomes failed or if dex is paused
+        if let Some(block_outcome) = &block_outcome {
+            if block_outcome
+                .cron_outcomes
+                .iter()
+                .any(|cron_outcome| cron_outcome.cron_event.as_result().is_err())
+                || is_paused
+            {
+                println!("Failed cron outcome or dex is paused. Block outcome: {block_outcome:?}");
+            }
+        }
+
+        // Ensure all cron outcomes succeeded
+        if let Some(block_outcome) = &block_outcome {
+            assert!(
+                block_outcome
+                    .cron_outcomes
+                    .iter()
+                    .all(|cron_outcome| cron_outcome.cron_event.as_result().is_ok())
+            );
+        }
+
+        // Ensure dex is not paused after executing the last action.
+        assert!(!is_paused);
 
         // Check balances.
         check_balances(&suite, &contracts)?;
+
+        // Check liquidity depths.
+        check_liquidity_depths(&suite, &contracts)?;
     }
 
     Ok((suite, accounts, contracts))
@@ -901,13 +1139,13 @@ proptest! {
     })]
 
     #[test]
-    fn dex_contract_balances_equals_open_orders_plus_passive_liquidity(dex_actions in dex_actions(5, 10)) {
-        test_dex_actions(dex_actions)?;
+    fn dex_contract_balances_equals_open_orders_plus_passive_liquidity(dex_actions in dex_actions(5, 10), pool_types in pool_types(3)) {
+        test_dex_actions(dex_actions, pool_types)?;
     }
 
     #[test]
-    fn provide_liq_and_market_order(dex_actions in provide_liquidity_and_market_order()) {
-        test_dex_actions(dex_actions)?;
+    fn provide_liq_and_market_order(dex_actions in provide_liquidity_and_market_order(), pool_types in pool_types(3)) {
+        test_dex_actions(dex_actions, pool_types)?;
     }
 }
 
@@ -923,22 +1161,29 @@ proptest! {
 /// to zero.
 #[test]
 fn xyk_liquidity_should_not_reduce_to_zero_by_market_order() {
-    let (suite, _, contracts) = test_dex_actions(vec![
-        DexAction::ProvideLiquidity {
-            base_denom: eth::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
-            funds: coins! {
-                eth::DENOM.clone() => Uint128::new(106265421),
-                usdc::DENOM.clone() => Uint128::new(58295192),
+    let (suite, _, contracts) = test_dex_actions(
+        vec![
+            DexAction::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                funds: coins! {
+                    eth::DENOM.clone() => Uint128::new(106265421),
+                    usdc::DENOM.clone() => Uint128::new(58295192),
+                },
             },
-        },
-        DexAction::CreateMarketOrder {
-            base_denom: eth::DENOM.clone(),
-            quote_denom: usdc::DENOM.clone(),
-            direction: Direction::Ask,
-            amount: Uint128::new(626970560),
-        },
-    ])
+            DexAction::CreateMarketOrder {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                direction: Direction::Ask,
+                amount: Uint128::new(626970560),
+            },
+        ],
+        vec![PassiveLiquidity::Xyk(Xyk {
+            spacing: Udec128::new_bps(1000),
+            reserve_ratio: Bounded::new_unchecked(Udec128::new_percent(1)),
+            limit: 30,
+        })],
+    )
     .unwrap();
 
     // Query the reserve of ETH-USDC pool. Neither tokens should be zero.

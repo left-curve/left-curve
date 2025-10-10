@@ -1,5 +1,6 @@
 pub mod geometric;
 mod liquidity_pool;
+pub mod mean;
 mod order_filling;
 mod order_matching;
 mod router;

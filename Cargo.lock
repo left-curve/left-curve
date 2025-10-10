@@ -3682,6 +3682,7 @@ dependencies = [
  "anyhow",
  "async-graphql",
  "async-trait",
+ "bnum",
  "grug",
  "hyperlane-types",
  "paste",

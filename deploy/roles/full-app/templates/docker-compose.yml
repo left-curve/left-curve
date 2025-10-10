@@ -202,8 +202,8 @@ services:
       # Mandatory else fails with `file not found: /root/.dango-dex/config.json`
       app_settings__sleep__min: 1s
       app_settings__sleep__max: 2s
-      app_settings__size_percent__min: 0.5
-      app_settings__size_percent__max: 3.0
+      app_settings__size_percent__min: 0.0005
+      app_settings__size_percent__max: 0.003
       app_settings__price_percent__min: 0.05
       app_settings__price_percent__max: 0.2
       app_settings__order_number__min: 1
@@ -249,6 +249,16 @@ services:
       printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
       exec cometbft start
       "
+  graphiql:
+    image: ghcr.io/left-curve/graphiql:${GRAPHIQL_TAG:-latest}
+{% if expose_ports %}
+    ports:
+      - "${GRAPHIQL_PORT:-0}:80"
+{% endif %}
+    environment:
+      - GRAPHQL_ENDPOINT=${INDEXER_URL}
+    networks:
+      - traefik
 
 networks:
   traefik:

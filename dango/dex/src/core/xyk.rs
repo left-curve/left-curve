@@ -1,9 +1,10 @@
 use {
+    crate::core::mean::safe_geometric_mean,
     anyhow::ensure,
     dango_types::dex::{Price, Xyk},
     grug::{
-        Bounded, CoinPair, Exponentiate, IsZero, MathResult, MultiplyFraction, MultiplyRatio,
-        Number, NumberConst, Udec128, Uint128, ZeroExclusiveOneExclusive,
+        Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, MultiplyRatio, NextNumber, Number,
+        NumberConst, PrevNumber, Udec128, Uint128, ZeroExclusiveOneExclusive,
     },
     std::{cmp, iter},
 };
@@ -84,12 +85,17 @@ pub fn swap_exact_amount_out(
     // Solve A * B = (A + input_amount) * (B - output_amount) for input_amount
     // => input_amount = (A * B) / (B - output_amount) - A
     // Round so that user takes the loss.
-    Ok(Uint128::ONE
-        .checked_multiply_ratio_floor(
-            input_reserve.checked_mul(output_reserve)?,
-            output_reserve.checked_sub(output_amount_before_fee)?,
+    // Note: A * B may overflow, so we need to escalate this to 256-bit math.
+    Ok(input_reserve
+        .into_next()
+        .checked_mul(output_reserve.into_next())?
+        .checked_div(
+            output_reserve
+                .checked_sub(output_amount_before_fee)?
+                .into_next(),
         )?
-        .checked_sub(input_reserve)?)
+        .checked_sub(input_reserve.into_next())?
+        .checked_into_prev()?)
 }
 
 pub fn reflect_curve(
@@ -211,7 +217,8 @@ pub fn normalized_invariant(reserve: &CoinPair) -> MathResult<Uint128> {
     let a = *reserve.first().amount;
     let b = *reserve.second().amount;
 
-    a.checked_mul(b)?.checked_sqrt()
+    // Use the "safe" function which handles that case that a * b overflows.
+    safe_geometric_mean(a, b)
 }
 
 // ----------------------------------- tests -----------------------------------

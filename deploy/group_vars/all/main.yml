@@ -1,9 +1,11 @@
+traefik_dir: "{{ ansible_env.HOME }}/traefik"
 ssh_users:
   - penso
   - rhaki
   - larry
   - zexsor
 deploy_user: deploy
+dango_domain: "dango.zone"
 dango:
   dex_bot:
     # NOTE: those are public from the genesis file
@@ -15,7 +17,7 @@ dango:
     minter_username: "user9"
     minter_address: "0x6f95c4f169f38f598dd571084daa5c799c5743de"
     minter_private_key: "c0d853951557d3bdec5add2ca8e03983fea2f50c6db0a45977990fb7b0c569b3"
-    mint_amount: 1000000
+    mint_amount: 1000000000
     liquidity_amount: 1000000000
 ports:
   dango_port: 8080
@@ -29,6 +31,7 @@ ports:
   clickhouse_metrics_port: 9126
   db_metrics_port: 9187
   dango_metrics_port: 9191
+  graphiql_port: 4000
 traefik:
   devnet:
     ports:

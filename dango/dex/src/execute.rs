@@ -138,6 +138,7 @@ fn batch_update_orders(
             for order_id in order_ids {
                 order_cancellation::cancel_order_from_user(
                     ctx.storage,
+                    ctx.contract,
                     ctx.sender,
                     order_id,
                     &mut events,
@@ -149,6 +150,7 @@ fn batch_update_orders(
         Some(CancelOrderRequest::All) => {
             order_cancellation::cancel_all_orders_from_user(
                 ctx.storage,
+                ctx.contract,
                 ctx.sender,
                 &mut events,
                 &mut refunds,
@@ -189,6 +191,12 @@ fn provide_liquidity(
     base_denom: Denom,
     quote_denom: Denom,
 ) -> anyhow::Result<Response> {
+    // Providing liquidity is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't provide liquidity when trading is paused"
+    );
+
     // Get the deposited funds.
     let deposit = ctx
         .funds
@@ -224,6 +232,19 @@ fn provide_liquidity(
     // Compute the amount of LP tokens to mint.
     let (reserve, lp_mint_amount) =
         pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
+
+    // Ensure LP mint amount must be non-zero.
+    // Otherwise, we're vulnerable to a griefing attack, for example:
+    // - A new xyk pool is created.
+    // - Attacker adds liquidity to this pool with only one of the two assets.
+    // - Zero LP is minted to the attacker.
+    // - This leads to all subsequent additions of liquidity also have zero LP
+    //   token minted, even with non-zero assets provided.
+    // This was discovered in the Sherlock audit contest (issue #6).
+    ensure!(
+        lp_mint_amount.is_non_zero(),
+        "lp mint amount must be non-zero"
+    );
 
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
@@ -268,6 +289,12 @@ fn withdraw_liquidity(
     base_denom: Denom,
     quote_denom: Denom,
 ) -> anyhow::Result<Response> {
+    // Withdrawing liquidity is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't withdraw liquidity when trading is paused"
+    );
+
     // Load the pair params.
     let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
 
@@ -314,6 +341,12 @@ fn swap_exact_amount_in(
     route: UniqueVec<PairId>,
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
+    // Swapping is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't swap when trading is paused"
+    );
+
     let input = ctx.funds.into_one_coin()?;
     let app_cfg = ctx.querier.query_dango_config()?;
 
@@ -376,6 +409,12 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
+    // Swapping is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't swap when trading is paused"
+    );
+
     let app_cfg = ctx.querier.query_dango_config()?;
 
     // Create the oracle querier with max staleness.
@@ -427,7 +466,7 @@ fn swap_exact_amount_out(
 }
 
 fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage)?;
+    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage, ctx.contract)?;
 
     Ok(Response::new()
         .add_events(events)?

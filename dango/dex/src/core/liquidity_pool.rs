@@ -213,20 +213,12 @@ impl PassiveLiquidityPool for PairParams {
         // Our oracle approach is more generalizable to different pool types.
         let fee_rate = {
             let price = oracle_querier.query_price(reserve.first().denom, None)?;
-            let a = price
-                .value_of_unit_amount::<24>(*deposit.first().amount)?
-                .into_next();
-            let reserve_a = price
-                .value_of_unit_amount::<24>(*reserve.first().amount)?
-                .into_next();
+            let a = price.value_of_unit_amount_256::<24>(*deposit.first().amount)?;
+            let reserve_a = price.value_of_unit_amount_256::<24>(*reserve.first().amount)?;
 
             let price = oracle_querier.query_price(reserve.second().denom, None)?;
-            let b = price
-                .value_of_unit_amount::<24>(*deposit.second().amount)?
-                .into_next();
-            let reserve_b = price
-                .value_of_unit_amount::<24>(*reserve.second().amount)?
-                .into_next();
+            let b = price.value_of_unit_amount_256::<24>(*deposit.second().amount)?;
+            let reserve_b = price.value_of_unit_amount_256::<24>(*reserve.second().amount)?;
 
             let deposit_value = a.checked_add(b)?;
             let reserve_value = reserve_a.checked_add(reserve_b)?;
@@ -599,9 +591,9 @@ mod tests {
             (Udec128::new_percent(95), Uint128::from(59684)),
             (Udec128::new_percent(94), Uint128::from(18095)),
             (Udec128::new_percent(93), Uint128::from(5487)),
-            (Udec128::new_percent(92), Uint128::from(1663)),
+            (Udec128::new_percent(92), Uint128::from(1665)),
             (Udec128::new_percent(91), Uint128::from(504)),
-            (Udec128::new_percent(90), Uint128::from(152)),
+            (Udec128::new_percent(90), Uint128::from(154)),
         ],
         vec![
             (Udec128::new_percent(101), Uint128::from(7000000)),
@@ -613,7 +605,7 @@ mod tests {
             (Udec128::new_percent(107), Uint128::from(5103)),
             (Udec128::new_percent(108), Uint128::from(1530)),
             (Udec128::new_percent(109), Uint128::from(459)),
-            (Udec128::new_percent(110), Uint128::from(137)),
+            (Udec128::new_percent(110), Uint128::from(138)),
         ],
         1;
         "geometric pool balance 1:1 30% ratio"
@@ -659,9 +651,9 @@ mod tests {
             )
             .unwrap();
 
-        // Assert that at least 10 orders are returned.
-        let bids = bids.take(expected_bids.len()).collect::<Vec<_>>();
-        let asks = asks.take(expected_asks.len()).collect::<Vec<_>>();
+        // Assert that the correct number of orders are returned.
+        let bids = bids.collect::<Vec<_>>();
+        let asks = asks.collect::<Vec<_>>();
         assert_eq!(bids.len(), expected_bids.len());
         assert_eq!(asks.len(), expected_asks.len());
 
@@ -679,6 +671,68 @@ mod tests {
             assert_eq!(price, expected_price.convert_precision().unwrap());
             assert!(amount.inner().abs_diff(expected_amount.into_inner()) <= order_size_tolerance);
         }
+    }
+
+    #[test]
+    fn geometric_pool_reflect_curve_all_liquidity_is_used_with_high_limit() {
+        let pool_type = PassiveLiquidity::Geometric(Geometric {
+            ratio: Bounded::new(Udec128::new_percent(70)).unwrap(),
+            spacing: Udec128::new_percent(1),
+            limit: 100,
+        });
+        let swap_fee_rate = Udec128::new_percent(1);
+        let pair = PairParams {
+            pool_type,
+            bucket_sizes: BTreeSet::new(),
+            swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
+            lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
+            min_order_size: Uint128::ZERO,
+        };
+
+        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
+        // TODO: take prices as test parameters
+        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
+            eth::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Timestamp::from_seconds(1730802926),
+                6,
+            ),
+            usdc::DENOM.clone() => PrecisionedPrice::new(
+                Udec128::new_percent(100),
+                Timestamp::from_seconds(1730802926),
+                6,
+            ),
+        });
+
+        let pool_liquidity = coins! {
+            eth::DENOM.clone() => 10000000,
+            usdc::DENOM.clone() => 10000000,
+        };
+        let reserve = pool_liquidity.try_into().unwrap();
+        let (bids, asks) = pair
+            .reflect_curve(
+                &mut oracle_querier,
+                eth::DENOM.clone(),
+                usdc::DENOM.clone(),
+                &reserve,
+            )
+            .unwrap();
+
+        let bids = bids.collect::<Vec<_>>();
+        let asks = asks.collect::<Vec<_>>();
+
+        let bid_sum_quote = bids
+            .iter()
+            .map(|(price, amount)| amount.checked_mul_dec_floor(*price).unwrap())
+            .sum::<Uint128>();
+        let ask_sum_base = asks.iter().map(|(_, amount)| *amount).sum::<Uint128>();
+
+        assert!(
+            reserve.amount_of(&usdc::DENOM).unwrap().into_inner() - bid_sum_quote.into_inner() <= 1
+        );
+        assert!(
+            reserve.amount_of(&eth::DENOM).unwrap().into_inner() - ask_sum_base.into_inner() <= 1
+        );
     }
 
     #[test]
