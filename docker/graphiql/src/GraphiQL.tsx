@@ -3,19 +3,14 @@ import {createGraphiQLFetcher} from "@graphiql/toolkit";
 import {GraphiQL as Base} from "graphiql";
 
 export function GraphiQL({url}: { url: string }) {
-    const explorer = explorerPlugin();
-
-    // derive wss/ws from http/https
-    const subscriptionUrl = url.replace(/^http/i, "ws");
+    const subscriptionUrl = url.replace(/^https?:/, "ws:");
 
     const fetcher = createGraphiQLFetcher({
       url,
-      subscriptionUrl,
+      subscriptionUrl
     });
 
-    return (
-        <Base fetcher={fetcher} plugins={[explorer]}/>
-    );
+    return <Base fetcher={fetcher} plugins={[explorerPlugin()]} />;
 }
 
 export default GraphiQL;
