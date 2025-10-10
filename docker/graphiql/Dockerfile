@@ -23,6 +23,7 @@ ENV GRAPHQL_ENDPOINT=http://localhost:4000/graphql
 
 # Copy built assets to nginx docroot
 COPY --link --from=builder /build/dist /usr/share/nginx/html
+COPY --link nginx.conf /etc/nginx/conf.d/default.conf
 
 # Add entrypoint to generate runtime config from env
 COPY --link docker-entrypoint.sh /docker-entrypoint.sh
