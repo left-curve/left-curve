@@ -2,6 +2,7 @@ x-common-labels: &common-labels
   environment: "${DEPLOY_ENV}"
   deployment: "${DEPLOYMENT_NAME}"
   dango_network: "${DANGO_NETWORK}"
+  chain_id: "${CHAIN_ID}"
 
 services:
 {% if deploy_includes_postgres %}
