@@ -347,7 +347,7 @@ pub enum QueryMsg {
 /// Identifier of a trading pair. Consists of the base asset and quote asset
 /// denominations.
 #[grug::derive(Serde)]
-#[derive(Hash)]
+#[derive(Hash, PartialOrd, Ord)]
 pub struct PairId {
     pub base_denom: Denom,
     pub quote_denom: Denom,

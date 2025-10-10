@@ -12,6 +12,27 @@ const fn bucket(numerator: u128, denominator: u128, base: u32, quote: u32) -> No
     NonZero::new_unchecked(Price::raw(Uint128::new(raw)))
 }
 
+pub mod dango_usdc {
+    use {
+        super::*,
+        crate::constants::{dango, usdc},
+    };
+
+    pub const ONE_THOUSANDTH: NonZero<Price> = bucket(1, 1000, dango::DECIMAL, usdc::DECIMAL);
+
+    pub const ONE_HUNDREDTH: NonZero<Price> = bucket(1, 100, dango::DECIMAL, usdc::DECIMAL);
+
+    pub const ONE_TENTH: NonZero<Price> = bucket(1, 10, dango::DECIMAL, usdc::DECIMAL);
+
+    pub const ONE: NonZero<Price> = bucket(1, 1, dango::DECIMAL, usdc::DECIMAL);
+
+    pub const TEN: NonZero<Price> = bucket(10, 1, dango::DECIMAL, usdc::DECIMAL);
+
+    pub const FIFTY: NonZero<Price> = bucket(50, 1, dango::DECIMAL, usdc::DECIMAL);
+
+    pub const ONE_HUNDRED: NonZero<Price> = bucket(100, 1, dango::DECIMAL, usdc::DECIMAL);
+}
+
 pub mod btc_usdc {
     use {
         super::*,
