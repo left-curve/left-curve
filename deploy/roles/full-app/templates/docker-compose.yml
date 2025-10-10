@@ -186,7 +186,7 @@ services:
       timeout: 5s
       retries: 3
 
-{% if dex_bot_enabled %}
+{% if dex_bot_enabled and inventory_hostname == dex_bot_host %}
   dex-bot:
     image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
     depends_on:
