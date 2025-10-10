@@ -67,6 +67,8 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          PUBLIC_PRIVY_APP_ID: ${{vars.PUBLIC_PRIVY_APP_ID }}
+          PUBLIC_PRIVY_CLIENT_ID: ${{vars.PUBLIC_PRIVY_CLIENT_ID }}
 
       - name: Uploading to Cloudflare Pages
         uses: cloudflare/pages-action@v1

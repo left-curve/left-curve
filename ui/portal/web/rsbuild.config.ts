@@ -10,6 +10,7 @@ import { pluginSvgr } from "@rsbuild/plugin-svgr";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
 import { GenerateSW } from "workbox-webpack-plugin";
+import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 
 import { devnet, local, testnet } from "@left-curve/dango";
 
@@ -119,7 +120,13 @@ export default defineConfig({
       },
     },
   },
-  plugins: [pluginReact(), pluginSvgr()],
+  plugins: [
+    pluginReact(),
+    pluginSvgr(),
+    pluginNodePolyfill({
+      include: ["buffer"],
+    }),
+  ],
   tools: {
     rspack: (config, { rspack }) => {
       config.plugins ??= [];
