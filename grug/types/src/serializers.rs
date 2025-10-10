@@ -71,8 +71,16 @@ impl JsonDeExt for Json {
     where
         D: DeserializeOwned,
     {
-        serde_json::from_value(self.into_inner())
-            .map_err(|err| StdError::deserialize::<D, _>("json", err))
+        self.into_inner().deserialize_json()
+    }
+}
+
+impl JsonDeExt for serde_json::Value {
+    fn deserialize_json<D>(self) -> StdResult<D>
+    where
+        D: DeserializeOwned,
+    {
+        serde_json::from_value(self).map_err(|err| StdError::deserialize::<D, _>("json", err))
     }
 }
 
