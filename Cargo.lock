@@ -3585,11 +3585,14 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
+ "grug-db-memory-lite",
  "grug-vm-rust",
  "hex-literal",
  "indexer-client",
+ "indexer-sql",
  "num-format",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
