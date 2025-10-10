@@ -60,7 +60,7 @@ impl Display for NaiveError {
 
 impl From<NaiveError> for AppError {
     fn from(err: NaiveError) -> Self {
-        AppError::PrepareProposal(err.to_string())
+        AppError::prepare_proposal(err.to_string())
     }
 }
 

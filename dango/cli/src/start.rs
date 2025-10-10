@@ -235,7 +235,7 @@ impl StartCmd {
             .context
             .with_separate_pubsub()
             .await
-            .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {}", e))?
+            .map_err(|e| anyhow!("Failed to create separate context for dango indexer: {e}"))?
             .into();
 
         let dango_indexer = dango_indexer_sql::indexer::Indexer::new(

@@ -1,4 +1,4 @@
-use grug::{Binary, Empty};
+use grug::{BacktracedError, Binary, Empty, Query, QueryResponse};
 
 pub type InstantiateMsg = Empty;
 
@@ -25,6 +25,10 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde, Borsh, QueryRequest)]
 pub enum QueryMsg {
+    #[returns(())]
+    FailingQuery { msg: String },
+    #[returns(BacktraceQueryResponse)]
+    Backtrace { query: Query },
     /// Run a loop of the given number of iterations. Within each iteration, a
     /// set of math operations (addition, subtraction, multiplication, division)
     /// are performed.
@@ -97,4 +101,10 @@ pub enum QueryMsg {
         sigs: Vec<Binary>,
         prehash_msgs: Vec<Binary>,
     },
+}
+
+#[grug::derive(Serde)]
+pub enum BacktraceQueryResponse {
+    Ok(QueryResponse),
+    Err(BacktracedError<String>),
 }

@@ -1,6 +1,9 @@
 use {
-    crate::QueryStackOverflowRequest,
-    grug::{Binary, Exponentiate, ImmutableCtx, Number, QuerierExt, StdResult, Uint128},
+    crate::{BacktraceQueryResponse, QueryStackOverflowRequest},
+    grug::{
+        Backtraceable, Binary, Exponentiate, ImmutableCtx, Number, Querier, QuerierExt, Query,
+        StdError, StdResult, Uint128,
+    },
 };
 
 pub fn query_loop(iterations: u64) -> StdResult<()> {
@@ -102,4 +105,17 @@ pub fn query_stack_overflow(ctx: ImmutableCtx) -> StdResult<()> {
         .query_wasm_smart(ctx.contract, QueryStackOverflowRequest {})?;
 
     Ok(())
+}
+
+pub fn query_backtrace(ctx: ImmutableCtx, query: Query) -> StdResult<BacktraceQueryResponse> {
+    match ctx.querier.query_chain(query) {
+        Ok(res) => Ok(BacktraceQueryResponse::Ok(res)),
+        Err(err) => Ok(BacktraceQueryResponse::Err(
+            err.into_generic_backtraced_error(),
+        )),
+    }
+}
+
+pub fn failing_query(msg: String) -> StdResult<()> {
+    Err(StdError::host(msg))
 }

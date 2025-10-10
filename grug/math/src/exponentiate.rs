@@ -101,7 +101,7 @@ where
                 })
             })
             .transpose()?
-            .ok_or(MathError::SqrtFailed)
+            .ok_or(MathError::sqrt_failed())
     }
 
     fn saturating_pow(self, exp: u32) -> Self {

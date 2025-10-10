@@ -38,7 +38,7 @@ impl grug_app::Indexer for Indexer {
         self.runtime_handler.block_on(async {
             Migrator::up(&self.context.db, None)
                 .await
-                .map_err(|e| grug_app::IndexerError::Database(e.to_string()))?;
+                .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
 
             Ok::<(), grug_app::IndexerError>(())
         })?;
@@ -90,7 +90,7 @@ impl grug_app::Indexer for Indexer {
 
         let block_to_index = ctx
             .get::<BlockToIndex>()
-            .ok_or(grug_app::IndexerError::Hook(
+            .ok_or(grug_app::IndexerError::hook(
                 "BlockToIndex not found".to_string(),
             ))?;
 

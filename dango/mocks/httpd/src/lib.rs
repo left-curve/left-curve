@@ -87,10 +87,9 @@ where
         .with_separate_pubsub()
         .await
         .map_err(|e| {
-            Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
-                "Failed to create separate context for dango indexer: {}",
-                e
-            )))
+            indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+                "Failed to create separate context for dango indexer: {e}",
+            ))
         })?
         .into();
 

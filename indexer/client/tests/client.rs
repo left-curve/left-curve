@@ -23,6 +23,8 @@ async fn broadcast() -> anyhow::Result<()> {
 
     let res = client.broadcast_tx(tx).await?;
 
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
     let tx_hash = res.tx_hash;
 
     client.search_tx(tx_hash).await?.outcome.should_succeed();

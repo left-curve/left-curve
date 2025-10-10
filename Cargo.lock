@@ -3448,6 +3448,7 @@ dependencies = [
  "grug",
  "grug-app",
  "grug-httpd",
+ "grug-macros",
  "grug-types",
  "indexer-hooked",
  "indexer-httpd",
@@ -3480,6 +3481,7 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
+ "grug-macros",
  "grug-math",
  "grug-types",
  "indexer-disk-saver",
@@ -4697,6 +4699,8 @@ dependencies = [
  "borsh",
  "data-encoding",
  "dyn-event",
+ "grug-backtrace",
+ "grug-macros",
  "grug-storage",
  "grug-types",
  "http 1.3.1",
@@ -4708,6 +4712,17 @@ dependencies = [
  "tower",
  "tower-abci",
  "tracing",
+]
+
+[[package]]
+name = "grug-backtrace"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "grug-macros",
+ "serde",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -4751,6 +4766,7 @@ version = "0.0.0"
 dependencies = [
  "grug-app",
  "grug-jmt",
+ "grug-macros",
  "grug-types",
  "hex-literal",
  "ics23",
@@ -4765,6 +4781,7 @@ name = "grug-db-disk-lite"
 version = "0.0.0"
 dependencies = [
  "grug-app",
+ "grug-macros",
  "grug-types",
  "rocksdb",
  "sha2 0.10.9",
@@ -4779,6 +4796,7 @@ version = "0.0.0"
 dependencies = [
  "grug-app",
  "grug-jmt",
+ "grug-macros",
  "grug-types",
  "thiserror 2.0.12",
 ]
@@ -4788,6 +4806,7 @@ name = "grug-db-memory-lite"
 version = "0.0.0"
 dependencies = [
  "grug-app",
+ "grug-macros",
  "grug-types",
  "sha2 0.10.9",
  "thiserror 2.0.12",
@@ -4872,6 +4891,8 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh",
+ "grug-backtrace",
+ "grug-macros",
  "paste",
  "proptest",
  "serde",
@@ -4924,6 +4945,7 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh",
+ "grug-backtrace",
  "grug-math",
  "grug-types",
  "prost",
@@ -4974,13 +4996,16 @@ version = "0.0.0"
 dependencies = [
  "async-graphql",
  "async-trait",
+ "backtrace",
  "bnum",
  "borsh",
  "chrono",
  "data-encoding",
  "digest 0.10.7",
  "dyn-clone",
+ "grug-backtrace",
  "grug-crypto",
+ "grug-macros",
  "grug-math",
  "hex-literal",
  "paste",
@@ -5005,10 +5030,17 @@ name = "grug-vm-hybrid"
 version = "0.0.0"
 dependencies = [
  "grug-app",
+ "grug-db-memory",
+ "grug-macros",
+ "grug-math",
+ "grug-tester",
+ "grug-testing",
  "grug-types",
+ "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
  "thiserror 2.0.12",
+ "tracing",
 ]
 
 [[package]]
@@ -5018,6 +5050,7 @@ dependencies = [
  "elsa",
  "grug-app",
  "grug-crypto",
+ "grug-macros",
  "grug-math",
  "grug-testing",
  "grug-types",
@@ -5037,6 +5070,7 @@ dependencies = [
  "grug-app",
  "grug-crypto",
  "grug-db-memory",
+ "grug-macros",
  "grug-math",
  "grug-mock-bank",
  "grug-tester",
@@ -5785,6 +5819,7 @@ dependencies = [
  "glob",
  "grug",
  "grug-app",
+ "grug-macros",
  "grug-math",
  "grug-types",
  "indexer-sql-migration",
@@ -5854,6 +5889,7 @@ dependencies = [
  "futures-util",
  "grug-app",
  "grug-httpd",
+ "grug-macros",
  "grug-testing",
  "grug-types",
  "indexer-sql",
@@ -5891,6 +5927,7 @@ dependencies = [
  "borsh",
  "futures",
  "grug-app",
+ "grug-macros",
  "grug-types",
  "indexer-disk-saver",
  "indexer-hooked",

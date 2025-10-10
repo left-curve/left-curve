@@ -482,7 +482,7 @@ impl IndexerTrait for Indexer {
         _ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         Ok(())
@@ -495,7 +495,7 @@ impl IndexerTrait for Indexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         #[cfg(feature = "tracing")]
@@ -513,7 +513,7 @@ impl IndexerTrait for Indexer {
             .context
             .transaction_hash_details
             .lock()
-            .map_err(|_| grug_app::IndexerError::MutexPoisoned)?;
+            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?;
         http_request_details.extend(block.txs.iter().filter_map(|tx| {
             let tx_hash = tx.1.to_string();
             transaction_hash_details
@@ -563,7 +563,7 @@ impl IndexerTrait for Indexer {
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             Self::remove_or_fail(self.blocks.clone(), &block_height)?;
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         #[cfg(feature = "tracing")]
@@ -690,7 +690,7 @@ impl IndexerTrait for Indexer {
 
         self.handle
             .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))??;
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
 
         Ok(())
     }
@@ -701,7 +701,7 @@ impl IndexerTrait for Indexer {
             if self
                 .blocks
                 .lock()
-                .map_err(|_| grug_app::IndexerError::MutexPoisoned)?
+                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
                 .is_empty()
             {
                 break;

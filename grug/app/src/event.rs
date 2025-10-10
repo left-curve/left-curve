@@ -2,7 +2,7 @@
 use dyn_event::dyn_event;
 use {
     crate::AppError,
-    grug_types::{CommitmentStatus, Event, EventStatus, SubEventStatus},
+    grug_types::{Backtraceable, CommitmentStatus, Event, EventStatus, SubEventStatus},
 };
 
 #[derive(Debug, Clone)]
@@ -67,7 +67,7 @@ impl<T> EventResult<T> {
             EventResult::Ok(..) => CommitmentStatus::Committed(self.into()),
             EventResult::Err { error, .. } | EventResult::NestedErr { error, .. } => {
                 CommitmentStatus::Failed {
-                    error: error.to_string(),
+                    error: error.clone().into_generic_backtraced_error(),
                     event: self.into(),
                 }
             },
@@ -79,7 +79,7 @@ impl<T> EventResult<T> {
             EventResult::Ok(event) => CommitmentStatus::Committed(event),
             EventResult::Err { event, error } | EventResult::NestedErr { event, error } => {
                 CommitmentStatus::Failed {
-                    error: error.to_string(),
+                    error: error.into_generic_backtraced_error(),
                     event,
                 }
             },
@@ -118,7 +118,7 @@ impl<T> From<EventResult<T>> for EventStatus<T> {
             EventResult::Ok(event) => EventStatus::Ok(event),
             EventResult::Err { event, error } => EventStatus::Failed {
                 event,
-                error: error.to_string(),
+                error: error.into_generic_backtraced_error(),
             },
             EventResult::NestedErr { event, .. } => EventStatus::NestedFailed(event),
         }

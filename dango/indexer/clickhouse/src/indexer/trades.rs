@@ -25,11 +25,11 @@ impl Indexer {
 
         let block = ctx
             .get::<grug_types::Block>()
-            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?;
+            .ok_or(IndexerError::missing_block_or_block_outcome())?;
 
         let block_outcome = ctx
             .get::<grug_types::BlockOutcome>()
-            .ok_or(IndexerError::MissingBlockOrBlockOutcome)?
+            .ok_or(IndexerError::missing_block_or_block_outcome())?
             .clone();
 
         // Clearing price is denominated as the units of quote asset per 1 unit

@@ -84,11 +84,7 @@ impl GasTracker {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(limit = inner.limit, used, comment, "Out of gas");
 
-                    return Err(StdError::OutOfGas {
-                        limit,
-                        used,
-                        comment,
-                    });
+                    return Err(StdError::out_of_gas(limit, used, comment));
                 }
             }
 

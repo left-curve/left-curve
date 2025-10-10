@@ -127,7 +127,7 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     // calls. During these calls, the contract isn't allowed to call the imports
     // that mutates the state, namely: `db_write`, `db_remove`, and `db_remove_range`.
     if !env.state_mutable {
-        return Err(VmError::ImmutableState);
+        return Err(VmError::immutable_state());
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -170,7 +170,7 @@ pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<
     let (env, mut store) = fe.data_and_store_mut();
 
     if !env.state_mutable {
-        return Err(VmError::ImmutableState);
+        return Err(VmError::immutable_state());
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -188,7 +188,7 @@ pub fn db_remove_range(
     let (env, mut store) = fe.data_and_store_mut();
 
     if !env.state_mutable {
-        return Err(VmError::ImmutableState);
+        return Err(VmError::immutable_state());
     }
 
     let min = if min_ptr != 0 {

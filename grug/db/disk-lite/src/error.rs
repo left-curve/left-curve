@@ -1,17 +1,18 @@
 use {
     crate::PendingData,
     grug_app::AppError,
+    grug_types::{Backtraceable, StdError},
     std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard},
-    thiserror::Error,
 };
 
-#[derive(Debug, Error)]
+#[grug_macros::backtrace]
 pub enum DbError {
     #[error(transparent)]
-    Std(#[from] grug_types::StdError),
+    Std(StdError),
 
     #[error(transparent)]
-    RocksDb(#[from] rocksdb::Error),
+    #[backtrace(new)]
+    RocksDb(rocksdb::Error),
 
     #[error("cannot flush when the in-memory write batch is already set")]
     PendingDataAlreadySet,
@@ -31,19 +32,23 @@ pub enum DbError {
 
 impl<'a> From<PoisonError<RwLockReadGuard<'a, Option<PendingData>>>> for DbError {
     fn from(_: PoisonError<RwLockReadGuard<'a, Option<PendingData>>>) -> Self {
-        Self::PendingDataPoisoned
+        Self::pending_data_poisoned()
     }
 }
 
 impl<'a> From<PoisonError<RwLockWriteGuard<'a, Option<PendingData>>>> for DbError {
     fn from(_: PoisonError<RwLockWriteGuard<'a, Option<PendingData>>>) -> Self {
-        Self::PendingDataPoisoned
+        Self::pending_data_poisoned()
     }
 }
 
 impl From<DbError> for AppError {
     fn from(err: DbError) -> Self {
-        AppError::Db(err.to_string())
+        let err = err.into_generic_backtraced_error();
+        AppError::Db {
+            error: err.to_string(),
+            backtrace: err.backtrace(),
+        }
     }
 }
 
