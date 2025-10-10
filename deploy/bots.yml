@@ -1,9 +1,0 @@
-- hosts: bots
-  become: true
-  become_user: "{{ deploy_user }}"
-  vars:
-    faucet_version: "latest"
-  collections:
-    - community.docker
-  roles:
-    - bots
