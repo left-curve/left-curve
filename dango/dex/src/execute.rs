@@ -19,7 +19,8 @@ use {
     },
     grug::{
         Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero,
-        Message, MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
+        Message, MutableCtx, NonZero, Number, QuerierExt, Response, Uint128, UniqueVec, btree_map,
+        coins,
     },
 };
 
@@ -240,8 +241,11 @@ fn provide_liquidity(
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // Compute the amount of LP tokens to mint.
-    let (reserve, lp_mint_amount) =
+    let (reserve, mut lp_mint_amount) =
         pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
+
+    // Subtract minimum liquidity from the mint amount.
+    lp_mint_amount.saturating_sub_assign(MINIMUM_LIQUIDITY);
 
     // Ensure LP mint amount must be non-zero.
     // Otherwise, we're vulnerable to a griefing attack, for example:
