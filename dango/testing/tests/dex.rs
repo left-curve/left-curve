@@ -7507,6 +7507,7 @@ fn market_order_minimum_order_size(
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             min_order_size_quote,
+                            min_order_size_base,
                             ..pair_params.clone()
                         },
                     }])),
