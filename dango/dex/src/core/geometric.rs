@@ -175,7 +175,7 @@ fn bid_exact_amount_out(
         input_amount.checked_add_assign(matched_amount_in_quote)?;
 
         if remaining_bid.is_zero() || matched_amount_in_quote.is_zero() {
-            return Ok(input_amount.into_int());
+            return Ok(input_amount.into_int_ceil());
         }
     }
 
@@ -201,7 +201,7 @@ fn ask_exact_amount_out(
             || remaining_ask.is_zero()
             || matched_amount_in_quote.is_zero()
         {
-            return Ok(input_amount.into_int());
+            return Ok(input_amount.into_int_ceil());
         }
     }
 
