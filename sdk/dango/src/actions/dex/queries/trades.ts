@@ -29,7 +29,7 @@ export async function queryTrades<transport extends Transport>(
           addr
           quoteDenom
           baseDenom
-          orderType
+          timeInForce
           blockHeight
           direction
           createdAt

@@ -402,7 +402,7 @@ export type Trade = {
   addr: Address;
   quoteDenom: Denom;
   baseDenom: Denom;
-  orderType: OrderTypes;
+  timeInForce: TimeInForceOptions;
   direction: Directions;
   blockHeight: number;
   createdAt: string;
