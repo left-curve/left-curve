@@ -29,21 +29,51 @@
     - debug:
         msg: "Calling: {{ provide_liquidity_command }} ; {{ mint_command }}"
 
-    - community.docker.docker_container:
-        name: "dex-bot-liquidity-{{ deployment_name }}"
-        image: "ghcr.io/left-curve/bots/dex:{{ dango_image_tag }}"
-        command: bash -lc "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
-        networks: [{ name: "{{ deployment_name }}_default" }]
-        detach: false
-        tty: true
-        output_logs: true
-        auto_remove: false
+    - command: >
+        docker run --rm --network {{ deployment_name }}_default
+        ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }}
+        bash -lc "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
+      register: liquidity_result
       run_once: true
 
-    - community.docker.docker_container:
-        name: "dex-bot-liquidity-{{ deployment_name }}"
-        state: absent
+    # - name: Run both liquidity commands in sequence
+    #   community.docker.docker_compose_v2_exec:
+    #     project_name: "{{ deployment_name }}"
+    #     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    #     service: dex-bot
+    #     command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
+    #     tty: yes
+    #   register: liquidity_result
+    #   retries: 3
+    #   delay: 5
+    #   run_once: true
+
+    - name: Show stdout
+      debug:
+        var: liquidity_result.stdout
       run_once: true
+
+    - name: Show stderr
+      debug:
+        var: liquidity_result.stderr
+      run_once: true
+
+    # - community.docker.docker_container:
+    #     name: "dex-bot-liquidity-{{ deployment_name }}"
+    #     image: "ghcr.io/left-curve/bots/dex:{{ dango_image_tag }}"
+    #     command: bash -lc "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
+    #     networks: [{ name: "{{ deployment_name }}_default" }]
+    #     detach: false
+    #     tty: true
+    #     output_logs: true
+    #     auto_remove: false
+    #   run_once: true
+    #
+    # - name: Delete temporary container
+    #   community.docker.docker_container:
+    #     name: "dex-bot-liquidity-{{ deployment_name }}"
+    #     state: absent
+    #   run_once: true
 
     - name: Query balances
       community.docker.docker_compose_v2_exec:
