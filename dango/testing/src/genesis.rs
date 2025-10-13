@@ -348,8 +348,8 @@ impl Preset for DexOption {
                         }),
                         bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size_quote: Uint128::new(50), /* TODO: for mainnet, a minimum of $10 is sensible */
                         min_order_size_base: Uint128::new(2),
+                        min_order_size_quote: Uint128::new(50), /* TODO: for mainnet, a minimum of $10 is sensible */
                     },
                 },
                 PairUpdate {
@@ -371,8 +371,8 @@ impl Preset for DexOption {
                             btc_usdc::ONE_HUNDRED,
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size_quote: Uint128::ZERO,
                         min_order_size_base: Uint128::ZERO,
+                        min_order_size_quote: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -394,8 +394,8 @@ impl Preset for DexOption {
                             eth_usdc::ONE_HUNDRED,
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size_quote: Uint128::ZERO,
                         min_order_size_base: Uint128::ZERO,
+                        min_order_size_quote: Uint128::ZERO,
                     },
                 },
                 PairUpdate {
@@ -415,8 +415,8 @@ impl Preset for DexOption {
                             sol_usdc::TEN,
                         },
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size_quote: Uint128::ZERO,
                         min_order_size_base: Uint128::ZERO,
+                        min_order_size_quote: Uint128::ZERO,
                     },
                 },
             ],
