@@ -1,4 +1,4 @@
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 pub enum PubSubError {
     #[error("Failed to publish item")]
     PublishFailed,

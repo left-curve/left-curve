@@ -2,7 +2,8 @@
 use dyn_event::dyn_event;
 use {
     crate::AppError,
-    grug_types::{Backtraceable, CommitmentStatus, Event, EventStatus, SubEventStatus},
+    error_backtrace::Backtraceable,
+    grug_types::{CommitmentStatus, Event, EventStatus, SubEventStatus},
 };
 
 #[derive(Debug, Clone)]

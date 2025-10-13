@@ -1,9 +1,6 @@
-use {
-    grug_app::AppError,
-    grug_types::{Backtraceable, StdError},
-};
+use {error_backtrace::Backtraceable, grug_app::AppError, grug_types::StdError};
 
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 pub enum DbError {
     #[error(transparent)]
     Std(StdError),

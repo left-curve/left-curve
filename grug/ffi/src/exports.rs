@@ -1,13 +1,28 @@
 use {
     crate::{ExternalApi, ExternalQuerier, ExternalStorage, Region},
+    error_backtrace::Backtraceable,
     grug_types::{
-        AuthCtx, AuthResponse, Backtraceable, BankMsg, BankQuery, BankQueryResponse, BorshDeExt,
-        BorshSerExt, Context, GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt,
-        MutableCtx, QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx, TxOutcome, make_auth_ctx,
-        make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, unwrap_into_generic_result,
+        AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, BorshDeExt, BorshSerExt,
+        Context, GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt, MutableCtx,
+        QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx, TxOutcome, make_auth_ctx,
+        make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
     },
     serde::de::DeserializeOwned,
 };
+
+// TODO: replace with https://doc.rust-lang.org/std/ops/trait.Try.html once stabilized
+#[macro_export]
+#[doc(hidden)]
+macro_rules! unwrap_into_generic_result {
+    ($expr:expr) => {
+        match $expr {
+            Ok(val) => val,
+            Err(err) => {
+                return GenericResult::Err(::error_backtrace::BacktracedError::new(err.to_string()));
+            },
+        }
+    };
+}
 
 /// Reserve a region in Wasm memory of the given number of bytes. Return the
 /// memory address of a Region object that describes the memory region that was

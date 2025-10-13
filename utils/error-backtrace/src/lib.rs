@@ -11,9 +11,15 @@ use {
     },
 };
 
+// Re-export the proc-macro.
+#[cfg(feature = "derive")]
+pub use error_backtrace_derive::backtrace;
+
 pub trait Backtraceable {
     fn into_generic_backtraced_error(self) -> BacktracedError<String>;
+
     fn backtrace(&self) -> BT;
+
     fn error(&self) -> String;
 }
 
@@ -190,51 +196,12 @@ where
     }
 }
 
-// manually implement PartialEq for BT to avoid compare the backtrace
+// Manually implement `PartialEq` for `BT` to avoid comparing the backtrace.
 impl<T> PartialEq for BacktracedError<T>
 where
     T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.error == other.error
-    }
-}
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[grug_macros::backtrace(crate)]
-    enum Error {
-        #[error(transparent)]
-        #[backtrace(new)]
-        NonBacktraceable(NonBacktraceableError),
-        #[error("hi {x}")]
-        Named { x: u32 },
-        #[error(transparent)]
-        Unnamed(InnerError),
-        #[error("unit")]
-        Unit,
-    }
-
-    #[grug_macros::backtrace(crate)]
-    enum InnerError {
-        #[error("my error: {x}")]
-        #[backtrace(private_constructor)]
-        MyError { x: u32, y: u64 },
-    }
-
-    #[derive(Debug, thiserror::Error)]
-    enum NonBacktraceableError {
-        #[error("my error: {x}")]
-        MyError { x: u32 },
-    }
-
-    #[test]
-    fn test_macro() {
-        let inner = NonBacktraceableError::MyError { x: 1 };
-
-        let _: Error = inner.into();
-        InnerError::_my_error(1, 2);
     }
 }

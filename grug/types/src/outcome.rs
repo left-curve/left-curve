@@ -1,5 +1,3 @@
-use grug_backtrace::BacktracedError;
-
 #[cfg(any(feature = "tendermint", feature = "async-graphql"))]
 use crate::serializers::JsonDeExt;
 #[cfg(feature = "tendermint")]
@@ -10,6 +8,7 @@ use {
         EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    error_backtrace::BacktracedError,
     serde::{Deserialize, Serialize},
     std::fmt::{self, Display},
 };
@@ -383,6 +382,6 @@ fn into_generic_result(code: tendermint::abci::Code, log: String) -> GenericResu
     if code == tendermint::abci::Code::Ok {
         Ok(())
     } else {
-        Err(grug_backtrace::BacktracedError::new(log))
+        Err(BacktracedError::new(log))
     }
 }

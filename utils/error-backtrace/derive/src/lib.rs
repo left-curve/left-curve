@@ -2,45 +2,19 @@ use {
     proc_macro::TokenStream,
     quote::{format_ident, quote},
     syn::{
-        Data, DeriveInput, Field, Fields, FieldsUnnamed, Ident, Path, parse::Parse,
-        parse_macro_input, parse_quote, punctuated::Punctuated, token::Paren,
+        Data, DeriveInput, Field, Fields, FieldsUnnamed, Ident, parse_macro_input, parse_quote,
+        punctuated::Punctuated, token::Paren,
     },
 };
 
-struct InputArgs {
-    crate_name: Path,
-}
-
-impl Parse for InputArgs {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let crate_name = if input.is_empty() {
-            syn::parse_quote!(grug_types::__private::grug_backtrace)
-        } else {
-            input.parse()?
-        };
-
-        if !input.is_empty() {
-            return Err(syn::Error::new(
-                input.span(),
-                "only one argument is allowed",
-            ));
-        }
-
-        Ok(InputArgs { crate_name })
-    }
-}
-
-pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
-    let crate_path = parse_macro_input!(attr as InputArgs).crate_name;
-
+#[proc_macro_attribute]
+pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(input as DeriveInput);
 
     let input_ident = &input.ident;
 
     let mut impl_from = vec![];
-
     let mut match_statement = vec![];
-
     let mut builder_impl = vec![];
 
     if let Data::Enum(en) = &mut input.data {
@@ -66,9 +40,9 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
             });
 
             let pub_ident = if is_private {
-                quote! {fn}
+                quote! { fn }
             } else {
-                quote! {pub fn}
+                quote! { pub fn }
             };
 
             let variant_ident = &variant.ident;
@@ -82,7 +56,6 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                     let fn_name = to_snake_case(&variant.ident, is_private);
 
                     let mut inputs = vec![];
-
                     let mut values = vec![];
 
                     for f in &fields.named {
@@ -98,14 +71,14 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                     }
 
                     fields.named.push(parse_quote! {
-                        backtrace: #crate_path::BT
+                        backtrace: ::error_backtrace::BT
                     });
 
                     builder_impl.push(quote! {
                         #pub_ident #fn_name(#(#inputs)*) -> Self {
                             Self::#variant_ident {
                                 #(#values)*
-                                backtrace: #crate_path::BT::default(),
+                                backtrace: ::error_backtrace::BT::default(),
                             }
                         }
                     });
@@ -114,7 +87,10 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                     let mut iter = unamed.unnamed.iter_mut();
                     let field = iter.next().expect("no unnamed fields");
                     let original_ty = &field.ty.clone();
-                    field.ty = parse_quote! { #crate_path::BacktracedError<#original_ty> };
+
+                    field.ty = parse_quote! {
+                        ::error_backtrace::BacktracedError<#original_ty>
+                    };
 
                     // Impl conversion from original type to the error type
                     // fresh will capture the backtrace now, otherwise we will
@@ -124,7 +100,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                         impl_from.push(quote! {
                             impl From<#original_ty> for #input_ident {
                                 fn from(t: #original_ty) -> Self {
-                                    Self::#variant_ident(#crate_path::BacktracedError::new(t))
+                                    Self::#variant_ident(::error_backtrace::BacktracedError::new(t))
                                 }
                             }
                         });
@@ -132,8 +108,8 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
                         impl_from.push(quote! {
                             impl From<#original_ty> for #input_ident {
                                 fn from(t: #original_ty) -> Self {
-                                    let bt = #crate_path::Backtraceable::backtrace(&t);
-                                    Self::#variant_ident(#crate_path::BacktracedError::new_with_bt(t, bt))
+                                    let bt = ::error_backtrace::Backtraceable::backtrace(&t);
+                                    Self::#variant_ident(::error_backtrace::BacktracedError::new_with_bt(t, bt))
                                 }
                             }
                         });
@@ -147,13 +123,13 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
 
                     builder_impl.push(quote! {
                         #pub_ident #fn_name(self, value: #original_ty) -> Self {
-                            Self::#variant_ident(#crate_path::BacktracedError::new(value))
+                            Self::#variant_ident(::error_backtrace::BacktracedError::new(value))
                         }
                     });
                 },
                 Fields::Unit => {
                     let bt_field: Field = parse_quote! {
-                       #crate_path::BT
+                       ::error_backtrace::BT
                     };
 
                     let mut unnamed = Punctuated::new();
@@ -172,7 +148,7 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
 
                     builder_impl.push(quote! {
                         #pub_ident #fn_name() -> Self {
-                        Self::#variant_ident(#crate_path::BT::default())
+                        Self::#variant_ident(::error_backtrace::BT::default())
                        }
                     });
                 },
@@ -183,13 +159,15 @@ pub fn process(attr: TokenStream, input: TokenStream) -> TokenStream {
     quote! {
         #[derive(Debug, ::thiserror::Error)]
         #input
+
         #(#impl_from)*
-        impl #crate_path::Backtraceable for #input_ident {
-            fn into_generic_backtraced_error(self) -> #crate_path::BacktracedError<String> {
-                #crate_path::BacktracedError::new_with_bt(self.to_string(), self.backtrace())
+
+        impl ::error_backtrace::Backtraceable for #input_ident {
+            fn into_generic_backtraced_error(self) -> ::error_backtrace::BacktracedError<String> {
+                ::error_backtrace::BacktracedError::new_with_bt(self.to_string(), self.backtrace())
             }
 
-            fn backtrace(&self) -> #crate_path::BT {
+            fn backtrace(&self) -> ::error_backtrace::BT {
                 match self {
                     #(#match_statement)*
                 }

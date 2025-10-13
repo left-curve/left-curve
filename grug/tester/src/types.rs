@@ -1,4 +1,7 @@
-use grug::{BacktracedError, Binary, Empty, Query, QueryResponse};
+use {
+    error_backtrace::BacktracedError,
+    grug::{Binary, Empty, Query, QueryResponse},
+};
 
 pub type InstantiateMsg = Empty;
 

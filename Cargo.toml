@@ -26,7 +26,6 @@ members = [
   "dango/vesting",
   "dango/warp",
   "grug/app",
-  "grug/backtrace",
   "grug/client",
   "grug/crypto",
   "grug/db/disk",
@@ -63,6 +62,8 @@ members = [
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",
+  "utils/error-backtrace",
+  "utils/error-backtrace/derive",
   "utils/eth",
   "utils/identity",
   "utils/temp-rocksdb",
@@ -129,6 +130,8 @@ dyn-clone                   = "1"
 dyn-event                   = { path = "utils/dyn-event" }
 ed25519-dalek               = "2"
 elsa                        = "1"
+error-backtrace             = { path = "utils/error-backtrace" }
+error-backtrace-derive      = { path = "utils/error-backtrace/derive" }
 eth-utils                   = { path = "utils/eth" }
 futures                     = "0.3"
 futures-util                = "0.3"
@@ -224,7 +227,6 @@ dango-warp                  = { path = "dango/warp" }
 grug                        = { path = "grug/std" }
 grug-app                    = { path = "grug/app" }
 grug-auth                   = { path = "grug/auth" }
-grug-backtrace              = { path = "grug/backtrace" }
 grug-client                 = { path = "grug/client" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }

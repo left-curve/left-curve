@@ -1,6 +1,6 @@
-use {grug_backtrace::BT, std::any::type_name};
+use {error_backtrace::BT, std::any::type_name};
 
-#[grug_macros::backtrace(grug_backtrace)]
+#[error_backtrace::backtrace]
 #[derive(Clone)]
 pub enum MathError {
     #[error("failed to parse string `{input}` into {ty}: {reason}")]

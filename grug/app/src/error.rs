@@ -6,7 +6,7 @@ use {
     },
 };
 
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 #[derive(Clone)]
 pub enum AppError {
     #[error(transparent)]
@@ -63,7 +63,7 @@ pub enum AppError {
 }
 
 /// Dedicated error type for indexer operations
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 #[derive(Clone)]
 pub enum IndexerError {
     #[error("indexer is already running")]

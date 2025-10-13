@@ -1,12 +1,13 @@
 use {
+    error_backtrace::Backtraceable,
     grug_app::{AppError, GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
-    grug_types::{Backtraceable, Context, Hash256},
+    grug_types::{Context, Hash256},
     grug_vm_rust::{RustInstance, RustVm},
     grug_vm_wasm::{WasmInstance, WasmVm},
     std::collections::HashSet,
 };
 
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 pub enum VmError {
     #[error("RustVm error: {0}")]
     Rust(grug_vm_rust::VmError),

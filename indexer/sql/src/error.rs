@@ -1,6 +1,6 @@
 use {crate::pubsub::error::PubSubError, grug_app::AppError, grug_types::StdError};
 
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 pub enum IndexerError {
     #[error("sea_orm error: {0}")]
     #[backtrace(new)]

@@ -1,13 +1,12 @@
 use {
+    error_backtrace::Backtraceable,
     grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_tester::{
         BacktraceQueryResponse, QueryBacktraceRequest, QueryFailingQueryRequest, QueryMsg,
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
-    grug_types::{
-        Addr, Backtraceable, Binary, Coins, Denom, HashExt, QuerierExt, Query, ResultExt,
-    },
+    grug_types::{Addr, Binary, Coins, Denom, HashExt, QuerierExt, Query, ResultExt},
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::ContractBuilder,
     std::{fs, path::PathBuf, str::FromStr, sync::LazyLock},

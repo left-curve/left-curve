@@ -1,6 +1,6 @@
-use {grug::Backtraceable, indexer_sql::pubsub::error::PubSubError};
+use {error_backtrace::Backtraceable, indexer_sql::pubsub::error::PubSubError};
 
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 pub enum Error {
     #[error("sea_orm error: {0}")]
     #[backtrace(new)]

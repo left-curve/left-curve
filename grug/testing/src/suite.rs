@@ -3,6 +3,7 @@ use {
         BalanceTracker, InstantiateOutcome, MakeBlockOutcome, UploadAndInstantiateOutcome,
         UploadOutcome,
     },
+    error_backtrace::Backtraceable,
     grug_app::{
         App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer,
         StorageProvider, UpgradeHandler, Vm,
@@ -10,8 +11,8 @@ use {
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
-        Addr, Addressable, Backtraceable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config,
-        Denom, Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
+        Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
+        Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
         Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, QueryStatusResponse, Signer,
         StdError, StdResult, Tx, TxOutcome, UnsignedTx,
     },

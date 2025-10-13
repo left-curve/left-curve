@@ -1,11 +1,12 @@
 use {
     crate::PendingData,
+    error_backtrace::Backtraceable,
     grug_app::AppError,
-    grug_types::{Backtraceable, StdError},
+    grug_types::StdError,
     std::sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard},
 };
 
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 pub enum DbError {
     #[error(transparent)]
     Std(StdError),

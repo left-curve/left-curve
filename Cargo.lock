@@ -3444,11 +3444,11 @@ dependencies = [
  "chrono",
  "clickhouse",
  "dango-types",
+ "error-backtrace",
  "futures",
  "grug",
  "grug-app",
  "grug-httpd",
- "grug-macros",
  "grug-types",
  "indexer-hooked",
  "indexer-httpd",
@@ -3479,9 +3479,9 @@ dependencies = [
  "borsh",
  "dango-indexer-sql-migration",
  "dango-types",
+ "error-backtrace",
  "grug",
  "grug-app",
- "grug-macros",
  "grug-math",
  "grug-types",
  "indexer-disk-saver",
@@ -4131,6 +4131,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "error-backtrace"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "borsh",
+ "error-backtrace-derive",
+ "serde",
+ "thiserror 2.0.12",
+]
+
+[[package]]
+name = "error-backtrace-derive"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+]
+
+[[package]]
 name = "etcetera"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4699,8 +4719,7 @@ dependencies = [
  "borsh",
  "data-encoding",
  "dyn-event",
- "grug-backtrace",
- "grug-macros",
+ "error-backtrace",
  "grug-storage",
  "grug-types",
  "http 1.3.1",
@@ -4712,17 +4731,6 @@ dependencies = [
  "tower",
  "tower-abci",
  "tracing",
-]
-
-[[package]]
-name = "grug-backtrace"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "borsh",
- "grug-macros",
- "serde",
- "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -4764,9 +4772,9 @@ dependencies = [
 name = "grug-db-disk"
 version = "0.0.0"
 dependencies = [
+ "error-backtrace",
  "grug-app",
  "grug-jmt",
- "grug-macros",
  "grug-types",
  "hex-literal",
  "ics23",
@@ -4780,8 +4788,8 @@ dependencies = [
 name = "grug-db-disk-lite"
 version = "0.0.0"
 dependencies = [
+ "error-backtrace",
  "grug-app",
- "grug-macros",
  "grug-types",
  "rocksdb",
  "sha2 0.10.9",
@@ -4794,9 +4802,9 @@ dependencies = [
 name = "grug-db-memory"
 version = "0.0.0"
 dependencies = [
+ "error-backtrace",
  "grug-app",
  "grug-jmt",
- "grug-macros",
  "grug-types",
  "thiserror 2.0.12",
 ]
@@ -4805,8 +4813,8 @@ dependencies = [
 name = "grug-db-memory-lite"
 version = "0.0.0"
 dependencies = [
+ "error-backtrace",
  "grug-app",
- "grug-macros",
  "grug-types",
  "sha2 0.10.9",
  "thiserror 2.0.12",
@@ -4817,6 +4825,7 @@ name = "grug-ffi"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "error-backtrace",
  "grug-types",
  "serde",
 ]
@@ -4891,8 +4900,7 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh",
- "grug-backtrace",
- "grug-macros",
+ "error-backtrace",
  "paste",
  "proptest",
  "serde",
@@ -4945,7 +4953,7 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh",
- "grug-backtrace",
+ "error-backtrace",
  "grug-math",
  "grug-types",
  "prost",
@@ -4957,6 +4965,7 @@ dependencies = [
 name = "grug-tester"
 version = "0.0.0"
 dependencies = [
+ "error-backtrace",
  "grug",
 ]
 
@@ -4967,6 +4976,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "borsh",
+ "error-backtrace",
  "grug-app",
  "grug-db-memory",
  "grug-math",
@@ -4996,16 +5006,14 @@ version = "0.0.0"
 dependencies = [
  "async-graphql",
  "async-trait",
- "backtrace",
  "bnum",
  "borsh",
  "chrono",
  "data-encoding",
  "digest 0.10.7",
  "dyn-clone",
- "grug-backtrace",
+ "error-backtrace",
  "grug-crypto",
- "grug-macros",
  "grug-math",
  "hex-literal",
  "paste",
@@ -5029,9 +5037,9 @@ dependencies = [
 name = "grug-vm-hybrid"
 version = "0.0.0"
 dependencies = [
+ "error-backtrace",
  "grug-app",
  "grug-db-memory",
- "grug-macros",
  "grug-math",
  "grug-tester",
  "grug-testing",
@@ -5048,9 +5056,9 @@ name = "grug-vm-rust"
 version = "0.0.0"
 dependencies = [
  "elsa",
+ "error-backtrace",
  "grug-app",
  "grug-crypto",
- "grug-macros",
  "grug-math",
  "grug-testing",
  "grug-types",
@@ -5067,10 +5075,10 @@ dependencies = [
  "criterion",
  "data-encoding",
  "ed25519-dalek",
+ "error-backtrace",
  "grug-app",
  "grug-crypto",
  "grug-db-memory",
- "grug-macros",
  "grug-math",
  "grug-mock-bank",
  "grug-tester",
@@ -5794,6 +5802,7 @@ dependencies = [
  "dango-mock-httpd",
  "dango-testing",
  "dango-types",
+ "error-backtrace",
  "graphql_client",
  "grug",
  "grug-testing",
@@ -5816,10 +5825,10 @@ dependencies = [
  "anyhow",
  "assertor",
  "borsh",
+ "error-backtrace",
  "glob",
  "grug",
  "grug-app",
- "grug-macros",
  "grug-math",
  "grug-types",
  "indexer-sql-migration",
@@ -5885,11 +5894,11 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "clap",
+ "error-backtrace",
  "futures",
  "futures-util",
  "grug-app",
  "grug-httpd",
- "grug-macros",
  "grug-testing",
  "grug-types",
  "indexer-sql",
@@ -5925,6 +5934,7 @@ dependencies = [
  "async-stream",
  "async-trait",
  "borsh",
+ "error-backtrace",
  "futures",
  "grug-app",
  "grug-macros",

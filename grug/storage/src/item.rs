@@ -43,7 +43,7 @@ mod test {
     use {
         super::Item,
         borsh::{BorshDeserialize, BorshSerialize},
-        grug_backtrace::BacktracedError,
+        error_backtrace::BacktracedError,
         grug_math::{MathError, Number, NumberConst, Uint128},
         grug_types::{MockStorage, StdError, StdResult},
     };

@@ -1,6 +1,6 @@
 use grug_types::StdError;
 
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 pub enum Error {
     #[error(transparent)]
     Std(StdError),

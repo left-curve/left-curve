@@ -278,10 +278,10 @@ impl Environment {
 mod test {
     use {
         crate::{Environment, GAS_PER_OPERATION, Iterator, VmError, VmResult, WasmVm},
+        error_backtrace::BacktracedError,
         grug_app::{GasTracker, QuerierProviderImpl, StorageProvider},
         grug_types::{
-            BacktracedError, BlockInfo, Hash256, MockStorage, Order, Shared, StdError, Storage,
-            Timestamp,
+            BlockInfo, Hash256, MockStorage, Order, Shared, StdError, Storage, Timestamp,
         },
         std::sync::Arc,
         test_case::test_case,

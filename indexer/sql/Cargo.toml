@@ -25,6 +25,7 @@ async-graphql         = { workspace = true, optional = true }
 async-stream          = { workspace = true }
 async-trait           = { workspace = true }
 borsh                 = { workspace = true }
+error-backtrace       = { workspace = true }
 futures               = { workspace = true }
 grug-app              = { workspace = true }
 grug-macros           = { workspace = true }

@@ -1,4 +1,5 @@
 use {
+    error_backtrace::Backtraceable,
     grug_app::AppError,
     grug_crypto::{sha2_256, sha2_512},
     grug_db_memory::MemDb,
@@ -9,8 +10,8 @@ use {
     },
     grug_testing::{TestAccounts, TestBuilder, TestSuite},
     grug_types::{
-        Addr, Backtraceable, Binary, Coins, Denom, GenericResult, InnerMut, Message, QuerierExt,
-        QueryRequest, ResultExt, VerificationError,
+        Addr, Binary, Coins, Denom, GenericResult, InnerMut, Message, QuerierExt, QueryRequest,
+        ResultExt, VerificationError,
     },
     grug_vm_wasm::{VmError, WasmVm},
     identity::{Identity256, Identity512},

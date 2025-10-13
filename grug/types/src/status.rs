@@ -1,6 +1,6 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_backtrace::BacktracedError,
+    error_backtrace::BacktracedError,
     serde::{Deserialize, Serialize},
 };
 

@@ -1,6 +1,6 @@
 use {indexer_sql::error::IndexerError, sea_orm::sqlx, std::io};
 
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 pub enum Error {
     #[error(transparent)]
     #[backtrace(new)]

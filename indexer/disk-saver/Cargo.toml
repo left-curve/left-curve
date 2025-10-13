@@ -18,9 +18,9 @@ tracing = ["dep:tracing", "grug-app/tracing"]
 [dependencies]
 anyhow                = { workspace = true }
 borsh                 = { workspace = true, features = ["de_strict_order", "derive"] }
+error-backtrace       = { workspace = true }
 glob                  = { workspace = true }
 grug-app              = { workspace = true }
-grug-macros           = { workspace = true }
 grug-math             = { workspace = true }
 grug-types            = { workspace = true }
 indexer-sql-migration = { workspace = true }

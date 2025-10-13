@@ -1,8 +1,9 @@
 use {
     crate::Region,
+    error_backtrace::BacktracedError,
     grug_types::{
-        Addr, Api, BacktracedError, BorshDeExt, BorshSerExt, Order, Querier, Query, QueryResponse,
-        QueryResult, Record, StdError, StdResult, Storage, VerificationError, encode_sections,
+        Addr, Api, BorshDeExt, BorshSerExt, Order, Querier, Query, QueryResponse, QueryResult,
+        Record, StdError, StdResult, Storage, VerificationError, encode_sections,
     },
 };
 

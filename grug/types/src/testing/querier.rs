@@ -4,7 +4,7 @@ use {
         GenericResult, GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage, Order,
         Querier, Query, QueryResponse, QueryStatusResponse, StdError, StdResult, Storage,
     },
-    grug_backtrace::BacktracedError,
+    error_backtrace::BacktracedError,
     grug_math::{NumberConst, Uint128},
     serde::Serialize,
     std::collections::BTreeMap,

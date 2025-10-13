@@ -17,9 +17,9 @@ testing = ["dep:grug-testing"]
 [dependencies]
 clru               = { workspace = true }
 data-encoding      = { workspace = true }
+error-backtrace    = { workspace = true }
 grug-app           = { workspace = true }
 grug-crypto        = { workspace = true }
-grug-macros        = { workspace = true }
 grug-testing       = { workspace = true, optional = true }
 grug-types         = { workspace = true }
 serde              = { workspace = true }

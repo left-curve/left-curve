@@ -1,12 +1,13 @@
 use {
+    error_backtrace::Backtraceable,
     grug_app::AppError,
-    grug_types::{Backtraceable, StdError},
+    grug_types::StdError,
     std::string::FromUtf8Error,
     wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError},
 };
 
 // #[derive(Debug, Error)]
-#[grug_macros::backtrace]
+#[error_backtrace::backtrace]
 pub enum VmError {
     #[error(transparent)]
     Std(StdError),

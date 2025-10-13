@@ -1,8 +1,9 @@
 use {
     crate::{BacktraceQueryResponse, QueryStackOverflowRequest},
+    error_backtrace::Backtraceable,
     grug::{
-        Backtraceable, Binary, Exponentiate, ImmutableCtx, Number, Querier, QuerierExt, Query,
-        StdError, StdResult, Uint128,
+        Binary, Exponentiate, ImmutableCtx, Number, Querier, QuerierExt, Query, StdError,
+        StdResult, Uint128,
     },
 };
 

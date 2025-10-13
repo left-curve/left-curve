@@ -1,8 +1,8 @@
 use {
     crate::{AppError, GasTracker, Vm, process_query},
+    error_backtrace::{Backtraceable, BacktracedError},
     grug_types::{
-        Backtraceable, BacktracedError, BlockInfo, Querier, Query, QueryResponse, QueryResult,
-        StdError, StdResult, Storage,
+        BlockInfo, Querier, Query, QueryResponse, QueryResult, StdError, StdResult, Storage,
     },
 };
 

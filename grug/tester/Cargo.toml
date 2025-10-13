@@ -18,4 +18,5 @@ crate-type = ["cdylib", "rlib"]
 library = []
 
 [dependencies]
-grug = { workspace = true }
+error-backtrace = { workspace = true }
+grug            = { workspace = true }

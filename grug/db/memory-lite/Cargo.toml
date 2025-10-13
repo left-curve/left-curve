@@ -10,10 +10,10 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-grug-app    = { workspace = true }
-grug-macros = { workspace = true }
-grug-types  = { workspace = true }
-sha2        = { workspace = true }
-thiserror   = { workspace = true }
+error-backtrace = { workspace = true }
+grug-app        = { workspace = true }
+grug-types      = { workspace = true }
+sha2            = { workspace = true }
+thiserror       = { workspace = true }
 
 [dev-dependencies]

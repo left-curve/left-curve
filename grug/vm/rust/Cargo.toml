@@ -10,13 +10,13 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-elsa        = { workspace = true }
-grug-app    = { workspace = true }
-grug-crypto = { workspace = true }
-grug-macros = { workspace = true }
-grug-types  = { workspace = true }
-serde       = { workspace = true }
-thiserror   = { workspace = true }
+elsa            = { workspace = true }
+error-backtrace = { workspace = true }
+grug-app        = { workspace = true }
+grug-crypto     = { workspace = true }
+grug-types      = { workspace = true }
+serde           = { workspace = true }
+thiserror       = { workspace = true }
 
 [dev-dependencies]
 grug-math    = { workspace = true }

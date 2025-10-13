@@ -3,7 +3,7 @@ use {
         Addr, CheckedContractEvent, Coins, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_backtrace::{Backtraceable, BacktracedError},
+    error_backtrace::{Backtraceable, BacktracedError},
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -37,7 +37,6 @@ pub enum Event {
     Finalize(EvtFinalize),
     /// A cronjob was executed.
     Cron(EvtCron),
-    // TODO: IBC events
 }
 
 macro_rules! generate_downcast {

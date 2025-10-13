@@ -1,8 +1,9 @@
 use {
     crate::{AppError, EventResult, GasTracker, TraceOption, Vm, do_reply, process_msg},
+    error_backtrace::Backtraceable,
     grug_types::{
-        Addr, Backtraceable, BlockInfo, Buffer, EventStatus, ReplyOn, Shared, Storage, SubEvent,
-        SubEventStatus, SubMessage,
+        Addr, BlockInfo, Buffer, EventStatus, ReplyOn, Shared, Storage, SubEvent, SubEventStatus,
+        SubMessage,
     },
 };
 

@@ -3,13 +3,12 @@ use async_graphql::Enum;
 #[cfg(feature = "sea-orm")]
 use sea_orm::entity::prelude::*;
 use {
-    super::FlattenStatus,
     crate::{
-        Addr, CheckedContractEvent, Coins, CommitmentStatus, EvtConfigure, EvtUpload, Hash256,
-        Json, Label, ReplyOn, Timestamp, TxEvents,
+        Addr, CheckedContractEvent, Coins, CommitmentStatus, EvtConfigure, EvtUpload,
+        FlattenStatus, Hash256, Json, Label, ReplyOn, Timestamp, TxEvents,
     },
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_backtrace::BacktracedError,
+    error_backtrace::BacktracedError,
     serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
     strum_macros::{Display, EnumDiscriminants},
