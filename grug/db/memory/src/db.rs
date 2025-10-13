@@ -136,14 +136,14 @@ impl Db for MemDb {
                 None => (0, 0),
             };
 
-            let mut cache = Buffer::new(
+            let mut buffer = Buffer::new(
                 self.state_commitment(),
                 None,
                 "mem_db_state_commitment_flush_but_not_commit",
             );
 
-            let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
-            let (_, changeset) = cache.disassemble();
+            let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
+            let (_, changeset) = buffer.disassemble();
 
             Ok((new_version, root_hash, changeset))
         })?;
