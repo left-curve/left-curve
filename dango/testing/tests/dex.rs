@@ -1,8 +1,11 @@
 use {
     dango_dex::{MAX_VOLUME_AGE, VOLUMES, VOLUMES_BY_USER},
-    dango_genesis::Contracts,
+    dango_genesis::{Contracts, DexOption, GenesisOption},
     dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
-    dango_testing::{BridgeOp, TestAccount, TestOption, TestSuite, setup_test_naive},
+    dango_testing::{
+        BridgeOp, Preset, TestAccount, TestOption, TestSuite, setup_test_naive,
+        setup_test_naive_with_custom_genesis,
+    },
     dango_types::{
         account::single::Params,
         account_factory::AccountParams,
@@ -5977,7 +5980,28 @@ fn market_orders_are_sorted_by_price_ascending() {
 /// In this case, we need to handle the cancelation and refund of this order.
 #[test]
 fn refund_left_over_market_bid() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                pairs: vec![PairUpdate {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    params: PairParams {
+                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        pool_type: PassiveLiquidity::Geometric(Geometric {
+                            spacing: Udec128::new_percent(1),
+                            ratio: Bounded::new_unchecked(Udec128::new(1)),
+                            limit: 1,
+                        }),
+                        bucket_sizes: BTreeSet::new(),
+                        swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size_quote: Uint128::ZERO,
+                        min_order_size_base: Uint128::ZERO,
+                    },
+                }],
+            },
+            ..Preset::preset_test()
+        });
 
     // Set maker and taker fee rates to 0 for simplicity
     // TODO: make this configurable in `TestOptions`
@@ -6139,7 +6163,28 @@ fn refund_left_over_market_bid() {
 /// - market ask, price 100, amount 1
 #[test]
 fn refund_left_over_market_ask() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                pairs: vec![PairUpdate {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    params: PairParams {
+                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        pool_type: PassiveLiquidity::Geometric(Geometric {
+                            spacing: Udec128::new_percent(1),
+                            ratio: Bounded::new_unchecked(Udec128::new(1)),
+                            limit: 1,
+                        }),
+                        bucket_sizes: BTreeSet::new(),
+                        swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size_quote: Uint128::ZERO,
+                        min_order_size_base: Uint128::ZERO,
+                    },
+                }],
+            },
+            ..Preset::preset_test()
+        });
 
     // Set maker and taker fee rates to 0 for simplicity
     // TODO: make this configurable in TestOptions
