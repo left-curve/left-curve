@@ -308,3 +308,28 @@ fn oracle_value(oracle_querier: &mut OracleQuerier, coin_pair: &CoinPair) -> any
 
     Ok(first_value.checked_add(second_value)?)
 }
+
+#[cfg(test)]
+mod tests {
+    use grug::Udec128_24;
+
+    use super::*;
+
+    #[test]
+    fn test_ask_exact_amount_out_doesnt_fail_on_rounding_on_last_passive_order() {
+        let passive_bids = vec![(Udec128_24::new(150), Uint128::new(100000000))];
+        let ask_amount_in_quote = Uint128::new(100);
+        let input_amount =
+            ask_exact_amount_out(ask_amount_in_quote, Box::new(passive_bids.into_iter())).unwrap();
+        assert_eq!(input_amount, Uint128::ONE);
+    }
+
+    #[test]
+    fn test_bid_exact_amount_in_doesnt_fail_on_rounding_on_last_passive_order() {
+        let passive_asks = vec![(Udec128_24::new(150), Uint128::new(100000000))];
+        let bid_amount_in_quote = Uint128::new(100);
+        let output_amount =
+            bid_exact_amount_in(bid_amount_in_quote, Box::new(passive_asks.into_iter())).unwrap();
+        assert_eq!(output_amount, Uint128::ZERO);
+    }
+}
