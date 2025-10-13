@@ -6,10 +6,10 @@
   when: not traefik_enabled
 
 - set_fact:
-    indexer_url: "http://api.{{ dango_network }}.{{ dango_domain }}"
-    faucet_url: "http://faucet.{{ dango_network }}.{{ dango_domain }}"
-    quest_url: "http://quest.{{ dango_network }}.{{ dango_domain }}/to_fix"
-    up_url: "http://api.{{ dango_network }}.{{ dango_domain }}/up"
+    indexer_url: "http://api-{{ dango_network }}.{{ dango_domain }}"
+    faucet_url: "http://faucet-{{ dango_network }}.{{ dango_domain }}"
+    quest_url: "http://quest-{{ dango_network }}.{{ dango_domain }}/to_fix"
+    up_url: "http://api-{{ dango_network }}.{{ dango_domain }}/up"
   when: traefik_enabled
 
 - file:
