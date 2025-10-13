@@ -1,6 +1,6 @@
 use {
     crate::{Variables, broadcast_tx_sync, query_app, query_store, search_tx, simulate},
-    anyhow::{anyhow, bail},
+    anyhow::{anyhow, bail, ensure},
     async_trait::async_trait,
     error_backtrace::BacktracedError,
     graphql_client::{GraphQLQuery, Response},
@@ -182,11 +182,9 @@ impl SearchTxClient for HttpClient {
             .transactions
             .nodes;
 
-        let res = response.pop().ok_or(anyhow!("Tx not found: {hash}"))?;
+        let res = response.pop().ok_or(anyhow!("tx not found: {hash}"))?;
 
-        if !response.is_empty() {
-            bail!("multiple txs found for hash: {hash}")
-        }
+        ensure!(response.is_empty(), "multiple txs found for hash: {hash}");
 
         let msgs = res
             .messages
