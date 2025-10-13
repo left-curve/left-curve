@@ -45,18 +45,9 @@ export const QuestBanner: React.FC = () => {
   if (!isQuestBannerVisible || isLoading || !quests) return null;
 
   const isTxCountCompleted = quests.tx_count >= 10;
-  const isLimitOrdersCompleted = quests.limit_orders;
-  const isMarketOrdersCompleted = quests.market_orders;
-  const isTradingPairsCompleted = quests.trading_pairs === 0;
   const isTradingVolumesCompleted = Number(quests.trading_volumes) === 0;
 
-  const areQuestsCompleted =
-    quests.eth_address &&
-    isTxCountCompleted &&
-    isLimitOrdersCompleted &&
-    isMarketOrdersCompleted &&
-    isTradingPairsCompleted &&
-    isTradingVolumesCompleted;
+  const areQuestsCompleted = quests.eth_address && isTxCountCompleted && isTradingVolumesCompleted;
 
   return (
     <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col 2xl:flex-row 2xl:items-center justify-between relative">
@@ -78,7 +69,7 @@ export const QuestBanner: React.FC = () => {
             text={m["quests.galxeQuest.quest.swapAtLeastForUSD"]({
               number: formatNumber(
                 formatUnits(
-                  Decimal(1000000000000)
+                  Decimal(6900000000000)
                     .minus(quests?.trading_volumes || 0)
                     .toFixed(0, 0),
                   6,
@@ -88,7 +79,7 @@ export const QuestBanner: React.FC = () => {
             })}
             completed={isTradingVolumesCompleted}
           />
-          <Quest
+          {/*     <Quest
             text={m["quests.galxeQuest.quest.swapAtLeastInPairs"]({
               number: quests?.trading_pairs,
             })}
@@ -101,9 +92,9 @@ export const QuestBanner: React.FC = () => {
           <Quest
             text={m["quests.galxeQuest.quest.completeLimitOrder"]()}
             completed={isLimitOrdersCompleted}
-          />
+          /> */}
           <Quest
-            text={m["quests.galxeQuest.quest.completeTxsInEthereum"]()}
+            text={m["quests.galxeQuest.quest.completeTxsInEthereum"]({ number: quests.tx_count })}
             completed={isTxCountCompleted}
           />
         </div>
