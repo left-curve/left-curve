@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use grug_types::MetricsIterExt;
 use {
     crate::{DbError, DbResult, digest::batch_hash},
     grug_app::Db,
@@ -12,9 +14,6 @@ use {
     },
 };
 
-#[cfg(feature = "metrics")]
-use grug_types::MetricsIterExt;
-
 const CF_NAME_DEFAULT: &str = "default";
 
 const CF_NAME_METADATA: &str = "metadata";
@@ -25,16 +24,6 @@ const LATEST_BATCH_HASH_KEY: &str = "hash";
 
 #[cfg(feature = "metrics")]
 const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite.duration";
-
-#[cfg(feature = "metrics")]
-macro_rules! record_storage {
-    ($duration:ident, $operation:expr) => {
-        {
-            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => $operation)
-                .record($duration.elapsed().as_secs_f64());
-        }
-    };
-}
 
 pub struct DiskDbLite {
     inner: Arc<DiskDbLiteInner>,
@@ -184,7 +173,10 @@ impl Db for DiskDbLite {
         });
 
         #[cfg(feature = "metrics")]
-        record_storage!(duration, "flush_but_not_commit");
+        {
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "flush_but_not_commit")
+                .record(duration.elapsed().as_secs_f64());
+        }
 
         Ok((version, Some(hash)))
     }
@@ -221,7 +213,10 @@ impl Db for DiskDbLite {
         self.inner.db.write(batch)?;
 
         #[cfg(feature = "metrics")]
-        record_storage!(duration, "commit");
+        {
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "commit")
+                .record(duration.elapsed().as_secs_f64());
+        }
 
         Ok(())
     }
@@ -267,7 +262,10 @@ impl Storage for StateStorage {
             });
 
         #[cfg(feature = "metrics")]
-        record_storage!(duration, "read");
+        {
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "read")
+                .record(duration.elapsed().as_secs_f64());
+        }
 
         result
     }
@@ -295,7 +293,10 @@ impl Storage for StateStorage {
         });
 
         #[cfg(feature = "metrics")]
-        record_storage!(duration, "scan");
+        {
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan")
+                .record(duration.elapsed().as_secs_f64());
+        }
 
         Box::new(iter)
     }
@@ -322,7 +323,10 @@ impl Storage for StateStorage {
         });
 
         #[cfg(feature = "metrics")]
-        record_storage!(duration, "scan_keys");
+        {
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_keys")
+                .record(duration.elapsed().as_secs_f64());
+        }
 
         Box::new(iter)
     }
@@ -349,7 +353,10 @@ impl Storage for StateStorage {
         });
 
         #[cfg(feature = "metrics")]
-        record_storage!(duration, "scan_values");
+        {
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_values")
+                .record(duration.elapsed().as_secs_f64());
+        }
 
         Box::new(iter)
     }

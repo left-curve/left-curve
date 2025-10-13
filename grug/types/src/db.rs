@@ -2,10 +2,7 @@ use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
-    std::{
-        collections::BTreeMap,
-        fmt::{self},
-    },
+    std::{collections::BTreeMap, fmt},
 };
 
 /// A shorthand for an owned KV pair.

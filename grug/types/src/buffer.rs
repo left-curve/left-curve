@@ -13,16 +13,6 @@ use {
 #[cfg(feature = "metrics")]
 const BUFFER_LABEL: &str = "grug.types.buffer.duration";
 
-#[cfg(feature = "metrics")]
-macro_rules! record_buffer {
-    ($self:ident, $duration:ident, $operation:expr) => {
-        {
-            metrics::histogram!(BUFFER_LABEL, "name" => $self.name.unwrap_or("unknown"), "operation" => $operation)
-                .record($duration.elapsed().as_secs_f64());
-        }
-    };
-}
-
 /// A key-value storage with an in-memory write buffer.
 ///
 /// Adapted from cw-multi-test:
@@ -31,8 +21,8 @@ macro_rules! record_buffer {
 pub struct Buffer<S> {
     base: S,
     pending: Batch,
-    #[allow(dead_code)]
-    name: Option<&'static str>,
+    #[cfg_attr(not(feature = "metrics"), allow(dead_code))]
+    name: &'static str,
 }
 
 impl<S> Buffer<S> {
@@ -41,7 +31,7 @@ impl<S> Buffer<S> {
         Self {
             base,
             pending: pending.unwrap_or_default(),
-            name,
+            name: name.unwrap_or("unknown"),
         }
     }
 
@@ -66,7 +56,10 @@ where
         self.base.flush(pending);
 
         #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "commit");
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "commit")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 
     /// Consume self, flush pending ops to the underlying store, return the
@@ -78,7 +71,10 @@ where
         self.base.flush(self.pending);
 
         #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "consume");
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "consume")
+                .record(duration.elapsed().as_secs_f64());
+        }
 
         self.base
     }
@@ -112,7 +108,10 @@ where
         let pending_raw = self.pending.range((min, max));
 
         #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, _operation);
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => _operation)
+                .record(duration.elapsed().as_secs_f64());
+        }
 
         let pending: Box<dyn Iterator<Item = _>> = match order {
             Order::Ascending => Box::new(pending_raw),
@@ -120,14 +119,10 @@ where
         };
 
         #[cfg(feature = "metrics")]
-        let pending = pending.with_metrics(BUFFER_LABEL, [
-            ("operation", "next"),
-            ("name", self.name.unwrap_or("unknown")),
-        ]);
+        let pending =
+            pending.with_metrics(BUFFER_LABEL, [("operation", "next"), ("name", self.name)]);
 
-        let result = Box::new(Merged::new(base, pending, order));
-
-        result
+        Box::new(Merged::new(base, pending, order))
     }
 }
 
@@ -142,7 +137,10 @@ where
         let pending = self.pending.get(key);
 
         #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "read");
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "read")
+                .record(duration.elapsed().as_secs_f64());
+        }
 
         match pending {
             Some(Op::Insert(value)) => Some(value.clone()),
@@ -187,13 +185,13 @@ where
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        // Is not possible to use scan_value for the base.
-        // We need to have the key for compare with pending in Merged.
         Box::new(
             self.scan_as(
                 min,
                 max,
                 order,
+                // Is not possible to use `base.scan_value`.
+                // We need to have the key for compare with pending in `Merged`.
                 || Box::new(self.base.scan(min, max, order)),
                 "scan_values",
             )
@@ -209,7 +207,10 @@ where
             .insert(key.to_vec(), Op::Insert(value.to_vec()));
 
         #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "write");
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "write")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 
     fn remove(&mut self, key: &[u8]) {
@@ -219,7 +220,10 @@ where
         self.pending.insert(key.to_vec(), Op::Delete);
 
         #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "remove");
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "remove")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 
     fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
@@ -241,7 +245,10 @@ where
         self.pending.extend(deletes);
 
         #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "remove_range");
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "remove_range")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 
     fn flush(&mut self, batch: Batch) {
@@ -253,7 +260,10 @@ where
         self.pending.extend(batch);
 
         #[cfg(feature = "metrics")]
-        record_buffer!(self, duration, "flush");
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "flush")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 }
 
