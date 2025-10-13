@@ -1,12 +1,12 @@
 - set_fact:
-    indexer_url: "https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
+    indexer_url: "https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql"
     faucet_url: "https://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
     quest_url: "https://quest.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/to_fix"
     up_url: "https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/up"
   when: not traefik_enabled
 
 - set_fact:
-    indexer_url: "https://api-{{ dango_network }}.{{ dango_domain }}"
+    indexer_url: "https://api-{{ dango_network }}.{{ dango_domain }}/graphql"
     faucet_url: "https://faucet-{{ dango_network }}.{{ dango_domain }}"
     quest_url: "https://quest-{{ dango_network }}.{{ dango_domain }}/to_fix"
     up_url: "https://api-{{ dango_network }}.{{ dango_domain }}/up"
