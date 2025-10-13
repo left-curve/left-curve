@@ -10,10 +10,10 @@ http:
           - https://dev.dango.exchange
           - https://dango.exchange
           - https://*.dango-portal.pages.dev
-          - http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
-          - http://api.{{ dango_network }}.{{ dango_domain }}
-          - https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
-          - https://api.{{ dango_network }}.{{ dango_domain }}
+          - http://api-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
+          - http://api-{{ dango_network }}.{{ dango_domain }}
+          - https://api-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
+          - https://api-{{ dango_network }}.{{ dango_domain }}
         accessControlAllowMethods: ["GET","POST","OPTIONS"]
         accessControlAllowHeaders: ["*"]
         accessControlAllowCredentials: true
