@@ -17,6 +17,10 @@ import { devnet, local, testnet } from "@left-curve/dango";
 import type { Chain } from "@left-curve/dango/types";
 import type { Rspack } from "@rsbuild/core";
 
+const isLocal = process.env.NODE_ENV === "development";
+
+const PORT = 5080;
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { publicVars } = loadEnv();
@@ -37,18 +41,23 @@ const chain = {
   test: testnet,
 }[environment] as Chain;
 
-const urls =
-  environment === "local"
-    ? {
-        faucetUrl: "http://localhost:8082/mint",
-        questUrl: "http://localhost:8081/check_username",
-        upUrl: "http://localhost:8080/up",
-      }
-    : {
-        faucetUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/faucet")}/mint`,
-        questUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/quests")}/check_username`,
-        upUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/up")}`,
-      };
+const urls = {
+  local: {
+    faucetUrl: "http://localhost:8082",
+    questUrl: "http://localhost:8081",
+    upUrl: "http://localhost:8080/up",
+  },
+  dev: {
+    faucetUrl: `${chain.urls.indexer.replace("api", "faucet")}`,
+    questUrl: `http://api.devnet.ovh2.dango.zone:8091`,
+    upUrl: `${chain.urls.indexer}/up`,
+  },
+  test: {
+    faucetUrl: `${chain.urls.indexer.replace("api", "faucet")}`,
+    questUrl: `http://api.testnet.ovh2.dango.zone:8091`,
+    upUrl: `${chain.urls.indexer}/up`,
+  },
+}[environment]!;
 
 const banner = {
   dev: "You are using devnet",
@@ -56,8 +65,19 @@ const banner = {
 
 const envConfig = `window.dango = ${JSON.stringify(
   {
-    chain,
-    urls,
+    chain: isLocal
+      ? {
+          ...chain,
+          urls: { indexer: `http://localhost:${PORT}` },
+        }
+      : chain,
+    urls: isLocal
+      ? {
+          faucetUrl: `http://localhost:${PORT}/faucet`,
+          questUrl: `http://localhost:${PORT}/quest`,
+          upUrl: `http://localhost:${PORT}/up`,
+        }
+      : urls,
     banner,
   },
   null,
@@ -89,7 +109,31 @@ export default defineConfig({
       "import.meta.env": {},
     },
   },
-  server: { port: 5080 },
+  server: {
+    port: PORT,
+    proxy: {
+      "/graphql": {
+        target: `${chain.urls.indexer}/graphql`,
+        changeOrigin: true,
+        pathRewrite: { "^/graphql": "" },
+      },
+      "/faucet": {
+        target: urls.faucetUrl,
+        changeOrigin: true,
+        pathRewrite: { "^/faucet": "" },
+      },
+      "/quest": {
+        target: urls.questUrl,
+        changeOrigin: true,
+        pathRewrite: { "^/quest": "" },
+      },
+      "/up": {
+        target: `${chain.urls.indexer}/up`,
+        changeOrigin: true,
+        pathRewrite: { "^/up": "" },
+      },
+    },
+  },
   html: { template: "public/index.html", title: "" },
   performance: {
     prefetch: {

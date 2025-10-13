@@ -225,7 +225,12 @@ impl Db for DiskDb {
 
         // Commit hashed KVs to state commitment.
         // The DB writes here are kept in the in-memory `PendingData`.
-        let mut buffer = Buffer::new(self.state_commitment(), None);
+        let mut buffer = Buffer::new(
+            self.state_commitment(),
+            None,
+            "disk_db_state_commitment_flush_but_not_commit",
+        );
+
         let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
@@ -326,7 +331,12 @@ impl PrunableDb for DiskDb {
         self.inner.db.increase_full_history_ts_low(&cf, ts)?;
 
         // Prune state commitment.
-        let mut buffer = Buffer::new(self.state_commitment(), None);
+        let mut buffer = Buffer::new(
+            self.state_commitment(),
+            None,
+            "disk_db_state_commitment_prune",
+        );
+
         MERKLE_TREE.prune(&mut buffer, up_to_version)?;
 
         let (_, pending) = buffer.disassemble();

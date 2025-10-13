@@ -6,7 +6,7 @@ import {
   camelCaseJsonDeserialization,
   snakeCaseJsonSerialization,
 } from "@left-curve/dango/encoding";
-import { Decimal, parseUnits } from "@left-curve/dango/utils";
+import { Decimal } from "@left-curve/dango/utils";
 
 import {
   Direction,
@@ -39,7 +39,7 @@ function liquidityDepthMapper(parameters: {
     .slice(0, bucketRecords);
   return sortedRecords.reduce(
     (acc, [price, liquidityDepth]) => {
-      const parsedPrice = parseUnits(price, base.decimals - quote.decimals);
+      const parsedPrice = Decimal(price).mul(Decimal(10).pow(base.decimals - quote.decimals));
 
       const size = Decimal(isBase ? liquidityDepth.depthBase : liquidityDepth.depthQuote).div(
         Decimal(10).pow(isBase ? base.decimals : quote.decimals),

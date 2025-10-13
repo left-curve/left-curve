@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use {crate::MetricsIterExt, std::time::Instant};
 use {
     crate::{Batch, Op, Order, Record, Storage},
     std::{
@@ -8,6 +10,9 @@ use {
     },
 };
 
+#[cfg(feature = "metrics")]
+const BUFFER_LABEL: &str = "grug.types.buffer.duration";
+
 /// A key-value storage with an in-memory write buffer.
 ///
 /// Adapted from cw-multi-test:
@@ -16,15 +21,24 @@ use {
 pub struct Buffer<S> {
     base: S,
     pending: Batch,
+    #[cfg_attr(not(feature = "metrics"), allow(dead_code))]
+    name: &'static str,
 }
 
 impl<S> Buffer<S> {
     /// Create a new buffer storage with an optional write batch.
-    pub fn new(base: S, pending: Option<Batch>) -> Self {
+    pub fn new(base: S, pending: Option<Batch>, name: &'static str) -> Self {
         Self {
             base,
             pending: pending.unwrap_or_default(),
+            name,
         }
+    }
+
+    /// Create a new buffer, without a name for metrics.
+    /// A default name "unknown" is used.
+    pub fn new_unnamed(base: S, pending: Option<Batch>) -> Self {
+        Self::new(base, pending, "unknown")
     }
 
     /// Comsume self, do not flush, just return the underlying store and the
@@ -40,15 +54,78 @@ where
 {
     /// Flush pending ops to the underlying store.
     pub fn commit(&mut self) {
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
         let pending = mem::take(&mut self.pending);
+
         self.base.flush(pending);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "commit")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 
     /// Consume self, flush pending ops to the underlying store, return the
     /// underlying store.
     pub fn consume(mut self) -> S {
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
         self.base.flush(self.pending);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "consume")
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         self.base
+    }
+
+    fn scan_as<'a, I>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+        base: Box<dyn Iterator<Item = I> + 'a>,
+        _operation: &'static str,
+    ) -> Box<dyn Iterator<Item = I> + 'a>
+    where
+        I: AsKey + 'a,
+    {
+        if let (Some(min), Some(max)) = (min, max) {
+            if min > max {
+                return Box::new(iter::empty());
+            }
+        }
+
+        let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
+        let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
+
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
+        let pending_raw = self.pending.range((min, max));
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => _operation)
+                .record(duration.elapsed().as_secs_f64());
+        }
+
+        let pending: Box<dyn Iterator<Item = _>> = match order {
+            Order::Ascending => Box::new(pending_raw),
+            Order::Descending => Box::new(pending_raw.rev()),
+        };
+
+        #[cfg(feature = "metrics")]
+        let pending =
+            pending.with_metrics(BUFFER_LABEL, [("operation", "next"), ("name", self.name)]);
+
+        Box::new(Merged::new(base, pending, order))
     }
 }
 
@@ -57,7 +134,18 @@ where
     S: Storage + Clone,
 {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        match self.pending.get(key) {
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
+        let pending = self.pending.get(key);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "read")
+                .record(duration.elapsed().as_secs_f64());
+        }
+
+        match pending {
             Some(Op::Insert(value)) => Some(value.clone()),
             Some(Op::Delete) => None,
             None => self.base.read(key),
@@ -70,23 +158,13 @@ where
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        if let (Some(min), Some(max)) = (min, max) {
-            if min > max {
-                return Box::new(iter::empty());
-            }
-        }
-
-        let base = self.base.scan(min, max, order);
-
-        let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
-        let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
-        let pending_raw = self.pending.range((min, max));
-        let pending: Box<dyn Iterator<Item = _>> = match order {
-            Order::Ascending => Box::new(pending_raw),
-            Order::Descending => Box::new(pending_raw.rev()),
-        };
-
-        Box::new(Merged::new(base, pending, order))
+        self.scan_as(
+            min,
+            max,
+            order,
+            Box::new(self.base.scan(min, max, order)),
+            "scan",
+        )
     }
 
     fn scan_keys<'a>(
@@ -95,10 +173,13 @@ where
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        // Currently we simply iterate both keys and values, and discard the
-        // values. This isn't efficient.
-        // TODO: optimize this
-        Box::new(self.scan(min, max, order).map(|(k, _)| k))
+        self.scan_as(
+            min,
+            max,
+            order,
+            Box::new(self.base.scan_keys(min, max, order)),
+            "scan_keys",
+        )
     }
 
     fn scan_values<'a>(
@@ -107,16 +188,45 @@ where
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        Box::new(self.scan(min, max, order).map(|(_, v)| v))
+        Box::new(
+            self.scan_as(
+                min,
+                max,
+                order,
+                // Is not possible to use `base.scan_value`.
+                // We need to have the key for compare with pending in `Merged`.
+                Box::new(self.base.scan(min, max, order)),
+                "scan_values",
+            )
+            .map(|(_, v)| v),
+        )
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
         self.pending
             .insert(key.to_vec(), Op::Insert(value.to_vec()));
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "write")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 
     fn remove(&mut self, key: &[u8]) {
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
         self.pending.insert(key.to_vec(), Op::Delete);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "remove")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 
     fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
@@ -132,30 +242,50 @@ where
             .map(|key| (key, Op::Delete))
             .collect::<Vec<_>>();
 
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
         self.pending.extend(deletes);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "remove_range")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 
     fn flush(&mut self, batch: Batch) {
         // When we do `a.extend(b)`, while `a` and `b` have common keys, the
         // values in `b` are chosen. This is exactly what we want.
+        #[cfg(feature = "metrics")]
+        let duration = Instant::now();
+
         self.pending.extend(batch);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(BUFFER_LABEL, "name" => self.name, "operation" => "flush")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 }
 
-struct Merged<'a, B, P>
+struct Merged<'a, B, P, I>
 where
-    B: Iterator<Item = Record>,
+    B: Iterator<Item = I>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
+    I: AsKey,
 {
     base: Peekable<B>,
     pending: Peekable<P>,
     order: Order,
 }
 
-impl<'a, B, P> Merged<'a, B, P>
+impl<'a, B, P, I> Merged<'a, B, P, I>
 where
-    B: Iterator<Item = Record>,
+    B: Iterator<Item = I>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
+    I: AsKey,
 {
     pub fn new(base: B, pending: P, order: Order) -> Self {
         Self {
@@ -165,26 +295,28 @@ where
         }
     }
 
-    fn take_pending(&mut self) -> Option<Record> {
+    fn take_pending(&mut self) -> Option<I> {
         let (key, op) = self.pending.next()?;
+
         match op {
-            Op::Insert(value) => Some((key.clone(), value.clone())),
+            Op::Insert(value) => Some(I::from_key_value(key, value)),
             Op::Delete => self.next(),
         }
     }
 }
 
-impl<'a, B, P> Iterator for Merged<'a, B, P>
+impl<'a, B, P, I> Iterator for Merged<'a, B, P, I>
 where
-    B: Iterator<Item = Record>,
+    B: Iterator<Item = I>,
     P: Iterator<Item = (&'a Vec<u8>, &'a Op)>,
+    I: AsKey,
 {
-    type Item = Record;
+    type Item = I;
 
     fn next(&mut self) -> Option<Self::Item> {
         match (self.base.peek(), self.pending.peek()) {
-            (Some((base_key, _)), Some((pending_key, _))) => {
-                let ordering_raw = base_key.cmp(pending_key);
+            (Some(i), Some((pending_key, _))) => {
+                let ordering_raw = i.as_key().cmp(pending_key);
                 let ordering = match self.order {
                     Order::Ascending => ordering_raw,
                     Order::Descending => ordering_raw.reverse(),
@@ -203,6 +335,33 @@ where
             (Some(_), None) => self.base.next(),
             (None, None) => None,
         }
+    }
+}
+
+/// A trait that represent a Iterator::Item that represent a key.
+trait AsKey {
+    fn from_key_value(key: &[u8], value: &[u8]) -> Self;
+
+    fn as_key(&self) -> &[u8];
+}
+
+impl AsKey for Vec<u8> {
+    fn from_key_value(key: &[u8], _value: &[u8]) -> Self {
+        key.to_vec()
+    }
+
+    fn as_key(&self) -> &[u8] {
+        self.as_slice()
+    }
+}
+
+impl AsKey for Record {
+    fn from_key_value(key: &[u8], value: &[u8]) -> Self {
+        (key.to_vec(), value.to_vec())
+    }
+
+    fn as_key(&self) -> &[u8] {
+        self.0.as_slice()
     }
 }
 
@@ -226,7 +385,7 @@ mod tests {
         base.write(&[6], &[6]);
         base.write(&[7], &[7]);
 
-        let mut buffer = Buffer::new(base, None);
+        let mut buffer = Buffer::new_unnamed(base, None);
         buffer.remove(&[2]);
         buffer.write(&[3], &[3]);
         buffer.write(&[6], &[255]);
