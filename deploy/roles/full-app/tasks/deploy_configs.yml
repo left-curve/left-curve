@@ -1,15 +1,15 @@
 - set_fact:
-    indexer_url: "http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
-    faucet_url: "http://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
-    quest_url: "http://quest.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/to_fix"
-    up_url: "http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/up"
+    indexer_url: "https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
+    faucet_url: "https://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
+    quest_url: "https://quest.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/to_fix"
+    up_url: "https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/up"
   when: not traefik_enabled
 
 - set_fact:
-    indexer_url: "http://api-{{ dango_network }}.{{ dango_domain }}"
-    faucet_url: "http://faucet-{{ dango_network }}.{{ dango_domain }}"
-    quest_url: "http://quest-{{ dango_network }}.{{ dango_domain }}/to_fix"
-    up_url: "http://api-{{ dango_network }}.{{ dango_domain }}/up"
+    indexer_url: "https://api-{{ dango_network }}.{{ dango_domain }}"
+    faucet_url: "https://faucet-{{ dango_network }}.{{ dango_domain }}"
+    quest_url: "https://quest-{{ dango_network }}.{{ dango_domain }}/to_fix"
+    up_url: "https://api-{{ dango_network }}.{{ dango_domain }}/up"
   when: traefik_enabled
 
 - file:
