@@ -75,7 +75,8 @@ logs:
 reset:
   rm -rfv ./configs/dango/data
   rm -rfv ./configs/dango/indexer
-  docker volume rm $(docker volume ls -q | grep localdango_ | grep -v localdango_grafana_data)
+  docker volume rm prometheus_data alertmanager_data loki_data db_data dango_data dango_indexer cometbft_data clickhouse_data clickhouse_logs
+
 
 # Run the development database
 run-dev-db:
