@@ -139,8 +139,9 @@ impl Db for MemDb {
             let mut cache = Buffer::new(
                 self.state_commitment(),
                 None,
-                Some("mem_db_state_commitment_flush_but_not_commit"),
+                "mem_db_state_commitment_flush_but_not_commit",
             );
+
             let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
             let (_, changeset) = cache.disassemble();
 

@@ -27,12 +27,18 @@ pub struct Buffer<S> {
 
 impl<S> Buffer<S> {
     /// Create a new buffer storage with an optional write batch.
-    pub fn new(base: S, pending: Option<Batch>, name: Option<&'static str>) -> Self {
+    pub fn new(base: S, pending: Option<Batch>, name: &'static str) -> Self {
         Self {
             base,
             pending: pending.unwrap_or_default(),
-            name: name.unwrap_or("unknown"),
+            name,
         }
+    }
+
+    /// Create a new buffer, without a name for metrics.
+    /// A default name "unknown" is used.
+    pub fn new_unnamed(base: S, pending: Option<Batch>) -> Self {
+        Self::new(base, pending, "unknown")
     }
 
     /// Comsume self, do not flush, just return the underlying store and the
@@ -380,7 +386,7 @@ mod tests {
         base.write(&[6], &[6]);
         base.write(&[7], &[7]);
 
-        let mut buffer = Buffer::new(base, None, None);
+        let mut buffer = Buffer::new_unnamed(base, None);
         buffer.remove(&[2]);
         buffer.write(&[3], &[3]);
         buffer.write(&[6], &[255]);

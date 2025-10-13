@@ -228,8 +228,9 @@ impl Db for DiskDb {
         let mut buffer = Buffer::new(
             self.state_commitment(),
             None,
-            Some("disk_db_state_commitment_flush_but_not_commit"),
+            "disk_db_state_commitment_flush_but_not_commit",
         );
+
         let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
@@ -333,8 +334,9 @@ impl PrunableDb for DiskDb {
         let mut buffer = Buffer::new(
             self.state_commitment(),
             None,
-            Some("disk_db_state_commitment_prune"),
+            "disk_db_state_commitment_prune",
         );
+
         MERKLE_TREE.prune(&mut buffer, up_to_version)?;
 
         let (_, pending) = buffer.disassemble();

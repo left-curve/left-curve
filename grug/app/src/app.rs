@@ -113,7 +113,7 @@ where
         let mut buffer = Shared::new(Buffer::new(
             self.db.state_storage(None)?,
             None,
-            Some("init_chain"),
+            "init_chain",
         ));
 
         // Make sure the genesis block height is zero. This is necessary to
@@ -257,11 +257,7 @@ where
         #[cfg(feature = "metrics")]
         let block_duration = std::time::Instant::now();
 
-        let mut buffer = Shared::new(Buffer::new(
-            self.db.state_storage(None)?,
-            None,
-            Some("finalize"),
-        ));
+        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None, "finalize"));
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // Make sure the new block height is exactly the last finalized height
@@ -373,7 +369,7 @@ where
                 "Performing cronjob"
             );
 
-            let cron_buffer = Shared::new(Buffer::new(buffer.clone(), None, Some("cron")));
+            let cron_buffer = Shared::new(Buffer::new(buffer.clone(), None, "cron"));
             let cron_gas_tracker = GasTracker::new_limitless();
             let next_time = block.info.timestamp + cfg.cronjobs[&contract];
 
@@ -524,11 +520,7 @@ where
     //   tokens to cover the tx fee;
     // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<CheckTxOutcome> {
-        let buffer = Shared::new(Buffer::new(
-            self.db.state_storage(None)?,
-            None,
-            Some("check_tx"),
-        ));
+        let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None, "check_tx"));
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
         let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
@@ -659,7 +651,7 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<TxOutcome> {
-        let buffer = Buffer::new(self.db.state_storage(None)?, None, Some("simulate"));
+        let buffer = Buffer::new(self.db.state_storage(None)?, None, "simulate");
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // We can't "prove" a gas simulation
@@ -810,8 +802,8 @@ where
     //
     // The 1st layer is for fee handling; the 2nd is for tx authentication and
     // processing of the messages.
-    let fee_buffer = Shared::new(Buffer::new(storage.clone(), None, Some("fee")));
-    let msg_buffer = Shared::new(Buffer::new(fee_buffer.clone(), None, Some("msg")));
+    let fee_buffer = Shared::new(Buffer::new(storage.clone(), None, "fee"));
+    let msg_buffer = Shared::new(Buffer::new(fee_buffer.clone(), None, "msg"));
 
     // Record the events emitted during the processing of this transaction.
 
