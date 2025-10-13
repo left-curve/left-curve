@@ -295,8 +295,8 @@ fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
 
     // Assert that the user's balance has changed correctly
     suite.balances().should_change(&accounts.user1, btree_map! {
-    eth::DENOM.clone() => BalanceChange::Decreased(103),
-    usdc::DENOM.clone() => BalanceChange::Increased(100),
+        eth::DENOM.clone() => BalanceChange::Decreased(103),
+        usdc::DENOM.clone() => BalanceChange::Increased(100),
     });
 }
 
