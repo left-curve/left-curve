@@ -79,16 +79,15 @@ where
         self.base
     }
 
-    fn scan_as<'a, B, I>(
+    fn scan_as<'a, I>(
         &'a self,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
         order: Order,
-        base: B,
+        base: Box<dyn Iterator<Item = I> + 'a>,
         _operation: &'static str,
     ) -> Box<dyn Iterator<Item = I> + 'a>
     where
-        B: Fn() -> Box<dyn Iterator<Item = I> + 'a>,
         I: AsKey + 'a,
     {
         if let (Some(min), Some(max)) = (min, max) {
@@ -96,8 +95,6 @@ where
                 return Box::new(iter::empty());
             }
         }
-
-        let base = base();
 
         let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));
         let max = max.map_or(Bound::Unbounded, |bytes| Bound::Excluded(bytes.to_vec()));
@@ -159,7 +156,7 @@ where
             min,
             max,
             order,
-            || Box::new(self.base.scan(min, max, order)),
+            Box::new(self.base.scan(min, max, order)),
             "scan",
         )
     }
@@ -174,7 +171,7 @@ where
             min,
             max,
             order,
-            || Box::new(self.base.scan_keys(min, max, order)),
+            Box::new(self.base.scan_keys(min, max, order)),
             "scan_keys",
         )
     }
@@ -192,7 +189,7 @@ where
                 order,
                 // Is not possible to use `base.scan_value`.
                 // We need to have the key for compare with pending in `Merged`.
-                || Box::new(self.base.scan(min, max, order)),
+                Box::new(self.base.scan(min, max, order)),
                 "scan_values",
             )
             .map(|(_, v)| v),
