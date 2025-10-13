@@ -10,8 +10,6 @@
 # 3. `ansible-playbook full-app.yml -e traefik_enabled=true`
 
 - import_tasks: validate.yml
-- import_tasks: read_current_deploy.yml
-  when: traefik_enabled
 - import_tasks: stop_previous.yml
   when: system_wide_directories
 - import_tasks: deploy_configs.yml
