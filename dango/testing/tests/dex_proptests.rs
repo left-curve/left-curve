@@ -1,5 +1,4 @@
 use {
-    dango_dex::MAX_ORACLE_STALENESS,
     dango_genesis::Contracts,
     dango_testing::{BridgeOp, TestAccounts, TestOption, TestSuite, setup_test_naive},
     dango_types::{
@@ -996,7 +995,6 @@ fn feed_prices(
                     denom => dango_types::oracle::PriceSource::Fixed {
                         humanized_price: Udec128::ONE,
                         precision: 6,
-                        // Use a very recent time to avoid the "price is too old" error.
                         timestamp,
                     },
                 }),
@@ -1056,8 +1054,8 @@ fn test_dex_actions(
     println!("user1 balances: {balances:?}");
 
     // Register fixed prices for all denoms.
-    let mut last_updated_oracle = suite.block.timestamp;
-    feed_prices(last_updated_oracle, &mut suite, &mut accounts, &contracts)?;
+    let timestamp = Timestamp::from_nanos(u128::MAX); // Maximum time in the future to prevent oracle price from being outdated.
+    feed_prices(timestamp, &mut suite, &mut accounts, &contracts)?;
 
     let bucket_sizes = bucket_sizes();
 
@@ -1097,13 +1095,6 @@ fn test_dex_actions(
 
     // Execute the actions and check balances after each action.
     for action in dex_actions {
-        // If oracle price is outdated, update it.
-        let timestamp = suite.block.timestamp;
-        if timestamp >= last_updated_oracle + MAX_ORACLE_STALENESS {
-            feed_prices(timestamp, &mut suite, &mut accounts, &contracts)?;
-            last_updated_oracle = timestamp;
-        }
-
         // Execute the action.
         let block_outcome = action.execute(&mut suite, &mut accounts, &contracts)?;
 
