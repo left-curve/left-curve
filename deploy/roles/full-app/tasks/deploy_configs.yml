@@ -6,7 +6,7 @@
   when: not traefik_enabled
 
 - set_fact:
-    indexer_url: "https://api-{{ dango_network }}.{{ dango_domain }}/graphql"
+    indexer_url: "https://api-{{ dango_network }}.{{ dango_domain }}"
     faucet_url: "https://faucet-{{ dango_network }}.{{ dango_domain }}"
     quest_url: "https://quest-{{ dango_network }}.{{ dango_domain }}/to_fix"
     up_url: "https://api-{{ dango_network }}.{{ dango_domain }}/up"
