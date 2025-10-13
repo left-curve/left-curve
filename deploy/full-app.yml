@@ -3,6 +3,7 @@
   become: true
   become_user: "{{ deploy_user }}"
   gather_facts: yes
+  vars:
   vars_files:
     - roles/full-app/vars/main.yml
   tasks:
@@ -11,7 +12,12 @@
         timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
       run_once: true
 
-    - name: Set timestamp on all hosts
+    - name: Set timestamp and deployment name on all hosts
+      set_fact:
+        deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+        timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+
+    - name: Set system wide cometbft and dango directories
       set_fact:
         dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
         cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
@@ -45,10 +51,13 @@
         peer_list: |-
           {%- set peers = [] -%}
           {%- for host in groups['full-app'] -%}
-          {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
-          {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].tailscale_ip ~ ':' ~ hostvars[host].cometbft_p2p_port -%}
-          {{- peers.append(peer) or '' -}}
-          {%- endif -%}
+            {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
+              {%- set port = (traefik_enabled | default(false))
+                            | ternary(traefik[dango_network].ports.cometbft_p2p_port,
+                                      hostvars[host].cometbft_p2p_port) -%}
+              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].tailscale_ip ~ ':' ~ port -%}
+              {{- peers.append(peer) or '' -}}
+            {%- endif -%}
           {%- endfor -%}
           {{- peers | join(',') -}}
       when: cometbft_node_id is defined

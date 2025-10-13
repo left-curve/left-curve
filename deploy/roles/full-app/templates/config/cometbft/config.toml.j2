@@ -255,8 +255,8 @@ enabled = false
 laddr = "tcp://0.0.0.0:26656"
 
 {% if traefik_enabled %}
-external_address = "{{ tailscale_ip }}:{{ traefik[dango_network].cometbft_p2p_port }}"
-{% elsif %}
+external_address = "{{ tailscale_ip }}:{{ traefik[dango_network].ports.cometbft_p2p_port }}"
+{% else %}
 external_address = "{{ tailscale_ip }}:{{ cometbft_p2p_port }}"
 {% endif %}
 

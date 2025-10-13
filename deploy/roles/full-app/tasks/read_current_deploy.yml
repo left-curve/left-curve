@@ -38,17 +38,17 @@
       loop: "{{ existing_env_variables.stdout_lines }}"
       when: current_deployment is defined and keep_databases and env_file_exists.stat.exists
 
-    - name: Read .env values for system wide directories directories
+    - name: Read .env values for system wide directories
       shell: |
         grep -E '^(DANGO_DIRECTORY|COMETBFT_DIRECTORY)=' {{ ansible_env.HOME }}/deployments/{{ current_deployment }}/.env | \
         awk -F= '{print tolower($1) "=" $2}'
       register: existing_env_variables
-      when: current_deployment is defined and env_file_exists.stat.exists and system_wide_directories
+      when: system_wide_directories and current_deployment is defined and env_file_exists.stat.exists
 
     - name: Set facts from existing .env
       set_fact:
         "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
       loop: "{{ existing_env_variables.stdout_lines }}"
-      when: current_deployment is defined and env_file_exists.stat.exists and system_wide_directories
+      when: system_wide_directories and current_deployment is defined and env_file_exists.stat.exists
 
   when: not reset_data

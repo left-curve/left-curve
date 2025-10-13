@@ -26,7 +26,7 @@
         dest: "{{ item.dest }}"
         owner: "{{ deploy_user }}"
       loop:
-        - { src: "config/cometbft/config.toml", dest: "{{ cometbft_directory }}/config/config.toml" }
+        - { src: "config/cometbft/config.toml.j2", dest: "{{ cometbft_directory }}/config/config.toml" }
         - { src: "config/cometbft/genesis.json", dest: "{{ cometbft_directory }}/config/genesis.json" }
         - { src: "config/cometbft/node_key.json", dest: "{{ cometbft_directory }}/config/node_key.json" }
         - { src: "config/cometbft/priv_validator_key.json", dest: "{{ cometbft_directory }}/config/priv_validator_key.json" }
