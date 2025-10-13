@@ -71,7 +71,7 @@ macro_rules! catch_and_insert_event {
             EventResult::Err { event, error } => {
                 $evt.$field.insert($key, grug_types::EventStatus::Failed {
                     event,
-                    error:error_backtrace::Backtraceable::into_generic_backtraced_error(error.clone()),
+                    error: error_backtrace::Backtraceable::into_generic_backtraced_error(error.clone()),
                 });
 
                 return EventResult::NestedErr { event: $evt, error };
