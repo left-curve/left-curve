@@ -314,7 +314,7 @@ where
     type Item = I;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let result = match (self.base.peek(), self.pending.peek()) {
+        match (self.base.peek(), self.pending.peek()) {
             (Some(i), Some((pending_key, _))) => {
                 let ordering_raw = i.as_key().cmp(pending_key);
                 let ordering = match self.order {
@@ -334,15 +334,14 @@ where
             (None, Some(_)) => self.take_pending(),
             (Some(_), None) => self.base.next(),
             (None, None) => None,
-        };
-
-        result
+        }
     }
 }
 
 /// A trait that represent a Iterator::Item that represent a key.
 trait AsKey {
     fn from_key_value(key: &[u8], value: &[u8]) -> Self;
+
     fn as_key(&self) -> &[u8];
 }
 
