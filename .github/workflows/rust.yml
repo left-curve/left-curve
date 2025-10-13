@@ -1,6 +1,5 @@
 name: Rust
 
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -454,6 +453,8 @@ jobs:
             --build-arg TARGET_ARCH=${{ steps.config.outputs.target }} \
             --build-arg GIT_COMMIT=${{ env.GIT_COMMIT }} \
             --build-arg GITHUB_TOKEN=${{ env.GITHUB_TOKEN }} \
+            --build-arg PRIVY_APP_ID=${{ vars.PRIVY_APP_ID_DEV }} \
+            --build-arg PRIVY_CLIENT_ID=${{ vars.PRIVY_CLIENT_ID_DEV }} \
             --provenance=false \
             -t ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} \
             -f docker/dango-frontend/Dockerfile .
