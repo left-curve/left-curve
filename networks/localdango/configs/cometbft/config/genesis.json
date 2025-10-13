@@ -307,7 +307,8 @@
                 "params": {
                   "bucket_sizes": [],
                   "lp_denom": "dex/pool/dango/usdc",
-                  "min_order_size": "0",
+                  "min_order_size_base": "0",
+                  "min_order_size_quote": "0",
                   "pool_type": {
                     "geometric": {
                       "limit": 1,
@@ -331,7 +332,8 @@
                     "1"
                   ],
                   "lp_denom": "dex/pool/btc/usdc",
-                  "min_order_size": "0",
+                  "min_order_size_base": "0",
+                  "min_order_size_quote": "0",
                   "pool_type": {
                     "geometric": {
                       "limit": 1,
@@ -355,7 +357,8 @@
                     "0.0000000001"
                   ],
                   "lp_denom": "dex/pool/eth/usdc",
-                  "min_order_size": "0",
+                  "min_order_size_base": "0",
+                  "min_order_size_quote": "0",
                   "pool_type": {
                     "geometric": {
                       "limit": 1,
@@ -377,7 +380,8 @@
                     "0.01"
                   ],
                   "lp_denom": "dex/pool/sol/usdc",
-                  "min_order_size": "0",
+                  "min_order_size_base": "0",
+                  "min_order_size_quote": "0",
                   "pool_type": {
                     "geometric": {
                       "limit": 1,
