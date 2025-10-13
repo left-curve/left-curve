@@ -12,6 +12,7 @@ dango:
     # Dex bot signer: the account that will open orders on the DEX
     username: "user8"
     address: "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
+    dex_address: "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
     private_key: "ca956fcf6b0f32975f067e2deaf3bc1c8632be02ed628985105fd1afc94531b9"
     # The account that will provide liquidity on the DEX and mint tokens to dex signer
     minter_username: "user9"

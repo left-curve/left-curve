@@ -1,5 +1,6 @@
 - become: true
   become_user: root
+  when: dango_network != "previewnet"
   block:
     - name: Update Traefik dynamic config
       template:

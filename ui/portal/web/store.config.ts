@@ -1,4 +1,4 @@
-import { createConfig, graphql, passkey, session } from "@left-curve/store";
+import { createConfig, graphql, passkey, privy, session } from "@left-curve/store";
 
 import type { Config } from "@left-curve/store/types";
 
@@ -68,7 +68,7 @@ const coins = {
 export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
   chain,
-  transport: graphql(chain.urls.indexer, { batch: true }),
+  transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true }),
   coins,
-  connectors: [passkey(), session()],
+  connectors: [passkey(), session(), privy()],
 });

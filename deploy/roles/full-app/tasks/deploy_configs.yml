@@ -1,16 +1,21 @@
 - set_fact:
-    indexer_url: "http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql"
-    faucet_url: "http://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/mint"
-    quest_url: "http://quest.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/to_fix"
-    up_url: "http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/up"
+    indexer_url: "https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
+    faucet_url: "https://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
+    quest_url: "https://quest.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/to_fix"
+    up_url: "https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/up"
   when: not traefik_enabled
 
 - set_fact:
-    indexer_url: "http://api.{{ dango_network }}.{{ dango_domain }}/graphql"
-    faucet_url: "http://faucet.{{ dango_network }}.{{ dango_domain }}/mint"
-    quest_url: "http://quest.{{ dango_network }}.{{ dango_domain }}/to_fix"
-    up_url: "http://api.{{ dango_network }}.{{ dango_domain }}/up"
+    indexer_url: "https://api-{{ dango_network }}.{{ dango_domain }}"
+    faucet_url: "https://faucet-{{ dango_network }}.{{ dango_domain }}"
+    quest_url: "https://quest-{{ dango_network }}.{{ dango_domain }}/to_fix"
+    up_url: "https://api-{{ dango_network }}.{{ dango_domain }}/up"
   when: traefik_enabled
+
+- file:
+    path: "{{ item }}"
+    state: directory
+  loop: ["{{ deployment_dir }}"]
 
 - name: Deploy configuration files
   become: true
@@ -21,13 +26,13 @@
         dest: "{{ item.dest }}"
         owner: "{{ deploy_user }}"
       loop:
-        - { src: "config/cometbft/config.toml", dest: "{{ cometbft_directory }}/config/config.toml" }
+        - { src: "config/cometbft/config.toml.j2", dest: "{{ cometbft_directory }}/config/config.toml" }
         - { src: "config/cometbft/genesis.json", dest: "{{ cometbft_directory }}/config/genesis.json" }
         - { src: "config/cometbft/node_key.json", dest: "{{ cometbft_directory }}/config/node_key.json" }
         - { src: "config/cometbft/priv_validator_key.json", dest: "{{ cometbft_directory }}/config/priv_validator_key.json" }
         - { src: "config/dango/app.toml", dest: "{{ dango_directory }}/config/app.toml" }
-        - { src: "docker-compose.yml", dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/docker-compose.yml" }
-        - { src: "env.j2", dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env" }
+        - { src: "docker-compose.yml", dest: "{{ deployment_dir }}/docker-compose.yml" }
+        - { src: "env.j2", dest: "{{ deployment_dir }}/.env" }
 
 - name: Deploy clickhouse configuration files
   become: true
@@ -35,7 +40,7 @@
   block:
     - template:
         src: "{{ item.src }}"
-        dest: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item.dest }}"
+        dest: "{{ deployment_dir }}/{{ item.dest }}"
         owner: "{{ deploy_user }}"
       loop:
         - { src: "clickhouse/config.xml", dest: "clickhouse/config.xml" }

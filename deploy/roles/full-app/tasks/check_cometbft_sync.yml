@@ -21,3 +21,14 @@
       Latest block height: {{ cometbft_status.json.result.sync_info.latest_block_height }}
       Latest block time: {{ cometbft_status.json.result.sync_info.latest_block_time }}
       Connected peers: {{ cometbft_net_info.json.result.n_peers }}
+
+- name: Ensure CometBFT has full peer connections
+  assert:
+    that:
+      - cometbft_net_info.json.result.n_peers | int == (groups['full-app'] | length) - 1
+    fail_msg: >-
+      {{ inventory_hostname }} has only
+      {{ cometbft_net_info.json.result.n_peers }} peers,
+      expected {{ (groups['full-app'] | length) - 1 }}.
+    success_msg: >-
+      {{ inventory_hostname }} connected to all {{ (groups['full-app'] | length) - 1 }} peers.

@@ -90,7 +90,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
             : "text-status-fail order-2 lg:order-none text-end lg:text-left",
         )}
       >
-        {formatNumber(price, formatNumberOptions)}
+        {formatNumber(price, { ...formatNumberOptions, minimumTotalDigits: 10 })}
       </div>
       <div className="z-10 justify-end text-end hidden lg:flex gap-1">{formattedSize}</div>
       <div
@@ -137,7 +137,9 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           {pair.params.bucketSizes.map((size) => {
             return (
               <Select.Item key={`bucket-${size}`} value={size}>
-                {size}
+                {Decimal(size)
+                  .mul(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+                  .toString()}
               </Select.Item>
             );
           })}
@@ -169,8 +171,8 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
       </div>
       <div className="flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
         <div className="asks-container flex flex-1 flex-col w-full gap-1">
-          {[...asks.records].reverse().map((ask) => (
-            <OrderRow key={`ask-${ask.price}`} type="ask" {...ask} max={asks.total} />
+          {[...asks.records].reverse().map((ask, i) => (
+            <OrderRow key={`ask-${ask.price}-${i}`} type="ask" {...ask} max={asks.total} />
           ))}
         </div>
 
@@ -187,8 +189,8 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
         </div>
 
         <div className="bid-container flex flex-1 flex-col w-full gap-1">
-          {bids.records.map((bid) => (
-            <OrderRow key={`bid-${bid.price}`} type="bid" {...bid} max={bids.total} />
+          {bids.records.map((bid, i) => (
+            <OrderRow key={`bid-${bid.price}-${i}`} type="bid" {...bid} max={bids.total} />
           ))}
         </div>
       </div>

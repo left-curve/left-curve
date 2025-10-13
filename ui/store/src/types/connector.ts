@@ -19,6 +19,7 @@ export const ConnectorIds = {
   Phantom: "phantom",
   Backpack: "backpack",
   Passkey: "passkey",
+  Privy: "privy",
 } as const;
 
 export type ConnectorType = (typeof ConnectorTypes)[keyof typeof ConnectorTypes];
@@ -28,6 +29,7 @@ export const ConnectorTypes = {
   Passkey: "passkey",
   Session: "session",
   Remote: "remote",
+  Privy: "privy",
 } as const;
 
 export type Connection = {

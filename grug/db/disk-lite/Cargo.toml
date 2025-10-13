@@ -9,10 +9,14 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+metrics = ["dep:metrics", "grug-types/metrics"]
+
 [dependencies]
 error-backtrace = { workspace = true }
 grug-app        = { workspace = true }
 grug-types      = { workspace = true }
+metrics         = { workspace = true, optional = true }
 rocksdb         = { workspace = true }
 sha2            = { workspace = true }
 tempfile        = { workspace = true }

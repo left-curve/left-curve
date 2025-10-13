@@ -83,7 +83,7 @@ where
     }
 
     for submsg in submsgs {
-        let buffer = Shared::new(Buffer::new(storage.clone(), None));
+        let buffer = Shared::new(Buffer::new(storage.clone(), None, "submsg"));
         let result = process_msg(
             vm.clone(),
             Box::new(buffer.clone()),

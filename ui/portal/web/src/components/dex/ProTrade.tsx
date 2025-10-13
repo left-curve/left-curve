@@ -29,7 +29,13 @@ import { ErrorBoundary } from "react-error-boundary";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { OrderId, OrdersByUserResponse, PairId, Trade } from "@left-curve/dango/types";
+import {
+  TimeInForceOption,
+  type OrderId,
+  type OrdersByUserResponse,
+  type PairId,
+  type Trade,
+} from "@left-curve/dango/types";
 
 const [ProTradeProvider, useProTrade] = createContext<{
   state: ReturnType<typeof useProTradeState>;
@@ -383,7 +389,7 @@ const ProTradeOpenOrders: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-0 max-h-52 overflow-y-scroll",
+        base: "pb-0 max-h-[31vh] overflow-y-scroll",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !orders.data.length,
         }),
@@ -439,7 +445,12 @@ const ProTradeOrdersHistory: React.FC = () => {
     {
       header: m["dex.protrade.history.type"](),
       cell: ({ row }) => (
-        <Cell.Text text={m["dex.protrade.orderType"]({ orderType: row.original.orderType })} />
+        <Cell.Text
+          text={m["dex.protrade.orderType"]({
+            orderType:
+              row.original.timeInForce === TimeInForceOption.GoodTilCanceled ? "limit" : "market",
+          })}
+        />
       ),
     },
     {
@@ -495,7 +506,7 @@ const ProTradeOrdersHistory: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-0 max-h-52 overflow-y-scroll",
+        base: "pb-0 max-h-[31vh] overflow-y-scroll",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !data?.nodes.length,
         }),

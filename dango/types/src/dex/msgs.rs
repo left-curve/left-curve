@@ -199,12 +199,13 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde)]
 pub enum OwnerMsg {
-    /// pause or unpause trading.
-    SetPaused(bool),
     /// Create new, or modify the parameters of existing, trading pairs.
     BatchUpdatePairs(Vec<PairUpdate>),
-    /// Forcibly cancel all orders (limit, market, incoming) and refund the users.
-    ForceCancelOrders {},
+    /// pause or unpause trading.
+    SetPaused(bool),
+    /// Forcibly cancel all orders (limit, market, incoming), delete the resting
+    /// order book state, and refund the users.
+    Reset {},
 }
 
 #[grug::derive(Serde)]
@@ -347,7 +348,7 @@ pub enum QueryMsg {
 /// Identifier of a trading pair. Consists of the base asset and quote asset
 /// denominations.
 #[grug::derive(Serde)]
-#[derive(Hash)]
+#[derive(Hash, PartialOrd, Ord)]
 pub struct PairId {
     pub base_denom: Denom,
     pub quote_denom: Denom,

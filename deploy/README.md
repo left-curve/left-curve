@@ -1,4 +1,5 @@
 
+
 # Install a new server
 
 - Add the host in `inventory` using its public IP
@@ -16,7 +17,7 @@ ansible-playbook tailscale.yml --limit <public IP>
 ansible-playbook playbook.yml --limit <private IP>
 ```
 
-## Setup Ansible Vault
+# Setup Ansible Vault
 
 ### First time setup (macOS):
 ```bash

@@ -37,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         location.pathname === "/" ? "lg:fixed h-fit " : "lg:sticky flex flex-col items-center",
       )}
     >
-      {isLg ? <div id="quest-banner" /> : null}
+      {isLg ? <div id="quest-banner" className="w-full" /> : null}
       {isLg ? <TestnetBanner /> : null}
 
       <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">

@@ -4,7 +4,7 @@ use {
     dango_types::dex::{Price, Xyk},
     grug::{
         Bounded, CoinPair, IsZero, MathResult, MultiplyFraction, MultiplyRatio, NextNumber, Number,
-        NumberConst, PrevNumber, Udec128, Uint128, ZeroExclusiveOneExclusive,
+        NumberConst, PrevNumber, Udec128, Uint128, Uint256, ZeroExclusiveOneExclusive,
     },
     std::{cmp, iter},
 };
@@ -86,16 +86,15 @@ pub fn swap_exact_amount_out(
     // => input_amount = (A * B) / (B - output_amount) - A
     // Round so that user takes the loss.
     // Note: A * B may overflow, so we need to escalate this to 256-bit math.
-    Ok(input_reserve
-        .into_next()
-        .checked_mul(output_reserve.into_next())?
-        .checked_div(
+    Ok(Uint256::ONE
+        .checked_multiply_ratio_ceil(
+            input_reserve.checked_full_mul(output_reserve)?,
             output_reserve
                 .checked_sub(output_amount_before_fee)?
                 .into_next(),
         )?
-        .checked_sub(input_reserve.into_next())?
-        .checked_into_prev()?)
+        .checked_into_prev()?
+        .checked_sub(input_reserve)?)
 }
 
 pub fn reflect_curve(

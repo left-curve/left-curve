@@ -1,13 +1,8 @@
 use {
-    dango_dex::MAX_ORACLE_STALENESS,
     dango_genesis::Contracts,
     dango_testing::{BridgeOp, TestAccounts, TestOption, TestSuite, setup_test_naive},
     dango_types::{
-        constants::{
-            dango, eth,
-            mock::{FIFTY, ONE, ONE_HUNDRED, ONE_HUNDREDTH, ONE_TENTH, TEN},
-            sol, usdc,
-        },
+        constants::{dango, dango_usdc, eth, eth_usdc, sol, sol_usdc, usdc},
         dex::{
             self, CreateOrderRequest, Direction, Geometric, PairId, PairParams, PairUpdate,
             PassiveLiquidity, Price, SwapRoute, Xyk,
@@ -24,7 +19,7 @@ use {
     hyperlane_types::constants::{ethereum, solana},
     proptest::{prelude::*, proptest, sample::select},
     std::{
-        collections::{BTreeSet, HashMap, hash_map},
+        collections::{BTreeMap, BTreeSet, HashMap, hash_map},
         fmt::Debug,
         ops::Sub,
         str::FromStr,
@@ -651,6 +646,44 @@ fn pair_ids() -> Vec<PairId> {
     ]
 }
 
+/// Bucket sizes for each pair
+fn bucket_sizes() -> BTreeMap<PairId, BTreeSet<NonZero<Price>>> {
+    btree_map! {
+        PairId {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        } => btree_set! {
+            dango_usdc::ONE_THOUSANDTH,
+            dango_usdc::ONE_HUNDREDTH,
+            dango_usdc::ONE_TENTH,
+            dango_usdc::ONE,
+            dango_usdc::TEN,
+            dango_usdc::FIFTY,
+            dango_usdc::ONE_HUNDRED,
+        },
+        PairId {
+            base_denom: sol::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        } => btree_set! {
+            sol_usdc::ONE_HUNDREDTH,
+            sol_usdc::ONE_TENTH,
+            sol_usdc::ONE,
+            sol_usdc::TEN,
+        },
+        PairId {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        } => btree_set! {
+            eth_usdc::ONE_HUNDREDTH,
+            eth_usdc::ONE_TENTH,
+            eth_usdc::ONE,
+            eth_usdc::TEN,
+            eth_usdc::FIFTY,
+            eth_usdc::ONE_HUNDRED,
+        },
+    }
+}
+
 /// Proptest strategy for generating a pair id
 fn pair_id() -> impl Strategy<Value = PairId> {
     select(pair_ids())
@@ -970,7 +1003,6 @@ fn feed_prices(
                     denom => dango_types::oracle::PriceSource::Fixed {
                         humanized_price: Udec128::ONE,
                         precision: 6,
-                        // Use a very recent time to avoid the "price is too old" error.
                         timestamp,
                     },
                 }),
@@ -1030,17 +1062,10 @@ fn test_dex_actions(
     println!("user1 balances: {balances:?}");
 
     // Register fixed prices for all denoms.
-    let mut last_updated_oracle = suite.block.timestamp;
-    feed_prices(last_updated_oracle, &mut suite, &mut accounts, &contracts)?;
+    let timestamp = Timestamp::from_nanos(u128::MAX); // Maximum time in the future to prevent oracle price from being outdated.
+    feed_prices(timestamp, &mut suite, &mut accounts, &contracts)?;
 
-    let bucket_sizes: BTreeSet<NonZero<Price>> = btree_set! {
-        NonZero::new_unchecked(ONE_HUNDREDTH),
-        NonZero::new_unchecked(ONE_TENTH),
-        NonZero::new_unchecked(ONE),
-        NonZero::new_unchecked(TEN),
-        NonZero::new_unchecked(FIFTY),
-        NonZero::new_unchecked(ONE_HUNDRED),
-    };
+    let bucket_sizes = bucket_sizes();
 
     // Create pairs
     suite
@@ -1061,7 +1086,7 @@ fn test_dex_actions(
                             ))
                             .unwrap(),
                             pool_type: pool_type.clone(),
-                            bucket_sizes: bucket_sizes.clone(),
+                            bucket_sizes: bucket_sizes.get(pair).unwrap().clone(),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
                             min_order_size: Uint128::ZERO,
                         },
@@ -1078,13 +1103,6 @@ fn test_dex_actions(
 
     // Execute the actions and check balances after each action.
     for action in dex_actions {
-        // If oracle price is outdated, update it.
-        let timestamp = suite.block.timestamp;
-        if timestamp >= last_updated_oracle + MAX_ORACLE_STALENESS {
-            feed_prices(timestamp, &mut suite, &mut accounts, &contracts)?;
-            last_updated_oracle = timestamp;
-        }
-
         // Execute the action.
         let block_outcome = action.execute(&mut suite, &mut accounts, &contracts)?;
 

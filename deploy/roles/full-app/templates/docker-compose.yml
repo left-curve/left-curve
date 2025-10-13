@@ -2,6 +2,7 @@ x-common-labels: &common-labels
   environment: "${DEPLOY_ENV}"
   deployment: "${DEPLOYMENT_NAME}"
   dango_network: "${DANGO_NETWORK}"
+  chain_id: "${CHAIN_ID}"
 
 services:
 {% if deploy_includes_postgres %}
@@ -185,9 +186,12 @@ services:
       timeout: 5s
       retries: 3
 
-{% if dex_bot_enabled %}
+{% if dex_bot_enabled and inventory_hostname == dex_bot_host %}
   dex-bot:
     image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
+    labels:
+      <<: *common-labels
+      service_name: "dex_bot"
     depends_on:
       dango:
         condition: service_healthy
@@ -215,6 +219,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 3
+      # start_period: 10s
 {% endif %}
 
   cometbft:
@@ -256,7 +261,7 @@ services:
       - "${GRAPHIQL_PORT:-0}:80"
 {% endif %}
     environment:
-      - GRAPHQL_ENDPOINT=${INDEXER_URL}
+      - GRAPHQL_ENDPOINT=${INDEXER_URL}/graphql
     networks:
       - traefik
 

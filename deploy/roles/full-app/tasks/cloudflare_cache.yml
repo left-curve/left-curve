@@ -1,24 +1,28 @@
-- name: Get zone ID
-  uri:
-    url: "https://api.cloudflare.com/client/v4/zones?name={{ dango_domain }}"
-    method: GET
-    headers:
-      Authorization: "Bearer {{ cloudflare_api_token }}"
-      Content-Type: "application/json"
-    return_content: yes
-  register: zone_info
+- block:
+    - name: Get zone ID
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones?name={{ dango_domain }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        return_content: yes
+      register: zone_info
 
-- set_fact:
-    cloudflare_zone_id: "{{ zone_info.json.result[0].id }}"
+    - set_fact:
+        cloudflare_zone_id: "{{ zone_info.json.result[0].id }}"
 
-- name: Purge Cloudflare cache
-  uri:
-    url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/purge_cache"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ cloudflare_api_token }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
-      purge_everything: true
-    status_code: 200
+    - name: Purge Cloudflare cache
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/purge_cache"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          purge_everything: true
+        status_code: 200
+  rescue:
+    - debug:
+        msg: "Cloudflare purge skipped due to error"

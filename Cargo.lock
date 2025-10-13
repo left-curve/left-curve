@@ -3587,11 +3587,14 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
+ "grug-db-memory-lite",
  "grug-vm-rust",
  "hex-literal",
  "indexer-client",
+ "indexer-sql",
  "num-format",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -4791,6 +4794,7 @@ dependencies = [
  "error-backtrace",
  "grug-app",
  "grug-types",
+ "metrics",
  "rocksdb",
  "sha2 0.10.9",
  "temp-rocksdb",
@@ -5016,6 +5020,7 @@ dependencies = [
  "grug-crypto",
  "grug-math",
  "hex-literal",
+ "metrics",
  "paste",
  "prost",
  "ripemd",
@@ -7653,9 +7658,9 @@ dependencies = [
 
 [[package]]
 name = "pyth-lazer-client"
-version = "8.2.0"
+version = "8.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44bda75272a21bc3250bed6e950c4b1342cc2841e6e0d7f65632a8966c96e7d7"
+checksum = "9a1c5d0599485cb55333dc8f4de88edc50681a67b49a53a4ab2288768e7ca850"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -7680,9 +7685,9 @@ dependencies = [
 
 [[package]]
 name = "pyth-lazer-protocol"
-version = "0.16.0"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "409449853d2d574fbc24788fc334f1f6d65fbd2d98136ce5619ef30042af7269"
+checksum = "9f8609c264c03a18a07a2c0c57a4b38b6e7b141a4e3d41161e7ab5a455157ae8"
 dependencies = [
  "anyhow",
  "byteorder",

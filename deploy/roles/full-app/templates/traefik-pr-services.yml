@@ -4,6 +4,21 @@ http:
       stripPrefix:
         prefixes:
           - "/graphiql"
+    {{ dango_network }}-cors-dango:
+      headers:
+        accessControlAllowOriginListRegex:
+          - ^https://.*\.dango-portal\.pages\.dev$
+          - ^https://([a-z0-9-]+\.)*dango\.zone$
+          - ^https://([a-z0-9-]+\.)*dango\.exchange$
+        accessControlAllowMethods: ["GET","POST","OPTIONS"]
+        accessControlAllowHeaders:
+          - Content-Type
+          - Authorization
+          - Accept
+          - X-Requested-With
+        accessControlAllowCredentials: true
+        addVaryHeader: true
+        accessControlMaxAge: 600
 
   services:
     {{ dango_network }}-dango:
@@ -25,27 +40,69 @@ http:
 
   routers:
     {{ dango_network }}-main-graphiql:
-      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
+      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-graphiql"
       middlewares:
         - "{{ dango_network }}-graphiql-stripprefix"
 
+    {{ dango_network }}-main-graphiql-ssl:
+      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
+      service: "{{ dango_network }}-graphiql"
+      middlewares:
+        - "{{ dango_network }}-graphiql-stripprefix"
+
     {{ dango_network }}-main-frontend:
-      rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`www.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-frontend"
 
+    {{ dango_network }}-main-frontend-ssl:
+      rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
+      service: "{{ dango_network }}-frontend"
+
     {{ dango_network }}-main-backend:
-      rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
+
+    {{ dango_network }}-main-backend-ssl:
+      rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
+      service: "{{ dango_network }}-dango"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-faucet_bot:
-      rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-faucet_bot"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
+
+    {{ dango_network }}-main-faucet_bot-ssl:
+      rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
+      service: "{{ dango_network }}-faucet_bot"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"

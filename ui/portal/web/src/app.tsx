@@ -8,6 +8,9 @@ import { AppUpdater } from "./app.updater";
 import { AppProvider } from "@left-curve/foundation";
 import { Toaster, toast } from "@left-curve/applets-kit";
 import { RootModal } from "./components/modals/RootModal";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { AppPrivy } from "./app.privy";
+import { PRIVY_APP_ID, PRIVY_CLIENT_ID } from "~/constants";
 
 import type React from "react";
 
@@ -59,14 +62,32 @@ const queryClient = new QueryClient({
 export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <DangoStoreProvider config={config}>
-        <AppProvider toast={toast} navigate={(to, options) => router.navigate({ to, ...options })}>
-          <AppRouter />
-          <AppUpdater />
-          <RootModal />
-          <Toaster />
-        </AppProvider>
-      </DangoStoreProvider>
+      <PrivyProvider
+        appId={PRIVY_APP_ID}
+        clientId={PRIVY_CLIENT_ID}
+        config={{
+          embeddedWallets: {
+            showWalletUIs: false,
+            ethereum: {
+              createOnLogin: "users-without-wallets",
+            },
+          },
+        }}
+      >
+        <AppPrivy>
+          <DangoStoreProvider config={config}>
+            <AppProvider
+              toast={toast}
+              navigate={(to, options) => router.navigate({ to, ...options })}
+            >
+              <AppRouter />
+              <AppUpdater />
+              <RootModal />
+              <Toaster />
+            </AppProvider>
+          </DangoStoreProvider>
+        </AppPrivy>
+      </PrivyProvider>
     </QueryClientProvider>
   );
 };

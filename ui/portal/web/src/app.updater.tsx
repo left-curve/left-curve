@@ -8,6 +8,7 @@ export const AppUpdater: React.FC = () => {
   const { toast } = useApp();
 
   useEffect(() => {
+    if (window.location.origin.includes("localhost")) return;
     if ("serviceWorker" in navigator) {
       const wb = new Workbox("/service-worker.js");
 

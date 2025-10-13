@@ -6,6 +6,8 @@
     "send": "Send",
     "viewAll": "View All",
     "max": "Max",
+    "or": "or",
+    "submit": "Submit",
     "deposit": "Deposit",
     "withdraw": "Withdraw",
     "signin": "Sign In",
@@ -323,7 +325,9 @@
     }
   },
   "signin": {
+    "sentVerificationCode": "We've sent a verification code to ",
     "usernamesFound": "Usernames found",
+    "connectWalletToContinue": "Connect your wallet to continue",
     "chooseCredential": "Choose any of the credentials that have been associated with your username.",
     "noUsernamesFound": "No usernames found",
     "noUsernameMessage": "We could not find any username associated with the credential you connected.",
@@ -335,6 +339,7 @@
     "noAccount": "Don’t have an account?",
     "forgotUsername": "Forgot my username",
     "useAnotherAccount": "Use another account",
+    "connectWallet": "Connect wallet",
     "rememberUsername": {
       "lastLogin": "Last login: {time}"
     },
@@ -368,6 +373,11 @@
     "dangbros": "Dangbros",
     "privacyPolicy": "Privacy Policy",
     "termsOfUse": "Terms of Use"
+  },
+  "auth": {
+    "didntReceiveCode": "Didn't receive the code?",
+    "enterYou": "Enter your",
+    "requetFromFaucet": "Request Funds from Faucet"
   },
   "signup": {
     "mobileModal": {
@@ -408,8 +418,9 @@
           "selectors": ["step"],
           "match": {
             "step=0": "Credential",
-            "step=1": "Username",
-            "step=2": "Sign in"
+            "step=1": "Fund",
+            "step=2": "Username",
+            "step=3": "Sign in"
           }
         }
       ],
@@ -419,7 +430,8 @@
           "selectors": ["step"],
           "match": {
             "step=0": "Create Your Account",
-            "step=1": "Select a Username"
+            "step=1": "Fund Your Account",
+            "step=2": "Select a Username"
           }
         }
       ],
@@ -429,8 +441,9 @@
           "selectors": ["step"],
           "match": {
             "step=0": "Choose a sign in credential. You can add or remove credentials afterwards.",
-            "step=1": "Your username will be public on-chain and cannot be changed afterwards.",
-            "step=2": "Your user was created and now you can sign in with your new account."
+            "step=1": "Click the button below to request funds from the faucet for this testnet",
+            "step=2": "Your username will be public on-chain and cannot be changed afterwards.",
+            "step=3": "Your user was created and now you can sign in with your new account."
           }
         }
       ]
@@ -602,11 +615,11 @@
       "title": "Galxe Quest",
       "quest": {
         "connectEthereumWallet": "Connect your Ethereum wallet",
-        "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more outgoing transaction on Ethereum mainnet",
+        "completeTxsInEthereum": "(For anti-sybil purpose) have 10 or more outgoing transaction on Ethereum mainnet (current: {number} Txs)",
         "completeLimitOrder": "Complete a limit order",
         "completeMarketOrder": "Complete a market order",
         "swapAtLeastInPairs": "Trade in 3 different token pairs ({number} remaining)",
-        "swapAtLeastForUSD": "Trade $1M in volume (current: {number})"
+        "swapAtLeastForUSD": "Trade $6.9M in volume (current: {number})"
       }
     }
   },

@@ -16,6 +16,14 @@ start-dango:
     TENDERMINT__RPC_ADDR="http://localhost:26657" \
     cargo run --bin dango start --home ./configs/dango
 
+start-dango-release:
+  set -a; source .env; set +a; \
+  export PYTH__ACCESS_TOKEN="$PYTH_ACCESS_TOKEN"; \
+  INDEXER__CLICKHOUSE__URL="http://localhost:8123" \
+  INDEXER__DATABASE__URL="postgres://postgres@localhost:5432/grug_dev" \
+  TENDERMINT__RPC_ADDR="http://localhost:26657" \
+  cargo run --release --bin dango start --home ./configs/dango
+
 # Start the localnet
 start-inner profiles="":
   #!/usr/bin/env bash
@@ -67,7 +75,8 @@ logs:
 reset:
   rm -rfv ./configs/dango/data
   rm -rfv ./configs/dango/indexer
-  docker volume rm $(docker volume ls -q | grep localdango_)
+  docker volume rm prometheus_data alertmanager_data loki_data db_data dango_data dango_indexer cometbft_data clickhouse_data clickhouse_logs
+
 
 # Run the development database
 run-dev-db:

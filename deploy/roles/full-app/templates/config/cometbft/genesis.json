@@ -909,14 +909,16 @@
   "genesis_time": "1971-01-01T00:00:00Z",
   "initial_height": "0",
   "validators": [
+      {%- for h in (groups['full-app'] | sort) if hostvars[h].cometbft_validator_public_key is defined -%}
     {
-      "address": "{{ cometbft_validator_address }}",
-      "name": "",
+      "address": "{{ hostvars[h].cometbft_validator_address }}",
+      "name": "{{ h }}",
       "power": "10",
       "pub_key": {
         "type": "tendermint/PubKeyEd25519",
-        "value": "{{ cometbft_validator_public_key }}"
+        "value": "{{ hostvars[h].cometbft_validator_public_key }}"
       }
-    }
+    }{% if not loop.last %},{% endif %}
+  {%- endfor -%}
   ]
 }
