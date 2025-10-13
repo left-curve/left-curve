@@ -4,11 +4,11 @@ use {
     std::str::FromStr,
 };
 
-fn main() {
-    let key =
-        "AAVyb3V0ZQAU34bOl4ObxE+rsy9n8dqPdohRMaIAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC";
+const KEY: &str =
+    "AAVyb3V0ZQAU34bOl4ObxE+rsy9n8dqPdohRMaIAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC";
 
-    let bytes = Binary::from_str(key).unwrap();
+fn main() {
+    let bytes = Binary::from_str(KEY).unwrap();
 
     // split off the namespace
     let (len_bytes, bytes) = bytes.split_at(2);
@@ -16,6 +16,5 @@ fn main() {
     let key = &bytes[len as usize..];
 
     let parsed_key = <(Addr, Remote)>::from_slice(key).unwrap();
-
-    println!("parsed_key: {:?}", parsed_key);
+    println!("{parsed_key:?}");
 }
