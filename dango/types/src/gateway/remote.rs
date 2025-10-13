@@ -24,9 +24,9 @@ impl PrimaryKey for Remote {
             Remote::Warp { domain, contract } => {
                 // tag:           1 byte
                 // origin domain: 4 bytes
-                // sender:        4 bytes
-                // totor:         9 bytes
-                let mut bytes = Vec::with_capacity(9);
+                // sender:        32 bytes
+                // total:         37 bytes
+                let mut bytes = Vec::with_capacity(37);
                 bytes.push(0);
                 bytes.extend(domain.to_be_bytes());
                 bytes.extend(contract.into_inner());
@@ -45,11 +45,11 @@ impl PrimaryKey for Remote {
         let (tag, bytes) = (bytes[0], &bytes[1..]);
         match tag {
             0 => {
-                if bytes.len() != 8 {
+                if bytes.len() != 36 {
                     return Err(StdError::deserialize::<Self::Output, _>(
                         "key",
                         format!(
-                            "incorrect byte length for warp remote! expecting: 8, got: {}",
+                            "incorrect byte length for warp remote! expecting: 36, got: {}",
                             bytes.len()
                         ),
                     ));
@@ -58,7 +58,7 @@ impl PrimaryKey for Remote {
                 let origin_domain_raw = bytes[0..4].try_into().unwrap();
                 let origin_domain = Domain::from_be_bytes(origin_domain_raw);
 
-                let sender_raw = bytes[4..8].try_into().unwrap();
+                let sender_raw = bytes[4..].try_into().unwrap();
                 let sender = Addr32::from_inner(sender_raw);
 
                 Ok(Remote::Warp {
