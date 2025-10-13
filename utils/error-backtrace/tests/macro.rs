@@ -4,10 +4,13 @@ enum Error {
     #[error(transparent)]
     #[backtrace(new)]
     NonBacktraceable(NonBacktraceableError),
+
     #[error("hi {x}")]
     Named { x: u32 },
+
     #[error(transparent)]
     Unnamed(InnerError),
+
     #[error("unit")]
     Unit,
 }
