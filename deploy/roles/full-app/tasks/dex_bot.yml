@@ -31,9 +31,25 @@
 
     - command: >
         docker run --rm --network {{ deployment_name }}_default
+          -e username={{ dango.dex_bot.username }}
+          -e address={{ dango.dex_bot.address }}
+          -e key__privatekey={{ dango.dex_bot.private_key }}
+          -e http_url=http://dango:8080
+          -e chain_id={{ chain_id }}
+          -e app_settings__sleep__min=1s
+          -e app_settings__sleep__max=2s
+          -e app_settings__size_percent__min=0.0005
+          -e app_settings__size_percent__max=0.003
+          -e app_settings__price_percent__min=0.05
+          -e app_settings__price_percent__max=0.2
+          -e app_settings__order_number__min=1
+          -e app_settings__order_number__max=5
+          -e app_settings__order_type=market
         ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }}
         bash -lc "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
       register: liquidity_result
+      retries: 3
+      delay: 5
       run_once: true
 
     # - name: Run both liquidity commands in sequence
