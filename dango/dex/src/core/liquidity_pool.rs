@@ -1135,10 +1135,10 @@ mod tests {
         },
         Udec128::new_percent(1),
         Coin::new(eth::DENOM.clone(), 4950495).unwrap(),
-        Coin::new(usdc::DENOM.clone(), 4999999).unwrap(),
+        Coin::new(usdc::DENOM.clone(), 5000000).unwrap(),
         coin_pair! {
             eth::DENOM.clone() => 10000000 - 4950495,
-            usdc::DENOM.clone() => 10000000 + 4999999,
+            usdc::DENOM.clone() => 10000000 + 5000000,
         };
         "geometric pool 1:1 price swap out base denom amount matches first order"
     )]
@@ -1166,10 +1166,10 @@ mod tests {
         },
         Udec128::new_percent(1),
         Coin::new(usdc::DENOM.clone(), 4_950_495 + 100_000).unwrap(),
-        Coin::new(eth::DENOM.clone(), 5_153_556).unwrap(),
+        Coin::new(eth::DENOM.clone(), 5_153_557).unwrap(),
         coin_pair! {
             usdc::DENOM.clone() => 10000000 - 4_950_495 - 100_000,
-            eth::DENOM.clone() => 10000000 + 5_153_556,
+            eth::DENOM.clone() => 10000000 + 5_153_557,
         };
         "geometric pool 1:1 price swap out quote denom amount matches first order part of second order"
     )]
@@ -1259,10 +1259,10 @@ mod tests {
         },
         Udec128::new_percent(1),
         Coin::new(usdc::DENOM.clone(), 5_000_000 + 100_000).unwrap(),
-        Coin::new(eth::DENOM.clone(), 2_525_252 + 67_568).unwrap(),
+        Coin::new(eth::DENOM.clone(), 2_525_252 + 67_569).unwrap(),
         coin_pair! {
             usdc::DENOM.clone() => 10000000 - 5_000_000 - 100_000,
-            eth::DENOM.clone() => 10000000 + 2_525_252 + 67_568,
+            eth::DENOM.clone() => 10000000 + 2_525_252 + 67_569,
         };
         "geometric pool 2:1 price swap out quote denom amount matches first and part of second order"
     )]
