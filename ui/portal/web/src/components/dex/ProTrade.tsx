@@ -389,7 +389,7 @@ const ProTradeOpenOrders: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-0 max-h-52 overflow-y-scroll",
+        base: "pb-0 max-h-[31vh] overflow-y-scroll",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !orders.data.length,
         }),
@@ -506,7 +506,7 @@ const ProTradeOrdersHistory: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-0 max-h-52 overflow-y-scroll",
+        base: "pb-0 max-h-[31vh] overflow-y-scroll",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !data?.nodes.length,
         }),
