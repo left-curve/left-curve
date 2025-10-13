@@ -65,7 +65,7 @@ port = 8080
 #
 # Wildcards are not supported here. To allow all origins, simply comment out
 # this line.
-cors_allowed_origin = "http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}"
+cors_allowed_origin = "http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }},http://api.{{ dango_network }}.{{ dango_domain }},https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }},https://api.{{ dango_network }}.{{ dango_domain }}"
 
 [metrics_httpd]
 
