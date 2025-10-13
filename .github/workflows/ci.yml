@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  js-and-rust:
+    name: JS & Rust checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+
+      - name: Enable corepack and install pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run JS lint
+        run: pnpm lint
+
+      - name: Run JS tests
+        run: pnpm test
+
+      - name: Setup Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+          override: true
+
+      - name: Install just (if missing)
+        run: |
+          if ! command -v just >/dev/null 2>&1; then
+            cargo install just || echo "cargo install just failed (maybe already installed)"
+          fi
+        env:
+          CARGO_TERM_COLOR: always
+
+      - name: Show versions
+        run: |
+          node -v || true
+          pnpm -v || true
+          rustc --version || true
+          cargo --version || true
+          just --version || true
+
+      - name: Run rust lint and tests via just
+        run: |
+          just lint
+          just test
