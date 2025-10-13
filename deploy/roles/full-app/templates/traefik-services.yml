@@ -75,7 +75,7 @@ http:
 
   routers:
     {{ dango_network }}-main-graphiql:
-      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
+      rule: "(Host(`api-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-graphiql"
@@ -83,7 +83,7 @@ http:
         - "{{ dango_network }}-graphiql-stripprefix"
 
     {{ dango_network }}-main-graphiql-ssl:
-      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
+      rule: "(Host(`api-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "websecure"
       tls:
@@ -93,13 +93,13 @@ http:
         - "{{ dango_network }}-graphiql-stripprefix"
 
     {{ dango_network }}-main-frontend:
-      rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`www-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-main-frontend-ssl:
-      rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`www-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls:
@@ -107,7 +107,7 @@ http:
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-main-backend:
-      rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`api-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"
@@ -115,7 +115,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-backend-ssl:
-      rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`api-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls:
@@ -125,7 +125,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-faucet_bot:
-      rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`faucet-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-faucet_bot"
@@ -133,7 +133,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-faucet_bot-ssl:
-      rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      rule: "Host(`faucet-{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls:
@@ -143,7 +143,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-graphiql:
-      rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
+      rule: "Host(`api-{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-graphiql"
@@ -152,7 +152,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-graphiql-ssl:
-      rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
+      rule: "Host(`api-{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "websecure"
       tls:
@@ -163,13 +163,13 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-frontend:
-      rule: "Host(`www.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`www-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-cloudflare-frontend-ssl:
-      rule: "Host(`www.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`www-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls:
@@ -177,7 +177,7 @@ http:
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-cloudflare-backend:
-      rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`api-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"
@@ -185,7 +185,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-backend-ssl:
-      rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`api-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls:
@@ -195,7 +195,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-faucet_bot:
-      rule: "Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`faucet-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-faucet_bot"
@@ -203,7 +203,7 @@ http:
         - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-faucet_bot-ssl:
-      rule: "Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
+      rule: "Host(`faucet-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
       tls:
