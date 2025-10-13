@@ -22,8 +22,9 @@ sea-orm = ["dep:sea-orm"]
 # - tendermint::abci::types::ExecTxResult -> TxOutcome
 # - tendermint::abci::Event -> CronOutcome
 # - tendermint_rpc::endpoint::tx::Response -> SearchTxOutcome
-metrics    = ["dep:metrics"]
 tendermint = ["dep:tendermint", "tendermint-rpc"]
+# Abstractions and trait implementations related to emitting metrics.
+metrics = ["dep:metrics"]
 
 [dependencies]
 async-graphql  = { workspace = true, optional = true }

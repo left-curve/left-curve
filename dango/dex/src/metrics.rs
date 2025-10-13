@@ -1,8 +1,3 @@
-use {
-    metrics::{describe_counter, describe_histogram},
-    std::sync::Once,
-};
-
 pub const LABEL_TRADES: &str = "dango.contract.dex.trades_count";
 
 pub const LABEL_ORDERS_FILLED: &str = "dango.contract.dex.orders_filled_count";
@@ -31,7 +26,13 @@ pub const LABEL_DURATION_STORE_VOLUME: &str = "dango.contract.dex.store_volume.d
 
 pub const LABEL_DURATION_ITER_NEXT: &str = "dango.contract.dex.iterator_next.duration";
 
+#[cfg(feature = "metrics")]
 pub fn init_metrics() {
+    use {
+        metrics::{describe_counter, describe_histogram},
+        std::sync::Once,
+    };
+
     static ONCE: Once = Once::new();
 
     ONCE.call_once(|| {
