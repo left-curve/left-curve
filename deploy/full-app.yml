@@ -1,9 +1,12 @@
-
 - name: Generate keys on all nodes and build peer list
   hosts: full-app
   become: true
   become_user: "{{ deploy_user }}"
   gather_facts: yes
+  vars:
+    # Set this to true to deploy a new database and cometbft/dango directory
+    reset_data: false
+    traefik_enabled: false
   tasks:
     - name: Generate shared timestamp
       set_fact:
@@ -19,7 +22,6 @@
       include_role:
         name: full-app
         tasks_from: read_current_deploy.yml
-      when: traefik_enabled
 
     - name: Run setup tasks
       include_role:

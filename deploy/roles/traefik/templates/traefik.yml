@@ -2,6 +2,14 @@ api:
   dashboard: true
   insecure: true
 
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: letsencrypt-dango@pen.so
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+
 ping: true
 
 providers:

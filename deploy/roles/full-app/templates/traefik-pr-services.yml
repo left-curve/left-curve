@@ -28,6 +28,9 @@ http:
       rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "web"
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
       service: "{{ dango_network }}-graphiql"
       middlewares:
         - "{{ dango_network }}-graphiql-stripprefix"
@@ -36,16 +39,25 @@ http:
       rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`www.{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-main-backend:
       rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`api.{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
       service: "{{ dango_network }}-dango"
 
     {{ dango_network }}-main-faucet_bot:
       rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`) || Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
       service: "{{ dango_network }}-faucet_bot"

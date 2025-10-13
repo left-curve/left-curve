@@ -29,6 +29,4 @@ dango_directory: "{{ deployment_dir }}/dango"
 cometbft_directory: "{{ deployment_dir }}/cometbft"
 # should we use system wide dango and cometbft directories instead of contained in the deploy
 system_wide_directories: false
-# Set this to true to deploy a new database and cometbft/dango directory
-reset_data: false
 keep_databases: false
