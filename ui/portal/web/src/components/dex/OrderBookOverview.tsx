@@ -137,7 +137,9 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           {pair.params.bucketSizes.map((size) => {
             return (
               <Select.Item key={`bucket-${size}`} value={size}>
-                {size}
+                {Decimal(size)
+                  .mul(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+                  .toString()}
               </Select.Item>
             );
           })}
