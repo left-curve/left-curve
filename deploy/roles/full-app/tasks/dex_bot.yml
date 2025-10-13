@@ -10,7 +10,7 @@
 
 - name: Check if liquidity setup already done
   stat:
-    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/bot_liquidity_setup_done"
+    path: "{{ deployment_dir }}/bot_liquidity_setup_done"
   register: liquidity_setup_flag
   run_once: true
   delegate_to: "{{ dex_bot_host }}"
@@ -32,7 +32,7 @@
     - name: Run both liquidity commands in sequence
       community.docker.docker_compose_v2_exec:
         project_name: "{{ deployment_name }}"
-        project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+        project_src: "{{ deployment_dir }}"
         service: dex-bot
         command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
         tty: yes
@@ -51,7 +51,41 @@
         var: liquidity_result.stderr
       run_once: true
 
+    - vars:
+        addresses:
+          - "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
+          - "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
+
+    - name: Query balances
+      community.docker.docker_compose_v2_exec:
+        project_name: "{{ deployment_name }}"
+        project_src: "{{ deployment_dir }}"
+        service: dango
+        command: bash -lc "dango query balances {{ item }}"
+        tty: yes
+      loop: "{{ addresses }}"
+      register: balances_raw
+      run_once: true
+      delegate_to: "{{ dex_bot_host }}"
+
+    - name: Pretty output
+      run_once: true
+      delegate_to: "{{ dex_bot_host }}"
+      vars:
+        report: |-
+          {%- for r in balances_raw.results -%}
+          {%- set data = (r.stdout | from_json).balances -%}
+          Address: {{ r.item }}
+          -------------------------------
+          {%- for k, v in data.items() if (v|int) > 0 -%}
+          {{ "%-24s %s"|format(k, v) }}
+          {%- endfor -%}
+
+          {%- endfor -%}
+      debug:
+        msg: "{{ report }}"
+
 - name: Mark liquidity setup as done
   file:
-    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/bot_liquidity_setup_done"
+    path: "{{ deployment_dir }}/bot_liquidity_setup_done"
     state: touch
