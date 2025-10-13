@@ -9,7 +9,6 @@ http:
         accessControlAllowOriginList:
           - https://dev.dango.exchange
           - https://dango.exchange
-          - https://*.dango-portal.pages.dev
           - http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
           - http://api-{{ dango_network }}.{{ dango_domain }}
           - https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
@@ -18,10 +17,17 @@ http:
           - http://www-{{ dango_network }}.{{ dango_domain }}
           - https://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
           - https://www-{{ dango_network }}.{{ dango_domain }}
+        accessControlAllowOriginListRegex:
+          - ^https://.*\.dango-portal\.pages\.dev$
         accessControlAllowMethods: ["GET","POST","OPTIONS"]
-        accessControlAllowHeaders: ["*"]
+        accessControlAllowHeaders:
+          - Content-Type
+          - Authorization
+          - Accept
+          - X-Requested-With
         accessControlAllowCredentials: true
         addVaryHeader: true
+        accessControlMaxAge: 600
 
   services:
     {{ dango_network }}-dango:
