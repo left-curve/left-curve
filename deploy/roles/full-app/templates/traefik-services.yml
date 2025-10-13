@@ -27,6 +27,10 @@ http:
           - http://api-{{ dango_network }}.{{ dango_domain }}
           - https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
           - https://api-{{ dango_network }}.{{ dango_domain }}
+          - http://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
+          - http://www-{{ dango_network }}.{{ dango_domain }}
+          - https://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
+          - https://www-{{ dango_network }}.{{ dango_domain }}
         accessControlAllowMethods: ["GET","POST","OPTIONS"]
         accessControlAllowHeaders: ["*"]
         accessControlAllowCredentials: true
