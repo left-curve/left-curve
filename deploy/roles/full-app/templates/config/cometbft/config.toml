@@ -254,10 +254,11 @@ enabled = false
 # Address to listen for incoming connections
 laddr = "tcp://0.0.0.0:26656"
 
-# Address to advertise to peers for them to dial. If empty, will use the same
-# port as the laddr, and will introspect on the listener to figure out the
-# address. IP and port are required. Example: 159.89.10.97:26656
+{% if traefik_enabled %}
+external_address = "{{ tailscale_ip }}:{{ traefik[dango_network].cometbft_p2p_port }}"
+{% elsif %}
 external_address = "{{ tailscale_ip }}:{{ cometbft_p2p_port }}"
+{% endif %}
 
 # Comma separated list of seed nodes to connect to
 seeds = ""
