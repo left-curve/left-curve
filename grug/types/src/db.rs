@@ -2,7 +2,7 @@ use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, fmt},
 };
 
 /// A shorthand for an owned KV pair.
@@ -68,6 +68,12 @@ impl Order {
             Order::Ascending => "ascending",
             Order::Descending => "descending",
         }
+    }
+}
+
+impl fmt::Display for Order {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
     }
 }
 

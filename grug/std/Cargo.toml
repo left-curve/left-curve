@@ -9,6 +9,9 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+metrics = ["grug-types/metrics"]
+
 [dependencies]
 borsh        = { workspace = true, features = ["de_strict_order", "derive"] }
 grug-macros  = { workspace = true }

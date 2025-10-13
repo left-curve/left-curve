@@ -4769,6 +4769,7 @@ version = "0.0.0"
 dependencies = [
  "grug-app",
  "grug-types",
+ "metrics",
  "rocksdb",
  "sha2 0.10.9",
  "temp-rocksdb",
@@ -4986,6 +4987,7 @@ dependencies = [
  "grug-crypto",
  "grug-math",
  "hex-literal",
+ "metrics",
  "paste",
  "prost",
  "ripemd",
