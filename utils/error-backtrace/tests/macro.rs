@@ -1,4 +1,5 @@
 #[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 enum Error {
     #[error(transparent)]
     #[backtrace(new)]
@@ -12,6 +13,7 @@ enum Error {
 }
 
 #[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 enum InnerError {
     #[error("my error: {x}")]
     #[backtrace(private_constructor)]

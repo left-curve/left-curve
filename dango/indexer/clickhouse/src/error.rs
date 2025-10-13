@@ -1,6 +1,7 @@
 use {error_backtrace::Backtraceable, indexer_sql::pubsub::error::PubSubError};
 
 #[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 pub enum IndexerError {
     #[error(transparent)]
     #[backtrace(new)]

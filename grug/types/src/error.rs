@@ -6,7 +6,7 @@ use {
 };
 
 #[error_backtrace::backtrace]
-#[derive(Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum VerificationError {
     #[error("data is of incorrect length")]
     IncorrectLength,
@@ -32,7 +32,7 @@ impl VerificationError {
 }
 
 #[error_backtrace::backtrace]
-#[derive(Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum StdError {
     #[error(transparent)]
     #[backtrace(new)]

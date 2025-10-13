@@ -1,7 +1,7 @@
 use {error_backtrace::BT, std::any::type_name};
 
 #[error_backtrace::backtrace]
-#[derive(Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum MathError {
     #[error("failed to parse string `{input}` into {ty}: {reason}")]
     #[backtrace(private_constructor)]

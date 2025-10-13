@@ -157,7 +157,6 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
     }
 
     quote! {
-        #[derive(Debug, ::thiserror::Error)]
         #input
 
         #(#impl_from)*

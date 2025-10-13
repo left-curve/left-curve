@@ -8,6 +8,7 @@ use {
 };
 
 #[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 pub enum VmError {
     #[error("RustVm error: {0}")]
     Rust(grug_vm_rust::VmError),

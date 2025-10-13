@@ -6,8 +6,8 @@ use {
     wasmer::{CompileError, ExportError, InstantiationError, MemoryAccessError, RuntimeError},
 };
 
-// #[derive(Debug, Error)]
 #[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 pub enum VmError {
     #[error(transparent)]
     Std(StdError),

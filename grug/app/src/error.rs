@@ -7,7 +7,7 @@ use {
 };
 
 #[error_backtrace::backtrace]
-#[derive(Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum AppError {
     #[error(transparent)]
     Std(StdError),
@@ -64,7 +64,7 @@ pub enum AppError {
 
 /// Dedicated error type for indexer operations
 #[error_backtrace::backtrace]
-#[derive(Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum IndexerError {
     #[error("indexer is already running")]
     AlreadyRunning,

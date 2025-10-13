@@ -1,6 +1,7 @@
 use {error_backtrace::Backtraceable, grug_app::AppError, grug_types::StdError};
 
 #[error_backtrace::backtrace]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum DbError {
     #[error(transparent)]
     Std(StdError),
