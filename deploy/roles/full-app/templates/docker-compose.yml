@@ -261,7 +261,7 @@ services:
       - "${GRAPHIQL_PORT:-0}:80"
 {% endif %}
     environment:
-      - GRAPHQL_ENDPOINT=${INDEXER_URL}
+      - GRAPHQL_ENDPOINT=${INDEXER_URL}/graphql
     networks:
       - traefik
 
