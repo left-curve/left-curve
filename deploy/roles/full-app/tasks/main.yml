@@ -10,15 +10,11 @@
 # 3. `ansible-playbook full-app.yml -e traefik_enabled=true`
 
 - import_tasks: validate.yml
-- import_tasks: read_current_deploy.yml
-  when: traefik_enabled
 - import_tasks: stop_previous.yml
   when: system_wide_directories
 - import_tasks: deploy_configs.yml
 - import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
-- import_tasks: dex_bot.yml
-  when: dex_bot_enabled
 - import_tasks: cloudflare.yml
 - import_tasks: update_traefik.yml
   when: traefik_enabled
@@ -37,3 +33,5 @@
 - import_tasks: summary.yml
   when: expose_ports
 - import_tasks: check_cometbft_sync.yml
+- import_tasks: dex_bot.yml
+  when: dex_bot_enabled

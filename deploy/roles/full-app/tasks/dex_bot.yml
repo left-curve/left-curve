@@ -10,7 +10,7 @@
 
 - name: Check if liquidity setup already done
   stat:
-    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/bot_liquidity_setup_done"
+    path: "{{ deployment_dir }}/bot_liquidity_setup_done"
   register: liquidity_setup_flag
   run_once: true
   delegate_to: "{{ dex_bot_host }}"
@@ -51,7 +51,36 @@
         var: liquidity_result.stderr
       run_once: true
 
+    - name: Query balances
+      community.docker.docker_compose_v2_exec:
+        project_name: "{{ deployment_name }}"
+        project_src: "{{ deployment_dir }}"
+        service: dango
+        command: bash -lc "dango query balances {{ item }}"
+        tty: yes
+      loop: [ "{{ dango.dex_bot.address }}", "{{ dango.dex_bot.dex_address }}" ]
+      register: balances_raw
+      run_once: true
+      delegate_to: "{{ dex_bot_host }}"
+
+    - name: Pretty output
+      run_once: true
+      delegate_to: "{{ dex_bot_host }}"
+      vars:
+        report: |-
+          {%- for r in balances_raw.results -%}
+          {%- set data = (r.stdout | from_json).balances -%}
+          Address: {{ r.item }}
+          -------------------------------
+          {%- for k, v in data.items() if (v|int) > 0 -%}
+          {{ "%-24s %s"|format(k, v) }}
+          {%- endfor -%}
+
+          {%- endfor -%}
+      debug:
+        msg: "{{ report }}"
+
 - name: Mark liquidity setup as done
   file:
-    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/bot_liquidity_setup_done"
+    path: "{{ deployment_dir }}/bot_liquidity_setup_done"
     state: touch

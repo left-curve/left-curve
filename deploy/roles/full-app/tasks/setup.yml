@@ -15,12 +15,6 @@
     - cometbft_metrics_port
     - graphiql_port
 
-- name: Set dango and cometbft directories
-  set_fact:
-    dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
-    cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
-  when: system_wide_directories
-
 - name: Check if deployment already exists
   stat:
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
@@ -46,7 +40,7 @@
 - file:
     path: "{{ item }}"
     state: directory
-  loop: ["{{ dango_directory }}/config", "{{ cometbft_directory }}/config", "{{ deployment_dir }}"]
+  loop: ["{{ dango_directory }}/config", "{{ cometbft_directory }}/config"]
 
 - file:
     path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item }}"

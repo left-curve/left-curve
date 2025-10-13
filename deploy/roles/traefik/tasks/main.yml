@@ -1,8 +1,9 @@
 - name: Ensure config dir exists
   file:
-    path: "{{ traefik_dir }}/config"
+    path: "{{ traefik_dir }}/{{ item }}"
     state: directory
     mode: '0755'
+  loop: ["config", "letsencrypt"]
 
 - name: Generate templates
   become: true
