@@ -29,7 +29,13 @@ import { ErrorBoundary } from "react-error-boundary";
 
 import type { PropsWithChildren } from "react";
 import type { TableColumn } from "@left-curve/applets-kit";
-import type { OrderId, OrdersByUserResponse, PairId, Trade } from "@left-curve/dango/types";
+import {
+  TimeInForceOption,
+  type OrderId,
+  type OrdersByUserResponse,
+  type PairId,
+  type Trade,
+} from "@left-curve/dango/types";
 
 const [ProTradeProvider, useProTrade] = createContext<{
   state: ReturnType<typeof useProTradeState>;
@@ -439,7 +445,12 @@ const ProTradeOrdersHistory: React.FC = () => {
     {
       header: m["dex.protrade.history.type"](),
       cell: ({ row }) => (
-        <Cell.Text text={m["dex.protrade.orderType"]({ orderType: row.original.orderType })} />
+        <Cell.Text
+          text={m["dex.protrade.orderType"]({
+            orderType:
+              row.original.timeInForce === TimeInForceOption.GoodTilCanceled ? "limit" : "market",
+          })}
+        />
       ),
     },
     {
