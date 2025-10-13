@@ -26,8 +26,6 @@ export const AppPrivy: React.FC<PropsWithChildren> = ({ children }) => {
     root.classList.add(theme);
   }, []);
 
-  console.log(theme);
-
   useEffect(() => {
     if (!authenticated) return;
 
