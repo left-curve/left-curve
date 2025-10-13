@@ -3,10 +3,8 @@
   become: true
   become_user: "{{ deploy_user }}"
   gather_facts: yes
-  vars:
-    # Set this to true to deploy a new database and cometbft/dango directory
-    reset_data: false
-    traefik_enabled: false
+  vars_files:
+    - roles/full-app/vars/main.yml
   tasks:
     - name: Generate shared timestamp
       set_fact:
