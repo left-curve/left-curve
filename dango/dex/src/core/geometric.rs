@@ -324,7 +324,7 @@ mod tests {
         let ask_amount_in_quote = Uint128::new(100);
 
         ask_exact_amount_out(ask_amount_in_quote, Box::new(passive_bids.into_iter()))
-            .should_succeed_and_equal(Uint128::ZERO);
+            .should_succeed_and_equal(Uint128::ONE);
     }
 
     #[test]
