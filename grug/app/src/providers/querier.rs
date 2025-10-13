@@ -26,16 +26,14 @@ pub trait QuerierProvider: Send + Sync {
 impl Querier for &dyn QuerierProvider {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.do_query_chain(req, 0)
-            // reconstruct the error adding a blank backtrace
-            .map_err(|e| StdError::Host(BacktracedError::new_without_bt(e)))
+            .map_err(|e| StdError::Host(BacktracedError::new_without_bt(e))) // reconstruct the error adding a blank backtrace
     }
 }
 
 impl Querier for Box<dyn QuerierProvider> {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.do_query_chain(req, 0)
-            // reconstruct the error adding a blank backtrace
-            .map_err(|e| StdError::Host(BacktracedError::new_without_bt(e)))
+            .map_err(|e| StdError::Host(BacktracedError::new_without_bt(e))) // reconstruct the error adding a blank backtrace
     }
 }
 
@@ -92,7 +90,6 @@ where
             query_depth,
             req,
         )
-        // remove the backtrace
-        .map_err(|err| err.error())
+        .map_err(|err| err.error()) // remove the backtrace
     }
 }

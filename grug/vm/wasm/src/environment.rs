@@ -141,6 +141,7 @@ impl Environment {
         let instance_ptr = self
             .wasmer_instance
             .ok_or(VmError::wasmer_instance_not_set())?;
+
         unsafe { Ok(instance_ptr.as_ref()) }
     }
 

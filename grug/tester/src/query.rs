@@ -108,12 +108,10 @@ pub fn query_stack_overflow(ctx: ImmutableCtx) -> StdResult<()> {
     Ok(())
 }
 
-pub fn query_backtrace(ctx: ImmutableCtx, query: Query) -> StdResult<BacktraceQueryResponse> {
+pub fn query_backtrace(ctx: ImmutableCtx, query: Query) -> BacktraceQueryResponse {
     match ctx.querier.query_chain(query) {
-        Ok(res) => Ok(BacktraceQueryResponse::Ok(res)),
-        Err(err) => Ok(BacktraceQueryResponse::Err(
-            err.into_generic_backtraced_error(),
-        )),
+        Ok(res) => BacktraceQueryResponse::Ok(res),
+        Err(err) => BacktraceQueryResponse::Err(err.into_generic_backtraced_error()),
     }
 }
 

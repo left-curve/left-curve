@@ -93,7 +93,7 @@ fn backtrace() {
             err.error,
             "host returned error: contract returned error! address: 0xb304e60745d4cda6b1bf3248b979545522e9ccc1, method: query, msg: host returned error: boom"
         );
-        assert_eq!(err.backtrace.to_string(), "")
+        assert_eq!(err.backtrace.to_string(), "");
     } else {
         panic!("expected error");
     }

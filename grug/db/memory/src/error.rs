@@ -15,9 +15,8 @@ pub enum DbError {
 
 impl From<DbError> for AppError {
     fn from(err: DbError) -> Self {
-        let err = err.into_generic_backtraced_error();
         AppError::Db {
-            error: err.to_string(),
+            error: err.error(),
             backtrace: err.backtrace(),
         }
     }

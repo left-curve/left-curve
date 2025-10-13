@@ -10,6 +10,7 @@ use {
 #[allow(clippy::result_large_err)]
 async fn main() -> Result<(), Error> {
     setup_tracing_subscriber(Level::INFO);
+
     dango_mock_httpd::run(
         8080,
         BlockCreation::OnBroadcast,

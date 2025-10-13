@@ -51,7 +51,7 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             sigs,
             prehash_msgs,
         } => query_verify_ed25519_batch(ctx, pks, sigs, prehash_msgs)?.to_json_value(),
-        QueryMsg::Backtrace { query } => query_backtrace(ctx, query)?.to_json_value(),
+        QueryMsg::Backtrace { query } => query_backtrace(ctx, query).to_json_value(),
         QueryMsg::FailingQuery { msg } => failing_query(msg)?.to_json_value(),
     }
 }

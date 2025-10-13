@@ -19,10 +19,9 @@ pub enum VmError {
 
 impl From<VmError> for AppError {
     fn from(err: VmError) -> Self {
-        let err = err.into_generic_backtraced_error();
         AppError::Vm {
-            error: err.error,
-            backtrace: err.backtrace,
+            error: err.error(),
+            backtrace: err.backtrace(),
         }
     }
 }

@@ -854,8 +854,8 @@ where
 
     let request_backrun = match events.authenticate.as_result() {
         Err((_, err)) => {
-            let err = err.clone();
             drop(msg_buffer);
+            let err = err.clone();
             return process_finalize_fee(
                 vm,
                 fee_buffer,
@@ -900,8 +900,8 @@ where
 
     match events.msgs_and_backrun.maybe_error() {
         Some(err) => {
-            let err = err.clone();
             drop(msg_buffer);
+            let err = err.clone();
             return process_finalize_fee(
                 vm,
                 fee_buffer,

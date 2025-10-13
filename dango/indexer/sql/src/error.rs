@@ -27,10 +27,9 @@ pub enum Error {
 
 impl From<Error> for grug_app::IndexerError {
     fn from(error: Error) -> Self {
-        let bt = error.backtrace();
         grug_app::IndexerError::Hook {
-            error: error.to_string(),
-            backtrace: bt,
+            error: error.error(),
+            backtrace: error.backtrace(),
         }
     }
 }
