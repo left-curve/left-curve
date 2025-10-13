@@ -3,7 +3,7 @@ mod order_creation;
 
 use {
     crate::{
-        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PAUSED, RESERVES,
+        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK,
         core::{self, PassiveLiquidityPool},
         cron,
     },
@@ -467,6 +467,8 @@ fn swap_exact_amount_out(
 
 fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
     let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage, ctx.contract)?;
+
+    RESTING_ORDER_BOOK.clear(ctx.storage, None, None);
 
     Ok(Response::new()
         .add_events(events)?
