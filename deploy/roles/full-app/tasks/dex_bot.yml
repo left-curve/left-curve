@@ -51,11 +51,6 @@
         var: liquidity_result.stderr
       run_once: true
 
-    - vars:
-        addresses:
-          - "0xbed1fa8569d5a66935dea5a179b77ac06067de32"
-          - "0x8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"
-
     - name: Query balances
       community.docker.docker_compose_v2_exec:
         project_name: "{{ deployment_name }}"
@@ -63,7 +58,7 @@
         service: dango
         command: bash -lc "dango query balances {{ item }}"
         tty: yes
-      loop: "{{ addresses }}"
+      loop: [dango.dex_bot.address, dango.dex_bot.dex_address]
       register: balances_raw
       run_once: true
       delegate_to: "{{ dex_bot_host }}"
