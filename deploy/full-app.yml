@@ -15,8 +15,9 @@
 
     - name: Set timestamp on all hosts
       set_fact:
-        timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
-        deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+        dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
+        cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
+      when: system_wide_directories
 
     - name: Read current deploy
       include_role:
