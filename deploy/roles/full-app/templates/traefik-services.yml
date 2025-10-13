@@ -19,19 +19,10 @@ http:
           - "/graphiql"
     {{ dango_network }}-cors-dango:
       headers:
-        accessControlAllowOriginList:
-          - https://dev.dango.exchange
-          - https://dango.exchange
-          - http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
-          - http://api-{{ dango_network }}.{{ dango_domain }}
-          - https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
-          - https://api-{{ dango_network }}.{{ dango_domain }}
-          - http://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
-          - http://www-{{ dango_network }}.{{ dango_domain }}
-          - https://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
-          - https://www-{{ dango_network }}.{{ dango_domain }}
         accessControlAllowOriginListRegex:
           - ^https://.*\.dango-portal\.pages\.dev$
+          - ^https://([a-z0-9-]+\.)*dango\.zone$
+          - ^https://([a-z0-9-]+\.)*dango\.exchange$
         accessControlAllowMethods: ["GET","POST","OPTIONS"]
         accessControlAllowHeaders:
           - Content-Type
