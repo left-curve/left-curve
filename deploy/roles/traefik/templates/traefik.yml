@@ -79,3 +79,7 @@ log:
 
 accessLog:
   format: json
+  fields:
+    names:
+      RouterName: keep
+      ServiceName: keep

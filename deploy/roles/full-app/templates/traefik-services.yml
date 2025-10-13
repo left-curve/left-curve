@@ -64,6 +64,13 @@ http:
       rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "web"
+      service: "{{ dango_network }}-graphiql"
+      middlewares:
+        - "{{ dango_network }}-graphiql-stripprefix"
+
+    {{ dango_network }}-main-graphiql-ssl:
+      rule: "(Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
+      entryPoints:
         - "websecure"
       tls:
         certResolver: letsencrypt
@@ -75,6 +82,11 @@ http:
       rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
+      service: "{{ dango_network }}-frontend"
+
+    {{ dango_network }}-main-frontend-ssl:
+      rule: "Host(`www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
         - "websecure"
       tls:
         certResolver: letsencrypt
@@ -84,6 +96,11 @@ http:
       rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
+      service: "{{ dango_network }}-dango"
+
+    {{ dango_network }}-main-backend-ssl:
+      rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
         - "websecure"
       tls:
         certResolver: letsencrypt
@@ -93,15 +110,30 @@ http:
       rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
+      service: "{{ dango_network }}-faucet_bot"
+
+    {{ dango_network }}-main-faucet_bot-ssl:
+      rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
         - "websecure"
       tls:
         certResolver: letsencrypt
       service: "{{ dango_network }}-faucet_bot"
 
     {{ dango_network }}-cloudflare-graphiql:
-      rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
+      rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "web"
+      service: "{{ dango_network }}-graphiql"
+      middlewares:
+        - "{{ dango_network }}-graphiql-stripprefix"
+
+    {{ dango_network }}-cloudflare-graphiql-ssl:
+      rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
       service: "{{ dango_network }}-graphiql"
       middlewares:
         - "{{ dango_network }}-graphiql-stripprefix"
@@ -112,16 +144,40 @@ http:
         - "web"
       service: "{{ dango_network }}-frontend"
 
+    {{ dango_network }}-cloudflare-frontend-ssl:
+      rule: "Host(`www.{{ dango_network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
+      service: "{{ dango_network }}-frontend"
+
     {{ dango_network }}-cloudflare-backend:
       rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"
 
+    {{ dango_network }}-cloudflare-backend-ssl:
+      rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
+      service: "{{ dango_network }}-dango"
+
     {{ dango_network }}-cloudflare-faucet_bot:
       rule: "Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
+      service: "{{ dango_network }}-faucet_bot"
+
+    {{ dango_network }}-cloudflare-faucet_bot-ssl:
+      rule: "Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls:
+        certResolver: letsencrypt
       service: "{{ dango_network }}-faucet_bot"
 
     {{ dango_network }}-dango:
