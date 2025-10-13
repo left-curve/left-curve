@@ -1,4 +1,5 @@
 
+
 # Install a new server
 
 - Add the host in `inventory` using its public IP
@@ -15,3 +16,13 @@ ansible-playbook tailscale.yml --limit <public IP>
 ```
 ansible-playbook playbook.yml --limit <private IP>
 ```
+
+# Setup Ansible Vault
+
+### First time setup (macOS):
+```bash
+# Add vault password to Keychain
+security add-generic-password \
+  -a ansible \
+  -s ansible-vault/default \
+  -w 'ASK_TEAM_FOR_PASSWORD'

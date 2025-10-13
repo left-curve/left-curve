@@ -21,7 +21,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
   const { isLg } = useMediaQuery();
 
   useEffect(() => {
-    setActiveTab(isLg ? "trades" : "graph");
+    setActiveTab(isLg ? "order book" : "graph");
   }, [isLg]);
 
   return (
@@ -33,7 +33,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
         color="line-red"
         layoutId="tabs-order-history"
         selectedTab={activeTab}
-        keys={isLg ? ["trades", "order book"] : ["graph", "trades", "order book"]}
+        keys={isLg ? ["order book", "trades"] : ["graph", "order book", "trades"]}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}
@@ -137,7 +137,9 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           {pair.params.bucketSizes.map((size) => {
             return (
               <Select.Item key={`bucket-${size}`} value={size}>
-                {size}
+                {Decimal(size)
+                  .mul(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+                  .toString()}
               </Select.Item>
             );
           })}

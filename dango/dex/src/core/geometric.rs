@@ -175,7 +175,7 @@ fn bid_exact_amount_out(
         input_amount.checked_add_assign(matched_amount_in_quote)?;
 
         if remaining_bid.is_zero() || matched_amount_in_quote.is_zero() {
-            return Ok(input_amount.into_int());
+            return Ok(input_amount.into_int_ceil());
         }
     }
 
@@ -201,7 +201,7 @@ fn ask_exact_amount_out(
             || remaining_ask.is_zero()
             || matched_amount_in_quote.is_zero()
         {
-            return Ok(input_amount.into_int());
+            return Ok(input_amount.into_int_ceil());
         }
     }
 
@@ -257,6 +257,11 @@ pub fn reflect_curve(
             if size.is_zero() {
                 return None;
             }
+
+            // Fix: recompute the amount of quote asset used.
+            // The order size is denominated in the base asset, so the actual
+            // amount of quote asset used needs to be recomputed from the base amount.
+            let size_in_quote = size.checked_mul_dec_floor(price).ok()?;
 
             maybe_price = price.checked_sub(params.spacing).ok();
             remaining_quote.checked_sub_assign(size_in_quote).ok()?;

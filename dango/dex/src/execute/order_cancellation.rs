@@ -11,6 +11,7 @@ use {
 /// Cancel all orders from all users.
 pub(super) fn cancel_all_orders(
     storage: &mut dyn Storage,
+    dex_addr: Addr,
 ) -> anyhow::Result<(EventBuilder, TransferBuilder<DecCoins<6>>)> {
     let mut events = EventBuilder::new();
     let mut refunds = TransferBuilder::<DecCoins<6>>::new();
@@ -21,6 +22,7 @@ pub(super) fn cancel_all_orders(
     {
         cancel_order(
             storage,
+            dex_addr,
             order_key.clone(),
             order,
             &mut events,
@@ -36,6 +38,7 @@ pub(super) fn cancel_all_orders(
 /// Cancel all orders that belong to the given user.
 pub(super) fn cancel_all_orders_from_user(
     storage: &mut dyn Storage,
+    dex_addr: Addr,
     user: Addr,
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
@@ -48,7 +51,7 @@ pub(super) fn cancel_all_orders_from_user(
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_order(storage, order_key.clone(), order, events, refunds)?;
+        cancel_order(storage, dex_addr, order_key.clone(), order, events, refunds)?;
 
         ORDERS.remove(storage, order_key)?;
     }
@@ -61,6 +64,7 @@ pub(super) fn cancel_all_orders_from_user(
 /// Error if the order doesn't belong to the user, or if the order doesn't exist.
 pub(super) fn cancel_order_from_user(
     storage: &mut dyn Storage,
+    dex_addr: Addr,
     user: Addr,
     order_id: OrderId,
     events: &mut EventBuilder,
@@ -73,7 +77,7 @@ pub(super) fn cancel_order_from_user(
         "limit order `{order_id}` does not belong to the sender",
     );
 
-    cancel_order(storage, order_key.clone(), order, events, refunds)?;
+    cancel_order(storage, dex_addr, order_key.clone(), order, events, refunds)?;
 
     ORDERS.remove(storage, order_key)?;
 
@@ -82,6 +86,7 @@ pub(super) fn cancel_order_from_user(
 
 fn cancel_order(
     storage: &mut dyn Storage,
+    dex_addr: Addr,
     order_key: OrderKey,
     order: Order,
     events: &mut EventBuilder,
@@ -115,31 +120,34 @@ fn cancel_order(
     }
 
     // Compute the amount of tokens to be sent back to the user.
-    let refund = match direction {
-        Direction::Bid => DecCoin {
-            denom: quote_denom.clone(),
-            amount: remaining_in_quote,
-        },
-        Direction::Ask => DecCoin {
-            denom: base_denom.clone(),
-            amount: order.remaining,
-        },
-    };
+    // NOTE: only do this if the order is a user order. No need to refund passive orders.
+    if order.user != dex_addr {
+        let refund = match direction {
+            Direction::Bid => DecCoin {
+                denom: quote_denom.clone(),
+                amount: remaining_in_quote,
+            },
+            Direction::Ask => DecCoin {
+                denom: base_denom.clone(),
+                amount: order.remaining,
+            },
+        };
 
-    events.push(OrderCanceled {
-        user: order.user,
-        id: order_id,
-        time_in_force: order.time_in_force,
-        remaining: order.remaining,
-        refund: refund.clone(),
-        base_denom,
-        quote_denom,
-        direction,
-        price,
-        amount: order.amount,
-    })?;
+        events.push(OrderCanceled {
+            user: order.user,
+            id: order_id,
+            time_in_force: order.time_in_force,
+            remaining: order.remaining,
+            refund: refund.clone(),
+            base_denom,
+            quote_denom,
+            direction,
+            price,
+            amount: order.amount,
+        })?;
 
-    refunds.insert(refund)?;
+        refunds.insert(refund)?;
+    }
 
     Ok(())
 }

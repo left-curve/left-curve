@@ -6,7 +6,7 @@ http:
           - url: "http://homer:8080"
   routers:
     homer:
-      rule: "PathPrefix(`/`)"
+      rule: "Host(`dashboard.dev.{{ dango_domain }}`)"
       entryPoints:
-        - "homer"
+        - "web"
       service: "homer"

@@ -1,13 +1,4 @@
-import {
-  Checkbox,
-  ExpandOptions,
-  IconPasskey,
-  IconQR,
-  Modals,
-  useApp,
-  useMediaQuery,
-  useWizard,
-} from "@left-curve/applets-kit";
+import { IconQR, IconWallet, useApp, useMediaQuery, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useConnectors,
@@ -20,10 +11,9 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { Button, IconLeft, ResizerContainer } from "@left-curve/applets-kit";
-import { Link } from "@tanstack/react-router";
 import { AuthCarousel } from "./AuthCarousel";
-import { AuthOptions } from "./AuthOptions";
 import { UsernamesList } from "./UsernamesList";
+import { AuthOptions } from "./AuthOptions";
 
 import { DEFAULT_SESSION_EXPIRATION } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -31,10 +21,16 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { Hex, SigningSession, Username } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
+import { EmailCredential } from "./EmailCredential";
+import { SocialCredential } from "./SocialCredential";
+import { PasskeyCredential } from "./PasskeyCredential";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   const { isConnected } = useAccount();
+  const { data, activeStep } = useWizard<{ view: string; email: string; usernames: unknown[] }>();
   const navigate = useNavigate();
+
+  const { view, email, usernames } = data;
 
   useEffect(() => {
     if (isConnected) navigate({ to: "/" });
@@ -42,9 +38,48 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 
   return (
     <div className="h-svh xl:h-screen w-screen flex items-center justify-center bg-surface-primary-rice text-ink-primary-900">
-      <div className="flex items-center justify-center flex-1">
-        <ResizerContainer layoutId="signin" className="w-full max-w-[22.5rem]">
-          {children}
+      <div className="flex items-center justify-center flex-1 min-w-fit">
+        <ResizerContainer layoutId="signin" className="w-full max-w-[24.5rem]">
+          <div className="flex flex-col gap-7 items-center justify-center w-full">
+            <div className="flex flex-col gap-7 items-center justify-center w-full text-center">
+              <img
+                src="./favicon.svg"
+                alt="dango-logo"
+                className="h-12 rounded-full shadow-account-card"
+              />
+              {activeStep === 0 ? (
+                <>
+                  <h1 className="h2-heavy">{m["common.signin"]()}</h1>
+                  {view === "email" && email ? (
+                    <p className="text-ink-tertiary-500">
+                      {m["signin.sentVerificationCode"]()}
+                      <span className="font-bold">{email}</span>
+                    </p>
+                  ) : null}
+                  {view === "wallets" ? (
+                    <p className="text-ink-tertiary-500 diatype-m-medium">
+                      {m["signin.connectWalletToContinue"]()}
+                    </p>
+                  ) : null}
+                </>
+              ) : usernames.length ? (
+                <>
+                  <h1 className="h2-heavy">{m["signin.usernamesFound"]()}</h1>
+                  <p className="text-ink-tertiary-500 diatype-m-medium">
+                    {m["signin.chooseCredential"]()}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="h2-heavy">{m["signin.noUsernamesFound"]()}</h1>
+                  <p className="text-ink-tertiary-500 diatype-m-medium">
+                    {m["signin.noUsernameMessage"]()}
+                  </p>
+                </>
+              )}
+            </div>
+            {children}
+          </div>
         </ResizerContainer>
       </div>
       <AuthCarousel />
@@ -53,15 +88,15 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 };
 
 const CredentialStep: React.FC = () => {
-  const { toast, settings, changeSettings, showModal } = useApp();
-  const { createSessionKey } = useSessionKey();
-  const { nextStep, setData } = useWizard();
-  const { useSessionKey: session } = settings;
-  const connectors = useConnectors();
-  const navigate = useNavigate();
-  const publicClient = usePublicClient();
-
   const { isMd } = useMediaQuery();
+  const navigate = useNavigate();
+  const { toast, settings } = useApp();
+  const { data, setData, nextStep, reset } = useWizard();
+  const { createSessionKey } = useSessionKey();
+  const connectors = useConnectors();
+  const publicClient = usePublicClient();
+  const { useSessionKey: session } = settings;
+  const { view: activeView } = data;
 
   const { isPending, mutateAsync: signInWithCredential } = useMutation({
     mutationFn: async (connectorId: string) => {
@@ -74,7 +109,9 @@ const CredentialStep: React.FC = () => {
             { connector, expireAt: Date.now() + DEFAULT_SESSION_EXPIRATION },
             { setSession: false },
           );
-          const usernames = await publicClient.forgotUsername({ keyHash: signingSession.keyHash });
+          const usernames = await publicClient.forgotUsername({
+            keyHash: signingSession.keyHash,
+          });
 
           setData({ usernames, connectorId, signingSession });
         } else {
@@ -93,77 +130,77 @@ const CredentialStep: React.FC = () => {
     },
   });
 
-  return (
-    <div className="flex items-center justify-center flex-col gap-8 px-2 lg:px-0">
-      <div className="flex flex-col gap-7 items-center justify-center">
-        <img
-          src="./favicon.svg"
-          alt="dango-logo"
-          className="h-12 rounded-full shadow-account-card"
-        />
-        <h1 className="h2-heavy">{m["common.signin"]()}</h1>
+  const emailCredential = (
+    <EmailCredential
+      onAuth={() => signInWithCredential("privy")}
+      goBack={reset}
+      disableSignup
+      email={data.email}
+      setEmail={(email) => {
+        setData({ email, view: "email" });
+      }}
+    />
+  );
+
+  const walletsCredential = (
+    <div className="flex flex-col gap-7 w-full items-center">
+      <div className="flex flex-col gap-4 w-full items-center">
+        <AuthOptions action={signInWithCredential} isPending={isPending} />
+        <Button size="sm" variant="link" onClick={reset}>
+          <IconLeft className="w-[22px] h-[22px]" />
+          <span>{m["common.back"]()}</span>
+        </Button>
       </div>
+    </div>
+  );
 
+  if (activeView === "wallets") return walletsCredential;
+  if (activeView === "email") return emailCredential;
+
+  return (
+    <div className="flex items-center justify-center flex-col gap-8 px-2 w-full">
+      {emailCredential}
+      <div className="w-full flex items-center justify-center gap-3">
+        <span className="h-[1px] bg-outline-secondary-gray flex-1 " />
+        <p className="min-w-fit text-ink-placeholder-400 uppercase">{m["common.or"]()}</p>
+        <span className="h-[1px] bg-outline-secondary-gray flex-1 " />
+      </div>
       <div className="flex flex-col items-center w-full gap-4">
+        <SocialCredential onAuth={() => signInWithCredential("privy")} />
+        <PasskeyCredential onAuth={() => signInWithCredential("passkey")} action="signin" />
         {isMd ? (
-          <AuthOptions action={signInWithCredential} isPending={isPending} mode="signin" />
-        ) : (
-          <Button
-            fullWidth
-            onClick={() => signInWithCredential("passkey")}
-            isLoading={isPending}
-            className="gap-2"
-          >
-            <IconPasskey className="w-6 h-6" />
-            <p className="min-w-20"> {m["common.signWithPasskey"]({ action: "signin" })}</p>
+          <Button variant="secondary" fullWidth onClick={() => setData({ view: "wallets" })}>
+            <IconWallet />
+            {m["signin.connectWallet"]()}
           </Button>
-        )}
-
-        {isMd ? (
-          <Button as={Link} fullWidth variant="secondary" to="/" isDisabled={isPending}>
-            {m["signin.continueWithoutSignin"]()}
-          </Button>
-        ) : (
-          <Button
-            fullWidth
-            onClick={() => showModal(Modals.SignWithDesktop, { navigate })}
-            className="gap-2"
-            variant="secondary"
-          >
+        ) : null}
+        {isMd ? null : (
+          <Button fullWidth className="gap-2" variant="secondary">
             <IconQR className="w-6 h-6" />
             <p className="min-w-20"> {m["common.signinWithDesktop"]()}</p>
           </Button>
         )}
-        <ExpandOptions showOptionText={m["signin.advancedOptions"]()}>
-          <div className="flex items-center gap-2 flex-col">
-            <Checkbox
-              size="md"
-              label={m["common.signinWithSession"]()}
-              checked={session}
-              onChange={(v) => changeSettings({ useSessionKey: v })}
-            />
-          </div>
-        </ExpandOptions>
       </div>
-
-      {isMd ? (
+      <div className="flex flex-col">
         <div className="flex justify-center items-center">
           <p>{m["signin.noAccount"]()}</p>
-          <Button variant="link" onClick={() => navigate({ to: "/signup" })} isDisabled={isPending}>
+          <Button variant="link" onClick={() => navigate({ to: "/signup" })}>
             {m["common.signup"]()}
           </Button>
         </div>
-      ) : (
-        <Button as={Link} fullWidth variant="link" to="/">
-          {m["signin.continueWithoutSignin"]()}
-        </Button>
-      )}
+        <div className="flex justify-center items-center text-center">
+          <Button size="sm" variant="link" onClick={() => navigate({ to: "/" })}>
+            <IconLeft className="w-[22px] h-[22px]" />
+            <span>{m["common.back"]()}</span>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
 
 const UsernameStep: React.FC = () => {
-  const { data, previousStep } = useWizard<{
+  const { data, goToStep, reset } = useWizard<{
     usernames: Username[];
     keyHash?: Hex;
     signingSession?: SigningSession;
@@ -192,41 +229,32 @@ const UsernameStep: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 w-full items-center text-center">
-      <div className="flex flex-col gap-7 items-center justify-center">
-        <img
-          src="./favicon.svg"
-          alt="dango-logo"
-          className="h-12 rounded-full shadow-account-card"
-        />
-        {existUsernames ? (
-          <>
-            <h1 className="h2-heavy">{m["signin.usernamesFound"]()}</h1>
-            <p className="text-ink-tertiary-500 diatype-m-medium">
-              {m["signin.chooseCredential"]()}
-            </p>
-          </>
-        ) : (
-          <>
-            <h1 className="h2-heavy">{m["signin.noUsernamesFound"]()}</h1>
-            <p className="text-ink-tertiary-500 diatype-m-medium">
-              {m["signin.noUsernameMessage"]()}
-            </p>
-          </>
-        )}
-      </div>
       {existUsernames ? (
         <div className="flex flex-col gap-4 w-full items-center">
           <UsernamesList
             usernames={usernames}
             onUserSelection={(username) => connectWithConnector({ username, connectorId, keyHash })}
           />
-          <Button variant="link" onClick={previousStep} isLoading={isPending}>
+          <Button
+            variant="link"
+            onClick={() => {
+              goToStep(0);
+              reset();
+            }}
+            isLoading={isPending}
+          >
             <IconLeft className="w-[22px] h-[22px]" />
             <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
           </Button>
         </div>
       ) : (
-        <Button variant="link" onClick={previousStep}>
+        <Button
+          variant="link"
+          onClick={() => {
+            goToStep(0);
+            reset();
+          }}
+        >
           <IconLeft className="w-[22px] h-[22px] text-primitives-blue-light-500" />
           <p className="leading-none pt-[2px]">{m["common.back"]()}</p>
         </Button>
@@ -236,6 +264,6 @@ const UsernameStep: React.FC = () => {
 };
 
 export const Signin = Object.assign(Container, {
-  Username: UsernameStep,
   Credential: CredentialStep,
+  Username: UsernameStep,
 });

@@ -10,6 +10,7 @@ function SignupApplet() {
   return (
     <WizardProvider wrapper={<Signup />} persistKey="dango.signup">
       <Signup.Credential />
+      <Signup.Fund />
       <Signup.Username />
       <Signup.Signin />
     </WizardProvider>

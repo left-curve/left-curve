@@ -1,15 +1,8 @@
 ---
-postgres_user: "postgres"
+dex_bot_host: "{{ ansible_play_hosts_all | first }}"
 postgres_host: "postgres"
 postgres_external_host: "127.0.0.1"
 postgres_port: 5432
-postgres_password: "{{ lookup('env','DB_PASSWORD') }}"
-postgres_dango_user: "dango"
-postgres_dango_password: "{{ lookup('env','DANGO_DB_PASSWORD') }}"
-clickhouse_user: "default"
-clickhouse_password: "{{ lookup('env','CLICKHOUSE_PASSWORD') }}"
-clickhouse_dango_user: "dango"
-clickhouse_dango_password: "{{ lookup('env','DANGO_CLICKHOUSE_PASSWORD') }}"
 clickhouse_http_port: 8123
 clickhouse_tcp_port: 9000
 clickhouse_host: "clickhouse"

@@ -7,6 +7,13 @@
     - name: Load role defaults
       include_vars: "roles/full-app/defaults/main.yml"
 
+    - name: Delete Traefik dynamic config
+      file:
+        path: "{{ traefik_dir }}/config/{{ deployment_name }}.yml"
+        state: absent
+      become: true
+      become_user: root
+
     - name: Check if deployment already exists
       stat:
         path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
@@ -33,6 +40,18 @@
       stat:
         path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
       register: deployment_dir
+
+    - name: Delete CNAME records
+      when: deployment_name is defined and deployment_name.startswith('pr-')
+      community.general.cloudflare_dns:
+        zone: "{{ dango_domain }}"
+        record: "{{ item }}.{{ deployment_name }}.{{ hostname }}"
+        type: CNAME
+        value: "{{ hostname }}.{{ dango_domain }}."
+        api_token: "{{ cloudflare_api_token }}"
+        state: absent
+      loop: ["www", "api", "faucet", "cometbft"]
+      ignore_errors: true
 
     - name: Cleanup deployment
       block:

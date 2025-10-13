@@ -2,6 +2,7 @@ x-common-labels: &common-labels
   environment: "${DEPLOY_ENV}"
   deployment: "${DEPLOYMENT_NAME}"
   dango_network: "${DANGO_NETWORK}"
+  chain_id: "${CHAIN_ID}"
 
 services:
 {% if deploy_includes_postgres %}
@@ -185,9 +186,12 @@ services:
       timeout: 5s
       retries: 3
 
-{% if dex_bot_enabled %}
+{% if dex_bot_enabled and inventory_hostname == dex_bot_host %}
   dex-bot:
     image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
+    labels:
+      <<: *common-labels
+      service_name: "dex_bot"
     depends_on:
       dango:
         condition: service_healthy
@@ -202,10 +206,12 @@ services:
       # Mandatory else fails with `file not found: /root/.dango-dex/config.json`
       app_settings__sleep__min: 1s
       app_settings__sleep__max: 2s
-      app_settings__size_percent__min: 0.5
-      app_settings__size_percent__max: 3.0
+      app_settings__size_percent__min: 0.0005
+      app_settings__size_percent__max: 0.003
       app_settings__price_percent__min: 0.05
       app_settings__price_percent__max: 0.2
+      app_settings__order_number__min: 1
+      app_settings__order_number__max: 5
       app_settings__order_type: market
       app_settings__healthcheck_file: /tmp/dango_dex_app_healthcheck
     healthcheck:
@@ -247,6 +253,16 @@ services:
       printf '{\"height\":\"0\",\"round\":0,\"step\":0}' > /root/.cometbft/data/priv_validator_state.json &&
       exec cometbft start
       "
+  graphiql:
+    image: ghcr.io/left-curve/graphiql:${GRAPHIQL_TAG:-latest}
+{% if expose_ports %}
+    ports:
+      - "${GRAPHIQL_PORT:-0}:80"
+{% endif %}
+    environment:
+      - GRAPHQL_ENDPOINT=${INDEXER_URL}
+    networks:
+      - traefik
 
 networks:
   traefik:

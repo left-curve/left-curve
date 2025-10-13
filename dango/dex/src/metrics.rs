@@ -16,8 +16,6 @@ pub const LABEL_DURATION_ORDER_MATCHING: &str = "dango.contract.dex.order_matchi
 
 pub const LABEL_DURATION_ORDER_FILLING: &str = "dango.contract.dex.order_filling.duration";
 
-pub const LABEL_DURATION_HANDLE_FILLED: &str = "dango.contract.dex.handle_filled.duration";
-
 pub const LABEL_DURATION_CANCEL_IOC: &str = "dango.contract.dex.cancel_ioc.duration";
 
 pub const LABEL_DURATION_UPDATE_REST_STATE: &str = "dango.contract.dex.update_rest_state.duration";
@@ -62,11 +60,6 @@ pub fn init_metrics() {
         );
 
         describe_histogram!(LABEL_DURATION_ORDER_FILLING, "Time spent on filling orders");
-
-        describe_histogram!(
-            LABEL_DURATION_HANDLE_FILLED,
-            "Time spent on handling filled orders"
-        );
 
         describe_histogram!(
             LABEL_DURATION_CANCEL_IOC,

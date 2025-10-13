@@ -2,7 +2,10 @@ use {
     crate::{
         MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
-        core::{FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders},
+        core::{
+            FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders,
+            mean::safe_arithmetic_mean,
+        },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
     dango_account_factory::AccountQuerier,
@@ -24,8 +27,6 @@ use {
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
-
-const HALF: Udec128 = Udec128::new_percent(50);
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -58,7 +59,11 @@ pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Respon
 
             #[cfg(feature = "library")]
             {
-                tracing::error!(error, "!!! AUCTION FAILED !!!");
+                tracing::error!(
+                    error,
+                    block_height = ctx.block.height,
+                    "!!! AUCTION FAILED !!!"
+                );
             }
 
             // Pause trading in case of a failure.
@@ -393,6 +398,17 @@ fn clear_orders_of_pair(
 
     #[cfg(feature = "metrics")]
     {
+        let num_trades = bids.len() + asks.len();
+
+        metrics::counter!(crate::metrics::LABEL_TRADES).increment(num_trades as u64);
+
+        metrics::histogram!(
+            crate::metrics::LABEL_TRADES_PER_BLOCK,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string()
+        )
+        .record(num_trades as f64);
+
         metrics::histogram!(
             crate::metrics::LABEL_DURATION_ORDER_MATCHING,
             "base_denom" => base_denom.to_string(),
@@ -429,7 +445,10 @@ fn clear_orders_of_pair(
                     mid_price
                 }
             },
-            None => lower_price.checked_add(upper_price)?.checked_mul(HALF)?,
+            // Note: with extreme prices, calculating the middle point of the
+            // range may overflow. We use the "safe" arithmetic mean function
+            // which handles this case.
+            None => safe_arithmetic_mean(lower_price, upper_price)?,
         };
 
         events.push(OrdersMatched {
@@ -439,7 +458,7 @@ fn clear_orders_of_pair(
             volume,
         })?;
 
-        fill_orders(
+        Box::new(fill_orders(
             bids,
             asks,
             clearing_price,
@@ -447,41 +466,10 @@ fn clear_orders_of_pair(
             current_block_height,
             maker_fee_rate,
             taker_fee_rate,
-        )?
+        ))
     } else {
-        vec![]
+        Box::new(std::iter::empty()) as Box<dyn Iterator<Item = _>>
     };
-
-    #[cfg(feature = "tracing")]
-    {
-        tracing::info!(
-            base_denom = base_denom.to_string(),
-            quote_denom = quote_denom.to_string(),
-            num_filling_outcomes = filling_outcomes.len(),
-            "Filled orders"
-        );
-    }
-
-    #[cfg(feature = "metrics")]
-    {
-        metrics::histogram!(
-            crate::metrics::LABEL_DURATION_ORDER_FILLING,
-            "base_denom" => base_denom.to_string(),
-            "quote_denom" => quote_denom.to_string(),
-        )
-        .record(now.elapsed().as_secs_f64());
-
-        now = std::time::Instant::now();
-    }
-
-    // ------------------------ 4. Handle filled orders ------------------------
-
-    // In the previous step, we ran the order filling algorithm. However, the
-    // algorithm is a pure function with no side effects. Now, we must execute
-    // the desired side effects:
-    // - update order and reserve status in the contract store;
-    // - refund appropriate amounts of tokens to users;
-    // - emit events.
 
     // Track the inflows and outflows of the dex.
     let mut inflows = DecCoins::new();
@@ -490,30 +478,19 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     let mut metric_volume = HashMap::new();
 
-    #[cfg(feature = "metrics")]
-    {
-        metrics::counter!(crate::metrics::LABEL_TRADES).increment(filling_outcomes.len() as u64);
-
-        metrics::histogram!(
-            crate::metrics::LABEL_TRADES_PER_BLOCK,
-            "base_denom" => base_denom.to_string(),
-            "quote_denom" => quote_denom.to_string()
-        )
-        .record(filling_outcomes.len() as f64);
-    }
-
     // Handle order filling outcomes for the user placed orders.
-    for FillingOutcome {
-        order,
-        filled_base,
-        filled_quote,
-        refund_base,
-        refund_quote,
-        fee_base,
-        fee_quote,
-        clearing_price,
-    } in filling_outcomes
-    {
+    for res in filling_outcomes {
+        let FillingOutcome {
+            order,
+            filled_base,
+            filled_quote,
+            refund_base,
+            refund_quote,
+            fee_base,
+            fee_quote,
+            clearing_price,
+        } = res?;
+
         // If the order is from a user, update refunds and fees.
         // Otherwise, if it's from the DEX contract itself (a "passive order"),
         // update the pool inflow/outflow.
@@ -548,16 +525,20 @@ fn clear_orders_of_pair(
         // the remaining amount, as market orders are immediate-or-cancel.
         match order.time_in_force {
             TimeInForce::GoodTilCanceled => {
+                // Remove all liquidity previously added by this order, i.e.
+                // order.remaining + filled_base, to avoid rounding errors
+                // in the liquidity depth quote.
                 decrease_liquidity_depths(
                     storage,
                     &base_denom,
                     &quote_denom,
                     order.direction,
                     order.price,
-                    filled_base,
+                    order.remaining + filled_base,
                     bucket_sizes,
                 )?;
 
+                // If the order is fully filled, remove it from storage.
                 if order.remaining.is_zero() {
                     ORDERS.remove(
                         storage,
@@ -583,6 +564,17 @@ fn clear_orders_of_pair(
                             order.id,
                         ),
                         &order,
+                    )?;
+
+                    // Update the liquidity with the remaining amount.
+                    increase_liquidity_depths(
+                        storage,
+                        &base_denom,
+                        &quote_denom,
+                        order.direction,
+                        order.price,
+                        order.remaining,
+                        bucket_sizes,
                     )?;
                 }
             },
@@ -689,7 +681,7 @@ fn clear_orders_of_pair(
         tracing::info!(
             base_denom = base_denom.to_string(),
             quote_denom = quote_denom.to_string(),
-            "Handled filled orders"
+            "Filled orders"
         );
     }
 
@@ -706,7 +698,7 @@ fn clear_orders_of_pair(
         }
 
         metrics::histogram!(
-            crate::metrics::LABEL_DURATION_HANDLE_FILLED,
+            crate::metrics::LABEL_DURATION_ORDER_FILLING,
             "base_denom" => base_denom.to_string(),
             "quote_denom" => quote_denom.to_string(),
         )
@@ -715,7 +707,7 @@ fn clear_orders_of_pair(
         now = std::time::Instant::now();
     }
 
-    // ------------------------- 5. Cancel IOC orders --------------------------
+    // ------------------------- 4. Cancel IOC orders --------------------------
 
     for order in ORDERS
         .idx
@@ -764,7 +756,7 @@ fn clear_orders_of_pair(
         now = std::time::Instant::now();
     }
 
-    // ----------------- 6. Save the resting order book state ------------------
+    // ----------------- 5. Save the resting order book state ------------------
 
     // Find the best bid and ask prices that remains after all the previous steps.
     let best_bid_price = ORDERS
@@ -797,7 +789,10 @@ fn clear_orders_of_pair(
     // - if only one of them exists, then use that price;
     // - if none of them exists, then `None`.
     let mid_price = match (best_bid_price, best_ask_price) {
-        (Some(bid), Some(ask)) => Some(bid.checked_add(ask)?.checked_mul(HALF)?),
+        // Note: with extreme prices, computing the average of the best bid and
+        // ask prices may overflow. We use the "safe" arithmetic mean function
+        // which handles this case.
+        (Some(bid), Some(ask)) => Some(safe_arithmetic_mean(bid, ask)?),
         (Some(bid), None) => Some(bid),
         (None, Some(ask)) => Some(ask),
         (None, None) => None,

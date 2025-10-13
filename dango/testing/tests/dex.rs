@@ -21,7 +21,7 @@ use {
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order,
         QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Uint128,
-        UniqueVec, btree_map, coin_pair, coins,
+        UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
@@ -2057,16 +2057,16 @@ fn swap_exact_amount_in(
     }],
     Coin::new(usdc::DENOM.clone(), 498000).unwrap(),
     coins! {
-        dango::DENOM.clone() => 1002006,
+        dango::DENOM.clone() => 1002007,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 1002006).unwrap(),
+    Coin::new(dango::DENOM.clone(), 1002007).unwrap(),
     Coin::new(usdc::DENOM.clone(), 2000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 1002006,
+            dango::DENOM.clone() => 1000000 + 1002007,
             usdc::DENOM.clone() => 1000000 - 500000,
         },
     };
@@ -2085,16 +2085,16 @@ fn swap_exact_amount_in(
     }],
     Coin::new(usdc::DENOM.clone(), 331999).unwrap(),
     coins! {
-        dango::DENOM.clone() => 500751,
+        dango::DENOM.clone() => 500752,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 500751).unwrap(),
+    Coin::new(dango::DENOM.clone(), 500752).unwrap(),
     Coin::new(usdc::DENOM.clone(), 1334).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 500751,
+            dango::DENOM.clone() => 1000000 + 500752,
             usdc::DENOM.clone() => 1000000 - 333333,
         },
     };
@@ -2113,16 +2113,16 @@ fn swap_exact_amount_in(
     }],
     Coin::new(usdc::DENOM.clone(), 249000).unwrap(),
     coins! {
-        dango::DENOM.clone() => 333779,
+        dango::DENOM.clone() => 333780,
     },
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 333779).unwrap(),
+    Coin::new(dango::DENOM.clone(), 333780).unwrap(),
     Coin::new(usdc::DENOM.clone(), 1000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 333779,
+            dango::DENOM.clone() => 1000000 + 333780,
             usdc::DENOM.clone() => 1000000 - 250000,
         },
     };
@@ -2204,11 +2204,11 @@ fn swap_exact_amount_in(
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 1002006).unwrap(),
+    Coin::new(dango::DENOM.clone(), 1002007).unwrap(),
     Coin::new(usdc::DENOM.clone(), 2000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 1002006,
+            dango::DENOM.clone() => 1000000 + 1002007,
             usdc::DENOM.clone() => 1000000 - 500000,
         },
     };
@@ -2243,16 +2243,16 @@ fn swap_exact_amount_in(
         (dango::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
         (eth::DENOM.clone(), usdc::DENOM.clone()) => Udec128::new_permille(1),
     },
-    Coin::new(dango::DENOM.clone(), 501758).unwrap(),
+    Coin::new(dango::DENOM.clone(), 501761).unwrap(),
     Coin::new(eth::DENOM.clone(), 1000).unwrap(),
     btree_map! {
         (dango::DENOM.clone(), usdc::DENOM.clone()) => coins! {
-            dango::DENOM.clone() => 1000000 + 501758,
-            usdc::DENOM.clone() => 1000000 - 333779,
+            dango::DENOM.clone() => 1000000 + 501761,
+            usdc::DENOM.clone() => 1000000 - 333780,
         },
         (eth::DENOM.clone(), usdc::DENOM.clone()) => coins! {
             eth::DENOM.clone() => 1000000 - 250000,
-            usdc::DENOM.clone() => 1000000 + 333779,
+            usdc::DENOM.clone() => 1000000 + 333780,
         },
     };
     "1:1 pool 0.1% swap fee two step route output 25% of pool liquidity"
@@ -6902,7 +6902,7 @@ fn resting_order_book_is_updated_correctly_orders_remain_on_both_sides() {
             }),
         ]),
     },
-    Some(    dex::LiquidityDepthResponse {
+    Some(dex::LiquidityDepthResponse {
         bid_depth: Some(vec![
             (Price::new(490), dex::LiquidityDepth {
                 depth_base: Udec128_6::new(1 + 2),
@@ -6960,6 +6960,28 @@ fn test_liquidity_depth_is_correctly_calculated_after_order_clearing_and_cancell
 ) {
     // Setup test environment
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Configure the ETH-USDC pair with the bucket size we want to test.
+    let mut params = suite
+        .query_wasm_smart(contracts.dex, dex::QueryPairRequest {
+            base_denom: eth::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+        })
+        .should_succeed();
+    params.bucket_sizes = btree_set! { NonZero::new_unchecked(bucket_size) };
+
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::BatchUpdatePairs(vec![PairUpdate {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                params,
+            }])),
+            Coins::new(),
+        )
+        .should_succeed();
 
     // Register oracle price sources for ETH and USDC
     suite

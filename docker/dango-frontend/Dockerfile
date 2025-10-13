@@ -3,7 +3,6 @@ FROM node:24-alpine AS builder
 # Install pnpm
 RUN corepack enable pnpm
 
-COPY ./.pnpmfile.cjs /app/.pnpmfile.cjs
 COPY ./sdk /app/sdk
 COPY ./ui /app/ui
 COPY ./package.json /app/package.json
@@ -20,6 +19,12 @@ ENV GITHUB_TOKEN=$GITHUB_TOKEN
 
 ARG GIT_COMMIT
 ENV GIT_COMMIT=$GIT_COMMIT
+
+ARG PRIVY_APP_ID
+ENV PUBLIC_PRIVY_APP_ID=$PRIVY_APP_ID
+
+ARG PRIVY_CLIENT_ID
+ENV PUBLIC_PRIVY_CLIENT_ID=$PRIVY_CLIENT_ID
 
 # CONFIG_ENVIRONMENT: ${{ github.ref_name == 'ui/testnet' && 'test' || github.ref_name == 'ui/release' && 'prod' || 'dev' }}
 # PUBLIC_WEBRTC_URI: ${{ secrets.PUBLIC_WEBRTC_URI }}

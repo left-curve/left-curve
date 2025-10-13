@@ -19,3 +19,13 @@
     project_src: "{{ traefik_dir }}"
     wait: true
     wait_timeout: 300
+
+- name: Add UFW rules
+  become: true
+  become_user: root
+  ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: tcp
+  loop: [80, 443]

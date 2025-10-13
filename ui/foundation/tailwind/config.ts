@@ -350,8 +350,8 @@ export const tailwindConfig: Partial<Config> = {
       },
       fontSize: {
         xs: ["12px", { lineHeight: "140%" }],
-        sm: ["14px", { lineHeight: "160%" }],
-        md: ["16px", { lineHeight: "160%" }],
+        sm: ["14px", { lineHeight: "130%" }],
+        md: ["16px", { lineHeight: "130%" }],
         lg: ["18px", { lineHeight: "140%" }],
         h4: ["20px", { lineHeight: "120%" }],
         h3: ["24px", { lineHeight: "140%" }],
