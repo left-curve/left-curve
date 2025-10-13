@@ -199,12 +199,13 @@ pub enum ExecuteMsg {
 
 #[grug::derive(Serde)]
 pub enum OwnerMsg {
-    /// pause or unpause trading.
-    SetPaused(bool),
     /// Create new, or modify the parameters of existing, trading pairs.
     BatchUpdatePairs(Vec<PairUpdate>),
-    /// Forcibly cancel all orders (limit, market, incoming) and refund the users.
-    ForceCancelOrders {},
+    /// pause or unpause trading.
+    SetPaused(bool),
+    /// Forcibly cancel all orders (limit, market, incoming), delete the resting
+    /// order book state, and refund the users.
+    Reset {},
 }
 
 #[grug::derive(Serde)]

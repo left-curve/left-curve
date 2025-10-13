@@ -40,10 +40,10 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             );
 
             match msg {
+                OwnerMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
                 OwnerMsg::SetPaused(true) => pause(ctx),
                 OwnerMsg::SetPaused(false) => unpause(ctx),
-                OwnerMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
-                OwnerMsg::ForceCancelOrders {} => force_cancel_orders(ctx),
+                OwnerMsg::Reset {} => reset(ctx),
             }
         },
         ExecuteMsg::Callback(msg) => {
@@ -78,18 +78,6 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     }
 }
 
-fn pause(ctx: MutableCtx) -> anyhow::Result<Response> {
-    PAUSED.save(ctx.storage, &true)?;
-
-    Ok(Response::new().add_event(Paused { error: None })?)
-}
-
-fn unpause(ctx: MutableCtx) -> anyhow::Result<Response> {
-    PAUSED.save(ctx.storage, &false)?;
-
-    Ok(Response::new().add_event(Unpaused {})?)
-}
-
 fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Result<Response> {
     ensure!(
         ctx.sender == ctx.querier.query_owner()? || ctx.sender == GENESIS_SENDER,
@@ -115,6 +103,28 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
     }
 
     Ok(Response::new())
+}
+
+fn pause(ctx: MutableCtx) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &true)?;
+
+    Ok(Response::new().add_event(Paused { error: None })?)
+}
+
+fn unpause(ctx: MutableCtx) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &false)?;
+
+    Ok(Response::new().add_event(Unpaused {})?)
+}
+
+fn reset(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage, ctx.contract)?;
+
+    RESTING_ORDER_BOOK.clear(ctx.storage, None, None);
+
+    Ok(Response::new()
+        .add_events(events)?
+        .add_message(refunds.into_message()))
 }
 
 fn batch_update_orders(
@@ -463,16 +473,6 @@ fn swap_exact_amount_out(
             input,
             output: output.into_inner(),
         })?)
-}
-
-fn force_cancel_orders(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage, ctx.contract)?;
-
-    RESTING_ORDER_BOOK.clear(ctx.storage, None, None);
-
-    Ok(Response::new()
-        .add_events(events)?
-        .add_message(refunds.into_message()))
 }
 
 // ----------------------------------- tests -----------------------------------

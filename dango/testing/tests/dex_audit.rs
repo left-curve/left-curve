@@ -785,7 +785,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
         .execute(
             &mut accounts.owner,
             contracts.dex,
-            &dex::ExecuteMsg::Owner(dex::OwnerMsg::ForceCancelOrders {}),
+            &dex::ExecuteMsg::Owner(dex::OwnerMsg::Reset {}),
             Coins::new(),
         )
         .should_succeed(); // Prior to the fix, this errors.
