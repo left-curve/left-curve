@@ -86,7 +86,7 @@ fn bid_exact_amount_in(
         let matched_amount_in_quote = matched_amount.checked_mul_dec_ceil(price)?;
         remaining_bid_in_quote.checked_sub_assign(matched_amount_in_quote)?;
 
-        if remaining_bid_in_quote.is_zero()
+        if remaining_bid_in_quote.into_int_floor().is_zero()
             || remaining_bid.is_zero()
             || matched_amount_in_quote.is_zero()
         {
@@ -197,7 +197,7 @@ fn ask_exact_amount_out(
         let matched_amount_in_quote = matched_amount.checked_mul_dec_ceil(price)?;
         remaining_ask_in_quote.checked_sub_assign(matched_amount_in_quote)?;
 
-        if remaining_ask_in_quote.is_zero()
+        if remaining_ask_in_quote.into_int_floor().is_zero()
             || remaining_ask.is_zero()
             || matched_amount_in_quote.is_zero()
         {
