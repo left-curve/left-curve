@@ -20,4 +20,5 @@ error-backtrace-derive = { workspace = true, optional = true }
 serde                  = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
-thiserror = { workspace = true }
+error-backtrace = { workspace = true, features = ["derive"] } # the `derive` feature must be explicitly activated for the test
+thiserror       = { workspace = true }

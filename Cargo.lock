@@ -4139,6 +4139,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "borsh",
+ "error-backtrace",
  "error-backtrace-derive",
  "serde",
  "thiserror 2.0.12",
