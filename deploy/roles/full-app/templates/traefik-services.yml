@@ -17,6 +17,20 @@ http:
       stripPrefix:
         prefixes:
           - "/graphiql"
+    {{ dango_network }}-cors-dango:
+      headers:
+        accessControlAllowOriginList:
+          - https://dev.dango.exchange
+          - https://dango.exchange
+          - https://*.dango-portal.pages.dev
+          - http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
+          - http://api.{{ dango_network }}.{{ dango_domain }}
+          - https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}
+          - https://api.{{ dango_network }}.{{ dango_domain }}
+        accessControlAllowMethods: ["GET","POST","OPTIONS"]
+        accessControlAllowHeaders: ["*"]
+        accessControlAllowCredentials: true
+        addVaryHeader: true
   services:
     {{ dango_network }}-dango:
       loadBalancer:
@@ -97,6 +111,8 @@ http:
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-backend-ssl:
       rule: "Host(`api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
@@ -105,12 +121,16 @@ http:
       tls:
         certResolver: letsencrypt
       service: "{{ dango_network }}-dango"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-faucet_bot:
       rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-faucet_bot"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-main-faucet_bot-ssl:
       rule: "Host(`faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}`)"
@@ -119,6 +139,8 @@ http:
       tls:
         certResolver: letsencrypt
       service: "{{ dango_network }}-faucet_bot"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-graphiql:
       rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
@@ -127,6 +149,7 @@ http:
       service: "{{ dango_network }}-graphiql"
       middlewares:
         - "{{ dango_network }}-graphiql-stripprefix"
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-graphiql-ssl:
       rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
@@ -137,6 +160,7 @@ http:
       service: "{{ dango_network }}-graphiql"
       middlewares:
         - "{{ dango_network }}-graphiql-stripprefix"
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-frontend:
       rule: "Host(`www.{{ dango_network }}.{{ dango_domain }}`)"
@@ -157,6 +181,8 @@ http:
       entryPoints:
         - "web"
       service: "{{ dango_network }}-dango"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-backend-ssl:
       rule: "Host(`api.{{ dango_network }}.{{ dango_domain }}`)"
@@ -165,12 +191,16 @@ http:
       tls:
         certResolver: letsencrypt
       service: "{{ dango_network }}-dango"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-faucet_bot:
       rule: "Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "web"
       service: "{{ dango_network }}-faucet_bot"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cloudflare-faucet_bot-ssl:
       rule: "Host(`faucet.{{ dango_network }}.{{ dango_domain }}`)"
@@ -179,12 +209,16 @@ http:
       tls:
         certResolver: letsencrypt
       service: "{{ dango_network }}-faucet_bot"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-dango:
       rule: "PathPrefix(`/`)"
       entryPoints:
         - "{{ dango_network }}-dango"
       service: "{{ dango_network }}-dango"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-dango-metrics:
       rule: "PathPrefix(`/`)"
@@ -203,6 +237,8 @@ http:
       entryPoints:
         - "{{ dango_network }}-faucet_bot"
       service: "{{ dango_network }}-faucet_bot"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
 
     {{ dango_network }}-cometbft_rpc:
       rule: "PathPrefix(`/`)"
