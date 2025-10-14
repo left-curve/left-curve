@@ -1,5 +1,5 @@
 import { Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { Direction } from "@left-curve/dango/types";
@@ -27,7 +27,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="overflow-hidden z-10 relative p-4 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] h-[27.25rem] lg:min-h-[37.9rem] lg:max-h-[38.875rem] lg:h-full"
+      className="overflow-hidden z-10 relative p-4 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] h-[27.25rem] lg:min-h-[100%] lg:max-h-[38.875rem] lg:h-full"
     >
       <Tabs
         color="line-red"
@@ -124,11 +124,19 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { liquidityDepth, bucketSizeCoin, setBucketSizeCoin } = liquidityDepthStore();
   const previousPrice = orderBookStore((s) => s.previousPrice);
   const currentPrice = orderBookStore((s) => s.currentPrice);
+  const orderBook = orderBookStore((s) => s.orderBook);
   const bucketSizeSymbol = bucketSizeCoin === "base" ? baseCoin.symbol : quoteCoin.symbol;
 
   if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
 
   const { bids, asks } = liquidityDepth;
+
+  const spreadCalc = useMemo(() => {
+    if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice || !orderBook?.midPrice) return null;
+    const spread = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
+    const spreadPercent = spread.div(orderBook.midPrice);
+    return { spread, spreadPercent };
+  }, [orderBook]);
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
@@ -176,15 +184,24 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           ))}
         </div>
 
-        <div className="hidden lg:flex  w-full p-2 items-center justify-center relative">
+        <div className="hidden lg:flex  w-full pt-2 pb-[6px] items-center justify-between relative">
           <p
             className={twMerge(
-              "diatype-xs-bold relative z-20",
+              "diatype-m-bold relative z-20",
               Decimal(previousPrice).lte(currentPrice) ? "text-status-fail" : "text-status-success",
             )}
           >
             {formatNumber(currentPrice || "0", formatNumberOptions)}
           </p>
+          <div className="flex flex-col items-end text-ink-tertiary-500 relative z-20">
+            <p className="diatype-xxs-medium">{m["dex.protrade.spread"]()}</p>
+            <p className="diatype-xxs-medium">
+              {!spreadCalc
+                ? "n/a"
+                : `${formatNumber(spreadCalc.spread.toFixed(), formatNumberOptions)} `}
+              {quoteCoin.symbol} {spreadCalc ? `${spreadCalc.spreadPercent.toFixed()}%` : "n/a"}
+            </p>
+          </div>
           <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
         </div>
 

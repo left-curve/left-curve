@@ -66,7 +66,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           {!isSearchBarVisible ? (
             <IconButton
               onClick={() =>
-                isConnected ? setSidebarVisibility(true) : navigate({ to: "/signin" })
+                isConnected ? setSidebarVisibility(true) : navigate({ to: "/signup" })
               }
               variant="utility"
               size="lg"
@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             variant="utility"
             size="lg"
             onClick={() =>
-              isConnected ? setSidebarVisibility(!isSidebarVisible) : navigate({ to: "/signin" })
+              isConnected ? setSidebarVisibility(!isSidebarVisible) : navigate({ to: "/signup" })
             }
           >
             {isConnected ? (
@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
                 </span>
               </div>
             ) : (
-              <span>{m["common.signin"]()}</span>
+              <span>{m["common.signup"]()}</span>
             )}
           </Button>
         </div>
