@@ -65,6 +65,10 @@
       POSTGRES_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
       POSTGRES_PASSWORD: "{{ db_password }}"
       POSTGRES_INITDB_ARGS: "-c include=/etc/postgresql/postgresql.conf"
+    labels:
+      com.docker.compose.service: "postgres"
+      service_name: "postgres"
+      environment: "production"
     ports:
       - "127.0.0.1:{{ host_port }}:5432"
     volumes:
