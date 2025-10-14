@@ -59,6 +59,10 @@
       - name: clickhouse
     env:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
+    labels:
+      com.docker.compose.service: "clickhouse"
+      service_name: "clickhouse"
+      environment: "production"
     # Not sure I still need to bind outside
     ports:
       - "127.0.0.1:8123:8123" # HTTP interface
