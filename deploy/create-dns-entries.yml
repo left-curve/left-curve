@@ -3,7 +3,7 @@
   gather_facts: false
   vars:
     subs: [www, api, faucet, cometbft]
-    nets: [devnet, mainnet]
+    nets: [devnet, mainnet, testnet]
     hosts_list: [ovh1, ovh2]
   tasks:
     - name: Create dashed → dotted CNAMEs for all environments/hosts
