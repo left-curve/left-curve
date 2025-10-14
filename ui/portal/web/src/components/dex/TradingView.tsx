@@ -187,5 +187,5 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     setDrawnOrders(new Map(drawnOrders));
   }, [orders]);
 
-  return <div id="tv-container" className="w-full lg:min-h-[33.875rem] h-full" />;
+  return <div id="tv-container" className="w-full lg:min-h-[45vh] h-full" />;
 };
