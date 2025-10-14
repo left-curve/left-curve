@@ -2,7 +2,7 @@ import react from "@vitejs/plugin-react";
 import {defineConfig} from "vite";
 import sri from '@vividlemon/vite-plugin-sri'
 export default defineConfig({
-    base: "./",
+    base: './',
     plugins: [
         react(),
         sri()
