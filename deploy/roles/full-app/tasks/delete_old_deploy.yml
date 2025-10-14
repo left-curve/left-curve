@@ -2,10 +2,14 @@
   when: current_deployment is defined
   stat:
     path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
-  register: current_deployment_exists
+  register: current_deploy_path
+  changed_when: false
+  failed_when: false
 
 - name: Clean old deployment
-  when: current_deployment is defined and current_deployment_exists
+  when:
+    - current_deployment | default('') | length > 0
+    - current_deploy_path.stat.exists | default(false)
   block:
     - name: Clean up old deployment
       community.docker.docker_compose_v2:
