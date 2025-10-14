@@ -282,7 +282,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
   border-radius: 99999px;
-  background: var(--color-surface-secondary-gray);
+  background: var(--color-outline-secondary-gray);
 }
 
 ::selection {
