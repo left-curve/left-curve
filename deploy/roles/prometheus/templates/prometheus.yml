@@ -84,39 +84,84 @@ scrape_configs:
 
   - job_name: 'clickhouse'
     static_configs:
-      - targets: ['ovh1:9126']
+      - targets: ['ovh1:8055']
         labels:
           service: 'clickhouse'
           environment: 'production'
-      - targets: ['ovh2:9126']
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['ovh2:8055']
         labels:
           service: 'clickhouse'
           environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['ovh1:8085']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['ovh2:8085']
+        labels:
+          service: 'clickhouse'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
 
   - job_name: 'postgres'
     static_configs:
-      - targets: ['ovh1:9187']
+      - targets: ['ovh1:8054']
         labels:
           service: 'postgres'
           environment: 'production'
-      - targets: ['ovh2:9187']
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['ovh2:8054']
         labels:
           service: 'postgres'
           environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['ovh1:8084']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['ovh2:8084']
+        labels:
+          service: 'postgres'
+          environment: 'production'
+          network: 'devnet'
+          dango_network: 'devnet'
 
   - job_name: 'dango'
     static_configs:
+      - targets: ['ovh1:8053']
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
+      - targets: ['ovh2:8053']
+        labels:
+          service: 'dango'
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
       - targets: ['ovh1:8083']
         labels:
           service: 'dango'
           environment: 'production'
           network: 'devnet'
           dango_network: 'devnet'
-      - targets: ['ovh2:8053']
+      - targets: ['ovh2:8083']
         labels:
           service: 'dango'
           environment: 'production'
-          network: 'testnet'
+          network: 'devnet'
+          dango_network: 'devnet'
 
   - job_name: 'cometbft'
     static_configs:
@@ -125,7 +170,20 @@ scrape_configs:
           environment: 'production'
           dango_network: 'devnet'
           network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['ovh2:26660']
+        labels:
+          environment: 'production'
+          dango_network: 'devnet'
+          network: 'devnet'
+          dango_network: 'devnet'
+      - targets: ['ovh1:36660']
+        labels:
+          environment: 'production'
+          network: 'testnet'
+          dango_network: 'testnet'
       - targets: ['ovh2:36660']
         labels:
           environment: 'production'
           network: 'testnet'
+          dango_network: 'testnet'
