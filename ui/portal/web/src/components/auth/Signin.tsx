@@ -1,4 +1,11 @@
-import { IconQR, IconWallet, useApp, useMediaQuery, useWizard } from "@left-curve/applets-kit";
+import {
+  IconQR,
+  IconWallet,
+  Modals,
+  useApp,
+  useMediaQuery,
+  useWizard,
+} from "@left-curve/applets-kit";
 import {
   useAccount,
   useConnectors,
@@ -90,7 +97,7 @@ const Container: React.FC<PropsWithChildren> = ({ children }) => {
 const CredentialStep: React.FC = () => {
   const { isMd } = useMediaQuery();
   const navigate = useNavigate();
-  const { toast, settings } = useApp();
+  const { toast, settings, showModal } = useApp();
   const { data, setData, nextStep, reset } = useWizard();
   const { createSessionKey } = useSessionKey();
   const connectors = useConnectors();
@@ -175,7 +182,12 @@ const CredentialStep: React.FC = () => {
           </Button>
         ) : null}
         {isMd ? null : (
-          <Button fullWidth className="gap-2" variant="secondary">
+          <Button
+            fullWidth
+            className="gap-2"
+            variant="secondary"
+            onClick={() => showModal(Modals.SignWithDesktop, { navigate })}
+          >
             <IconQR className="w-6 h-6" />
             <p className="min-w-20"> {m["common.signinWithDesktop"]()}</p>
           </Button>
