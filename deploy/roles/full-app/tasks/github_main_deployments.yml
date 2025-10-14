@@ -34,9 +34,9 @@
     status_code: [200, 201]
   register: deployment_results
   loop:
-    - { name: "dango-frontend", description: "Frontend", url: "http://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}" }
-    - { name: "dango-api", description: "Dango API", url: "http://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql" }
-    - { name: "faucet-bot", description: "Faucet", url: "http://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/mint" }
+    - { name: "dango-frontend", description: "Frontend", url: "http://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
+    - { name: "dango-api", description: "Dango API", url: "http://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
+    - { name: "faucet-bot", description: "Faucet", url: "http://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
 
 - name: Set deployment statuses
   uri:
@@ -67,10 +67,10 @@
     | Name | Result |
     | ---- | ------ |
     | **Status** | ✅ |
-    | **Dango Frontend** | [https://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}](https://www.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}) |
-    | **Dango GraphQL** | [https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql](https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphql) |
-    | **Dango GraphiQL** | [https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphiql/](https://api.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/graphiql/) |
-    | **Faucet bot** | [https://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/mint](https://faucet.{{ dango_network }}.{{ hostname }}.{{ dango_domain }}/mint) |
+    | **Dango Frontend** | [https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
+    | **Dango GraphQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql) |
+    | **Dango GraphiQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql/](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql/) |
+    | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
     | **Deployment name** | `{{ deployment_name }}` |
     | **Commit** | `{{ dango_image_tag }}` |
     EOF
