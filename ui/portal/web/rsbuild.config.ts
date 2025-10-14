@@ -49,12 +49,12 @@ const urls = {
   },
   dev: {
     faucetUrl: `${chain.urls.indexer.replace("api", "faucet")}`,
-    questUrl: `http://api-devnet-ovh2.dango.zone:8091`,
+    questUrl: `https://quest-bot-devnet.dango.zone/`,
     upUrl: `${chain.urls.indexer}/up`,
   },
   test: {
     faucetUrl: `${chain.urls.indexer.replace("api", "faucet")}`,
-    questUrl: `http://api-testnet-ovh2.dango.zone:8091`,
+    questUrl: `https://quest-bot-testnet.dango.zone/`,
     upUrl: `${chain.urls.indexer}/up`,
   },
 }[environment]!;
