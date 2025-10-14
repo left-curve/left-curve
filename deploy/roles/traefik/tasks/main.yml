@@ -1,3 +1,14 @@
+- name: Install certbot + Cloudflare plugin
+  become: true
+  become_user: root
+  apt:
+    name:
+      - certbot
+      - python3-certbot-dns-cloudflare
+      - cron
+    state: present
+    update_cache: yes
+
 - name: Ensure config dir exists
   file:
     path: "{{ traefik_dir }}/{{ item }}"
@@ -13,6 +24,60 @@
     dest: "{{ traefik_dir }}"
     owner: "{{ deploy_user }}"
   loop: ["docker-compose.yml", "traefik.yml"]
+
+- name: Generate templates for config
+  become: true
+  become_user: root
+  template:
+    src: "{{ item }}"
+    dest: "{{ traefik_dir }}/config/"
+    owner: "{{ deploy_user }}"
+  loop: ["certs.yml", "quest.yml"]
+
+- name: Generate templates for letsencrypt
+  become: true
+  become_user: root
+  template:
+    src: "{{ item }}"
+    dest: "{{ traefik_dir }}/letsencrypt/"
+    owner: "root"
+    mode: '0600'
+  loop: ["cloudflare.ini"]
+
+- name: Ensure letsencrypt subdirs exist
+  become: true
+  become_user: root
+  file:
+    path: "{{ traefik_dir }}/letsencrypt/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  loop: ["work", "logs"]
+
+- name: Check if wildcard cert already exists
+  become: true
+  become_user: root
+  stat:
+    path: "{{ traefik_dir }}/letsencrypt/live/{{ dango_domain }}/fullchain.pem"
+  register: cert_status
+
+- name: Create wildcard cert for {{ dango_domain }}
+  become: true
+  become_user: root
+  ansible.builtin.command: >
+    certbot certonly
+    --dns-cloudflare
+    --dns-cloudflare-credentials {{ traefik_dir }}/letsencrypt/cloudflare.ini
+    --config-dir {{ traefik_dir }}/letsencrypt
+    --work-dir {{ traefik_dir }}/letsencrypt/work
+    --logs-dir {{ traefik_dir }}/letsencrypt/logs
+    -d {{ dango_domain }} -d '*.{{ dango_domain }}'
+    --email {{ letsencrypt_email }}
+    --agree-tos --no-eff-email
+  when: not cert_status.stat.exists
+  args:
+    creates: "{{ traefik_dir }}/letsencrypt/live/dango.zone/fullchain.pem"
 
 - name: Deploy all
   community.docker.docker_compose_v2:
@@ -30,3 +95,13 @@
     port: "{{ item }}"
     proto: tcp
   loop: [80, 443]
+
+- name: Renew Let's Encrypt certs for Traefik
+  become: true
+  become_user: root
+  cron:
+    name: "renew traefik certbot certs"
+    user: root
+    minute: "0"
+    hour: "3"
+    job: "/usr/bin/certbot renew --config-dir {{ traefik_dir }}/letsencrypt --work-dir {{ traefik_dir }}/letsencrypt/work --logs-dir {{ traefik_dir }}/letsencrypt/logs --quiet && /usr/bin/docker compose -f {{ traefik_dir }}/docker-compose.yml exec -T traefik traefik reload"

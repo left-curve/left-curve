@@ -86,8 +86,7 @@ http:
       rule: "(Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "websecure"
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       service: "{{ dango_network }}-graphiql"
       middlewares:
         - "{{ dango_network }}-graphiql-stripprefix"
@@ -102,8 +101,7 @@ http:
       rule: "Host(`www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-main-backend:
@@ -118,8 +116,7 @@ http:
       rule: "Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       service: "{{ dango_network }}-dango"
       middlewares:
         - "{{ dango_network }}-cors-dango"
@@ -136,8 +133,7 @@ http:
       rule: "Host(`faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       service: "{{ dango_network }}-faucet_bot"
       middlewares:
         - "{{ dango_network }}-cors-dango"
@@ -154,8 +150,7 @@ http:
       rule: "Host(`api-{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
       entryPoints:
         - "websecure"
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       service: "{{ dango_network }}-graphiql"
       middlewares:
         - "{{ dango_network }}-graphiql-stripprefix"
@@ -170,8 +165,7 @@ http:
       rule: "Host(`www-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       service: "{{ dango_network }}-frontend"
 
     {{ dango_network }}-cloudflare-backend:
@@ -186,8 +180,7 @@ http:
       rule: "Host(`api-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       service: "{{ dango_network }}-dango"
       middlewares:
         - "{{ dango_network }}-cors-dango"
@@ -204,8 +197,7 @@ http:
       rule: "Host(`faucet-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
         - "websecure"
-      tls:
-        certResolver: letsencrypt
+      tls: {}
       service: "{{ dango_network }}-faucet_bot"
       middlewares:
         - "{{ dango_network }}-cors-dango"
