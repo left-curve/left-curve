@@ -35,12 +35,12 @@ impl HookedIndexer {
         I: Indexer + Send + Sync + 'static,
     {
         if self.is_running {
-            return Err(grug_app::IndexerError::AlreadyRunning);
+            return Err(grug_app::IndexerError::already_running());
         }
 
         self.indexers
             .write()
-            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?
             .push(Box::new(indexer));
         Ok(self)
     }
@@ -68,7 +68,7 @@ impl Default for HookedIndexer {
 impl Indexer for HookedIndexer {
     fn start(&mut self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
         if self.is_running {
-            return Err(grug_app::IndexerError::AlreadyRunning);
+            return Err(grug_app::IndexerError::already_running());
         }
 
         #[cfg(feature = "tracing")]
@@ -83,7 +83,7 @@ impl Indexer for HookedIndexer {
         for indexer in &mut self
             .indexers
             .write()
-            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?
             .iter_mut()
         {
             if let Err(err) = indexer.start(storage) {
@@ -96,7 +96,7 @@ impl Indexer for HookedIndexer {
         self.is_running = true;
 
         if !errors.is_empty() {
-            return Err(grug_app::IndexerError::Multiple(errors));
+            return Err(grug_app::IndexerError::multiple(errors));
         }
 
         Ok(())
@@ -112,7 +112,7 @@ impl Indexer for HookedIndexer {
         for indexer in self
             .indexers
             .write()
-            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?
             .iter_mut()
             .rev()
         {
@@ -127,7 +127,7 @@ impl Indexer for HookedIndexer {
         self.is_running = false;
 
         if !errors.is_empty() {
-            return Err(grug_app::IndexerError::Multiple(errors));
+            return Err(grug_app::IndexerError::multiple(errors));
         }
 
         Ok(())
@@ -139,7 +139,7 @@ impl Indexer for HookedIndexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         let mut errors = Vec::new();
@@ -147,7 +147,7 @@ impl Indexer for HookedIndexer {
         for indexer in self
             .indexers
             .read()
-            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?
             .iter()
         {
             if let Err(err) = indexer.pre_indexing(block_height, ctx) {
@@ -159,7 +159,7 @@ impl Indexer for HookedIndexer {
         }
 
         if !errors.is_empty() {
-            return Err(grug_app::IndexerError::Multiple(errors));
+            return Err(grug_app::IndexerError::multiple(errors));
         }
 
         Ok(())
@@ -172,14 +172,14 @@ impl Indexer for HookedIndexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         let mut errors = Vec::new();
         for indexer in self
             .indexers
             .read()
-            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?
             .iter()
         {
             if let Err(err) = indexer.index_block(block, block_outcome, ctx) {
@@ -190,7 +190,7 @@ impl Indexer for HookedIndexer {
         }
 
         if !errors.is_empty() {
-            return Err(grug_app::IndexerError::Multiple(errors));
+            return Err(grug_app::IndexerError::multiple(errors));
         }
 
         Ok(())
@@ -203,7 +203,7 @@ impl Indexer for HookedIndexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         let post_indexing_threads = self.post_indexing_threads.clone();
@@ -228,7 +228,7 @@ impl Indexer for HookedIndexer {
                 .map_err(|_| {
                     #[cfg(feature = "tracing")]
                     tracing::error!("Rwlock poisoned in post_indexing");
-                    grug_app::IndexerError::RwlockPoisoned
+                    grug_app::IndexerError::rwlock_poisoned()
                 })?
                 .iter()
             {
@@ -250,12 +250,12 @@ impl Indexer for HookedIndexer {
                 .map_err(|_| {
                     #[cfg(feature = "tracing")]
                     tracing::error!("Mutex poisoned in post_indexing");
-                    grug_app::IndexerError::MutexPoisoned
+                    grug_app::IndexerError::mutex_poisoned()
                 })?
                 .remove(&block_height);
 
             if !errors.is_empty() {
-                return Err(grug_app::IndexerError::Multiple(errors));
+                return Err(grug_app::IndexerError::multiple(errors));
             }
 
             Ok::<(), IndexerError>(())
@@ -273,7 +273,7 @@ impl Indexer for HookedIndexer {
             let post_indexing_threads = self
                 .post_indexing_threads
                 .lock()
-                .map_err(|_| grug_app::IndexerError::MutexPoisoned)?
+                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
                 .len();
 
             #[cfg(feature = "tracing")]
@@ -296,7 +296,7 @@ impl Indexer for HookedIndexer {
         for indexer in self
             .indexers
             .read()
-            .map_err(|_| grug_app::IndexerError::RwlockPoisoned)?
+            .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?
             .iter()
         {
             indexer.wait_for_finish()?;

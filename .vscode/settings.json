@@ -31,6 +31,7 @@
   "cSpell.ignorePaths": ["**/rustlib/**", "**/package.json"],
   "cSpell.words": [
     "backrun",
+    "Backtraceable",
     "borsh",
     "cometbft",
     "dango",

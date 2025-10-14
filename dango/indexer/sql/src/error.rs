@@ -1,28 +1,35 @@
-use {indexer_sql::pubsub::error::PubSubError, thiserror::Error};
+use {error_backtrace::Backtraceable, indexer_sql::pubsub::error::PubSubError};
 
-#[derive(Debug, Error)]
+#[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("sea_orm error: {0}")]
-    SeaOrm(#[from] sea_orm::error::DbErr),
+    #[backtrace(new)]
+    SeaOrm(sea_orm::error::DbErr),
 
     #[error("wrong event type")]
     WrongEventType,
 
     #[error("serde error: {0}")]
-    Serde(#[from] serde_json::Error),
+    #[backtrace(new)]
+    Serde(serde_json::Error),
 
     #[error("grug error: {0}")]
-    Std(#[from] grug::StdError),
+    Std(grug::StdError),
 
     #[error(transparent)]
-    PubSub(#[from] PubSubError),
+    PubSub(PubSubError),
 
     #[error(transparent)]
-    Join(#[from] tokio::task::JoinError),
+    #[backtrace(new)]
+    Join(tokio::task::JoinError),
 }
 
 impl From<Error> for grug_app::IndexerError {
     fn from(error: Error) -> Self {
-        grug_app::IndexerError::Hook(error.to_string())
+        grug_app::IndexerError::Hook {
+            error: error.error(),
+            backtrace: error.backtrace(),
+        }
     }
 }

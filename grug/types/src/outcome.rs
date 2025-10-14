@@ -8,6 +8,7 @@ use {
         EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    error_backtrace::BacktracedError,
     serde::{Deserialize, Serialize},
     std::fmt::{self, Display},
 };
@@ -170,7 +171,7 @@ pub struct TxSuccess {
 pub struct TxError {
     pub gas_limit: u64,
     pub gas_used: u64,
-    pub error: String,
+    pub error: BacktracedError<String>,
     pub events: TxEvents,
 }
 
@@ -203,13 +204,16 @@ impl TxEvents {
     pub fn finalize_fails(
         self,
         finalize: CommitmentStatus<EventStatus<EvtFinalize>>,
-        cause: &str,
+        cause: &BacktracedError<String>,
     ) -> Self {
-        fn update<T>(evt: CommitmentStatus<T>, cause: &str) -> CommitmentStatus<T> {
+        fn update<T>(
+            evt: CommitmentStatus<T>,
+            cause: &BacktracedError<String>,
+        ) -> CommitmentStatus<T> {
             if let CommitmentStatus::Committed(event) = evt {
                 CommitmentStatus::Reverted {
                     event,
-                    revert_by: cause.to_string(),
+                    revert_by: cause.clone(),
                 }
             } else {
                 evt
@@ -378,6 +382,6 @@ fn into_generic_result(code: tendermint::abci::Code, log: String) -> GenericResu
     if code == tendermint::abci::Code::Ok {
         Ok(())
     } else {
-        Err(log)
+        Err(BacktracedError::new(log))
     }
 }

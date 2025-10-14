@@ -3,6 +3,7 @@ use {
         BalanceTracker, InstantiateOutcome, MakeBlockOutcome, UploadAndInstantiateOutcome,
         UploadOutcome,
     },
+    error_backtrace::Backtraceable,
     grug_app::{
         App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer,
         StorageProvider, UpgradeHandler, Vm,
@@ -646,7 +647,7 @@ where
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.app
             .do_query_app(req, 0, false)
-            .map_err(|err| StdError::host(err.to_string()))
+            .map_err(|err| StdError::Host(err.into_generic_backtraced_error()))
     }
 }
 

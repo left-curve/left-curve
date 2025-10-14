@@ -84,10 +84,7 @@ impl Db for DiskDbLite {
         if let Some(requested) = version {
             let db_version = self.latest_version().unwrap_or(0);
             if requested != db_version {
-                return Err(DbError::IncorrectVersion {
-                    db_version,
-                    requested,
-                });
+                return Err(DbError::incorrect_version(db_version, requested));
             }
         }
 
@@ -144,7 +141,7 @@ impl Db for DiskDbLite {
     }
 
     fn prove(&self, _key: &[u8], _version: Option<u64>) -> DbResult<Self::Proof> {
-        Err(DbError::ProofUnsupported)
+        Err(DbError::proof_unsupported())
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
@@ -153,7 +150,7 @@ impl Db for DiskDbLite {
 
         // A pending data can't already exist.
         if self.inner.pending_data.read()?.is_some() {
-            return Err(DbError::PendingDataAlreadySet);
+            return Err(DbError::pending_data_already_set());
         }
 
         // If DB is empty (latest height doesn't exist), then we use zero as the
@@ -191,7 +188,7 @@ impl Db for DiskDbLite {
             .pending_data
             .write()?
             .take()
-            .ok_or(DbError::PendingDataNotSet)?;
+            .ok_or(DbError::pending_data_not_set())?;
 
         let mut batch = WriteBatch::default();
 

@@ -10,8 +10,9 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-borsh      = { workspace = true, features = ["derive"] }
-grug-types = { workspace = true }
-serde      = { workspace = true }
+borsh           = { workspace = true, features = ["derive"] }
+error-backtrace = { workspace = true }
+grug-types      = { workspace = true }
+serde           = { workspace = true }
 
 [dev-dependencies]

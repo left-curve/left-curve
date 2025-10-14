@@ -47,7 +47,7 @@ const coins = {
     type: "native",
     name: "Ethereum USDC",
     logoURI:
-      "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
+      "https://raw.githubusercontent.com/cosmos/chain-registry/master/axelar/images/usdc.svg",
     symbol: "USDC",
     denom: "bridge/usdc",
     decimals: 6,

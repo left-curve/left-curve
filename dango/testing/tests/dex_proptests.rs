@@ -542,14 +542,18 @@ impl DexAction {
                     .clone()
                     .should(|tx_outcome| {
                         // We expect the transaction to succeed, unless for the
-                        // following three specific reasons. These errors indicate
+                        // following four specific reasons. These errors indicate
                         // an unfortunate combination of parameters, not an bug
                         // in the contract.
                         if let Err(err) = &tx_outcome.result {
-                            err.contains("insufficient liquidity")
-                                || err.contains("output amount after fee must be positive") // this refers to output after _liquidity fee_
-                                || err.contains("output amount is zero") // this refers to output after _protocol fee_
-                                || err.contains("not enough liquidity to fulfill the swap!")
+                            [
+                                "insufficient liquidity",
+                                "output amount after fee must be positive", // this refers to the output after _liquidity fee_
+                                "output amount is zero",                    // this refers to the output after _protocol fee_
+                                "not enough liquidity to fulfill the swap!"
+                            ]
+                            .iter()
+                            .any(|reason| err.error.contains(reason))
                         } else {
                             true
                         }
@@ -592,12 +596,16 @@ impl DexAction {
                     .unwrap()
                     .clone()
                     .should(|tx_outcome| {
-                        // We expect the transaction to succeed, unless for two
-                        // specific reasons:
+                        // We expect the transaction to succeed, unless for the
+                        // the following three specific reasons:
                         if let Err(err) = &tx_outcome.result {
-                            err.contains("insufficient liquidity")
-                                || err.contains("input amount must be positive")
-                                || err.contains("not enough liquidity to fulfill the swap!")
+                            [
+                                "insufficient liquidity",
+                                "input amount must be positive",
+                                "not enough liquidity to fulfill the swap",
+                            ]
+                            .iter()
+                            .any(|reason| err.error.contains(reason))
                         } else {
                             true
                         }

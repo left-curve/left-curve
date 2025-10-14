@@ -1,18 +1,21 @@
-use {indexer_sql::pubsub::error::PubSubError, thiserror::Error};
+use {error_backtrace::Backtraceable, indexer_sql::pubsub::error::PubSubError};
 
-#[derive(Debug, Error)]
+#[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 pub enum IndexerError {
     #[error(transparent)]
-    Io(#[from] std::io::Error),
+    #[backtrace(new)]
+    Io(std::io::Error),
 
     #[error(transparent)]
-    Std(#[from] grug::StdError),
+    Std(grug::StdError),
 
     #[error(transparent)]
-    Math(#[from] grug::MathError),
+    Math(grug::MathError),
 
     #[error(transparent)]
-    Clickhouse(#[from] clickhouse::error::Error),
+    #[backtrace(new)]
+    Clickhouse(clickhouse::error::Error),
 
     #[error("missing block or block outcome")]
     MissingBlockOrBlockOutcome,
@@ -21,21 +24,35 @@ pub enum IndexerError {
     CandleTimeout,
 
     #[error(transparent)]
-    ChronoParse(#[from] chrono::ParseError),
+    #[backtrace(new)]
+    ChronoParse(chrono::ParseError),
 
     #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
+    #[backtrace(new)]
+    SerdeJson(serde_json::Error),
 
     #[error(transparent)]
-    PubSub(#[from] PubSubError),
+    PubSub(PubSubError),
+}
+
+macro_rules! parse_error {
+    ($variant:ident, $e:expr) => {
+        grug_app::IndexerError::$variant {
+            error: $e.to_string(),
+            backtrace: $e.backtrace,
+        }
+    };
 }
 
 impl From<IndexerError> for grug_app::IndexerError {
     fn from(error: IndexerError) -> Self {
         match error {
-            IndexerError::Clickhouse(error) => grug_app::IndexerError::Database(error.to_string()),
-            IndexerError::Io(error) => grug_app::IndexerError::Io(error.to_string()),
-            err => grug_app::IndexerError::Hook(err.to_string()),
+            IndexerError::Clickhouse(error) => parse_error!(Database, error),
+            IndexerError::Io(error) => parse_error!(Io, error),
+            err => {
+                let err = err.into_generic_backtraced_error();
+                parse_error!(Hook, err)
+            },
         }
     }
 }

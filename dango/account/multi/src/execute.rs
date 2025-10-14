@@ -291,9 +291,8 @@ mod tests {
             config::{AppAddresses, AppConfig},
         },
         grug::{
-            Addr, AuthMode, Coins, Duration, GenericResult, GenericResultExt, Json, JsonSerExt,
-            MOCK_BLOCK, MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp,
-            btree_map,
+            Addr, AuthMode, Coins, Duration, GenericResultExt, Json, JsonSerExt, MOCK_BLOCK,
+            MockContext, MockQuerier, NonEmpty, NonZero, ResultExt, Timestamp, btree_map,
         },
         std::{collections::BTreeMap, str::FromStr},
         test_case::test_case,
@@ -808,34 +807,34 @@ mod tests {
             yes: 0,
             no: 0,
         },
-        GenericResult::Err("proposal isn't passed or timelock hasn't elapsed".to_string());
+        Result::Err("proposal isn't passed or timelock hasn't elapsed".to_string());
         "proposal still voting"
     )]
     #[test_case(
         Status::Passed {
             execute_after: Timestamp::from_seconds(500),
         },
-        GenericResult::Err("proposal isn't passed or timelock hasn't elapsed".to_string());
+        Result::Err("proposal isn't passed or timelock hasn't elapsed".to_string());
         "proposal passed but still in timelock"
     )]
     #[test_case(
         Status::Passed {
             execute_after: Timestamp::from_seconds(100),
         },
-        GenericResult::Ok(Response::new());
+        Result::Ok(Response::new());
         "proposal passed and timelock elapsed"
     )]
     #[test_case(
         Status::Failed,
-        GenericResult::Err("proposal isn't passed or timelock hasn't elapsed".to_string());
+        Result::Err("proposal isn't passed or timelock hasn't elapsed".to_string());
         "proposal failed"
     )]
     #[test_case(
         Status::Executed,
-        GenericResult::Err("proposal isn't passed or timelock hasn't elapsed".to_string());
+        Result::Err("proposal isn't passed or timelock hasn't elapsed".to_string());
         "proposal already executed"
     )]
-    fn executing(status: Status, expect: GenericResult<Response>) {
+    fn executing(status: Status, expect: Result<Response, String>) {
         let mut ctx = MockContext::new()
             .with_block_timestamp(Timestamp::from_seconds(200))
             .with_sender(MULTI)

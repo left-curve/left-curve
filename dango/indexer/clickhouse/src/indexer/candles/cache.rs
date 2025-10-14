@@ -438,7 +438,7 @@ impl CandleCache {
                                     key.quote_denom
                                 );
 
-                                return Err(IndexerError::CandleTimeout);
+                                return Err(IndexerError::candle_timeout());
                             }
 
                             let query_builder = CandleQueryBuilder::new(

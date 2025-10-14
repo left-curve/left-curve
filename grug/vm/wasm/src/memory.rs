@@ -38,18 +38,18 @@ where
     let region_ptr: u32 = env
         .call_function1(store, "allocate", &[(data.len() as u32).into()])?
         .try_into()
-        .map_err(VmError::ReturnType)?;
+        .map_err(VmError::return_type)?;
     let memory = env.get_wasmer_memory(&store)?;
     let mut region = read_region(&memory, region_ptr)?;
     // don't forget to update region length
     region.length = data.len() as u32;
 
     if region.length > region.capacity {
-        return Err(VmError::RegionTooSmall {
-            offset: region.offset,
-            capacity: region.capacity,
-            data: BASE64.encode(data),
-        });
+        return Err(VmError::region_too_small(
+            region.offset,
+            region.capacity,
+            BASE64.encode(data),
+        ));
     }
 
     // write the data to the reserved area

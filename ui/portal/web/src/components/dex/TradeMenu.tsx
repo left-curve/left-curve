@@ -366,7 +366,7 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
           fullWidth
           classNames={{ base: "h-[44px] lg:h-auto", button: "exposure-sm-italic" }}
           onTabChange={(tab) => changeAction(tab as "sell" | "buy")}
-          color={action === "sell" ? "red" : "green"}
+          color={action === "sell" ? "red" : "light-green"}
           isDisabled={submission.isPending}
         />
         <IconButton

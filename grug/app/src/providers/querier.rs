@@ -1,8 +1,8 @@
 use {
     crate::{AppError, GasTracker, Vm, process_query},
+    error_backtrace::{Backtraceable, BacktracedError},
     grug_types::{
-        BlockInfo, GenericResult, GenericResultExt, Querier, Query, QueryResponse, StdError,
-        StdResult, Storage,
+        BlockInfo, Querier, Query, QueryResponse, QueryResult, StdError, StdResult, Storage,
     },
 };
 
@@ -20,18 +20,20 @@ use {
 ///   this generic, otherwise we run into infinite recursive types with the
 ///   hybrid VM. (When using a single VM, this isn't a problem.)
 pub trait QuerierProvider: Send + Sync {
-    fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse>;
+    fn do_query_chain(&self, req: Query, query_depth: usize) -> QueryResult<QueryResponse>;
 }
 
 impl Querier for &dyn QuerierProvider {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
-        self.do_query_chain(req, 0).map_err(StdError::host)
+        self.do_query_chain(req, 0)
+            .map_err(|e| StdError::Host(BacktracedError::new_without_bt(e))) // reconstruct the error adding a blank backtrace
     }
 }
 
 impl Querier for Box<dyn QuerierProvider> {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
-        self.do_query_chain(req, 0).map_err(StdError::host)
+        self.do_query_chain(req, 0)
+            .map_err(|e| StdError::Host(BacktracedError::new_without_bt(e))) // reconstruct the error adding a blank backtrace
     }
 }
 
@@ -79,7 +81,7 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    fn do_query_chain(&self, req: Query, query_depth: usize) -> GenericResult<QueryResponse> {
+    fn do_query_chain(&self, req: Query, query_depth: usize) -> QueryResult<QueryResponse> {
         process_query(
             self.vm.clone(),
             self.storage.clone(),
@@ -88,6 +90,6 @@ where
             query_depth,
             req,
         )
-        .into_generic_result()
+        .map_err(|err| err.error()) // remove the backtrace
     }
 }

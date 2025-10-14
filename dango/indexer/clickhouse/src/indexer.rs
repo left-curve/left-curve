@@ -54,7 +54,7 @@ impl grug_app::Indexer for Indexer {
                         .execute()
                         .await
                         .map_err(|e| {
-                            grug_app::IndexerError::Database(format!(
+                            grug_app::IndexerError::database(format!(
                                 "Failed to run migration: {e}"
                             ))
                         })?;
@@ -72,7 +72,7 @@ impl grug_app::Indexer for Indexer {
 
         self.runtime_handler
             .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))??;
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
 
         self.indexing = true;
 
@@ -144,7 +144,7 @@ impl grug_app::Indexer for Indexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         #[cfg(feature = "tracing")]
@@ -185,7 +185,7 @@ impl grug_app::Indexer for Indexer {
 
         self.runtime_handler
             .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))??;
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
 
         Ok(())
     }

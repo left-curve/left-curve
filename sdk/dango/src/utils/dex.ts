@@ -40,3 +40,18 @@ export function calculatePrice(
     minimumTotalDigits: 8,
   });
 }
+
+export function adjustPrice(price: number, shifting = 6, min = 2) {
+  let decimalDigits: number;
+
+  if (price > 1.0) {
+    const integerDigits = Math.floor(Math.log10(price)) + 1;
+    decimalDigits = Math.max(shifting - integerDigits, min);
+  } else {
+    const leadingZeros = Math.floor(Math.log10(1 / price));
+    decimalDigits = Math.max(shifting + leadingZeros, min);
+  }
+
+  const multiplier = 10 ** decimalDigits;
+  return Math.floor(price * multiplier) / multiplier;
+}

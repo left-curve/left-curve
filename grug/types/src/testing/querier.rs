@@ -4,13 +4,14 @@ use {
         GenericResult, GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage, Order,
         Querier, Query, QueryResponse, QueryStatusResponse, StdError, StdResult, Storage,
     },
+    error_backtrace::BacktracedError,
     grug_math::{NumberConst, Uint128},
     serde::Serialize,
     std::collections::BTreeMap,
 };
 
 /// A function that handles Wasm smart queries.
-type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
+type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> Result<Json, BacktracedError<String>>>;
 
 // ------------------------------- mock querier --------------------------------
 
@@ -267,7 +268,7 @@ impl Querier for MockQuerier {
                     .smart_query_handler
                     .as_ref()
                     .expect("[MockQuerier]: smart query handler not set");
-                let response = handler(req.contract, req.msg).map_err(StdError::host)?;
+                let response = handler(req.contract, req.msg).map_err(StdError::Host)?;
                 Ok(QueryResponse::WasmSmart(response))
             },
             Query::Multi(reqs) => {
