@@ -1,4 +1,4 @@
-import { Button, IconApple, IconGoogle } from "@left-curve/applets-kit";
+import { Button, IconGoogle, IconTwitter } from "@left-curve/applets-kit";
 import { wait } from "@left-curve/dango/utils";
 import { useLoginWithOAuth, usePrivy } from "@privy-io/react-auth";
 import { useMutation } from "@tanstack/react-query";
@@ -57,7 +57,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
         fullWidth
         isLoading={(onAuthProvider === "twitter" && onComplete.isPending) || xAuth.isPending}
       >
-        <IconApple />
+        <IconTwitter />
       </Button>
     </div>
   );
