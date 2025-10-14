@@ -94,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
                 </span>
               </div>
             ) : (
-              <span>{m["common.signin"]()}</span>
+              <span>{m["common.signup"]()}</span>
             )}
           </Button>
         </div>
