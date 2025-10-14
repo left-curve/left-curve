@@ -75,3 +75,6 @@ networks/**/configs/backups
 networks/**/data
 networks/**/indexer
 networks/**/logs
+
+# GraphiQL
+docker/graphiql/dist
