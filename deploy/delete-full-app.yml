@@ -64,9 +64,6 @@
             remove_volumes: yes
           ignore_errors: true
 
-        # TODO: should look at `.env` and delete the unique clickhouse and
-        # postgres database if any
-
         - name: Remove deployment directory
           become: true
           become_user: root

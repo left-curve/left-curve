@@ -1,0 +1,64 @@
+- hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+  tasks:
+    - name: Load role defaults
+      include_vars: "roles/full-app/defaults/main.yml"
+
+    - name: Check if deployment already exists
+      stat:
+        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+      register: env_file_exists
+
+    - name: Read .env values for database names
+      shell: |
+        grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE|DELETE_POSTGRES_DATABASE_AT_MERGE|DELETE_CLICKHOUSE_DATABASE_AT_MERGE)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+        awk -F= '{print tolower($1) "=" $2}'
+      register: existing_env_variables
+      when: env_file_exists.stat.exists
+
+    - set_fact:
+        delete_postgres_database_at_merge: false
+        delete_clickhouse_database_at_merge: false
+
+    - name: Set facts from existing .env
+      set_fact:
+        "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
+      loop: "{{ existing_env_variables.stdout_lines }}"
+      when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0
+
+    - name: Stop and remove stack
+      community.docker.docker_compose_v2:
+        project_name: "{{ deployment_name }}"
+        project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+        state: absent
+        remove_orphans: yes
+        remove_volumes: yes
+      ignore_errors: true
+
+    - name: Remove deployment directory
+      become: true
+      become_user: root
+      file:
+        path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
+        state: absent
+
+    - name: Delete Postgres Dango production database
+      community.postgresql.postgresql_db:
+        name: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: absent
+
+    - name: Delete clickhouse database
+      community.clickhouse.clickhouse_db:
+        name: "{{ clickhouse_database }}"
+        state: absent
+        login_host: "{{ clickhouse_external_host }}"
+        login_port: "{{ clickhouse_tcp_port }}"
+        login_user: "{{ clickhouse_user }}"
+        login_password: "{{ clickhouse_password }}"
