@@ -27,7 +27,7 @@ function SettingsApplet() {
         <DisplaySection.DateFormat />
         <DisplaySection.TimeFormat />
         <DisplaySection.TimeZone />
-        <DisplaySection.ChartEngine />
+        {/*  <DisplaySection.ChartEngine /> */}
         <DisplaySection.Theme />
       </DisplaySection>
       <KeyManagementSection />
