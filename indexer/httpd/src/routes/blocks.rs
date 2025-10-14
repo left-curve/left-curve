@@ -40,7 +40,10 @@ fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse
 
     match BlockToIndex::load_from_disk(block_filename) {
         Ok(data) => Ok(HttpResponse::Ok().json(data.block)),
-        Err(_err) => Ok(HttpResponse::InternalServerError().body("Failed to load block file")),
+        Err(err) => {
+            Ok(HttpResponse::InternalServerError()
+                .body(format!("failed to load block file: {err}")))
+        },
     }
 }
 
@@ -71,7 +74,10 @@ fn _block_results_by_height(block_height: u64, app_ctx: &Context) -> Result<Http
 
     match BlockToIndex::load_from_disk(block_filename) {
         Ok(data) => Ok(HttpResponse::Ok().json(data.block_outcome)),
-        Err(_err) => Ok(HttpResponse::InternalServerError().body("Failed to load block file")),
+        Err(err) => {
+            Ok(HttpResponse::InternalServerError()
+                .body(format!("failed to load block file: {err}")))
+        },
     }
 }
 
