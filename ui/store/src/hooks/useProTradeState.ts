@@ -192,6 +192,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     onChangeAction(action);
   }, [action]);
 
+  useEffect(() => {
+    setBucketSize(pair.params.bucketSizes[0]);
+  }, [pair]);
+
   const submission = useSubmitTx({
     mutation: {
       mutationFn: async () => {
