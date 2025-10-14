@@ -191,9 +191,8 @@ const Desktop: React.FC = () => {
     <div
       ref={menuRef}
       className={twMerge(
-        "transition-all lg:absolute fixed top-0 flex h-[92vh] justify-end z-50 duration-300 w-full lg:max-w-[376px] bg-[linear-gradient(90deg,_rgba(0,_0,_0,_0)_3.2%,_rgba(46,_37,_33,_0.1)_19.64%,_rgba(255,_255,_255,_0.1)_93.91%)]",
+        "transition-all lg:absolute fixed top-0 flex h-[100vh] justify-end z-50 duration-300 w-full lg:max-w-[376px] bg-[linear-gradient(90deg,_rgba(0,_0,_0,_0)_3.2%,_rgba(46,_37,_33,_0.1)_19.64%,_rgba(255,_255,_255,_0.1)_93.91%)]",
         isSidebarVisible ? "right-0" : "right-[-50vw]",
-        isQuestBannerVisible ? "h-[92vh]" : "h-[100svh]",
       )}
     >
       <div className="lg:pr-2 lg:py-4 w-full relative z-10">

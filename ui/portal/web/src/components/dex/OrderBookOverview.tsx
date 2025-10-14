@@ -130,7 +130,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const spreadCalc = useMemo(() => {
     if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice || !orderBook?.midPrice) return null;
     const spread = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
-    const spreadPercent = spread.div(orderBook.midPrice);
+    const spreadPercent = spread.div(orderBook.midPrice).times(100);
     return { spread, spreadPercent };
   }, [orderBook]);
 
@@ -199,7 +199,10 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
               {!spreadCalc
                 ? "n/a"
                 : `${formatNumber(spreadCalc.spread.toFixed(), formatNumberOptions)} `}
-              {quoteCoin.symbol} {spreadCalc ? `${spreadCalc.spreadPercent.toFixed()}%` : "n/a"}
+              {quoteCoin.symbol}{" "}
+              {spreadCalc
+                ? `${formatNumber(spreadCalc.spreadPercent.toFixed(), formatNumberOptions)}%`
+                : "n/a"}
             </p>
           </div>
           <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
