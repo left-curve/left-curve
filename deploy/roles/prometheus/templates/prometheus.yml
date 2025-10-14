@@ -84,57 +84,81 @@ scrape_configs:
 
   - job_name: 'clickhouse'
     static_configs:
-      - targets: ['ovh1:8055']
+      - targets: ['ovh1:9126']
         labels:
           service: 'clickhouse'
           environment: 'production'
-          network: 'testnet'
-          dango_network: 'testnet'
-      - targets: ['ovh2:8055']
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['ovh2:9126']
         labels:
           service: 'clickhouse'
           environment: 'production'
-          network: 'testnet'
-          dango_network: 'testnet'
-      - targets: ['ovh1:8085']
-        labels:
-          service: 'clickhouse'
-          environment: 'production'
-          network: 'devnet'
-          dango_network: 'devnet'
-      - targets: ['ovh2:8085']
-        labels:
-          service: 'clickhouse'
-          environment: 'production'
-          network: 'devnet'
-          dango_network: 'devnet'
+          network: 'system'
+          dango_network: 'system'
+      # - targets: ['ovh1:8055']
+      #   labels:
+      #     service: 'clickhouse'
+      #     environment: 'production'
+      #     network: 'testnet'
+      #     dango_network: 'testnet'
+      # - targets: ['ovh2:8055']
+      #   labels:
+      #     service: 'clickhouse'
+      #     environment: 'production'
+      #     network: 'testnet'
+      #     dango_network: 'testnet'
+      # - targets: ['ovh1:8085']
+      #   labels:
+      #     service: 'clickhouse'
+      #     environment: 'production'
+      #     network: 'devnet'
+      #     dango_network: 'devnet'
+      # - targets: ['ovh2:8085']
+      #   labels:
+      #     service: 'clickhouse'
+      #     environment: 'production'
+      #     network: 'devnet'
+      #     dango_network: 'devnet'
 
   - job_name: 'postgres'
     static_configs:
-      - targets: ['ovh1:8054']
+      - targets: ['ovh1:9187']
         labels:
           service: 'postgres'
           environment: 'production'
-          network: 'testnet'
-          dango_network: 'testnet'
-      - targets: ['ovh2:8054']
+          network: 'system'
+          dango_network: 'system'
+      - targets: ['ovh2:9187']
         labels:
           service: 'postgres'
           environment: 'production'
-          network: 'testnet'
-          dango_network: 'testnet'
-      - targets: ['ovh1:8084']
-        labels:
-          service: 'postgres'
-          environment: 'production'
-          network: 'devnet'
-          dango_network: 'devnet'
-      - targets: ['ovh2:8084']
-        labels:
-          service: 'postgres'
-          environment: 'production'
-          network: 'devnet'
-          dango_network: 'devnet'
+          network: 'system'
+          dango_network: 'system'
+      # - targets: ['ovh1:8054']
+      #   labels:
+      #     service: 'postgres'
+      #     environment: 'production'
+      #     network: 'testnet'
+      #     dango_network: 'testnet'
+      # - targets: ['ovh2:8054']
+      #   labels:
+      #     service: 'postgres'
+      #     environment: 'production'
+      #     network: 'testnet'
+      #     dango_network: 'testnet'
+      # - targets: ['ovh1:8084']
+      #   labels:
+      #     service: 'postgres'
+      #     environment: 'production'
+      #     network: 'devnet'
+      #     dango_network: 'devnet'
+      # - targets: ['ovh2:8084']
+      #   labels:
+      #     service: 'postgres'
+      #     environment: 'production'
+      #     network: 'devnet'
+      #     dango_network: 'devnet'
 
   - job_name: 'dango'
     static_configs:
@@ -168,13 +192,11 @@ scrape_configs:
       - targets: ['ovh1:26660']
         labels:
           environment: 'production'
-          dango_network: 'devnet'
           network: 'devnet'
           dango_network: 'devnet'
       - targets: ['ovh2:26660']
         labels:
           environment: 'production'
-          dango_network: 'devnet'
           network: 'devnet'
           dango_network: 'devnet'
       - targets: ['ovh1:36660']
