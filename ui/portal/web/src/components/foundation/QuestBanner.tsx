@@ -55,7 +55,7 @@ export const QuestBanner: React.FC = () => {
     <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col 2xl:flex-row 2xl:items-center justify-between relative">
       <a
         className="exposure-l-italic min-w-fit"
-        href="https://app.galxe.com/quest/dango/GCMTJtfErm"
+        href="https://app.galxe.com/quest/dango/GCNAXt8Tqv"
         target="_blank"
         rel="noreferrer"
       >
