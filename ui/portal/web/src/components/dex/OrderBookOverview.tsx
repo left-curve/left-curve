@@ -131,11 +131,11 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
 
   const { bids, asks } = liquidityDepth;
 
-  const spread = useMemo(() => {
+  const spreadCalc = useMemo(() => {
     if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice || !orderBook?.midPrice) return null;
-    return Decimal(Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice).toFixed())
-      .div(orderBook.midPrice)
-      .toFixed();
+    const spread = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
+    const spreadPercent = spread.div(orderBook.midPrice);
+    return { spread, spreadPercent };
   }, [orderBook]);
 
   return (
@@ -196,10 +196,10 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           <div className="flex flex-col items-end text-ink-tertiary-500 relative z-20">
             <p className="diatype-xxs-medium">{m["dex.protrade.spread"]()}</p>
             <p className="diatype-xxs-medium">
-              {spread
-                ? formatNumber(Decimal(currentPrice).mul(spread).toFixed(), formatNumberOptions)
-                : null}{" "}
-              {spread ? `${spread}%` : "n/a"}
+              {!spreadCalc
+                ? "n/a"
+                : `${formatNumber(spreadCalc.spread.toFixed(), formatNumberOptions)} `}
+              {quoteCoin.symbol} {spreadCalc ? `${spreadCalc.spreadPercent.toFixed()}%` : "n/a"}
             </p>
           </div>
           <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
