@@ -3,6 +3,18 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <script>
+        // Set dynamic base for asset resolution
+        (function() {
+            const currentPath = window.location.pathname;
+            const basePath = currentPath.endsWith('/') ? currentPath : currentPath + '/';
+            
+            // Set the base tag dynamically
+            const baseTag = document.createElement('base');
+            baseTag.href = basePath;
+            document.head.insertBefore(baseTag, document.head.firstChild);
+        })();
+    </script>
     <link rel="icon" type="image/png" href="./src/assets/favicon-96x96.png" sizes="96x96"/>
     <link rel="icon" type="image/svg+xml" href="./src/assets/favicon.svg"/>
     <link rel="shortcut icon" href="./src/assets/favicon.ico"/>
