@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { Direction } from "@left-curve/dango/types";
-import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
+import { adjustPrice, calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -198,11 +198,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
             <p className="diatype-xxs-medium">
               {!spreadCalc
                 ? "n/a"
-                : `${formatNumber(spreadCalc.spread.toFixed(), formatNumberOptions)} `}
-              {quoteCoin.symbol}{" "}
-              {spreadCalc
-                ? `${formatNumber(spreadCalc.spreadPercent.toFixed(), formatNumberOptions)}%`
-                : "n/a"}
+                : `${formatNumber(adjustPrice(+spreadCalc.spread.toFixed()), formatNumberOptions)} (${formatNumber(spreadCalc.spreadPercent.toFixed(), formatNumberOptions)}%)`}
             </p>
           </div>
           <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
