@@ -34,9 +34,9 @@
     status_code: [200, 201]
   register: deployment_results
   loop:
-    - { name: "dango-frontend", description: "Frontend", url: "http://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
-    - { name: "dango-api", description: "Dango API", url: "http://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
-    - { name: "faucet-bot", description: "Faucet", url: "http://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
+    - { name: "dango-frontend", description: "Frontend", url: "https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
+    - { name: "dango-api", description: "Dango API", url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
+    - { name: "faucet-bot", description: "Faucet", url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
 
 - name: Set deployment statuses
   uri:
