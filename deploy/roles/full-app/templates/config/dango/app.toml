@@ -65,7 +65,7 @@ port = 8080
 #
 # Wildcards are not supported here. To allow all origins, simply comment out
 # this line.
-cors_allowed_origin = ""
+cors_allowed_origin = "https://dango.exchange,https://dev.dango.exchange"
 
 [metrics_httpd]
 
