@@ -20,7 +20,13 @@ export {
   parseUnits,
 } from "./formatters.js";
 
-export { calculateTradeSize, calculateFees, calculatePrice, formatOrderId } from "./dex.js";
+export {
+  calculateTradeSize,
+  calculateFees,
+  calculatePrice,
+  formatOrderId,
+  adjustPrice,
+} from "./dex.js";
 
 export { Actions } from "./actions.js";
 

@@ -7,10 +7,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import * as TV from "@left-curve/tradingview";
 import { createTradingViewDataFeed } from "~/datafeed";
 import { Direction } from "@left-curve/dango/types";
+import { Decimal, adjustPrice } from "@left-curve/dango/utils";
 
 import type { AnyCoin } from "@left-curve/store/types";
 import type { OrdersByUserResponse, WithId } from "@left-curve/dango/types";
-import { Decimal } from "@left-curve/dango/utils";
 
 type TradingViewProps = {
   coins: { base: AnyCoin; quote: AnyCoin };
@@ -157,9 +157,11 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
         drawnOrders.set(order.id, orderLine);
       }); */
 
-      const price = Decimal(order.price)
-        .times(Decimal(10).pow(base.decimals - quote.decimals))
-        .toFixed(5);
+      const price = adjustPrice(
+        +Decimal(order.price)
+          .times(Decimal(10).pow(base.decimals - quote.decimals))
+          .toFixed(),
+      );
 
       const color = order.direction === Direction.Buy ? "#27AE60" : "#EB5757";
 
