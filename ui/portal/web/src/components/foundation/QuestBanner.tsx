@@ -96,7 +96,9 @@ export const QuestBanner: React.FC = () => {
             completed={isLimitOrdersCompleted}
           /> */}
           <Quest
-            text={m["quests.galxeQuest.quest.completeTxsInEthereum"]({ number: quests.tx_count })}
+            text={m["quests.galxeQuest.quest.completeTxsInEthereum"]({
+              number: quests.tx_count || 0,
+            })}
             completed={isTxCountCompleted}
           />
         </div>
