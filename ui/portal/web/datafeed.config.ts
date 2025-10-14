@@ -1,4 +1,4 @@
-import { Decimal } from "@left-curve/dango/utils";
+import { Decimal, adjustPrice } from "@left-curve/dango/utils";
 import { CandleInterval } from "@left-curve/dango/types";
 
 import type { Candle, CandleIntervals, PublicClient } from "@left-curve/dango/types";
@@ -50,19 +50,27 @@ function convertResolutionToCandleInterval(resolution: ResolutionString): Candle
 function candlesToTradingViewBar(candles: Candle[], baseCoin: AnyCoin, quoteCoin: AnyCoin) {
   return candles.reverse().map((candle) => ({
     time: candle.timeStartUnix,
-    volume: +Decimal(candle.volumeQuote).div(Decimal(10).pow(quoteCoin.decimals)).toFixed(5),
-    open: +Decimal(candle.open)
-      .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-      .toFixed(5),
-    high: +Decimal(candle.high)
-      .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-      .toFixed(5),
-    low: +Decimal(candle.low)
-      .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-      .toFixed(5),
-    close: +Decimal(candle.close)
-      .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-      .toFixed(5),
+    volume: +Decimal(candle.volumeQuote).div(Decimal(10).pow(quoteCoin.decimals)).toFixed(),
+    open: adjustPrice(
+      +Decimal(candle.open)
+        .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+        .toFixed(),
+    ),
+    high: adjustPrice(
+      +Decimal(candle.high)
+        .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+        .toFixed(),
+    ),
+    low: adjustPrice(
+      +Decimal(candle.low)
+        .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+        .toFixed(),
+    ),
+    close: adjustPrice(
+      +Decimal(candle.close)
+        .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
+        .toFixed(),
+    ),
   }));
 }
 
@@ -120,7 +128,7 @@ export function createTradingViewDataFeed(parameters: CreateDataFeedParameters):
         exchange: "Dango",
         listed_exchange: "Dango",
         format: "price",
-        pricescale: 10 ** quoteCoin.decimals,
+        pricescale: 100,
         minmov: 1,
         has_intraday: true,
         supported_resolutions: [
