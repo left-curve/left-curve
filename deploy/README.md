@@ -31,3 +31,10 @@ security add-generic-password \
   -s ansible-vault/default \
   -w 'ASK_TEAM_FOR_PASSWORD'
 ```
+
+This shows you have the right password:
+
+```bash
+❯ ./vault-password.sh|sha256
+2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
+```
