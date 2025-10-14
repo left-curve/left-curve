@@ -7,7 +7,7 @@ LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 RUN apt update && apt install -y git make
 
 # Git tag of the cometbft repo.
-ARG COMETBFT_GIT_TAG="v0.38.17"
+ARG COMETBFT_GIT_TAG="v0.38.19"
 ENV COMETBFT_GIT_TAG=$COMETBFT_GIT_TAG
 
 # Download cometbft source code, build, then delete.

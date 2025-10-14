@@ -1,9 +1,9 @@
-COMETBFT_VERSION := "0.38.17"
+COMETBFT_VERSION := "0.38.19"
 
 # TODO: allow specifying version, platform, and build args via CLI arguments.
 build:
   docker buildx build \
-    --load \
+    --push \
     --platform linux/arm64 \
     --build-arg COMETBFT_GIT_TAG=v{{COMETBFT_VERSION}} \
     --tag leftcurve/cometbft:{{COMETBFT_VERSION}} \
