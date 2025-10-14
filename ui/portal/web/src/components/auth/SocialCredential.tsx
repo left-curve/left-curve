@@ -1,7 +1,8 @@
-import { Button, IconApple, IconGoogle } from "@left-curve/applets-kit";
+import { Button, IconGoogle, IconTwitter } from "@left-curve/applets-kit";
 import { wait } from "@left-curve/dango/utils";
 import { useLoginWithOAuth, usePrivy } from "@privy-io/react-auth";
 import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
 
 type SocialCredentialProps = {
   signup?: boolean;
@@ -9,9 +10,13 @@ type SocialCredentialProps = {
 };
 
 export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, signup }) => {
+  const [onAuthProvider, setOnAuthProvider] = useState<"google" | "twitter" | null>(null);
   const { createWallet } = usePrivy();
-  const { initOAuth, loading } = useLoginWithOAuth({
-    onComplete: () => onComplete.mutateAsync(),
+  const { initOAuth } = useLoginWithOAuth({
+    onComplete: ({ loginMethod }) => {
+      setOnAuthProvider(loginMethod as string as "google" | "twitter");
+      onComplete.mutateAsync();
+    },
   });
 
   const onComplete = useMutation({
@@ -22,25 +27,37 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
     },
   });
 
-  const onClick = useMutation({
+  const googleAuth = useMutation({
     mutationFn: async () => {
       if ((window as any).privy) await onAuth();
-      else initOAuth({ provider: "google", disableSignup: !signup });
+      else await initOAuth({ provider: "google", disableSignup: !signup });
+    },
+  });
+
+  const xAuth = useMutation({
+    mutationFn: async () => {
+      if ((window as any).privy) await onAuth();
+      else await initOAuth({ provider: "twitter", disableSignup: !signup });
     },
   });
 
   return (
     <div className="grid grid-cols-2 gap-3 w-full">
       <Button
-        onClick={() => onClick.mutateAsync()}
+        onClick={() => googleAuth.mutateAsync()}
         variant="secondary"
         fullWidth
-        isLoading={loading || onComplete.isPending || onClick.isPending}
+        isLoading={(onAuthProvider === "google" && onComplete.isPending) || googleAuth.isPending}
       >
         <IconGoogle />
       </Button>
-      <Button isDisabled={true} variant="secondary" fullWidth>
-        <IconApple />
+      <Button
+        onClick={() => xAuth.mutateAsync()}
+        variant="secondary"
+        fullWidth
+        isLoading={(onAuthProvider === "twitter" && onComplete.isPending) || xAuth.isPending}
+      >
+        <IconTwitter />
       </Button>
     </div>
   );

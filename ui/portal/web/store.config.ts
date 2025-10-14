@@ -45,7 +45,7 @@ const coins = {
   },
   "bridge/usdc": {
     type: "native",
-    name: "Ethereum USDC",
+    name: "USD Coin",
     logoURI:
       "https://raw.githubusercontent.com/cosmos/chain-registry/master/axelar/images/usdc.svg",
     symbol: "USDC",
