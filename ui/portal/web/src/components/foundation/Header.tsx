@@ -83,7 +83,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             variant="utility"
             size="lg"
             onClick={() =>
-              isConnected ? setSidebarVisibility(!isSidebarVisible) : navigate({ to: "/signin" })
+              isConnected ? setSidebarVisibility(!isSidebarVisible) : navigate({ to: "/signup" })
             }
           >
             {isConnected ? (
