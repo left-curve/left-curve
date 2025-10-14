@@ -19,7 +19,7 @@ export const Stepper: React.FC<Props> = ({ steps, activeStep }) => {
                 className={twMerge(
                   "absolute min-w-fit block top-9 left-1/2 -translate-x-1/2 transition-all text-nowrap",
                   {
-                    "text-primitives-red-light-500": isActive,
+                    "text-primitives-red-light-600": isActive,
                   },
                 )}
               >

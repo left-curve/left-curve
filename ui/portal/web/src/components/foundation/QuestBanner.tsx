@@ -103,7 +103,7 @@ export const QuestBanner: React.FC = () => {
         {areQuestsCompleted ? (
           <Button
             as="a"
-            href="https://app.galxe.com/quest/dango/GCMTJtfErm"
+            href="https://app.galxe.com/quest/dango/GCNAXt8Tqv"
             target="_blank"
             rel="noreferrer"
           >
