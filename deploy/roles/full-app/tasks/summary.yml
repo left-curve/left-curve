@@ -3,7 +3,7 @@
     msg:
       - "Dango Frontend: https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}"
       - "Dango GraphQL: https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql"
-      - "Dango GraphiQL: https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql/"
+      - "Dango GraphiQL: https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql"
       - "Dango metrics: http://{{ tailscale_ip }}:{{ dango_metrics_port }}"
       - "Faucet bot: https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint"
       - "GraphiQL: http://{{ tailscale_ip }}:{{ graphiql_port }}"

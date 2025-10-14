@@ -69,7 +69,7 @@
     | **Status** | ✅ |
     | **Dango Frontend** | [https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
     | **Dango GraphQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql) |
-    | **Dango GraphiQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql/](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql/) |
+    | **Dango GraphiQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql) |
     | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
     | **Deployment name** | `{{ deployment_name }}` |
     | **Commit** | `{{ dango_image_tag }}` |
