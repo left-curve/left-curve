@@ -26,7 +26,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
   const { subscriptions, settings } = useApp();
   const { coins: allCoins } = useConfig();
   const { base, quote } = coins;
-  const { timeFormat } = settings;
+  const { timeFormat, timeZone } = settings;
 
   const [chartState, setChartState] = useStorage<object>(`tv.${pairSymbol}`, {
     sync: true,
@@ -111,7 +111,13 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
 
     widget.onChartReady(() => {
       widget.subscribe("onAutoSaveNeeded", saveFn);
-      widget.applyOverrides({ "paneProperties.background": toolbar_bg });
+      widget.applyOverrides({
+        "paneProperties.background": toolbar_bg,
+        timezone:
+          timeZone === "utc"
+            ? "Etc/UTC"
+            : (Intl.DateTimeFormat().resolvedOptions().timeZone as TV.TimezoneId),
+      });
       widgetRef.current = widget;
     });
 
