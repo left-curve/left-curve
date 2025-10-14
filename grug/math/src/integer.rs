@@ -387,11 +387,11 @@ mod tests {
             }
             for base in failing {
                 let base = bt(_0, Int::new(base));
-                assert!(matches!(base.checked_ilog2(), Err(MathError::ZeroLog)));
+                assert!(matches!(base.checked_ilog2(), Err(MathError::ZeroLog(_))));
 
             }
             // 0 log
-            assert!(matches!(_0.checked_ilog2(), Err(MathError::ZeroLog)))
+            assert!(matches!(_0.checked_ilog2(), Err(MathError::ZeroLog(_))))
         }
     );
 
@@ -445,11 +445,11 @@ mod tests {
             }
             for base in failing {
                 let base = bt(_0, Int::new(base));
-                assert!(matches!(base.checked_ilog10(), Err(MathError::ZeroLog)));
+                assert!(matches!(base.checked_ilog10(), Err(MathError::ZeroLog(_))));
 
             }
             // 0 log
-            assert!(matches!(_0.checked_ilog10(), Err(MathError::ZeroLog)))
+            assert!(matches!(_0.checked_ilog10(), Err(MathError::ZeroLog(_))))
         }
     );
 

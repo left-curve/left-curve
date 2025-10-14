@@ -37,6 +37,7 @@ async-trait                 = { workspace = true }
 base64                      = { workspace = true }
 chrono                      = { workspace = true }
 clap                        = { workspace = true }
+error-backtrace             = { workspace = true }
 futures                     = { workspace = true }
 futures-util                = { workspace = true, optional = true }
 grug-app                    = { workspace = true }

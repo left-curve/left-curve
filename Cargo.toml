@@ -62,6 +62,8 @@ members = [
   "pyth/types",
   "utils/config-parser",
   "utils/dyn-event",
+  "utils/error-backtrace",
+  "utils/error-backtrace/derive",
   "utils/eth",
   "utils/identity",
   "utils/temp-rocksdb",
@@ -104,6 +106,7 @@ async-stream                = "0"
 async-trait                 = "0"
 awc                         = "3"
 axum                        = { version = "0.8", features = ["ws"] }
+backtrace                   = "0.3"
 base64                      = "0.22"
 bigdecimal                  = "0.4"
 bip32                       = "0.5"
@@ -127,6 +130,8 @@ dyn-clone                   = "1"
 dyn-event                   = { path = "utils/dyn-event" }
 ed25519-dalek               = "2"
 elsa                        = "1"
+error-backtrace             = { path = "utils/error-backtrace" }
+error-backtrace-derive      = { path = "utils/error-backtrace/derive" }
 eth-utils                   = { path = "utils/eth" }
 futures                     = "0.3"
 futures-util                = "0.3"

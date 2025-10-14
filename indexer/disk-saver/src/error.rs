@@ -1,16 +1,20 @@
 use grug_types::StdError;
 
+#[error_backtrace::backtrace]
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Std(#[from] StdError),
+    Std(StdError),
 
     #[error(transparent)]
-    Io(#[from] std::io::Error),
+    #[backtrace(new)]
+    Io(std::io::Error),
 
     #[error(transparent)]
-    Persist(#[from] tempfile::PersistError),
+    #[backtrace(new)]
+    Persist(tempfile::PersistError),
 
     #[error(transparent)]
-    Lzma(#[from] lzma_rs::error::Error),
+    #[backtrace(new)]
+    Lzma(lzma_rs::error::Error),
 }

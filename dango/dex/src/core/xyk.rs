@@ -79,9 +79,7 @@ pub fn swap_exact_amount_out(
 
     ensure!(
         output_reserve > output_amount_before_fee,
-        "insufficient liquidity: {} <= {}",
-        output_reserve,
-        output_amount_before_fee
+        "insufficient liquidity: {output_reserve} <= {output_amount_before_fee}",
     );
 
     // Solve A * B = (A + input_amount) * (B - output_amount) for input_amount

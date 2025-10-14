@@ -1,16 +1,20 @@
-use {indexer_sql::error::IndexerError, sea_orm::sqlx, std::io, thiserror::Error};
+use {indexer_sql::error::IndexerError, sea_orm::sqlx, std::io};
 
-#[derive(Error, Debug)]
+#[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Io(#[from] io::Error),
+    #[backtrace(new)]
+    Io(io::Error),
 
     #[error(transparent)]
-    SeaOrm(#[from] sea_orm::DbErr),
+    #[backtrace(new)]
+    SeaOrm(sea_orm::DbErr),
 
     #[error(transparent)]
-    Sqlx(#[from] sqlx::Error),
+    #[backtrace(new)]
+    Sqlx(sqlx::Error),
 
     #[error(transparent)]
-    Indexer(#[from] IndexerError),
+    Indexer(IndexerError),
 }

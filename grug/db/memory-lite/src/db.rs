@@ -92,10 +92,7 @@ impl Db for MemDbLite {
         if let Some(requested) = version {
             let db_version = self.latest_version().unwrap_or(0);
             if requested != db_version {
-                return Err(DbError::IncorrectVersion {
-                    db_version,
-                    requested,
-                });
+                return Err(DbError::incorrect_version(db_version, requested));
             }
         }
         Ok(StateStorage { db: self.clone() })
@@ -116,7 +113,7 @@ impl Db for MemDbLite {
     }
 
     fn prove(&self, _key: &[u8], _version: Option<u64>) -> DbResult<Proof> {
-        Err(DbError::ProofUnsupported)
+        Err(DbError::proof_unsupported())
     }
 
     // Note on implementing this function: We must make sure that we don't
@@ -131,7 +128,7 @@ impl Db for MemDbLite {
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
         let (version, hash) = self.with_write(|inner| {
             if inner.changeset.is_some() {
-                return Err(DbError::ChangeSetAlreadySet);
+                return Err(DbError::change_set_already_set());
             }
 
             let version = inner.latest_version.map(|v| v + 1).unwrap_or(0);
@@ -155,7 +152,10 @@ impl Db for MemDbLite {
 
     fn commit(&self) -> DbResult<()> {
         self.with_write(|mut inner| {
-            let changeset = inner.changeset.take().ok_or(DbError::ChangeSetNotSet)?;
+            let changeset = inner
+                .changeset
+                .take()
+                .ok_or(DbError::change_set_not_set())?;
 
             // Update the version
             inner.latest_version = Some(changeset.version);
