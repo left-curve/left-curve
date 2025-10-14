@@ -73,8 +73,8 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
 
   const depthBarClass =
     type === "bid"
-      ? "bg-status-success lg:-left-4"
-      : "bg-status-fail -right-0 lg:-left-4 lg:right-auto";
+      ? "bg-status-success lg:-left-4 lg:right-auto right-0"
+      : "bg-status-fail left-0 lg:-left-4 lg:right-auto";
 
   return (
     <div className="relative flex-1 diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3">
@@ -86,8 +86,8 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
         className={twMerge(
           "z-10",
           type === "bid"
-            ? "text-status-success text-left"
-            : "text-status-fail order-2 lg:order-none text-end lg:text-left",
+            ? "text-status-success text-end lg:text-left lg:order-none order-2"
+            : "text-status-fail lg:order-none lg:text-left",
         )}
       >
         {formatNumber(price, { ...formatNumberOptions, minimumTotalDigits: 10 })}
@@ -96,7 +96,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
       <div
         className={twMerge(
           "z-10",
-          type === "bid" ? "text-end" : "order-1 lg:order-none lg:text-end",
+          type === "bid" ? "text-start lg:text-end" : "order-1 lg:order-none text-end",
         )}
       >
         {formatNumber(total, {
@@ -111,6 +111,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
 const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
+  const { isLg } = useMediaQuery();
   const {
     baseCoin,
     quoteCoin,
@@ -137,6 +138,8 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
 
   const { bids, asks } = liquidityDepth;
+
+  const asksOrdered = isLg ? [...asks.records].reverse() : [...asks.records];
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
@@ -166,10 +169,10 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
         <p className="order-2 lg:order-none text-end lg:text-start">
           {m["dex.protrade.history.price"]()}
         </p>
-        <p className="text-end hidden lg:block">
+        <p className="hidden lg:block lg:order-none text-end">
           {m["dex.protrade.history.size"]({ symbol: bucketSizeSymbol })}
         </p>
-        <p className="lg:text-end order-1 lg:order-none">
+        <p className=" order-1 lg:order-none lg:text-end">
           {m["dex.protrade.history.total"]({ symbol: bucketSizeSymbol })}
         </p>
         <p className="order-3 lg:hidden">{m["dex.protrade.history.price"]()}</p>
@@ -178,13 +181,13 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
         </p>
       </div>
       <div className="flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
-        <div className="asks-container flex flex-1 flex-col w-full gap-1">
-          {[...asks.records].reverse().map((ask, i) => (
+        <div className="asks-container flex flex-1 flex-col w-full gap-1 order-2 lg:order-1">
+          {asksOrdered.map((ask, i) => (
             <OrderRow key={`ask-${ask.price}-${i}`} type="ask" {...ask} max={asks.total} />
           ))}
         </div>
 
-        <div className="hidden lg:flex  w-full pt-2 pb-[6px] items-center justify-between relative">
+        <div className="hidden lg:flex  w-full pt-2 pb-[6px] items-center justify-between relative order-2">
           <p
             className={twMerge(
               "diatype-m-bold relative z-20",
@@ -204,8 +207,8 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
         </div>
 
-        <div className="bid-container flex flex-1 flex-col w-full gap-1">
-          {bids.records.map((bid, i) => (
+        <div className="bid-container flex flex-1 flex-col w-full gap-1 order-1 lg:order-3">
+          {[...bids.records].map((bid, i) => (
             <OrderRow key={`bid-${bid.price}-${i}`} type="bid" {...bid} max={bids.total} />
           ))}
         </div>
