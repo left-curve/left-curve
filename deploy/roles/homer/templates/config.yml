@@ -35,21 +35,13 @@ colors:
     link-hover: "#ffdd57"
 
 links:
-  - name: "Testnet Portal"
-    icon: "fas fa-flask"
-    url: "https://test.dango.exchange/"
-    target: "_blank"
-  - name: "Testnet GraphQL"
-    icon: "fas fa-flask"
-    url: "https://testnet.dango.exchange/"
+  - name: "Main Portal"
+    icon: "fas fa-code"
+    url: "https://dango.exchange/"
     target: "_blank"
   - name: "Devnet Portal"
     icon: "fas fa-code"
     url: "https://dev.dango.exchange/"
-    target: "_blank"
-  - name: "Devnet GraphQL"
-    icon: "fas fa-code"
-    url: "https://devnet.dango.exchange/"
     target: "_blank"
 
 services:
