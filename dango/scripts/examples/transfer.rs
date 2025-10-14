@@ -2,11 +2,10 @@ use {
     dango_client::SingleSigner,
     dango_types::constants::btc,
     grug::{
-        Addr, BroadcastClientExt, GasOption, JsonSerExt, QueryClientExt, SearchTxClient,
-        TendermintRpcClient, addr, coins,
+        Addr, BroadcastClientExt, GasOption, JsonSerExt, QueryClientExt, SearchTxClient, addr,
+        coins,
     },
     hex_literal::hex,
-    indexer_client::HttpClient,
     std::time::Duration,
 };
 
@@ -24,8 +23,8 @@ const BOT_PRIVATE_KEY: [u8; 32] =
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = HttpClient::new("http://api.testnet.ovh1.dango.zone")?;
-    // let client = TendermintRpcClient::new("http://ovh1:36657")?;
+    // let client = grug::TendermintRpcClient::new("http://ovh1:36657")?;
+    let client = indexer_client::HttpClient::new("http://api.testnet.ovh1.dango.zone")?;
 
     let mut bot = SingleSigner::from_private_key(BOT_USERNAME, BOT, BOT_PRIVATE_KEY)?
         .with_query_nonce(&client)
@@ -43,12 +42,12 @@ async fn main() -> anyhow::Result<()> {
             CHAIN_ID,
         )
         .await?;
-    // println!("{}", outcome.to_json_string_pretty()?);
+    println!("tx broadcasted: {}", outcome.tx_hash);
 
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     let tx = client.search_tx(outcome.tx_hash).await?;
-    println!("{}", tx.to_json_string_pretty()?);
+    println!("tx confirmed: {}", tx.to_json_string_pretty()?);
 
     let balances_after = client.query_balances(BOT, None, None, None).await?;
     println!("bot balances after: {balances_after}");
