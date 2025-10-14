@@ -127,16 +127,16 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const orderBook = orderBookStore((s) => s.orderBook);
   const bucketSizeSymbol = bucketSizeCoin === "base" ? baseCoin.symbol : quoteCoin.symbol;
 
-  if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
-
-  const { bids, asks } = liquidityDepth;
-
   const spreadCalc = useMemo(() => {
     if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice || !orderBook?.midPrice) return null;
     const spread = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
     const spreadPercent = spread.div(orderBook.midPrice);
     return { spread, spreadPercent };
   }, [orderBook]);
+
+  if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
+
+  const { bids, asks } = liquidityDepth;
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center ">
