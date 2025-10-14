@@ -1,35 +1,34 @@
-- name: Create users and enable lingering
-  block:
-    - name: Create users
-      user:
-        name: "{{ item }}"
-        shell: /bin/bash
-        groups: sudo
-        append: yes
-        state: present
-        create_home: yes
+- name: Create users
+  user:
+    name: "{{ item }}"
+    shell: /bin/bash
+    groups: sudo
+    append: yes
+    state: present
+    create_home: yes
+  loop: "{{ ssh_users }}"
 
-    - name: Enable lingering
-      command: loginctl enable-linger "{{ item }}"
-      become: yes
+- name: Enable lingering
+  command: loginctl enable-linger "{{ item }}"
+  become: yes
+  loop: "{{ ssh_users }}"
 
-    - name: Ensure .ssh directory exists for ssh_users
-      file:
-        path: "/home/{{ item }}/.ssh"
-        state: directory
-        owner: "{{ item }}"
-        group: "{{ item }}"
-        mode: '0700'
-      loop: "{{ ssh_users }}"
+- name: Ensure .ssh directory exists for ssh_users
+  file:
+    path: "/home/{{ item }}/.ssh"
+    state: directory
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: '0700'
+  loop: "{{ ssh_users }}"
 
-    - name: Copy ssh keys for ssh_users
-      authorized_key:
-        user: "{{ item }}"
-        state: present
-        key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
-      vars:
-        ssh_key_path: "{{ item }}.pub"
-  with_items: "{{ ssh_users }}"
+- name: Copy ssh keys for ssh_users
+  authorized_key:
+    user: "{{ item }}"
+    state: present
+    key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
+  vars:
+    ssh_key_path: "{{ item }}.pub"
   loop: "{{ ssh_users }}"
 
 - name: Create deploy user
@@ -57,14 +56,21 @@
     group: "{{ deploy_user }}"
     mode: '0700'
 
-- name: Copy ssh keys for deploy_user
+- name: Add all ssh_users’ keys to deploy_user
   authorized_key:
     user: "{{ deploy_user }}"
     state: present
-    key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
-  vars:
-    ssh_key_path: "{{ item }}.pub"
-  with_items: "{{ ssh_users }}"
+    key: "{{ lookup('file', role_path ~ '/files/authorized_keys/' ~ item ~ '.pub') }}"
+    manage_dir: true
+  loop: "{{ ssh_users }}"
+
+- name: Add all ssh_users’ keys to ansible_user
+  authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ lookup('file', role_path ~ '/files/authorized_keys/' ~ item ~ '.pub') }}"
+    manage_dir: true
+  loop: "{{ ssh_users }}"
 
 - name: Disable SSH root login
   lineinfile:
