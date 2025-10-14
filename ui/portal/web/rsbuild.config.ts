@@ -116,6 +116,7 @@ export default defineConfig({
         target: `${chain.urls.indexer}/graphql`,
         changeOrigin: true,
         pathRewrite: { "^/graphql": "" },
+        ws: true,
       },
       "/faucet": {
         target: urls.faucetUrl,
