@@ -52,6 +52,23 @@ impl MemDbLite {
         }
     }
 
+    /// Get direct immutable access to the state storage.
+    pub fn with_state_storage<C, T>(&self, callback: C) -> T
+    where
+        C: FnOnce(&dyn Storage) -> T,
+    {
+        self.with_write(|inner| callback(&inner.state_storage))
+    }
+
+    /// Get direct mutable access to the state storage. Only intended for testing
+    /// and debugging purposes.
+    pub fn with_state_storage_mut<C, T>(&self, callback: C) -> T
+    where
+        C: FnOnce(&mut dyn Storage) -> T,
+    {
+        self.with_write(|mut inner| callback(&mut inner.state_storage))
+    }
+
     fn with_read<C, T>(&self, callback: C) -> T
     where
         C: FnOnce(RwLockReadGuard<MemDbInner>) -> T,

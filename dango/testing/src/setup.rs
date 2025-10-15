@@ -366,16 +366,16 @@ where
         let user9 = TestAccount::new_from_private_key(user9::USERNAME.clone(), user9::PRIVATE_KEY);
 
         TestAccounts {
-            owner: owner.set_address(&addresses),
-            user1: user1.set_address(&addresses),
-            user2: user2.set_address(&addresses),
-            user3: user3.set_address(&addresses),
-            user4: user4.set_address(&addresses),
-            user5: user5.set_address(&addresses),
-            user6: user6.set_address(&addresses),
-            user7: user7.set_address(&addresses),
-            user8: user8.set_address(&addresses),
-            user9: user9.set_address(&addresses),
+            owner: owner.set_address_with(&addresses),
+            user1: user1.set_address_with(&addresses),
+            user2: user2.set_address_with(&addresses),
+            user3: user3.set_address_with(&addresses),
+            user4: user4.set_address_with(&addresses),
+            user5: user5.set_address_with(&addresses),
+            user6: user6.set_address_with(&addresses),
+            user7: user7.set_address_with(&addresses),
+            user8: user8.set_address_with(&addresses),
+            user9: user9.set_address_with(&addresses),
         }
     };
 
