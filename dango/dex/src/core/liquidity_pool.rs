@@ -665,8 +665,6 @@ mod tests {
             assert!(amount.inner().abs_diff(expected_amount.into_inner()) <= order_size_tolerance);
         }
 
-        println!("bids: {bids:?}");
-
         for ((price, amount), (expected_price, expected_amount)) in
             bids.into_iter().zip(expected_bids.iter())
         {
