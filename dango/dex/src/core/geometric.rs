@@ -261,6 +261,8 @@ pub fn reflect_curve(
             // Fix: recompute the amount of quote asset used.
             // The order size is denominated in the base asset, so the actual
             // amount of quote asset used needs to be recomputed from the base amount.
+            //
+            // Fix 2025-10-15: here we should `ceil`, but previously we had `floor`.
             let size_in_quote = size.checked_mul_dec_ceil(price).ok()?;
 
             maybe_price = price.checked_sub(params.spacing).ok();
@@ -315,7 +317,10 @@ fn oracle_value(oracle_querier: &mut OracleQuerier, coin_pair: &CoinPair) -> any
 mod tests {
     use {
         super::*,
-        dango_types::oracle::PrecisionedPrice,
+        dango_types::{
+            constants::{eth, usdc},
+            oracle::PrecisionedPrice,
+        },
         grug::{ResultExt, Timestamp, Udec128_24},
         std::str::FromStr,
     };
@@ -338,16 +343,21 @@ mod tests {
             .should_succeed_and_equal(Uint128::ZERO);
     }
 
+    /// Ensure that the sum of the sizes of all the orders are less or equal than
+    /// the pool's reserve.
+    /// In order words, even if all the orders are filled at the worse possible
+    /// prices (their limit prices), the pool must have enough reserve to cover
+    /// the outflow.
     #[test]
-    fn test_testnet_3_halt_1() {
-        let eth_reserves = Uint128::new(491567617626054560353243);
-        let usdc_reserves = Uint128::new(8);
+    fn testnet_3_halt_20251015() {
+        let eth_reserve = Uint128::new(491567617626054560353243);
+        let usdc_reserve = Uint128::new(8);
 
         let (bids, asks) = reflect_curve(
             &mut OracleQuerier::new_mock(
                 vec![
                     (
-                        dango_types::constants::eth::DENOM.clone(),
+                        eth::DENOM.clone(),
                         PrecisionedPrice::new(
                             Udec128::from_str("4117.84677205").unwrap(),
                             Timestamp::from_millis(1760513220400),
@@ -355,7 +365,7 @@ mod tests {
                         ),
                     ),
                     (
-                        dango_types::constants::usdc::DENOM.clone(),
+                        usdc::DENOM.clone(),
                         PrecisionedPrice::new(
                             Udec128::from_str("0.99996229").unwrap(),
                             Timestamp::from_millis(1760513220400),
@@ -366,10 +376,10 @@ mod tests {
                 .into_iter()
                 .collect(),
             ),
-            &dango_types::constants::eth::DENOM,
-            &dango_types::constants::usdc::DENOM,
-            eth_reserves,
-            usdc_reserves,
+            &eth::DENOM,
+            &usdc::DENOM,
+            eth_reserve,
+            usdc_reserve,
             Geometric {
                 ratio: Bounded::new(Udec128::new_percent(60)).unwrap(),
                 spacing: Udec128::from_str("0.000000000005").unwrap(),
@@ -381,14 +391,12 @@ mod tests {
 
         // Sum the amount of all asks
         let asks_sum = asks.map(|(_, amount)| amount).sum::<Uint128>();
-        println!("asks_sum: {asks_sum}");
-        assert!(asks_sum <= eth_reserves);
+        assert!(asks_sum <= eth_reserve);
 
         // Sum the amount of all bids converted to quote asset
         let bids_sum = bids
             .map(|(price, amount)| amount.checked_mul_dec_ceil(price).unwrap())
             .sum::<Uint128>();
-        println!("bids_sum: {bids_sum}");
-        assert!(bids_sum <= usdc_reserves);
+        assert!(bids_sum <= usdc_reserve);
     }
 }
