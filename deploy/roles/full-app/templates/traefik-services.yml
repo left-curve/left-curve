@@ -22,6 +22,7 @@ http:
         accessControlAllowOriginListRegex:
           - ^https://([a-z0-9-]+\.)*dango\.zone$
           - ^https://([a-z0-9-]+\.)*dango\.exchange$
+          - ^https://([a-z0-9-]+\.)*dango-portal\.pages\.dev$
         accessControlAllowMethods: ["GET","POST","OPTIONS"]
         accessControlAllowHeaders:
           - Content-Type
