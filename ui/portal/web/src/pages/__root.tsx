@@ -108,8 +108,13 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       </>
     );
   },
-  errorComponent: () => {
+  errorComponent: ({ error }) => {
     const { theme } = useTheme();
+
+    useEffect(() => {
+      Sentry.captureException(error);
+    }, []);
+
     return (
       <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-y-auto overflow-x-hidden bg-surface-primary-rice">
         <img

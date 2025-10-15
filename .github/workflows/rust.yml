@@ -325,6 +325,9 @@ jobs:
           docker pull ${{ steps.config.outputs.image }}
 
       - name: build binary with cross
+        env:
+          RUSTFLAGS: "-C debuginfo=2 -C force-frame-pointers=yes"
+          CARGO_PROFILE_RELEASE_STRIP: "none"
         run: |
           set -euo pipefail
           mkdir -p .cross-cache/${{ steps.config.outputs.target }}

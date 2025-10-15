@@ -8,12 +8,20 @@ use {
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
     },
 };
+#[cfg(feature = "snapshot")]
+use {
+    borsh::{BorshDeserialize, BorshSerialize},
+    grug_types::{BorshDeExt, BorshSerExt},
+    std::{fs, path::Path},
+};
 
+#[cfg_attr(feature = "snapshot", derive(BorshSerialize, BorshDeserialize))]
 struct ChangeSet {
     version: u64,
     state_storage: Batch,
 }
 
+#[cfg_attr(feature = "snapshot", derive(BorshSerialize, BorshDeserialize))]
 struct MemDbInner {
     /// Version of the DB. Initilialized to `None` when the DB instance is
     /// created. Set of 0 the first time a batch of data is committed, and
@@ -43,6 +51,23 @@ impl MemDbLite {
         }
     }
 
+    /// Get direct immutable access to the state storage.
+    pub fn with_state_storage<C, T>(&self, callback: C) -> T
+    where
+        C: FnOnce(&dyn Storage) -> T,
+    {
+        self.with_write(|inner| callback(&inner.state_storage))
+    }
+
+    /// Get direct mutable access to the state storage. Only intended for testing
+    /// and debugging purposes.
+    pub fn with_state_storage_mut<C, T>(&self, callback: C) -> T
+    where
+        C: FnOnce(&mut dyn Storage) -> T,
+    {
+        self.with_write(|mut inner| callback(&mut inner.state_storage))
+    }
+
     fn with_read<C, T>(&self, callback: C) -> T
     where
         C: FnOnce(RwLockReadGuard<MemDbInner>) -> T,
@@ -61,6 +86,32 @@ impl MemDbLite {
             panic!("MemDb is poisoned: {err:?}");
         });
         callback(lock)
+    }
+}
+
+#[cfg(feature = "snapshot")]
+impl MemDbLite {
+    /// Dump the database to a file.
+    pub fn dump<P>(&self, path: P) -> anyhow::Result<()>
+    where
+        P: AsRef<Path>,
+    {
+        let bytes = self.with_read(|inner| inner.to_borsh_vec())?;
+
+        Ok(fs::write(path, bytes)?)
+    }
+
+    /// Recover the database from a file.
+    pub fn recover<P>(path: P) -> anyhow::Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        let bytes = fs::read(path)?;
+        let inner = bytes.deserialize_borsh()?;
+
+        Ok(Self {
+            inner: Arc::new(RwLock::new(inner)),
+        })
     }
 }
 

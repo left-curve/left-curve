@@ -1,0 +1,197 @@
+name: CometBFT
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  COMETBFT_GIT_TAG: v0.38.19
+
+on:
+  workflow_dispatch:
+    inputs:
+      cometbft_tag:
+        description: "Existing cometbft tag to sign (e.g. v0.38.17)"
+        required: false
+      cometbft_digest:
+        description: "Optional digest override (sha256:...) if you already know it"
+        required: false
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/cometbft.yml"
+      - "docker/cometbft/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/cometbft.yml"
+      - "docker/cometbft/**"
+
+jobs:
+  check-image:
+    runs-on: self-hosted
+    outputs:
+      skip_build: ${{ steps.decision.outputs.skip_build }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.10.0
+      - name: Check for docker image
+        id: image
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}"
+          if docker manifest inspect "$image" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check existing signature
+        id: signature
+        if: steps.image.outputs.exists == 'true'
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
+        run: |
+          set -euo pipefail
+          if cosign verify \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@refs/heads/main" \
+            "$IMAGE" > /dev/null 2>&1; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Decide whether to build
+        id: decision
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.image.outputs.exists }}" = "true" ] && [ "${{ steps.signature.outputs.signed || 'false' }}" = "true" ]; then
+            echo "skip_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-cometbft:
+    needs: check-image
+    if: needs.check-image.outputs.skip_build == 'false' || github.event_name == 'workflow_dispatch'
+    permissions:
+      packages: write
+      id-token: write
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/cometbft
+          build-args: |
+            COMETBFT_GIT_TAG=${{ env.COMETBFT_GIT_TAG }}
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
+          push: true
+          no-cache: true
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.10.0
+      - name: Sign CometBFT image
+        id: sign
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+          IMAGE: "ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}"
+        run: |
+          set -euo pipefail
+          digest="$(docker buildx imagetools inspect "$IMAGE" | awk '/^Digest:/ {print $2; exit}')"
+          if [ -z "$digest" ]; then
+            echo "Unable to determine digest for $IMAGE" >&2
+            exit 1
+          fi
+          cosign sign "$IMAGE@$digest"
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+      - name: Signed digest summary
+        run: |
+          digest='${{ steps.sign.outputs.digest }}'
+          echo "## 🔏 CometBFT Signed Image" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | Digest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ----- | ------ |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} | \`$digest\` |" >> "$GITHUB_STEP_SUMMARY"
+
+  cometbft-manual-sign:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.cometbft_tag != '' }}
+    name: Sign existing CometBFT image
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      id-token: write
+      contents: read
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.10.0
+
+      - name: Resolve digest
+        id: cometbft-digest
+        env:
+          IMAGE: "ghcr.io/${{ github.repository }}/cometbft:${{ inputs.cometbft_tag }}"
+          PROVIDED_DIGEST: ${{ inputs.cometbft_digest }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PROVIDED_DIGEST" ]; then
+            digest="$PROVIDED_DIGEST"
+          else
+            inspect_output="$(docker buildx imagetools inspect "$IMAGE" || true)"
+            digest="$(grep -m1 '^Digest:' <<<"$inspect_output" | awk '{print $2}')"
+          fi
+
+          if [ -z "${digest:-}" ]; then
+            echo "::error::Unable to resolve digest for $IMAGE. Provide it explicitly via workflow input or ensure the tag exists."
+            exit 1
+          fi
+
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Sign existing CometBFT tag
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+          IMAGE: "ghcr.io/${{ github.repository }}/cometbft:${{ inputs.cometbft_tag }}"
+          DIGEST: ${{ steps.cometbft-digest.outputs.digest }}
+        run: |
+          set -euo pipefail
+          if [[ "$DIGEST" == *@* ]]; then
+            target="$DIGEST"
+          else
+            target="$IMAGE@$DIGEST"
+          fi
+          cosign sign "$target"
+
+      - name: Summary
+        env:
+          DIGEST: ${{ steps.cometbft-digest.outputs.digest }}
+        run: |
+          {
+            echo "## 🔏 CometBFT image signed"
+            echo ""
+            echo "| Image | Digest |"
+            echo "| ----- | ------ |"
+            echo "| ghcr.io/${{ github.repository }}/cometbft:${{ inputs.cometbft_tag }} | \`$DIGEST\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -672,6 +672,18 @@ fn clear_orders_of_pair(
                 reserve.checked_sub(&outflow)?;
             }
 
+            #[cfg(feature = "metrics")]
+            {
+                for coin in [reserve.first(), reserve.second()] {
+                    metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
+                        "base_denom" => base_denom.to_string(),
+                        "quote_denom" => quote_denom.to_string(),
+                        "token" => coin.denom.to_string()
+                    )
+                    .set(coin.amount.into_inner() as f64);
+                }
+            }
+
             Ok::<_, StdError>(reserve)
         })?;
     }
@@ -811,6 +823,8 @@ fn clear_orders_of_pair(
     #[cfg(feature = "tracing")]
     {
         tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
             ?best_bid_price,
             ?best_ask_price,
             ?mid_price,

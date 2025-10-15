@@ -2,6 +2,8 @@ pub const LABEL_TRADES: &str = "dango.contract.dex.trades_count";
 
 pub const LABEL_ORDERS_FILLED: &str = "dango.contract.dex.orders_filled_count";
 
+pub const LABEL_RESERVE_AMOUNT: &str = "dango.contract.dex.reserve_amount";
+
 pub const LABEL_TRADES_PER_BLOCK: &str = "dango.contract.dex.trades_per_block";
 
 pub const LABEL_VOLUME_PER_TRADE: &str = "dango.contract.dex.volume_per_trade";
@@ -27,7 +29,7 @@ pub const LABEL_DURATION_ITER_NEXT: &str = "dango.contract.dex.iterator_next.dur
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
     use {
-        metrics::{describe_counter, describe_histogram},
+        metrics::{describe_counter, describe_gauge, describe_histogram},
         std::sync::Once,
     };
 
@@ -37,6 +39,8 @@ pub fn init_metrics() {
         describe_counter!(LABEL_TRADES, "Number of trades executed");
 
         describe_counter!(LABEL_ORDERS_FILLED, "Number of unique orders filled");
+
+        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of reserve");
 
         describe_histogram!(LABEL_TRADES_PER_BLOCK, "Number of trades in a block");
 
