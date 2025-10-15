@@ -32,13 +32,3 @@ system_wide_directories: false
 # Set this to true to deploy a new database and cometbft/dango directory
 reset_data: false
 keep_databases: false
-deploy_cosign_images:
-  - service: "dango"
-    image: "ghcr.io/left-curve/left-curve/dango"
-    tag: "{{ dango_image_tag }}"
-  - service: "dango-frontend"
-    image: "ghcr.io/left-curve/left-curve/dango-frontend"
-    tag: "{{ dango_image_tag }}"
-  - service: "cometbft"
-    image: "ghcr.io/left-curve/left-curve/cometbft"
-    tag: "{{ cometbft_tag }}"
