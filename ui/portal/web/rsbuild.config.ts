@@ -155,6 +155,7 @@ export default defineConfig({
         ),
         to: "./static/charting_library",
       },
+      { from: "./public/rmsw.js", to: "service-worker.js" },
     ],
     minify: {
       jsOptions: {
@@ -208,7 +209,7 @@ export default defineConfig({
       );
 
       if (process.env.NODE_ENV === "production") {
-        config.plugins.push(
+        /*   config.plugins.push(
           new GenerateSW({
             cacheId: "leftcurve-portal",
             clientsClaim: true,
@@ -224,7 +225,7 @@ export default defineConfig({
               },
             ],
           }),
-        );
+        ); */
       }
 
       config.devtool = "source-map";
