@@ -13,10 +13,7 @@
 - import_tasks: stop_previous.yml
   when: system_wide_directories
 - import_tasks: deploy_configs.yml
-- name: Verify container images signatures
-  include_role:
-    name: deploy
-    tasks_from: verify.yml
+- import_tasks: verify_signatures.yml
 - import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
 - import_tasks: cloudflare.yml
