@@ -34,7 +34,7 @@
 
 - name: Extract currently installed cosign version
   ansible.builtin.set_fact:
-    cosign_installed_version: "{{ (cosign_current_version.stdout | from_json).GitVersion }}"
+    cosign_installed_version: "{{ (cosign_current_version.stdout | from_json)['gitVersion'] | default((cosign_current_version.stdout | from_json)['GitVersion']) }}"
   when: cosign_current_version.rc == 0
 
 - name: Set desired cosign version and download URL
