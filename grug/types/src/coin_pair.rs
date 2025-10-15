@@ -288,22 +288,3 @@ impl IntoIterator for CoinPair {
         self.0.into_iter()
     }
 }
-
-impl<'a> IntoIterator for &'a CoinPair {
-    type IntoIter = CoinPairIter<'a>;
-    type Item = &'a Coin;
-
-    fn into_iter(self) -> Self::IntoIter {
-        CoinPairIter(self.0.iter())
-    }
-}
-
-pub struct CoinPairIter<'a>(core::slice::Iter<'a, Coin>);
-
-impl<'a> Iterator for CoinPairIter<'a> {
-    type Item = &'a Coin;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
-    }
-}

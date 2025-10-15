@@ -674,7 +674,7 @@ fn clear_orders_of_pair(
 
             #[cfg(feature = "metrics")]
             {
-                for i in &reserve {
+                for i in [reserve.first(), reserve.second()] {
                     metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
                         "base_denom" => base_denom.to_string(),
                         "quote_denom" => quote_denom.to_string(),
