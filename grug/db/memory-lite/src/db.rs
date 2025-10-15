@@ -4,9 +4,7 @@ use {
     grug_types::{Batch, Hash256, Op, Order, Proof, Record, Storage},
     std::{
         collections::BTreeMap,
-        fs,
         ops::Bound,
-        path::Path,
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
     },
 };
@@ -14,6 +12,7 @@ use {
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{BorshDeExt, BorshSerExt},
+    std::{fs, path::Path},
 };
 
 #[cfg_attr(feature = "snapshot", derive(BorshSerialize, BorshDeserialize))]
