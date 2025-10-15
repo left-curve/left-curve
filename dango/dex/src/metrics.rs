@@ -24,6 +24,8 @@ pub const LABEL_DURATION_STORE_VOLUME: &str = "dango.contract.dex.store_volume.d
 
 pub const LABEL_DURATION_ITER_NEXT: &str = "dango.contract.dex.iterator_next.duration";
 
+pub const LABEL_RESERVE_AMOUNT: &str = "dango.contract.dex.reserve_amount";
+
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
     use {
@@ -34,9 +36,13 @@ pub fn init_metrics() {
     static ONCE: Once = Once::new();
 
     ONCE.call_once(|| {
+        use metrics::describe_gauge;
+
         describe_counter!(LABEL_TRADES, "Number of trades executed");
 
         describe_counter!(LABEL_ORDERS_FILLED, "Number of unique orders filled");
+
+        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of reserve");
 
         describe_histogram!(LABEL_TRADES_PER_BLOCK, "Number of trades in a block");
 

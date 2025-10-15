@@ -672,6 +672,18 @@ fn clear_orders_of_pair(
                 reserve.checked_sub(&outflow)?;
             }
 
+            #[cfg(feature = "metrics")]
+            {
+                for i in &reserve {
+                    metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
+                        "base_denom" => base_denom.to_string(),
+                        "quote_denom" => quote_denom.to_string(),
+                        "token" => i.denom.to_string()
+                    )
+                    .set(i.amount.into_inner() as f64);
+                }
+            }
+
             Ok::<_, StdError>(reserve)
         })?;
     }
