@@ -3,7 +3,8 @@ use {
     dango_testing::{TestAccount, TestSuite},
     dango_types::{account, account_factory::Username, dex},
     grug::{
-        Addr, Coins, Duration, QuerierExt, Query, QueryStatusRequest, ResultExt, StdResult, addr,
+        Addr, Coins, Duration, JsonSerExt, QuerierExt, Query, QueryStatusRequest, ResultExt,
+        StdResult, addr,
     },
     grug_app::{App, NaiveProposalPreparer, NullIndexer},
     grug_db_memory_lite::MemDbLite,
@@ -74,7 +75,7 @@ fn main() -> anyhow::Result<()> {
             .set_nonce(owner_nonce + 1);
 
     // Reset and DEX. Ensure the call succeeds.
-    suite
+    let outcome = suite
         .execute(
             &mut owner,
             DEX,
@@ -82,13 +83,12 @@ fn main() -> anyhow::Result<()> {
             Coins::new(),
         )
         .should_succeed();
+    println!("{}", outcome.events.to_json_string_pretty()?);
 
     // Ensure the DEX is unpaused.
     suite
         .query_wasm_smart(DEX, dex::QueryPausedRequest {})
         .should_succeed_and_equal(false);
-
-    println!("reset succeeded!");
 
     Ok(())
 }
