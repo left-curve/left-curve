@@ -86,12 +86,11 @@
     - name: Load clickhouse vars
       include_vars: "roles/full-app/vars/included_clickhouse.yml"
       when: deploy_includes_clickhouse
-    - name: Define cosign main identity
+    - name: Define cosign identities
       set_fact:
         cosign_identity_main: "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/heads/main"
-    - name: Define cosign CometBFT identity
-      set_fact:
-        cosign_identity_cometbft: "https://github.com/left-curve/left-curve/.github/workflows/cometbft.yaml@refs/heads/main"
+        cosign_identity_cometbft: "https://github.com/left-curve/left-curve/.github/workflows/cometbft.yml@refs/heads/main"
+        cosign_certificate_identity_regexp: "{{ cosign_identity_current }}"
     - name: Define cosign identity for pull requests
       set_fact:
         cosign_identity_current: "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/pull/{{ github_pr_number }}/merge"
@@ -100,9 +99,6 @@
       set_fact:
         cosign_identity_current: "{{ cosign_identity_main }}"
       when: cosign_identity_current is not defined
-    - name: Record default cosign certificate identity
-      set_fact:
-        cosign_certificate_identity_regexp: "{{ cosign_identity_current }}"
     - name: Build cosign verification image list
       set_fact:
         deploy_cosign_images:
