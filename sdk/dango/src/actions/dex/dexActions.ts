@@ -74,7 +74,14 @@ import {
 
 import { getOrder, type GetOrderParameters, type GetOrderReturnType } from "./queries/getOrder.js";
 
+import {
+  dexStatus,
+  type DexStatusReturnType,
+  type DexStatusParameters,
+} from "./queries/dexStatus.js";
+
 export type DexQueryActions = {
+  dexStatus: (args?: DexStatusParameters) => DexStatusReturnType;
   getOrder: (args: GetOrderParameters) => GetOrderReturnType;
   getPairs: (args?: GetPairsParameters) => GetPairsReturnType;
   getPair: (args: GetPairParameters) => GetPairReturnType;
@@ -96,6 +103,7 @@ export function dexQueryActions<transport extends Transport = Transport>(
   client: Client<transport>,
 ): DexQueryActions {
   return {
+    dexStatus: (args) => dexStatus(client, args),
     getOrder: (args) => getOrder(client, args),
     getPairs: (args) => getPairs(client, args),
     getPair: (args) => getPair(client, args),
