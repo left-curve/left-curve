@@ -66,6 +66,7 @@ ui/foundation/paraglide/*
 **/testdata/
 dango/scripts/examples/blocks
 dango/scripts/examples/*.json
+dango/scripts/examples/*.tar
 !pyth/client/testdata/
 
 # Network data

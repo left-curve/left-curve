@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+use grug::JsonSerExt;
 use {
     anyhow::{anyhow, ensure},
     dango_genesis::GenesisCodes,
@@ -12,8 +14,11 @@ use {
     std::{fs, path::PathBuf},
 };
 
-const COMETBFT_GENESIS_FILE: &str =
-    "../../deploy/roles/full-app/templates/config/cometbft/genesis.json";
+const GENESIS_TIMESTAMP: Timestamp = Timestamp::from_seconds(31536000); // 1971-01-01T00:00:00Z
+
+const CHAIN_ID: &str = "dev-6";
+
+const UNTIL_HEIGHT: u64 = 150721; // inclusive
 
 fn main() -> anyhow::Result<()> {
     setup_tracing_subscriber(tracing::Level::INFO);
@@ -21,7 +26,7 @@ fn main() -> anyhow::Result<()> {
     let indexer_path = IndexerPath::Dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples"));
 
     let cometbft_genesis =
-        fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(COMETBFT_GENESIS_FILE))?
+        fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/genesis.json"))?
             .deserialize_json::<Json>()?;
 
     let genesis_state = cometbft_genesis
@@ -44,19 +49,27 @@ fn main() -> anyhow::Result<()> {
     );
 
     let _app_hash = app.do_init_chain(
-        "dev-9".to_string(),
+        CHAIN_ID.to_string(),
         BlockInfo {
             height: GENESIS_BLOCK_HEIGHT,
-            timestamp: Timestamp::from_seconds(31536000), // 1971-01-01T00:00:00Z
+            timestamp: GENESIS_TIMESTAMP,
             hash: GENESIS_BLOCK_HASH,
         },
         genesis_state,
     )?;
 
-    for height in 1..=562629 {
+    for height in 1..=UNTIL_HEIGHT {
         let block_to_index = BlockToIndex::load_from_disk(indexer_path.block_path(height))?;
+        // println!(
+        //     "expected block outcome: {}",
+        //     block_to_index.block_outcome.to_json_string_pretty()?
+        // );
 
         let block_outcome = app.do_finalize_block(block_to_index.block)?;
+        // println!(
+        //     "actual block outcome: {}",
+        //     block_outcome.to_json_string_pretty()?
+        // );
 
         ensure!(
             block_outcome.app_hash == block_to_index.block_outcome.app_hash,
