@@ -86,7 +86,7 @@ impl MemDbLite {
     }
 
     /// Recover the database to a file.
-    pub fn recover<P>(&self, path: P) -> anyhow::Result<Self>
+    pub fn recover<P>(path: P) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
     {
