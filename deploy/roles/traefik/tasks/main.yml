@@ -1,3 +1,34 @@
+# Fetch v4/v6 with retries per item
+- name: Fetch Cloudflare IPv4/IPv6 ranges
+  uri:
+    url: "{{ url }}"
+    return_content: true
+    timeout: 10
+  register: resp
+  retries: 3
+  delay: 2
+  until: resp.status | default(0) == 200
+  loop:
+    - https://www.cloudflare.com/ips-v4
+    - https://www.cloudflare.com/ips-v6
+  loop_control:
+    loop_var: url
+
+- name: Split CF IPv4/IPv6 into lists
+  set_fact:
+    cloudflare_ips_v4: "{{ resp.results[0].content.splitlines() | map('trim') | select('match','\\S') | list }}"
+    cloudflare_ips_v6: "{{ resp.results[1].content.splitlines() | map('trim') | select('match','\\S') | list }}"
+
+- name: Combine CF CIDRs
+  set_fact:
+    cloudflare_ips: "{{ cloudflare_ips_v4 + cloudflare_ips_v6 }}"
+
+- name: Fail if CF CIDR list looks wrong
+  assert:
+    that:
+      - cloudflare_ips | length > 5
+    fail_msg: "Cloudflare IP list fetch failed/empty."
+
 - name: Install certbot + Cloudflare plugin
   become: true
   become_user: root
