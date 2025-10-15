@@ -31,7 +31,7 @@ jobs:
   check-image:
     runs-on: self-hosted
     outputs:
-      skip_build: ${{ steps.check.outputs.skip_build }}
+      skip_build: ${{ steps.decision.outputs.skip_build }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/login-action@v3
@@ -39,15 +39,41 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.10.0
       - name: Check for docker image
-        id: check
+        id: image
         run: |
-          if docker manifest inspect ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} > /dev/null 2>&1; then
-            echo "skip building"
-            echo "skip_build=true" >> $GITHUB_OUTPUT
+          set -euo pipefail
+          image="ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}"
+          if docker manifest inspect "$image" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
-            echo "building"
-            echo "skip_build=false" >> $GITHUB_OUTPUT
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check existing signature
+        id: signature
+        if: steps.image.outputs.exists == 'true'
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
+        run: |
+          set -euo pipefail
+          if cosign verify \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@refs/heads/main" \
+            "$IMAGE" > /dev/null 2>&1; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Decide whether to build
+        id: decision
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.image.outputs.exists }}" = "true" ] && [ "${{ steps.signature.outputs.signed || 'false' }}" = "true" ]; then
+            echo "skip_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip_build=false" >> "$GITHUB_OUTPUT"
           fi
 
   build-cometbft:
@@ -55,6 +81,7 @@ jobs:
     if: needs.check-image.outputs.skip_build == 'false' || github.event_name == 'workflow_dispatch'
     permissions:
       packages: write
+      id-token: write
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
@@ -76,6 +103,31 @@ jobs:
             ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
           push: true
           no-cache: true
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.10.0
+      - name: Sign CometBFT image
+        id: sign
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+          IMAGE: "ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}"
+        run: |
+          set -euo pipefail
+          digest="$(docker buildx imagetools inspect "$IMAGE" | awk '/^Digest:/ {print $2; exit}')"
+          if [ -z "$digest" ]; then
+            echo "Unable to determine digest for $IMAGE" >&2
+            exit 1
+          fi
+          cosign sign "$IMAGE@$digest"
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+      - name: Signed digest summary
+        run: |
+          echo "## 🔏 CometBFT Signed Image" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | Digest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ----- | ------ |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} | `${{ steps.sign.outputs.digest }}` |" >> "$GITHUB_STEP_SUMMARY"
+
   cometbft-manual-sign:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.cometbft_tag != '' }}
     name: Sign existing CometBFT image
