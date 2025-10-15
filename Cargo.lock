@@ -4818,6 +4818,8 @@ dependencies = [
 name = "grug-db-memory-lite"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
+ "borsh",
  "error-backtrace",
  "grug-app",
  "grug-types",

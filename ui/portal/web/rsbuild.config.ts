@@ -208,7 +208,7 @@ export default defineConfig({
       );
 
       if (process.env.NODE_ENV === "production") {
-        config.plugins.push(
+        /*   config.plugins.push(
           new GenerateSW({
             cacheId: "leftcurve-portal",
             clientsClaim: true,
@@ -224,7 +224,7 @@ export default defineConfig({
               },
             ],
           }),
-        );
+        ); */
       }
 
       config.devtool = "source-map";

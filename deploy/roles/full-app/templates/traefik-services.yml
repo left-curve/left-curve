@@ -28,6 +28,8 @@ http:
           - Authorization
           - Accept
           - X-Requested-With
+          - sentry-trace
+          - baggage
         accessControlAllowCredentials: true
         addVaryHeader: true
         accessControlMaxAge: 600

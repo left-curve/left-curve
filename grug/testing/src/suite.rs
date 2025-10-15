@@ -177,10 +177,21 @@ where
                 panic!("fatal error while initializing chain: {err}");
             });
 
+        Self::new_with_app(app, chain_id, genesis_block, block_time, default_gas_limit)
+    }
+
+    /// Create a new test suite with the given already initialized app instance.
+    pub fn new_with_app(
+        app: App<DB, VM, PP, ID>,
+        chain_id: String,
+        last_finalized_block: BlockInfo,
+        block_time: Duration,
+        default_gas_limit: u64,
+    ) -> Self {
         Self {
             app,
             chain_id,
-            block: genesis_block,
+            block: last_finalized_block,
             block_time,
             default_gas_limit,
             balances: Default::default(),

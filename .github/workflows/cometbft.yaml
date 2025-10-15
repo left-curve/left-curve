@@ -60,7 +60,7 @@ jobs:
           set -euo pipefail
           if cosign verify \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yaml@refs/heads/main" \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@refs/heads/main" \
             "$IMAGE" > /dev/null 2>&1; then
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
@@ -122,11 +122,12 @@ jobs:
           printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
       - name: Signed digest summary
         run: |
+          digest='${{ steps.sign.outputs.digest }}'
           echo "## 🔏 CometBFT Signed Image" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Image | Digest |" >> "$GITHUB_STEP_SUMMARY"
           echo "| ----- | ------ |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} | `${{ steps.sign.outputs.digest }}` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} | \`$digest\` |" >> "$GITHUB_STEP_SUMMARY"
 
   cometbft-manual-sign:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.cometbft_tag != '' }}

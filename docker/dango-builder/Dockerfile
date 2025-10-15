@@ -15,6 +15,10 @@ ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 ARG GIT_COMMIT=main
 ENV COMMIT=$GIT_COMMIT
 
+# Enable backtrace in release mode.
+ENV RUSTFLAGS="-C debuginfo=2 -C force-frame-pointers=yes"
+ENV CARGO_PROFILE_RELEASE_STRIP=none
+
 # Download dango source code, build, then delete.
 RUN echo "Cloning commit: $GIT_COMMIT" \
   && git init left-curve \

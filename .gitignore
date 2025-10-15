@@ -65,7 +65,9 @@ ui/foundation/paraglide/*
 # Data used in testing
 **/testdata/
 dango/scripts/examples/blocks
+dango/scripts/examples/*.borsh
 dango/scripts/examples/*.json
+dango/scripts/examples/*.tar
 !pyth/client/testdata/
 
 # Network data
