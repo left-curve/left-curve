@@ -85,6 +85,7 @@ export type SubscriptionExecutor<K extends SubscriptionKey> = (context: {
   client: PublicClient;
   params: GetSubscriptionDef<K>["params"];
   getListeners: () => Set<GetSubscriptionDef<K>["listener"]>;
+  onError?: (error: unknown) => void;
 }) => () => void;
 
 export type SubscribeArguments<K extends SubscriptionKey> =

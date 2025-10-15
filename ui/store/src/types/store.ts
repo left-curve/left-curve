@@ -80,6 +80,7 @@ export type CreateConfigParameters<
   storage?: Storage;
   multiInjectedProviderDiscovery?: boolean;
   connectors?: CreateConnectorFn[];
+  onError?: (error: unknown) => void;
 };
 
 export type ConfigParameter<config extends Config = Config> = {

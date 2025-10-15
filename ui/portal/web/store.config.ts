@@ -1,4 +1,5 @@
 import { createConfig, graphql, passkey, privy, session } from "@left-curve/store";
+import { captureException } from "@sentry/react";
 
 import type { Config } from "@left-curve/store/types";
 
@@ -71,4 +72,5 @@ export const config: Config = createConfig({
   transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true }),
   coins,
   connectors: [passkey(), session(), privy()],
+  onError: (e) => captureException(e),
 });
