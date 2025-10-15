@@ -674,13 +674,13 @@ fn clear_orders_of_pair(
 
             #[cfg(feature = "metrics")]
             {
-                for i in [reserve.first(), reserve.second()] {
+                for coin in [reserve.first(), reserve.second()] {
                     metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
                         "base_denom" => base_denom.to_string(),
                         "quote_denom" => quote_denom.to_string(),
-                        "token" => i.denom.to_string()
+                        "token" => coin.denom.to_string()
                     )
-                    .set(i.amount.into_inner() as f64);
+                    .set(coin.amount.into_inner() as f64);
                 }
             }
 

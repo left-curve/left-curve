@@ -29,20 +29,16 @@ pub const LABEL_DURATION_ITER_NEXT: &str = "dango.contract.dex.iterator_next.dur
 #[cfg(feature = "metrics")]
 pub fn init_metrics() {
     use {
-        metrics::{describe_counter, describe_histogram},
+        metrics::{describe_counter, describe_gauge, describe_histogram},
         std::sync::Once,
     };
 
     static ONCE: Once = Once::new();
 
     ONCE.call_once(|| {
-        use metrics::describe_gauge;
-
         describe_counter!(LABEL_TRADES, "Number of trades executed");
 
         describe_counter!(LABEL_ORDERS_FILLED, "Number of unique orders filled");
-
-        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of reserve");
 
         describe_histogram!(LABEL_TRADES_PER_BLOCK, "Number of trades in a block");
 
@@ -83,5 +79,7 @@ pub fn init_metrics() {
             LABEL_DURATION_ITER_NEXT,
             "Time spent on advancing an iterator"
         );
+
+        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of reserve");
     });
 }
