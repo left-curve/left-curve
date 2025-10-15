@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use {dango_genesis::GenesisCodes, grug::JsonSerExt};
+
 use {
     anyhow::ensure,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
@@ -19,6 +21,8 @@ fn main() -> anyhow::Result<()> {
     let cwd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
 
     let indexer_path = IndexerPath::Dir(cwd.clone());
+
+    RustVm::genesis_codes();
 
     let app = App::new(
         MemDbLite::recover(cwd.join(format!("db-{FROM_HEIGHT}.borsh")))?,
@@ -40,6 +44,8 @@ fn main() -> anyhow::Result<()> {
             block_to_index.block_outcome.app_hash,
             block_outcome.app_hash
         );
+
+        println!("block_outcome: {}", block_outcome.to_json_string_pretty()?);
 
         app.do_commit()?;
     }
