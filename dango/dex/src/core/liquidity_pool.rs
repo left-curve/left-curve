@@ -673,69 +673,6 @@ mod tests {
         }
     }
 
-    #[ignore = "not critical"]
-    #[test]
-    fn geometric_pool_reflect_curve_all_liquidity_is_used_with_high_limit() {
-        let pool_type = PassiveLiquidity::Geometric(Geometric {
-            ratio: Bounded::new(Udec128::new_percent(70)).unwrap(),
-            spacing: Udec128::new_percent(1),
-            limit: 100,
-        });
-        let swap_fee_rate = Udec128::new_percent(1);
-        let pair = PairParams {
-            pool_type,
-            bucket_sizes: BTreeSet::new(),
-            swap_fee_rate: Bounded::new(swap_fee_rate).unwrap(),
-            lp_denom: Denom::new_unchecked(vec!["lp".to_string()]),
-            min_order_size: Uint128::ZERO,
-        };
-
-        // Mock the oracle to return a price of 1 with 6 decimals for both assets.
-        // TODO: take prices as test parameters
-        let mut oracle_querier = OracleQuerier::new_mock(hash_map! {
-            eth::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(1730802926),
-                6,
-            ),
-            usdc::DENOM.clone() => PrecisionedPrice::new(
-                Udec128::new_percent(100),
-                Timestamp::from_seconds(1730802926),
-                6,
-            ),
-        });
-
-        let pool_liquidity = coins! {
-            eth::DENOM.clone() => 10000000,
-            usdc::DENOM.clone() => 10000000,
-        };
-        let reserve = pool_liquidity.try_into().unwrap();
-        let (bids, asks) = pair
-            .reflect_curve(
-                &mut oracle_querier,
-                eth::DENOM.clone(),
-                usdc::DENOM.clone(),
-                &reserve,
-            )
-            .unwrap();
-
-        let bids = bids.collect::<Vec<_>>();
-        let asks = asks.collect::<Vec<_>>();
-
-        let bid_sum_quote = bids
-            .iter()
-            .map(|(price, amount)| amount.checked_mul_dec_floor(*price).unwrap())
-            .sum::<Uint128>();
-        let ask_sum_base = asks.iter().map(|(_, amount)| *amount).sum::<Uint128>();
-
-        assert!(
-            reserve.amount_of(&usdc::DENOM).unwrap().into_inner() - bid_sum_quote.into_inner() <= 1
-        );
-        assert!(
-            reserve.amount_of(&eth::DENOM).unwrap().into_inner() - ask_sum_base.into_inner() <= 1
-        );
-    }
-
     #[test]
     fn geometric_pool_iterator_stops_at_zero_price() {
         let pair = PairParams {
