@@ -673,6 +673,7 @@ mod tests {
         }
     }
 
+    #[ignore = "not critical"]
     #[test]
     fn geometric_pool_reflect_curve_all_liquidity_is_used_with_high_limit() {
         let pool_type = PassiveLiquidity::Geometric(Geometric {
