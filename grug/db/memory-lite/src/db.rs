@@ -10,19 +10,19 @@ use {
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
     },
 };
-#[cfg(feature = "dump")]
+#[cfg(feature = "snapshot")]
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{BorshDeExt, BorshSerExt},
 };
 
-#[cfg_attr(feature = "dump", derive(BorshSerialize, BorshDeserialize))]
+#[cfg_attr(feature = "snapshot", derive(BorshSerialize, BorshDeserialize))]
 struct ChangeSet {
     version: u64,
     state_storage: Batch,
 }
 
-#[cfg_attr(feature = "dump", derive(BorshSerialize, BorshDeserialize))]
+#[cfg_attr(feature = "snapshot", derive(BorshSerialize, BorshDeserialize))]
 struct MemDbInner {
     /// Version of the DB. Initilialized to `None` when the DB instance is
     /// created. Set of 0 the first time a batch of data is committed, and
@@ -90,7 +90,7 @@ impl MemDbLite {
     }
 }
 
-#[cfg(feature = "dump")]
+#[cfg(feature = "snapshot")]
 impl MemDbLite {
     /// Dump the database to a file.
     pub fn dump<P>(&self, path: P) -> anyhow::Result<()>

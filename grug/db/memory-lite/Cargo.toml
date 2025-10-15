@@ -12,7 +12,7 @@ version       = { workspace = true }
 [features]
 default = []
 # Add utilities to dump the entire DB to a single file, or recover the DB from it.
-dump = ["dep:anyhow", "dep:borsh"]
+snapshot = ["dep:anyhow", "dep:borsh"]
 
 [dependencies]
 anyhow          = { workspace = true, optional = true }
