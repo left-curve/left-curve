@@ -5,5 +5,5 @@ build:
     --push \
     --platform linux/arm64,linux/amd64 \
     --build-arg COMETBFT_GIT_TAG=v{{COMETBFT_VERSION}} \
-    --tag ghcr.io/leftcurve/cometbft:{{COMETBFT_VERSION}} \
+    --tag ghcr.io/left-curve/left-curve/cometbft:v{{COMETBFT_VERSION}} \
     .
