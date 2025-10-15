@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       cometbft_tag:
-        description: "Existing ghcr.io/${{ github.repository }}/cometbft tag to sign (e.g. v0.38.17)"
+        description: "Existing cometbft tag to sign (e.g. v0.38.17)"
         required: false
       cometbft_digest:
         description: "Optional digest override (sha256:...) if you already know it"
