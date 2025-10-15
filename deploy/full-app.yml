@@ -86,9 +86,11 @@
     - name: Load clickhouse vars
       include_vars: "roles/full-app/vars/included_clickhouse.yml"
       when: deploy_includes_clickhouse
-    - name: Build cosign verification image list
+    - name: Select cosign identity for deployment
       set_fact:
         cosign_identity_current: "{{ github_pr_number is defined | ternary(cosign_identity_pr_template % {'pr_number': github_pr_number}, cosign_identity_main) }}"
+    - name: Build cosign verification image list
+      set_fact:
         deploy_cosign_images:
           - service: "dango"
             image: "ghcr.io/left-curve/left-curve/dango"
