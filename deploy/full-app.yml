@@ -86,6 +86,12 @@
     - name: Load clickhouse vars
       include_vars: "roles/full-app/vars/included_clickhouse.yml"
       when: deploy_includes_clickhouse
+    - name: Select cosign certificate identity
+      set_fact:
+        cosign_certificate_identity_regexp: "{{ pr_identity if github_pr_number is defined else main_identity }}"
+      vars:
+        main_identity: "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/heads/main"
+        pr_identity: "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/pull/{{ github_pr_number }}/merge"
   post_tasks:
     - name: Store vars for monitoring
       set_fact:
