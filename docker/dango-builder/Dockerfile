@@ -11,7 +11,6 @@ RUN apt update && apt install -y clang git libssl-dev pkg-config
 # and avoid OOM in the build.
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
-
 # Version of the left-curve monorepo.
 ARG GIT_COMMIT=main
 ENV COMMIT=$GIT_COMMIT
