@@ -254,15 +254,14 @@ pub fn reflect_curve(
 
             let size_in_quote = remaining_quote.checked_mul_dec(*params.ratio).ok()?;
             let size = size_in_quote.checked_div_dec_floor(price).ok()?;
+            if size.is_zero() {
+                return None;
+            }
 
             // Fix: recompute the amount of quote asset used.
             // The order size is denominated in the base asset, so the actual
             // amount of quote asset used needs to be recomputed from the base amount.
-            let size_in_quote = size.checked_mul_dec_floor(price).ok()?;
-
-            if size.is_zero() || size_in_quote.is_zero() {
-                return None;
-            }
+            let size_in_quote = size.checked_mul_dec_ceil(price).ok()?;
 
             maybe_price = price.checked_sub(params.spacing).ok();
             remaining_quote.checked_sub_assign(size_in_quote).ok()?;
