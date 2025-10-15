@@ -350,6 +350,7 @@ jobs:
   backend-push-manifest:
     permissions:
       packages: write
+      id-token: write
     needs: [backend-build]
     runs-on: [self-hosted]
     steps:
@@ -382,7 +383,49 @@ jobs:
               --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-arm64
             docker manifest push --purge ghcr.io/left-curve/left-curve/dango:pr-${{ github.event.pull_request.number }}-latest
           fi
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Sign backend images
+        id: sign-backend
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+
+          images=("ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}")
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            images+=("ghcr.io/left-curve/left-curve/dango:latest")
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            images+=("ghcr.io/left-curve/left-curve/dango:pr-${{ github.event.pull_request.number }}-latest")
+          fi
+
+          tmp_markdown="$(mktemp)"
+          {
+            echo "| Image | Digest |"
+            echo "| ---- | ------ |"
+          } > "$tmp_markdown"
+
+          for image in "${images[@]}"; do
+            cosign sign --keyless "$image"
+            digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
+            if [ -z "$digest" ]; then
+              echo "Unable to determine digest for $image" >&2
+              exit 1
+            fi
+            printf '| %s | `%s` |\n' "$image" "$digest" >> "$tmp_markdown"
+          done
+
+          {
+            echo "digest_table<<'EOF'"
+            cat "$tmp_markdown"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Docker Deploy Summary
+        env:
+          DIGEST_TABLE: ${{ steps.sign-backend.outputs.digest_table }}
         run: |
           echo "# 🐳 Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
           echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
@@ -394,6 +437,11 @@ jobs:
             echo "| **Latest tag:** | [ghcr.io/left-curve/left-curve/dango:latest](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango) |" >> $GITHUB_STEP_SUMMARY
           fi
           echo "| **Architectures** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$DIGEST_TABLE" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 🔏 Signed Image Digests" >> $GITHUB_STEP_SUMMARY
+            echo "$DIGEST_TABLE" >> $GITHUB_STEP_SUMMARY
+          fi
 
   frontend-build:
     needs: [backend-test]
@@ -462,6 +510,7 @@ jobs:
   frontend-push-manifest:
     permissions:
       packages: write
+      id-token: write
     needs: [frontend-build]
     runs-on: [self-hosted]
     steps:
@@ -495,7 +544,49 @@ jobs:
 
             docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:pr-${{ github.event.pull_request.number }}-latest
           fi
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Sign frontend images
+        id: sign-frontend
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+        run: |
+          set -euo pipefail
+
+          images=("ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}")
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            images+=("ghcr.io/left-curve/left-curve/dango-frontend:latest")
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            images+=("ghcr.io/left-curve/left-curve/dango-frontend:pr-${{ github.event.pull_request.number }}-latest")
+          fi
+
+          tmp_markdown="$(mktemp)"
+          {
+            echo "| Image | Digest |"
+            echo "| ---- | ------ |"
+          } > "$tmp_markdown"
+
+          for image in "${images[@]}"; do
+            cosign sign --keyless "$image"
+            digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
+            if [ -z "$digest" ]; then
+              echo "Unable to determine digest for $image" >&2
+              exit 1
+            fi
+            printf '| %s | `%s` |\n' "$image" "$digest" >> "$tmp_markdown"
+          done
+
+          {
+            echo "digest_table<<'EOF'"
+            cat "$tmp_markdown"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Frontend Docker Deploy Summary
+        env:
+          DIGEST_TABLE: ${{ steps.sign-frontend.outputs.digest_table }}
         run: |
           echo "# 🎨 Frontend Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
           echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
@@ -507,6 +598,11 @@ jobs:
             echo "| **Latest tag:** | [ghcr.io/left-curve/left-curve/dango-frontend:latest](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango-frontend) |" >> $GITHUB_STEP_SUMMARY
           fi
           echo "| **Architectures** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$DIGEST_TABLE" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 🔏 Signed Image Digests" >> $GITHUB_STEP_SUMMARY
+            echo "$DIGEST_TABLE" >> $GITHUB_STEP_SUMMARY
+          fi
 
   deploy:
     permissions:

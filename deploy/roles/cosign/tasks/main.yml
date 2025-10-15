@@ -1,0 +1,59 @@
+---
+- name: Check for existing cosign installation
+  ansible.builtin.command: cosign version --json
+  register: cosign_current_version
+  changed_when: false
+  failed_when: false
+  environment:
+    PATH: "{{ ansible_env.PATH | default('') }}:/usr/local/bin"
+
+- name: Fetch latest cosign release metadata
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/sigstore/cosign/releases/latest
+    headers:
+      Accept: application/vnd.github+json
+      X-GitHub-Api-Version: "2022-11-28"
+    return_content: true
+  register: cosign_release
+
+- name: Determine cosign download architecture
+  ansible.builtin.set_fact:
+    cosign_download_arch: "{{ cosign_arch_map.get(ansible_architecture, '') }}"
+  vars:
+    cosign_arch_map:
+      x86_64: amd64
+      amd64: amd64
+      aarch64: arm64
+      arm64: arm64
+
+- name: Abort if architecture is unsupported for cosign
+  ansible.builtin.assert:
+    that:
+      - cosign_download_arch != ''
+    fail_msg: "Cosign installation is not supported on architecture {{ ansible_architecture }}"
+
+- name: Extract currently installed cosign version
+  ansible.builtin.set_fact:
+    cosign_installed_version: "{{ (cosign_current_version.stdout | from_json).GitVersion }}"
+  when: cosign_current_version.rc == 0
+
+- name: Set desired cosign version and download URL
+  ansible.builtin.set_fact:
+    cosign_desired_version: "{{ cosign_release.json.tag_name }}"
+    cosign_download_url: "https://github.com/sigstore/cosign/releases/download/{{ cosign_release.json.tag_name }}/cosign-linux-{{ cosign_download_arch }}"
+
+- name: Download cosign binary
+  become: true
+  become_user: root
+  ansible.builtin.get_url:
+    url: "{{ cosign_download_url }}"
+    dest: /usr/local/bin/cosign
+    mode: "0755"
+    force: true
+  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
+
+- name: Verify cosign installation
+  ansible.builtin.command: cosign version
+  changed_when: false
+  environment:
+    PATH: "{{ ansible_env.PATH | default('') }}:/usr/local/bin"

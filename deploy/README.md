@@ -38,3 +38,14 @@ This shows you have the right password:
 ❯ ./vault-password.sh|sha256
 2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
 ```
+
+## Manual Cosign Verification
+
+Run this after deployments if you need to validate an image digest manually:
+
+```bash
+cosign verify \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/heads/main" \
+  ghcr.io/left-curve/left-curve/dango@sha256:<digest>
+```

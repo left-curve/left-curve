@@ -77,6 +77,7 @@
     - community.docker
     - community.clickhouse
   roles:
+    - cosign
     - full-app
   pre_tasks:
     - name: Load postgres vars

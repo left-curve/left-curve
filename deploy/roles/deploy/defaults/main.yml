@@ -1,0 +1,3 @@
+---
+cosign_certificate_oidc_issuer: "https://token.actions.githubusercontent.com"
+cosign_certificate_identity_regexp: "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/heads/main"
