@@ -55,6 +55,7 @@ jobs:
     if: needs.check-image.outputs.skip_build == 'false' || github.event_name == 'workflow_dispatch'
     permissions:
       packages: write
+      id-token: write
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
@@ -76,6 +77,31 @@ jobs:
             ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
           push: true
           no-cache: true
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.10.0
+      - name: Sign CometBFT image
+        id: sign
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+          IMAGE: "ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}"
+        run: |
+          set -euo pipefail
+          digest="$(docker buildx imagetools inspect "$IMAGE" | awk '/^Digest:/ {print $2; exit}')"
+          if [ -z "$digest" ]; then
+            echo "Unable to determine digest for $IMAGE" >&2
+            exit 1
+          fi
+          cosign sign "$IMAGE@$digest"
+          printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
+      - name: Signed digest summary
+        run: |
+          echo "## 🔏 CometBFT Signed Image" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image | Digest |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ----- | ------ |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} | `${{ steps.sign.outputs.digest }}` |" >> "$GITHUB_STEP_SUMMARY"
+
   cometbft-manual-sign:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.cometbft_tag != '' }}
     name: Sign existing CometBFT image
