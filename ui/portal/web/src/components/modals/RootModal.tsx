@@ -139,6 +139,13 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       })),
     ),
   },
+  [Modals.SignupReminder]: {
+    component: lazy(() =>
+      import("./SignupReminder").then(({ SignupReminder }) => ({
+        default: SignupReminder,
+      })),
+    ),
+  },
 };
 
 type ModalDefinition = {

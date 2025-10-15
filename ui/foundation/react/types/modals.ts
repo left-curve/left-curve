@@ -18,6 +18,7 @@ export const Modals = {
   ActivityTransfer: "activity-transfer",
   ActivityConvert: "activity-convert",
   ActivitySpotOrder: "activity-spot-order",
+  SignupReminder: "signup-reminder",
 };
 
 export type ModalRef = {
