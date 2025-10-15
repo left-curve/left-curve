@@ -15,8 +15,8 @@ export type DexStatusReturnType = Promise<boolean>;
 /**
  * Queries the DEX status, whether it is paused.
  * @param parameters
- * @param parameters.height The height at which to query the pairs
- * @returns The DEX status
+ * @param parameters.height The height at which to query the dex status.
+ * @returns The DEX status.
  */
 export async function dexStatus<chain extends Chain | undefined, signer extends Signer | undefined>(
   client: Client<Transport, chain, signer>,

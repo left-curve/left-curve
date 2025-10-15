@@ -33,8 +33,8 @@ export const SignupReminder = forwardRef<undefined>(() => {
             </a>{" "}
             hosted on the Galxe platform.{" "}
             <span className="font-bold">
-              If Make sure to sign up with the Ethereum wallet with which you intend to claim the
-              reward.
+              Make sure to sign up with the Ethereum wallet you intend to use to claim the reward.
+              the reward.
             </span>{" "}
             Users signed up using email or social media accounts won't be able to claim the rewards.
           </p>
