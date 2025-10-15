@@ -415,17 +415,16 @@ jobs:
           } > "$tmp_markdown"
 
           for image in "${images[@]}"; do
-            cosign sign "$image"
             digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
             if [ -z "$digest" ]; then
               echo "Unable to determine digest for $image" >&2
               exit 1
             fi
+            cosign sign "$image@$digest"
             printf '| %s | `%s` |\n' "$image" "$digest" >> "$tmp_markdown"
           done
-
           {
-            echo "digest_table<<'EOF'"
+            echo "digest_table<<EOF"
             cat "$tmp_markdown"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
@@ -576,17 +575,16 @@ jobs:
           } > "$tmp_markdown"
 
           for image in "${images[@]}"; do
-            cosign sign "$image"
             digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
             if [ -z "$digest" ]; then
               echo "Unable to determine digest for $image" >&2
               exit 1
             fi
+            cosign sign "$image@$digest"
             printf '| %s | `%s` |\n' "$image" "$digest" >> "$tmp_markdown"
           done
-
           {
-            echo "digest_table<<'EOF'"
+            echo "digest_table<<EOF"
             cat "$tmp_markdown"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
