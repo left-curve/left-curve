@@ -811,6 +811,8 @@ fn clear_orders_of_pair(
     #[cfg(feature = "tracing")]
     {
         tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
             ?best_bid_price,
             ?best_ask_price,
             ?mid_price,
