@@ -5,6 +5,7 @@ ssh_users:
   - larry
   - zexsor
   - j0nl1
+  - michael
 deploy_user: deploy
 dango_domain: "dango.zone"
 dango:
