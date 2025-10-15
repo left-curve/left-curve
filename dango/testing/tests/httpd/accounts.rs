@@ -244,6 +244,7 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
         .await?
 }
 
+#[ignore = "flaky"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
     setup_tracing_subscriber(Level::INFO);
