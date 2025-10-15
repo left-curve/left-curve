@@ -24,8 +24,18 @@ entryPoints:
   # Public (all interfaces)
   web:
     address: :80
+    forwardedHeaders:
+      trustedIPs:
+{% for cidr in cloudflare_ips %}
+        - {{ cidr }}
+{% endfor %}
   websecure:
     address: :443
+    forwardedHeaders:
+      trustedIPs:
+{% for cidr in cloudflare_ips %}
+        - {{ cidr }}
+{% endfor %}
   devnet-dango:
     address: ":{{ traefik.devnet.ports.dango_port }}"
   devnet-frontend:
