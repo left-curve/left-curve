@@ -19,12 +19,12 @@ on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/cometbft.yaml"
+      - ".github/workflows/cometbft.yml"
       - "docker/cometbft/**"
   pull_request:
     branches: [main]
     paths:
-      - ".github/workflows/cometbft.yaml"
+      - ".github/workflows/cometbft.yml"
       - "docker/cometbft/**"
 
 jobs:
@@ -41,6 +41,16 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.10.0
+      - name: Determine cosign certificate identity
+        id: cosign-identity
+        env:
+          REPOSITORY: ${{ github.repository }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          identity="https://github.com/${REPOSITORY}/.github/workflows/cometbft.yml@${REF}"
+          escaped_identity=$(printf '%s\n' "$identity" | sed 's/[.[\()*^$?+{}|]/\\&/g')
+          echo "value=$escaped_identity" >> "$GITHUB_OUTPUT"
       - name: Check for docker image
         id: image
         run: |
@@ -60,7 +70,7 @@ jobs:
           set -euo pipefail
           if cosign verify \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@refs/heads/main" \
+            --certificate-identity-regexp "${{ steps.cosign-identity.outputs.value }}" \
             "$IMAGE" > /dev/null 2>&1; then
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
