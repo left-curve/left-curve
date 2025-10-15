@@ -102,7 +102,7 @@ impl MemDbLite {
         Ok(fs::write(path, bytes)?)
     }
 
-    /// Recover the database to a file.
+    /// Recover the database from a file.
     pub fn recover<P>(path: P) -> anyhow::Result<Self>
     where
         P: AsRef<Path>,
