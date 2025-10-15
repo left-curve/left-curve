@@ -63,7 +63,7 @@ export type SubscribeFn = <T>(
 
 export type SubscriptionCallbacks<T = unknown> = {
   next: (data: T) => void;
-  error?: (error: Error) => void;
+  error?: (error: unknown) => void;
   complete?: () => void;
 };
 

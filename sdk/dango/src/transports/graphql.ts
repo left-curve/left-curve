@@ -100,7 +100,10 @@ export function graphql(
       return wsClient.subscribe(
         { query, variables },
         {
-          next: ({ data }) => data && next(data as any),
+          next: ({ data, errors }) => {
+            if (errors) error?.(errors);
+            if (data) next(data as any);
+          },
           error: error || noOp,
           complete: complete || noOp,
         },
