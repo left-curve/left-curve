@@ -155,7 +155,6 @@ export default defineConfig({
         ),
         to: "./static/charting_library",
       },
-      { from: "./public/rmsw.js", to: "service-worker.js" },
     ],
     minify: {
       jsOptions: {
