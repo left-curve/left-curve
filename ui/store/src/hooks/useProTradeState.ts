@@ -67,6 +67,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const [bucketSize, setBucketSize] = useState(pair.params.bucketSizes[0]);
 
+  const { data: isDexPaused } = useQuery({
+    queryKey: ["dex_status"],
+    queryFn: async () => await publicClient.dexStatus(),
+  });
+
   const { liquidityDepthStore } = useLiquidityDepthState({
     subscribe: true,
     pairId,
@@ -243,6 +248,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   return {
     bucketSize,
+    isDexPaused,
     setBucketSize,
     pair,
     pairId,

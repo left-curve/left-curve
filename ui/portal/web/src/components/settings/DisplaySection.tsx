@@ -63,7 +63,7 @@ const ChartEngineSection: React.FC = () => {
         value={chart}
         onChange={(c) => changeSettings({ chart: c as "tradingview" | "chartiq" })}
       >
-        {["tradingview", "chartiq"].map((chart) => (
+        {["tradingview"].map((chart) => (
           <Select.Item key={chart} value={chart}>
             {m["settings.chartEngines"]({ chart })}
           </Select.Item>
