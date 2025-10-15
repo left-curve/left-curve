@@ -1,5 +1,3 @@
-#[allow(unused_imports)]
-use grug::JsonSerExt;
 use {
     anyhow::{anyhow, ensure},
     dango_genesis::GenesisCodes,
