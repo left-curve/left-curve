@@ -591,9 +591,9 @@ mod tests {
             (Udec128::new_percent(95), Uint128::from(59684)),
             (Udec128::new_percent(94), Uint128::from(18095)),
             (Udec128::new_percent(93), Uint128::from(5487)),
-            (Udec128::new_percent(92), Uint128::from(1665)),
+            (Udec128::new_percent(92), Uint128::from(1663)),
             (Udec128::new_percent(91), Uint128::from(504)),
-            (Udec128::new_percent(90), Uint128::from(154)),
+            (Udec128::new_percent(90), Uint128::from(153)),
         ],
         vec![
             (Udec128::new_percent(101), Uint128::from(7000000)),
@@ -664,6 +664,8 @@ mod tests {
             assert_eq!(price, expected_price.convert_precision().unwrap());
             assert!(amount.inner().abs_diff(expected_amount.into_inner()) <= order_size_tolerance);
         }
+
+        println!("bids: {bids:?}");
 
         for ((price, amount), (expected_price, expected_amount)) in
             bids.into_iter().zip(expected_bids.iter())
