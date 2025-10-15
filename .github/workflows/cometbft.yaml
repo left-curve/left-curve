@@ -60,7 +60,7 @@ jobs:
           set -euo pipefail
           if cosign verify \
             --certificate-oidc-issuer https://token.actions.githubusercontent.com \
-            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@refs/heads/main" \
+            --certificate-identity-regexp "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@refs/heads/main" \
             "$IMAGE" > /dev/null 2>&1; then
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
