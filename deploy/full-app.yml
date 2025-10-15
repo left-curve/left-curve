@@ -89,6 +89,9 @@
     - name: Define cosign main identity
       set_fact:
         cosign_identity_main: "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/heads/main"
+    - name: Define cosign CometBFT identity
+      set_fact:
+        cosign_identity_cometbft: "https://github.com/left-curve/left-curve/.github/workflows/cometbft.yaml@refs/heads/main"
     - name: Define cosign identity for pull requests
       set_fact:
         cosign_identity_current: "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/pull/{{ github_pr_number }}/merge"
@@ -114,7 +117,7 @@
           - service: "cometbft"
             image: "ghcr.io/left-curve/left-curve/cometbft"
             tag: "{{ cometbft_tag }}"
-            identity_regexp: "{{ cosign_identity_main }}"
+            identity_regexp: "{{ cosign_identity_cometbft }}"
   post_tasks:
     - name: Store vars for monitoring
       set_fact:
