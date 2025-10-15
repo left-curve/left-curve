@@ -40,6 +40,8 @@ pub fn init_metrics() {
 
         describe_counter!(LABEL_ORDERS_FILLED, "Number of unique orders filled");
 
+        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of reserve");
+
         describe_histogram!(LABEL_TRADES_PER_BLOCK, "Number of trades in a block");
 
         describe_histogram!(LABEL_VOLUME_PER_TRADE, "Volume per trade");
@@ -79,7 +81,5 @@ pub fn init_metrics() {
             LABEL_DURATION_ITER_NEXT,
             "Time spent on advancing an iterator"
         );
-
-        describe_gauge!(LABEL_RESERVE_AMOUNT, "Amount of reserve");
     });
 }
