@@ -55,7 +55,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
 
   // App settings
   const [settings, setSettings] = useStorage<AppState["settings"]>("app.settings", {
-    version: 1.7,
+    version: 1.8,
     initialValue: {
       chart: "tradingview",
       showWelcome: true,
@@ -74,7 +74,7 @@ export const AppProvider: React.FC<PropsWithChildren<AppProviderProps>> = ({
     migrations: {
       "*": (state: AppState["settings"]) => {
         state.showWelcome = Object.hasOwn(state, "showWelcome") ? state.showWelcome : true;
-        state.chart = state.chart || "tradingview";
+        state.chart = "tradingview";
         state.timeFormat = state.timeFormat || "hh:mm a";
         state.dateFormat = state.dateFormat || "MM/dd/yyyy";
         state.timeZone = state.timeZone || "local";
