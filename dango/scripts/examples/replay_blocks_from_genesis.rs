@@ -23,11 +23,11 @@ const UNTIL_HEIGHT: u64 = 150721; // inclusive
 fn main() -> anyhow::Result<()> {
     setup_tracing_subscriber(tracing::Level::INFO);
 
-    let indexer_path = IndexerPath::Dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples"));
+    let cwd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
 
-    let cometbft_genesis =
-        fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/genesis.json"))?
-            .deserialize_json::<Json>()?;
+    let indexer_path = IndexerPath::Dir(cwd.clone());
+
+    let cometbft_genesis = fs::read(cwd.join("genesis.json"))?.deserialize_json::<Json>()?;
 
     let genesis_state = cometbft_genesis
         .as_object()
@@ -60,12 +60,14 @@ fn main() -> anyhow::Result<()> {
 
     for height in 1..=UNTIL_HEIGHT {
         let block_to_index = BlockToIndex::load_from_disk(indexer_path.block_path(height))?;
+
         // println!(
         //     "expected block outcome: {}",
         //     block_to_index.block_outcome.to_json_string_pretty()?
         // );
 
         let block_outcome = app.do_finalize_block(block_to_index.block)?;
+
         // println!(
         //     "actual block outcome: {}",
         //     block_outcome.to_json_string_pretty()?
@@ -81,5 +83,5 @@ fn main() -> anyhow::Result<()> {
         app.do_commit()?;
     }
 
-    Ok(())
+    app.db.dump(cwd.join(format!("db-{UNTIL_HEIGHT}.borsh")))
 }
