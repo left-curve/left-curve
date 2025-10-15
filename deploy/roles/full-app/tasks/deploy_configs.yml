@@ -25,6 +25,7 @@
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
         owner: "{{ deploy_user }}"
+        mode: 0600
       loop:
         - { src: "config/cometbft/config.toml.j2", dest: "{{ cometbft_directory }}/config/config.toml" }
         - { src: "config/cometbft/genesis.json", dest: "{{ cometbft_directory }}/config/genesis.json" }
