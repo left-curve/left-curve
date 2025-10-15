@@ -415,7 +415,7 @@ jobs:
           } > "$tmp_markdown"
 
           for image in "${images[@]}"; do
-            cosign sign --keyless "$image"
+            cosign sign "$image"
             digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
             if [ -z "$digest" ]; then
               echo "Unable to determine digest for $image" >&2
@@ -576,7 +576,7 @@ jobs:
           } > "$tmp_markdown"
 
           for image in "${images[@]}"; do
-            cosign sign --keyless "$image"
+            cosign sign "$image"
             digest="$(docker buildx imagetools inspect "$image" | awk '/^Digest:/ {print $2; exit}')"
             if [ -z "$digest" ]; then
               echo "Unable to determine digest for $image" >&2
@@ -664,7 +664,7 @@ jobs:
           else
             target="$IMAGE@$DIGEST"
           fi
-          cosign sign --keyless "$target"
+          cosign sign "$target"
 
       - name: Summary
         env:
