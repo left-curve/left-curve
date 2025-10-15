@@ -9,6 +9,13 @@ env:
 
 on:
   workflow_dispatch:
+    inputs:
+      cometbft_tag:
+        description: "Existing ghcr.io/${{ github.repository }}/cometbft tag to sign (e.g. v0.38.17)"
+        required: false
+      cometbft_digest:
+        description: "Optional digest override (sha256:...) if you already know it"
+        required: false
   push:
     branches: [main]
     paths:
@@ -69,3 +76,69 @@ jobs:
             ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}
           push: true
           no-cache: true
+  cometbft-manual-sign:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.cometbft_tag != '' }}
+    name: Sign existing CometBFT image
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      id-token: write
+      contents: read
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.10.0
+
+      - name: Resolve digest
+        id: cometbft-digest
+        env:
+          IMAGE: "ghcr.io/${{ github.repository }}/cometbft:${{ inputs.cometbft_tag }}"
+          PROVIDED_DIGEST: ${{ inputs.cometbft_digest }}
+        run: |
+          set -euo pipefail
+          if [ -n "$PROVIDED_DIGEST" ]; then
+            digest="$PROVIDED_DIGEST"
+          else
+            inspect_output="$(docker buildx imagetools inspect "$IMAGE" || true)"
+            digest="$(grep -m1 '^Digest:' <<<"$inspect_output" | awk '{print $2}')"
+          fi
+
+          if [ -z "${digest:-}" ]; then
+            echo "::error::Unable to resolve digest for $IMAGE. Provide it explicitly via workflow input or ensure the tag exists."
+            exit 1
+          fi
+
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Sign existing CometBFT tag
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+          IMAGE: "ghcr.io/${{ github.repository }}/cometbft:${{ inputs.cometbft_tag }}"
+          DIGEST: ${{ steps.cometbft-digest.outputs.digest }}
+        run: |
+          set -euo pipefail
+          if [[ "$DIGEST" == *@* ]]; then
+            target="$DIGEST"
+          else
+            target="$IMAGE@$DIGEST"
+          fi
+          cosign sign "$target"
+
+      - name: Summary
+        env:
+          DIGEST: ${{ steps.cometbft-digest.outputs.digest }}
+        run: |
+          {
+            echo "## 🔏 CometBFT image signed"
+            echo ""
+            echo "| Image | Digest |"
+            echo "| ----- | ------ |"
+            echo "| ghcr.io/${{ github.repository }}/cometbft:${{ inputs.cometbft_tag }} | \`$DIGEST\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
