@@ -78,9 +78,17 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
     onChangeOrderType,
     submission: {
       onError: (err) => {
+        const message = (() => {
+          if (err instanceof Error) return err.message;
+          if (typeof err === "string") {
+            const contractError = err.match(/msg: (.*?),"backtrace":/);
+            if (contractError?.[1]) return contractError[1];
+          }
+          return m["errors.failureRequest"]();
+        })();
         toast.error({
           title: m["dex.protrade.orderFailed"](),
-          description: err instanceof Error ? err.message : m["errors.failureRequest"](),
+          description: message,
         });
       },
     },
