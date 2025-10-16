@@ -19,6 +19,8 @@
 - name: Determine cosign download architecture
   ansible.builtin.set_fact:
     cosign_download_arch: "{{ cosign_arch_map.get(ansible_architecture, '') }}"
+    cosign_release_tag: "{{ cosign_release.json.tag_name }}"
+    cosign_version: "{{ cosign_release.json.tag_name | regex_replace('^v', '') }}"
   vars:
     cosign_arch_map:
       x86_64: amd64
@@ -41,15 +43,91 @@
   ansible.builtin.set_fact:
     cosign_desired_version: "{{ cosign_release.json.tag_name }}"
     cosign_download_url: "https://github.com/sigstore/cosign/releases/download/{{ cosign_release.json.tag_name }}/cosign-linux-{{ cosign_download_arch }}"
+    cosign_checksum_asset: >-
+      {{ cosign_release.json.assets
+         | selectattr('name', 'equalto', 'cosign-linux-' ~ cosign_download_arch ~ '.sha256')
+         | map(attribute='browser_download_url')
+         | first
+         | default('') }}
+    cosign_checksums_manifest: >-
+      {{ cosign_release.json.assets
+         | selectattr('name', 'equalto', 'cosign-' ~ cosign_version ~ '-checksums.txt')
+         | map(attribute='browser_download_url')
+         | first
+         | default('') }}
+
+- name: Determine checksum source
+  ansible.builtin.set_fact:
+    cosign_checksum_url: "{{ cosign_checksum_asset if cosign_checksum_asset else cosign_checksums_manifest }}"
+    cosign_checksum_type: "{{ 'single' if cosign_checksum_asset else 'manifest' }}"
+
+- name: Ensure checksum asset is available
+  ansible.builtin.assert:
+    that:
+      - cosign_checksum_url != ''
+    fail_msg: "Unable to locate cosign checksum asset for {{ cosign_desired_version }}"
+
+- name: Create temporary directory for cosign download
+  ansible.builtin.tempfile:
+    state: directory
+  register: cosign_tmp_dir
+
+- name: Download cosign checksums
+  ansible.builtin.get_url:
+    url: "{{ cosign_checksum_url }}"
+    dest: "{{ cosign_tmp_dir.path }}/checksums.txt"
+    mode: "0644"
 
 - name: Download cosign binary
   become: true
   become_user: root
   ansible.builtin.get_url:
     url: "{{ cosign_download_url }}"
-    dest: /usr/local/bin/cosign
+    dest: "{{ cosign_tmp_dir.path }}/cosign"
     mode: "0755"
     force: true
+  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
+
+- name: Extract expected checksum for cosign binary
+  ansible.builtin.shell: |
+    set -euo pipefail
+    if [ "{{ cosign_checksum_type }}" = "single" ]; then
+      awk '{print $1}' "{{ cosign_tmp_dir.path }}/checksums.txt"
+    else
+      awk '$2 == "cosign-linux-{{ cosign_download_arch }}" { print $1 }' "{{ cosign_tmp_dir.path }}/checksums.txt"
+    fi
+  register: cosign_expected_checksum
+  changed_when: false
+  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
+
+- name: Validate cosign checksum was found
+  ansible.builtin.assert:
+    that:
+      - cosign_expected_checksum.stdout != ''
+    fail_msg: "Unable to parse expected checksum for cosign-linux-{{ cosign_download_arch }}"
+  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
+
+- name: Compute downloaded cosign checksum
+  ansible.builtin.command: sha256sum {{ cosign_tmp_dir.path }}/cosign
+  register: cosign_actual_checksum
+  changed_when: false
+  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
+
+- name: Verify cosign checksum
+  ansible.builtin.assert:
+    that:
+      - (cosign_actual_checksum.stdout.split()[0]) == cosign_expected_checksum.stdout
+    fail_msg: "Checksum mismatch for downloaded cosign binary"
+  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
+
+- name: Install verified cosign binary
+  become: true
+  become_user: root
+  ansible.builtin.copy:
+    src: "{{ cosign_tmp_dir.path }}/cosign"
+    dest: /usr/local/bin/cosign
+    mode: "0755"
+    remote_src: true
   when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
 
 - name: Verify cosign installation
