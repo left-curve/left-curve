@@ -1,6 +1,7 @@
 import {
   ensureErrorMessage,
   IconWallet,
+  Modals,
   useApp,
   useInputs,
   useMediaQuery,
@@ -52,6 +53,8 @@ import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
+  const { showModal } = useApp();
+  const { chain } = useConfig();
   const { activeStep, previousStep, data } = useWizard<{
     username: string;
     email: string;
@@ -63,6 +66,10 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
 
   useEffect(() => {
     if (isConnected) navigate({ to: "/" });
+  }, []);
+
+  useEffect(() => {
+    if (chain.name === "Dango") showModal(Modals.SignupReminder);
   }, []);
 
   return (
@@ -500,9 +507,7 @@ export const Fund: React.FC = () => {
           salt,
         });
 
-        const response = await fetch(
-          `${window.dango.urls.faucetUrl}/mint/${address}?skip_check=true`,
-        );
+        const response = await fetch(`${window.dango.urls.faucetUrl}/mint/${address}`);
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         nextStep();

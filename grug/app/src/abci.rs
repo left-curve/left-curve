@@ -2,7 +2,7 @@ use {
     crate::{App, AppError, AppResult, Db, Indexer, ProposalPreparer, Vm},
     grug_types::{
         BlockInfo, CheckTxOutcome, Duration, GENESIS_BLOCK_HASH, GenericResult, Hash256, Inner,
-        JsonSerExt, TxOutcome,
+        JsonSerExt, StdResult, TxOutcome,
     },
     prost::bytes::Bytes,
     std::{
@@ -126,42 +126,45 @@ where
 
     fn tower_check_tx(&self, req: request::CheckTx) -> AppResult<response::CheckTx> {
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
-        let res = match self.do_check_tx_raw(&req.tx) {
+        //
+        // Fix 20251015: see the comment in `into_tm_tx_result`. Although `CheckTx`
+        // isn't relevant for consensus, we keep it consistent with `ExecTxResult`,
+        // by leaving the `data` field empty, and put the entire `CheckTxOutcome`
+        // in the `log` field.
+        let outcome = self.do_check_tx_raw(&req.tx);
+        match &outcome {
             Ok(CheckTxOutcome {
                 result: GenericResult::Ok(_),
                 gas_limit,
-                events,
                 gas_used,
-            }) => response::CheckTx {
+                ..
+            }) => Ok(response::CheckTx {
                 code: Code::Ok,
-                data: events.to_json_vec()?.into(),
-                gas_wanted: gas_limit as i64,
-                gas_used: gas_used as i64,
+                gas_wanted: *gas_limit as i64,
+                gas_used: *gas_used as i64,
+                log: outcome.unwrap().to_json_string()?, /* unwrap is safe since we already checked it's ok */
                 ..Default::default()
-            },
+            }),
             Ok(CheckTxOutcome {
-                result: GenericResult::Err(err),
+                result: GenericResult::Err(_),
                 gas_limit,
-                events,
                 gas_used,
-            }) => response::CheckTx {
-                code: into_tm_code_error(1),
+                ..
+            }) => Ok(response::CheckTx {
                 codespace: "check_tx".into(),
-                data: events.to_json_vec()?.into(),
-                gas_wanted: gas_limit as i64,
-                gas_used: gas_used as i64,
+                code: into_tm_code_error(1),
+                gas_wanted: *gas_limit as i64,
+                gas_used: *gas_used as i64,
+                log: outcome.unwrap().to_json_string()?, /* unwrap is safe since we already checked it's ok */
+                ..Default::default()
+            }),
+            Err(err) => Ok(response::CheckTx {
+                codespace: "check_tx".into(),
+                code: into_tm_code_error(1),
                 log: err.to_string(),
                 ..Default::default()
-            },
-            Err(err) => response::CheckTx {
-                code: into_tm_code_error(1),
-                codespace: "check_tx".into(),
-                log: err.to_string(),
-                ..Default::default()
-            },
-        };
-
-        Ok(res)
+            }),
+        }
     }
 
     fn tower_commit(&self) -> AppResult<response::Commit> {
@@ -189,7 +192,7 @@ where
                     .tx_outcomes
                     .into_iter()
                     .map(into_tm_tx_result)
-                    .collect::<AppResult<_>>()?;
+                    .collect::<StdResult<_>>()?;
 
                 let cron_events = outcome
                     .cron_outcomes
@@ -340,7 +343,7 @@ fn from_tm_hash(bytes: Hash) -> Hash256 {
     }
 }
 
-fn into_tm_tx_result(outcome: TxOutcome) -> AppResult<ExecTxResult> {
+fn into_tm_tx_result(outcome: TxOutcome) -> StdResult<ExecTxResult> {
     let (code, codespace) = if outcome.result.is_ok() {
         (Code::Ok, "")
     } else {
@@ -348,12 +351,36 @@ fn into_tm_tx_result(outcome: TxOutcome) -> AppResult<ExecTxResult> {
     };
 
     Ok(ExecTxResult {
-        code,
-        data: outcome.events.to_json_vec()?.into(),
+        // Fix 20251015: the following field MUST be deterministic:
+        //
+        // - `code`
+        // - `data`
+        // - `gas_wanted`
+        // - `gas_used`
+        //
+        // CometBFT hashes these into a `LastBlockHash` which goes into the block
+        // header. If mismatched, it will throw an error that looks like this:
+        //
+        // > prevote step: consensus deems this block invalid; prevoting nil module=consensus height=[...] round=0 err="wrong Block.Header.LastResultsHash.  Expected [...], got [...]
+        //
+        // Relevant code:
+        //
+        // - https://github.com/cometbft/cometbft/blob/v0.38.17/types/block.go#L349-L351
+        // - https://github.com/cometbft/cometbft/blob/v0.38.17/abci/types/types.go#L141-L150
+        // - https://github.com/cometbft/cometbft/blob/v0.38.17/state/validation.go#L66-L71
+        //
+        // Prior to this fix, we put `outcome.events` as the `data` field. The
+        // events contains error backtraces, which is non-deterministic.
+        // This caused a chain halt in testnet-3, at block 228244, at 2025-10-15T19:10:18.687148596Z.
+        //
+        // Now, we leave the `data` field empty, and put the entire `outcome` in
+        // the `log` field, which isn't hashed into `LastBlockHash` and thus
+        // doesn't need to be deterministic.
         codespace: codespace.to_string(),
-        log: outcome.result.to_json_string()?,
+        code,
         gas_wanted: outcome.gas_limit as i64,
         gas_used: outcome.gas_used as i64,
+        log: outcome.to_json_string()?,
         ..Default::default()
     })
 }

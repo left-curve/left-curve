@@ -136,6 +136,10 @@ export type DexQueryMsg =
         /** The maximum number of orders to return. */
         limit?: Option<number>;
       };
+    }
+  /** Query whether the DEX is paused. */
+  | {
+      paused: Record<never, never>;
     };
 
 export type DexExecuteMsg =

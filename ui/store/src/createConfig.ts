@@ -44,6 +44,7 @@ export function createConfig<
         typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
     }),
     ssr,
+    onError,
     ...rest
   } = parameters;
 
@@ -240,7 +241,7 @@ export function createConfig<
     });
   }
 
-  const sbStore = subscriptionsStore(getClient() as PublicClient);
+  const sbStore = subscriptionsStore(getClient() as PublicClient, onError);
 
   //////////////////////////////////////////////////////////////////////////////
   // Emitter listeners
