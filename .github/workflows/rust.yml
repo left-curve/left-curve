@@ -690,7 +690,7 @@ jobs:
             safe_name=$(echo "$image" | tr '/:@' '___')
             sbom_file="$SBOM_DIR/${safe_name}.cdx.json"
             report_file="$REPORT_DIR/${safe_name}.txt"
-            syft packages "$image" -o cyclonedx-json > "$sbom_file"
+            syft scan "$image" -o cyclonedx-json > "$sbom_file"
             if ! grype "$image" --fail-on high --only-fixed --add-cpes-if-none > "$report_file"; then
               echo "::warning::High severity vulnerabilities detected for $image"
               failed=true
