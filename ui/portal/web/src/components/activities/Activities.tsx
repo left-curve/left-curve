@@ -65,7 +65,9 @@ export const Activities: React.FC<ActivitiesProps> = (props) => {
           className="mx-auto h-[125px] w-auto"
         />
         <div className="flex flex-col gap-2 items-center text-center">
-          <p className="exposure-m-italic">{m["activities.noActivities.title"]()}</p>
+          <p className="exposure-m-italic text-ink-primary-900">
+            {m["activities.noActivities.title"]()}
+          </p>
           <p className="text-ink-tertiary-500 diatype-m-bold">
             {m["activities.noActivities.description"]()}
           </p>

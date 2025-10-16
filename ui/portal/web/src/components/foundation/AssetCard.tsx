@@ -39,8 +39,8 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
             <p className="text-ink-tertiary-500 diatype-m-regular">{coinInfo.name}</p>
           </div>
         </div>
-        <div className="flex flex-col items-end">
-          <p className="text-ink-primary-900 diatype-m-bold">{price}</p>
+        <div className="flex flex-col items-end text-ink-primary-900">
+          <p className="diatype-m-bold">{price}</p>
           <p>
             {coinInfo.type === "lp"
               ? formatNumber(humanAmount, { ...formatNumberOptions, maximumTotalDigits: 4 })
