@@ -146,7 +146,7 @@ export { Input };
 const inputVariants = tv(
   {
     slots: {
-      base: " flex flex-col data-[hidden=true]:hidden gap-1 relative",
+      base: " flex flex-col data-[hidden=true]:hidden gap-1 relative text-ink-secondary-700",
       inputWrapper: [
         "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-account-card  gap-2 z-10",
         "bg-surface-secondary-rice hover:bg-surface-tertiary-rice border border-transparent active:border-surface-quaternary-rice",
