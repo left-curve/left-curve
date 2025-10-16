@@ -10,6 +10,7 @@ import { TxIndicator } from "./TxIndicator";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TestnetBanner } from "./TestnetBanner";
+import { useMemo } from "react";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -66,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
           {!isSearchBarVisible ? (
             <IconButton
               onClick={() =>
-                isConnected ? setSidebarVisibility(true) : navigate({ to: "/signup" })
+                isConnected ? setSidebarVisibility(true) : navigate({ to: "/signin" })
               }
               variant="utility"
               size="lg"

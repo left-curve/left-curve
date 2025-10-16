@@ -291,11 +291,21 @@ const Assets: React.FC<AssetsProps> = ({ onSwitch }) => {
 export const WalletTab: React.FC = () => {
   const context = useAccountMenu();
   const balances = Object.entries(context.balances);
+  const { calculateBalance } = usePrices();
+
+  const sortedBalances = useMemo(() => {
+    return balances.sort(([denomA, amountA], [denomB, amountB]) => {
+      const usdA = Number(calculateBalance({ [denomA]: amountA }, { format: false }) ?? 0);
+      const usdB = Number(calculateBalance({ [denomB]: amountB }, { format: false }) ?? 0);
+      if (usdB !== usdA) return usdB - usdA;
+      return denomA.localeCompare(denomB);
+    });
+  }, [balances, calculateBalance]);
 
   return (
     <div className="flex flex-col w-full items-center max-h-full overflow-hidden overflow-y-scroll scrollbar-none">
-      {balances.length > 0 ? (
-        balances.map(([denom, amount]) => <AssetCard key={denom} coin={{ denom, amount }} />)
+      {sortedBalances.length > 0 ? (
+        sortedBalances.map(([denom, amount]) => <AssetCard key={denom} coin={{ denom, amount }} />)
       ) : (
         <div className="px-4">
           <EmptyPlaceholder component={m["accountMenu.noWalletCoins"]()} className="p-4" />
