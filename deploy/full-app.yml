@@ -103,6 +103,7 @@
         stored_db_metrics_port: "{{ db_metrics_port }}"
         stored_deploy_includes_postgres: "{{ deploy_includes_postgres }}"
         stored_deploy_includes_clickhouse: "{{ deploy_includes_clickhouse }}"
+
     - syslog:
         msg: "[{{ deployment_name }}] Finished deployment"
 
