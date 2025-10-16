@@ -659,13 +659,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Syft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin v1.13.0
+          if ! command -v syft >/dev/null 2>&1; then
+            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
+          fi
       - name: Install Grype
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin v0.81.0
+          if ! command -v grype >/dev/null 2>&1; then
+            curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
+          fi
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
