@@ -80,7 +80,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
       onError: (err) => {
         toast.error({
           title: m["dex.protrade.orderFailed"](),
-          description: err instanceof Error ? err.message : "Something went wrong",
+          description: err instanceof Error ? err.message : m["errors.failureRequest"](),
         });
       },
     },
