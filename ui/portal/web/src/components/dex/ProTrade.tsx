@@ -63,6 +63,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   children,
 }) => {
   const controllers = useInputs();
+  const { toast } = useApp();
 
   const { isLg } = useMediaQuery();
 
@@ -75,6 +76,22 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
     onChangeAction,
     orderType,
     onChangeOrderType,
+    submission: {
+      onError: (err) => {
+        const message = (() => {
+          if (err instanceof Error) return err.message;
+          if (typeof err === "string") {
+            const contractError = err.match(/msg: (.*?),"backtrace":/);
+            if (contractError?.[1]) return contractError[1];
+          }
+          return m["errors.failureRequest"]();
+        })();
+        toast.error({
+          title: m["dex.protrade.orderFailed"](),
+          description: message,
+        });
+      },
+    },
   });
 
   return <ProTradeProvider value={{ state, controllers }}>{children}</ProTradeProvider>;
