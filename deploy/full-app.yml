@@ -7,9 +7,6 @@
   vars_files:
     - roles/full-app/vars/main.yml
   tasks:
-    - syslog:
-        msg: "Starting deployment"
-
     - name: Generate shared timestamp
       set_fact:
         timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
