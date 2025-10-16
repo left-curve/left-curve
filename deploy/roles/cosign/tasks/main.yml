@@ -45,7 +45,7 @@
     cosign_download_url: "https://github.com/sigstore/cosign/releases/download/{{ cosign_release.json.tag_name }}/cosign-linux-{{ cosign_download_arch }}"
     cosign_checksum_candidates: >-
       {{ cosign_release.json.assets
-         | selectattr('name', 'regex', 'cosign(.*)(sha256|checksums.*)')
+         | selectattr('name', 'regex', 'cosign.*(sha256|checksums.*)')
          | list }}
 
 - name: Determine checksum source
@@ -57,7 +57,7 @@
            | first)
          | default(
             cosign_checksum_candidates
-            | selectattr('name', 'regex', 'cosign-' ~ cosign_version ~ '-checksums.*')
+            | selectattr('name', 'regex', 'cosign[-_]' ~ cosign_version ~ '[-_]?checksums.*')
             | map(attribute='browser_download_url')
             | first,
             true)
