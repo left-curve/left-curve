@@ -68,6 +68,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
   const { isLg } = useMediaQuery();
 
   const state = useProTradeState({
+    m,
     controllers,
     pairId,
     bucketRecords: isLg ? 11 : 16,

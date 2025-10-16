@@ -853,6 +853,9 @@
           }
         ]
       }
+    },
+    "errors": {
+      "minimumOrderSize": "Order size too small. Minimum order size is {minOrderSize} {symbol}"
     }
   },
   "errors": {
