@@ -393,6 +393,7 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: "true"
           COSIGN_YES: "true"
+          COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@${{ github.ref }}"
         run: |
           set -euo pipefail
 
@@ -405,6 +406,7 @@ jobs:
           fi
 
           tmp_markdown="$(mktemp)"
+          tmp_digests="$(mktemp)"
           {
             echo "| Image | Digest |"
             echo "| ---- | ------ |"
@@ -417,13 +419,33 @@ jobs:
               exit 1
             fi
             cosign sign "$image@$digest"
+            printf '%s=%s\n' "$image" "$digest" >> "$tmp_digests"
             printf '| %s | `%s` |\n' "$image" "$digest" >> "$tmp_markdown"
           done
           {
             echo "digest_table<<EOF"
             cat "$tmp_markdown"
             echo "EOF"
+            echo "digests<<EOF"
+            cat "$tmp_digests"
+            echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Verify backend signatures
+        if: ${{ steps.sign-backend.outputs.digests != '' }}
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@${{ github.ref }}"
+          COSIGN_DIGESTS: ${{ steps.sign-backend.outputs.digests }}
+        run: |
+          set -euo pipefail
+          while IFS='=' read -r image digest; do
+            [ -n "$image" ] || continue
+            cosign verify \
+              --certificate-identity "$COSIGN_IDENTITY" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$image@$digest" >/dev/null
+          done <<< "$COSIGN_DIGESTS"
 
       - name: Docker Deploy Summary
         env:
@@ -553,6 +575,7 @@ jobs:
         env:
           COSIGN_EXPERIMENTAL: "true"
           COSIGN_YES: "true"
+          COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@${{ github.ref }}"
         run: |
           set -euo pipefail
 
@@ -565,6 +588,7 @@ jobs:
           fi
 
           tmp_markdown="$(mktemp)"
+          tmp_digests="$(mktemp)"
           {
             echo "| Image | Digest |"
             echo "| ---- | ------ |"
@@ -577,13 +601,33 @@ jobs:
               exit 1
             fi
             cosign sign "$image@$digest"
+            printf '%s=%s\n' "$image" "$digest" >> "$tmp_digests"
             printf '| %s | `%s` |\n' "$image" "$digest" >> "$tmp_markdown"
           done
           {
             echo "digest_table<<EOF"
             cat "$tmp_markdown"
             echo "EOF"
+            echo "digests<<EOF"
+            cat "$tmp_digests"
+            echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
+      - name: Verify frontend signatures
+        if: ${{ steps.sign-frontend.outputs.digests != '' }}
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@${{ github.ref }}"
+          COSIGN_DIGESTS: ${{ steps.sign-frontend.outputs.digests }}
+        run: |
+          set -euo pipefail
+          while IFS='=' read -r image digest; do
+            [ -n "$image" ] || continue
+            cosign verify \
+              --certificate-identity "$COSIGN_IDENTITY" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$image@$digest" >/dev/null
+          done <<< "$COSIGN_DIGESTS"
 
       - name: Frontend Docker Deploy Summary
         env:
@@ -604,6 +648,78 @@ jobs:
             echo "## 🔏 Signed Image Digests" >> $GITHUB_STEP_SUMMARY
             echo "$DIGEST_TABLE" >> $GITHUB_STEP_SUMMARY
           fi
+
+  security-artifacts:
+    name: Generate SBOMs and Scan Images
+    needs: [backend-push-manifest, frontend-push-manifest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Syft
+        run: |
+          set -euo pipefail
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin v1.13.0
+      - name: Install Grype
+        run: |
+          set -euo pipefail
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin v0.81.0
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate SBOM and scan
+        env:
+          SBOM_DIR: sbom
+          REPORT_DIR: vuln-reports
+          TARGET_COMMIT: ${{ env.GIT_COMMIT }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$SBOM_DIR" "$REPORT_DIR"
+          failed=false
+          images=(
+            "ghcr.io/left-curve/left-curve/dango:${TARGET_COMMIT}"
+            "ghcr.io/left-curve/left-curve/dango-frontend:${TARGET_COMMIT}"
+          )
+          for image in "${images[@]}"; do
+            [ -n "$image" ] || continue
+            safe_name=$(echo "$image" | tr '/:@' '___')
+            sbom_file="$SBOM_DIR/${safe_name}.cdx.json"
+            report_file="$REPORT_DIR/${safe_name}.txt"
+            syft packages "$image" -o cyclonedx-json > "$sbom_file"
+            if ! grype "$image" --fail-on high --only-fixed --add-cpes-if-none > "$report_file"; then
+              echo "::warning::High severity vulnerabilities detected for $image"
+              failed=true
+            fi
+          done
+          if [ "$failed" = "true" ]; then
+            touch "$REPORT_DIR/.failed"
+          fi
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-artifacts-${{ github.run_id }}
+          path: |
+            sbom
+            vuln-reports
+      - name: Enforce vulnerability policy
+        run: |
+          if [ -f vuln-reports/.failed ]; then
+            echo "::error::Critical vulnerabilities detected in container images"
+            exit 1
+          fi
+      - name: Document security summary
+        if: always()
+        run: |
+          echo "## 🔐 Supply Chain Security" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SBOMs generated with Syft v1.13.0" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Vulnerability scan performed with Grype v0.81.0 (fail-on=HIGH, only-fixed)" >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     permissions:
