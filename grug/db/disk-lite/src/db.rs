@@ -3,12 +3,14 @@ use grug_types::MetricsIterExt;
 use {
     crate::{DbError, DbResult, digest::batch_hash},
     grug_app::Db,
-    grug_types::{Batch, Empty, Hash256, Op, Order, Storage},
+    grug_types::{Batch, Empty, Hash256, Op, Order, Record, SharedIter, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
     },
     std::{
+        collections::BTreeMap,
+        ops::Bound,
         path::Path,
         sync::{Arc, RwLock},
     },
@@ -32,6 +34,7 @@ pub struct DiskDbLite {
 struct DiskDbLiteInner {
     db: DBWithThreadMode<MultiThreaded>,
     pending_data: RwLock<Option<PendingData>>,
+    priority_data: Option<PriorityData>,
 }
 
 pub(crate) struct PendingData {
@@ -40,8 +43,17 @@ pub(crate) struct PendingData {
     batch: Batch,
 }
 
+struct PriorityData {
+    min: &'static [u8], // inclusive
+    max: &'static [u8], // exclusive
+    records: RwLock<BTreeMap<Vec<u8>, Vec<u8>>>,
+}
+
 impl DiskDbLite {
-    pub fn open<P>(data_dir: P) -> DbResult<Self>
+    pub fn open<P>(
+        data_dir: P,
+        priority_range: Option<(&'static [u8], &'static [u8])>,
+    ) -> DbResult<Self>
     where
         P: AsRef<Path>,
     {
@@ -50,10 +62,31 @@ impl DiskDbLite {
             (CF_NAME_METADATA, Options::default()),
         ])?;
 
+        // If `priority_range` is specified, load the data in that range into memory.
+        let priority_data = priority_range.map(|(min, max)| {
+            let opts = new_read_options(Some(min), Some(max));
+            let records = db
+                .iterator_cf_opt(&cf_handle(&db, CF_NAME_DEFAULT), opts, IteratorMode::Start)
+                .map(|item| {
+                    let (k, v) = item.unwrap_or_else(|err| {
+                        panic!("failed to load record for priority data: {err}",);
+                    });
+                    (k.to_vec(), v.to_vec())
+                })
+                .collect();
+
+            PriorityData {
+                min,
+                max,
+                records: RwLock::new(records),
+            }
+        });
+
         Ok(Self {
             inner: Arc::new(DiskDbLiteInner {
                 db,
                 pending_data: RwLock::new(None),
+                priority_data,
             }),
         })
     }
@@ -190,6 +223,22 @@ impl Db for DiskDbLite {
             .take()
             .ok_or(DbError::pending_data_not_set())?;
 
+        // If priority data exists, apply the change set to it.
+        if let Some(data) = &self.inner.priority_data {
+            for (k, op) in pending
+                .batch
+                .range::<[u8], _>((Bound::Included(data.min), Bound::Excluded(data.max)))
+            {
+                let mut records = data.records.write().expect("priority records poisoned");
+                if let Op::Insert(v) = op {
+                    records.insert(k.clone(), v.clone());
+                } else {
+                    records.remove(k);
+                }
+            }
+        }
+
+        // Now, prepare the write batch that will be written to RocksDB.
         let mut batch = WriteBatch::default();
 
         // Wriet batch to default CF.
@@ -230,13 +279,54 @@ pub struct StateStorage {
 impl StateStorage {
     fn create_iterator<'a>(
         &'a self,
-        opts: ReadOptions,
-        mode: IteratorMode<'static>,
-    ) -> Box<dyn Iterator<Item = Result<(Box<[u8]>, Box<[u8]>), rocksdb::Error>> + 'a> {
-        let iter =
-            self.inner
-                .db
-                .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode);
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        // If priority data exists, and the iterator range completely falls
+        // within the priority range, then create a priority iterator.
+        if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
+            if data.min <= min && max <= data.max {
+                return self.create_priority_iterator(&data, min, max, order);
+            }
+        }
+
+        self.create_non_priority_iterator(min, max, order)
+    }
+
+    fn create_priority_iterator<'a>(
+        &'a self,
+        data: &'a PriorityData,
+        min: &[u8],
+        max: &[u8],
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        let records = data.records.read().expect("priority records poisoned");
+        Box::new(SharedIter::new(records, Some(min), Some(max), order))
+    }
+
+    fn create_non_priority_iterator<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        let opts = new_read_options(min, max);
+        let mode = into_iterator_mode(order);
+
+        let iter = self
+            .inner
+            .db
+            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
+            .map(|item| {
+                let (k, v) = item.unwrap_or_else(|err| {
+                    panic!(
+                        "failed to iterate in DB! cf: {}, err: {}",
+                        self.cf_name, err
+                    );
+                });
+                (k.to_vec(), v.to_vec())
+            });
 
         #[cfg(feature = "metrics")]
         let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [("operation", "next")]);
@@ -249,6 +339,19 @@ impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
+
+        // If the key falls in the priority data range, read the value from
+        // priority data, without accessing the DB.
+        if let Some(data) = &self.inner.priority_data {
+            if data.min <= key && key <= data.max {
+                return data
+                    .records
+                    .read()
+                    .expect("priority records poisoned")
+                    .get(key)
+                    .cloned();
+            }
+        }
 
         let result = self
             .inner
@@ -272,22 +375,11 @@ impl Storage for StateStorage {
         min: Option<&[u8]>,
         max: Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = grug_types::Record> + 'a> {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
-        let opts = new_read_options(min, max);
-        let mode = into_iterator_mode(order);
-
-        let iter = self.create_iterator(opts, mode).map(|item| {
-            let (k, v) = item.unwrap_or_else(|err| {
-                panic!(
-                    "failed to iterate in DB! cf: {}, err: {}",
-                    self.cf_name, err
-                );
-            });
-            (k.to_vec(), v.to_vec())
-        });
+        let iter = self.create_iterator(min, max, order);
 
         #[cfg(feature = "metrics")]
         {
@@ -295,7 +387,7 @@ impl Storage for StateStorage {
                 .record(duration.elapsed().as_secs_f64());
         }
 
-        Box::new(iter)
+        iter
     }
 
     fn scan_keys<'a>(
@@ -307,17 +399,7 @@ impl Storage for StateStorage {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
-        let opts = new_read_options(min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self.create_iterator(opts, mode).map(|item| {
-            let (k, _) = item.unwrap_or_else(|err| {
-                panic!(
-                    "failed to iterate in DB! cf: {}, err: {}",
-                    self.cf_name, err
-                );
-            });
-            k.to_vec()
-        });
+        let iter = self.create_iterator(min, max, order).map(|(k, _)| k);
 
         #[cfg(feature = "metrics")]
         {
@@ -337,17 +419,7 @@ impl Storage for StateStorage {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
-        let opts = new_read_options(min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self.create_iterator(opts, mode).map(|item| {
-            let (_, v) = item.unwrap_or_else(|err| {
-                panic!(
-                    "failed to iterate in DB! cf: {}, err: {}",
-                    self.cf_name, err
-                );
-            });
-            v.to_vec()
-        });
+        let iter = self.create_iterator(min, max, order).map(|(_, v)| v);
 
         #[cfg(feature = "metrics")]
         {
@@ -432,7 +504,7 @@ mod tests {
     #[test]
     fn disk_db_lite_works() {
         let path = TempDataDir::new("_grug_disk_db_lite_works");
-        let db = DiskDbLite::open(&path).unwrap();
+        let db = DiskDbLite::open(&path, None).unwrap();
 
         // Write a 1st batch.
         {
