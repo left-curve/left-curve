@@ -43,23 +43,31 @@
   ansible.builtin.set_fact:
     cosign_desired_version: "{{ cosign_release.json.tag_name }}"
     cosign_download_url: "https://github.com/sigstore/cosign/releases/download/{{ cosign_release.json.tag_name }}/cosign-linux-{{ cosign_download_arch }}"
-    cosign_checksum_asset: >-
+    cosign_checksum_candidates: >-
       {{ cosign_release.json.assets
-         | selectattr('name', 'equalto', 'cosign-linux-' ~ cosign_download_arch ~ '.sha256')
-         | map(attribute='browser_download_url')
-         | first
-         | default('') }}
-    cosign_checksums_manifest: >-
-      {{ cosign_release.json.assets
-         | selectattr('name', 'equalto', 'cosign-' ~ cosign_version ~ '-checksums.txt')
-         | map(attribute='browser_download_url')
-         | first
-         | default('') }}
+         | selectattr('name', 'regex', 'cosign(.*)(sha256|checksums.*)')
+         | list }}
 
 - name: Determine checksum source
   ansible.builtin.set_fact:
-    cosign_checksum_url: "{{ cosign_checksum_asset if cosign_checksum_asset else cosign_checksums_manifest }}"
-    cosign_checksum_type: "{{ 'single' if cosign_checksum_asset else 'manifest' }}"
+    cosign_checksum_url: >-
+      {{ (cosign_checksum_candidates
+           | selectattr('name', 'equalto', 'cosign-linux-' ~ cosign_download_arch ~ '.sha256')
+           | map(attribute='browser_download_url')
+           | first)
+         | default(
+            cosign_checksum_candidates
+            | selectattr('name', 'regex', 'cosign-' ~ cosign_version ~ '-checksums.*')
+            | map(attribute='browser_download_url')
+            | first,
+            true)
+      }}
+    cosign_checksum_type: >-
+      {{ 'single'
+         if (cosign_checksum_candidates
+              | selectattr('name', 'equalto', 'cosign-linux-' ~ cosign_download_arch ~ '.sha256'))
+         | list | length > 0
+         else 'manifest' }}
 
 - name: Ensure checksum asset is available
   ansible.builtin.assert:
