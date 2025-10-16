@@ -34,3 +34,5 @@
         networks: yes
         volumes: yes
         builder_cache: yes
+    - syslog:
+        msg: "Deleted deployment {{ current_deployment }}"

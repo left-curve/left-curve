@@ -4,6 +4,9 @@
   collections:
     - community.docker
   tasks:
+    - syslog:
+        msg: "Deleting deployment {{ deployment_name }}"
+
     - name: Load role defaults
       include_vars: "roles/full-app/defaults/main.yml"
 
@@ -93,6 +96,10 @@
         login_port: "{{ postgres_port }}"
         state: absent
 
+    - syslog:
+        msg: "Deleted postgres database {{ postgres_database }}"
+      when: delete_postgres_database_at_merge
+
     - name: Delete clickhouse database
       when: delete_clickhouse_database_at_merge
       community.clickhouse.clickhouse_db:
@@ -102,6 +109,13 @@
         login_port: "{{ clickhouse_tcp_port }}"
         login_user: "{{ clickhouse_user }}"
         login_password: "{{ clickhouse_password }}"
+
+    - syslog:
+        msg: "Deleted clickhouse database {{ clickhouse_database }}"
+      when: delete_clickhouse_database_at_merge
+
+    - syslog:
+        msg: "Deleted deployment {{ deployment_name }}"
 
 - hosts: monitoring
   become: true

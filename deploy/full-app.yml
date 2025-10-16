@@ -7,6 +7,9 @@
   vars_files:
     - roles/full-app/vars/main.yml
   tasks:
+    - syslog:
+        msg: "Starting deployment"
+
     - name: Generate shared timestamp
       set_fact:
         timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
@@ -16,6 +19,9 @@
       set_fact:
         deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
         timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+
+    - syslog:
+        msg: "[{{ deployment_name }}] Starting deployment"
 
     - name: Set system wide cometbft and dango directories
       set_fact:
@@ -97,6 +103,8 @@
         stored_db_metrics_port: "{{ db_metrics_port }}"
         stored_deploy_includes_postgres: "{{ deploy_includes_postgres }}"
         stored_deploy_includes_clickhouse: "{{ deploy_includes_clickhouse }}"
+    - syslog:
+        msg: "[{{ deployment_name }}] Finished deployment"
 
 - hosts: monitoring
   become: true

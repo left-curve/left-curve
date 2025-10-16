@@ -36,6 +36,9 @@
         login_host: "{{ postgres_external_host }}"
         login_port: "{{ postgres_port }}"
         state: present
+
+    - syslog:
+        msg: "[{{ deployment_name }}] Created postgres database: {{ postgres_database }} on {{ postgres_external_host }}"
   when: not deploy_includes_postgres
 
 - block:
@@ -79,4 +82,7 @@
             max_memory_usage = 32000000000,
             max_memory_usage_for_user = 48000000000,
             max_threads = 12
+
+    - syslog:
+        msg: "[{{ deployment_name }}] Created clickhouse database: {{ clickhouse_database }} on {{ clickhouse_external_host }}"
   when: not deploy_includes_clickhouse
