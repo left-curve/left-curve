@@ -111,6 +111,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       widget.subscribe("onAutoSaveNeeded", saveFn);
       widget.applyOverrides({
         "paneProperties.background": toolbar_bg,
+        "scalesProperties.textColor": theme === "dark" ? "#FFFCF6" : "#2E2521",
         timezone:
           timeZone === "utc"
             ? "Etc/UTC"
