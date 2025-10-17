@@ -1,0 +1,36 @@
+---
+- name: Ensure cosign verification inputs are provided
+  ansible.builtin.assert:
+    that:
+      - deploy_cosign_images is defined
+      - deploy_cosign_images | length > 0
+    fail_msg: "deploy_cosign_images must describe the container images to verify before deployment."
+
+- name: Verify cosign signatures
+  ansible.builtin.command: >
+    cosign verify
+    --certificate-oidc-issuer {{ cosign_certificate_oidc_issuer }}
+    --certificate-identity "{{ item.identity | default(cosign_certificate_identity) }}"
+    --output json
+    {{ item.image }}:{{ item.tag }}
+  register: cosign_verify_results
+  changed_when: false
+  loop: "{{ deploy_cosign_images }}"
+  loop_control:
+    label: "{{ item.service }} -> {{ item.image }}:{{ item.tag }}"
+  environment:
+    PATH: "{{ ansible_env.PATH | default('') }}:/usr/local/bin"
+
+- name: Build digest map from cosign verification
+  ansible.builtin.set_fact:
+    cosign_verified_images: "{{ cosign_verified_images | default({}) | combine({ item.item.service: {'image': item.item.image, 'tag': item.item.tag, 'digest': digest_value} }) }}"
+  vars:
+    verification_entry: "{{ (item.stdout | from_json)[0]['critical']['image'] }}"
+    digest_value: "{{ verification_entry['docker-manifest-digest'] | default(verification_entry['digest']) }}"
+  loop: "{{ cosign_verify_results.results }}"
+
+- name: Render docker-compose override with pinned digests
+  ansible.builtin.template:
+    src: docker-compose.override.yml.j2
+    dest: "{{ deployment_dir }}/docker-compose.override.yml"
+    mode: "0644"

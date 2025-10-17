@@ -84,6 +84,7 @@
     - community.docker
     - community.clickhouse
   roles:
+    - cosign
     - full-app
   pre_tasks:
     - name: Load postgres vars
@@ -92,6 +93,24 @@
     - name: Load clickhouse vars
       include_vars: "roles/full-app/vars/included_clickhouse.yml"
       when: deploy_includes_clickhouse
+    - name: Select cosign identity for deployment
+      set_fact:
+        cosign_identity_current: "{{ github_pr_number is defined | ternary(cosign_identity_pr_template % {'pr_number': github_pr_number}, cosign_identity_main) }}"
+    - name: Build cosign verification image list
+      set_fact:
+        deploy_cosign_images:
+          - service: "dango"
+            image: "ghcr.io/left-curve/left-curve/dango"
+            tag: "{{ dango_image_tag }}"
+            identity: "{{ cosign_identity_current }}"
+          - service: "dango-frontend"
+            image: "ghcr.io/left-curve/left-curve/dango-frontend"
+            tag: "{{ dango_image_tag }}"
+            identity: "{{ cosign_identity_current }}"
+          - service: "cometbft"
+            image: "ghcr.io/left-curve/left-curve/cometbft"
+            tag: "{{ cometbft_tag }}"
+            identity: "{{ cosign_identity_cometbft }}"
   post_tasks:
     - name: Store vars for monitoring
       set_fact:

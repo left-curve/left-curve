@@ -1,0 +1,5 @@
+services:
+{% for service, data in cosign_verified_images | dictsort %}
+  {{ service }}:
+    image: "{{ data.image }}@{{ data.digest }}"
+{% endfor %}
