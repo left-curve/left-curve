@@ -174,8 +174,6 @@ jobs:
     name: Lint + Test
     runs-on: self-hosted
     timeout-minutes: 20
-    env:
-      BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
     permissions:
       id-token: write
       contents: read
@@ -185,6 +183,7 @@ jobs:
     # permissions:
     #   packages: read
     env:
+      BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
       PGDATABASE: grug_test
       DB_HOST: postgres
       CLICKHOUSE_HOST: localhost
