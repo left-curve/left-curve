@@ -4,8 +4,12 @@
   collections:
     - community.docker
   tasks:
-    - syslog:
-        msg: "Deleting deployment {{ deployment_name }}"
+    - name: Log deletion start
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Starting deployment deletion"
+        facility: local0
+        priority: info
+        ident: dango
 
     - name: Load role defaults
       include_vars: "roles/full-app/defaults/main.yml"
@@ -96,8 +100,12 @@
         login_port: "{{ postgres_port }}"
         state: absent
 
-    - syslog:
-        msg: "Deleted postgres database {{ postgres_database }}"
+    - name: Log Postgres deletion
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Deleted Postgres database {{ postgres_database }}"
+        facility: local0
+        priority: info
+        ident: dango
       when: delete_postgres_database_at_merge
 
     - name: Delete clickhouse database
@@ -110,12 +118,20 @@
         login_user: "{{ clickhouse_user }}"
         login_password: "{{ clickhouse_password }}"
 
-    - syslog:
-        msg: "Deleted clickhouse database {{ clickhouse_database }}"
+    - name: Log ClickHouse deletion
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Deleted ClickHouse database {{ clickhouse_database }}"
+        facility: local0
+        priority: info
+        ident: dango
       when: delete_clickhouse_database_at_merge
 
-    - syslog:
-        msg: "Deleted deployment {{ deployment_name }}"
+    - name: Log deletion complete
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Deleted deployment"
+        facility: local0
+        priority: info
+        ident: dango
 
 - hosts: monitoring
   become: true

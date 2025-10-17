@@ -17,8 +17,12 @@
         deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
         timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
 
-    - syslog:
+    - name: Log deployment start
+      community.general.syslogger:
         msg: "[{{ deployment_name }}] Starting deployment"
+        facility: local0
+        priority: info
+        ident: dango
 
     - name: Set system wide cometbft and dango directories
       set_fact:
@@ -101,8 +105,12 @@
         stored_deploy_includes_postgres: "{{ deploy_includes_postgres }}"
         stored_deploy_includes_clickhouse: "{{ deploy_includes_clickhouse }}"
 
-    - syslog:
+    - name: Log deployment complete
+      community.general.syslogger:
         msg: "[{{ deployment_name }}] Finished deployment"
+        facility: local0
+        priority: info
+        ident: dango
 
 - hosts: monitoring
   become: true
