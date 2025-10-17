@@ -23,6 +23,7 @@
         facility: local0
         priority: info
         ident: dango
+      run_once: true
 
     - name: Set system wide cometbft and dango directories
       set_fact:
