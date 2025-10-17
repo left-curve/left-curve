@@ -8,7 +8,7 @@ cometbft_validator_public_key: ""
 cometbft_validator_private_key: ""
 dango_host: "dango"
 cometbft_host: "cometbft"
-cometbft_tag: "v0.38.17"
+cometbft_tag: "v0.38.19"
 cometbft_generate_keys: false
 deploy_env: "staging"
 chain_id: "dev-10"
