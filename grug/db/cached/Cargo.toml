@@ -1,0 +1,20 @@
+[package]
+authors       = { workspace = true }
+categories    = { workspace = true }
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "grug-db-cached"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
+
+[features]
+metrics = ["dep:metrics", "grug-types/metrics"]
+
+[dependencies]
+error-backtrace = { workspace = true }
+grug-app        = { workspace = true }
+grug-types      = { workspace = true }
+metrics         = { workspace = true, optional = true }
+thiserror       = { workspace = true }

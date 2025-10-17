@@ -177,7 +177,7 @@ impl Db for MemDbLite {
     // first (using a `with_read` callback) and do everything that requires a
     // write lock in the end (using a `with_write` callback).
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
-        let (version, hash) = self.with_write(|inner| {
+        let (version, hash) = self.with_read(|inner| {
             if inner.changeset.is_some() {
                 return Err(DbError::change_set_already_set());
             }

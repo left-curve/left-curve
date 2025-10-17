@@ -28,6 +28,7 @@ members = [
   "grug/app",
   "grug/client",
   "grug/crypto",
+  "grug/db/cached",
   "grug/db/disk",
   "grug/db/disk-lite",
   "grug/db/memory",

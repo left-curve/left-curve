@@ -4773,6 +4773,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "grug-db-cached"
+version = "0.0.0"
+dependencies = [
+ "error-backtrace",
+ "grug-app",
+ "grug-types",
+ "metrics",
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "grug-db-disk"
 version = "0.0.0"
 dependencies = [
