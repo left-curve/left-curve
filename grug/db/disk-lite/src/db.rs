@@ -1,11 +1,14 @@
-use std::{ops::Range, sync::RwLockReadGuard};
+use std::{borrow::Cow, ops::Range, sync::RwLockReadGuard};
 
 #[cfg(feature = "metrics")]
 use grug_types::MetricsIterExt;
 use {
     crate::{DbError, DbResult, digest::batch_hash},
-    grug_app::Db,
-    grug_types::{Batch, Empty, Hash256, Op, Order, Record, SharedIter, Storage},
+    grug_app::{CONTRACT_NAMESPACE, Db},
+    grug_types::{
+        Addr, Batch, Empty, Hash256, Inner, Op, Order, Record, SharedIter, Storage,
+        increment_last_byte,
+    },
     rangemap::RangeMap,
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
@@ -50,7 +53,7 @@ struct PriorityData {
     /// It map a range of key to a index of the records.
     /// Is not possible to define it as RangeMap<&'static [u8], RwLock<BTreeMap<Vec<u8>, Vec<u8>>>>
     /// becasue the key need to implement Eq + Clone.
-    ranges: RangeMap<&'static [u8], u64>,
+    ranges: RangeMap<Cow<'static, [u8]>, u64>,
     records: BTreeMap<u64, RwLock<BTreeMap<Vec<u8>, Vec<u8>>>>,
 }
 
@@ -59,8 +62,8 @@ impl PriorityData {
         &'a self,
         range: &Range<&[u8]>,
     ) -> Option<RwLockReadGuard<'a, BTreeMap<Vec<u8>, Vec<u8>>>> {
-        if let Some((k, value)) = self.ranges.get_key_value(&range.start) {
-            if k.start <= range.start && k.end >= range.end {
+        if let Some((k, value)) = self.ranges.get_key_value(&Cow::Borrowed(range.start)) {
+            if *k.start <= *range.start && *k.end >= *range.end {
                 return self
                     .records
                     .get(value)
@@ -72,7 +75,7 @@ impl PriorityData {
     }
 
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        if let Some(k) = self.ranges.get(&key) {
+        if let Some(k) = self.ranges.get(&Cow::Borrowed(key)) {
             return self.records.get(k).and_then(|rw| {
                 rw.read()
                     .expect("priority records poisoned")
@@ -86,24 +89,22 @@ impl PriorityData {
 }
 
 impl DiskDbLite {
-    pub fn open<P>(
-        data_dir: P,
-        priority_range: Option<&[(&'static [u8], &'static [u8])]>,
-    ) -> DbResult<Self>
+    pub fn open<P, R>(data_dir: P, priority_range: R) -> DbResult<Self>
     where
         P: AsRef<Path>,
+        R: IntoIterator<Item = (Cow<'static, [u8]>, Cow<'static, [u8]>)>,
     {
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
             (CF_NAME_METADATA, Options::default()),
         ])?;
 
-        let priority_data = if let Some(priority_range) = priority_range {
-            let mut ranges = RangeMap::new();
+        let priority_data = {
+            let mut ranges: RangeMap<Cow<'static, [u8]>, u64> = RangeMap::new();
             let mut records = BTreeMap::new();
 
             for (i, (min, max)) in priority_range.into_iter().enumerate() {
-                let opts = new_read_options(Some(min), Some(max));
+                let opts = new_read_options(Some(&min), Some(&max));
                 let data = db
                     .iterator_cf_opt(&cf_handle(&db, CF_NAME_DEFAULT), opts, IteratorMode::Start)
                     .map(|item| {
@@ -115,17 +116,19 @@ impl DiskDbLite {
                     .collect();
 
                 // Ensure the range does not overlap with existing ranges.
-                if ranges.overlaps(&(*min..*max)) {
+                if ranges.overlaps(&(Cow::Borrowed(&min)..Cow::Borrowed(&max))) {
                     panic!("priority range overlaps with existing range");
                 }
 
-                ranges.insert(*min..*max, i as u64);
+                ranges.insert(min..max, i as u64);
                 records.insert(i as u64, RwLock::new(data));
             }
 
-            Some(PriorityData { ranges, records })
-        } else {
-            None
+            if records.is_empty() {
+                None
+            } else {
+                Some(PriorityData { ranges, records })
+            }
         };
 
         Ok(Self {
@@ -135,6 +138,27 @@ impl DiskDbLite {
                 priority_data,
             }),
         })
+    }
+
+    pub fn open_with_addresses_priority<'a, P, I>(data_dir: P, priority_range: I) -> DbResult<Self>
+    where
+        P: AsRef<Path>,
+        I: IntoIterator<Item = &'a Addr>,
+    {
+        let priority_range = priority_range
+            .into_iter()
+            .map(|addr| {
+                let mut namespace = Vec::with_capacity(CONTRACT_NAMESPACE.len() + Addr::LENGTH);
+                namespace.extend_from_slice(CONTRACT_NAMESPACE);
+                namespace.extend_from_slice(addr.inner());
+                (
+                    Cow::Owned(namespace.clone()),
+                    Cow::Owned(increment_last_byte(namespace)),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        Self::open(data_dir, priority_range)
     }
 }
 
@@ -280,10 +304,10 @@ impl Db for DiskDbLite {
                     .write()
                     .expect("priority records poisoned");
 
-                for (k, op) in pending
-                    .batch
-                    .range::<[u8], _>((Bound::Included(k.start), Bound::Excluded(k.end)))
-                {
+                for (k, op) in pending.batch.range::<[u8], _>((
+                    Bound::Included(k.start.as_ref()),
+                    Bound::Excluded(k.end.as_ref()),
+                )) {
                     if let Op::Insert(v) = op {
                         records.insert(k.clone(), v.clone());
                     } else {

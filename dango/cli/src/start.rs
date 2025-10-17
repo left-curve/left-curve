@@ -39,7 +39,10 @@ impl StartCmd {
         let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Open disk DB.
-        let db = DiskDbLite::open(app_dir.data_dir(), None)?;
+        let db = DiskDbLite::open_with_addresses_priority(
+            app_dir.data_dir(),
+            cfg.grug.priority_addresses.as_deref().unwrap_or_default(),
+        )?;
 
         // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
         let _codes = RustVm::genesis_codes();
