@@ -3,6 +3,7 @@
   become_user: "{{ deploy_user }}"
   collections:
     - community.docker
+    - community.general
   tasks:
     - name: Log deletion start
       community.general.syslogger:
