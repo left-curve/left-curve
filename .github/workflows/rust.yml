@@ -80,7 +80,6 @@ jobs:
         with:
           filters: |
             backend:
-              - '.github/workflows/rust.yml'
               - 'deploy/**'
               - 'dango/**'
               - 'docker/**'
