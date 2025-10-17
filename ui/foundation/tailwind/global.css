@@ -275,7 +275,7 @@ body {
 
 /* Scrollbar styles */
 ::-webkit-scrollbar {
-  width: 6px !important;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
