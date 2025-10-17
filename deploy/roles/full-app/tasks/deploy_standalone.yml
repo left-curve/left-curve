@@ -4,8 +4,6 @@
     project_name: "{{ deployment_name }}"
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
     recreate: always
-    wait: true
-    wait_timeout: 60
     pull: always
   retries: 3
   delay: 5
