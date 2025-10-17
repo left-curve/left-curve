@@ -4,25 +4,28 @@
       label:
         - "com.docker.compose.project={{ deployment_name }}"
   register: cinfo
+  become: true                 # needed if /var/run/docker.sock requires root
+  failed_when: false           # don't hard-fail between retries
+  changed_when: false
   until: >
+    cinfo.containers is defined and
+    (cinfo.containers | length) > 0 and
     (
-      (
-        cinfo.containers |
-        selectattr('State.Health','defined') |
-        selectattr('State.Health.Status','!=','healthy') |
-        list
-      ) | length == 0
-    ) and
-    (
-      (
-        cinfo.containers |
-        rejectattr('State.Health','defined') |
-        selectattr('State.Status','!=','running') |
-        list
-      ) | length == 0
+      (cinfo.containers
+        | selectattr('State.Health','defined')
+        | selectattr('State.Health.Status','!=','healthy')
+        | list | length) == 0
+    ) and (
+      (cinfo.containers
+        | rejectattr('State.Health','defined')
+        | selectattr('State.Status','!=','running')
+        | list | length) == 0
     )
   retries: 10
   delay: 1
+
+- debug: var=cinfo
+  when: cinfo.containers is not defined
 
 - name: Show container health
   debug:
