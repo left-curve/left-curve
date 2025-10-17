@@ -77,7 +77,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
       : "bg-status-fail left-0 lg:-left-4 lg:right-auto";
 
   return (
-    <div className="relative flex-1 diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3">
+    <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3">
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
@@ -142,7 +142,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const asksOrdered = isLg ? [...asks.records].reverse() : [...asks.records];
 
   return (
-    <div className="flex gap-2 flex-col items-center justify-center ">
+    <div className="flex gap-2 flex-col items-center justify-center h-full">
       <div className="flex items-center justify-between w-full">
         <Select value={bucketSize} onChange={(key) => setBucketSize(key)} variant="plain">
           {pair.params.bucketSizes.map((size) => {
@@ -180,14 +180,14 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           {m["dex.protrade.history.total"]({ symbol: bucketSizeSymbol })}
         </p>
       </div>
-      <div className="flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
-        <div className="asks-container flex flex-1 flex-col w-full gap-1 order-2 lg:order-1">
+      <div className="flex-1 h-full flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
+        <div className="asks-container flex flex-1 flex-col w-full gap-1 order-2 lg:order-1 lg:justify-end">
           {asksOrdered.map((ask, i) => (
             <OrderRow key={`ask-${ask.price}-${i}`} type="ask" {...ask} max={asks.total} />
           ))}
         </div>
 
-        <div className="hidden lg:flex  w-full pt-2 pb-[6px] items-center justify-between relative order-2">
+        <div className="hidden lg:flex w-full pt-2 pb-[6px] items-center justify-between relative order-2">
           <p
             className={twMerge(
               "diatype-m-bold relative z-20",

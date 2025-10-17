@@ -85,7 +85,7 @@ function ProTradeApplet() {
         onChangeOrderType={onChangeOrderType}
       >
         <div className="flex flex-col flex-1">
-          <div className="flex flex-col xl:flex-row flex-1 xl:min-h-[60svh]">
+          <div className="flex flex-col xl:flex-row flex-1 xl:min-h-[64svh]">
             <div className="flex flex-col flex-1 justify-end">
               <ProTrade.Header />
               <ProTrade.Chart />
