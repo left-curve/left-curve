@@ -13,6 +13,9 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
     let input_ident = &input.ident;
 
+    let generics = &input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
     let mut impl_from = vec![];
     let mut match_statement = vec![];
     let mut builder_impl = vec![];
@@ -98,7 +101,7 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
                     // type to implement `Backtraceable`).
                     if is_fresh {
                         impl_from.push(quote! {
-                            impl From<#original_ty> for #input_ident {
+                            impl #impl_generics From<#original_ty> for #input_ident #ty_generics #where_clause {
                                 fn from(t: #original_ty) -> Self {
                                     Self::#variant_ident(::error_backtrace::BacktracedError::new(t))
                                 }
@@ -106,7 +109,7 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
                         });
                     } else {
                         impl_from.push(quote! {
-                            impl From<#original_ty> for #input_ident {
+                            impl #impl_generics From<#original_ty> for #input_ident #ty_generics #where_clause {
                                 fn from(t: #original_ty) -> Self {
                                     let bt = ::error_backtrace::Backtraceable::backtrace(&t);
                                     Self::#variant_ident(::error_backtrace::BacktracedError::new_with_bt(t, bt))
@@ -161,7 +164,7 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
         #(#impl_from)*
 
-        impl ::error_backtrace::Backtraceable for #input_ident {
+        impl #impl_generics ::error_backtrace::Backtraceable for #input_ident #ty_generics #where_clause {
             fn into_generic_backtraced_error(self) -> ::error_backtrace::BacktracedError<String> {
                 ::error_backtrace::BacktracedError::new_with_bt(self.to_string(), self.backtrace())
             }
@@ -177,7 +180,7 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
             }
         }
 
-        impl #input_ident {
+        impl #impl_generics #input_ident #ty_generics #where_clause {
             #(#builder_impl)*
         }
 
