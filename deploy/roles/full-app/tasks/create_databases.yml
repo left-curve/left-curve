@@ -36,6 +36,13 @@
         login_host: "{{ postgres_external_host }}"
         login_port: "{{ postgres_port }}"
         state: present
+
+    - name: Log Postgres database creation
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Created Postgres database: {{ postgres_database }} on {{ postgres_external_host }}"
+        facility: local0
+        priority: info
+        ident: dango
   when: not deploy_includes_postgres
 
 - block:
@@ -79,4 +86,11 @@
             max_memory_usage = 32000000000,
             max_memory_usage_for_user = 48000000000,
             max_threads = 12
+
+    - name: Log ClickHouse database creation
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Created ClickHouse database: {{ clickhouse_database }} on {{ clickhouse_external_host }}"
+        facility: local0
+        priority: info
+        ident: dango
   when: not deploy_includes_clickhouse

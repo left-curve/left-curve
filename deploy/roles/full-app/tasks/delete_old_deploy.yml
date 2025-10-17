@@ -34,3 +34,9 @@
         networks: yes
         volumes: yes
         builder_cache: yes
+    - name: Log old deployment cleanup
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Deleted old deployment {{ current_deployment | default('unknown') }} (Postgres={{ delete_postgres_database_at_merge | default(false) }}, ClickHouse={{ delete_clickhouse_database_at_merge | default(false) }})"
+        facility: local0
+        priority: info
+        ident: dango
