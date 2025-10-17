@@ -27,7 +27,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="overflow-hidden z-10 relative p-4 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] h-[27.25rem] lg:min-h-[100%] lg:max-h-[38.875rem] lg:h-full"
+      className="overflow-hidden z-10 relative p-4 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] h-[27.25rem] lg:min-h-[37rem] xl:min-h-[100%] lg:h-full"
     >
       <Tabs
         color="line-red"
