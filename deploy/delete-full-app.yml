@@ -10,6 +10,7 @@
         facility: local0
         priority: info
         ident: dango
+      run_once: true
 
     - name: Load role defaults
       include_vars: "roles/full-app/defaults/main.yml"
