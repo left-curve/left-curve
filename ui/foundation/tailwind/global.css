@@ -237,6 +237,7 @@
   --color-bg-card-green: linear-gradient(98.89deg, #373634 18.76%, #666654 46.73%, #373634 87.62%);
   --color-bg-card-green-2: linear-gradient(0deg, #373634, #373634), linear-gradient(98.89deg, rgba(55, 54, 52, 0.05) 5.88%, rgba(102, 102, 84, 0.05) 46.73%, rgba(55, 54, 52, 0.05) 94.73%);
 }
+
 html {
   scrollbar-gutter: stable;
 }
@@ -274,15 +275,17 @@ body {
 
 /* Scrollbar styles */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 6px !important;
 }
 
 ::-webkit-scrollbar-track {
+   width: 6px;
   background: transparent;
   border-radius: 99999px;
 }
 
 ::-webkit-scrollbar-thumb {
+   width: 6px;
   border-radius: 99999px;
   background: var(--color-outline-secondary-gray);
 }
