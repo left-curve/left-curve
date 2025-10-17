@@ -2,18 +2,26 @@
 set -euo pipefail
 project="${1:?usage: $0 <compose-project>}"
 
-ids="$(docker ps -aq --filter "label=com.docker.compose.project=${project}")"
-[ -n "$ids" ] || { echo "no containers for ${project}"; exit 1; }
+mapfile -t lines < <(docker ps --filter "label=com.docker.compose.project=${project}" \
+  --format "{{.Names}},{{.Status}},{{.State}}")
+
+if [ "${#lines[@]}" -eq 0 ]; then
+  echo "no containers for ${project}"
+  exit 1
+fi
 
 bad=0
-# docker Go templates must be wrapped to avoid Jinja
-while IFS=, read -r name status state; do
+for line in "${lines[@]}"; do
+  IFS=, read -r name status state <<<"$line"
   name="${name#/}"
-  if [[ "$status" != *healthy* && "$state" != running ]]; then
+
+  # Consider healthy ok; any 'unhealthy', 'exited', or 'dead' is fail
+  if [[ "$status" =~ "\(unhealthy\)" ]] || [[ "$state" != "running" ]]; then
     echo "❌ $name -> $status / $state"
     bad=1
   else
     echo "✅ $name -> $status / $state"
   fi
-done < <(docker ps --filter "label=com.docker.compose.project=${project}" --format "{% raw %}{{.Names}},{{.Status}},{{.State}}{% endraw %}")
+done
+
 exit $bad
