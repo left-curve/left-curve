@@ -1,4 +1,4 @@
-import { twMerge, useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { twMerge, useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
@@ -40,6 +40,7 @@ function LayoutApp() {
   const [isScrolled, setIsScrolled] = useState(false);
   const { isLg } = useMediaQuery();
   const router = useRouter();
+  const { isSidebarVisible } = useApp();
 
   const isProSwap = useMemo(() => {
     return router.state.location.pathname.includes("trade");
@@ -62,6 +63,9 @@ function LayoutApp() {
   const { theme } = useTheme();
 
   const isHomePage = location.pathname === "/";
+  const lockedY = Number(document.body.dataset.scrollLockY || 0);
+
+  const effectiveIsScrolled = isSidebarVisible ? lockedY > (isProSwap ? 20 : 70) : isScrolled;
 
   return (
     <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-surface-primary-rice text-ink-secondary-700">
@@ -77,7 +81,7 @@ function LayoutApp() {
       {!isLg ? <div id="quest-banner-mobile" /> : null}
       {!isLg ? <TestnetBanner /> : null}
       <QuestBannerRender />
-      <Header isScrolled={isScrolled} />
+      <Header isScrolled={effectiveIsScrolled} />
       <div className="flex flex-1 items-center justify-start w-full h-full relative flex-col z-30">
         <Outlet />
       </div>

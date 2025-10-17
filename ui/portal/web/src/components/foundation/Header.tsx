@@ -10,7 +10,6 @@ import { TxIndicator } from "./TxIndicator";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { TestnetBanner } from "./TestnetBanner";
-import { useMemo } from "react";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -31,11 +30,13 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   return (
     <header
       className={twMerge(
-        "fixed bottom-0 lg:top-0 left-0 right-0 bg-transparent z-50 transition-all w-full",
+        "fixed bottom-0 lg:top-0 left-0 right-0 bg-transparent z-50 transition-[background,box-shadow] w-full",
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",
-        location.pathname === "/" ? "lg:fixed h-fit " : "lg:sticky flex flex-col items-center",
+        location.pathname === "/"
+          ? "lg:fixed h-fit pr-[6px]"
+          : "lg:sticky flex flex-col items-center",
       )}
     >
       {isLg ? <div id="quest-banner" className="w-full" /> : null}
