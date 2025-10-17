@@ -1,9 +1,12 @@
+use std::{ops::Range, sync::RwLockReadGuard};
+
 #[cfg(feature = "metrics")]
 use grug_types::MetricsIterExt;
 use {
     crate::{DbError, DbResult, digest::batch_hash},
     grug_app::Db,
     grug_types::{Batch, Empty, Hash256, Op, Order, Record, SharedIter, Storage},
+    rangemap::RangeMap,
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -44,15 +47,48 @@ pub(crate) struct PendingData {
 }
 
 struct PriorityData {
-    min: &'static [u8], // inclusive
-    max: &'static [u8], // exclusive
-    records: RwLock<BTreeMap<Vec<u8>, Vec<u8>>>,
+    /// It map a range of key to a index of the records.
+    /// Is not possible to define it as RangeMap<&'static [u8], RwLock<BTreeMap<Vec<u8>, Vec<u8>>>>
+    /// becasue the key need to implement Eq + Clone.
+    ranges: RangeMap<&'static [u8], u64>,
+    records: BTreeMap<u64, RwLock<BTreeMap<Vec<u8>, Vec<u8>>>>,
+}
+
+impl PriorityData {
+    fn get_records<'a>(
+        &'a self,
+        range: &Range<&[u8]>,
+    ) -> Option<RwLockReadGuard<'a, BTreeMap<Vec<u8>, Vec<u8>>>> {
+        if let Some((k, value)) = self.ranges.get_key_value(&range.start) {
+            if k.start <= range.start && k.end >= range.end {
+                return self
+                    .records
+                    .get(value)
+                    .map(|rw| rw.read().expect("priority records poisoned"));
+            }
+        }
+
+        None
+    }
+
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        if let Some(k) = self.ranges.get(&key) {
+            return self.records.get(k).and_then(|rw| {
+                rw.read()
+                    .expect("priority records poisoned")
+                    .get(key)
+                    .cloned()
+            });
+        }
+
+        None
+    }
 }
 
 impl DiskDbLite {
     pub fn open<P>(
         data_dir: P,
-        priority_range: Option<(&'static [u8], &'static [u8])>,
+        priority_range: Option<&[(&'static [u8], &'static [u8])]>,
     ) -> DbResult<Self>
     where
         P: AsRef<Path>,
@@ -62,25 +98,35 @@ impl DiskDbLite {
             (CF_NAME_METADATA, Options::default()),
         ])?;
 
-        // If `priority_range` is specified, load the data in that range into memory.
-        let priority_data = priority_range.map(|(min, max)| {
-            let opts = new_read_options(Some(min), Some(max));
-            let records = db
-                .iterator_cf_opt(&cf_handle(&db, CF_NAME_DEFAULT), opts, IteratorMode::Start)
-                .map(|item| {
-                    let (k, v) = item.unwrap_or_else(|err| {
-                        panic!("failed to load record for priority data: {err}",);
-                    });
-                    (k.to_vec(), v.to_vec())
-                })
-                .collect();
+        let priority_data = if let Some(priority_range) = priority_range {
+            let mut ranges = RangeMap::new();
+            let mut records = BTreeMap::new();
 
-            PriorityData {
-                min,
-                max,
-                records: RwLock::new(records),
+            for (i, (min, max)) in priority_range.into_iter().enumerate() {
+                let opts = new_read_options(Some(min), Some(max));
+                let data = db
+                    .iterator_cf_opt(&cf_handle(&db, CF_NAME_DEFAULT), opts, IteratorMode::Start)
+                    .map(|item| {
+                        let (k, v) = item.unwrap_or_else(|err| {
+                            panic!("failed to load record for priority data: {err}",);
+                        });
+                        (k.to_vec(), v.to_vec())
+                    })
+                    .collect();
+
+                // Ensure the range does not overlap with existing ranges.
+                if ranges.overlaps(&(*min..*max)) {
+                    panic!("priority range overlaps with existing range");
+                }
+
+                ranges.insert(*min..*max, i as u64);
+                records.insert(i as u64, RwLock::new(data));
             }
-        });
+
+            Some(PriorityData { ranges, records })
+        } else {
+            None
+        };
 
         Ok(Self {
             inner: Arc::new(DiskDbLiteInner {
@@ -225,15 +271,24 @@ impl Db for DiskDbLite {
 
         // If priority data exists, apply the change set to it.
         if let Some(data) = &self.inner.priority_data {
-            for (k, op) in pending
-                .batch
-                .range::<[u8], _>((Bound::Included(data.min), Bound::Excluded(data.max)))
-            {
-                let mut records = data.records.write().expect("priority records poisoned");
-                if let Op::Insert(v) = op {
-                    records.insert(k.clone(), v.clone());
-                } else {
-                    records.remove(k);
+            for (k, v) in data.ranges.iter() {
+                let mut records = data
+                    .records
+                    .get(&v)
+                    // safe unwrap because the index is always present in the records map
+                    .unwrap()
+                    .write()
+                    .expect("priority records poisoned");
+
+                for (k, op) in pending
+                    .batch
+                    .range::<[u8], _>((Bound::Included(k.start), Bound::Excluded(k.end)))
+                {
+                    if let Op::Insert(v) = op {
+                        records.insert(k.clone(), v.clone());
+                    } else {
+                        records.remove(k);
+                    }
                 }
             }
         }
@@ -286,8 +341,8 @@ impl StateStorage {
         // If priority data exists, and the iterator range completely falls
         // within the priority range, then create a priority iterator.
         if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
-            if data.min <= min && max <= data.max {
-                return self.create_priority_iterator(&data, min, max, order);
+            if let Some(records) = data.get_records(&(min..max)) {
+                return self.create_priority_iterator(records, min, max, order);
             }
         }
 
@@ -296,13 +351,12 @@ impl StateStorage {
 
     fn create_priority_iterator<'a>(
         &'a self,
-        data: &'a PriorityData,
+        data: RwLockReadGuard<'a, BTreeMap<Vec<u8>, Vec<u8>>>,
         min: &[u8],
         max: &[u8],
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let records = data.records.read().expect("priority records poisoned");
-        Box::new(SharedIter::new(records, Some(min), Some(max), order))
+        Box::new(SharedIter::new(data, Some(min), Some(max), order))
     }
 
     fn create_non_priority_iterator<'a>(
@@ -343,13 +397,8 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the DB.
         if let Some(data) = &self.inner.priority_data {
-            if data.min <= key && key <= data.max {
-                return data
-                    .records
-                    .read()
-                    .expect("priority records poisoned")
-                    .get(key)
-                    .cloned();
+            if let Some(k) = data.read(key) {
+                return Some(k);
             }
         }
 

@@ -4796,6 +4796,7 @@ dependencies = [
  "grug-app",
  "grug-types",
  "metrics",
+ "rangemap",
  "rocksdb",
  "sha2 0.10.9",
  "temp-rocksdb",
@@ -7900,6 +7901,12 @@ checksum = "f703f4665700daf5512dcca5f43afa6af89f09db47fb56be587f80636bda2d41"
 dependencies = [
  "rand_core 0.9.3",
 ]
+
+[[package]]
+name = "rangemap"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f93e7e49bb0bf967717f7bd674458b3d6b0c5f48ec7e3038166026a69fc22223"
 
 [[package]]
 name = "raw-cpuid"

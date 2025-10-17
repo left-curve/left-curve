@@ -161,6 +161,7 @@ pyth-lazer-client           = "=8.4.1"
 pyth-lazer-protocol         = "=0.18.1"
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
+rangemap                    = "1"
 reqwest                     = { version = "0.12", features = ["stream"] }
 reqwest-eventsource         = "0.6.0"
 ripemd                      = "0.1"
