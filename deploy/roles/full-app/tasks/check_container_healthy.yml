@@ -1,6 +1,7 @@
 - name: Collect containers for this compose project
   community.docker.docker_host_info:
     containers: true
+    verbose_output: true
     containers_filters:
       label:
         - "com.docker.compose.project={{ deployment_name }}"
@@ -11,6 +12,7 @@
 - name: Wait until all containers are healthy
   community.docker.docker_host_info:
     containers: true
+    verbose_output: true
     containers_filters:
       label:
         - "com.docker.compose.project={{ deployment_name }}"
