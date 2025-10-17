@@ -44,43 +44,60 @@
     cosign_desired_version: "{{ cosign_release.json.tag_name }}"
     cosign_download_url: "https://github.com/sigstore/cosign/releases/download/{{ cosign_release.json.tag_name }}/cosign-linux-{{ cosign_download_arch }}"
     cosign_checksum_candidates: >-
-      {{ cosign_release.json.assets
-         | selectattr('name', 'regex', 'cosign.*(sha256|checksums.*)')
+      {{ (cosign_release.json.assets | default([]))
+         | selectattr('name', 'defined')
          | list }}
 
 - name: Determine checksum source
+  when: cosign_verify_checksums | default(true)
   ansible.builtin.set_fact:
-    cosign_checksum_url: >-
+    cosign_checksum_arch: >-
       {{ (cosign_checksum_candidates
            | selectattr('name', 'equalto', 'cosign-linux-' ~ cosign_download_arch ~ '.sha256')
            | map(attribute='browser_download_url')
+           | list
            | first)
-         | default(
-            cosign_checksum_candidates
-            | selectattr('name', 'regex', 'cosign[-_]' ~ cosign_version ~ '[-_]?checksums.*')
-            | map(attribute='browser_download_url')
-            | first,
-            true)
-      }}
+         | default('') }}
+    cosign_checksum_generic: >-
+      {{ (cosign_checksum_candidates
+           | selectattr('name', 'equalto', 'cosign_checksums.txt')
+           | map(attribute='browser_download_url')
+           | list
+           | first)
+         | default('') }}
+    cosign_checksum_versioned: >-
+      {{ (cosign_checksum_candidates
+           | selectattr('name', 'regex', 'cosign[-_]?' ~ cosign_version ~ '[-_]?checksums.*')
+           | map(attribute='browser_download_url')
+           | list
+           | first)
+         | default('') }}
+- name: Select checksum URL
+  when: cosign_verify_checksums | default(true)
+  ansible.builtin.set_fact:
+    cosign_checksum_url: >-
+      {{ cosign_checksum_arch
+         or cosign_checksum_generic
+         or cosign_checksum_versioned
+         or '' }}
     cosign_checksum_type: >-
-      {{ 'single'
-         if (cosign_checksum_candidates
-              | selectattr('name', 'equalto', 'cosign-linux-' ~ cosign_download_arch ~ '.sha256'))
-         | list | length > 0
-         else 'manifest' }}
+      {{ 'single' if cosign_checksum_arch else 'manifest' }}
 
 - name: Ensure checksum asset is available
+  when: cosign_verify_checksums | default(true)
   ansible.builtin.assert:
     that:
       - cosign_checksum_url != ''
     fail_msg: "Unable to locate cosign checksum asset for {{ cosign_desired_version }}"
 
 - name: Create temporary directory for cosign download
+  when: cosign_verify_checksums | default(true)
   ansible.builtin.tempfile:
     state: directory
   register: cosign_tmp_dir
 
 - name: Download cosign checksums
+  when: cosign_verify_checksums | default(true)
   ansible.builtin.get_url:
     url: "{{ cosign_checksum_url }}"
     dest: "{{ cosign_tmp_dir.path }}/checksums.txt"
@@ -89,14 +106,19 @@
 - name: Download cosign binary
   become: true
   become_user: root
+  when:
+    - cosign_verify_checksums | default(true)
+    - cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
   ansible.builtin.get_url:
     url: "{{ cosign_download_url }}"
     dest: "{{ cosign_tmp_dir.path }}/cosign"
     mode: "0755"
     force: true
-  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
 
 - name: Extract expected checksum for cosign binary
+  when:
+    - cosign_verify_checksums | default(true)
+    - cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
   ansible.builtin.shell: |
     set -euo pipefail
     if [ "{{ cosign_checksum_type }}" = "single" ]; then
@@ -106,37 +128,56 @@
     fi
   register: cosign_expected_checksum
   changed_when: false
-  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
 
 - name: Validate cosign checksum was found
+  when:
+    - cosign_verify_checksums | default(true)
+    - cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
   ansible.builtin.assert:
     that:
       - cosign_expected_checksum.stdout != ''
     fail_msg: "Unable to parse expected checksum for cosign-linux-{{ cosign_download_arch }}"
-  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
 
 - name: Compute downloaded cosign checksum
+  when:
+    - cosign_verify_checksums | default(true)
+    - cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
   ansible.builtin.command: sha256sum {{ cosign_tmp_dir.path }}/cosign
   register: cosign_actual_checksum
   changed_when: false
-  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
 
 - name: Verify cosign checksum
+  when:
+    - cosign_verify_checksums | default(true)
+    - cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
   ansible.builtin.assert:
     that:
       - (cosign_actual_checksum.stdout.split()[0]) == cosign_expected_checksum.stdout
     fail_msg: "Checksum mismatch for downloaded cosign binary"
-  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
 
 - name: Install verified cosign binary
   become: true
   become_user: root
+  when:
+    - cosign_verify_checksums | default(true)
+    - cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
   ansible.builtin.copy:
     src: "{{ cosign_tmp_dir.path }}/cosign"
     dest: /usr/local/bin/cosign
     mode: "0755"
     remote_src: true
-  when: cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
+
+- name: Download cosign binary without checksum verification
+  become: true
+  become_user: root
+  ansible.builtin.get_url:
+    url: "{{ cosign_download_url }}"
+    dest: /usr/local/bin/cosign
+    mode: "0755"
+    force: true
+  when:
+    - not (cosign_verify_checksums | default(true))
+    - cosign_installed_version is not defined or cosign_installed_version != cosign_desired_version
 
 - name: Verify cosign installation
   ansible.builtin.command: cosign version
