@@ -103,18 +103,24 @@ jobs:
   format:
     name: Format
     needs: [changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     runs-on: [self-hosted]
+    env:
+      BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
     # Don't use this, it raises permissions issues on self hosted runners
     # container:
     #   image: rust:slim
     steps:
+      - name: Skip format (no backend changes)
+        if: env.BACKEND_CHANGED != 'true'
+        run: echo "No backend changes detected. Skipping rustfmt checks."
       - name: Checkout sources
+        if: env.BACKEND_CHANGED == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref }}
 
       - name: Install toolchain
+        if: env.BACKEND_CHANGED == 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
@@ -132,22 +138,30 @@ jobs:
       #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run rustfmt checks
+        if: env.BACKEND_CHANGED == 'true'
         run: rustup run nightly cargo fmt --check --all
 
   check-no-features:
     needs: [backend-test, changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     name: Check compiling without features
     runs-on: self-hosted
+    env:
+      BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
     steps:
+      - name: Skip no-feature check (no backend changes)
+        if: env.BACKEND_CHANGED != 'true'
+        run: echo "No backend changes detected. Skipping no-feature clippy check."
       - uses: actions/checkout@v4
+        if: env.BACKEND_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
 
       - uses: dtolnay/rust-toolchain@stable
+        if: env.BACKEND_CHANGED == 'true'
         with:
           toolchain: stable
       - name: Check without features
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           set -euo pipefail
           for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
@@ -157,10 +171,11 @@ jobs:
 
   backend-test:
     needs: [format, changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     name: Lint + Test
     runs-on: self-hosted
     timeout-minutes: 20
+    env:
+      BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
     permissions:
       id-token: write
       contents: read
@@ -206,12 +221,17 @@ jobs:
           --health-retries 10
           --ulimit nofile=262144:262144
     steps:
+      - name: Skip backend tests (no backend changes)
+        if: env.BACKEND_CHANGED != 'true'
+        run: echo "No backend changes detected. Skipping backend lint/test."
       - name: Checkout sources
+        if: env.BACKEND_CHANGED == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref }}
 
       - name: Install toolchain
+        if: env.BACKEND_CHANGED == 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.88
@@ -232,12 +252,15 @@ jobs:
       #     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run clippy
+        if: env.BACKEND_CHANGED == 'true'
         run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
 
       - name: Build GraphQL schema
+        if: env.BACKEND_CHANGED == 'true'
         run: cargo run -p dango-httpd build_graphql_schema -- ./indexer/client/src/schemas/schema.graphql
 
       - name: Check if schema is up-to-date
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           if ! git diff --exit-code ./indexer/client/src/schemas/schema.graphql; then
             echo "::error::GraphQL schema is out of date. Please run 'just build-graphql-schema' locally and commit the changes."
@@ -245,6 +268,7 @@ jobs:
           fi
 
       - name: Install cargo-llvm-cov
+        if: env.BACKEND_CHANGED == 'true'
         run: cargo install cargo-llvm-cov
 
       # Prior to introducing coverage, we were running tests here like this:
@@ -256,6 +280,7 @@ jobs:
       #
       # Leaving here since coverage takes more time than tests and we might want to revert at some point.
       - name: Run tests and collect coverage
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           mkdir -p target/coverage
           cargo llvm-cov --workspace --all-features \
@@ -264,6 +289,7 @@ jobs:
           RUST_BACKTRACE: 1
 
       - name: Upload coverage to Qlty
+        if: env.BACKEND_CHANGED == 'true'
         uses: qltysh/qlty-action/coverage@v2
         with:
           files: target/coverage/lcov.info
@@ -271,7 +297,6 @@ jobs:
 
   backend-build:
     needs: [backend-test, changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -284,15 +309,22 @@ jobs:
           # - [self-hosted, macOS]
     name: Build backend for ${{ matrix.arch }} on ${{ join(matrix.runner, ', ') }}
     runs-on: ${{ matrix.runner }}
+    env:
+      BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
     permissions:
       packages: write
     steps:
+      - name: Skip backend build (no backend changes)
+        if: env.BACKEND_CHANGED != 'true'
+        run: echo "No backend changes detected. Skipping backend build for ${{ matrix.arch }}."
       - uses: actions/checkout@v4
+        if: env.BACKEND_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
 
       - name: Set build config
         id: config
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           set -euo pipefail
           if [[ "${{ matrix.arch }}" == "amd64" ]]; then
@@ -340,42 +372,51 @@ jobs:
           fi
 
       - name: Install toolchain
+        if: env.BACKEND_CHANGED == 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
 
       - name: Install cross
+        if: env.BACKEND_CHANGED == 'true'
         run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Write Cross.toml
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           echo "[target.${{ steps.config.outputs.target }}]" > Cross.toml
           echo "image = \"${{ steps.config.outputs.image }}\"" >> Cross.toml
 
       - name: Set GIT_COMMIT
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           cp grug/types/src/git_info.rs grug/types/src/git_info.rs.in
           sed "s/{{GIT_COMMIT}}/${{ env.GIT_COMMIT }}/" grug/types/src/git_info.rs.in > grug/types/src/git_info.rs
           rm grug/types/src/git_info.rs.in
 
       - uses: docker/setup-buildx-action@v3
+        if: env.BACKEND_CHANGED == 'true'
 
       - uses: docker/login-action@v3
+        if: env.BACKEND_CHANGED == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/cache@v4
+        if: env.BACKEND_CHANGED == 'true'
         with:
           path: .cross-cache
           key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: pull cross docker builder image
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           docker pull ${{ steps.config.outputs.image }}
 
       - name: build binary with cross
+        if: env.BACKEND_CHANGED == 'true'
         env:
           RUSTFLAGS: "-C debuginfo=2 -C force-frame-pointers=yes"
           CARGO_PROFILE_RELEASE_STRIP: "none"
@@ -386,6 +427,7 @@ jobs:
           cross build --target ${{ steps.config.outputs.target }} --release --verbose
 
       - name: build docker image
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           set -euo pipefail
           docker buildx build \
@@ -398,6 +440,7 @@ jobs:
             -f docker/dango/Dockerfile .
 
       - name: Ensure Dango works
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           docker run --rm ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-${{ steps.config.outputs.suffix }} dango || true
 
@@ -405,10 +448,17 @@ jobs:
     permissions:
       packages: write
     needs: [backend-build, changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    env:
+      BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+    outputs:
+      published: ${{ steps.publish-status.outputs.published }}
     runs-on: [self-hosted]
     steps:
+      - name: Skip backend manifest publish (no backend changes)
+        if: env.BACKEND_CHANGED != 'true'
+        run: echo "No backend changes detected. Skipping backend manifest publish."
       - name: Log in to GHCR
+        if: env.BACKEND_CHANGED == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -416,6 +466,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and push multi-arch Docker manifest
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           docker manifest create ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }} \
             --amend ghcr.io/left-curve/left-curve/dango:${{ env.GIT_COMMIT }}-amd64 \
@@ -438,6 +489,7 @@ jobs:
             docker manifest push --purge ghcr.io/left-curve/left-curve/dango:pr-${{ github.event.pull_request.number }}-latest
           fi
       - name: Docker Deploy Summary
+        if: env.BACKEND_CHANGED == 'true'
         run: |
           echo "# 🐳 Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
           echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
@@ -449,10 +501,19 @@ jobs:
             echo "| **Latest tag:** | [ghcr.io/left-curve/left-curve/dango:latest](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango) |" >> $GITHUB_STEP_SUMMARY
           fi
           echo "| **Architectures** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
+      - name: Record backend manifest publication
+        id: publish-status
+        run: |
+          if [ "${BACKEND_CHANGED}" = "true" ]; then
+            echo "published=true" >> $GITHUB_OUTPUT
+          else
+            echo "published=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          BACKEND_CHANGED: ${{ env.BACKEND_CHANGED }}
 
   frontend-build:
-    needs: [backend-test, changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' && (needs['backend-test'].result == 'success' || needs['backend-test'].result == 'skipped') }}
+    needs: [changes]
     permissions:
       packages: write
     timeout-minutes: 30
@@ -470,14 +531,21 @@ jobs:
     env:
       GITHUB_USER: ${{ github.actor }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
     steps:
+      - name: Skip frontend build (no frontend changes)
+        if: env.FRONTEND_CHANGED != 'true'
+        run: echo "No frontend changes detected. Skipping frontend build for ${{ matrix.arch }}."
       - uses: actions/checkout@v4
+        if: env.FRONTEND_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
 
       - uses: docker/setup-buildx-action@v3
+        if: env.FRONTEND_CHANGED == 'true'
 
       - uses: docker/login-action@v3
+        if: env.FRONTEND_CHANGED == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -485,6 +553,7 @@ jobs:
 
       - name: Set build config
         id: config
+        if: env.FRONTEND_CHANGED == 'true'
         run: |
           set -euo pipefail
           if [[ "${{ matrix.arch }}" == "amd64" ]]; then
@@ -501,6 +570,7 @@ jobs:
           fi
 
       - name: build docker image
+        if: env.FRONTEND_CHANGED == 'true'
         run: |
           set -euo pipefail
           docker buildx build \
@@ -519,10 +589,17 @@ jobs:
     permissions:
       packages: write
     needs: [frontend-build, changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' && (needs['frontend-build'].result == 'success' || needs['frontend-build'].result == 'skipped') }}
+    env:
+      FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
+    outputs:
+      published: ${{ steps.frontend-status.outputs.published }}
     runs-on: [self-hosted]
     steps:
+      - name: Skip frontend manifest publish (no frontend changes)
+        if: env.FRONTEND_CHANGED != 'true'
+        run: echo "No frontend changes detected. Skipping frontend manifest publish."
       - name: Log in to GHCR
+        if: env.FRONTEND_CHANGED == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -530,6 +607,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and push multi-arch Docker manifest
+        if: env.FRONTEND_CHANGED == 'true'
         run: |
           docker manifest create ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }} \
             --amend ghcr.io/left-curve/left-curve/dango-frontend:${{ env.GIT_COMMIT }}-amd64 \
@@ -553,6 +631,7 @@ jobs:
             docker manifest push --purge ghcr.io/left-curve/left-curve/dango-frontend:pr-${{ github.event.pull_request.number }}-latest
           fi
       - name: Frontend Docker Deploy Summary
+        if: env.FRONTEND_CHANGED == 'true'
         run: |
           echo "# 🎨 Frontend Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
           echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
@@ -564,13 +643,22 @@ jobs:
             echo "| **Latest tag:** | [ghcr.io/left-curve/left-curve/dango-frontend:latest](https://github.com/left-curve/left-curve/pkgs/container/left-curve%2Fdango-frontend) |" >> $GITHUB_STEP_SUMMARY
           fi
           echo "| **Architectures** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
+      - name: Record frontend manifest publication
+        id: frontend-status
+        run: |
+          if [ "${FRONTEND_CHANGED}" = "true" ]; then
+            echo "published=true" >> $GITHUB_OUTPUT
+          else
+            echo "published=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          FRONTEND_CHANGED: ${{ env.FRONTEND_CHANGED }}
 
   deploy:
     permissions:
       packages: read
       deployments: write
     needs: [frontend-push-manifest, backend-push-manifest, changes]
-    if: ${{ (needs['backend-push-manifest'].result == 'success' || needs['backend-push-manifest'].result == 'skipped') && (needs['frontend-push-manifest'].result == 'success' || needs['frontend-push-manifest'].result == 'skipped') }}
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -580,15 +668,49 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref }}
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Determine deploy image tag
         run: |
+          set -euo pipefail
           tag="latest"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            if [ "${{ needs['backend-push-manifest'].result }}" = "success" ] || [ "${{ needs['frontend-push-manifest'].result }}" = "success" ]; then
-              tag="pr-${{ github.event.pull_request.number }}-latest"
+          backend_changed="${{ needs.changes.outputs.backend }}"
+          frontend_changed="${{ needs.changes.outputs.frontend }}"
+          backend_published="${{ needs['backend-push-manifest'].outputs.published }}"
+          frontend_published="${{ needs['frontend-push-manifest'].outputs.published }}"
+          run_event="${{ github.event_name }}"
+          backend_repo="ghcr.io/left-curve/left-curve/dango"
+          frontend_repo="ghcr.io/left-curve/left-curve/dango-frontend"
+
+          commit_tag="${{ env.GIT_COMMIT }}"
+          pr_tag=""
+
+          if [ "$backend_published" = "true" ] && [ "$frontend_published" = "true" ]; then
+            tag="$commit_tag"
+          else
+            backend_commit_exists=false
+            frontend_commit_exists=false
+            if docker manifest inspect "${backend_repo}:${commit_tag}" >/dev/null 2>&1; then
+              backend_commit_exists=true
             fi
-          elif [ "${{ needs['backend-push-manifest'].result }}" = "success" ]; then
-            tag="${{ env.GIT_COMMIT }}"
+            if docker manifest inspect "${frontend_repo}:${commit_tag}" >/dev/null 2>&1; then
+              frontend_commit_exists=true
+            fi
+            if [ "$backend_commit_exists" = "true" ] && [ "$frontend_commit_exists" = "true" ]; then
+              tag="$commit_tag"
+            else
+              if [ "$run_event" = "pull_request" ]; then
+                pr_tag="pr-${{ github.event.pull_request.number }}-latest"
+                if docker manifest inspect "${backend_repo}:${pr_tag}" >/dev/null 2>&1 && \
+                   docker manifest inspect "${frontend_repo}:${pr_tag}" >/dev/null 2>&1; then
+                  tag="$pr_tag"
+                fi
+              fi
+            fi
           fi
           echo "Deploy image tag: $tag"
           echo "## Deploy Image Tag" >> $GITHUB_STEP_SUMMARY
@@ -631,21 +753,26 @@ jobs:
     timeout-minutes: 5
     name: Testing localdango
     runs-on: [self-hosted]
-    needs: [frontend-push-manifest, backend-push-manifest]
-    if: ${{ needs['backend-push-manifest'].result == 'success' }}
+    needs: [frontend-push-manifest, backend-push-manifest, changes]
+    env:
+      BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
     permissions:
       packages: read
     steps:
       - uses: actions/checkout@v4
+        if: env.BACKEND_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
       - uses: docker/setup-buildx-action@v3
+        if: env.BACKEND_CHANGED == 'true'
       - uses: docker/login-action@v3
+        if: env.BACKEND_CHANGED == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Ensure localdango works
+        if: env.BACKEND_CHANGED == 'true'
         env:
           DANGO_TAG: ${{ env.GIT_COMMIT }}
           POSTGRES_PORT: 0
@@ -663,7 +790,7 @@ jobs:
             exit 1
           }
       - name: Cleanup
-        if: always()
+        if: env.BACKEND_CHANGED == 'true' && always()
         run: |
           cd networks/localdango
           docker compose --profile dango down -v || true
