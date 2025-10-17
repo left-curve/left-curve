@@ -1,22 +1,32 @@
-- name: Wait until all containers are healthy
-  community.docker.docker_container_info:
-    filters:
+- name: Collect containers for this compose project
+  community.docker.docker_host_info:
+    containers: true
+    containers_filters:
       label:
         - "com.docker.compose.project={{ deployment_name }}"
-  register: cinfo
-  become: true                 # needed if /var/run/docker.sock requires root
-  failed_when: false           # don't hard-fail between retries
+  register: hostinfo
+  failed_when: false
+  changed_when: false
+
+- name: Wait until all containers are healthy
+  community.docker.docker_host_info:
+    containers: true
+    containers_filters:
+      label:
+        - "com.docker.compose.project={{ deployment_name }}"
+  register: hostinfo
+  failed_when: false
   changed_when: false
   until: >
-    cinfo.containers is defined and
-    (cinfo.containers | length) > 0 and
+    hostinfo.containers is defined and
+    (hostinfo.containers | length) > 0 and
     (
-      (cinfo.containers
+      (hostinfo.containers
         | selectattr('State.Health','defined')
         | selectattr('State.Health.Status','!=','healthy')
         | list | length) == 0
     ) and (
-      (cinfo.containers
+      (hostinfo.containers
         | rejectattr('State.Health','defined')
         | selectattr('State.Status','!=','running')
         | list | length) == 0
@@ -24,10 +34,7 @@
   retries: 10
   delay: 1
 
-- debug: var=cinfo
-  when: cinfo.containers is not defined
-
 - name: Show container health
   debug:
-    msg: "{{ item.Name }} -> {{ (item.State.Health.Status | default(item.State.Status)) }}"
-  loop: "{{ cinfo.containers }}"
+    msg: "{{ (item.Names[0] | regex_replace('^/','')) }} -> {{ item.State.Health.Status | default(item.State.Status) }}"
+  loop: "{{ hostinfo.containers }}"
