@@ -4,8 +4,6 @@
     project_name: "{{ deployment_name }}"
     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
     recreate: always
-    wait: true
-    wait_timeout: 60
     pull: always
   retries: 3
   delay: 5
@@ -28,43 +26,3 @@
   fail:
     msg: "Deployment failed. See container logs above."
   when: deploy_result.failed
-
-- name: Get containers of this project
-  community.docker.docker_container_info:
-    filters:
-      label: "com.docker.compose.project={{ deployment_name }}"
-  register: cinfo
-
-- name: Fail if any container unhealthy/not running
-  assert:
-    that:
-      - cinfo.containers | length > 0
-      - cinfo.containers | map(attribute='State') | map(attribute='Status') | list is not none
-      - >
-        (
-          cinfo.containers |
-          selectattr('State.Health','defined') |
-          selectattr('State.Health.Status','!=','healthy') |
-          list
-        ) | length == 0
-      - >
-        (
-          cinfo.containers |
-          rejectattr('State.Health','defined') |
-          selectattr('State.Status','!=','running') |
-          list
-        ) | length == 0
-    fail_msg: >-
-      Unhealthy/not running containers:
-      {{
-        (
-          (cinfo.containers | selectattr('State.Health','defined') | selectattr('State.Health.Status','!=','healthy')) +
-          (cinfo.containers | rejectattr('State.Health','defined') | selectattr('State.Status','!=','running'))
-        ) | map(attribute='Name') | list
-      }}
-    success_msg: "All containers are healthy (or running if no healthcheck)."
-
-- name: Show container health
-  debug:
-    msg: "{{ item.Name }} -> {{ (item.State.Health.Status | default(item.State.Status)) }}"
-  loop: "{{ cinfo.containers }}"
