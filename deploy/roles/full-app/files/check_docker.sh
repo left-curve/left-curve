@@ -16,7 +16,7 @@ for line in "${lines[@]}"; do
   name="${name#/}"
 
   # Consider healthy ok; any 'unhealthy', 'exited', or 'dead' is fail
-  if [[ "$status" =~ "\(unhealthy\)" ]] || [[ "$state" != "running" ]]; then
+  if [[ "$status" =~ unhealthy ]] || [[ "$state" != "running" ]]; then
     echo "❌ $name -> $status / $state"
     bad=1
   else
