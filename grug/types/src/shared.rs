@@ -152,7 +152,7 @@ where
     }
 }
 
-struct SharedIter<'a, S> {
+pub struct SharedIter<'a, S> {
     storage: RwLockReadGuard<'a, S>,
     batch: vec::IntoIter<Record>,
     min: Option<Vec<u8>>,
