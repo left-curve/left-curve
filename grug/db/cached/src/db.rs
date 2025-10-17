@@ -75,7 +75,7 @@ where
     type StateStorage = StateStorage<DB>;
 
     fn state_commitment(&self) -> Self::StateCommitment {
-        unimplemented!("`HybridDb` does not support state commitment");
+        unimplemented!("`CachedDb` does not support state commitment");
     }
 
     fn state_storage(&self, version: Option<u64>) -> Result<Self::StateStorage, Self::Error> {
