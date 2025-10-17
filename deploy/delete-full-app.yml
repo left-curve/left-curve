@@ -134,7 +134,7 @@
         facility: local0
         priority: info
         ident: dango
-
+      run_once: true
 - hosts: monitoring
   become: true
   become_user: "{{ deploy_user }}"
