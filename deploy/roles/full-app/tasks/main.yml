@@ -35,4 +35,4 @@
 - import_tasks: check_cometbft_sync.yml
 - import_tasks: dex_bot.yml
   when: dex_bot_enabled
-
+- import_tasks: check_container_healthy.yml

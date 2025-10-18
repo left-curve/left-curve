@@ -583,7 +583,7 @@ jobs:
           CLICKHOUSE_PORT: 0
           DANGO_PORT: 0
           COMETBFT_PORT: 0
-          COMETBFT_TAG: v0.38.17
+          COMETBFT_TAG: v0.38.19
         run: |
           cd networks/localdango
           docker compose --profile dango down -v
