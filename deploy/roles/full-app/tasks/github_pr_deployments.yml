@@ -38,6 +38,7 @@
       required_contexts: []
     status_code: [200, 201]
   register: deployment_results
+  failed_when: false
   loop:
     - { name: "dango-frontend", description: "Frontend", url: "https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
     - { name: "dango-api", description: "Dango API", url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
@@ -66,7 +67,10 @@
   loop: "{{ deployment_results.results }}"
   loop_control:
     extended: true
-  when: deployment_results.results is defined
+  when:
+    - deployment_results.results is defined
+    - item.json is defined
+    - item.json.id is defined
 
 - name: Add deployment summary to GitHub
   delegate_to: localhost
@@ -88,5 +92,6 @@
     | **CometBFT ABCI** | [http://{{ tailscale_ip }}:{{ cometbft_abci_port }}](http://{{ tailscale_ip }}:{{ cometbft_abci_port }}) |
     | **CometBFT Metrics** | [http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}/metrics](http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}/metrics) |
     | **Deployment name** | `{{ deployment_name }}` |
-    | **Commit** | `{{ dango_image_tag }}` |
+    | **Docker backend tag** | `{{ dango_image_tag }}` |
+    | **Docker frontend tag** | `{{ frontend_image_tag }}` |
     EOF
