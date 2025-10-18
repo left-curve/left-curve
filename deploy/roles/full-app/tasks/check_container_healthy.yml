@@ -26,7 +26,7 @@
   become: false
   shell: |
     cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
-    # 🐳 Container Health
+    # 🐳 Container Health ({{ inventory_hostname }})
     | Container | Status |
     | --------- | ------ |
     {% for line in health.stdout_lines | default([]) %}
