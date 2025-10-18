@@ -7,13 +7,15 @@
     mode: '0755'
 
 - name: Wait up to 10s for containers to be healthy/running
-  ansible.builtin.command: [ '/usr/local/bin/check_docker.sh', '{{ deployment_name }}' ]
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/check_docker.sh
+      - "{{ deployment_name }}"
   register: health
   changed_when: false
   failed_when: false
   until: health.rc == 0
   retries: 10
   delay: 1
-  become: true
 
 - debug: var=health.stdout_lines
