@@ -75,6 +75,10 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
       - name: Determine affected paths
         id: filter
         uses: dorny/paths-filter@v3
