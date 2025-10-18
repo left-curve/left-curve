@@ -63,7 +63,7 @@
   become: false
   shell: |
     cat >> $GITHUB_STEP_SUMMARY << 'EOF'
-    # 🚀 PR Deployment Summary
+    # 🚀 PR Deployment Summary ({{ inventory_hostname }})
     | Name | Result |
     | ---- | ------ |
     | **Status** | ✅ |
@@ -72,5 +72,6 @@
     | **Dango GraphiQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql) |
     | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
     | **Deployment name** | `{{ deployment_name }}` |
-    | **Commit** | `{{ dango_image_tag }}` |
+    | **Docker backend tag** | `{{ dango_image_tag }}` |
+    | **Docker frontend tag** | `{{ frontend_image_tag }}` |
     EOF

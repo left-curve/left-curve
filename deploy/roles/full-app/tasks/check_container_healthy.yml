@@ -19,3 +19,21 @@
   delay: 1
 
 - debug: var=health.stdout_lines
+
+- name: Add container health summary to GitHub
+  delegate_to: localhost
+  connection: local
+  become: false
+  shell: |
+    cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+    # 🐳 Container Health ({{ inventory_hostname }})
+    | Container | Status |
+    | --------- | ------ |
+    {% for line in health.stdout_lines | default([]) %}
+    {% set parts = line.split(' -> ', 1) %}
+    | {{ parts[0] }} | {{ parts[1] if parts|length > 1 else '' }} |
+    {% endfor %}
+    EOF
+  when:
+    - health.stdout_lines is defined
+    - health.stdout_lines | length > 0
