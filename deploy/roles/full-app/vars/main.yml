@@ -1,6 +1,7 @@
 ---
 github_sha: "{{ lookup('pipe','git rev-parse HEAD') }}"
 dango_image_tag: "{{ github_sha }}"
+frontend_image_tag: "{{ github_sha }}"
 dex_bot_tag: "latest"
 cometbft_node_key: ""
 cometbft_validator_address: ""

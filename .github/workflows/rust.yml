@@ -6,7 +6,8 @@ concurrency:
 
 env:
   GIT_COMMIT: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
-  DEPLOY_IMAGE_TAG: latest
+  DEPLOY_BACKEND_IMAGE_TAG: latest
+  DEPLOY_FRONTEND_IMAGE_TAG: latest
 
 on:
   workflow_dispatch:
@@ -658,6 +659,9 @@ jobs:
       packages: read
       deployments: write
     needs: [frontend-push-manifest, backend-push-manifest, changes]
+    outputs:
+      backend_tag: ${{ steps.determine-tags.outputs.backend_tag }}
+      frontend_tag: ${{ steps.determine-tags.outputs.frontend_tag }}
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -674,9 +678,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Determine deploy image tag
+        id: determine-tags
         run: |
           set -euo pipefail
-          tag="latest"
+          backend_tag="latest"
+          frontend_tag="latest"
           backend_changed="${{ needs.changes.outputs.backend }}"
           frontend_changed="${{ needs.changes.outputs.frontend }}"
           backend_published="${{ needs['backend-push-manifest'].outputs.published }}"
@@ -688,35 +694,38 @@ jobs:
           commit_tag="${{ env.GIT_COMMIT }}"
           pr_tag=""
 
-          if [ "$backend_published" = "true" ] && [ "$frontend_published" = "true" ]; then
-            tag="$commit_tag"
-          else
-            backend_commit_exists=false
-            frontend_commit_exists=false
-            if docker manifest inspect "${backend_repo}:${commit_tag}" >/dev/null 2>&1; then
-              backend_commit_exists=true
-            fi
-            if docker manifest inspect "${frontend_repo}:${commit_tag}" >/dev/null 2>&1; then
-              frontend_commit_exists=true
-            fi
-            if [ "$backend_commit_exists" = "true" ] && [ "$frontend_commit_exists" = "true" ]; then
-              tag="$commit_tag"
-            else
-              if [ "$run_event" = "pull_request" ]; then
-                pr_tag="pr-${{ github.event.pull_request.number }}-latest"
-                if docker manifest inspect "${backend_repo}:${pr_tag}" >/dev/null 2>&1 && \
-                   docker manifest inspect "${frontend_repo}:${pr_tag}" >/dev/null 2>&1; then
-                  tag="$pr_tag"
-                fi
-              fi
+          if [ "$backend_published" = "true" ]; then
+            backend_tag="$commit_tag"
+          elif docker manifest inspect "${backend_repo}:${commit_tag}" >/dev/null 2>&1; then
+            backend_tag="$commit_tag"
+          elif [ "$run_event" = "pull_request" ]; then
+            pr_tag="pr-${{ github.event.pull_request.number }}-latest"
+            if docker manifest inspect "${backend_repo}:${pr_tag}" >/dev/null 2>&1; then
+              backend_tag="$pr_tag"
             fi
           fi
-          echo "Deploy image tag: $tag"
-          echo "## Deploy Image Tag" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$frontend_published" = "true" ]; then
+            frontend_tag="$commit_tag"
+          elif docker manifest inspect "${frontend_repo}:${commit_tag}" >/dev/null 2>&1; then
+            frontend_tag="$commit_tag"
+          elif [ "$run_event" = "pull_request" ]; then
+            pr_tag="pr-${{ github.event.pull_request.number }}-latest"
+            if docker manifest inspect "${frontend_repo}:${pr_tag}" >/dev/null 2>&1; then
+              frontend_tag="$pr_tag"
+            fi
+          fi
+          echo "Backend deploy image tag: $backend_tag"
+          echo "Frontend deploy image tag: $frontend_tag"
+          echo "## Deploy Image Tags" >> $GITHUB_STEP_SUMMARY
           echo "| Component | Tag |" >> $GITHUB_STEP_SUMMARY
           echo "| --------- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| backend/frontend | \`$tag\` |" >> $GITHUB_STEP_SUMMARY
-          echo "DEPLOY_IMAGE_TAG=$tag" >> $GITHUB_ENV
+          echo "| backend | \`$backend_tag\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| frontend | \`$frontend_tag\` |" >> $GITHUB_STEP_SUMMARY
+          echo "DEPLOY_BACKEND_IMAGE_TAG=$backend_tag" >> $GITHUB_ENV
+          echo "DEPLOY_FRONTEND_IMAGE_TAG=$frontend_tag" >> $GITHUB_ENV
+          echo "backend_tag=$backend_tag" >> "$GITHUB_OUTPUT"
+          echo "frontend_tag=$frontend_tag" >> "$GITHUB_OUTPUT"
       - name: Check DEPLOY_KEY is set
         run: |
           if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
@@ -741,11 +750,11 @@ jobs:
           cd deploy
 
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": true, "delete_clickhouse_database_at_merge": true, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet"}' -e github_sha=${{ env.GIT_COMMIT }} -e dango_image_tag=${{ env.DEPLOY_IMAGE_TAG }}
+          ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "expose_ports": false, "delete_postgres_database_at_merge": true, "delete_clickhouse_database_at_merge": true, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "chain_id": "dev-9", "deploy_env": "production", "frontend_banner": "You are using devnet"}' -e github_sha=${{ env.GIT_COMMIT }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }}
           fi
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_IMAGE_TAG }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}"}' -e deploy_env=preview
+          ansible-playbook full-app.yml -e dango_network=pr-${{ github.event.pull_request.number }} -e deployment_name=pr-${{ github.event.pull_request.number }} -e github_pr_number=${{ github.event.pull_request.number }} -e github_sha=${{ github.event.pull_request.head.sha }} -e dango_image_tag=${{ env.DEPLOY_BACKEND_IMAGE_TAG }} -e frontend_image_tag=${{ env.DEPLOY_FRONTEND_IMAGE_TAG }} -e '{"expose_ports": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": true, "frontend_banner": "Preview app from PR ${{ github.event.pull_request.number }}"}' -e deploy_env=preview
           fi
 
   localdango:
