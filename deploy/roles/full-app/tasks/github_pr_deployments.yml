@@ -10,7 +10,7 @@
       wait_timer: 0
       reviewers: []
       deployment_branch_policy: null
-    status_code: [200, 201, 202, 404]
+    status_code: [200, 201]
   failed_when: false
   loop:
     - "dango-frontend"
