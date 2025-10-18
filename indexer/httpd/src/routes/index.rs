@@ -45,5 +45,5 @@ pub async fn sentry_raise() -> Result<impl Responder, Error> {
     let err = "NaN".parse::<usize>().unwrap_err();
     sentry::capture_error(&err);
 
-    Ok(HttpResponse::Ok().body("Sending a sentry crash"))
+    Ok(HttpResponse::Ok().body("Sendiing a sentry crash"))
 }
