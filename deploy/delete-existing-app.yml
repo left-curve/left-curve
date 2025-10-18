@@ -58,7 +58,7 @@
 
     - name: Delete clickhouse database
       ignore_errors: true
-      when: delete_postgres_database_at_merge
+      when: delete_clickhouse_database_at_merge
       community.clickhouse.clickhouse_db:
         name: "{{ clickhouse_database }}"
         state: absent
