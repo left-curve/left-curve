@@ -1,27 +1,31 @@
 use {
     assertor::*,
     chrono::{DateTime, TimeDelta},
-    dango_genesis::Contracts,
+    dango_genesis::{Contracts, DexOption, GenesisOption},
     dango_indexer_clickhouse::entities::{
         CandleInterval, candle::Candle, candle_query::CandleQueryBuilder, pair_price::PairPrice,
         pair_price_query::PairPriceQueryBuilder,
     },
     dango_testing::{
-        TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer,
+        Preset, TestAccounts, TestOption, TestSuite, TestSuiteWithIndexer,
         constants::MOCK_GENESIS_TIMESTAMP, setup_test_with_indexer,
+        setup_test_with_indexer_and_custom_genesis,
     },
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateOrderRequest, Direction},
+        dex::{
+            self, CreateOrderRequest, Direction, Geometric, PairParams, PairUpdate,
+            PassiveLiquidity,
+        },
         oracle::{self, PriceSource},
     },
     grug::{
-        BlockInfo, Coin, Coins, Duration, Hash256, Message, MultiplyFraction, NonEmpty, NonZero,
-        NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_6, Udec128_24,
-        Uint128, btree_map, coins,
+        BlockInfo, Bounded, Coin, Coins, Denom, Duration, Hash256, Message, MultiplyFraction,
+        NonEmpty, NonZero, NumberConst, ResultExt, Signer, StdResult, Timestamp, Udec128,
+        Udec128_6, Udec128_24, Uint128, btree_map, coins,
     },
     grug_app::Indexer,
-    std::str::FromStr,
+    std::{collections::BTreeSet, str::FromStr},
 };
 
 #[ignore = "This test is now hanging, should be fixed, the mock feature is not working"]
@@ -349,16 +353,39 @@ async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow:
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_changing_prices() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
-        setup_test_with_indexer(TestOption {
-            // Start at block 0 at 1 second, with a block time of 20 seconds.
-            block_time: Duration::from_seconds(20),
-            genesis_block: BlockInfo {
-                height: 0,
-                timestamp: Timestamp::from_seconds(1),
-                hash: Hash256::ZERO,
+        setup_test_with_indexer_and_custom_genesis(
+            TestOption {
+                // Start at block 0 at 1 second, with a block time of 20 seconds.
+                block_time: Duration::from_seconds(20),
+                genesis_block: BlockInfo {
+                    height: 0,
+                    timestamp: Timestamp::from_seconds(1),
+                    hash: Hash256::ZERO,
+                },
+                ..Default::default()
             },
-            ..Default::default()
-        })
+            GenesisOption {
+                dex: DexOption {
+                    pairs: vec![PairUpdate {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        params: PairParams {
+                            lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                            pool_type: PassiveLiquidity::Geometric(Geometric {
+                                spacing: Udec128::new_percent(1),
+                                ratio: Bounded::new_unchecked(Udec128::new(1)),
+                                limit: 1,
+                            }),
+                            bucket_sizes: BTreeSet::new(),
+                            swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                            min_order_size_quote: Uint128::ZERO,
+                            min_order_size_base: Uint128::ZERO,
+                        },
+                    }],
+                },
+                ..Preset::preset_test()
+            },
+        )
         .await;
 
     // Update dango's oracle price. It isn't used in this test but is required

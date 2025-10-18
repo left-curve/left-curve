@@ -1,8 +1,11 @@
 use {
     dango_dex::{MAX_VOLUME_AGE, VOLUMES, VOLUMES_BY_USER},
-    dango_genesis::Contracts,
+    dango_genesis::{Contracts, DexOption, GenesisOption},
     dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
-    dango_testing::{BridgeOp, TestAccount, TestOption, TestSuite, setup_test_naive},
+    dango_testing::{
+        BridgeOp, Preset, TestAccount, TestOption, TestSuite, setup_test_naive,
+        setup_test_naive_with_custom_genesis,
+    },
     dango_types::{
         account::single::Params,
         account_factory::AccountParams,
@@ -1181,7 +1184,8 @@ fn only_owner_can_create_passive_pool() {
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
-                    min_order_size: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
+                    min_order_size_quote: Uint128::ZERO,
                 },
             }])),
             Coins::new(),
@@ -1205,7 +1209,8 @@ fn only_owner_can_create_passive_pool() {
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
-                    min_order_size: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
+                    min_order_size_quote: Uint128::ZERO,
                 },
             }])),
             Coins::new(),
@@ -1372,10 +1377,11 @@ fn provide_liquidity(
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            pool_type,
                             bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
-                            pool_type,
-                            min_order_size: Uint128::ZERO,
+                            min_order_size_base: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
                         },
                     }])),
                     Coins::new(),
@@ -1488,14 +1494,15 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
-                            bucket_sizes: BTreeSet::new(),
-                            swap_fee_rate: pair_params.swap_fee_rate,
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
                                 limit: 10,
                             }),
-                            min_order_size: Uint128::ZERO,
+                            bucket_sizes: BTreeSet::new(),
+                            swap_fee_rate: pair_params.swap_fee_rate,
+                            min_order_size_base: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
                         },
                     }])),
                     Coins::new(),
@@ -1568,10 +1575,11 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            pool_type: pair_params.pool_type.clone(),
                             bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee),
-                            pool_type: pair_params.pool_type.clone(),
-                            min_order_size: Uint128::ZERO,
+                            min_order_size_base: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
                         },
                     }])),
                     Coins::new(),
@@ -1961,10 +1969,11 @@ fn swap_exact_amount_in(
                                 quote_denom: quote_denom.clone(),
                                 params: PairParams {
                                     lp_denom: pair_params.lp_denom.clone(),
+                                    pool_type: pair_params.pool_type.clone(),
                                     bucket_sizes: BTreeSet::new(),
                                     swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
-                                    pool_type: pair_params.pool_type.clone(),
-                                    min_order_size: Uint128::ZERO,
+                                    min_order_size_base: Uint128::ZERO,
+                                    min_order_size_quote: Uint128::ZERO,
                                 },
                             },
                         ])),
@@ -2433,14 +2442,15 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
-                            bucket_sizes: BTreeSet::new(),
-                            swap_fee_rate: pair_params.swap_fee_rate,
                             pool_type: PassiveLiquidity::Geometric(Geometric {
                                 spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
                                 limit: 10,
                             }),
-                            min_order_size: Uint128::ZERO,
+                            bucket_sizes: BTreeSet::new(),
+                            swap_fee_rate: pair_params.swap_fee_rate,
+                            min_order_size_base: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
                         },
                     }])),
                     Coins::new(),
@@ -2930,7 +2940,8 @@ fn curve_on_orderbook(
                             pool_type,
                             bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: Bounded::new_unchecked(swap_fee_rate),
-                            min_order_size: Uint128::ZERO,
+                            min_order_size_base: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
                         },
                     }])),
                     pool_liquidity.clone(),
@@ -5969,7 +5980,28 @@ fn market_orders_are_sorted_by_price_ascending() {
 /// In this case, we need to handle the cancelation and refund of this order.
 #[test]
 fn refund_left_over_market_bid() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                pairs: vec![PairUpdate {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    params: PairParams {
+                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        pool_type: PassiveLiquidity::Geometric(Geometric {
+                            spacing: Udec128::new_percent(1),
+                            ratio: Bounded::new_unchecked(Udec128::new(1)),
+                            limit: 1,
+                        }),
+                        bucket_sizes: BTreeSet::new(),
+                        swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size_base: Uint128::ZERO,
+                        min_order_size_quote: Uint128::ZERO,
+                    },
+                }],
+            },
+            ..Preset::preset_test()
+        });
 
     // Set maker and taker fee rates to 0 for simplicity
     // TODO: make this configurable in `TestOptions`
@@ -6131,7 +6163,28 @@ fn refund_left_over_market_bid() {
 /// - market ask, price 100, amount 1
 #[test]
 fn refund_left_over_market_ask() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                pairs: vec![PairUpdate {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                    params: PairParams {
+                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        pool_type: PassiveLiquidity::Geometric(Geometric {
+                            spacing: Udec128::new_percent(1),
+                            ratio: Bounded::new_unchecked(Udec128::new(1)),
+                            limit: 1,
+                        }),
+                        bucket_sizes: BTreeSet::new(),
+                        swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                        min_order_size_base: Uint128::ZERO,
+                        min_order_size_quote: Uint128::ZERO,
+                    },
+                }],
+            },
+            ..Preset::preset_test()
+        });
 
     // Set maker and taker fee rates to 0 for simplicity
     // TODO: make this configurable in TestOptions
@@ -7205,6 +7258,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
     ),
     coins! { usdc::DENOM.clone() => 100 },
     Uint128::new(100),
+    Uint128::new(100),
     None;
     "bid equal to minimum order size"
 )]
@@ -7217,6 +7271,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
         NonZero::new_unchecked(Uint128::new(99)), // ceil(198 * 0.5)
     ),
     coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
     Uint128::new(100),
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "bid smaller than minimum order size"
@@ -7231,6 +7286,7 @@ fn decrease_liquidity_depths_minimal_failing_test() {
     ),
     coins! { dango::DENOM.clone() => 200 },
     Uint128::new(100),
+    Uint128::new(100),
     None;
     "ask equal to minimum order size"
 )]
@@ -7244,13 +7300,15 @@ fn decrease_liquidity_depths_minimal_failing_test() {
     ),
     coins! { dango::DENOM.clone() => 198 },
     Uint128::new(100),
+    Uint128::new(100),
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "ask smaller than minimum order size"
 )]
 fn limit_order_minimum_order_size(
     order: CreateOrderRequest,
     funds: Coins,
-    min_order_size: Uint128,
+    min_order_size_base: Uint128,
+    min_order_size_quote: Uint128,
     expected_error: Option<&str>,
 ) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
@@ -7272,10 +7330,11 @@ fn limit_order_minimum_order_size(
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
                             lp_denom: pair_params.lp_denom.clone(),
+                            pool_type: pair_params.pool_type.clone(),
                             bucket_sizes: BTreeSet::new(),
                             swap_fee_rate: pair_params.swap_fee_rate,
-                            pool_type: pair_params.pool_type.clone(),
-                            min_order_size,
+                            min_order_size_base,
+                            min_order_size_quote,
                         },
                     }])),
                     Coins::new(),
@@ -7334,6 +7393,7 @@ fn limit_order_minimum_order_size(
     coins! { dango::DENOM.clone() => 200 },
     coins! { usdc::DENOM.clone() => 100 },
     Uint128::new(100),
+    Uint128::new(100),
     None;
     "bid equal to minimum order size no slippage"
 )]
@@ -7358,6 +7418,7 @@ fn limit_order_minimum_order_size(
     // Even if user send 100 (more than necessary, and satisfies the minimum)
     // the contract needs to still properly reject the order.
     coins! { usdc::DENOM.clone() => 100 },
+    Uint128::new(100),
     Uint128::new(100),
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "bid smaller than minimum order size no slippage"
@@ -7387,6 +7448,7 @@ fn limit_order_minimum_order_size(
     coins! { dango::DENOM.clone() => 200 },
     coins! { usdc::DENOM.clone() => 100 },
     Uint128::new(100),
+    Uint128::new(100),
     None;
     "bid smaller than minimum order size but larger with slippage accounted for"
 )]
@@ -7407,6 +7469,7 @@ fn limit_order_minimum_order_size(
     ),
     coins! { usdc::DENOM.clone() => 100 },
     coins! { dango::DENOM.clone() => 200 },
+    Uint128::new(100),
     Uint128::new(100),
     None;
     "ask equal to minimum order size no slippage"
@@ -7436,6 +7499,7 @@ fn limit_order_minimum_order_size(
     coins! { usdc::DENOM.clone() => 100 },
     coins! { dango::DENOM.clone() => 200 },
     Uint128::new(100),
+    Uint128::new(100),
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "ask equal to minimum order size but smaller with slippage accounted for"
 )]
@@ -7457,6 +7521,7 @@ fn limit_order_minimum_order_size(
     coins! { usdc::DENOM.clone() => 100 },
     coins! { dango::DENOM.clone() => 198 },
     Uint128::new(100),
+    Uint128::new(100),
     Some("order size (99 bridge/usdc) is less than the minimum (100 bridge/usdc)");
     "ask smaller than minimum order size no slippage"
 )]
@@ -7465,7 +7530,8 @@ fn market_order_minimum_order_size(
     market_order: CreateOrderRequest,
     limit_order_funds: Coins,
     market_order_funds: Coins,
-    min_order_size: Uint128,
+    min_order_size_quote: Uint128,
+    min_order_size_base: Uint128,
     expected_error: Option<&str>,
 ) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
@@ -7476,7 +7542,7 @@ fn market_order_minimum_order_size(
             base_denom: dango::DENOM.clone(),
             quote_denom: usdc::DENOM.clone(),
         })
-        .should_succeed_and(|pair_params: &PairParams| {
+        .should_succeed_and(|pair_params| {
             suite
                 .execute(
                     &mut accounts.owner,
@@ -7485,7 +7551,8 @@ fn market_order_minimum_order_size(
                         base_denom: dango::DENOM.clone(),
                         quote_denom: usdc::DENOM.clone(),
                         params: PairParams {
-                            min_order_size,
+                            min_order_size_base,
+                            min_order_size_quote,
                             ..pair_params.clone()
                         },
                     }])),

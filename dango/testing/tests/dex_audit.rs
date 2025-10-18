@@ -85,7 +85,8 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
                         NonZero::new_unchecked(ONE),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                    min_order_size: Uint128::ZERO,
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
                 },
             }])),
             Coins::new(),
@@ -625,7 +626,8 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
                         }),
                         bucket_sizes: BTreeSet::new(),
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size: Uint128::ZERO,
+                        min_order_size_quote: Uint128::ZERO,
+                        min_order_size_base: Uint128::ZERO,
                     },
                 }],
             },
@@ -828,4 +830,28 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             limit: None,
         })
         .should_succeed_and(|orders| orders.is_empty());
+}
+
+#[test]
+fn issue_233_minimum_order_size_cannot_be_circumvented_for_ask_orders() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Create an ask order of one base unit with a price equal to the minimum order size.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateOrderRequest::new_limit(
+                    dango::DENOM.clone(),
+                    usdc::DENOM.clone(),
+                    Direction::Ask,
+                    NonZero::new_unchecked(Price::new(50)),
+                    NonZero::new_unchecked(Uint128::new(1)),
+                )],
+                cancels: None,
+            },
+            coins! { dango::DENOM.clone() => 1 },
+        )
+        .should_fail();
 }

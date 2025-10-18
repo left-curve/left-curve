@@ -29,17 +29,36 @@
     - debug:
         msg: "Calling: {{ provide_liquidity_command }} ; {{ mint_command }}"
 
-    - name: Run both liquidity commands in sequence
-      community.docker.docker_compose_v2_exec:
-        project_name: "{{ deployment_name }}"
-        project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
-        service: dex-bot
-        command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
-        tty: yes
+    # This fails when dex-bot wasn't started
+    # - name: Run both liquidity commands in sequence
+    #   community.docker.docker_compose_v2_exec:
+    #     project_name: "{{ deployment_name }}"
+    #     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    #     service: dex-bot
+    #     command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
+    #     tty: yes
+    #   register: liquidity_result
+    #   retries: 3
+    #   delay: 5
+    #   run_once: true
+
+    - name: Run both liquidity commands in sequence in one-off container
+      community.docker.docker_container:
+        name: "{{ deployment_name }}-dex-bot-liquidity"
+        image: "ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }}"
+        command: >
+          bash -lc '{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0'
+        auto_remove: true
+        detach: false
+        tty: true
+        pull: yes
+        networks:
+          - name: "{{ deployment_name }}_default"
       register: liquidity_result
+      ignore_errors: true
       retries: 3
       delay: 5
-      run_once: true
+      until: liquidity_result is succeeded
 
     - name: Show stdout
       debug:
@@ -84,3 +103,8 @@
   file:
     path: "{{ deployment_dir }}/bot_liquidity_setup_done"
     state: touch
+  when:
+    - liquidity_result is defined
+    - liquidity_result is succeeded
+  run_once: true
+  delegate_to: "{{ dex_bot_host }}"
