@@ -44,18 +44,16 @@ pub(crate) struct PendingData {
 }
 
 struct PriorityData {
-    min: &'static [u8], // inclusive
-    max: &'static [u8], // exclusive
+    min: Vec<u8>, // inclusive
+    max: Vec<u8>, // exclusive
     records: RwLock<BTreeMap<Vec<u8>, Vec<u8>>>,
 }
 
 impl DiskDbLite {
-    pub fn open<P>(
-        data_dir: P,
-        priority_range: Option<(&'static [u8], &'static [u8])>,
-    ) -> DbResult<Self>
+    pub fn open<P, B>(data_dir: P, priority_range: Option<(B, B)>) -> DbResult<Self>
     where
         P: AsRef<Path>,
+        B: AsRef<[u8]>,
     {
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
@@ -64,7 +62,7 @@ impl DiskDbLite {
 
         // If `priority_range` is specified, load the data in that range into memory.
         let priority_data = priority_range.map(|(min, max)| {
-            let opts = new_read_options(Some(min), Some(max));
+            let opts = new_read_options(Some(min.as_ref()), Some(max.as_ref()));
             let records = db
                 .iterator_cf_opt(&cf_handle(&db, CF_NAME_DEFAULT), opts, IteratorMode::Start)
                 .map(|item| {
@@ -81,8 +79,8 @@ impl DiskDbLite {
             );
 
             PriorityData {
-                min,
-                max,
+                min: min.as_ref().to_vec(),
+                max: max.as_ref().to_vec(),
                 records: RwLock::new(records),
             }
         });
@@ -230,10 +228,10 @@ impl Db for DiskDbLite {
 
         // If priority data exists, apply the change set to it.
         if let Some(data) = &self.inner.priority_data {
-            for (k, op) in pending
-                .batch
-                .range::<[u8], _>((Bound::Included(data.min), Bound::Excluded(data.max)))
-            {
+            for (k, op) in pending.batch.range::<[u8], _>((
+                Bound::Included(data.min.as_slice()),
+                Bound::Excluded(data.max.as_slice()),
+            )) {
                 let mut records = data.records.write().expect("priority records poisoned");
                 if let Op::Insert(v) = op {
                     records.insert(k.clone(), v.clone());
@@ -291,7 +289,7 @@ impl StateStorage {
         // If priority data exists, and the iterator range completely falls
         // within the priority range, then create a priority iterator.
         if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
-            if data.min <= min && max <= data.max {
+            if data.min.as_slice() <= min && max <= data.max.as_slice() {
                 return self.create_priority_iterator(data, min, max, order);
             }
         }
@@ -348,7 +346,7 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the DB.
         if let Some(data) = &self.inner.priority_data {
-            if data.min <= key && key <= data.max {
+            if data.min.as_slice() <= key && key <= data.max.as_slice() {
                 return data
                     .records
                     .read()
@@ -509,7 +507,7 @@ mod tests {
     #[test]
     fn disk_db_lite_works() {
         let path = TempDataDir::new("_grug_disk_db_lite_works");
-        let db = DiskDbLite::open(&path, None).unwrap();
+        let db = DiskDbLite::open::<_, Vec<u8>>(&path, None).unwrap();
 
         // Write a 1st batch.
         {
