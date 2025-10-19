@@ -102,6 +102,23 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - 'biome.json'
+      - name: Add detected changes to summary
+        run: |
+          echo "## 🔍 Detected Changes" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Changes Detected |" >> $GITHUB_STEP_SUMMARY
+          echo "| --------- | --------------- |" >> $GITHUB_STEP_SUMMARY
+          backend_status="${{ steps.filter.outputs.backend }}"
+          frontend_status="${{ steps.filter.outputs.frontend }}"
+          if [ "$backend_status" = "true" ]; then
+            echo "| backend | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| backend | ❌ No |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "$frontend_status" = "true" ]; then
+            echo "| frontend | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| frontend | ❌ No |" >> $GITHUB_STEP_SUMMARY
+          fi
 
   format:
     name: Format
