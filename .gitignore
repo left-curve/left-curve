@@ -62,12 +62,16 @@ ui/foundation/paraglide/*
 !ui/foundation/project.inlang/settings.json
 !ui/foundation/project.inlang/project_id
 
-# Data used in testing
+# Data used in tests, examples, or benchmarks
+**/cargo-flamegraph.trace
+**/flamegraph.svg
 **/testdata/
-dango/scripts/examples/blocks
+dango/scripts/examples/blocks*
+dango/scripts/examples/data*
 dango/scripts/examples/*.borsh
 dango/scripts/examples/*.json
 dango/scripts/examples/*.tar
+dango/scripts/examples/*.tar.gz
 !pyth/client/testdata/
 
 # Network data
