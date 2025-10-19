@@ -44,6 +44,7 @@
 - name: Install base packages
   apt:
     name:
+      - rsyslog
       - ufw
       - curl
       - git

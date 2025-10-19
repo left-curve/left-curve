@@ -29,6 +29,8 @@ import {
   createContext,
   useApp,
   Modals,
+  useHeaderHeight,
+  useBodyScrollLock,
 } from "@left-curve/applets-kit";
 import { AnimatePresence } from "framer-motion";
 import { AccountCard } from "./AccountCard";
@@ -103,7 +105,7 @@ const Container: React.FC = () => {
 
   return (
     <AccountMenuProvider value={{ balances: allBalances, totalBalance }}>
-      {isLg ? <Desktop /> : <Mobile />}
+      <AnimatePresence>{isLg ? <Desktop /> : <Mobile />}</AnimatePresence>
     </AccountMenuProvider>
   );
 };
@@ -176,7 +178,9 @@ const Menu: React.FC<AccountMenuProps> = ({ backAllowed }) => {
 
 const Desktop: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
-  const { setSidebarVisibility, isSidebarVisible, isQuestBannerVisible, modal } = useApp();
+  const { setSidebarVisibility, isSidebarVisible, modal } = useApp();
+  const headerHeight = useHeaderHeight();
+  useBodyScrollLock(isSidebarVisible);
 
   useClickAway(menuRef, (e) => {
     if (
@@ -188,19 +192,30 @@ const Desktop: React.FC = () => {
   });
 
   return (
-    <div
-      ref={menuRef}
-      className={twMerge(
-        "transition-all lg:absolute fixed top-0 flex h-[100vh] justify-end z-50 duration-300 w-full lg:max-w-[376px] bg-[linear-gradient(90deg,_rgba(0,_0,_0,_0)_3.2%,_rgba(46,_37,_33,_0.1)_19.64%,_rgba(255,_255,_255,_0.1)_93.91%)]",
-        isSidebarVisible ? "right-0" : "right-[-50vw]",
+    <AnimatePresence>
+      {isSidebarVisible && (
+        <motion.div
+          ref={menuRef}
+          key="desktop-sidebar"
+          initial={{ opacity: 0, x: "50%" }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: "50%" }}
+          transition={{ duration: 0.25, ease: "easeInOut" }}
+          className={twMerge(
+            "fixed bottom-0 right-0 flex h-[100vh] justify-end z-50 w-full lg:max-w-[376px]",
+          )}
+          style={{
+            height: `calc(100% - ${headerHeight - 8 || 60}px)`,
+          }}
+        >
+          <div className="lg:pr-2 lg:py-2 w-full relative z-10 flex items-end">
+            <div className="h-full w-full bg-surface-primary-rice flex flex-col items-center rounded-t-2xl lg:rounded-2xl border border-outline-secondary-gray overflow-hidden">
+              <Menu />
+            </div>
+          </div>
+        </motion.div>
       )}
-    >
-      <div className="lg:pr-2 lg:py-4 w-full relative z-10">
-        <div className="w-full bg-surface-primary-rice flex flex-col items-center h-full rounded-t-2xl lg:rounded-2xl border border-outline-secondary-gray overflow-hidden">
-          <Menu />
-        </div>
-      </div>
-    </div>
+    </AnimatePresence>
   );
 };
 

@@ -19,6 +19,7 @@ import type { AnyCoin, WithAmount } from "../types/coin.js";
 import { useLiveTradesState } from "./useLiveTradesState.js";
 
 export type UseProTradeStateParameters = {
+  m: Record<string, (params: any) => string>;
   action: "buy" | "sell";
   onChangeAction: (action: "buy" | "sell") => void;
   orderType: "limit" | "market";
@@ -38,6 +39,7 @@ export type UseProTradeStateParameters = {
 
 export function useProTradeState(parameters: UseProTradeStateParameters) {
   const {
+    m,
     controllers,
     pairId,
     onChangePairId,
@@ -214,14 +216,25 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         if (!signingClient) throw new Error("No signing client available");
         if (!account) throw new Error("No account found");
 
+        const isBase = baseCoin.denom === availableCoin.denom;
+
         const maxAvailable = balances[availableCoin.denom];
 
         const { baseDenom, quoteDenom } = pairId;
 
-        const parsedAmount =
-          baseCoin.denom === availableCoin.denom
-            ? parseUnits(amount.base, baseCoin.decimals)
-            : parseUnits(amount.quote, quoteCoin.decimals);
+        const parsedQuoteAmount = parseUnits(amount.quote, quoteCoin.decimals);
+
+        if (Decimal(parsedQuoteAmount).lt(pair.params.minOrderSize))
+          throw new Error(
+            m["dex.errors.minimumOrderSize"]({
+              minOrderSize: formatUnits(pair.params.minOrderSize, quoteCoin.decimals),
+              symbol: quoteCoin.symbol,
+            }),
+          );
+
+        const parsedAmount = isBase
+          ? parseUnits(amount.base, baseCoin.decimals)
+          : parsedQuoteAmount;
 
         const orderAmount = Decimal(parsedAmount).gte(maxAvailable) ? maxAvailable : parsedAmount;
 

@@ -10,8 +10,8 @@
     "submit": "Submit",
     "deposit": "Deposit",
     "withdraw": "Withdraw",
-    "signin": "Sign In",
-    "signup": "Sign Up",
+    "signin": "Log In",
+    "signup": "Register",
     "dismiss": "Dismiss",
     "continue": "Continue",
     "back": "Back",
@@ -30,7 +30,7 @@
     "error": "Error",
     "confirm": "Confirm",
     "signinWithDesktop": "Connect Desktop Session",
-    "signinWithSession": "Sign in with session key",
+    "signinWithSession": "Log in with session key",
     "motto": "Dango–the one app for everything DeFi",
     "notWalletDetected": "No wallet detected",
     "overview": "Overview",
@@ -49,7 +49,7 @@
     "testnet": {
       "advice": "you are using testnet",
       "title": "Message from the founder",
-      "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can sign up, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
+      "description": "Thank you for trying out Dango’s first ever testnet!\t\tThe purpose of testnet-1 <b>is</b> for testing the basic infrastructure of Dango chain, including consensus, smart contract engine, and indexer. As such, user-facing features are very limited. The coming testnet-2 (expected in June/July) will add our flagship product, the Dango DEX. Then, testnet-3 (August/September) will add margin trading.\n\nFor now, you can register, open subaccounts, and transfer tokens, that’s it. Upon your first login, you will receive some fake tokens (fake BTC, fake ETH, ...) to play with.\n\nMake sure to complete the Galxe quests[ADD LINK] and mint your limited time NFT!\n\ng🍡"
     },
     "accountMenu": {
       "assets": {
@@ -63,8 +63,8 @@
         "declarations": ["input action"],
         "selectors": ["action"],
         "match": {
-          "action=signin": "Sign in with wallet",
-          "action=signup": "Sign up with wallet"
+          "action=signin": "Log in with wallet",
+          "action=signup": "Register with wallet"
         }
       }
     ],
@@ -73,8 +73,8 @@
         "declarations": ["input action"],
         "selectors": ["action"],
         "match": {
-          "action=signin": "Sign in with Passkey",
-          "action=signup": "Sign up with Passkey"
+          "action=signin": "Log in with Passkey",
+          "action=signup": "Register with Passkey"
         }
       }
     ]
@@ -310,7 +310,7 @@
     },
     "renewSession": {
       "title": "Session expired",
-      "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please sign in again.",
+      "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please log in again.",
       "stayLogout": "Stay logged out"
     },
     "protradeCloseAllOrders": {
@@ -344,7 +344,7 @@
       "lastLogin": "Last login: {time}"
     },
     "errors": {
-      "failedSignInWithDesktop": "Failed to sign in with desktop",
+      "failedSignInWithDesktop": "Failed to log in with desktop",
       "mobileSessionAborted": "Mobile session was aborted",
       "usernameRequired": "Username is required",
       "usernameNotExist": "Username doesn’t exist",
@@ -381,7 +381,7 @@
   },
   "signup": {
     "mobileModal": {
-      "title": "Sign Up Not Available!",
+      "title": "Register Not Available!",
       "description": "Unfortunately, sign-up is not supported on mobile devices. Please use a desktop to complete your sign-up."
     },
     "createAccount": "Create Account",
@@ -420,7 +420,7 @@
             "step=0": "Credential",
             "step=1": "Fund",
             "step=2": "Username",
-            "step=3": "Sign in"
+            "step=3": "Log in"
           }
         }
       ],
@@ -440,10 +440,10 @@
           "declarations": ["input step"],
           "selectors": ["step"],
           "match": {
-            "step=0": "Choose a sign in credential. You can add or remove credentials afterwards.",
+            "step=0": "Choose a log in credential. You can add or remove credentials afterwards.",
             "step=1": "Click the button below to request funds from the faucet for this testnet",
             "step=2": "Your username will be public on-chain and cannot be changed afterwards.",
-            "step=3": "Your user was created and now you can sign in with your new account."
+            "step=3": "Your user was created and now you can log in with your new account."
           }
         }
       ]
@@ -724,7 +724,7 @@
     "connectToMobile": "Connect to Mobile",
     "keyManagement": {
       "title": "Key Management",
-      "description": "Add or remove keys associated with your user profile. You can sign in to Dango with any of these keys.",
+      "description": "Add or remove keys associated with your user profile. You can log in to Dango with any of these keys.",
       "add": "Add",
       "management": {
         "add": {
@@ -853,6 +853,9 @@
           }
         ]
       }
+    },
+    "errors": {
+      "minimumOrderSize": "Order size too small. Minimum order size is {minOrderSize} {symbol}"
     }
   },
   "errors": {

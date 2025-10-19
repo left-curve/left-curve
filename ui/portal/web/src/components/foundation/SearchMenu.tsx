@@ -32,11 +32,7 @@ const SearchMenu: React.FC = () => {
     useSearchBar({
       applets: Object.fromEntries(
         Object.entries(APPLETS).filter(
-          ([appletId]) =>
-            !(
-              (appletId === "earn" || appletId === "devtool") &&
-              import.meta.env.CONFIG_ENVIRONMENT === "test"
-            ),
+          ([appletId]) => !(appletId === "earn" && import.meta.env.CONFIG_ENVIRONMENT === "test"),
         ),
       ),
       favApplets,
@@ -305,18 +301,6 @@ const Body: React.FC<SearchMenuBodyProps> = ({
                   </Command.Item>
                 </Command.Group>
               ) : null}
-              {/*    <Command.Group value="Assets">
-                {[].map((token) => (
-                  <Command.Item
-                    key={token.title}
-                    value={token.title}
-                    className="group"
-                    onSelect={() => [navigate({ to: token.path }), hideMenu()]}
-                  >
-                    <TokenItem {...token} />
-                  </Command.Item>
-                ))}
-              </Command.Group> */}
             </Command.List>
           </motion.div>
         </motion.div>
