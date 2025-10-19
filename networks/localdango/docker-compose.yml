@@ -60,7 +60,7 @@ services:
       retries: 3
 
   frontend:
-    image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
+    image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
     labels:
       <<: *common-labels
     ports:
