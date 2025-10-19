@@ -67,16 +67,16 @@ impl DiskDbLite {
                 .iterator_cf_opt(&cf_handle(&db, CF_NAME_DEFAULT), opts, IteratorMode::Start)
                 .map(|item| {
                     let (k, v) = item.unwrap_or_else(|err| {
-                        panic!("failed to load record for priority data: {err}",);
+                        panic!("failed to load record for priority data: {err}");
                     });
                     (k.to_vec(), v.to_vec())
                 })
                 .collect::<BTreeMap<_, _>>();
 
-            println!(
-                "number of records loaded into priority data: {}",
-                records.len()
-            );
+            #[cfg(feature = "tracing")]
+            {
+                tracing::info!(num_records = records.len(), "Loaded priority data");
+            }
 
             PriorityData {
                 min: min.as_ref().to_vec(),
