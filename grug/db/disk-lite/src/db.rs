@@ -50,7 +50,7 @@ struct PriorityData {
 }
 
 impl DiskDbLite {
-    pub fn open<P, B>(data_dir: P, priority_range: Option<(B, B)>) -> DbResult<Self>
+    pub fn open<P, B>(data_dir: P, priority_range: Option<&(B, B)>) -> DbResult<Self>
     where
         P: AsRef<Path>,
         B: AsRef<[u8]>,
