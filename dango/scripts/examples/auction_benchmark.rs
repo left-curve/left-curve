@@ -127,7 +127,7 @@ fn main() -> anyhow::Result<()> {
 
     println!(
         "time elapsed per block: {} ms",
-        (duration.as_micros() as u64) / (UNTIL_HEIGHT - FROM_HEIGHT) / 1000
+        (duration.as_micros() as f64) / ((UNTIL_HEIGHT - FROM_HEIGHT) as f64) / 1000.
     );
 
     // Delete the data folder.
