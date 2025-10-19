@@ -63,6 +63,8 @@ ui/foundation/paraglide/*
 !ui/foundation/project.inlang/project_id
 
 # Data used in tests, examples, or benchmarks
+**/cargo-flamegraph.trace
+**/flamegraph.svg
 **/testdata/
 dango/scripts/examples/blocks*
 dango/scripts/examples/data*
