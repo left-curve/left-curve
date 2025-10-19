@@ -3587,6 +3587,7 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
+ "grug-db-disk-lite",
  "grug-db-memory-lite",
  "grug-vm-rust",
  "hex-literal",
