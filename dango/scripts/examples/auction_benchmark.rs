@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Load the DB. As a basic sanity check, ensure the DB version equals `FROM_HEIGHT`.
-    let db = DiskDbLite::open(&data, Some((&PRIORITY_MIN, &PRIORITY_MAX)))?;
+    let db = DiskDbLite::open(&data, Some(&(PRIORITY_MIN, PRIORITY_MAX)))?;
 
     ensure!(
         db.latest_version()

@@ -17,7 +17,7 @@ fn main() -> anyhow::Result<()> {
 
     let indexer_path = IndexerPath::Dir(cwd.clone());
 
-    let db = DiskDbLite::open(cwd.join("data"), None)?;
+    let db = DiskDbLite::open::<_, Vec<u8>>(cwd.join("data"), None)?;
 
     let _codes = RustVm::genesis_codes();
 
