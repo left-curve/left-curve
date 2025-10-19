@@ -11,7 +11,7 @@
 //! ```
 
 use {
-    anyhow::{anyhow, ensure},
+    anyhow::ensure,
     dango_genesis::GenesisCodes,
     grug::{Block, BorshDeExt, Hash256, Query},
     grug_app::{App, Db, NaiveProposalPreparer, NullIndexer},
@@ -33,12 +33,16 @@ fn main() -> anyhow::Result<()> {
     if !data.exists() {
         println!("data folder not found. attempting to uncompress tarball...");
 
-        std::process::Command::new("tar")
+        let result = std::process::Command::new("tar")
             .arg("-xzf")
             .arg(cwd.join(format!("data-{FROM_HEIGHT}.tar.gz")).as_os_str())
             .current_dir(&cwd)
-            .output()
-            .map_err(|err| anyhow!("failed to uncompress tarball: {err}"))?;
+            .output();
+
+        ensure!(
+            result.as_ref().is_ok_and(|output| output.status.success()),
+            "failed to uncompress tarball: {result:?}"
+        );
     }
 
     // Load the DB. As a basic sanity check, ensure the DB version equals `FROM_HEIGHT`.
