@@ -37,3 +37,9 @@
   when:
     - health.stdout_lines is defined
     - health.stdout_lines | length > 0
+
+- name: Fail if containers are not healthy after retries
+  ansible.builtin.fail:
+    msg: >-
+      Some containers are unhealthy or not running after waiting. See the Container Health summary above for details.
+  when: health.rc != 0
