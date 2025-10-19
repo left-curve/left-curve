@@ -287,7 +287,7 @@ impl StateStorage {
         // within the priority range, then create a priority iterator.
         if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
             if data.min <= min && max <= data.max {
-                return self.create_priority_iterator(&data, min, max, order);
+                return self.create_priority_iterator(data, min, max, order);
             }
         }
 
