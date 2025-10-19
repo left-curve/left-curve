@@ -73,7 +73,12 @@ impl DiskDbLite {
                     });
                     (k.to_vec(), v.to_vec())
                 })
-                .collect();
+                .collect::<BTreeMap<_, _>>();
+
+            println!(
+                "number of records loaded into priority data: {}",
+                records.len()
+            );
 
             PriorityData {
                 min,

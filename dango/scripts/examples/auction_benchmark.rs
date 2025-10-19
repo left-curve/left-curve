@@ -27,7 +27,15 @@ const UNTIL_HEIGHT: u64 = 652000; // inclusive
 
 const PRIORITY_MIN: [u8; 24] = hex!("7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"); // equals b"wasm" + the dex contract address
 
-const PRIORITY_MAX: [u8; 24] = hex!("7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740"); // equals b"wasm" + increase_last_byte(the dex contract address)
+const PRIORITY_MAX: [u8; 24] = hex!("7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740"); // equals b"wasm" + increment_last_byte(the dex contract address)
+
+// Use the following min/max to only load the `dango_dex::state::ORDERS` map:
+//
+// min = b"wasm" + the dex contract address + len(b"order") as u16 + b"order"
+//     = 7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f00056f72646572
+//
+// max = equals b"wasm" + the dex contract address + 05 + increment_last_byte(b"order")
+//     = 7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f00056f72646573
 
 fn main() -> anyhow::Result<()> {
     let cwd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
