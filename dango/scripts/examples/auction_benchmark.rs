@@ -46,7 +46,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Load the DB. As a basic sanity check, ensure the DB version equals `FROM_HEIGHT`.
-    let db = DiskDbLite::open(data)?;
+    let db = DiskDbLite::open(data, None)?;
 
     ensure!(
         db.latest_version()
