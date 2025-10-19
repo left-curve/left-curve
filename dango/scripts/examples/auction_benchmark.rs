@@ -99,8 +99,6 @@ fn main() -> anyhow::Result<()> {
         );
 
         app.do_commit()?;
-
-        println!("commit block {}", block.info.height);
     }
 
     // Stop the timer.
