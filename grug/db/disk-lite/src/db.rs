@@ -50,6 +50,20 @@ struct PriorityData {
 }
 
 impl DiskDbLite {
+    /// Create a new instance of `DiskDbLite` by opening a RocksDB folder on-disk.
+    ///
+    /// ## Parameters
+    ///
+    /// - `data_dir`: Path of the RocksDB data directory.
+    ///
+    /// - `priority_range`: An optional range of keys; if provided, all records
+    ///   within thie range are loaded into an in-memory B-tree map. Reading or
+    ///   iterating records within this range enjoys higher performance, thanks
+    ///   to not having to access the disk, at the cost of higher memory usage.
+    ///
+    /// In Dango, we use `priority_range` for the DEX contract. We observe a
+    /// >10x performance enhancement compared to not using it (from 43 to 3.9
+    /// milliseconds per block). See `examples/auction_benchmark.rs` in dango-scripts.
     pub fn open<P, B>(data_dir: P, priority_range: Option<&(B, B)>) -> DbResult<Self>
     where
         P: AsRef<Path>,
@@ -62,6 +76,9 @@ impl DiskDbLite {
 
         // If `priority_range` is specified, load the data in that range into memory.
         let priority_data = priority_range.map(|(min, max)| {
+            #[cfg(feature = "tracing")]
+            let mut size = 0;
+
             let opts = new_read_options(Some(min.as_ref()), Some(max.as_ref()));
             let records = db
                 .iterator_cf_opt(&cf_handle(&db, CF_NAME_DEFAULT), opts, IteratorMode::Start)
@@ -69,13 +86,19 @@ impl DiskDbLite {
                     let (k, v) = item.unwrap_or_else(|err| {
                         panic!("failed to load record for priority data: {err}");
                     });
+
+                    #[cfg(feature = "tracing")]
+                    {
+                        size += k.len() + v.len();
+                    }
+
                     (k.to_vec(), v.to_vec())
                 })
                 .collect::<BTreeMap<_, _>>();
 
             #[cfg(feature = "tracing")]
             {
-                tracing::info!(num_records = records.len(), "Loaded priority data");
+                tracing::info!(num_records = records.len(), size, "Loaded priority data");
             }
 
             PriorityData {
@@ -288,8 +311,9 @@ impl StateStorage {
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // If priority data exists, and the iterator range completely falls
         // within the priority range, then create a priority iterator.
+        // Note: `min` is inclusive, while `max` is exclusive.
         if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
-            if data.min.as_slice() <= min && max <= data.max.as_slice() {
+            if data.min.as_slice() <= min && max < data.max.as_slice() {
                 return self.create_priority_iterator(data, min, max, order);
             }
         }
@@ -344,9 +368,10 @@ impl Storage for StateStorage {
         let duration = std::time::Instant::now();
 
         // If the key falls in the priority data range, read the value from
-        // priority data, without accessing the DB.
+        // priority data, without accessing the disk.
+        // Note: `min` is inclusive, while `max` is exclusive.
         if let Some(data) = &self.inner.priority_data {
-            if data.min.as_slice() <= key && key <= data.max.as_slice() {
+            if data.min.as_slice() <= key && key < data.max.as_slice() {
                 return data
                     .records
                     .read()
