@@ -64,8 +64,8 @@ ui/foundation/paraglide/*
 
 # Data used in tests, examples, or benchmarks
 **/testdata/
-dango/scripts/examples/blocks
-dango/scripts/examples/data
+dango/scripts/examples/blocks*
+dango/scripts/examples/data*
 dango/scripts/examples/*.borsh
 dango/scripts/examples/*.json
 dango/scripts/examples/*.tar

@@ -3,21 +3,14 @@
 //! This is to be used in the benchmark for auction performance.
 
 use {
-    grug::{Block, BorshSerExt, Hash256},
+    grug::BorshSerExt,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
-    std::{collections::BTreeMap, path::PathBuf},
+    std::path::PathBuf,
 };
 
 const FROM_HEIGHT: u64 = 650001; // inclusive
 
 const UNTIL_HEIGHT: u64 = 652000; // inclusive
-
-#[grug::derive(Borsh)]
-struct BlockToReplay {
-    block: Block,
-    /// The expected state root hash after executing this block.
-    app_hash: Hash256,
-}
 
 fn main() -> anyhow::Result<()> {
     let cwd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
@@ -28,12 +21,9 @@ fn main() -> anyhow::Result<()> {
         .into_iter()
         .map(|height| {
             let block_to_index = BlockToIndex::load_from_disk(indexer_path.block_path(height))?;
-            Ok((height, BlockToReplay {
-                block: block_to_index.block,
-                app_hash: block_to_index.block_outcome.app_hash,
-            }))
+            Ok((block_to_index.block, block_to_index.block_outcome.app_hash))
         })
-        .collect::<indexer_sql::Result<BTreeMap<_, _>>>()?;
+        .collect::<indexer_sql::Result<Vec<_>>>()?;
 
     std::fs::write(
         cwd.join(format!("blocks-{FROM_HEIGHT}-{UNTIL_HEIGHT}.borsh")),

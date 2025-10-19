@@ -1,0 +1,117 @@
+//! A benchmark measuring how the chain handles Dango's spot DEX auctions.
+//!
+//! We arbitrarily choose the blocks 650,001-652,000 in testnet-3. This scripts
+//! loads the state right after finalizing the block 650,000, and replays the
+//! 2,000 blocks.
+//!
+//! Make sure to run in `--release` mode:
+//!
+//! ```bash
+//! cargo run -p dango-scripts --example auction_benchmark --release
+//! ```
+
+use {
+    anyhow::{anyhow, ensure},
+    dango_genesis::GenesisCodes,
+    grug::{Block, BorshDeExt, Hash256, Query},
+    grug_app::{App, Db, NaiveProposalPreparer, NullIndexer},
+    grug_db_disk_lite::DiskDbLite,
+    grug_vm_rust::RustVm,
+    std::path::PathBuf,
+};
+
+const FROM_HEIGHT: u64 = 650000; // inclusive
+
+const UNTIL_HEIGHT: u64 = 652000; // inclusive
+
+fn main() -> anyhow::Result<()> {
+    let cwd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
+
+    // Load the DB. If the DB doesn't exist, look for the compressed file and
+    // uncompress it.
+    let data = cwd.join("data");
+    if !data.exists() {
+        println!("data folder not found. attempting to uncompress tarball...");
+
+        std::process::Command::new("tar")
+            .arg("-xzf")
+            .arg(cwd.join(format!("data-{FROM_HEIGHT}.tar.gz")).as_os_str())
+            .current_dir(&cwd)
+            .output()
+            .map_err(|err| anyhow!("failed to uncompress tarball: {err}"))?;
+    }
+
+    // Load the DB. As a basic sanity check, ensure the DB version equals `FROM_HEIGHT`.
+    let db = DiskDbLite::open(data)?;
+
+    ensure!(
+        db.latest_version()
+            .is_some_and(|version| version == FROM_HEIGHT),
+        "db version doesn't match the from height"
+    );
+
+    println!("loaded db");
+
+    // Create the app. As a basic sanity check, ensure the app's last finalized
+    // block height equals `FROM_HEIGHT`.
+    let _codes = RustVm::genesis_codes();
+    let app = App::new(
+        db,
+        RustVm::new(),
+        NaiveProposalPreparer,
+        NullIndexer,
+        u64::MAX,
+        None,
+    );
+
+    ensure!(
+        app.do_query_app(Query::status(), 0, false)?
+            .as_status()
+            .last_finalized_block
+            .height
+            == FROM_HEIGHT,
+        "last finalized block height doesn't match the from height"
+    );
+
+    println!("created app");
+
+    // Load the blocks.
+    let blocks_and_hashes =
+        std::fs::read(cwd.join(format!("blocks-{}-{UNTIL_HEIGHT}.borsh", FROM_HEIGHT + 1)))?
+            .deserialize_borsh::<Vec<(Block, Hash256)>>()?;
+
+    // Start the timer.
+    let start = std::time::Instant::now();
+
+    // Execute the blocks.
+    for (block, app_hash) in blocks_and_hashes {
+        let block_outcome = app.do_finalize_block(block.clone())?;
+
+        ensure!(
+            block_outcome.height == block.info.height,
+            "block height mismatch"
+        );
+
+        ensure!(
+            block_outcome.app_hash == app_hash,
+            "app hash mismatch at height {}",
+            block.info.height
+        );
+
+        app.do_commit()?;
+
+        println!("commit block {}", block.info.height);
+    }
+
+    // Stop the timer.
+    let duration = start.elapsed();
+
+    println!("time elapsed: {} seconds", duration.as_secs_f64());
+
+    println!(
+        "time elapsed per block: {} ms",
+        (duration.as_micros() as u64) / (UNTIL_HEIGHT - FROM_HEIGHT) / 1000
+    );
+
+    Ok(())
+}
