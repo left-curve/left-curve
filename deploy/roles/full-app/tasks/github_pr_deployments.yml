@@ -92,6 +92,4 @@
     | **CometBFT ABCI** | [http://{{ tailscale_ip }}:{{ cometbft_abci_port }}](http://{{ tailscale_ip }}:{{ cometbft_abci_port }}) |
     | **CometBFT Metrics** | [http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}/metrics](http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}/metrics) |
     | **Deployment name** | `{{ deployment_name }}` |
-    | **Docker backend tag** | `{{ dango_image_tag }}` |
-    | **Docker frontend tag** | `{{ frontend_image_tag }}` |
     EOF
