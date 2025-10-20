@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { View } from "react-native";
 import {
   AccountCard,
@@ -7,10 +8,12 @@ import {
   IconAddCross,
   IconLogOut,
   IconSwitch,
+  Tabs,
 } from "~/components/foundation";
 
 export default function AccountMenuScreen() {
   const { navigate } = useRouter();
+  const [activeTab, setActiveTab] = useState("wallet");
 
   return (
     <View className="flex-1 flex bg-surface-primary-rice w-full flex-col gap-8 px-4 py-6">
@@ -54,6 +57,15 @@ export default function AccountMenuScreen() {
             size="icon"
             onPress={() => navigate("/signin")}
             leftIcon={<IconLogOut className="w-5 h-5" />}
+          />
+        </View>
+        <View className="flex-row gap-2 w-full min-h-[30px]">
+          <Tabs
+            color="line-red"
+            selectedTab={activeTab}
+            keys={["wallet", "activities"]}
+            fullWidth
+            onTabChange={setActiveTab}
           />
         </View>
       </View>
