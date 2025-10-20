@@ -34,9 +34,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",
-        location.pathname === "/"
-          ? "lg:fixed h-fit pr-[6px]"
-          : "lg:sticky flex flex-col items-center",
+        location.pathname === "/" ? "lg:fixed h-fit" : "lg:sticky flex flex-col items-center",
       )}
     >
       {isLg ? <div id="quest-banner" className="w-full" /> : null}
