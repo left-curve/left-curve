@@ -509,11 +509,11 @@ jobs:
             docker manifest push --purge ghcr.io/left-curve/left-curve/dango:pr-${{ github.event.pull_request.number }}-latest
           fi
       - name: Install Cosign
-        if: env.BACKEND_CHANGED != 'true'
+        if: env.BACKEND_CHANGED == 'true'
         uses: sigstore/cosign-installer@v3.10.0
       - name: Sign backend images
         id: sign-backend
-        if: env.BACKEND_CHANGED != 'true'
+        if: env.BACKEND_CHANGED == 'true'
         env:
           COSIGN_EXPERIMENTAL: "true"
           COSIGN_YES: "true"
@@ -556,7 +556,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Verify backend signatures
-        if: env.BACKEND_CHANGED != 'true' && ${{ steps.sign-backend.outputs.digests != '' }}
+        if: env.BACKEND_CHANGED == 'true' && ${{ steps.sign-backend.outputs.digests != '' }}
         env:
           COSIGN_EXPERIMENTAL: "true"
           COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@${{ github.ref }}"
