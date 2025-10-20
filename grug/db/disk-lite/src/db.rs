@@ -62,8 +62,9 @@ impl DiskDbLite {
     ///   to not having to access the disk, at the cost of higher memory usage.
     ///
     /// In Dango, we use `priority_range` for the DEX contract. We observe a
-    /// >10x performance enhancement compared to not using it (from 43 to 3.9
-    /// milliseconds per block). See `examples/auction_benchmark.rs` in dango-scripts.
+    /// more than 10x performance enhancement compared to not using it (from 43
+    /// to 3.9 milliseconds per block). See `examples/auction_benchmark.rs` in
+    /// dango-scripts.
     pub fn open<P, B>(data_dir: P, priority_range: Option<&(B, B)>) -> DbResult<Self>
     where
         P: AsRef<Path>,
