@@ -681,7 +681,7 @@ jobs:
     permissions:
       packages: write
       id-token: write
-    needs: [frontend-build]
+    needs: [frontend-build, changes]
     env:
       FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
     outputs:
@@ -819,7 +819,7 @@ jobs:
 
   security-artifacts:
     name: Generate SBOMs and Scan Images
-    needs: [backend-push-manifest, frontend-push-manifest]
+    needs: [backend-push-manifest, frontend-push-manifest, changes]
     runs-on: ubuntu-latest
     permissions:
       contents: read
