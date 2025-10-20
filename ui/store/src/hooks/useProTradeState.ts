@@ -279,7 +279,10 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     action,
     changeAction,
     history,
-    orders,
+    orders: {
+      ...orders,
+      data: orders.data ? orders.data : [],
+    },
     submission,
     type: "spot",
   };

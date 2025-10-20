@@ -91,7 +91,7 @@ const HeaderPrice: React.FC<HeaderPriceProps> = ({ pairId }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const { orderBookStore } = useOrderBookState({ pairId, subscribe: true });
+  const { orderBookStore } = useOrderBookState({ pairId });
 
   const previousPrice = orderBookStore((s) => s.previousPrice);
   const currentPrice = orderBookStore((s) => s.currentPrice);
