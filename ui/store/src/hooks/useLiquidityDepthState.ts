@@ -10,6 +10,7 @@ import { Decimal } from "@left-curve/dango/utils";
 
 import {
   Direction,
+  type StatusResponse,
   type Directions,
   type LiquidityDepth,
   type LiquidityDepthResponse,
@@ -66,19 +67,27 @@ type LiquidityDepthOverview = {
 };
 
 export type LiquidityDepthStoreState = {
+  lastUpdatedBlockHeight: string;
   bucketSizeCoin: "base" | "quote";
   setBucketSizeCoin: (symbol: "base" | "quote") => void;
   liquidityDepth?: {
     asks: LiquidityDepthOverview;
     bids: LiquidityDepthOverview;
   };
-  setLiquidityDepth: (liquidityDepth: LiquidityDepthStoreState["liquidityDepth"]) => void;
+  setLiquidityDepth: (
+    liquidityDepth: LiquidityDepthStoreState["liquidityDepth"] & { blockHeight: string },
+  ) => void;
 };
 
-const liquidityDepthStore = create<LiquidityDepthStoreState>((set) => ({
+const liquidityDepthStore = create<LiquidityDepthStoreState>((set, get) => ({
+  lastUpdatedBlockHeight: "0",
   bucketSizeCoin: "base",
   setBucketSizeCoin: (bucketSizeCoin) => set(() => ({ bucketSizeCoin })),
-  setLiquidityDepth: (liquidityDepth) => set(() => ({ liquidityDepth })),
+  setLiquidityDepth: ({ blockHeight, ...liquidityDepth }) => {
+    const { lastUpdatedBlockHeight } = get();
+    if (+blockHeight <= +lastUpdatedBlockHeight) return;
+    set({ liquidityDepth, lastUpdatedBlockHeight: blockHeight });
+  },
 }));
 
 type UseLiquidityDepthStateParameters = {
@@ -105,21 +114,29 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
       params: {
         interval: 1,
         request: snakeCaseJsonSerialization<QueryRequest>({
-          wasmSmart: {
-            contract: addresses.dex,
-            msg: {
-              liquidityDepth: {
-                baseDenom: baseCoin.denom,
-                quoteDenom: quoteCoin.denom,
-                bucketSize,
+          multi: [
+            {
+              status: {},
+            },
+            {
+              wasmSmart: {
+                contract: addresses.dex,
+                msg: {
+                  liquidityDepth: {
+                    baseDenom: baseCoin.denom,
+                    quoteDenom: quoteCoin.denom,
+                    bucketSize,
+                  },
+                },
               },
             },
-          },
+          ],
         }),
       },
       listener: (event) => {
-        type Event = { wasmSmart: LiquidityDepthResponse };
-        const { wasmSmart: liquidityDepth } = camelCaseJsonDeserialization<Event>(event);
+        type Event = [{ status: StatusResponse }, { wasmSmart: LiquidityDepthResponse }];
+        const [{ status }, { wasmSmart: liquidityDepth }] =
+          camelCaseJsonDeserialization<Event>(event);
 
         const asks = liquidityDepthMapper({
           records: liquidityDepth.askDepth || [],
@@ -137,7 +154,7 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
           bucketRecords,
         });
 
-        setLiquidityDepth({ asks, bids });
+        setLiquidityDepth({ asks, bids, blockHeight: status.lastFinalizedBlock.height });
       },
     });
     return unsubscribe;

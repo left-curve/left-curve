@@ -9,6 +9,7 @@ export type {
   QueryCodeRequest,
   QueryConfigRequest,
   QuerySupplyRequest,
+  QueryStatusRequest,
   QueryRequest,
   QueryResponse,
   QuerySuppliesRequest,
@@ -23,6 +24,7 @@ export type {
   ContractResponse,
   ContractsResponse,
   AppConfigResponse,
+  StatusResponse,
 } from "./queries.js";
 
 export type {
