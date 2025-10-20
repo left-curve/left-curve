@@ -100,7 +100,7 @@ type UseLiquidityDepthStateParameters = {
 
 export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParameters) {
   const { pairId, subscribe, bucketSize, bucketRecords } = parameters;
-  const { subscriptions, coins } = useConfig();
+  const { subscriptions, coins, captureError } = useConfig();
   const { data: appConfig } = useAppConfig();
 
   const baseCoin = coins.byDenom[pairId.baseDenom];
@@ -163,7 +163,7 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
           });
 
           setLiquidityDepth({ asks, bids, blockHeight: status.lastFinalizedBlock.height });
-        } else throw new Error("Failed to fetch liquidity depth data");
+        } else captureError(new Error("Failed to fetch liquidity depth data"));
       },
     });
     return unsubscribe;

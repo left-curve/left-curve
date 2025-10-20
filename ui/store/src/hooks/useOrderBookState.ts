@@ -50,7 +50,7 @@ const orderBookStore = create<OrderBookStoreState>((set, get) => ({
 
 export function useOrderBookState(parameters: UseOrderBookStateParameters) {
   const { pairId, subscribe } = parameters;
-  const { subscriptions, coins } = useConfig();
+  const { subscriptions, coins, captureError } = useConfig();
   const { data: appConfig } = useAppConfig();
 
   const { setState } = orderBookStore();
@@ -95,7 +95,7 @@ export function useOrderBookState(parameters: UseOrderBookStateParameters) {
           );
 
           setState({ orderBook, currentPrice, blockHeight: status.lastFinalizedBlock.height });
-        } else throw new Error("Failed to fetch resting order book data");
+        } else captureError(new Error("Failed to fetch resting order book data"));
       },
     });
 

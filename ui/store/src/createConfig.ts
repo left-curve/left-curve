@@ -373,6 +373,10 @@ export function createConfig<
     getCoinInfo,
     getAppConfig,
     getClient,
+    captureError(error: unknown) {
+      if (onError) onError(error);
+      else console.error(error);
+    },
     get state() {
       return store.getState();
     },
