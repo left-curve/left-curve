@@ -93,9 +93,15 @@
     - name: Load clickhouse vars
       include_vars: "roles/full-app/vars/included_clickhouse.yml"
       when: deploy_includes_clickhouse
-    - name: Select cosign identity for deployment
+    - name: Select cosign identity for deployment (PR)
       set_fact:
-        cosign_identity_current: "{{ github_pr_number is defined | ternary(cosign_identity_pr_template % {'pr_number': github_pr_number}, cosign_identity_main) }}"
+        cosign_identity_current: "{{ cosign_identity_pr_template % {'pr_number': github_pr_number} }}"
+      when: github_pr_number is defined
+
+    - name: Select cosign identity for deployment (main)
+      set_fact:
+        cosign_identity_current: "{{ cosign_identity_main }}"
+      when: github_pr_number is not defined
     - name: Build cosign verification image list
       set_fact:
         deploy_cosign_images:
