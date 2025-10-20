@@ -2,14 +2,21 @@ import { Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit"
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
-import { Direction } from "@left-curve/dango/types";
+import { Direction, type PairId } from "@left-curve/dango/types";
+import {
+  liquidityDepthStore,
+  useLiquidityDepthState,
+  useLiveTradesState,
+  useOrderBookState,
+  type useProTradeState,
+} from "@left-curve/store";
 import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
-import type { useProTradeState } from "@left-curve/store";
+import type { AnyCoin } from "@left-curve/store/types";
 
 type OrderBookOverviewProps = {
   state: ReturnType<typeof useProTradeState>;
@@ -109,37 +116,12 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
 };
 
 const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
-  const { isLg } = useMediaQuery();
-  const {
-    baseCoin,
-    quoteCoin,
-    liquidityDepthStore,
-    orderBookStore,
-    pair,
-    bucketSize,
-    setBucketSize,
-  } = state;
+  const { baseCoin, quoteCoin, pair, pairId, bucketRecords, bucketSize, setBucketSize } = state;
 
-  const { liquidityDepth, bucketSizeCoin, setBucketSizeCoin } = liquidityDepthStore();
-  const previousPrice = orderBookStore((s) => s.previousPrice);
-  const currentPrice = orderBookStore((s) => s.currentPrice);
-  const orderBook = orderBookStore((s) => s.orderBook);
+  const bucketSizeCoin = liquidityDepthStore((s) => s.bucketSizeCoin);
+  const setBucketSizeCoin = liquidityDepthStore((s) => s.setBucketSizeCoin);
+
   const bucketSizeSymbol = bucketSizeCoin === "base" ? baseCoin.symbol : quoteCoin.symbol;
-
-  const spreadCalc = useMemo(() => {
-    if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice || !orderBook?.midPrice) return null;
-    const spread = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
-    const spreadPercent = spread.div(orderBook.midPrice).times(100);
-    return { spread, spreadPercent };
-  }, [orderBook]);
-
-  if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
-
-  const { bids, asks } = liquidityDepth;
-
-  const asksOrdered = isLg ? [...asks.records].reverse() : [...asks.records];
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center h-full">
@@ -180,39 +162,13 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           {m["dex.protrade.history.total"]({ symbol: bucketSizeSymbol })}
         </p>
       </div>
-      <div className="flex-1 h-full flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
-        <div className="asks-container flex flex-1 flex-col w-full gap-1 order-2 lg:order-1 lg:justify-end">
-          {asksOrdered.map((ask, i) => (
-            <OrderRow key={`ask-${ask.price}-${i}`} type="ask" {...ask} max={asks.total} />
-          ))}
-        </div>
-
-        <div className="hidden lg:flex w-full pt-2 pb-[6px] items-center justify-between relative order-2">
-          <p
-            className={twMerge(
-              "diatype-m-bold relative z-20",
-              Decimal(previousPrice).lte(currentPrice) ? "text-status-fail" : "text-status-success",
-            )}
-          >
-            {formatNumber(currentPrice || "0", formatNumberOptions)}
-          </p>
-          <div className="flex flex-col items-end text-ink-tertiary-500 relative z-20">
-            <p className="diatype-xxs-medium">{m["dex.protrade.spread"]()}</p>
-            <p className="diatype-xxs-medium">
-              {!spreadCalc
-                ? "n/a"
-                : `${formatNumber(+spreadCalc.spread.mul(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals)).toFixed(), formatNumberOptions)} (${formatNumber(spreadCalc.spreadPercent.toFixed(), formatNumberOptions)}%)`}
-            </p>
-          </div>
-          <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
-        </div>
-
-        <div className="bid-container flex flex-1 flex-col w-full gap-1 order-1 lg:order-3">
-          {[...bids.records].map((bid, i) => (
-            <OrderRow key={`bid-${bid.price}-${i}`} type="bid" {...bid} max={bids.total} />
-          ))}
-        </div>
-      </div>
+      <LiquidityDepth
+        pairId={pairId}
+        bucketSize={bucketSize}
+        bucketRecords={bucketRecords}
+        base={baseCoin}
+        quote={quoteCoin}
+      />
     </div>
   );
 };
@@ -221,7 +177,8 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
   const { formatNumberOptions, timeFormat } = settings;
-  const { baseCoin, quoteCoin, liveTradesStore } = state;
+  const { baseCoin, quoteCoin, pairId } = state;
+  const { liveTradesStore } = useLiveTradesState({ pairId, subscribe: true });
 
   const trades = liveTradesStore((s) => s.trades);
 
@@ -274,6 +231,100 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
           );
         })}
       </div>
+    </div>
+  );
+};
+
+type LiquidityDepthProps = {
+  pairId: PairId;
+  bucketSize: string;
+  bucketRecords: number;
+  base: AnyCoin;
+  quote: AnyCoin;
+};
+
+const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
+  pairId,
+  bucketSize,
+  bucketRecords,
+  base,
+  quote,
+}) => {
+  const { isLg } = useMediaQuery();
+  const { liquidityDepthStore } = useLiquidityDepthState({
+    subscribe: true,
+    pairId,
+    bucketSize,
+    bucketRecords,
+  });
+
+  const { liquidityDepth } = liquidityDepthStore();
+
+  if (!liquidityDepth) return <Spinner fullContainer size="md" color="pink" />;
+
+  const { bids, asks } = liquidityDepth;
+
+  const asksOrdered = isLg ? [...asks.records].reverse() : [...asks.records];
+  return (
+    <div className="flex-1 h-full flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
+      <div className="asks-container flex flex-1 flex-col w-full gap-1 order-2 lg:order-1 lg:justify-end">
+        {asksOrdered.map((ask, i) => (
+          <OrderRow key={`ask-${ask.price}-${i}`} type="ask" {...ask} max={asks.total} />
+        ))}
+      </div>
+
+      <Spread pairId={pairId} base={base} quote={quote} />
+
+      <div className="bid-container flex flex-1 flex-col w-full gap-1 order-1 lg:order-3">
+        {[...bids.records].map((bid, i) => (
+          <OrderRow key={`bid-${bid.price}-${i}`} type="bid" {...bid} max={bids.total} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+type SpreadProps = {
+  pairId: PairId;
+  base: AnyCoin;
+  quote: AnyCoin;
+};
+
+const Spread: React.FC<SpreadProps> = ({ pairId, base, quote }) => {
+  const { settings } = useApp();
+  const { formatNumberOptions } = settings;
+
+  const { orderBookStore } = useOrderBookState({ pairId, subscribe: true });
+  const previousPrice = orderBookStore((s) => s.previousPrice);
+  const currentPrice = orderBookStore((s) => s.currentPrice);
+  const orderBook = orderBookStore((s) => s.orderBook);
+
+  const spreadCalc = useMemo(() => {
+    if (!orderBook?.bestAskPrice || !orderBook?.bestBidPrice || !orderBook?.midPrice) return null;
+    const spread = Decimal(orderBook.bestAskPrice).minus(orderBook.bestBidPrice);
+    const spreadPercent = spread.div(orderBook.midPrice).times(100);
+    return { spread, spreadPercent };
+  }, [orderBook]);
+
+  return (
+    <div className="hidden lg:flex w-full pt-2 pb-[6px] items-center justify-between relative order-2">
+      <p
+        className={twMerge(
+          "diatype-m-bold relative z-20",
+          Decimal(previousPrice).lte(currentPrice) ? "text-status-fail" : "text-status-success",
+        )}
+      >
+        {formatNumber(currentPrice || "0", formatNumberOptions)}
+      </p>
+      <div className="flex flex-col items-end text-ink-tertiary-500 relative z-20">
+        <p className="diatype-xxs-medium">{m["dex.protrade.spread"]()}</p>
+        <p className="diatype-xxs-medium">
+          {!spreadCalc
+            ? "n/a"
+            : `${formatNumber(+spreadCalc.spread.mul(Decimal(10).pow(base.decimals - quote.decimals)).toFixed(), formatNumberOptions)} (${formatNumber(spreadCalc.spreadPercent.toFixed(), formatNumberOptions)}%)`}
+        </p>
+      </div>
+      <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
     </div>
   );
 };

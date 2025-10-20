@@ -36,7 +36,7 @@ export type OrderBookStoreState = {
   }) => void;
 };
 
-const orderBookStore = create<OrderBookStoreState>((set, get) => ({
+export const orderBookStore = create<OrderBookStoreState>((set, get) => ({
   lastUpdatedBlockHeight: "0",
   orderBook: null,
   currentPrice: "0",
