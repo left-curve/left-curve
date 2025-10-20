@@ -49,12 +49,12 @@ const urls = {
   },
   dev: {
     faucetUrl: "https://faucet-devnet-ovh2.dango.zone",
-    questUrl: "https://quest-bot-devnet.dango.zone/",
+    questUrl: "https://quest-bot-devnet.dango.zone",
     upUrl: `${chain.urls.indexer}/up`,
   },
   test: {
     faucetUrl: "https://faucet-testnet-ovh2.dango.zone",
-    questUrl: "https://quest-bot-testnet.dango.zone/",
+    questUrl: "https://quest-bot-testnet.dango.zone",
     upUrl: `${chain.urls.indexer}/up`,
   },
 }[environment]!;
