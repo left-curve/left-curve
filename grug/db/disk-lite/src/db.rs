@@ -3,7 +3,8 @@ use grug_types::MetricsIterExt;
 use {
     crate::{DbError, DbResult, digest::batch_hash},
     grug_app::Db,
-    grug_types::{Batch, Empty, Hash256, Op, Order, Record, SharedIter, Storage},
+    grug_types::{Batch, Empty, Hash256, Op, Order, Record, Storage},
+    ouroboros::self_referencing,
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
@@ -12,7 +13,7 @@ use {
         collections::BTreeMap,
         ops::Bound,
         path::Path,
-        sync::{Arc, RwLock},
+        sync::{Arc, RwLock, RwLockReadGuard},
     },
 };
 
@@ -330,7 +331,9 @@ impl StateStorage {
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         let records = data.records.read().expect("priority records poisoned");
-        Box::new(SharedIter::new(records, Some(min), Some(max), order))
+        Box::new(PriorityIter::new(records, |guard| {
+            guard.scan(Some(min), Some(max), order)
+        }))
     }
 
     fn create_non_priority_iterator<'a>(
@@ -469,6 +472,22 @@ impl Storage for StateStorage {
 
     fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
         unreachable!("write function called on read-only storage");
+    }
+}
+
+#[self_referencing]
+struct PriorityIter<'a> {
+    guard: RwLockReadGuard<'a, BTreeMap<Vec<u8>, Vec<u8>>>,
+    #[borrows(guard)]
+    #[covariant]
+    inner: Box<dyn Iterator<Item = Record> + 'this>,
+}
+
+impl<'a> Iterator for PriorityIter<'a> {
+    type Item = Record;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.with_inner_mut(|iter| iter.next())
     }
 }
 

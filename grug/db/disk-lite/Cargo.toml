@@ -18,6 +18,7 @@ error-backtrace = { workspace = true }
 grug-app        = { workspace = true }
 grug-types      = { workspace = true }
 metrics         = { workspace = true, optional = true }
+ouroboros       = { workspace = true }
 rocksdb         = { workspace = true }
 sha2            = { workspace = true }
 tempfile        = { workspace = true }
