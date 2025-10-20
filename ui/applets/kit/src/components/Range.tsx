@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useControlledState } from "@left-curve/foundation";
 
 import { Input } from "./Input";
@@ -21,6 +21,19 @@ const formatInputValue = (num: number, precision: number): string => {
   }
   return num.toFixed(precision);
 };
+
+export function getDynamicStep(maxValue: number, explicitStep?: number): number {
+  if (typeof explicitStep === "number" && explicitStep > 0) return explicitStep;
+  if (!Number.isFinite(maxValue) || maxValue <= 0) return 0.1;
+
+  const idealStep = maxValue / 120;
+  const power = 10 ** Math.floor(Math.log10(idealStep));
+  const base = idealStep / power;
+  const mult = base < 1.5 ? 1 : base < 3.5 ? 2 : base < 7.5 ? 5 : 10;
+  const step = Math.max(mult * power, 1e-6);
+
+  return Number(step.toPrecision(2));
+}
 
 export type StepObject = { value: number; label: string };
 
@@ -47,7 +60,6 @@ export type RangeProps = {
 export const Range: React.FC<RangeProps> = ({
   minValue,
   maxValue,
-  step = 1,
   defaultValue,
   value: controlledValue,
   onChange,
@@ -59,9 +71,11 @@ export const Range: React.FC<RangeProps> = ({
   inputEndContent,
   showPercentage = false,
 }) => {
+  const stepToUse = useMemo(() => getDynamicStep(maxValue), [maxValue]);
+
   const [value, setValue] = useControlledState(controlledValue, onChange, () => {
     const initial = defaultValue !== undefined ? defaultValue : minValue;
-    return clampValueToStep(initial, minValue, maxValue, step);
+    return clampValueToStep(initial, minValue, maxValue, stepToUse);
   });
 
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -84,10 +98,10 @@ export const Range: React.FC<RangeProps> = ({
       const clickPos = clientX - trackRect.left;
       const newValueRatio = Math.max(0, Math.min(1, clickPos / trackRect.width));
       const newValue = minValue + newValueRatio * (maxValue - minValue);
-      const clamped = clampValueToStep(newValue, minValue, maxValue, step);
+      const clamped = clampValueToStep(newValue, minValue, maxValue, stepToUse);
       setValue(clamped);
     },
-    [minValue, maxValue, step, setValue],
+    [minValue, maxValue, stepToUse, setValue],
   );
 
   const handleSliderMouseDown = useCallback(
@@ -134,17 +148,17 @@ export const Range: React.FC<RangeProps> = ({
     switch (event.key) {
       case "ArrowLeft":
       case "ArrowDown":
-        newValue = value - step;
+        newValue = value - stepToUse;
         break;
       case "ArrowRight":
       case "ArrowUp":
-        newValue = value + step;
+        newValue = value + stepToUse;
         break;
       case "PageDown":
-        newValue = value - step * 10;
+        newValue = value - stepToUse * 10;
         break;
       case "PageUp":
-        newValue = value + step * 10;
+        newValue = value + stepToUse * 10;
         break;
       case "Home":
         newValue = minValue;
@@ -159,7 +173,7 @@ export const Range: React.FC<RangeProps> = ({
 
     if (valueChanged) {
       event.preventDefault();
-      const clampedNewValue = clampValueToStep(newValue, minValue, maxValue, step);
+      const clampedNewValue = clampValueToStep(newValue, minValue, maxValue, stepToUse);
       setValue(clampedNewValue);
     }
   };
@@ -171,7 +185,7 @@ export const Range: React.FC<RangeProps> = ({
     } else {
       stepsToDisplay.push({ value: minValue, label: `${minValue}${withInput ? "x" : ""}` });
       const midPoint = Number.parseFloat(
-        ((minValue + maxValue) / 2).toFixed(step.toString().split(".")[1]?.length || 0),
+        ((minValue + maxValue) / 2).toFixed(stepToUse.toString().split(".")[1]?.length || 0),
       );
       if (
         midPoint !== minValue &&
@@ -189,7 +203,7 @@ export const Range: React.FC<RangeProps> = ({
 
   const inputPrecision = Math.max(
     0,
-    step.toString().split(".")[1]?.length || 0,
+    stepToUse.toString().split(".")[1]?.length || 0,
     minValue.toString().split(".")[1]?.length || 0,
     maxValue.toString().split(".")[1]?.length || 0,
   );
@@ -282,7 +296,7 @@ export const Range: React.FC<RangeProps> = ({
             value={formatInputValue(value, inputPrecision)}
             min={minValue}
             max={maxValue}
-            step={step}
+            step={stepToUse}
             disabled={isDisabled}
             placeholder={minValue.toString()}
             endContent={
