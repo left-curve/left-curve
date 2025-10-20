@@ -804,6 +804,16 @@ jobs:
             echo "## 🔏 Signed Image Digests" >> $GITHUB_STEP_SUMMARY
             echo "$DIGEST_TABLE" >> $GITHUB_STEP_SUMMARY
           fi
+      - name: Record frontend manifest publication
+        id: frontend-status
+        run: |
+          if [ "${FRONTEND_CHANGED}" = "true" ]; then
+            echo "published=true" >> $GITHUB_OUTPUT
+          else
+            echo "published=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          FRONTEND_CHANGED: ${{ env.FRONTEND_CHANGED }}
 
   security-artifacts:
     name: Generate SBOMs and Scan Images
@@ -812,7 +822,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
+    # if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install Syft
@@ -841,14 +851,15 @@ jobs:
         env:
           SBOM_DIR: sbom
           REPORT_DIR: vuln-reports
-          TARGET_COMMIT: ${{ env.GIT_COMMIT }}
+          DANGO_TAG: ${{ env.DEPLOY_BACKEND_IMAGE_TAG }}
+          FRONTEND_TAG: ${{ env.DEPLOY_FRONTEND_IMAGE_TAG }}
         run: |
           set -euo pipefail
           mkdir -p "$SBOM_DIR" "$REPORT_DIR"
           failed=false
           images=(
-            "ghcr.io/left-curve/left-curve/dango:${TARGET_COMMIT}"
-            "ghcr.io/left-curve/left-curve/dango-frontend:${TARGET_COMMIT}"
+            "ghcr.io/left-curve/left-curve/dango:${DANGO_TAG}"
+            "ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG}"
           )
           for image in "${images[@]}"; do
             [ -n "$image" ] || continue
@@ -883,16 +894,6 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "- SBOMs generated with Syft v1.13.0" >> "$GITHUB_STEP_SUMMARY"
           echo "- Vulnerability scan performed with Grype v0.81.0 (fail-on=HIGH, only-fixed)" >> "$GITHUB_STEP_SUMMARY"
-      - name: Record frontend manifest publication
-        id: frontend-status
-        run: |
-          if [ "${FRONTEND_CHANGED}" = "true" ]; then
-            echo "published=true" >> $GITHUB_OUTPUT
-          else
-            echo "published=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          FRONTEND_CHANGED: ${{ env.FRONTEND_CHANGED }}
 
   deploy:
     permissions:
