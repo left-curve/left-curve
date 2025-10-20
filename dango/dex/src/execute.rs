@@ -251,19 +251,6 @@ fn provide_liquidity(
             .map_err(|e| anyhow!("mint amount is below the MINIMUM_LIQUIDITY: {e}"))?;
     }
 
-    // Ensure LP mint amount must be non-zero.
-    // Otherwise, we're vulnerable to a griefing attack, for example:
-    // - A new xyk pool is created.
-    // - Attacker adds liquidity to this pool with only one of the two assets.
-    // - Zero LP is minted to the attacker.
-    // - This leads to all subsequent additions of liquidity also have zero LP
-    //   token minted, even with non-zero assets provided.
-    // This was discovered in the Sherlock audit contest (issue #6).
-    ensure!(
-        lp_mint_amount.is_non_zero(),
-        "lp mint amount must be non-zero"
-    );
-
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
 
