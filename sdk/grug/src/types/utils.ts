@@ -135,3 +135,5 @@ export type Flatten<T> = {
 
 export type ValueFunction<TValue, TArg> = (arg: TArg) => TValue;
 export type ValueOrFunction<TValue, TArg> = TValue | ValueFunction<TValue, TArg>;
+
+export type StdResult<R, E = Error> = { Ok: R } | { Err: E };

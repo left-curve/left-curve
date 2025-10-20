@@ -16,6 +16,7 @@ import {
   type LiquidityDepthResponse,
   type PairId,
   type QueryRequest,
+  type StdResult,
 } from "@left-curve/dango/types";
 import type { AnyCoin } from "../types/coin.js";
 import { create } from "zustand";
@@ -134,27 +135,35 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
         }),
       },
       listener: (event) => {
-        type Event = [{ status: StatusResponse }, { wasmSmart: LiquidityDepthResponse }];
-        const [{ status }, { wasmSmart: liquidityDepth }] =
-          camelCaseJsonDeserialization<Event>(event);
+        type Event = [
+          StdResult<{ status: StatusResponse }>,
+          StdResult<{ wasmSmart: LiquidityDepthResponse }>,
+        ];
 
-        const asks = liquidityDepthMapper({
-          records: liquidityDepth.askDepth || [],
-          direction: Direction.Sell,
-          coins: { base: baseCoin, quote: quoteCoin },
-          bucketSizeCoin,
-          bucketRecords,
-        });
+        const [statusResponse, liquidityDepthResponse] = camelCaseJsonDeserialization<Event>(event);
 
-        const bids = liquidityDepthMapper({
-          records: liquidityDepth.bidDepth || [],
-          direction: Direction.Buy,
-          coins: { base: baseCoin, quote: quoteCoin },
-          bucketSizeCoin,
-          bucketRecords,
-        });
+        if ("Ok" in statusResponse && "Ok" in liquidityDepthResponse) {
+          const { status } = statusResponse.Ok;
+          const { wasmSmart: liquidityDepth } = liquidityDepthResponse.Ok;
 
-        setLiquidityDepth({ asks, bids, blockHeight: status.lastFinalizedBlock.height });
+          const asks = liquidityDepthMapper({
+            records: liquidityDepth.askDepth || [],
+            direction: Direction.Sell,
+            coins: { base: baseCoin, quote: quoteCoin },
+            bucketSizeCoin,
+            bucketRecords,
+          });
+
+          const bids = liquidityDepthMapper({
+            records: liquidityDepth.bidDepth || [],
+            direction: Direction.Buy,
+            coins: { base: baseCoin, quote: quoteCoin },
+            bucketSizeCoin,
+            bucketRecords,
+          });
+
+          setLiquidityDepth({ asks, bids, blockHeight: status.lastFinalizedBlock.height });
+        } else throw new Error("Failed to fetch liquidity depth data");
       },
     });
     return unsubscribe;

@@ -127,6 +127,7 @@ export type {
   ValueFunction,
   ValueOrFunction,
   Require,
+  StdResult,
 } from "./utils.js";
 
 export type {
