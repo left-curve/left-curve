@@ -17,12 +17,25 @@ use {
     grug_app::{App, Db, NaiveProposalPreparer, NullIndexer},
     grug_db_disk_lite::DiskDbLite,
     grug_vm_rust::RustVm,
+    hex_literal::hex,
     std::path::PathBuf,
 };
 
 const FROM_HEIGHT: u64 = 650000; // inclusive
 
 const UNTIL_HEIGHT: u64 = 652000; // inclusive
+
+const PRIORITY_MIN: [u8; 24] = hex!("7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"); // equals b"wasm" + the dex contract address
+
+const PRIORITY_MAX: [u8; 24] = hex!("7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740"); // equals b"wasm" + increment_last_byte(the dex contract address)
+
+// Use the following min/max to only load the `dango_dex::state::ORDERS` map:
+//
+// min = b"wasm" + the dex contract address + len(b"order") as u16 + b"order"
+//     = 7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f00056f72646572
+//
+// max = equals b"wasm" + the dex contract address + 05 + increment_last_byte(b"order")
+//     = 7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f00056f72646573
 
 fn main() -> anyhow::Result<()> {
     let cwd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
@@ -46,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Load the DB. As a basic sanity check, ensure the DB version equals `FROM_HEIGHT`.
-    let db = DiskDbLite::open(data)?;
+    let db = DiskDbLite::open(&data, Some(&(PRIORITY_MIN, PRIORITY_MAX)))?;
 
     ensure!(
         db.latest_version()
@@ -84,6 +97,8 @@ fn main() -> anyhow::Result<()> {
         std::fs::read(cwd.join(format!("blocks-{}-{UNTIL_HEIGHT}.borsh", FROM_HEIGHT + 1)))?
             .deserialize_borsh::<Vec<(Block, Hash256)>>()?;
 
+    println!("loaded blocks");
+
     // Start the timer.
     let start = std::time::Instant::now();
 
@@ -112,8 +127,11 @@ fn main() -> anyhow::Result<()> {
 
     println!(
         "time elapsed per block: {} ms",
-        (duration.as_micros() as u64) / (UNTIL_HEIGHT - FROM_HEIGHT) / 1000
+        (duration.as_micros() as f64) / ((UNTIL_HEIGHT - FROM_HEIGHT) as f64) / 1000.
     );
+
+    // Delete the data folder.
+    std::fs::remove_dir_all(data)?;
 
     Ok(())
 }
