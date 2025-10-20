@@ -93,32 +93,20 @@
     - name: Load clickhouse vars
       include_vars: "roles/full-app/vars/included_clickhouse.yml"
       when: deploy_includes_clickhouse
-    - name: Select cosign identity for deployment (PR)
-      set_fact:
-        cosign_identity_current: "{{ cosign_identity_pr_template % {'pr_number': github_pr_number} }}"
-      when: github_pr_number is defined
-
-    - name: Select cosign identity for deployment (main)
-      set_fact:
-        cosign_identity_current: "{{ cosign_identity_main }}"
-      when: github_pr_number is not defined
     - name: Build cosign verification image list
       set_fact:
         deploy_cosign_images:
           - service: "dango"
             image: "ghcr.io/left-curve/left-curve/dango"
             tag: "{{ dango_image_tag }}"
-            identity: "{{ cosign_identity_current }}"
             identity_regexp: "{{ cosign_identity_rust_regexp }}"
           - service: "dango-frontend"
             image: "ghcr.io/left-curve/left-curve/dango-frontend"
             tag: "{{ dango_image_tag }}"
-            identity: "{{ cosign_identity_current }}"
             identity_regexp: "{{ cosign_identity_rust_regexp }}"
           - service: "cometbft"
             image: "ghcr.io/left-curve/left-curve/cometbft"
             tag: "{{ cometbft_tag }}"
-            identity: "{{ cosign_identity_cometbft }}"
             identity_regexp: "{{ cosign_identity_cometbft_regexp }}"
   post_tasks:
     - name: Store vars for monitoring

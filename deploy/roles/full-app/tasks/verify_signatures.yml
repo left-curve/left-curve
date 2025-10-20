@@ -10,9 +10,7 @@
   ansible.builtin.command: >
     cosign verify
     --certificate-oidc-issuer {{ cosign_certificate_oidc_issuer }}
-    {{ (item.identity_regexp | default(cosign_certificate_identity_regexp | default(''))) | length > 0
-        | ternary('--certificate-identity-regexp "' ~ (item.identity_regexp | default(cosign_certificate_identity_regexp)) ~ '"',
-                  '--certificate-identity "' ~ (item.identity | default(cosign_certificate_identity)) ~ '"') }}
+    --certificate-identity-regexp "{{ item.identity_regexp | default(cosign_certificate_identity_regexp) }}"
     --output json
     {{ item.image }}:{{ item.tag }}
   register: cosign_verify_results
