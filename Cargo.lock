@@ -4797,11 +4797,13 @@ dependencies = [
  "grug-app",
  "grug-types",
  "metrics",
+ "ouroboros",
  "rocksdb",
  "sha2 0.10.9",
  "temp-rocksdb",
  "tempfile",
  "thiserror 2.0.12",
+ "tracing",
 ]
 
 [[package]]

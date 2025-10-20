@@ -143,7 +143,7 @@ where
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.with_inner_mut(|it| it.next())
+        self.with_inner_mut(|iter| iter.next())
     }
 }
 
