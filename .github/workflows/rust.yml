@@ -558,7 +558,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Verify backend signatures
-        if: env.BACKEND_CHANGED == 'true' && ${{ steps.sign-backend.outputs.digests != '' }}
+        if: ${{ env.BACKEND_CHANGED == 'true' && steps.sign-backend.outputs.digests != '' }}
         env:
           COSIGN_EXPERIMENTAL: "true"
           COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@${{ github.ref }}"
@@ -771,7 +771,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Verify frontend signatures
-        if: env.FRONTEND_CHANGED == 'true' && ${{ steps.sign-frontend.outputs.digests != '' }}
+        if: ${{ env.FRONTEND_CHANGED == 'true' && steps.sign-frontend.outputs.digests != '' }}
         env:
           COSIGN_EXPERIMENTAL: "true"
           COSIGN_IDENTITY: "https://github.com/${{ github.repository }}/.github/workflows/rust.yml@${{ github.ref }}"
@@ -817,9 +817,77 @@ jobs:
         env:
           FRONTEND_CHANGED: ${{ env.FRONTEND_CHANGED }}
 
+  set-image-tags:
+    name: Detect image tags used later
+    needs: [backend-push-manifest, frontend-push-manifest, changes]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    # if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
+    outputs:
+      backend_tag: ${{ steps.determine-tags.outputs.backend_tag }}
+      frontend_tag: ${{ steps.determine-tags.outputs.frontend_tag }}
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Determine deploy image tag
+        id: determine-tags
+        run: |
+          set -euo pipefail
+          backend_tag="latest"
+          frontend_tag="latest"
+          backend_changed="${{ needs.changes.outputs.backend }}"
+          frontend_changed="${{ needs.changes.outputs.frontend }}"
+          backend_published="${{ needs['backend-push-manifest'].outputs.published }}"
+          frontend_published="${{ needs['frontend-push-manifest'].outputs.published }}"
+          run_event="${{ github.event_name }}"
+          backend_repo="ghcr.io/left-curve/left-curve/dango"
+          frontend_repo="ghcr.io/left-curve/left-curve/dango-frontend"
+
+          commit_tag="${{ env.GIT_COMMIT }}"
+          pr_tag=""
+
+          if [ "$backend_published" = "true" ]; then
+            backend_tag="$commit_tag"
+          elif docker manifest inspect "${backend_repo}:${commit_tag}" >/dev/null 2>&1; then
+            backend_tag="$commit_tag"
+          elif [ "$run_event" = "pull_request" ]; then
+            pr_tag="pr-${{ github.event.pull_request.number }}-latest"
+            if docker manifest inspect "${backend_repo}:${pr_tag}" >/dev/null 2>&1; then
+              backend_tag="$pr_tag"
+            fi
+          fi
+
+          if [ "$frontend_published" = "true" ]; then
+            frontend_tag="$commit_tag"
+          elif docker manifest inspect "${frontend_repo}:${commit_tag}" >/dev/null 2>&1; then
+            frontend_tag="$commit_tag"
+          elif [ "$run_event" = "pull_request" ]; then
+            pr_tag="pr-${{ github.event.pull_request.number }}-latest"
+            if docker manifest inspect "${frontend_repo}:${pr_tag}" >/dev/null 2>&1; then
+              frontend_tag="$pr_tag"
+            fi
+          fi
+          echo "Backend deploy image tag: $backend_tag"
+          echo "Frontend deploy image tag: $frontend_tag"
+          echo "## Deploy Image Tags" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Tag |" >> $GITHUB_STEP_SUMMARY
+          echo "| --------- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| backend | \`$backend_tag\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| frontend | \`$frontend_tag\` |" >> $GITHUB_STEP_SUMMARY
+          echo "DEPLOY_BACKEND_IMAGE_TAG=$backend_tag" >> $GITHUB_ENV
+          echo "DEPLOY_FRONTEND_IMAGE_TAG=$frontend_tag" >> $GITHUB_ENV
+          echo "backend_tag=$backend_tag" >> "$GITHUB_OUTPUT"
+          echo "frontend_tag=$frontend_tag" >> "$GITHUB_OUTPUT"
+
   security-artifacts:
     name: Generate SBOMs and Scan Images
-    needs: [backend-push-manifest, frontend-push-manifest, changes]
+    needs: [set-image-tags, changes]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -902,10 +970,7 @@ jobs:
       packages: read
       deployments: write
       contents: read
-    needs: [frontend-push-manifest, backend-push-manifest, changes]
-    outputs:
-      backend_tag: ${{ steps.determine-tags.outputs.backend_tag }}
-      frontend_tag: ${{ steps.determine-tags.outputs.frontend_tag }}
+    needs: [set-image-tags]
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -921,55 +986,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Determine deploy image tag
-        id: determine-tags
-        run: |
-          set -euo pipefail
-          backend_tag="latest"
-          frontend_tag="latest"
-          backend_changed="${{ needs.changes.outputs.backend }}"
-          frontend_changed="${{ needs.changes.outputs.frontend }}"
-          backend_published="${{ needs['backend-push-manifest'].outputs.published }}"
-          frontend_published="${{ needs['frontend-push-manifest'].outputs.published }}"
-          run_event="${{ github.event_name }}"
-          backend_repo="ghcr.io/left-curve/left-curve/dango"
-          frontend_repo="ghcr.io/left-curve/left-curve/dango-frontend"
-
-          commit_tag="${{ env.GIT_COMMIT }}"
-          pr_tag=""
-
-          if [ "$backend_published" = "true" ]; then
-            backend_tag="$commit_tag"
-          elif docker manifest inspect "${backend_repo}:${commit_tag}" >/dev/null 2>&1; then
-            backend_tag="$commit_tag"
-          elif [ "$run_event" = "pull_request" ]; then
-            pr_tag="pr-${{ github.event.pull_request.number }}-latest"
-            if docker manifest inspect "${backend_repo}:${pr_tag}" >/dev/null 2>&1; then
-              backend_tag="$pr_tag"
-            fi
-          fi
-
-          if [ "$frontend_published" = "true" ]; then
-            frontend_tag="$commit_tag"
-          elif docker manifest inspect "${frontend_repo}:${commit_tag}" >/dev/null 2>&1; then
-            frontend_tag="$commit_tag"
-          elif [ "$run_event" = "pull_request" ]; then
-            pr_tag="pr-${{ github.event.pull_request.number }}-latest"
-            if docker manifest inspect "${frontend_repo}:${pr_tag}" >/dev/null 2>&1; then
-              frontend_tag="$pr_tag"
-            fi
-          fi
-          echo "Backend deploy image tag: $backend_tag"
-          echo "Frontend deploy image tag: $frontend_tag"
-          echo "## Deploy Image Tags" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Tag |" >> $GITHUB_STEP_SUMMARY
-          echo "| --------- | --- |" >> $GITHUB_STEP_SUMMARY
-          echo "| backend | \`$backend_tag\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| frontend | \`$frontend_tag\` |" >> $GITHUB_STEP_SUMMARY
-          echo "DEPLOY_BACKEND_IMAGE_TAG=$backend_tag" >> $GITHUB_ENV
-          echo "DEPLOY_FRONTEND_IMAGE_TAG=$frontend_tag" >> $GITHUB_ENV
-          echo "backend_tag=$backend_tag" >> "$GITHUB_OUTPUT"
-          echo "frontend_tag=$frontend_tag" >> "$GITHUB_OUTPUT"
       - name: Check DEPLOY_KEY is set
         run: |
           if [ -z "${{ secrets.DEPLOY_KEY }}" ]; then
@@ -1005,26 +1021,27 @@ jobs:
     timeout-minutes: 5
     name: Testing localdango
     runs-on: [self-hosted]
-    needs: [frontend-push-manifest, backend-push-manifest, changes]
+    needs: [set-image-tags, changes]
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+      FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
     permissions:
       packages: read
     steps:
       - uses: actions/checkout@v4
-        if: env.BACKEND_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
       - uses: docker/setup-buildx-action@v3
-        if: env.BACKEND_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
       - uses: docker/login-action@v3
-        if: env.BACKEND_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Ensure localdango works
-        if: env.BACKEND_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         env:
           DANGO_TAG: ${{ env.DEPLOY_BACKEND_IMAGE_TAG }}
           FRONTEND_TAG: ${{ env.DEPLOY_FRONTEND_IMAGE_TAG }}
@@ -1043,7 +1060,7 @@ jobs:
             exit 1
           }
       - name: Cleanup
-        if: env.BACKEND_CHANGED == 'true' && always()
+        if: always()
         run: |
           cd networks/localdango
           docker compose --profile dango down -v || true
