@@ -899,7 +899,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    # if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install Syft
