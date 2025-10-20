@@ -19,6 +19,7 @@ import type { AnyCoin, WithAmount } from "../types/coin.js";
 import { useLiveTradesState } from "./useLiveTradesState.js";
 
 export type UseProTradeStateParameters = {
+  m: Record<string, (params: any) => string>;
   action: "buy" | "sell";
   onChangeAction: (action: "buy" | "sell") => void;
   orderType: "limit" | "market";
@@ -31,10 +32,14 @@ export type UseProTradeStateParameters = {
     reset: () => void;
     setValue: (name: string, value: string) => void;
   };
+  submission: {
+    onError: (error: unknown) => void;
+  };
 };
 
 export function useProTradeState(parameters: UseProTradeStateParameters) {
   const {
+    m,
     controllers,
     pairId,
     onChangePairId,
@@ -43,6 +48,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     orderType,
     onChangeOrderType,
     bucketRecords,
+    submission: { onError },
   } = parameters;
   const queryClient = useQueryClient();
   const publicClient = usePublicClient();
@@ -92,6 +98,9 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const changeAction = useCallback((action: "buy" | "sell") => {
     setAction(action);
+    setSizeCoin(
+      action === "buy" ? coins.byDenom[pairId.quoteDenom] : coins.byDenom[pairId.baseDenom],
+    );
     setValue("size", "");
   }, []);
 
@@ -207,12 +216,27 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         if (!signingClient) throw new Error("No signing client available");
         if (!account) throw new Error("No account found");
 
+        const isBase = baseCoin.denom === availableCoin.denom;
+
+        const maxAvailable = balances[availableCoin.denom];
+
         const { baseDenom, quoteDenom } = pairId;
 
-        const parsedAmount =
-          baseCoin.denom === availableCoin.denom
-            ? parseUnits(amount.base, baseCoin.decimals)
-            : parseUnits(amount.quote, quoteCoin.decimals);
+        const parsedQuoteAmount = parseUnits(amount.quote, quoteCoin.decimals);
+
+        if (Decimal(parsedQuoteAmount).lt(pair.params.minOrderSize))
+          throw new Error(
+            m["dex.errors.minimumOrderSize"]({
+              minOrderSize: formatUnits(pair.params.minOrderSize, quoteCoin.decimals),
+              symbol: quoteCoin.symbol,
+            }),
+          );
+
+        const parsedAmount = isBase
+          ? parseUnits(amount.base, baseCoin.decimals)
+          : parsedQuoteAmount;
+
+        const orderAmount = Decimal(parsedAmount).gte(maxAvailable) ? maxAvailable : parsedAmount;
 
         const price: PriceOption =
           operation === "market"
@@ -224,7 +248,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
           quoteDenom,
           price,
           amount:
-            action === "buy" ? { bid: { quote: parsedAmount } } : { ask: { base: parsedAmount } },
+            action === "buy" ? { bid: { quote: orderAmount } } : { ask: { base: orderAmount } },
           timeInForce: operation === "market" ? "IOC" : "GTC",
         };
 
@@ -232,10 +256,11 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
           sender: account.address,
           creates: [order],
           funds: {
-            [availableCoin.denom]: parsedAmount,
+            [availableCoin.denom]: orderAmount,
           },
         });
       },
+      onError,
       onSuccess: () => {
         orders.refetch();
         history.refetch();

@@ -32,11 +32,6 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     sync: true,
   });
 
-  const [drawnOrders, setDrawnOrders] = useStorage<Map<string, TV.EntityId>>("tv.drawnOrders", {
-    sync: true,
-    initialValue: new Map(),
-  });
-
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
 
   useEffect(() => {
@@ -98,6 +93,8 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
         "mainSeriesProperties.candleStyle.wickDownColor": "#EB5757",
         "paneProperties.backgroundType": "solid",
         "paneProperties.background": toolbar_bg,
+        "paneProperties.topMargin": 10,
+        "paneProperties.bottomMargin": 10,
       },
 
       studies_overrides: {
@@ -110,17 +107,17 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     const saveFn = () => widget.save(setChartState);
 
     widget.onChartReady(() => {
+      widgetRef.current = widget;
       widget.subscribe("onAutoSaveNeeded", saveFn);
       widget.applyOverrides({
         "paneProperties.background": toolbar_bg,
+        "scalesProperties.textColor": theme === "dark" ? "#FFFCF6" : "#2E2521",
         timezone:
           timeZone === "utc"
             ? "Etc/UTC"
             : (Intl.DateTimeFormat().resolvedOptions().timeZone as TV.TimezoneId),
       });
-      widgetRef.current = widget;
     });
-
     return () => {
       widgetRef.current?.remove();
       widgetRef.current = null;
@@ -139,30 +136,9 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     if (!widgetRef.current) return;
 
     const chart = widgetRef.current.chart();
-    const ordersId = new Set(orders.map((o) => o.id));
 
-    for (const [orderId, shapeId] of drawnOrders) {
-      if (ordersId.has(orderId)) continue;
-      chart.removeEntity(shapeId);
-      drawnOrders.delete(orderId);
-    }
-
-    for (const order of orders) {
-      if (drawnOrders.has(order.id)) continue;
-
-      /*   chart.createOrderLine().then((l) => {
-        const price = Decimal(order.price)
-          .times(Decimal(10).pow(base.decimals - quote.decimals))
-          .toFixed(5);
-
-        const orderLine = l
-          .setPrice(+price)
-          .setLineStyle(2)
-          .setLineColor(order.direction === Direction.Buy ? "#27AE60" : "#EB5757")
-          .setQuantityBackgroundColor(order.direction === Direction.Buy ? "#27AE60" : "#EB5757")
-        drawnOrders.set(order.id, orderLine);
-      }); */
-
+    chart.getAllShapes().forEach((shape) => chart.removeEntity(shape.id));
+    orders.forEach((order) => {
       const price = adjustPrice(
         +Decimal(order.price)
           .times(Decimal(10).pow(base.decimals - quote.decimals))
@@ -171,26 +147,23 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
 
       const color = order.direction === Direction.Buy ? "#27AE60" : "#EB5757";
 
-      chart
-        .createShape(
-          { price: +price, time: Date.now() },
-          {
-            shape: "horizontal_line",
-            lock: true,
-            disableSelection: true,
-            overrides: {
-              showLabel: true,
-              textcolor: color,
-              linecolor: color,
-              linestyle: 2,
-              linewidth: 1,
-              bodybgcolor: color,
-            },
+      chart.createShape(
+        { price: +price, time: Date.now() },
+        {
+          shape: "horizontal_line",
+          lock: true,
+          disableSelection: true,
+          overrides: {
+            showLabel: true,
+            textcolor: color,
+            linecolor: color,
+            linestyle: 2,
+            linewidth: 1,
+            bodybgcolor: color,
           },
-        )
-        .then((id) => drawnOrders.set(order.id, id));
-    }
-    setDrawnOrders(new Map(drawnOrders));
+        },
+      );
+    });
   }, [orders]);
 
   return <div id="tv-container" className="w-full lg:min-h-[45vh] h-full" />;

@@ -110,7 +110,7 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
         </p>
 
         <div className="flex flex-col items-start">
-          <div className="flex gap-1">
+          <div className="flex gap-1 text-ink-tertiary-500">
             <span>{m["dex.protrade.orderType"]({ orderType: kind })}</span>
             <span
               className={twMerge(
@@ -138,7 +138,7 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
             ) : null}
           </div>
           {!cleared ? (
-            <div className="flex gap-1">
+            <div className="flex gap-1 text-ink-tertiary-500">
               <span>{m["common.width"]()}</span>
               <span className="diatype-m-bold">
                 {width} {base.symbol}

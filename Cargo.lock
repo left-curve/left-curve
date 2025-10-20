@@ -3587,6 +3587,7 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
+ "grug-db-disk-lite",
  "grug-db-memory-lite",
  "grug-vm-rust",
  "hex-literal",
@@ -4796,11 +4797,13 @@ dependencies = [
  "grug-app",
  "grug-types",
  "metrics",
+ "ouroboros",
  "rocksdb",
  "sha2 0.10.9",
  "temp-rocksdb",
  "tempfile",
  "thiserror 2.0.12",
+ "tracing",
 ]
 
 [[package]]
@@ -5024,6 +5027,7 @@ dependencies = [
  "grug-math",
  "hex-literal",
  "metrics",
+ "ouroboros",
  "paste",
  "prost",
  "ripemd",

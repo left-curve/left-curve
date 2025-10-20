@@ -5,7 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  COMETBFT_GIT_TAG: v0.38.17
+  COMETBFT_GIT_TAG: v0.38.19
 
 on:
   workflow_dispatch:
@@ -75,6 +75,26 @@ jobs:
           else
             echo "skip_build=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: CometBFT image status summary
+        run: |
+          echo "## 🔍 CometBFT Image Status" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "| ----- | ------ |" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.image.outputs.exists }}" = "true" ]; then
+            echo "| Image exists | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Image exists | ❌ No |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.signature.outputs.signed || 'false' }}" = "true" ]; then
+            echo "| Already signed | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Already signed | ❌ No |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "${{ steps.decision.outputs.skip_build }}" = "true" ]; then
+            echo "| Skip build | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Skip build | ❌ No |" >> $GITHUB_STEP_SUMMARY
+          fi
 
   build-cometbft:
     needs: check-image
@@ -120,14 +140,36 @@ jobs:
           fi
           cosign sign "$IMAGE@$digest"
           printf 'digest=%s\n' "$digest" >> "$GITHUB_OUTPUT"
-      - name: Signed digest summary
+      - name: Verify CometBFT signature
+        if: ${{ steps.sign.outputs.digest != '' }}
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          IMAGE: "ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}"
+          DIGEST: ${{ steps.sign.outputs.digest }}
         run: |
-          digest='${{ steps.sign.outputs.digest }}'
-          echo "## 🔏 CometBFT Signed Image" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Image | Digest |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| ----- | ------ |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} | \`$digest\` |" >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
+          cosign verify \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/cometbft.yml@refs/heads/main" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            "$IMAGE@$DIGEST" >/dev/null
+      - name: CometBFT Docker Deploy Summary
+        env:
+          DIGEST: ${{ steps.sign.outputs.digest }}
+        run: |
+          echo "# 🐳 CometBFT Docker Multi-arch Manifest" >> $GITHUB_STEP_SUMMARY
+          echo "| Name | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "| ---- | ------ |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tag** | \`${{ env.COMETBFT_GIT_TAG }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image URL** | [ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }}](https://github.com/${{ github.repository }}/pkgs/container/${{ github.event.repository.name }}%2Fcometbft) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Architectures** | amd64, arm64 |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${DIGEST}" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 🔏 Signed Image Digests" >> $GITHUB_STEP_SUMMARY
+            echo "| Image | Digest |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ----- | ------ |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| ghcr.io/${{ github.repository }}/cometbft:${{ env.COMETBFT_GIT_TAG }} | \`${DIGEST}\` |" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   cometbft-manual-sign:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.cometbft_tag != '' }}
