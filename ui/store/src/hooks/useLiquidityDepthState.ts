@@ -80,7 +80,7 @@ export type LiquidityDepthStoreState = {
   ) => void;
 };
 
-const liquidityDepthStore = create<LiquidityDepthStoreState>((set, get) => ({
+export const liquidityDepthStore = create<LiquidityDepthStoreState>((set, get) => ({
   lastUpdatedBlockHeight: "0",
   bucketSizeCoin: "base",
   setBucketSizeCoin: (bucketSizeCoin) => set(() => ({ bucketSizeCoin })),
