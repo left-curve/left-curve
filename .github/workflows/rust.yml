@@ -94,6 +94,7 @@ jobs:
               - 'Cargo.lock'
               - 'clippy.toml'
               - 'rustfmt.toml'
+              - 'docker/dango-builder/**'
             frontend:
               - 'sdk/**'
               - 'ui/**'
@@ -102,6 +103,7 @@ jobs:
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
               - 'biome.json'
+              - 'docker/dango-frontend/**'
       - name: Add detected changes to summary
         run: |
           echo "## 🔍 Detected Changes" >> $GITHUB_STEP_SUMMARY
