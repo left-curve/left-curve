@@ -38,6 +38,7 @@ error-backtrace = { workspace = true }
 grug-math       = { workspace = true }
 hex-literal     = { workspace = true }
 metrics         = { workspace = true, optional = true }
+ouroboros       = { workspace = true }
 paste           = { workspace = true }
 prost           = { workspace = true }
 ripemd          = { workspace = true }
