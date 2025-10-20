@@ -10,7 +10,7 @@ use {
 
 pub fn do_withhold_fee<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
@@ -41,7 +41,7 @@ where
 
 pub fn _do_withhold_fee<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
@@ -56,9 +56,9 @@ where
 
     let (cfg, taxman, chain_id) = catch_event! {
         {
-            let cfg = CONFIG.load(&storage)?;
-            let chain_id = CHAIN_ID.load(&storage)?;
-            let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
+            let cfg = CONFIG.load(storage)?;
+            let chain_id = CHAIN_ID.load(storage)?;
+            let taxman = CONTRACTS.load(storage, cfg.taxman)?;
 
             Ok((cfg, taxman, chain_id))
         },

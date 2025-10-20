@@ -10,7 +10,7 @@ use {
 
 pub fn do_reply<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -55,7 +55,7 @@ where
 
 fn _do_reply<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -73,8 +73,8 @@ where
 
     let (code_hash, chain_id) = catch_event! {
         {
-            let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
-            let chain_id = CHAIN_ID.load(&storage)?;
+            let code_hash = CONTRACTS.load(storage, contract)?.code_hash;
+            let chain_id = CHAIN_ID.load(storage)?;
 
             Ok((code_hash, chain_id))
         },

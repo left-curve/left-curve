@@ -10,7 +10,7 @@ use {
 
 pub fn do_authenticate<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
@@ -41,7 +41,7 @@ where
 
 pub fn _do_authenticate<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     tx: &Tx,
@@ -56,8 +56,8 @@ where
 
     let (code_hash, chain_id) = catch_event! {
         {
-            let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
-            let chain_id = CHAIN_ID.load(&storage)?;
+            let code_hash = CONTRACTS.load(storage, tx.sender)?.code_hash;
+            let chain_id = CHAIN_ID.load(storage)?;
 
             Ok((code_hash, chain_id))
         },

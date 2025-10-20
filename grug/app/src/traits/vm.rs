@@ -1,28 +1,29 @@
 use {
-    crate::{GasTracker, QuerierProvider, StorageProvider},
+    crate::{GasTracker, QuerierProvider, StorageProvider, VmProvider},
     grug_types::{Context, Hash256},
 };
 
 /// Represents a virtual machine that can execute programs.
 pub trait Vm: Sized {
     type Error: ToString;
-    type Instance: Instance<Error = Self::Error>;
+    type Instance<'a>: Instance<Error = Self::Error> + 'a;
 
     /// Create an instance of the VM given a storage, a querier, and a guest
     /// program.
     ///
     /// Need a mutable reference (`&mut self`) because the VM might uses some
     /// sort of caching to speed up instance building.
-    fn build_instance(
+    fn build_instance<'a>(
         &mut self,
         code: &[u8],
         code_hash: Hash256,
-        storage: StorageProvider,
+        // storage: StorageProvider,
         state_mutable: bool,
-        querier: Box<dyn QuerierProvider>,
+        // querier: Box<dyn QuerierProvider>,
         query_depth: usize,
         gas_tracker: GasTracker,
-    ) -> Result<Self::Instance, Self::Error>;
+        vm_provider: VmProvider<'a>,
+    ) -> Result<Self::Instance<'a>, Self::Error>;
 }
 
 pub trait Instance {

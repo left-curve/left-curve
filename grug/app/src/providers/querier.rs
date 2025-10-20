@@ -38,17 +38,17 @@ impl Querier for Box<dyn QuerierProvider> {
 }
 
 /// Provides querier functionalities to the VM.
-pub struct QuerierProviderImpl<VM> {
+pub struct QuerierProviderImpl<'a, VM> {
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &'a dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
 }
 
-impl<VM> QuerierProviderImpl<VM> {
+impl<'a, VM> QuerierProviderImpl<'a, VM> {
     pub fn new(
         vm: VM,
-        storage: Box<dyn Storage>,
+        storage: &'a dyn Storage,
         gas_tracker: GasTracker,
         block: BlockInfo,
     ) -> Self {
@@ -61,14 +61,15 @@ impl<VM> QuerierProviderImpl<VM> {
     }
 }
 
-impl<VM> QuerierProviderImpl<VM>
+impl<'a, VM> QuerierProviderImpl<'a, VM>
 where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
+    'a: 'static,
 {
     pub fn new_boxed(
         vm: VM,
-        storage: Box<dyn Storage>,
+        storage: &'a dyn Storage,
         gas_tracker: GasTracker,
         block: BlockInfo,
     ) -> Box<dyn QuerierProvider> {
@@ -76,20 +77,22 @@ where
     }
 }
 
-impl<VM> QuerierProvider for QuerierProviderImpl<VM>
+impl<'a, VM> QuerierProvider for QuerierProviderImpl<'a, VM>
 where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     fn do_query_chain(&self, req: Query, query_depth: usize) -> QueryResult<QueryResponse> {
-        process_query(
-            self.vm.clone(),
-            self.storage.clone(),
-            self.gas_tracker.clone(),
-            self.block,
-            query_depth,
-            req,
-        )
-        .map_err(|err| err.error()) // remove the backtrace
+        // process_query(
+        //     self.vm.clone(),
+        //     self.storage,
+        //     self.gas_tracker.clone(),
+        //     self.block,
+        //     query_depth,
+        //     req,
+        // )
+        // .map_err(|err| err.error()) // remove the backtrace
+
+        todo!()
     }
 }

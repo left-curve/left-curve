@@ -38,7 +38,7 @@ pub fn query_app_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdRe
 
 pub fn query_balance<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -61,7 +61,7 @@ where
 
 pub fn query_balances<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -82,9 +82,9 @@ where
     .map(|res| res.as_balances())
 }
 
-pub fn query_supply<VM>(
+pub fn query_supply<'a, VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -107,7 +107,7 @@ where
 
 pub fn query_supplies<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -130,7 +130,7 @@ where
 
 fn _query_bank<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -140,9 +140,9 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    let cfg = CONFIG.load(&storage)?;
-    let chain_id = CHAIN_ID.load(&storage)?;
-    let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
+    let cfg = CONFIG.load(storage)?;
+    let chain_id = CHAIN_ID.load(storage)?;
+    let code_hash = CONTRACTS.load(storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
         chain_id,
@@ -217,7 +217,7 @@ pub fn query_contracts(
 }
 
 pub fn query_wasm_raw(
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     req: QueryWasmRawRequest,
 ) -> StdResult<Option<Binary>> {
@@ -227,7 +227,7 @@ pub fn query_wasm_raw(
 }
 
 pub fn query_wasm_scan(
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     req: QueryWasmScanRequest,
 ) -> StdResult<BTreeMap<Binary, Binary>> {
@@ -248,7 +248,7 @@ pub fn query_wasm_scan(
 
 pub fn query_wasm_smart<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -258,8 +258,8 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&storage)?;
-    let code_hash = CONTRACTS.load(&storage, req.contract)?.code_hash;
+    let chain_id = CHAIN_ID.load(storage)?;
+    let code_hash = CONTRACTS.load(storage, req.contract)?.code_hash;
 
     let ctx = Context {
         chain_id,

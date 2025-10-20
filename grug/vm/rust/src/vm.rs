@@ -1,6 +1,6 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, get_contract_impl},
-    grug_app::{GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
+    grug_app::{GasTracker, Instance, Vm, VmProvider},
     grug_types::{BorshDeExt, BorshSerExt, Context, Hash256, MockApi},
 };
 
@@ -35,53 +35,60 @@ impl RustVm {
 
 impl Vm for RustVm {
     type Error = VmError;
-    type Instance = RustInstance;
+    type Instance<'a> = RustInstance<'a>;
 
-    fn build_instance(
+    fn build_instance<'a>(
         &mut self,
         code: &[u8],
         _code_hash: Hash256,
-        storage: StorageProvider,
+        // storage: StorageProvider,
         // Rust VM doesn't need this "readonly" flag, because everything happens
         // in Rust, the compiler can prevent storage writes in query methods
         // (unlike Wasm VM where an FFI is involved).
         _storage_readonly: bool,
-        querier: Box<dyn QuerierProvider>,
+        // querier: Box<dyn QuerierProvider>,
         // In Rust VM, we don't check for max query depth.
         _query_depth: usize,
         // Rust VM doesn't support gas tracking, so we make no use of the
         // provided `GasTracker`.
         _gas_tracker: GasTracker,
-    ) -> VmResult<RustInstance> {
+        vm_provider: VmProvider<'a>,
+    ) -> VmResult<RustInstance<'a>> {
         Ok(RustInstance {
-            storage,
-            querier,
+            // storage,
+            // querier,
+            vm_provider,
             wrapper: ContractWrapper::from_bytes(code),
         })
     }
 }
 
-pub struct RustInstance {
-    storage: StorageProvider,
-    querier: Box<dyn QuerierProvider>,
+pub struct RustInstance<'a> {
+    // storage: StorageProvider,
+    // querier: Box<dyn QuerierProvider>,
+    vm_provider: VmProvider<'a>,
     wrapper: ContractWrapper,
 }
 
-impl Instance for RustInstance {
+impl<'a> Instance for RustInstance<'a> {
     type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
         let contract = get_contract_impl(self.wrapper)?;
         match name {
             "receive" => {
-                let res =
-                    contract.receive(ctx.clone(), &mut self.storage, &MockApi, &self.querier)?;
+                let res = contract.receive(
+                    ctx.clone(),
+                    self.vm_provider.storage,
+                    &MockApi,
+                    &*self.vm_provider.querier,
+                )?;
                 res.to_borsh_vec()
             },
             "cron_execute" => {
                 let res = contract.cron_execute(
                     ctx.clone(),
-                    &mut self.storage,
+                    self.vm_provider.storage,
                     &MockApi,
                     &self.querier,
                 )?;
@@ -111,7 +118,7 @@ impl Instance for RustInstance {
             "instantiate" => {
                 let res = contract.instantiate(
                     ctx.clone(),
-                    &mut self.storage,
+                    self.vm_provider.storage,
                     &MockApi,
                     &self.querier,
                     param.as_ref(),
@@ -121,7 +128,7 @@ impl Instance for RustInstance {
             "execute" => {
                 let res = contract.execute(
                     ctx.clone(),
-                    &mut self.storage,
+                    self.storage,
                     &MockApi,
                     &self.querier,
                     param.as_ref(),
@@ -336,17 +343,19 @@ mod tests {
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
 
-        let instance = vm
-            .build_instance(
-                &code,
-                Hash::ZERO,
-                storage_provider,
-                false,
-                querier_provider,
-                0,
-                gas_tracker,
-            )
-            .unwrap();
+        // let instance = vm
+        //     .build_instance(
+        //         &code,
+        //         Hash::ZERO,
+        //         storage_provider,
+        //         false,
+        //         querier_provider,
+        //         0,
+        //         gas_tracker,
+        //     )
+        //     .unwrap();
+
+        todo!("fix");
 
         let ctx = Context {
             chain_id: "dev-1".to_string(),

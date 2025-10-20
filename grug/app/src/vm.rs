@@ -1,7 +1,8 @@
 use {
     crate::{
         AppError, AppResult, CODES, CONTRACT_NAMESPACE, EventResult, GasTracker, Instance,
-        QuerierProviderImpl, StorageProvider, TraceOption, Vm, catch_event, handle_submessages,
+        QuerierProviderImpl, StorageProvider, TraceOption, Vm, VmProvider, catch_event,
+        handle_submessages,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
@@ -14,7 +15,7 @@ use {
 /// returns one output.
 pub fn call_in_0_out_1<VM, R>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     query_depth: usize,
     state_mutable: bool,
@@ -50,7 +51,7 @@ where
 /// and returns one output.
 pub fn call_in_1_out_1<VM, P, R>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     query_depth: usize,
     state_mutable: bool,
@@ -91,7 +92,7 @@ where
 /// and returns one output.
 pub fn call_in_2_out_1<VM, P1, P2, R>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     query_depth: usize,
     state_mutable: bool,
@@ -136,7 +137,7 @@ where
 /// events emitted.
 pub fn call_in_0_out_1_handle_response<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     msg_depth: usize,
     query_depth: usize,
@@ -156,7 +157,7 @@ where
         {
             call_in_0_out_1::<_, GenericResult<Response>>(
                 vm.clone(),
-            storage.clone(),
+            storage,
             gas_tracker.clone(),
                 query_depth,
                 state_mutable,
@@ -191,7 +192,7 @@ where
 /// emitted.
 pub fn call_in_1_out_1_handle_response<VM, P>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     msg_depth: usize,
     query_depth: usize,
@@ -213,7 +214,7 @@ where
         {
             call_in_1_out_1::<_, _, GenericResult<Response>>(
                 vm.clone(),
-                storage.clone(),
+                storage,
                 gas_tracker.clone(),
                 query_depth,
                 state_mutable,
@@ -246,7 +247,7 @@ where
 
 pub fn call_in_1_out_1_handle_auth_response<VM, P>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     msg_depth: usize,
     query_depth: usize,
@@ -269,7 +270,7 @@ where
         {
             call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
                 vm.clone(),
-                storage.clone(),
+                storage,
                 gas_tracker.clone(),
                 query_depth,
                 state_mutable,
@@ -307,7 +308,7 @@ where
 /// emitted.
 pub fn call_in_2_out_1_handle_response<VM, P1, P2>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     msg_depth: usize,
     query_depth: usize,
@@ -331,7 +332,7 @@ where
         {
             call_in_2_out_1::<_, _, _, GenericResult<Response>>(
                 vm.clone(),
-                storage.clone(),
+                storage,
                 gas_tracker.clone(),
                 query_depth,
                 state_mutable,
@@ -363,46 +364,49 @@ where
     )
 }
 
-fn create_vm_instance<VM>(
+fn create_vm_instance<'a, VM>(
     mut vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &'a mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
     state_mutable: bool,
     contract: Addr,
     code_hash: Hash256,
-) -> AppResult<VM::Instance>
+) -> AppResult<VM::Instance<'a>>
 where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
     // Load the program code from storage and deserialize
-    let code = CODES.load(&storage, code_hash)?;
+    let code = CODES.load(storage, code_hash)?;
 
     // Create the providers
-    let querier = Box::new(QuerierProviderImpl::new(
-        vm.clone(),
-        storage.clone(),
-        gas_tracker.clone(),
-        block,
-    ));
-    let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
+    // let querier = Box::new(QuerierProviderImpl::new(
+    //     vm.clone(),
+    //     storage,
+    //     gas_tracker.clone(),
+    //     block,
+    // ));
+    // let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
+
+    let vm_provider = VmProvider::new(storage);
 
     Ok(vm.build_instance(
         &code.code,
         code_hash,
-        storage,
+        // storage,
         state_mutable,
-        querier,
+        // querier,
         query_depth,
         gas_tracker,
+        vm_provider,
     )?)
 }
 
 fn handle_response<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     msg_depth: usize,
     ctx: &Context,

@@ -12,7 +12,7 @@ use {
 
 pub fn do_migrate<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -53,7 +53,7 @@ where
 
 fn _do_migrate<VM>(
     vm: VM,
-    mut storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -72,7 +72,7 @@ where
             // Update the contract info.
             let mut old_code_hash = None;
 
-            CONTRACTS.update(&mut storage, msg.contract, |mut info| {
+            CONTRACTS.update(storage, msg.contract, |mut info| {
                 old_code_hash = Some(info.code_hash);
 
                 // Ensure the sender is the admin of the contract.
@@ -88,7 +88,7 @@ where
             let old_code_hash = old_code_hash.unwrap();
 
             // Reduce usage count of the old code.
-            CODES.update(&mut storage, old_code_hash, |mut code| -> StdResult<_> {
+            CODES.update(storage, old_code_hash, |mut code| -> StdResult<_> {
                 match &mut code.status {
                     CodeStatus::InUse { usage } => {
                         if *usage == 1 {
@@ -106,7 +106,7 @@ where
             })?;
 
             // Increase usage count of the new code.
-            CODES.update(&mut storage, msg.new_code_hash, |mut code| -> StdResult<_> {
+            CODES.update(storage, msg.new_code_hash, |mut code| -> StdResult<_> {
                 match &mut code.status {
                     CodeStatus::Orphaned { .. } => {
                         code.status = CodeStatus::InUse { usage: 1 };
@@ -119,7 +119,7 @@ where
                 Ok(code)
             })?;
 
-            let chain_id = CHAIN_ID.load(&storage)?;
+            let chain_id = CHAIN_ID.load(storage)?;
 
             Ok((old_code_hash, chain_id))
         },

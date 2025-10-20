@@ -14,7 +14,7 @@ use {
 
 pub fn do_instantiate<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -55,7 +55,7 @@ where
 
 pub fn _do_instantiate<VM>(
     vm: VM,
-    mut storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -75,7 +75,7 @@ where
 
     let chain_id = catch_event! {
         {
-            let cfg = CONFIG.load(&storage)?;
+            let cfg = CONFIG.load(storage)?;
 
             // Make sure the user has the permission to instantiate contracts
             if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
@@ -83,7 +83,7 @@ where
             }
 
             // Save the contract info
-            CONTRACTS.may_update(&mut storage, address, |maybe_contract| {
+            CONTRACTS.may_update(storage, address, |maybe_contract| {
                 if maybe_contract.is_some() {
                     return Err(AppError::account_exists(address));
                 }
@@ -96,7 +96,7 @@ where
             })?;
 
             // Increment the code's usage.
-            CODES.update(&mut storage, msg.code_hash, |mut code| -> StdResult<_> {
+            CODES.update(storage, msg.code_hash, |mut code| -> StdResult<_> {
                 match &mut code.status {
                     CodeStatus::Orphaned { .. } => {
                         code.status = CodeStatus::InUse { usage: 1 };
@@ -109,7 +109,7 @@ where
                 Ok(code)
             })?;
 
-            Ok(CHAIN_ID.load(&storage)?)
+            Ok(CHAIN_ID.load(storage)?)
         },
         evt
     };
@@ -118,7 +118,7 @@ where
         catch_and_update_event! {
             _do_transfer(
                 vm.clone(),
-                storage.clone(),
+                storage,
                 gas_tracker.clone(),
                 block,
                 msg_depth,

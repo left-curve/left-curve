@@ -14,7 +14,7 @@ use {
 
 pub fn do_transfer<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -58,7 +58,7 @@ where
 
 pub(crate) fn _do_transfer<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -79,9 +79,9 @@ where
 
     let (cfg, code_hash, chain_id) = catch_event! {
         {
-            let cfg = CONFIG.load(&storage)?;
-            let chain_id = CHAIN_ID.load(&storage)?;
-            let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
+            let cfg = CONFIG.load(storage)?;
+            let chain_id = CHAIN_ID.load(storage)?;
+            let code_hash = CONTRACTS.load(storage, cfg.bank)?.code_hash;
 
             Ok((cfg, code_hash, chain_id))
         },
@@ -105,7 +105,7 @@ where
     catch_and_update_event! {
         call_in_1_out_1_handle_response(
             vm.clone(),
-            storage.clone(),
+            storage,
             gas_tracker.clone(),
             msg_depth,
             0,
@@ -122,11 +122,11 @@ where
     if do_receive {
         for (to, coins) in msg.transfers {
             // If recipient does not exist, skip the `_do_receive` call.
-            if let Ok(Some(contract_info)) = CONTRACTS.may_load(&storage, to) {
+            if let Ok(Some(contract_info)) = CONTRACTS.may_load(storage, to) {
                 catch_and_insert_event! {
                     _do_receive(
                         vm.clone(),
-                        storage.clone(),
+                        storage,
                         gas_tracker.clone(),
                         block,
                         msg_depth,
@@ -149,7 +149,7 @@ where
 
 fn _do_receive<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -166,7 +166,7 @@ where
     #[allow(clippy::redundant_closure_call)]
     let chain_id = catch_event! {
         {
-            CHAIN_ID.load(&storage).map_err(Into::into)
+            CHAIN_ID.load(storage).map_err(Into::into)
         },
         EvtGuest::base(to, "receive")
     };

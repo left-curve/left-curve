@@ -12,7 +12,7 @@ use {
 /// Clone trait for any type that implements Storage.
 ///
 /// The object must also be Send and Sync, which is required by Wasmer runtime.
-pub trait Storage: DynClone + Send + Sync {
+pub trait Storage: Send + Sync {
     /// Read a single key-value pair from the storage.
     ///
     /// Return `None` if the key doesn't exist.
@@ -140,4 +140,4 @@ impl Storage for Box<dyn Storage> {
 }
 
 // derive std Clone trait for any type that implements Storage
-dyn_clone::clone_trait_object!(Storage);
+// dyn_clone::clone_trait_object!(Storage);

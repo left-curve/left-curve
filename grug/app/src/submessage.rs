@@ -2,7 +2,7 @@ use {
     crate::{AppError, EventResult, GasTracker, TraceOption, Vm, do_reply, process_msg},
     error_backtrace::Backtraceable,
     grug_types::{
-        Addr, BlockInfo, Buffer, EventStatus, ReplyOn, Shared, Storage, SubEvent, SubEventStatus,
+        Addr, BlockInfo, Buffer, EventStatus, ReplyOn, Storage, SubEvent, SubEventStatus,
         SubMessage,
     },
 };
@@ -61,7 +61,7 @@ macro_rules! try_add_subevent {
 ///   This is necessary because the function is
 pub fn handle_submessages<VM>(
     vm: VM,
-    storage: Box<dyn Storage>,
+    storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     msg_depth: usize,
@@ -83,10 +83,10 @@ where
     }
 
     for submsg in submsgs {
-        let buffer = Shared::new(Buffer::new(storage.clone(), None, "submsg"));
+        let mut buffer = Buffer::new(storage, None, "submsg");
         let result = process_msg(
             vm.clone(),
-            Box::new(buffer.clone()),
+            &mut buffer,
             gas_tracker.clone(),
             block,
             msg_depth + 1, // important: increase message depth
@@ -99,11 +99,11 @@ where
             // Success - callback requested
             // Flush state changes, log events, give callback.
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_event)) => {
-                buffer.disassemble().consume();
+                // buffer.disassemble().consume();
 
                 let reply = do_reply(
                     vm.clone(),
-                    storage.clone(),
+                    storage,
                     gas_tracker.clone(),
                     block,
                     msg_depth + 1, // important: increase message depth
@@ -126,7 +126,7 @@ where
             ) => {
                 let reply = do_reply(
                     vm.clone(),
-                    storage.clone(),
+                    storage,
                     gas_tracker.clone(),
                     block,
                     msg_depth + 1, // important: increase message depth
@@ -150,7 +150,7 @@ where
             // Success - callback not requested
             // Flush state changes, log events, move on to the next submsg.
             (ReplyOn::Error(_), Result::Ok(submsg_event)) => {
-                buffer.disassemble().consume();
+                // buffer.disassemble().consume();
                 events.push(EventStatus::Ok(SubEvent {
                     event: SubEventStatus::Ok(submsg_event),
                     reply: Some(EventStatus::NotReached),
@@ -158,7 +158,7 @@ where
             },
 
             (ReplyOn::Never, Result::Ok(submsg_event)) => {
-                buffer.disassemble().consume();
+                // buffer.disassemble().consume();
 
                 events.push(EventStatus::Ok(SubEvent {
                     event: SubEventStatus::Ok(submsg_event),

@@ -25,6 +25,7 @@ grug-types      = { workspace = true }
 http            = { workspace = true }
 ics23           = { workspace = true, optional = true }
 metrics         = { workspace = true, optional = true }
+ouroboros       = "0.18"
 prost           = { workspace = true }
 tendermint      = { workspace = true, optional = true }
 thiserror       = { workspace = true }
