@@ -36,6 +36,8 @@ on:
       - "Cargo.lock"
       - "clippy.toml"
       - "rustfmt.toml"
+      - ".force_backend_rebuild"
+      - ".force_frontend_rebuild"
       # - "sdk/**"
       # - "ui/store/**"
       # - "ui/portal/**"
@@ -62,6 +64,8 @@ on:
       - "Cargo.lock"
       - "clippy.toml"
       - "rustfmt.toml"
+      - ".force_backend_rebuild"
+      - ".force_frontend_rebuild"
       # - "sdk/**"
       # - "ui/store/**"
       # - "ui/portal/**"
@@ -95,6 +99,7 @@ jobs:
               - 'clippy.toml'
               - 'rustfmt.toml'
               - 'docker/dango-builder/**'
+              - '.force_backend_rebuild'
             frontend:
               - 'sdk/**'
               - 'ui/**'
@@ -104,6 +109,7 @@ jobs:
               - 'turbo.json'
               - 'biome.json'
               - 'docker/dango-frontend/**'
+              - '.force_frontend_rebuild'
       - name: Add detected changes to summary
         run: |
           echo "## 🔍 Detected Changes" >> $GITHUB_STEP_SUMMARY
