@@ -56,12 +56,9 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
     baseCoin,
     quoteCoin,
     submission,
-    orderBookStore,
     isDexPaused,
   } = state;
   const { register, setValue, inputs } = controllers;
-
-  const orderBook = orderBookStore((s) => s.orderBook);
 
   const navigate = useNavigate();
 
@@ -152,13 +149,12 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               isDisabled={
                 Decimal(size).lte(0) ||
                 (operation === "limit" && Decimal(priceAmount).lte(0)) ||
-                !orderBook ||
                 isDexPaused
               }
               isLoading={submission.isPending}
               onClick={() => submission.mutateAsync()}
             >
-              {orderBook ? m["dex.protrade.spot.triggerAction"]({ action }) : "Not Orderbook State"}
+              {m["dex.protrade.spot.triggerAction"]({ action })}
             </Button>
           ) : (
             <Button

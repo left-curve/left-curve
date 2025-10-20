@@ -9,14 +9,12 @@ import { useSigningClient } from "./useSigningClient.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 import { useQueryWithPagination } from "./useQueryWithPagination.js";
 import { useAppConfig } from "./useAppConfig.js";
-import { useOrderBookState } from "./useOrderBookState.js";
-import { useLiquidityDepthState } from "./useLiquidityDepthState.js";
+import { orderBookStore } from "./useOrderBookState.js";
 
 import { Decimal, formatUnits, parseUnits } from "@left-curve/dango/utils";
 
 import type { CreateOrderRequest, PairId, PriceOption } from "@left-curve/dango/types";
 import type { AnyCoin, WithAmount } from "../types/coin.js";
-import { useLiveTradesState } from "./useLiveTradesState.js";
 
 export type UseProTradeStateParameters = {
   m: Record<string, (params: any) => string>;
@@ -50,6 +48,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     bucketRecords,
     submission: { onError },
   } = parameters;
+
   const queryClient = useQueryClient();
   const publicClient = usePublicClient();
 
@@ -77,18 +76,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     queryKey: ["dex_status"],
     queryFn: async () => await publicClient.dexStatus(),
   });
-
-  const { liquidityDepthStore } = useLiquidityDepthState({
-    subscribe: true,
-    pairId,
-    bucketSize,
-    bucketRecords,
-  });
-
-  const { orderBookStore } = useOrderBookState({ pairId, subscribe: true });
-  const orderBookState = orderBookStore((s) => s.orderBook);
-
-  const { liveTradesStore } = useLiveTradesState({ pairId, subscribe: true });
 
   const changePairId = useCallback((pairId: PairId) => {
     onChangePairId(pairId);
@@ -177,14 +164,15 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   });
 
   const amount = useMemo(() => {
-    if (!orderBookState) return { base: "0", quote: "0" };
+    const { orderBook } = orderBookStore.getState();
+    if (!orderBook) return { base: "0", quote: "0" };
     if (sizeValue === "0") return { base: "0", quote: "0" };
 
     const isBaseSize = sizeCoin.denom === pairId.baseDenom;
     const isQuoteSize = sizeCoin.denom === pairId.quoteDenom;
 
     const price = parseUnits(
-      operation === "market" ? orderBookState.midPrice || "0" : priceValue || "0",
+      operation === "market" ? orderBook.midPrice || "0" : priceValue || "0",
       baseCoin.decimals - quoteCoin.decimals,
     );
 
@@ -192,7 +180,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       base: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(price).toFixed(),
       quote: isQuoteSize ? sizeValue : Decimal(sizeValue).mulCeil(price).toFixed(),
     };
-  }, [orderBookState, operation, sizeCoin, pairId, sizeValue, priceValue]);
+  }, [operation, sizeCoin, pairId, sizeValue, priceValue]);
 
   useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
@@ -273,6 +261,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   return {
     bucketSize,
+    bucketRecords,
     isDexPaused,
     setBucketSize,
     pair,
@@ -281,9 +270,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     amount,
     maxSizeAmount,
     availableCoin,
-    orderBookStore,
-    liveTradesStore,
-    liquidityDepthStore,
     baseCoin,
     quoteCoin,
     sizeCoin,
@@ -293,10 +279,7 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     action,
     changeAction,
     history,
-    orders: {
-      ...orders,
-      data: orders.data ? orders.data : [],
-    },
+    orders,
     submission,
     type: "spot",
   };

@@ -37,6 +37,7 @@
   when:
     - health.stdout_lines is defined
     - health.stdout_lines | length > 0
+    - lookup('env', 'GITHUB_STEP_SUMMARY') != ''
 
 - name: Fail if containers are not healthy after retries
   ansible.builtin.fail:
