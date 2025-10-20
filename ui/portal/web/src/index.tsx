@@ -1,11 +1,14 @@
 import ReactDOM from "react-dom/client";
 import { App } from "./app";
 import { router } from "./app.router";
+import * as ReactScan from "react-scan";
 
 import * as Sentry from "@sentry/react";
 
 const SENTRY_DSN = import.meta.env.PUBLIC_SENTRY_DSN;
 const SENTRY_ENV = import.meta.env.PUBLIC_SENTRY_ENVIRONMENT;
+
+if (process.env.NODE_ENV === "development") ReactScan.start();
 
 if (SENTRY_DSN && SENTRY_ENV) {
   Sentry.init({
