@@ -170,7 +170,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
     <div className={twMerge("relative md:hidden block", base(), classNames?.base)}>
       <select
         id={selectId}
-        className="absolute top-[-20px] right-0 opacity-0 h-full w-full"
+        className="absolute inset-0 z-10 opacity-0 w-full h-full cursor-pointer appearance-none"
         onChange={(e) => setSelected(e.target.value)}
       >
         {Children.toArray(children).map((child) => {

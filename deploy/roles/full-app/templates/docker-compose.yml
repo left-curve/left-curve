@@ -134,7 +134,7 @@ services:
       retries: 3
 
   dango-frontend:
-    image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
+    image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
     labels:
       <<: *common-labels
       service_name: "dango-frontend"

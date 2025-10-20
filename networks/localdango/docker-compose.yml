@@ -60,7 +60,7 @@ services:
       retries: 3
 
   frontend:
-    image: ghcr.io/left-curve/left-curve/dango-frontend:${DANGO_TAG:-latest}
+    image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
     labels:
       <<: *common-labels
     ports:
@@ -77,7 +77,7 @@ services:
       retries: 3
 
   cometbft:
-    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.17}
+    image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-v0.38.19}
     labels:
       <<: *common-labels
     ports:

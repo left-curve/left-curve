@@ -2,6 +2,7 @@ import { createConfig, graphql, passkey, privy, session } from "@left-curve/stor
 import { captureException } from "@sentry/react";
 
 import type { Config } from "@left-curve/store/types";
+import { serializeJson } from "@left-curve/dango/encoding";
 
 const chain = window.dango.chain;
 
@@ -72,5 +73,24 @@ export const config: Config = createConfig({
   transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true }),
   coins,
   connectors: [passkey(), session(), privy()],
-  onError: (e) => captureException(e),
+  onError: (e) => {
+    let finalError: Error;
+    const m = serializeJson(e);
+
+    if (Array.isArray(e) && e[0]?.message) {
+      finalError = new Error(`GraphQLWS Error: ${e[0].message} (${m})`);
+    } else if (e instanceof Event) {
+      if ("code" in e) {
+        finalError = new Error(`WebSocket closed: (${m})`);
+      } else {
+        finalError = new Error(`WebSocket connection failed (${m})`);
+      }
+    } else if (e instanceof Error) {
+      finalError = e;
+    } else {
+      finalError = new Error(`Unknown Error (${m})`);
+    }
+
+    captureException(finalError);
+  },
 });

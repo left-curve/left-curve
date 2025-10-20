@@ -19,6 +19,7 @@ dango-testing       = { workspace = true }
 dango-types         = { workspace = true }
 grug                = { workspace = true }
 grug-app            = { workspace = true }
+grug-db-disk-lite   = { workspace = true }
 grug-db-memory-lite = { workspace = true, features = ["snapshot"] }
 grug-vm-rust        = { workspace = true }
 hex-literal         = { workspace = true }
