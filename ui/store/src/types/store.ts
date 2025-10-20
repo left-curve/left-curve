@@ -65,6 +65,7 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
     } & Omit<AppConfig, "addresses">
   >;
   getClient(): Client<transport>;
+  captureError(error: unknown): void;
   _internal: Internal<transport>;
 };
 export type CreateConfigParameters<
