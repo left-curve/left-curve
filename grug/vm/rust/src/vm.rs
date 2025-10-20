@@ -1,7 +1,10 @@
 use {
     crate::{ContractWrapper, VmError, VmResult, get_contract_impl},
-    grug_app::{GasTracker, Instance, Vm, VmProvider},
-    grug_types::{BorshDeExt, BorshSerExt, Context, Hash256, MockApi},
+    grug_app::{
+        AppError, GasTracker, Instance, Pippo, QuerierProvider, QuerierProviderImpl,
+        StorageProvider, Vm,
+    },
+    grug_types::{BorshDeExt, BorshSerExt, Context, Hash256, MockApi, QuerierWrapper, Storage},
 };
 
 /// Names of export functions supported by Grug.
@@ -35,63 +38,65 @@ impl RustVm {
 
 impl Vm for RustVm {
     type Error = VmError;
-    type Instance<'a> = RustInstance<'a>;
+    type Instance<'a> = RustInstance<'a, Self>;
 
     fn build_instance<'a>(
         &mut self,
         code: &[u8],
         _code_hash: Hash256,
-        // storage: StorageProvider,
+        storage: StorageProvider<Box<dyn Storage + 'a>>,
         // Rust VM doesn't need this "readonly" flag, because everything happens
         // in Rust, the compiler can prevent storage writes in query methods
         // (unlike Wasm VM where an FFI is involved).
         _storage_readonly: bool,
-        // querier: Box<dyn QuerierProvider>,
+        querier: QuerierProviderImpl<Self, Box<dyn Storage + 'a>>,
         // In Rust VM, we don't check for max query depth.
         _query_depth: usize,
         // Rust VM doesn't support gas tracking, so we make no use of the
         // provided `GasTracker`.
         _gas_tracker: GasTracker,
-        vm_provider: VmProvider<'a>,
-    ) -> VmResult<RustInstance<'a>> {
+    ) -> VmResult<RustInstance<'a, Self>> {
         Ok(RustInstance {
-            // storage,
-            // querier,
-            vm_provider,
+            storage,
+            querier,
             wrapper: ContractWrapper::from_bytes(code),
         })
     }
 }
 
-pub struct RustInstance<'a> {
-    // storage: StorageProvider,
-    // querier: Box<dyn QuerierProvider>,
-    vm_provider: VmProvider<'a>,
+pub struct RustInstance<'a, VM> {
+    storage: StorageProvider<Box<dyn Storage + 'a>>,
+    querier: QuerierProviderImpl<VM, Box<dyn Storage + 'a>>,
     wrapper: ContractWrapper,
 }
 
-impl<'a> Instance for RustInstance<'a> {
+impl<'a, VM> Instance for RustInstance<'a, VM>
+where
+    VM: Vm + Clone + Send + Sync + 'static,
+    AppError: From<VM::Error>,
+{
     type Error = VmError;
 
     fn call_in_0_out_1(mut self, name: &'static str, ctx: &Context) -> VmResult<Vec<u8>> {
         let contract = get_contract_impl(self.wrapper)?;
+
+        let pippo = Pippo {
+            inner: self.querier.as_dyn(),
+        };
+
+        // let wrapper = QuerierWrapper::new(self.querier.as_dyn());
+
+        let b = self.querier.as_dyn();
+
         match name {
             "receive" => {
-                let res = contract.receive(
-                    ctx.clone(),
-                    self.vm_provider.storage,
-                    &MockApi,
-                    &*self.vm_provider.querier,
-                )?;
+                let res =
+                    contract.receive(ctx.clone(), self.storage.as_dyn_mut(), &MockApi, &pippo)?;
                 res.to_borsh_vec()
             },
             "cron_execute" => {
-                let res = contract.cron_execute(
-                    ctx.clone(),
-                    self.vm_provider.storage,
-                    &MockApi,
-                    &self.querier,
-                )?;
+                let res =
+                    contract.cron_execute(ctx.clone(), &mut self.storage, &MockApi, &pippo)?;
                 res.to_borsh_vec()
             },
             _ if KNOWN_FUNCTIONS.contains(&name) => {
@@ -118,7 +123,7 @@ impl<'a> Instance for RustInstance<'a> {
             "instantiate" => {
                 let res = contract.instantiate(
                     ctx.clone(),
-                    self.vm_provider.storage,
+                    &mut self.storage,
                     &MockApi,
                     &self.querier,
                     param.as_ref(),
@@ -128,7 +133,7 @@ impl<'a> Instance for RustInstance<'a> {
             "execute" => {
                 let res = contract.execute(
                     ctx.clone(),
-                    self.storage,
+                    &mut self.storage,
                     &MockApi,
                     &self.querier,
                     param.as_ref(),
@@ -343,19 +348,17 @@ mod tests {
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
 
-        // let instance = vm
-        //     .build_instance(
-        //         &code,
-        //         Hash::ZERO,
-        //         storage_provider,
-        //         false,
-        //         querier_provider,
-        //         0,
-        //         gas_tracker,
-        //     )
-        //     .unwrap();
-
-        todo!("fix");
+        let instance = vm
+            .build_instance(
+                &code,
+                Hash::ZERO,
+                storage_provider,
+                false,
+                querier_provider,
+                0,
+                gas_tracker,
+            )
+            .unwrap();
 
         let ctx = Context {
             chain_id: "dev-1".to_string(),

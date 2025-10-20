@@ -2,7 +2,7 @@ use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, CONTRACTS,
         GasTracker, LAST_FINALIZED_BLOCK, MeteredItem, MeteredMap, MeteredStorage, StorageProvider,
-        Vm, call_in_1_out_1,
+        StorageType, Vm, call_in_1_out_1,
     },
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config,
@@ -38,7 +38,7 @@ pub fn query_app_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdRe
 
 pub fn query_balance<VM>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -61,7 +61,7 @@ where
 
 pub fn query_balances<VM>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -84,7 +84,7 @@ where
 
 pub fn query_supply<'a, VM>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -107,7 +107,7 @@ where
 
 pub fn query_supplies<VM>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -130,7 +130,7 @@ where
 
 fn _query_bank<VM>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -152,6 +152,8 @@ where
         funds: None,
         mode: None,
     };
+
+    let storage = StorageType::Read(storage);
 
     call_in_1_out_1::<_, _, GenericResult<BankQueryResponse>>(
         vm,
@@ -217,38 +219,44 @@ pub fn query_contracts(
 }
 
 pub fn query_wasm_raw(
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     gas_tracker: GasTracker,
     req: QueryWasmRawRequest,
 ) -> StdResult<Option<Binary>> {
-    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
-        .read_with_gas(gas_tracker, &req.key)
-        .map(|maybe_value| maybe_value.map(Binary::from))
+    StorageProvider::new(StorageType::Read(storage), &[
+        CONTRACT_NAMESPACE,
+        &req.contract,
+    ])
+    .read_with_gas(gas_tracker, &req.key)
+    .map(|maybe_value| maybe_value.map(Binary::from))
 }
 
 pub fn query_wasm_scan(
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     gas_tracker: GasTracker,
     req: QueryWasmScanRequest,
 ) -> StdResult<BTreeMap<Binary, Binary>> {
     let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
-    StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &req.contract])
-        .scan_with_gas(
-            gas_tracker,
-            req.min.as_deref(),
-            req.max.as_deref(),
-            // Order doesn't matter, as we're collecting results into a BTreeMap.
-            Order::Ascending,
-        )?
-        .take(limit as usize)
-        .map(|res| res.map(|(k, v)| (Binary::from(k), Binary::from(v))))
-        .collect()
+    StorageProvider::new(StorageType::Read(storage), &[
+        CONTRACT_NAMESPACE,
+        &req.contract,
+    ])
+    .scan_with_gas(
+        gas_tracker,
+        req.min.as_deref(),
+        req.max.as_deref(),
+        // Order doesn't matter, as we're collecting results into a BTreeMap.
+        Order::Ascending,
+    )?
+    .take(limit as usize)
+    .map(|res| res.map(|(k, v)| (Binary::from(k), Binary::from(v))))
+    .collect()
 }
 
 pub fn query_wasm_smart<VM>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -272,7 +280,7 @@ where
 
     call_in_1_out_1::<_, _, GenericResult<Json>>(
         vm,
-        storage,
+        StorageType::Read(storage),
         gas_tracker,
         query_depth,
         false,

@@ -39,10 +39,10 @@ pub trait Contract {
         msg: &[u8],
     ) -> VmResult<GenericResult<Response>>;
 
-    fn receive(
+    fn receive<'a>(
         &self,
         ctx: Context,
-        storage: &mut dyn Storage,
+        storage: &'a mut dyn Storage,
         api: &dyn Api,
         querier: &dyn Querier,
     ) -> VmResult<GenericResult<Response>>;

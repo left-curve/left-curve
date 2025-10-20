@@ -139,5 +139,50 @@ impl Storage for Box<dyn Storage> {
     }
 }
 
+// impl Storage for &dyn Storage {
+//     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+//         self.read(key)
+//     }
+
+//     fn scan<'a>(
+//         &'a self,
+//         min: Option<&[u8]>,
+//         max: Option<&[u8]>,
+//         order: Order,
+//     ) -> Box<dyn Iterator<Item = Record> + 'a> {
+//         todo!()
+//     }
+
+//     fn scan_keys<'a>(
+//         &'a self,
+//         min: Option<&[u8]>,
+//         max: Option<&[u8]>,
+//         order: Order,
+//     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+//         todo!()
+//     }
+
+//     fn scan_values<'a>(
+//         &'a self,
+//         min: Option<&[u8]>,
+//         max: Option<&[u8]>,
+//         order: Order,
+//     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+//         todo!()
+//     }
+
+//     fn write(&mut self, key: &[u8], value: &[u8]) {
+//         todo!()
+//     }
+
+//     fn remove(&mut self, key: &[u8]) {
+//         todo!()
+//     }
+
+//     fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+//         todo!()
+//     }
+// }
+
 // derive std Clone trait for any type that implements Storage
 // dyn_clone::clone_trait_object!(Storage);

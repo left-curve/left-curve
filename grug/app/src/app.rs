@@ -227,12 +227,8 @@ where
     fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
         let storage = self.db.state_storage(None)?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
-        let querier = QuerierProviderImpl::new(
-            self.vm.clone(),
-            &storage,
-            GasTracker::new_limitless(),
-            block,
-        );
+        let querier =
+            QuerierProviderImpl::new(self.vm.clone(), storage, GasTracker::new_limitless(), block);
 
         // Ok(self
         //     .pp
@@ -1144,7 +1140,7 @@ where
 
 pub fn process_query<VM>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: &dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,

@@ -5026,6 +5026,7 @@ dependencies = [
  "grug-math",
  "hex-literal",
  "metrics",
+ "ouroboros",
  "paste",
  "prost",
  "ripemd",

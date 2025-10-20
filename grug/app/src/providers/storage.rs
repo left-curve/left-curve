@@ -5,13 +5,13 @@ use grug_types::{Order, Record, Storage, concat, increment_last_byte, trim};
 /// Essentially, this is a prefixed key-value storage. In Grug, the prefix is
 /// the single byte `b"w"` (referring to Wasm) followed by the account address.
 // #[derive(Clone)]
-pub struct StorageProvider<'a> {
-    storage: &'a mut dyn Storage,
+pub struct StorageProvider<S> {
+    storage: S,
     namespace: Vec<u8>,
 }
 
-impl<'a> StorageProvider<'a> {
-    pub fn new(storage: &'a mut dyn Storage, prefixes: &[&[u8]]) -> Self {
+impl<S> StorageProvider<S> {
+    pub fn new(storage: S, prefixes: &[&[u8]]) -> Self {
         let mut size = 0;
         for prefix in prefixes {
             size += prefix.len();
@@ -30,7 +30,20 @@ impl<'a> StorageProvider<'a> {
     }
 }
 
-impl<'b> Storage for StorageProvider<'b> {
+impl<'a> StorageProvider<Box<dyn Storage + 'a>> {
+    pub fn as_dyn_mut(&mut self) -> &mut dyn Storage {
+        &mut *self.storage
+    }
+
+    pub fn as_dyn(&self) -> &dyn Storage {
+        &*self.storage
+    }
+}
+
+impl<S> Storage for StorageProvider<S>
+where
+    S: Storage,
+{
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         let prefixed_key = concat(&self.namespace, key);
         self.storage.read(&prefixed_key)

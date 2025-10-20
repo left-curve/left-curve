@@ -1,21 +1,20 @@
 use {
     crate::{
         AppError, AppResult, CODES, CONTRACT_NAMESPACE, EventResult, GasTracker, Instance,
-        QuerierProviderImpl, StorageProvider, TraceOption, Vm, VmProvider, catch_event,
-        handle_submessages,
+        QuerierProviderImpl, StorageProvider, TraceOption, Vm, catch_event, handle_submessages,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     grug_types::{
         Addr, AuthResponse, BlockInfo, BorshDeExt, BorshSerExt, CheckedContractEvent, Context,
-        EvtGuest, GenericResult, Hash256, Response, Storage,
+        EvtGuest, GenericResult, Hash256, Response, Shared, Storage,
     },
 };
 
 /// Create a VM instance, and call a function that takes no input parameter and
 /// returns one output.
-pub fn call_in_0_out_1<VM, R>(
+pub fn call_in_0_out_1<'a, VM, R>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: StorageType<'a>,
     gas_tracker: GasTracker,
     query_depth: usize,
     state_mutable: bool,
@@ -28,10 +27,11 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
+    let shared = Shared::new(storage);
     // Create the VM instance
     let instance = create_vm_instance(
         vm,
-        storage,
+        shared,
         gas_tracker,
         ctx.block,
         query_depth,
@@ -49,9 +49,9 @@ where
 
 /// Create a VM instance, and call a function that takes exactly one parameter
 /// and returns one output.
-pub fn call_in_1_out_1<VM, P, R>(
+pub fn call_in_1_out_1<'a, VM, P, R>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: StorageType<'a>,
     gas_tracker: GasTracker,
     query_depth: usize,
     state_mutable: bool,
@@ -66,10 +66,12 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
+    let shared = Shared::new(storage);
+
     // Create the VM instance
     let instance = create_vm_instance(
         vm,
-        storage,
+        shared,
         gas_tracker,
         ctx.block,
         query_depth,
@@ -90,9 +92,9 @@ where
 
 /// Create a VM instance, and call a function that takes exactly two parameters
 /// and returns one output.
-pub fn call_in_2_out_1<VM, P1, P2, R>(
+pub fn call_in_2_out_1<'a, VM, P1, P2, R>(
     vm: VM,
-    storage: &mut dyn Storage,
+    storage: StorageType<'a>,
     gas_tracker: GasTracker,
     query_depth: usize,
     state_mutable: bool,
@@ -109,10 +111,12 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
+    let shared = Shared::new(storage);
+
     // Create the VM instance
     let instance = create_vm_instance(
         vm,
-        storage,
+        shared,
         gas_tracker,
         ctx.block,
         query_depth,
@@ -153,11 +157,13 @@ where
 {
     let evt = EvtGuest::base(ctx.contract, name);
 
+    let sp = StorageType::Write(storage);
+
     let response = catch_event! {
         {
             call_in_0_out_1::<_, GenericResult<Response>>(
                 vm.clone(),
-            storage,
+            sp,
             gas_tracker.clone(),
                 query_depth,
                 state_mutable,
@@ -210,11 +216,13 @@ where
 {
     let evt = EvtGuest::base(ctx.contract, name);
 
+    let sp = StorageType::Write(storage);
+
     let response = catch_event! {
         {
             call_in_1_out_1::<_, _, GenericResult<Response>>(
                 vm.clone(),
-                storage,
+                sp,
                 gas_tracker.clone(),
                 query_depth,
                 state_mutable,
@@ -266,11 +274,13 @@ where
 {
     let evt = EvtGuest::base(ctx.contract, name);
 
+    let sp = StorageType::Write(storage);
+
     let auth_response = catch_event! {
         {
             call_in_1_out_1::<_, _, GenericResult<AuthResponse>>(
                 vm.clone(),
-                storage,
+                sp,
                 gas_tracker.clone(),
                 query_depth,
                 state_mutable,
@@ -328,11 +338,13 @@ where
 {
     let evt = EvtGuest::base(ctx.contract, name);
 
+    let sp = StorageType::Write(storage);
+
     let response = catch_event! {
         {
             call_in_2_out_1::<_, _, _, GenericResult<Response>>(
                 vm.clone(),
-                storage,
+                sp,
                 gas_tracker.clone(),
                 query_depth,
                 state_mutable,
@@ -364,9 +376,9 @@ where
     )
 }
 
-fn create_vm_instance<'a, VM>(
+fn create_vm_instance<'a, VM, S>(
     mut vm: VM,
-    storage: &'a mut dyn Storage,
+    storage: Shared<S>,
     gas_tracker: GasTracker,
     block: BlockInfo,
     query_depth: usize,
@@ -377,30 +389,28 @@ fn create_vm_instance<'a, VM>(
 where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
+    S: Storage + 'a,
 {
     // Load the program code from storage and deserialize
-    let code = CODES.load(storage, code_hash)?;
+    let code = CODES.load(&storage, code_hash)?;
+
+    let p = Box::new(storage.clone()) as Box<dyn Storage>;
 
     // Create the providers
-    // let querier = Box::new(QuerierProviderImpl::new(
-    //     vm.clone(),
-    //     storage,
-    //     gas_tracker.clone(),
-    //     block,
-    // ));
-    // let storage = StorageProvider::new(storage, &[CONTRACT_NAMESPACE, &contract]);
+    let querier = QuerierProviderImpl::new(vm.clone(), p, gas_tracker.clone(), block);
 
-    let vm_provider = VmProvider::new(storage);
+    let p = Box::new(storage) as Box<dyn Storage>;
+
+    let storage = StorageProvider::new(p, &[CONTRACT_NAMESPACE, &contract]);
 
     Ok(vm.build_instance(
         &code.code,
         code_hash,
-        // storage,
+        storage,
         state_mutable,
-        // querier,
+        querier,
         query_depth,
         gas_tracker,
-        vm_provider,
     )?)
 }
 
@@ -443,4 +453,75 @@ where
         evt.sub_events = subevents;
         evt
     })
+}
+
+pub enum StorageType<'a> {
+    Read(&'a dyn Storage),
+    Write(&'a mut dyn Storage),
+}
+
+impl<'b> Storage for StorageType<'b> {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        match self {
+            StorageType::Read(storage) => storage.read(key),
+            StorageType::Write(storage) => storage.read(key),
+        }
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: grug_types::Order,
+    ) -> Box<dyn Iterator<Item = grug_types::Record> + 'a> {
+        match self {
+            StorageType::Read(storage) => storage.scan(min, max, order),
+            StorageType::Write(storage) => storage.scan(min, max, order),
+        }
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: grug_types::Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        match self {
+            StorageType::Read(storage) => storage.scan_keys(min, max, order),
+            StorageType::Write(storage) => storage.scan_keys(min, max, order),
+        }
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: grug_types::Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        match self {
+            StorageType::Read(storage) => storage.scan_values(min, max, order),
+            StorageType::Write(storage) => storage.scan_values(min, max, order),
+        }
+    }
+
+    fn write(&mut self, key: &[u8], value: &[u8]) {
+        match self {
+            StorageType::Read(_) => panic!("Cannot write to a read-only storage"),
+            StorageType::Write(storage) => storage.write(key, value),
+        }
+    }
+
+    fn remove(&mut self, key: &[u8]) {
+        match self {
+            StorageType::Read(_) => panic!("Cannot remove from a read-only storage"),
+            StorageType::Write(storage) => storage.remove(key),
+        }
+    }
+
+    fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
+        match self {
+            StorageType::Read(_) => panic!("Cannot remove range from a read-only storage"),
+            StorageType::Write(storage) => storage.remove_range(min, max),
+        }
+    }
 }
