@@ -33,8 +33,9 @@ system_wide_directories: false
 # Set this to true to deploy a new database and cometbft/dango directory
 reset_data: false
 keep_databases: false
-cosign_identity_cometbft: "https://github.com/left-curve/left-curve/.github/workflows/cometbft.yml@refs/heads/main"
-cosign_identity_pr_template: "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/pull/%(pr_number)s/merge"
-cosign_identity_main: "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/heads/main"
-cosign_certificate_identity: "{{ cosign_identity_main }}"
 cosign_certificate_oidc_issuer: "https://token.actions.githubusercontent.com"
+
+# Regex identities that accept PRs, branches, and tags for this repo/workflows
+# Anchored and constrained to this repository and workflow files.
+cosign_identity_rust_regexp: '^https://github.com/left-curve/left-curve/\.github/workflows/rust\.yml@refs/(heads|pull|tags)/.*$'
+cosign_identity_cometbft_regexp: '^https://github.com/left-curve/left-curve/\.github/workflows/cometbft\.yml@refs/(heads|pull|tags)/.*$'

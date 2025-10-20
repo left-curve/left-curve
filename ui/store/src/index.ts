@@ -171,6 +171,10 @@ export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";
 
+export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
+export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
+export { useLiveTradesState } from "./hooks/useLiveTradesState.js";
+
 export { rehydrate } from "./rehydrate.js";
 
 /* -------------------------------------------------------------------------- */

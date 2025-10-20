@@ -13,12 +13,12 @@ type RangeWithButtonsProps = {
 
 export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) => {
   const { amount, balance, setValue, setActiveInput } = parameters;
+
   return (
     <div className="flex flex-col gap-4">
       <Range
         minValue={0}
         maxValue={Number(balance)}
-        step={0.1}
         value={Number(amount)}
         onChange={(value) => {
           setActiveInput();
