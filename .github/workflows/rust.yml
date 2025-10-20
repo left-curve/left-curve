@@ -818,7 +818,7 @@ jobs:
           FRONTEND_CHANGED: ${{ env.FRONTEND_CHANGED }}
 
   set-image-tags:
-    name: Detect image tags used later
+    name: Detect image tags
     needs: [backend-push-manifest, frontend-push-manifest, changes]
     runs-on: ubuntu-latest
     permissions:
@@ -880,8 +880,7 @@ jobs:
           echo "| --------- | --- |" >> $GITHUB_STEP_SUMMARY
           echo "| backend | \`$backend_tag\` |" >> $GITHUB_STEP_SUMMARY
           echo "| frontend | \`$frontend_tag\` |" >> $GITHUB_STEP_SUMMARY
-          echo "DEPLOY_BACKEND_IMAGE_TAG=$backend_tag" >> $GITHUB_ENV
-          echo "DEPLOY_FRONTEND_IMAGE_TAG=$frontend_tag" >> $GITHUB_ENV
+          echo "| commit | \`$commit_tag\` |" >> $GITHUB_STEP_SUMMARY
           echo "backend_tag=$backend_tag" >> "$GITHUB_OUTPUT"
           echo "frontend_tag=$frontend_tag" >> "$GITHUB_OUTPUT"
 
@@ -921,8 +920,8 @@ jobs:
         env:
           SBOM_DIR: sbom
           REPORT_DIR: vuln-reports
-          DANGO_TAG: ${{ env.DEPLOY_BACKEND_IMAGE_TAG }}
-          FRONTEND_TAG: ${{ env.DEPLOY_FRONTEND_IMAGE_TAG }}
+          DANGO_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
+          FRONTEND_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
         run: |
           set -euo pipefail
           mkdir -p "$SBOM_DIR" "$REPORT_DIR"
@@ -976,6 +975,8 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       PR_BRANCH: ${{ github.event.pull_request.head.ref }}
       ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+      DEPLOY_BACKEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
+      DEPLOY_FRONTEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -1025,6 +1026,8 @@ jobs:
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
       FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
+      DEPLOY_BACKEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
+      DEPLOY_FRONTEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
     permissions:
       packages: read
     steps:
