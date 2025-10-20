@@ -39,4 +39,3 @@ cosign_certificate_oidc_issuer: "https://token.actions.githubusercontent.com"
 # Anchored and constrained to this repository and workflow files.
 cosign_identity_rust_regexp: '^https://github.com/left-curve/left-curve/\.github/workflows/rust\.yml@refs/(heads|pull|tags)/.*$'
 cosign_identity_cometbft_regexp: '^https://github.com/left-curve/left-curve/\.github/workflows/cometbft\.yml@refs/(heads|pull|tags)/.*$'
-cosign_certificate_identity_regexp: "{{ cosign_identity_rust_regexp }}"
