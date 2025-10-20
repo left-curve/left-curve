@@ -80,11 +80,15 @@ export function useOrderBookState(parameters: UseOrderBookStateParameters) {
         }),
       },
       listener: (event) => {
-        type Event = [
-          StdResult<{ status: StatusResponse }>,
-          StdResult<{ wasmSmart: RestingOrderBookState }>,
-        ];
-        const [statusResponse, obStatusResponse] = camelCaseJsonDeserialization<Event>(event);
+        type Event = {
+          multi: [
+            StdResult<{ status: StatusResponse }>,
+            StdResult<{ wasmSmart: RestingOrderBookState }>,
+          ];
+        };
+
+        const { multi } = camelCaseJsonDeserialization<Event>(event);
+        const [statusResponse, obStatusResponse] = multi;
 
         if ("Ok" in statusResponse && "Ok" in obStatusResponse) {
           const { status } = statusResponse.Ok;

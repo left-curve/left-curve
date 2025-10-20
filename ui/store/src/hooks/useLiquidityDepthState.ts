@@ -135,12 +135,15 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
         }),
       },
       listener: (event) => {
-        type Event = [
-          StdResult<{ status: StatusResponse }>,
-          StdResult<{ wasmSmart: LiquidityDepthResponse }>,
-        ];
+        type Event = {
+          multi: [
+            StdResult<{ status: StatusResponse }>,
+            StdResult<{ wasmSmart: LiquidityDepthResponse }>,
+          ];
+        };
 
-        const [statusResponse, liquidityDepthResponse] = camelCaseJsonDeserialization<Event>(event);
+        const { multi } = camelCaseJsonDeserialization<Event>(event);
+        const [statusResponse, liquidityDepthResponse] = multi;
 
         if ("Ok" in statusResponse && "Ok" in liquidityDepthResponse) {
           const { status } = statusResponse.Ok;
