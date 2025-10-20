@@ -57,7 +57,7 @@ impl DiskDbLite {
     /// - `data_dir`: Path of the RocksDB data directory.
     ///
     /// - `priority_range`: An optional range of keys; if provided, all records
-    ///   within thie range are loaded into an in-memory B-tree map. Reading or
+    ///   within this range are loaded into an in-memory B-tree map. Reading or
     ///   iterating records within this range enjoys higher performance, thanks
     ///   to not having to access the disk, at the cost of higher memory usage.
     ///
