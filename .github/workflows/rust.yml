@@ -900,7 +900,7 @@ jobs:
       contents: read
       packages: read
     steps:
-      - name: Skip frontend build (no frontend changes)
+      - name: Skip security check (no new image builds)
         if: env.FRONTEND_CHANGED != 'true' && env.BACKEND_CHANGED != 'true'
         run: echo "No changes detected. Skipping checking security."
       - name: Install Syft
