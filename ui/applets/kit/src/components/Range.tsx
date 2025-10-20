@@ -60,6 +60,7 @@ export type RangeProps = {
 export const Range: React.FC<RangeProps> = ({
   minValue,
   maxValue,
+  step,
   defaultValue,
   value: controlledValue,
   onChange,
@@ -71,7 +72,7 @@ export const Range: React.FC<RangeProps> = ({
   inputEndContent,
   showPercentage = false,
 }) => {
-  const stepToUse = useMemo(() => getDynamicStep(maxValue), [maxValue]);
+  const stepToUse = useMemo(() => getDynamicStep(maxValue, step), [maxValue, step]);
 
   const [value, setValue] = useControlledState(controlledValue, onChange, () => {
     const initial = defaultValue !== undefined ? defaultValue : minValue;
