@@ -812,6 +812,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
     steps:
       - uses: actions/checkout@v4
       - name: Install Syft
@@ -864,7 +865,6 @@ jobs:
             touch "$REPORT_DIR/.failed"
           fi
       - name: Upload security artifacts
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-artifacts-${{ github.run_id }}
@@ -878,7 +878,6 @@ jobs:
             exit 1
           fi
       - name: Document security summary
-        if: always()
         run: |
           echo "## 🔐 Supply Chain Security" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
