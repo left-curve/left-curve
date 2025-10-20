@@ -969,7 +969,7 @@ jobs:
       packages: read
       deployments: write
       contents: read
-    needs: [set-image-tags]
+    needs: [security-artifacts, set-image-tags]
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -1026,8 +1026,6 @@ jobs:
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
       FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
-      DEPLOY_BACKEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
-      DEPLOY_FRONTEND_IMAGE_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
     permissions:
       packages: read
     steps:
@@ -1046,8 +1044,8 @@ jobs:
       - name: Ensure localdango works
         if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         env:
-          DANGO_TAG: ${{ env.DEPLOY_BACKEND_IMAGE_TAG }}
-          FRONTEND_TAG: ${{ env.DEPLOY_FRONTEND_IMAGE_TAG }}
+          DANGO_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
+          FRONTEND_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
           POSTGRES_PORT: 0
           CLICKHOUSE_PORT: 0
           DANGO_PORT: 0
