@@ -91,7 +91,6 @@ export type OrderFilledEvent = {
   fee_base: string;
   fee_quote: string;
   clearing_price: string;
-  remaining: string;
   cleared: boolean;
 };
 

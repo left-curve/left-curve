@@ -33,7 +33,6 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
       quote_denom,
       base_denom,
       clearing_price,
-      remaining,
       time_in_force,
       direction,
       cleared,
@@ -65,10 +64,6 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
       { base: base.decimals, quote: quote.decimals },
       formatNumberOptions,
     );
-
-    const limitPrice = null;
-
-    const width = cleared ? null : formatNumber(remaining, formatNumberOptions);
 
     const filled =
       direction === Direction.Buy
@@ -110,42 +105,42 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
         </p>
 
         <div className="flex flex-col items-start">
-          <div className="flex gap-1 text-ink-tertiary-500">
-            <span>{m["dex.protrade.orderType"]({ orderType: kind })}</span>
-            <span
-              className={twMerge(
-                "uppercase diatype-m-bold",
-                direction === Direction.Buy ? "text-status-success" : "text-status-fail",
-              )}
-            >
-              {m["dex.protrade.spot.direction"]({ direction })}
-            </span>
-            <PairAssets
-              assets={[base, quote]}
-              className="w-5 h-5 min-w-5 min-h-5"
-              mL={(i) => `${-i / 2}rem`}
-            />
-            <span className="diatype-m-bold">
-              {base.symbol}-{quote.symbol}
-            </span>
-            {limitPrice ? (
-              <>
+          <div className="flex flex-col gap-1 text-ink-tertiary-500">
+            <div className="flex w-full gap-1">
+              <span>{m["dex.protrade.orderType"]({ orderType: kind })}</span>
+              <span
+                className={twMerge(
+                  "uppercase diatype-m-bold",
+                  direction === Direction.Buy ? "text-status-success" : "text-status-fail",
+                )}
+              >
+                {m["dex.protrade.spot.direction"]({ direction })}
+              </span>
+              <PairAssets
+                assets={[base, quote]}
+                className="w-5 h-5 min-w-5 min-h-5"
+                mL={(i) => `${-i / 2}rem`}
+              />
+              <span className="diatype-m-bold">
+                {base.symbol}-{quote.symbol}
+              </span>
+            </div>
+            {averagePrice ? (
+              <div className="flex w-full gap-1">
                 <span>{m["activities.activity.orderCreated.atPrice"]()}</span>
                 <span className="diatype-m-bold">
-                  {limitPrice} {quote.symbol}
+                  {averagePrice} {quote.symbol}
                 </span>
-              </>
+              </div>
             ) : null}
           </div>
-          {!cleared ? (
+          {/* {false ? (
             <div className="flex gap-1 text-ink-tertiary-500">
               <span>{m["common.width"]()}</span>
-              <span className="diatype-m-bold">
-                {width} {base.symbol}
-              </span>
+              <span className="diatype-m-bold">{base.symbol}</span>
               <span>{m["activities.activity.orderFilled.remaining"]()}</span>
             </div>
-          ) : null}
+          ) : null} */}
         </div>
       </OrderActivity>
     );
