@@ -899,10 +899,12 @@ jobs:
     permissions:
       contents: read
       packages: read
-    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - name: Skip frontend build (no frontend changes)
+        if: env.FRONTEND_CHANGED != 'true' && env.BACKEND_CHANGED != 'true'
+        run: echo "No changes detected. Skipping checking security."
       - name: Install Syft
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -911,6 +913,7 @@ jobs:
             curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
           fi
       - name: Install Grype
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -919,12 +922,14 @@ jobs:
             curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | GH_TOKEN="$GH_TOKEN" GITHUB_TOKEN="$GH_TOKEN" sh -s -- -b /usr/local/bin
           fi
       - name: Log in to GHCR
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Generate SBOM and scan
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         env:
           SBOM_DIR: sbom
           REPORT_DIR: vuln-reports
@@ -953,6 +958,7 @@ jobs:
             touch "$REPORT_DIR/.failed"
           fi
       - name: Upload security artifacts
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: security-artifacts-${{ github.run_id }}
@@ -960,12 +966,14 @@ jobs:
             sbom
             vuln-reports
       - name: Enforce vulnerability policy
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         run: |
           if [ -f vuln-reports/.failed ]; then
             echo "::error::Critical vulnerabilities detected in container images"
             exit 1
           fi
       - name: Document security summary
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
         run: |
           echo "## 🔐 Supply Chain Security" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
