@@ -19,6 +19,8 @@ pub struct Context {
     #[cfg(feature = "testing")]
     #[allow(dead_code)]
     pub clickhouse_database: String,
+    #[cfg(feature = "testing")]
+    pub clean_up_database: bool,
     #[allow(dead_code)]
     clickhouse_client: Client,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
@@ -69,6 +71,7 @@ impl Context {
 
         Self {
             mock: None,
+            clean_up_database: false,
             clickhouse_database: database,
             clickhouse_client,
             pubsub,
@@ -106,6 +109,7 @@ impl Context {
         Self {
             clickhouse_client: self.clickhouse_client.with_mock(&mock),
             mock: Some(Arc::new(mock)),
+            clean_up_database: false,
             clickhouse_database: self.clickhouse_database,
             pubsub: self.pubsub,
             trade_pubsub: self.trade_pubsub,
@@ -132,6 +136,7 @@ impl Context {
         Ok(Self {
             mock: None,
             clickhouse_database: test_database,
+            clean_up_database: true,
             clickhouse_client,
             pubsub: self.pubsub,
             trade_pubsub: self.trade_pubsub,
@@ -161,6 +166,16 @@ impl Context {
     pub async fn cleanup_test_database(&self) -> Result<(), crate::error::IndexerError> {
         if self.is_mocked() {
             // No cleanup needed for mocked databases
+            return Ok(());
+        }
+
+        // safeguard, we had database drop in production
+        if !self.clean_up_database {
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                database = self.clickhouse_database,
+                "Skipping cleanup of test database"
+            );
             return Ok(());
         }
 

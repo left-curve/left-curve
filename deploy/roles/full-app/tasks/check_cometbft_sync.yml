@@ -1,3 +1,10 @@
+- set_fact:
+    cometbft_rpc_port: "{{ traefik[dango_network].ports.cometbft_rpc_port }}"
+  when: traefik_enabled
+
+- debug:
+    msg: "Fetching http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/status"
+
 - name: Wait for CometBFT to sync
   uri:
     url: "http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/status"

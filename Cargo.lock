@@ -3590,6 +3590,7 @@ dependencies = [
  "grug-db-disk-lite",
  "grug-db-memory-lite",
  "grug-vm-rust",
+ "hex",
  "hex-literal",
  "indexer-client",
  "indexer-sql",
