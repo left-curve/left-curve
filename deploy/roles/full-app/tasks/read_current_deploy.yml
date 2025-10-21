@@ -15,14 +15,14 @@
         current_deployment: "{{ (current_deployment_raw.content | b64decode | from_json).current_deployment }}"
       when: traefik_json.stat.exists and current_deployment_raw is defined
 
-    - debug:
-        msg: "Current existing deployment is {{ current_deployment }}"
-      when: current_deployment is defined
-
     - name: Check if deployment already exists
       stat:
         path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}/.env"
       register: env_file_exists
+      when: current_deployment is defined
+
+    - debug:
+        msg: "Current existing deployment is {{ current_deployment }} and env file exists: {{ env_file_exists.stat.exists }}"
       when: current_deployment is defined
 
     - name: Read .env values for database names

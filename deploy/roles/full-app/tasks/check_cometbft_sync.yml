@@ -1,3 +1,6 @@
+- debug:
+    msg: "Fetching http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/status"
+
 - name: Wait for CometBFT to sync
   uri:
     url: "http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/status"
