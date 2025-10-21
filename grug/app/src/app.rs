@@ -1027,7 +1027,11 @@ where
     for (_idx, msg) in tx.msgs.iter().enumerate() {
         #[cfg(feature = "tracing")]
         {
-            tracing::info!(idx = _idx, "Processing message");
+            // Only emit this log if during `FinalizeBlock`. Do not emit this log
+            // during `Simulate` or `CheckTx`.
+            if mode == AuthMode::Finalize {
+                tracing::info!(idx = _idx, "Processing message");
+            }
         }
 
         catch_and_push_event! {
