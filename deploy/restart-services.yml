@@ -1,0 +1,25 @@
+- name: Restart services
+  hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  gather_facts: yes
+  vars:
+  vars_files:
+    - roles/full-app/vars/main.yml
+  tasks:
+    - debug:
+        msg: "Will restart {{ dango_network }}"
+
+    - name: Read current deploy
+      include_role:
+        name: full-app
+        tasks_from: read_current_deploy.yml
+
+    - name: Restart service
+      community.docker.docker_compose_v2:
+        project_name: "{{ current_deployment }}"
+        project_src: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
+        state: restarted
+        services:
+          - dango
+          - cometbft
