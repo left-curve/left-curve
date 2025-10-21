@@ -90,10 +90,20 @@ impl Context {
             .await?;
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
-            candles_len = candle_cache.candles.len(),
-            "Preloaded candle cache"
-        );
+        {
+            tracing::info!(
+                candles_len = candle_cache.candles.len(),
+                "Preloaded candle cache"
+            );
+
+            for (key, values) in candle_cache.candles.iter() {
+                tracing::info!(
+                    key = ?key,
+                    count = values.len(),
+                    "Candle cache entries for pair"
+                );
+            }
+        }
 
         drop(candle_cache);
 
