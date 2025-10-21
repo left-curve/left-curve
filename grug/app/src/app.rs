@@ -1027,7 +1027,7 @@ where
     for (_idx, msg) in tx.msgs.iter().enumerate() {
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!(idx = _idx, "Processing message");
+            tracing::info!(idx = _idx, "Processing message");
         }
 
         catch_and_push_event! {
