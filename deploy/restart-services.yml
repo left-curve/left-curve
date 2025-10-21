@@ -7,6 +7,7 @@
     services:
       - dango
       - cometbft
+    cometbft_rpc_port: 26657
   vars_files:
     - roles/full-app/vars/main.yml
   tasks:
@@ -19,6 +20,23 @@
         name: full-app
         tasks_from: read_current_deploy.yml
       when: not (deployment_name is defined)
+
+    - set_fact:
+        cometbft_rpc_port: "{{ traefik[dango_network].ports.cometbft_rpc_port }}"
+      when: not (deployment_name is defined)
+
+    - name: Read COMETBFT_RPC_PORT from .env
+      shell: |
+        grep -E '^(COMETBFT_RPC_PORT)=' {{ deployment_dir }}/.env | \
+        awk -F= '{print tolower($1) "=" $2}'
+      register: existing_env_variables
+      when: deployment_name is defined
+
+    - name: Set facts from existing .env
+      set_fact:
+        "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
+      loop: "{{ existing_env_variables.stdout_lines }}"
+      when: deployment_name is defined
 
     - set_fact:
         current_deployment: "{{ deployment_name }}"
@@ -40,7 +58,7 @@
     - name: Show services
       debug: var=compose_services.stdout_lines
 
-    - name: Start service
+    - name: Start service and wait to be healthy
       community.docker.docker_compose_v2:
         project_name: "{{ current_deployment }}"
         project_src: "{{ deployment_dir }}"
@@ -49,14 +67,14 @@
         recreate: always
         wait: true
 
-    # - debug:
-    #     msg: "Fetching http://{{ tailscale_ip }}:{{ traefik[dango_network].ports.cometbft_rpc_port }}/status"
-    #
-    # - name: Wait for CometBFT to sync
-    #   uri:
-    #     url: "http://{{ tailscale_ip }}:{{ traefik[dango_network].ports.cometbft_rpc_port }}/status"
-    #     return_content: yes
-    #   register: cometbft_status
-    #   until: not (cometbft_status.json.result.sync_info.catching_up | default(true))
-    #   retries: 30
-    #   delay: 10
+    - debug:
+        msg: "Fetching http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/status"
+
+    - name: Wait for CometBFT to sync
+      uri:
+        url: "http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/status"
+        return_content: yes
+      register: cometbft_status
+      until: not (cometbft_status.json.result.sync_info.catching_up | default(true))
+      retries: 30
+      delay: 10
