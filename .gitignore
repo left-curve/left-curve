@@ -59,6 +59,7 @@ app.pages.ts
 next-env.d.ts
 ui/foundation/project.inlang/*
 ui/foundation/paraglide/*
+ui/portal/web/tests/reports
 !ui/foundation/project.inlang/settings.json
 !ui/foundation/project.inlang/project_id
 
