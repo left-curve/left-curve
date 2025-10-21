@@ -83,13 +83,16 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
     setValue("size", "");
   }, []);
 
-  const changeAction = useCallback((action: "buy" | "sell") => {
-    setAction(action);
-    setSizeCoin(
-      action === "buy" ? coins.byDenom[pairId.quoteDenom] : coins.byDenom[pairId.baseDenom],
-    );
-    setValue("size", "");
-  }, []);
+  const changeAction = useCallback(
+    (action: "buy" | "sell") => {
+      setAction(action);
+      setSizeCoin(
+        action === "buy" ? coins.byDenom[pairId.quoteDenom] : coins.byDenom[pairId.baseDenom],
+      );
+      setValue("size", "");
+    },
+    [pairId],
+  );
 
   const changeSizeCoin = useCallback((denom: string) => {
     setSizeCoin(coins.byDenom[denom]);
