@@ -253,16 +253,26 @@ impl Db for DiskDbLite {
 
         // If priority data exists, apply the change set to it.
         if let Some(data) = &self.inner.priority_data {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::info!("Locking priority data for writing"); // FIXME: change to `debug!` once we figure out the deadlock issue
+            }
+
+            let mut records = data.records.write().expect("priority records poisoned");
             for (k, op) in pending.batch.range::<[u8], _>((
                 Bound::Included(data.min.as_slice()),
                 Bound::Excluded(data.max.as_slice()),
             )) {
-                let mut records = data.records.write().expect("priority records poisoned");
                 if let Op::Insert(v) = op {
                     records.insert(k.clone(), v.clone());
                 } else {
                     records.remove(k);
                 }
+            }
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::info!("Releasing the lock on priority data"); // FIXME: change to `debug!` once we figure out the deadlock issue
             }
         }
 

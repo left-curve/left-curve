@@ -42,12 +42,14 @@ traefik:
       dango_frontend_port: 8081
       faucet_port: 8082
       cometbft_p2p_port: 26656
+      cometbft_rpc_port: 26657
   testnet:
     ports:
       dango_port: 8050
       dango_frontend_port: 8051
       faucet_port: 8052
       cometbft_p2p_port: 36656
+      cometbft_rpc_port: 36657
 
 # in summary cometbft needs to expose:
 # 26656, to anyone

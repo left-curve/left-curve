@@ -34,9 +34,7 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
         isScrolled
           ? "lg:bg-surface-primary-rice lg:shadow-account-card"
           : "bg-transparent shadow-none",
-        location.pathname === "/"
-          ? "lg:fixed h-fit pr-[6px]"
-          : "lg:sticky flex flex-col items-center",
+        location.pathname === "/" ? "lg:fixed h-fit" : "lg:sticky flex flex-col items-center",
       )}
     >
       {isLg ? <div id="quest-banner" className="w-full" /> : null}
@@ -45,9 +43,9 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
       <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
-            src="/favicon.svg"
+            src="/dango-logo.svg"
             alt="dango logo"
-            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card select-none"
+            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card select-none bg-surface-secondary-rice"
           />
         </Link>
         <div

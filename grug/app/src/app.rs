@@ -110,6 +110,15 @@ where
         block: BlockInfo,
         genesis_state: GenesisState,
     ) -> AppResult<Hash256> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                chain_id,
+                genesis_time = block.timestamp.to_rfc3339_string(),
+                "Received InitChain request"
+            );
+        }
+
         let mut buffer = Shared::new(Buffer::new(
             self.db.state_storage(None)?,
             None,
@@ -146,7 +155,9 @@ where
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            tracing::info!(idx = _idx, "Processing genesis message");
+            {
+                tracing::info!(idx = _idx, "Processing genesis message");
+            }
 
             let output = process_msg(
                 self.vm.clone(),
@@ -161,10 +172,12 @@ where
 
             if let Err((_event, err)) = output.as_result() {
                 #[cfg(feature = "tracing")]
-                tracing::error!(
-                    result = _event.to_json_string_pretty().unwrap(),
-                    "Error during genesis message processing"
-                );
+                {
+                    tracing::error!(
+                        result = _event.to_json_string_pretty().unwrap(),
+                        "Error during genesis message processing"
+                    );
+                }
 
                 return Err(err);
             }
@@ -184,18 +197,29 @@ where
         debug_assert!(root_hash.is_some());
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
-            chain_id,
-            time = block.timestamp.to_rfc3339_string(),
-            app_hash = root_hash.as_ref().unwrap().to_string(),
-            gas_used = gas_tracker.used(),
-            "Completed genesis"
-        );
+        {
+            tracing::info!(
+                chain_id,
+                time = block.timestamp.to_rfc3339_string(),
+                app_hash = root_hash.as_ref().unwrap().to_string(),
+                gas_used = gas_tracker.used(),
+                "Completed genesis"
+            );
+        }
 
         Ok(root_hash.unwrap())
     }
 
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                num_txs = txs.len(),
+                max_tx_bytes,
+                "Received PrepareProposal request",
+            );
+        }
+
         #[cfg(feature = "metrics")]
         let prepare_proposal_duration = std::time::Instant::now();
 
@@ -204,10 +228,12 @@ where
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
             .unwrap_or_else(|_err| {
                 #[cfg(feature = "tracing")]
-                tracing::error!(
-                    err = _err.to_string(),
-                    "Failed to prepare proposal! Falling back to naive preparer."
-                );
+                {
+                    tracing::error!(
+                        err = _err.to_string(),
+                        "Failed to prepare proposal! Falling back to naive preparer."
+                    );
+                }
 
                 txs
             });
@@ -216,6 +242,11 @@ where
         let bytes = NaiveProposalPreparer
             .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
             .unwrap();
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(bytes = bytes.len(), "Completed PrepareProposal");
+        }
 
         #[cfg(feature = "metrics")]
         {
@@ -251,6 +282,16 @@ where
     // 5. flush (but not commit) state changes to DB
     // 5. indexer `index_block`
     pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                block_height = block.info.height,
+                block_time = block.info.timestamp.to_rfc3339_string(),
+                num_txs = block.txs.len(),
+                "Received FinalizeBlock request"
+            );
+        }
+
         #[cfg(feature = "metrics")]
         let block_duration = std::time::Instant::now();
 
@@ -274,11 +315,13 @@ where
         if let Some(upgrade_handler) = self.upgrade_handler.as_ref() {
             if upgrade_handler.height == block.info.height {
                 #[cfg(feature = "tracing")]
-                tracing::info!(
-                    height = upgrade_handler.height,
-                    description = upgrade_handler.description.unwrap_or(""),
-                    "Performing chain upgrade"
-                );
+                {
+                    tracing::info!(
+                        height = upgrade_handler.height,
+                        description = upgrade_handler.description.unwrap_or(""),
+                        "Performing chain upgrade"
+                    );
+                }
 
                 (upgrade_handler.action)(Box::new(buffer.clone()), self.vm.clone(), block.info)
                     .unwrap_or_else(|err| {
@@ -306,7 +349,9 @@ where
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, (tx, _)) in block.txs.clone().into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            tracing::debug!(idx = _idx, "Processing transaction");
+            {
+                tracing::info!(idx = _idx, "Processing transaction");
+            }
 
             #[cfg(feature = "metrics")]
             let tx_duration = std::time::Instant::now();
@@ -359,12 +404,14 @@ where
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, (time, contract)) in jobs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                idx = _idx,
-                time = time.to_rfc3339_string(),
-                contract = contract.to_string(),
-                "Performing cronjob"
-            );
+            {
+                tracing::info!(
+                    idx = _idx,
+                    time = time.to_rfc3339_string(),
+                    contract = contract.to_string(),
+                    "Performing cronjob"
+                );
+            }
 
             let cron_buffer = Shared::new(Buffer::new(buffer.clone(), None, "cron"));
             let cron_gas_tracker = GasTracker::new_limitless();
@@ -420,7 +467,9 @@ where
                 .collect::<StdResult<Vec<_>>>()?
             {
                 #[cfg(feature = "tracing")]
-                tracing::info!(hash = ?hash, "Orphaned code purged");
+                {
+                    tracing::info!(hash = ?hash, "Orphaned code purged");
+                }
 
                 CODES.remove(&mut buffer, hash)?;
             }
@@ -445,12 +494,14 @@ where
         debug_assert!(app_hash.is_some());
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
-            height = block.info.height,
-            time = block.info.timestamp.to_rfc3339_string(),
-            app_hash = app_hash.as_ref().unwrap().to_string(),
-            "Finalized block"
-        );
+        {
+            tracing::info!(
+                height = block.info.height,
+                time = block.info.timestamp.to_rfc3339_string(),
+                app_hash = app_hash.as_ref().unwrap().to_string(),
+                "Finalized block"
+            );
+        }
 
         let block_outcome = BlockOutcome {
             height: block.info.height,
@@ -473,13 +524,20 @@ where
     }
 
     pub fn do_commit(&self) -> AppResult<()> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!("Received Commit request");
+        }
+
         #[cfg(feature = "metrics")]
         let commit_duration = std::time::Instant::now();
 
         self.db.commit()?;
 
         #[cfg(feature = "tracing")]
-        tracing::info!(height = self.db.latest_version(), "Committed state");
+        {
+            tracing::info!(height = self.db.latest_version(), "Committed state");
+        }
 
         if let Some(block_height) = self.db.latest_version() {
             let querier = {
@@ -498,7 +556,9 @@ where
                 .post_indexing(block_height, querier, &mut indexer_ctx)
                 .inspect_err(|_err| {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(err = %_err, "Error in `post_indexing`");
+                    {
+                        tracing::error!(err = %_err, "Error in `post_indexing`");
+                    }
                 })?;
         }
 
@@ -730,10 +790,12 @@ where
                     // handle this - halt the chain, or ignore? Here we choose
                     // to ignore.
                     #[cfg(feature = "tracing")]
-                    tracing::error!(
-                        raw_tx = BASE64.encode(raw_tx.as_ref()),
-                        "Failed to deserialize transaction! Ignoring it..."
-                    );
+                    {
+                        tracing::error!(
+                            raw_tx = BASE64.encode(raw_tx.as_ref()),
+                            "Failed to deserialize transaction! Ignoring it..."
+                        );
+                    }
 
                     None
                 }
@@ -964,7 +1026,9 @@ where
     #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
     for (_idx, msg) in tx.msgs.iter().enumerate() {
         #[cfg(feature = "tracing")]
-        tracing::debug!(idx = _idx, "Processing message");
+        {
+            tracing::info!(idx = _idx, "Processing message");
+        }
 
         catch_and_push_event! {
             process_msg(
@@ -1250,11 +1314,13 @@ pub(crate) fn schedule_cronjob(
     next_time: Timestamp,
 ) -> StdResult<()> {
     #[cfg(feature = "tracing")]
-    tracing::info!(
-        time = next_time.to_rfc3339_string(),
-        contract = contract.to_string(),
-        "Scheduled cronjob"
-    );
+    {
+        tracing::info!(
+            time = next_time.to_rfc3339_string(),
+            contract = contract.to_string(),
+            "Scheduled cronjob"
+        );
+    }
 
     NEXT_CRONJOBS.insert(storage, (next_time, contract))
 }
