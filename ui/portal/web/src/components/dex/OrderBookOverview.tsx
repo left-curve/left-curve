@@ -55,6 +55,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
           {activeTab === "trades" && <LiveTrades state={state} />}
         </>
       )}
+      <Subscription pairId={state.pairId} />
     </ResizerContainer>
   );
 };
@@ -294,7 +295,7 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const { orderBookStore } = useOrderBookState({ pairId, subscribe: true });
+  const { orderBookStore } = useOrderBookState({ pairId });
   const previousPrice = orderBookStore((s) => s.previousPrice);
   const currentPrice = orderBookStore((s) => s.currentPrice);
   const orderBook = orderBookStore((s) => s.orderBook);
@@ -327,4 +328,12 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote }) => {
       <span className="bg-surface-tertiary-rice w-[calc(100%+2rem)] absolute -left-4 top-0 h-full z-10" />
     </div>
   );
+};
+
+type SubscriptionProps = {
+  pairId: PairId;
+};
+const Subscription: React.FC<SubscriptionProps> = ({ pairId }) => {
+  useOrderBookState({ pairId, subscribe: true });
+  return null;
 };

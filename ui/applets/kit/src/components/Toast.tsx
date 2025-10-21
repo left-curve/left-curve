@@ -85,7 +85,7 @@ export const Toaster: React.FC = () => {
   const { toasts } = useToastStore();
 
   return createPortal(
-    <div className="fixed inset-0 z-[90] pointer-events-none">
+    <div className="fixed inset-0 z-[999999] pointer-events-none">
       <AnimatePresence mode="wait">
         {toasts.map((toast) => (
           <Toast key={toast.id} toast={toast} />
