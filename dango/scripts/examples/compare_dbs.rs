@@ -19,6 +19,18 @@ fn find_diffs<'a>(
     while item1.is_some() || item2.is_some() {
         match (item1, item2) {
             (Some((k1, v1)), Some((k2, v2))) => match k1.cmp(&k2) {
+                Ordering::Equal => {
+                    if v1 != v2 {
+                        println!(
+                            "diff found! key present in both dbs, but values mismatch! k: {}, v1: {}, v2: {}",
+                            hex::encode(k1),
+                            hex::encode(v1),
+                            hex::encode(v2)
+                        );
+
+                        break;
+                    }
+                },
                 Ordering::Less => {
                     println!(
                         "diff found! key present in db1, but missing in db2: {}",
@@ -35,34 +47,6 @@ fn find_diffs<'a>(
 
                     break;
                 },
-                Ordering::Equal => {
-                    if v1 != v2 {
-                        println!(
-                            "diff found! key present in both dbs, but values mismatch! k: {}, v1: {}, v2: {}",
-                            hex::encode(k1),
-                            hex::encode(v1),
-                            hex::encode(v2)
-                        );
-
-                        break;
-                    }
-
-                    item1 = iter1.next();
-                    item2 = iter2.next();
-                    count += 1;
-
-                    if count % 100 == 0 {
-                        println!("records checked: {count}");
-                    }
-                },
-            },
-            (None, Some((k2, _))) => {
-                println!(
-                    "diff found! key missing in db1, but present in db2: {}",
-                    hex::encode(k2)
-                );
-
-                break;
             },
             (Some((k1, _)), None) => {
                 println!(
@@ -72,7 +56,24 @@ fn find_diffs<'a>(
 
                 break;
             },
+            (None, Some((k2, _))) => {
+                println!(
+                    "diff found! key missing in db1, but present in db2: {}",
+                    hex::encode(k2)
+                );
+
+                break;
+            },
+
             (None, None) => break,
+        }
+
+        item1 = iter1.next();
+        item2 = iter2.next();
+        count += 1;
+
+        if count % 100 == 0 {
+            println!("records checked: {count}");
         }
     }
 }
