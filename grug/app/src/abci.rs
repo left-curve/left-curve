@@ -124,6 +124,7 @@ where
         }
     }
 
+    #[tracing::instrument("abci::check_tx", skip_all)]
     fn tower_check_tx(&self, req: request::CheckTx) -> AppResult<response::CheckTx> {
         // Note: We don't have separate logics for `CheckTyType::New` vs `Recheck`.
         //
@@ -167,6 +168,7 @@ where
         }
     }
 
+    #[tracing::instrument("abci::commit", skip_all)]
     fn tower_commit(&self) -> AppResult<response::Commit> {
         match self.do_commit() {
             Ok(()) => Ok(response::Commit {
@@ -180,6 +182,7 @@ where
         }
     }
 
+    #[tracing::instrument("abci::finalize_block", skip_all)]
     fn tower_finalize_block(
         &self,
         req: request::FinalizeBlock,
@@ -241,6 +244,7 @@ where
         })
     }
 
+    #[tracing::instrument("abci::init_chain", skip_all)]
     fn tower_init_chain(&self, req: request::InitChain) -> AppResult<response::InitChain> {
         let block = from_tm_block(0, req.time, None);
 
@@ -254,6 +258,7 @@ where
         }
     }
 
+    #[tracing::instrument("abci::prepare_proposal", skip_all)]
     fn tower_prepare_proposal(
         &self,
         req: request::PrepareProposal,
@@ -264,6 +269,7 @@ where
         Ok(response::PrepareProposal { txs })
     }
 
+    #[tracing::instrument("abci::query", skip_all)]
     fn tower_query(&self, req: request::Query) -> AppResult<response::Query> {
         let res = match req.path.as_str() {
             "/app" => match self.do_query_app_raw(&req.data, req.height.value(), req.prove) {
