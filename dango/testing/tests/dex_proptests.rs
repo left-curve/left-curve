@@ -445,6 +445,7 @@ impl DexAction {
                     &dex::ExecuteMsg::ProvideLiquidity {
                         base_denom: base_denom.clone(),
                         quote_denom: quote_denom.clone(),
+                        minimum_output: Uint128::ZERO,
                     },
                     funds.clone(),
                 )
@@ -496,6 +497,7 @@ impl DexAction {
                     &dex::ExecuteMsg::WithdrawLiquidity {
                         base_denom: base_denom.clone(),
                         quote_denom: quote_denom.clone(),
+                        minimum_output: None,
                     },
                     Coins::one(pair.lp_denom.clone(), lp_token_amount).unwrap(),
                 )

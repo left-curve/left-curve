@@ -164,12 +164,16 @@ pub enum ExecuteMsg {
     ProvideLiquidity {
         base_denom: Denom,
         quote_denom: Denom,
+        /// The minimum amount of LP tokens to receive.
+        minimum_output: Uint128,
     },
     // Withdraw passive liquidity from a pair. Withdrawal is always performed at
     // the pool ratio.
     WithdrawLiquidity {
         base_denom: Denom,
         quote_denom: Denom,
+        /// The minimum amount of the two underlying assets to receive.
+        minimum_output: Option<CoinPair>,
     },
     /// Perform an instant swap directly in the passive liquidity pools, with an
     /// exact amount of input asset.
