@@ -3,34 +3,60 @@
   become: true
   become_user: "{{ deploy_user }}"
   gather_facts: yes
+  vars:
+    services:
+      - dango
+      - cometbft
   vars_files:
     - roles/full-app/vars/main.yml
   tasks:
     - debug:
-        msg: "Will restart {{ dango_network }}"
+        msg: "{{ dango_network }}"
+      when: not (deployment_name is defined)
 
     - name: Read current deploy
       include_role:
         name: full-app
         tasks_from: read_current_deploy.yml
+      when: not (deployment_name is defined)
 
-    - name: Restart service
-      community.docker.docker_compose_v2:
-        project_name: "{{ current_deployment }}"
-        project_src: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
-        state: restarted
-        services:
-          - dango
-          - cometbft
+    - set_fact:
+        current_deployment: "{{ deployment_name }}"
+      when: deployment_name is defined
+
+    - set_fact:
+        deployment_name: "{{ current_deployment }}"
+      when: not (deployment_name is defined)
 
     - debug:
-        msg: "Fetching http://{{ tailscale_ip }}:{{ traefik[dango_network].ports.cometbft_rpc_port }}/status"
+        msg: "Will restart {{ deployment_dir }}"
 
-    - name: Wait for CometBFT to sync
-      uri:
-        url: "http://{{ tailscale_ip }}:{{ traefik[dango_network].ports.cometbft_rpc_port }}/status"
-        return_content: yes
-      register: cometbft_status
-      until: not (cometbft_status.json.result.sync_info.catching_up | default(true))
-      retries: 30
-      delay: 10
+    - name: List services in this deployment
+      command: >
+        docker compose --project-directory {{ deployment_dir }}
+        config --services
+      register: compose_services
+
+    - name: Show services
+      debug: var=compose_services.stdout_lines
+
+    - name: Start service
+      community.docker.docker_compose_v2:
+        project_name: "{{ current_deployment }}"
+        project_src: "{{ deployment_dir }}"
+        services: "{{ services }}"
+        state: present
+        recreate: always
+        wait: true
+
+    # - debug:
+    #     msg: "Fetching http://{{ tailscale_ip }}:{{ traefik[dango_network].ports.cometbft_rpc_port }}/status"
+    #
+    # - name: Wait for CometBFT to sync
+    #   uri:
+    #     url: "http://{{ tailscale_ip }}:{{ traefik[dango_network].ports.cometbft_rpc_port }}/status"
+    #     return_content: yes
+    #   register: cometbft_status
+    #   until: not (cometbft_status.json.result.sync_info.catching_up | default(true))
+    #   retries: 30
+    #   delay: 10
