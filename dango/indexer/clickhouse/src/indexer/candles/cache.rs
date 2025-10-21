@@ -430,16 +430,16 @@ impl CandleCache {
                         let start = Instant::now();
 
                         loop {
-                            if start.elapsed() > Duration::from_secs(2) {
-                                #[cfg(feature = "tracing")]
-                                tracing::warn!(
-                                    "Timeout while preloading candles for {}-{}",
-                                    key.base_denom,
-                                    key.quote_denom
-                                );
+                            // if start.elapsed() > Duration::from_secs(20) {
+                            //     #[cfg(feature = "tracing")]
+                            //     tracing::warn!(
+                            //         "Timeout while preloading candles for {}-{}",
+                            //         key.base_denom,
+                            //         key.quote_denom
+                            //     );
 
-                                return Err(IndexerError::candle_timeout());
-                            }
+                            //     return Err(IndexerError::candle_timeout());
+                            // }
 
                             let query_builder = CandleQueryBuilder::new(
                                 key.interval,
@@ -449,6 +449,15 @@ impl CandleCache {
                             .with_limit(MAX_ITEMS);
 
                             candles = query_builder.fetch_all(clickhouse_client).await?.candles;
+
+                            #[cfg(feature = "tracing")]
+                            tracing::info!(
+                                duration = ?start.elapsed(),
+                                %key.base_denom,
+                                %key.quote_denom,
+                                %key.interval,
+                                "fetched_all done for candle preload",
+                            );
 
                             if let Some(candle) = candles.first() {
                                 if candle.max_block_height < highest_block_height {
