@@ -49,7 +49,7 @@
     - name: Show ClickHouse databases
       command: >
         docker exec -i clickhouse
-        clickhouse-client -q "SHOW DATABASES"
+        clickhouse-client -q "SHOW DATABASES" --password {{ clickhouse_password }}
       register: clickhouse_dbs
 
     - debug:
@@ -67,7 +67,7 @@
     - name: Show ClickHouse databases
       command: >
         docker exec -i clickhouse
-        clickhouse-client -q "SHOW DATABASES"
+        clickhouse-client -q "SHOW DATABASES" --password {{ clickhouse_password }}
       register: clickhouse_dbs
 
     - debug:
