@@ -102,7 +102,7 @@
             identity_regexp: "{{ cosign_identity_rust_regexp }}"
           - service: "dango-frontend"
             image: "ghcr.io/left-curve/left-curve/dango-frontend"
-            tag: "{{ dango_image_tag }}"
+            tag: "{{ frontend_image_tag }}"
             identity_regexp: "{{ cosign_identity_rust_regexp }}"
           - service: "cometbft"
             image: "ghcr.io/left-curve/left-curve/cometbft"
