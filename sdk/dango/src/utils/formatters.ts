@@ -128,8 +128,10 @@ export function formatUnits(value: number | string, decimals: number): string {
  * Parses a string representation of a number with a given number of decimals.
  * @param value The string representation of the number.
  * @param decimals The number of decimals to divide the number by.
+ * @param dp Whether to use decimal places or not. If true, it will return the number with decimal places, otherwise it will return the number without decimal places.
  * @returns The parsed number.
  */
-export function parseUnits(value: string, decimals: number): string {
-  return Decimal(value).times(Decimal(10).pow(decimals)).toFixed(0);
+export function parseUnits(value: string, decimals: number, dp?: boolean): string {
+  const result = Decimal(value).times(Decimal(10).pow(decimals));
+  return dp ? result.toFixed() : result.toFixed(0);
 }

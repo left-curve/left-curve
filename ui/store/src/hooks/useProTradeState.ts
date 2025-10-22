@@ -168,16 +168,16 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
 
   const amount = useMemo(() => {
     const { orderBook } = orderBookStore.getState();
-    if (!orderBook) return { base: "0", quote: "0" };
+    if (!orderBook?.midPrice) return { base: "0", quote: "0" };
     if (sizeValue === "0") return { base: "0", quote: "0" };
 
     const isBaseSize = sizeCoin.denom === pairId.baseDenom;
     const isQuoteSize = sizeCoin.denom === pairId.quoteDenom;
 
-    const price = parseUnits(
-      operation === "market" ? orderBook.midPrice || "0" : priceValue || "0",
-      baseCoin.decimals - quoteCoin.decimals,
-    );
+    const price =
+      operation === "market"
+        ? parseUnits(orderBook.midPrice, baseCoin.decimals - quoteCoin.decimals, true)
+        : priceValue;
 
     return {
       base: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(price).toFixed(),
