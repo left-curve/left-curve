@@ -50,10 +50,13 @@ export const JsonVisualizer: React.FC<JsonVisualizerProps> = ({ json, string, co
         <button
           type="button"
           className="text-primitives-white-light-100 outline-none focus:outline-none"
-          onClick={() => setCollapsed(typeof isCollapsed === "number" ? false : collapsed)}
+          onClick={() => setCollapsed(isCollapsed === collapsed ? false : collapsed)}
         >
           <IconChevronDownFill
-            className={twMerge("w-4 h-4 transition-all", isCollapsed ? "rotate-180" : "rotate-0")}
+            className={twMerge(
+              "w-4 h-4 transition-all",
+              isCollapsed || typeof isCollapsed === "number" ? "rotate-0" : "rotate-180",
+            )}
           />
         </button>
       </div>
