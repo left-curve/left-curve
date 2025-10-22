@@ -149,11 +149,11 @@ services:
       app_settings__order_number__max: 5
       app_settings__order_type: market
       app_settings__healthcheck_file: /tmp/dango_dex_app_healthcheck
-    # healthcheck:
-    #   test: ["CMD", "test", "-f", "/tmp/dango_dex_app_healthcheck"]
-    #   interval: 5s
-    #   timeout: 5s
-    #   retries: 3
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/dango_dex_app_healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
 
   dex-bot-init:
     image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
@@ -166,11 +166,8 @@ services:
       dex-bot:
         condition: service_started
     environment:
-      username: ${DEX_BOT_USERNAME}
       address: ${DEX_BOT_ADDRESS}
-      key__privatekey: ${DEX_BOT_PRIVATE_KEY}
       http_url: ${DEX_BOT_DANGO_ENDPOINT:-http://dango:8080}
-      chain_id: "dev-6"
       mint_amount: 1000000000
       minter_address: ${DEX_BOT_MINTER_ADDRESS}
       minter_username: ${DEX_BOT_MINTER_USERNAME}
@@ -184,7 +181,6 @@ services:
       app_settings__order_number__min: 1
       app_settings__order_number__max: 5
       app_settings__order_type: market
-      app_settings__healthcheck_file: /tmp/dango_dex_app_healthcheck
     command: sh -c "dex liquidity mint --url $$http_url $$mint_amount $$address --address $$minter_address --username $$minter_username --private-key $$minter_private_key; dex liquidity provide --url $$http_url $$mint_amount --address $$minter_address --username $$minter_username --private-key $$minter_private_key"
     restart: "no"
 
