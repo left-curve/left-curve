@@ -167,23 +167,30 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
   });
 
   const amount = useMemo(() => {
-    const { orderBook } = orderBookStore.getState();
-    if (!orderBook?.midPrice) return { base: "0", quote: "0" };
     if (sizeValue === "0") return { base: "0", quote: "0" };
 
-    const isBaseSize = sizeCoin.denom === pairId.baseDenom;
-    const isQuoteSize = sizeCoin.denom === pairId.quoteDenom;
+    const price = (() => {
+      if (operation === "market") {
+        const { orderBook } = orderBookStore.getState();
+        if (!orderBook?.midPrice) return null;
 
-    const price =
-      operation === "market"
-        ? parseUnits(orderBook.midPrice, baseCoin.decimals - quoteCoin.decimals, true)
-        : priceValue;
+        return parseUnits(orderBook.midPrice, baseCoin.decimals - quoteCoin.decimals, true);
+      }
+
+      if (priceValue === "0") return null;
+      return priceValue;
+    })();
+
+    if (!price) return { base: "0", quote: "0" };
+
+    const isBaseSize = sizeCoin.denom === baseCoin.denom;
+    const isQuoteSize = !isBaseSize;
 
     return {
       base: isBaseSize ? sizeValue : Decimal(sizeValue).divFloor(price).toFixed(),
       quote: isQuoteSize ? sizeValue : Decimal(sizeValue).mulCeil(price).toFixed(),
     };
-  }, [operation, sizeCoin, pairId, sizeValue, priceValue]);
+  }, [operation, sizeCoin, baseCoin, quoteCoin, sizeValue, priceValue, orderBookStore]);
 
   useEffect(() => {
     setValue("price", getPrice(1, pairId.baseDenom).toFixed(4));
