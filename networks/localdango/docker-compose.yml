@@ -88,12 +88,13 @@ services:
     environment:
       - HOME=/app
       - FAUCET_DANGO_ENDPOINT=${FAUCET_DANGO_ENDPOINT:-http://dango:8080}
+      - chain_id="dev-6"
     tty: true
     ports:
       - 127.0.0.1:${FAUCET_PORT:-8082}:8082
     command: >
       sh -c "
-      faucet --provider-url $${FAUCET_DANGO_ENDPOINT} --chain-id dev-6
+      faucet --provider-url $${FAUCET_DANGO_ENDPOINT} --chain-id $$chain_id
       "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8082/health"]
@@ -108,6 +109,8 @@ services:
       <<: *common-labels
     depends_on:
       dango:
+        condition: service_healthy
+      cometbft:
         condition: service_healthy
     environment:
       # NOTE: those are public and only used for development and testnets
