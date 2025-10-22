@@ -26,17 +26,17 @@ export function useTableSort<T, K extends string>({
   const [sortKey, setSortKey] = useState<K>(initialKey);
   const [sortDir, setSortDir] = useState<Dir>(initialDir);
 
-  const toggleSort = useCallback(
-    (col: K) => {
+  const toggleSortDir = useCallback(
+    (key: K) => {
       setSortKey((prev) => {
-        if (prev !== col) {
+        if (prev !== key) {
           setSortDir("asc");
-          onChange?.({ sortKey: col, sortDir: "asc" });
-          return col;
+          onChange?.({ sortKey: key, sortDir: "asc" });
+          return key;
         }
         const nextDir: Dir = sortDir === "asc" ? "desc" : "asc";
         setSortDir(nextDir);
-        onChange?.({ sortKey: col, sortDir: nextDir });
+        onChange?.({ sortKey: key, sortDir: nextDir });
         return prev;
       });
     },
@@ -74,5 +74,5 @@ export function useTableSort<T, K extends string>({
       .map((x) => x.row);
   }, [data, groupFirst, getVal, sortKey, sortDir]);
 
-  return { sortedData, sortKey, sortDir, toggleSort };
+  return { sortedData, sortKey, sortDir, toggleSortDir };
 }

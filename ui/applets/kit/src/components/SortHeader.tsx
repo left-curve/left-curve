@@ -1,29 +1,29 @@
 import { IconChevronDownFill, IconChevronUpDown, IconChevronUpFill } from "@left-curve/applets-kit";
 import type { Dir } from "../hooks/useTableSort";
 
-export type SortHeaderProps<K extends string = string> = {
+export type SortHeaderProps<K extends string> = {
   label: string;
-  col: K;
+  key: K;
   sortKey: K;
   sortDir?: Dir;
-  onClick: (col: K) => void;
+  onClick: (key: K) => void;
   className?: string;
 };
 
 export const SortHeader: React.FC<SortHeaderProps<string>> = ({
-  col,
+  key,
   label,
   sortKey,
   sortDir,
   onClick,
   className,
 }) => {
-  const active = sortKey === col;
+  const active = sortKey === key;
 
   return (
     <button
       type="button"
-      onClick={() => onClick(col)}
+      onClick={() => onClick(key)}
       className={["flex items-center gap-1", className].filter(Boolean).join(" ")}
     >
       <span>{label}</span>

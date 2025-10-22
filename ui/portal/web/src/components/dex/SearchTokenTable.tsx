@@ -17,7 +17,7 @@ type SearchTokenTableProps = {
   onChangePairId: (pairId: PairId) => void;
 };
 
-type SortBy = "pairName" | "price" | "change24h" | "volume";
+type SortBy = "pairName" | "price" | "change24h" | "volume" | string;
 
 const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   classNames,
@@ -50,7 +50,7 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
     [hasFavPair],
   );
 
-  const { sortedData, sortKey, sortDir, toggleSort } = useTableSort<PairUpdate, SortBy>({
+  const { sortedData, sortKey, sortDir, toggleSortDir } = useTableSort<PairUpdate, SortBy>({
     data,
     sortKeys,
     initialKey: "pairName",
@@ -58,12 +58,16 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
     groupFirst: groupFavs,
   });
 
-  const sortState = { sortKey, sortDir, onClick: toggleSort as (col: string) => void };
+  const sortState = {
+    sortKey,
+    sortDir,
+    onClick: toggleSortDir,
+  } as const;
 
   const columns: TableColumn<PairUpdate> = [
     {
       id: "pairName",
-      header: () => <SortHeader label="Name" col="pairName" {...sortState} />,
+      header: () => <SortHeader label="Name" key="pairName" {...sortState} />,
       cell: ({ row }) => {
         const pair = { baseDenom: row.original.baseDenom, quoteDenom: row.original.quoteDenom };
         return <Cell.PairNameWithFav type="Spot" pairId={pair} />;
@@ -80,17 +84,17 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
     },
     {
       id: "price",
-      header: () => <SortHeader label="Price" col="price" {...sortState} />,
+      header: () => <SortHeader label="Price" key="price" {...sortState} />,
       cell: ({ row }) => <Cell.Text text={getPrice(1, row.original.baseDenom, { format: true })} />,
     },
     {
       id: "change24h",
-      header: () => <SortHeader label="24h Change" col="change24h" {...sortState} />,
+      header: () => <SortHeader label="24h Change" key="change24h" {...sortState} />,
       cell: () => <Cell.Text text="-" />,
     },
     {
       id: "volume",
-      header: () => <SortHeader label="Volume" col="volume" {...sortState} />,
+      header: () => <SortHeader label="Volume" key="volume" {...sortState} />,
       cell: () => <Cell.Text text="-" />,
     },
   ];
