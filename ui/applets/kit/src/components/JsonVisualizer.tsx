@@ -46,7 +46,7 @@ export const JsonVisualizer: React.FC<JsonVisualizerProps> = ({ json, string, co
           base0F: "#fffcf6",
         }}
       />
-      <div style={{ position: "absolute", top: 0, right: 0 }}>
+      <div className="absolute top-0 right-0">
         <button
           type="button"
           className="text-primitives-white-light-100 outline-none focus:outline-none"
