@@ -1,16 +1,13 @@
-import { useConfig, usePrices } from "@left-curve/store";
-import { useMemo } from "react";
+import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
+import { useMemo, useCallback } from "react";
+import { Cell, SortHeader, Table, useApp, useTableSort } from "@left-curve/applets-kit";
 
-import { Cell, Table, useApp } from "@left-curve/applets-kit";
-
-import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
+import type { SortKeys, TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { PairId, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 
-const SearchTokenTableContainer: React.FC<PropsWithChildren> = ({ children }) => {
-  return <>{children}</>;
-};
+const SearchTokenTableContainer: React.FC<PropsWithChildren> = ({ children }) => <>{children}</>;
 
 type SearchTokenTableProps = {
   classNames?: TableClassNames;
@@ -19,6 +16,8 @@ type SearchTokenTableProps = {
   pairId: PairId;
   onChangePairId: (pairId: PairId) => void;
 };
+
+type SortBy = "pairName" | "price" | "change24h" | "volume";
 
 const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   classNames,
@@ -30,33 +29,69 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   const { formatNumberOptions } = settings;
   const { coins } = useConfig();
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+  const { hasFavPair } = useFavPairs();
+
+  const sortKeys = useMemo<SortKeys<PairUpdate, SortBy>>(
+    () => ({
+      pairName: (row) => {
+        const base = coins.byDenom[row.baseDenom]?.symbol ?? row.baseDenom;
+        const quote = coins.byDenom[row.quoteDenom]?.symbol ?? row.quoteDenom;
+        return `${base}-${quote}`.toUpperCase();
+      },
+      price: (row) => getPrice(1, row.baseDenom, { format: false }),
+      change24h: () => 0,
+      volume: () => 0,
+    }),
+    [coins.byDenom, getPrice],
+  );
+
+  const groupFavs = useCallback(
+    (row: PairUpdate) => hasFavPair({ baseDenom: row.baseDenom, quoteDenom: row.quoteDenom }),
+    [hasFavPair],
+  );
+
+  const { sortedData, sortKey, sortDir, toggleSort } = useTableSort<PairUpdate, SortBy>({
+    data,
+    sortKeys,
+    initialKey: "pairName",
+    initialDir: "asc",
+    groupFirst: groupFavs,
+  });
+
+  const sortState = { sortKey, sortDir, onClick: toggleSort as (col: string) => void };
 
   const columns: TableColumn<PairUpdate> = [
     {
       id: "pairName",
-      header: "Name",
+      header: () => <SortHeader label="Name" col="pairName" {...sortState} />,
       cell: ({ row }) => {
         const pair = { baseDenom: row.original.baseDenom, quoteDenom: row.original.quoteDenom };
         return <Cell.PairNameWithFav type="Spot" pairId={pair} />;
       },
       filterFn: (row, _, value) => {
+        const v = String(value ?? "").toUpperCase();
         const baseCoin = coins.byDenom[row.original.baseDenom];
         const quoteCoin = coins.byDenom[row.original.quoteDenom];
-
-        return baseCoin.symbol.includes(value) || quoteCoin.symbol.includes(value);
+        return (
+          (baseCoin?.symbol ?? "").toUpperCase().includes(v) ||
+          (quoteCoin?.symbol ?? "").toUpperCase().includes(v)
+        );
       },
     },
     {
-      header: "Price",
+      id: "price",
+      header: () => <SortHeader label="Price" col="price" {...sortState} />,
       cell: ({ row }) => <Cell.Text text={getPrice(1, row.original.baseDenom, { format: true })} />,
     },
     {
-      header: "24h Change",
-      cell: ({ row }) => <Cell.Text text="-" />,
+      id: "change24h",
+      header: () => <SortHeader label="24h Change" col="change24h" {...sortState} />,
+      cell: () => <Cell.Text text="-" />,
     },
     {
-      header: "Volume",
-      cell: ({ row }) => <Cell.Text text="-" />,
+      id: "volume",
+      header: () => <SortHeader label="Volume" col="volume" {...sortState} />,
+      cell: () => <Cell.Text text="-" />,
     },
   ];
 
@@ -64,7 +99,7 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
 
   return (
     <Table
-      data={data}
+      data={sortedData}
       columns={columns}
       style="simple"
       classNames={classNames}
