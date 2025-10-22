@@ -2,13 +2,13 @@
 use grug_types::MetricsIterExt;
 use {
     crate::{DbError, DbResult, digest::batch_hash},
-    grug_app::Db,
+    grug_app::{Db, PrunableDb},
+    grug_db_disk_types::{
+        BatchBuilder, DefaultFamily, Family, TimestampedFamily, U64Timestamp, open_db,
+    },
     grug_types::{Batch, Empty, Hash256, Op, Order, Record, Storage},
     ouroboros::self_referencing,
-    rocksdb::{
-        BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
-        WriteBatch,
-    },
+    rocksdb::{DBWithThreadMode, MultiThreaded},
     std::{
         collections::BTreeMap,
         ops::Bound,
@@ -17,25 +17,23 @@ use {
     },
 };
 
-const CF_NAME_DEFAULT: &str = "default";
+const LATEST_VERSION_KEY: &[u8] = b"version";
 
-const CF_NAME_METADATA: &str = "metadata";
+const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 
-const LATEST_VERSION_KEY: &str = "version";
+const LATEST_BATCH_HASH_KEY: &[u8] = b"hash";
 
-const LATEST_BATCH_HASH_KEY: &str = "hash";
+const STORAGE: TimestampedFamily = Family::new("storage");
+
+const METADATA: DefaultFamily = Family::new("metadata");
 
 #[cfg(feature = "metrics")]
 const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite.duration";
 
 pub struct DiskDbLite {
-    inner: Arc<DiskDbLiteInner>,
-}
-
-struct DiskDbLiteInner {
-    db: DBWithThreadMode<MultiThreaded>,
+    db: Arc<DBWithThreadMode<MultiThreaded>>,
     pending_data: RwLock<Option<PendingData>>,
-    priority_data: Option<PriorityData>,
+    priority_data: Option<Arc<PriorityData>>,
 }
 
 pub(crate) struct PendingData {
@@ -71,24 +69,16 @@ impl DiskDbLite {
         P: AsRef<Path>,
         B: AsRef<[u8]>,
     {
-        let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
-            (CF_NAME_DEFAULT, Options::default()),
-            (CF_NAME_METADATA, Options::default()),
-        ])?;
+        let db = open_db(data_dir, [STORAGE.open_opt(), METADATA.open_opt()])?;
 
         // If `priority_range` is specified, load the data in that range into memory.
         let priority_data = priority_range.map(|(min, max)| {
             #[cfg(feature = "tracing")]
             let mut size = 0;
 
-            let opts = new_read_options(Some(min.as_ref()), Some(max.as_ref()));
-            let records = db
-                .iterator_cf_opt(&cf_handle(&db, CF_NAME_DEFAULT), opts, IteratorMode::Start)
-                .map(|item| {
-                    let (k, v) = item.unwrap_or_else(|err| {
-                        panic!("failed to load record for priority data: {err}");
-                    });
-
+            let records = STORAGE
+                .iter(&db, None, None, None, Order::Ascending)
+                .map(|(k, v)| {
                     #[cfg(feature = "tracing")]
                     {
                         size += k.len() + v.len();
@@ -103,27 +93,25 @@ impl DiskDbLite {
                 tracing::info!(num_records = records.len(), size, "Loaded priority data");
             }
 
-            PriorityData {
+            Arc::new(PriorityData {
                 min: min.as_ref().to_vec(),
                 max: max.as_ref().to_vec(),
                 records: RwLock::new(records),
-            }
+            })
         });
 
         Ok(Self {
-            inner: Arc::new(DiskDbLiteInner {
-                db,
-                pending_data: RwLock::new(None),
-                priority_data,
-            }),
+            db: Arc::new(db),
+            pending_data: RwLock::new(None),
+            priority_data,
         })
     }
-}
 
-impl Clone for DiskDbLite {
-    fn clone(&self) -> Self {
+    pub fn clone_without_priority_data(&self) -> Self {
         Self {
-            inner: Arc::clone(&self.inner),
+            db: Arc::clone(&self.db),
+            pending_data: RwLock::new(None),
+            priority_data: None,
         }
     }
 }
@@ -141,39 +129,50 @@ impl Db for DiskDbLite {
     }
 
     fn state_storage(&self, version: Option<u64>) -> DbResult<Self::StateStorage> {
-        // If a version is specified, it must equal the latest version.
-        if let Some(requested) = version {
-            let db_version = self.latest_version().unwrap_or(0);
-            if requested != db_version {
-                return Err(DbError::incorrect_version(db_version, requested));
+        // Read the latest version.
+        // If it doesn't exist, this means not even a single batch has been
+        // written yet (e.g. during `InitChain`). In this case just use zero.
+        let latest_version = self.latest_version().unwrap_or(0);
+
+        // If version is unspecified, use the latest version. Otherwise, make
+        // sure it's no newer than the latest version.
+        let version = match version {
+            Some(version) => {
+                if version > latest_version {
+                    return Err(DbError::version_too_new(version, latest_version));
+                }
+                version
+            },
+            None => latest_version,
+        };
+
+        // If the oldest version record exists (meaning, pruning has been
+        // performed at least once), and the requested version is older than it,
+        // return error.
+        if let Some(oldest_version) = self.oldest_version() {
+            if version < oldest_version {
+                return Err(DbError::version_too_old(version, oldest_version));
             }
         }
 
         Ok(StateStorage {
-            inner: Arc::clone(&self.inner),
-            cf_name: CF_NAME_DEFAULT,
+            db: self.db.clone(),
+            priority_data: self.priority_data.clone(),
+            version,
+            family: STORAGE,
         })
     }
 
     fn latest_version(&self) -> Option<u64> {
-        self.inner
-            .db
-            .get_cf(
-                &cf_handle(&self.inner.db, CF_NAME_METADATA),
-                LATEST_VERSION_KEY,
-            )
-            .unwrap_or_else(|err| {
-                panic!("failed to read latest DB version: {err}");
-            })
-            .map(|bytes| {
-                assert_eq!(
-                    bytes.len(),
-                    8,
-                    "latest DB version is of incorrect byte length: {}",
-                    bytes.len()
-                );
-                u64::from_le_bytes(bytes.try_into().unwrap())
-            })
+        METADATA.read(&self.db, LATEST_VERSION_KEY).map(|bytes| {
+            assert_eq!(
+                bytes.len(),
+                8,
+                "latest DB version is of incorrect byte length: {}",
+                bytes.len()
+            );
+            u64::from_le_bytes(bytes.try_into().unwrap())
+        })
     }
 
     fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash256>> {
@@ -183,22 +182,15 @@ impl Db for DiskDbLite {
             }
         }
 
-        Ok(self
-            .inner
-            .db
-            .get_cf(
-                &cf_handle(&self.inner.db, CF_NAME_METADATA),
-                LATEST_BATCH_HASH_KEY,
-            )?
-            .map(|bytes| {
-                assert_eq!(
-                    bytes.len(),
-                    Hash256::LENGTH,
-                    "latest DB batch hash is of incorrect byte length: {}",
-                    bytes.len()
-                );
-                Hash256::from_inner(bytes.try_into().unwrap())
-            }))
+        Ok(METADATA.read(&self.db, LATEST_BATCH_HASH_KEY).map(|bytes| {
+            assert_eq!(
+                bytes.len(),
+                Hash256::LENGTH,
+                "latest DB batch hash is of incorrect byte length: {}",
+                bytes.len()
+            );
+            Hash256::from_inner(bytes.try_into().unwrap())
+        }))
     }
 
     fn prove(&self, _key: &[u8], _version: Option<u64>) -> DbResult<Self::Proof> {
@@ -210,7 +202,7 @@ impl Db for DiskDbLite {
         let duration = std::time::Instant::now();
 
         // A pending data can't already exist.
-        if self.inner.pending_data.read()?.is_some() {
+        if self.pending_data.read()?.is_some() {
             return Err(DbError::pending_data_already_set());
         }
 
@@ -224,7 +216,7 @@ impl Db for DiskDbLite {
         // on the changeset.
         let hash = batch_hash(&batch);
 
-        *(self.inner.pending_data.write()?) = Some(PendingData {
+        *(self.pending_data.write()?) = Some(PendingData {
             version,
             hash,
             batch,
@@ -245,14 +237,13 @@ impl Db for DiskDbLite {
 
         // A pending data must already exists.
         let pending = self
-            .inner
             .pending_data
             .write()?
             .take()
             .ok_or(DbError::pending_data_not_set())?;
 
         // If priority data exists, apply the change set to it.
-        if let Some(data) = &self.inner.priority_data {
+        if let Some(data) = &self.priority_data {
             #[cfg(feature = "tracing")]
             {
                 tracing::info!("Locking priority data for writing"); // FIXME: change to `debug!` once we figure out the deadlock issue
@@ -277,24 +268,32 @@ impl Db for DiskDbLite {
         }
 
         // Now, prepare the write batch that will be written to RocksDB.
-        let mut batch = WriteBatch::default();
+        let mut batch_builder =
+            BatchBuilder::new(&self.db).with_timestamp(U64Timestamp::from(pending.version));
 
         // Wriet batch to default CF.
-        let cf = cf_handle(&self.inner.db, CF_NAME_DEFAULT);
-        for (k, op) in pending.batch {
-            if let Op::Insert(v) = op {
-                batch.put_cf(&cf, k, v);
-            } else {
-                batch.delete_cf(&cf, k);
+        // let cf = cf_handle(&self.inner.db, CF_NAME_DEFAULT);
+        batch_builder.update(STORAGE, |batch| {
+            for (k, op) in pending.batch {
+                if let Op::Insert(v) = op {
+                    batch.put(k, v);
+                } else {
+                    batch.delete(k);
+                }
             }
-        }
+        });
 
         // Write version and hash to metadata CF.
-        let cf = cf_handle(&self.inner.db, CF_NAME_METADATA);
-        batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
-        batch.put_cf(&cf, LATEST_BATCH_HASH_KEY, pending.hash);
+        // let cf = cf_handle(&self.inner.db, CF_NAME_METADATA);
+        // batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
+        // batch.put_cf(&cf, LATEST_BATCH_HASH_KEY, pending.hash);
 
-        self.inner.db.write(batch)?;
+        batch_builder.update(METADATA, |batch| {
+            batch.put(LATEST_VERSION_KEY, pending.version.to_le_bytes());
+            batch.put(LATEST_BATCH_HASH_KEY, pending.hash);
+        });
+
+        batch_builder.commit()?;
 
         #[cfg(feature = "metrics")]
         {
@@ -306,12 +305,45 @@ impl Db for DiskDbLite {
     }
 }
 
+impl PrunableDb for DiskDbLite {
+    fn oldest_version(&self) -> Option<u64> {
+        METADATA.read(&self.db, OLDEST_VERSION_KEY).map(|bytes| {
+            assert_eq!(
+                bytes.len(),
+                8,
+                "oldest DB version is of incorrect byte length: {}",
+                bytes.len()
+            );
+            u64::from_le_bytes(bytes.try_into().unwrap())
+        })
+    }
+
+    fn prune(&self, up_to_version: u64) -> Result<(), Self::Error> {
+        let ts = U64Timestamp::from(up_to_version);
+
+        let cf = STORAGE.cf_handle(&self.db);
+        self.db.increase_full_history_ts_low(&cf, ts)?;
+
+        let mut batch = BatchBuilder::new(&self.db);
+
+        batch.update(METADATA, |batch| {
+            batch.put(OLDEST_VERSION_KEY, up_to_version.to_le_bytes());
+        });
+
+        batch.commit()?;
+
+        Ok(())
+    }
+}
+
 // ------------------------------- state storage -------------------------------
 
 #[derive(Clone)]
 pub struct StateStorage {
-    inner: Arc<DiskDbLiteInner>,
-    cf_name: &'static str,
+    db: Arc<DBWithThreadMode<MultiThreaded>>,
+    priority_data: Option<Arc<PriorityData>>,
+    version: u64,
+    family: TimestampedFamily,
 }
 
 impl StateStorage {
@@ -324,7 +356,7 @@ impl StateStorage {
         // If priority data exists, and the iterator range completely falls
         // within the priority range, then create a priority iterator.
         // Note: `min` is inclusive, while `max` is exclusive.
-        if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
+        if let (Some(data), Some(min), Some(max)) = (&self.priority_data, min, max) {
             if data.min.as_slice() <= min && max < data.max.as_slice() {
                 return self.create_priority_iterator(data, min, max, order);
             }
@@ -352,22 +384,9 @@ impl StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let opts = new_read_options(min, max);
-        let mode = into_iterator_mode(order);
-
         let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_handle(&self.inner.db, self.cf_name), opts, mode)
-            .map(|item| {
-                let (k, v) = item.unwrap_or_else(|err| {
-                    panic!(
-                        "failed to iterate in DB! cf: {}, err: {}",
-                        self.cf_name, err
-                    );
-                });
-                (k.to_vec(), v.to_vec())
-            });
+            .family
+            .iter(&self.db, Some(self.version), min, max, order);
 
         #[cfg(feature = "metrics")]
         let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [("operation", "next")]);
@@ -384,7 +403,7 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the disk.
         // Note: `min` is inclusive, while `max` is exclusive.
-        if let Some(data) = &self.inner.priority_data {
+        if let Some(data) = &self.priority_data {
             if data.min.as_slice() <= key && key < data.max.as_slice() {
                 return data
                     .records
@@ -395,13 +414,7 @@ impl Storage for StateStorage {
             }
         }
 
-        let result = self
-            .inner
-            .db
-            .get_cf(&cf_handle(&self.inner.db, self.cf_name), key)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from DB! cf: {}, err: {}", self.cf_name, err);
-            });
+        let result = self.family.read(&self.db, Some(self.version), key);
 
         #[cfg(feature = "metrics")]
         {
@@ -501,53 +514,11 @@ impl<'a> Iterator for PriorityIter<'a> {
     }
 }
 
-// ---------------------------------- helpers ----------------------------------
-
-fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
-    match order {
-        Order::Ascending => IteratorMode::Start,
-        Order::Descending => IteratorMode::End,
-    }
-}
-
-// TODO: rocksdb tuning? see:
-// https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/opts.go#L29-L65
-// https://github.com/turbofish-org/merk/blob/develop/src/merk/mod.rs#L84-L102
-fn new_db_options() -> Options {
-    let mut opts = Options::default();
-    opts.create_if_missing(true);
-    opts.create_missing_column_families(true);
-    opts
-}
-
-fn new_read_options(
-    iterate_lower_bound: Option<&[u8]>,
-    iterate_upper_bound: Option<&[u8]>,
-) -> ReadOptions {
-    let mut opts = ReadOptions::default();
-    if let Some(bound) = iterate_lower_bound {
-        opts.set_iterate_lower_bound(bound);
-    }
-    if let Some(bound) = iterate_upper_bound {
-        opts.set_iterate_upper_bound(bound);
-    }
-    opts
-}
-
-fn cf_handle<'a>(
-    db: &'a DBWithThreadMode<MultiThreaded>,
-    name: &'static str,
-) -> Arc<BoundColumnFamily<'a>> {
-    db.cf_handle(name).unwrap_or_else(|| {
-        panic!("failed to create handle for `{name}` column family");
-    })
-}
-
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
 mod tests {
-    use {super::*, grug_types::hash, temp_rocksdb::TempDataDir};
+    use {super::*, grug_types::hash, rocksdb::CompactOptions, temp_rocksdb::TempDataDir};
 
     // sha256(6 | donald | 1 | 5 | trump | 4 | jake | 1 | 8 | shepherd | 3 | joe | 1 | 5 | biden | 5 | larry | 1 | 8 | engineer)
     // = sha256(0006646f6e616c640100057472756d7000046a616b65010008736865706865726400036a6f65010005626964656e00056c61727279010008656e67696e656572)
@@ -617,5 +588,70 @@ mod tests {
                 assert_eq!(found_value.as_deref(), v);
             }
         }
+    }
+
+    #[test]
+    fn prune_works() {
+        let path = TempDataDir::new("_grug_disk_db_lite_pruning_works");
+        let db = DiskDbLite::open::<_, Vec<u8>>(&path, None).unwrap();
+
+        for batch in [
+            // v0
+            Batch::from([(b"0".to_vec(), Op::Insert(b"0".to_vec()))]),
+            // v1
+            Batch::from([(b"1".to_vec(), Op::Insert(b"1".to_vec()))]),
+            // v2
+            Batch::from([(b"2".to_vec(), Op::Insert(b"2".to_vec()))]),
+            // v3
+            Batch::from([(b"3".to_vec(), Op::Insert(b"3".to_vec()))]),
+            // v4
+            Batch::from([(b"4".to_vec(), Op::Insert(b"4".to_vec()))]),
+        ] {
+            db.flush_and_commit(batch).unwrap();
+        }
+
+        let current_version = db.latest_version();
+
+        assert_eq!(current_version, Some(4));
+
+        let storage = db.state_storage(current_version).unwrap();
+
+        assert_eq!(storage.read(b"2"), Some(b"2".to_vec()));
+        assert_eq!(storage.read(b"4"), Some(b"4".to_vec()));
+
+        db.prune(3).unwrap();
+
+        let storage = db.state_storage(current_version).unwrap();
+
+        assert_eq!(storage.read(b"2"), Some(b"2".to_vec()));
+        assert_eq!(storage.read(b"4"), Some(b"4".to_vec()));
+
+        db.flush_and_commit(Batch::from([(b"2".to_vec(), Op::Insert(b"22".to_vec()))]))
+            .unwrap();
+
+        let storage = db.state_storage(Some(5)).unwrap();
+
+        assert_eq!(storage.read(b"2"), Some(b"22".to_vec()));
+
+        db.prune(3).unwrap();
+
+        db.db.compact_range_cf_opt(
+            &STORAGE.cf_handle(&db.db),
+            None::<&[u8]>,
+            None::<&[u8]>,
+            &CompactOptions::default(),
+        );
+
+        let storage = db.state_storage(Some(4)).unwrap();
+        assert_eq!(storage.read(b"2"), Some(b"2".to_vec()));
+
+        let storage = db.state_storage(Some(3)).unwrap();
+        assert_eq!(storage.read(b"2"), Some(b"2".to_vec()));
+
+        let cf = STORAGE.cf_handle(&db.db);
+        let read_opts = STORAGE.read_options(Some(2));
+
+        // try to read v2, should fail
+        db.db.get_cf_opt(&cf, b"2", &read_opts).unwrap_err();
     }
 }

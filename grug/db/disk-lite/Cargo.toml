@@ -14,16 +14,17 @@ metrics = ["dep:metrics", "grug-types/metrics"]
 tracing = ["dep:tracing"]
 
 [dependencies]
-error-backtrace = { workspace = true }
-grug-app        = { workspace = true }
-grug-types      = { workspace = true }
-metrics         = { workspace = true, optional = true }
-ouroboros       = { workspace = true }
-rocksdb         = { workspace = true }
-sha2            = { workspace = true }
-tempfile        = { workspace = true }
-thiserror       = { workspace = true }
-tracing         = { workspace = true, optional = true }
+error-backtrace    = { workspace = true }
+grug-app           = { workspace = true }
+grug-db-disk-types = { workspace = true }
+grug-types         = { workspace = true }
+metrics            = { workspace = true, optional = true }
+ouroboros          = { workspace = true }
+rocksdb            = { workspace = true }
+sha2               = { workspace = true }
+tempfile           = { workspace = true }
+thiserror          = { workspace = true }
+tracing            = { workspace = true, optional = true }
 
 [dev-dependencies]
 temp-rocksdb = { workspace = true }

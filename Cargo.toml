@@ -30,6 +30,7 @@ members = [
   "grug/crypto",
   "grug/db/disk",
   "grug/db/disk-lite",
+  "grug/db/disk-types",
   "grug/db/memory",
   "grug/db/memory-lite",
   "grug/ffi",
@@ -232,6 +233,7 @@ grug-client                 = { path = "grug/client" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
 grug-db-disk-lite           = { path = "grug/db/disk-lite" }
+grug-db-disk-types          = { path = "grug/db/disk-types" }
 grug-db-memory              = { path = "grug/db/memory" }
 grug-db-memory-lite         = { path = "grug/db/memory-lite" }
 grug-ffi                    = { path = "grug/ffi" }

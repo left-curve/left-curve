@@ -76,6 +76,8 @@ pub trait MaybeDefined<T> {
     fn maybe_inner(&self) -> Option<&T>;
 
     fn maybe_into_inner(self) -> Option<T>;
+
+    fn maybe_defined() -> bool;
 }
 
 impl<T> MaybeDefined<T> for Defined<T> {
@@ -86,6 +88,10 @@ impl<T> MaybeDefined<T> for Defined<T> {
     fn maybe_into_inner(self) -> Option<T> {
         Some(self.into_inner())
     }
+
+    fn maybe_defined() -> bool {
+        true
+    }
 }
 
 impl<T> MaybeDefined<T> for Undefined<T> {
@@ -95,5 +101,9 @@ impl<T> MaybeDefined<T> for Undefined<T> {
 
     fn maybe_into_inner(self) -> Option<T> {
         None
+    }
+
+    fn maybe_defined() -> bool {
+        false
     }
 }

@@ -4796,6 +4796,7 @@ version = "0.0.0"
 dependencies = [
  "error-backtrace",
  "grug-app",
+ "grug-db-disk-types",
  "grug-types",
  "metrics",
  "ouroboros",
@@ -4805,6 +4806,17 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.12",
  "tracing",
+]
+
+[[package]]
+name = "grug-db-disk-types"
+version = "0.0.0"
+dependencies = [
+ "error-backtrace",
+ "grug-app",
+ "grug-types",
+ "rocksdb",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
