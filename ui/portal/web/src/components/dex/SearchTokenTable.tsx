@@ -30,16 +30,15 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   const { formatNumberOptions } = settings;
   const { coins } = useConfig();
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+
   const columns: TableColumn<PairUpdate> = [
     {
       id: "pairName",
       header: "Name",
-      cell: ({ row }) => (
-        <Cell.PairName
-          type="Spot"
-          pairId={{ baseDenom: row.original.baseDenom, quoteDenom: row.original.quoteDenom }}
-        />
-      ),
+      cell: ({ row }) => {
+        const pair = { baseDenom: row.original.baseDenom, quoteDenom: row.original.quoteDenom };
+        return <Cell.PairNameWithFav type="Spot" pairId={pair} />;
+      },
       filterFn: (row, _, value) => {
         const baseCoin = coins.byDenom[row.original.baseDenom];
         const quoteCoin = coins.byDenom[row.original.quoteDenom];
