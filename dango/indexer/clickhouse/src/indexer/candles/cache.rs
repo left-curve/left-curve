@@ -427,6 +427,8 @@ impl CandleCache {
 
                     async move {
                         let mut candles;
+
+                        #[cfg(feature = "tracing")]
                         let start = Instant::now();
 
                         loop {
