@@ -499,6 +499,9 @@ importers:
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@privy-io/js-sdk-core':
+        specifier: ^0.55.3
+        version: 0.55.3(typescript@5.6.3)(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))
       '@privy-io/react-auth':
         specifier: ^3.0.1
         version: 3.0.1(@types/react@18.3.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)(use-sync-external-store@1.5.0(react@18.3.1))(zod@3.24.1)
@@ -3140,6 +3143,9 @@ packages:
   '@privy-io/api-base@1.7.0':
     resolution: {integrity: sha512-ji6ARQAAuW/FzRTgft9NCjRuouWX9t+J7JMmvLPsnXQJDFEV9mqh4sWXZhQ8ddTq/iDZ4z/yz1ORJqN8bYAi4Q==}
 
+  '@privy-io/api-base@1.7.1':
+    resolution: {integrity: sha512-8BT7TTxZrx0NFO0ycaZugxNcogK+hC7HRDS0U4x9XiG8AkRrVYWR8DdkLi3EGcZAZrn73YcBc1GPiBI2IkNaCQ==}
+
   '@privy-io/chains@0.0.2':
     resolution: {integrity: sha512-vT+EcPstcKbvrPyGA2YDD1W8YxaJhKFKYGmS9PaycODpL9HvMsPpkJ1y6SddmVAKL+WIow+nH9cV1/q0aCmPXA==}
 
@@ -3159,8 +3165,22 @@ packages:
       viem:
         optional: true
 
+  '@privy-io/js-sdk-core@0.55.3':
+    resolution: {integrity: sha512-dzrRFBjPo8mFKl35WkDv0RR7qLpKxPaJXHt9NfvCvCTmm68w/c7UrxDsfyJN+DpER3Fw8+aCK50x5ZLf3R1fmg==}
+    peerDependencies:
+      permissionless: ^0.2.47
+      viem: ^2.30.6
+    peerDependenciesMeta:
+      permissionless:
+        optional: true
+      viem:
+        optional: true
+
   '@privy-io/public-api@2.45.2':
     resolution: {integrity: sha512-TSuaFq65PPInb0CBJ9dO/vLh4u4oWXVpv5KxShbVsuaArZ8lig+Orl/HUR1Hri6643zXoBqWlWx9wDt4MQvz9A==}
+
+  '@privy-io/public-api@2.46.0':
+    resolution: {integrity: sha512-psq42ZBjTNUyGiE5gNh/E5Q4Sy05xatwf9DveP2SN4ZTN5+UXQW4q+KCKoFoZ+cHIcGU06lidbpJ2l5gXpTBwQ==}
 
   '@privy-io/react-auth@3.0.1':
     resolution: {integrity: sha512-1EBSAZFQ66+kClmhdLackerOSqYls1BLsK7Ni1kNIU/lbxDDkouHrR8CEllIuCoLEycguTAGRuPq6Ndrbm7HEQ==}
@@ -13511,6 +13531,10 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
+  '@privy-io/api-base@1.7.1':
+    dependencies:
+      zod: 3.25.76
+
   '@privy-io/chains@0.0.2': {}
 
   '@privy-io/ethereum@0.0.2(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))':
@@ -13543,9 +13567,42 @@ snapshots:
       - typescript
       - utf-8-validate
 
+  '@privy-io/js-sdk-core@0.55.3(typescript@5.6.3)(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))':
+    dependencies:
+      '@privy-io/api-base': 1.7.1
+      '@privy-io/chains': 0.0.2
+      '@privy-io/ethereum': 0.0.2(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))
+      '@privy-io/public-api': 2.46.0(typescript@5.6.3)
+      canonicalize: 2.1.0
+      eventemitter3: 5.0.1
+      fetch-retry: 6.0.0
+      jose: 4.15.9
+      js-cookie: 3.0.5
+      libphonenumber-js: 1.12.23
+      set-cookie-parser: 2.7.1
+      uuid: 9.0.1
+    optionalDependencies:
+      viem: 2.37.9(typescript@5.6.3)(zod@3.24.1)
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+
   '@privy-io/public-api@2.45.2(typescript@5.6.3)':
     dependencies:
       '@privy-io/api-base': 1.7.0
+      bs58: 5.0.0
+      libphonenumber-js: 1.12.23
+      viem: 2.37.9(typescript@5.6.3)(zod@3.25.76)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - bufferutil
+      - typescript
+      - utf-8-validate
+
+  '@privy-io/public-api@2.46.0(typescript@5.6.3)':
+    dependencies:
+      '@privy-io/api-base': 1.7.1
       bs58: 5.0.0
       libphonenumber-js: 1.12.23
       viem: 2.37.9(typescript@5.6.3)(zod@3.25.76)

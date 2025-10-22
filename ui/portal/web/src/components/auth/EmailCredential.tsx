@@ -1,11 +1,13 @@
 import { Button, IconEmail, IconLeft, Input, OtpInput } from "@left-curve/applets-kit";
 import { useInputs } from "@left-curve/foundation";
-import { useLoginWithEmail, usePrivy } from "@privy-io/react-auth";
 import { useEffect, useState } from "react";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useMutation } from "@tanstack/react-query";
 import { wait } from "@left-curve/dango/utils";
+import { useConnectors } from "@left-curve/store";
+import type { Connector } from "@left-curve/store/types";
+import type Privy from "@privy-io/js-sdk-core";
 
 type EmailCredentialProps = {
   onAuth: () => void;
@@ -22,8 +24,20 @@ export const EmailCredential: React.FC<EmailCredentialProps> = ({
   email,
   setEmail,
 }) => {
+  const connectors = useConnectors();
+  console.log(connectors);
+  const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
+
+  if (!connector) return null;
+
   if (!email) {
-    return <StepInputEmail disableSignup={Boolean(disableSignup)} setEmail={setEmail} />;
+    return (
+      <StepInputEmail
+        disableSignup={Boolean(disableSignup)}
+        setEmail={setEmail}
+        privy={connector.privy}
+      />
+    );
   }
 
   return (
@@ -32,6 +46,7 @@ export const EmailCredential: React.FC<EmailCredentialProps> = ({
       goBack={goBack}
       email={email}
       onAuth={onAuth}
+      privy={connector.privy}
     />
   );
 };
@@ -39,16 +54,16 @@ export const EmailCredential: React.FC<EmailCredentialProps> = ({
 type StepInputEmailProps = {
   disableSignup: boolean;
   setEmail: (email: string) => void;
+  privy: Privy;
 };
 
-const StepInputEmail: React.FC<StepInputEmailProps> = ({ disableSignup, setEmail }) => {
+const StepInputEmail: React.FC<StepInputEmailProps> = ({ privy, setEmail }) => {
   const { register, inputs } = useInputs();
-  const { sendCode } = useLoginWithEmail();
 
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
       const email = inputs.email.value;
-      sendCode({ email, disableSignup });
+      await privy.auth.email.sendCode(email);
       setEmail(email);
     },
   });
@@ -86,12 +101,17 @@ type StepInputOptProps = {
   onAuth: () => void;
   disableSignup: boolean;
   goBack: () => void;
+  privy: Privy;
 };
 
-const StepInputOtp: React.FC<StepInputOptProps> = ({ email, disableSignup, goBack, onAuth }) => {
+const StepInputOtp: React.FC<StepInputOptProps> = ({
+  email,
+  disableSignup,
+  privy,
+  goBack,
+  onAuth,
+}) => {
   const { register, setError, inputs } = useInputs();
-  const { sendCode, loginWithCode } = useLoginWithEmail();
-  const { createWallet } = usePrivy();
   const [cooldown, setCooldown] = useState<number>(0);
 
   useEffect(() => {
@@ -106,8 +126,18 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({ email, disableSignup, goBac
     if (inputs.otp?.value.length !== 6) return;
     (async () => {
       try {
-        await loginWithCode({ code: inputs.otp.value });
-        if (!disableSignup) await createWallet();
+        await privy.auth.email.loginWithCode(
+          email,
+          inputs.otp.value,
+          disableSignup ? "no-signup" : "login-or-sign-up",
+          {
+            embedded: {
+              ethereum: {
+                createOnLogin: "users-without-wallets",
+              },
+            },
+          },
+        );
         await wait(500);
         onAuth();
       } catch (e) {
@@ -122,7 +152,7 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({ email, disableSignup, goBac
 
   const handleResend = async () => {
     if (cooldown > 0) return;
-    await sendCode({ email });
+    await privy.auth.email.sendCode(email);
     setCooldown(60);
   };
 

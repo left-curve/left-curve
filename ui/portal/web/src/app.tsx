@@ -61,31 +61,13 @@ const queryClient = new QueryClient({
 export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <PrivyProvider
-        appId={PRIVY_APP_ID}
-        clientId={PRIVY_CLIENT_ID}
-        config={{
-          embeddedWallets: {
-            showWalletUIs: false,
-            ethereum: {
-              createOnLogin: "users-without-wallets",
-            },
-          },
-        }}
-      >
-        <AppPrivy>
-          <DangoStoreProvider config={config}>
-            <AppProvider
-              toast={toast}
-              navigate={(to, options) => router.navigate({ to, ...options })}
-            >
-              <AppRouter />
-              <RootModal />
-              <Toaster />
-            </AppProvider>
-          </DangoStoreProvider>
-        </AppPrivy>
-      </PrivyProvider>
+      <DangoStoreProvider config={config}>
+        <AppProvider toast={toast} navigate={(to, options) => router.navigate({ to, ...options })}>
+          <AppRouter />
+          <RootModal />
+          <Toaster />
+        </AppProvider>
+      </DangoStoreProvider>
     </QueryClientProvider>
   );
 };

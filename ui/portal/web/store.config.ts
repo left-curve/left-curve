@@ -4,6 +4,8 @@ import { captureException } from "@sentry/react";
 import type { Config } from "@left-curve/store/types";
 import { serializeJson } from "@left-curve/dango/encoding";
 
+import { PRIVY_APP_ID, PRIVY_CLIENT_ID } from "~/constants";
+
 const chain = window.dango.chain;
 
 const coins = {
@@ -72,7 +74,15 @@ export const config: Config = createConfig({
   chain,
   transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true }),
   coins,
-  connectors: [passkey(), session(), privy()],
+  connectors: [
+    passkey(),
+    session(),
+    privy({
+      appId: PRIVY_APP_ID as string,
+      clientId: PRIVY_CLIENT_ID as string,
+      loadIframe: true,
+    }),
+  ],
   onError: (e) => {
     let finalError: Error;
     const m = serializeJson(e);

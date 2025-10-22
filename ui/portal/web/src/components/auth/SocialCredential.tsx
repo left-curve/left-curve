@@ -1,6 +1,5 @@
 import { Button, IconGoogle, IconTwitter } from "@left-curve/applets-kit";
 import { wait } from "@left-curve/dango/utils";
-import { useLoginWithOAuth, usePrivy } from "@privy-io/react-auth";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -11,17 +10,17 @@ type SocialCredentialProps = {
 
 export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, signup }) => {
   const [onAuthProvider, setOnAuthProvider] = useState<"google" | "twitter" | null>(null);
-  const { createWallet } = usePrivy();
+  /*   const { createWallet } = usePrivy();
   const { initOAuth } = useLoginWithOAuth({
     onComplete: ({ loginMethod }) => {
       setOnAuthProvider(loginMethod as string as "google" | "twitter");
       onComplete.mutateAsync();
     },
-  });
+  }); */
 
   const onComplete = useMutation({
     mutationFn: async () => {
-      if (signup) await createWallet();
+      // if (signup) await createWallet();
       await wait(500);
       await onAuth();
     },
@@ -30,14 +29,14 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
   const googleAuth = useMutation({
     mutationFn: async () => {
       if ((window as any).privy) await onAuth();
-      else await initOAuth({ provider: "google", disableSignup: !signup });
+      // else await initOAuth({ provider: "google", disableSignup: !signup });
     },
   });
 
   const xAuth = useMutation({
     mutationFn: async () => {
       if ((window as any).privy) await onAuth();
-      else await initOAuth({ provider: "twitter", disableSignup: !signup });
+      // else await initOAuth({ provider: "twitter", disableSignup: !signup });
     },
   });
 

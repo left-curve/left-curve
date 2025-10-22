@@ -15,6 +15,7 @@
     "@left-curve/foundation": "workspace:^",
     "@left-curve/store": "workspace:^",
     "@monaco-editor/react": "^4.7.0",
+    "@privy-io/js-sdk-core": "^0.55.3",
     "@privy-io/react-auth": "^3.0.1",
     "@sentry/react": "^9.10.1",
     "@sentry/webpack-plugin": "^3.2.4",
