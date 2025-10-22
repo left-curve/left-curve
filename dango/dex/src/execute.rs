@@ -666,8 +666,8 @@ mod tests {
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                    min_order_size_base: Uint128::ZERO,
                     min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
                 })
                 .unwrap();
         });
@@ -696,8 +696,8 @@ mod tests {
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                    min_order_size_base: Uint128::ZERO,
                     min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
                 },
             )
             .unwrap();
