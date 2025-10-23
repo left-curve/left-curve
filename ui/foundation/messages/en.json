@@ -793,6 +793,9 @@
       "orderFailed": "Order failed",
       "buy": "Buy",
       "sell": "Sell",
+      "graph": "Graph",
+      "trades": "Trades",
+      "orderBook": "Order Book",
       "orderType": [
         {
           "declarations": ["input orderType"],

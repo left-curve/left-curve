@@ -259,7 +259,6 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
       <Tabs
         layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
         selectedTab={operation}
-        keys={["market", "limit"]}
         fullWidth
         onTabChange={(tab) => setOperation(tab as "market" | "limit")}
         color="line-red"
@@ -348,7 +347,6 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
         <Tabs
           layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
           selectedTab={operation}
-          keys={["market", "limit"]}
           fullWidth
           onTabChange={(tab) => setOperation(tab as "market" | "limit")}
           color="line-red"

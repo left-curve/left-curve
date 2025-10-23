@@ -793,6 +793,9 @@
       "underDevelopment": "Feature in development",
       "allOrdersCancelled": "All orders cancelled",
       "orderFailed": "Order failed",
+      "graph": "Graph",
+      "trades": "Trades",
+      "orderBook": "Order Book",
       "orderType": [
         {
           "declarations": ["input orderType"],
