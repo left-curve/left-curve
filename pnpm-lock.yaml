@@ -6,9 +6,6 @@ settings:
 
 catalogs:
   default:
-    '@cloudflare/workers-types':
-      specifier: ^4.20250303.0
-      version: 4.20250312.0
     '@rsbuild/core':
       specifier: ^1.3.20
       version: 1.3.20
@@ -27,9 +24,6 @@ catalogs:
     '@tanstack/zod-adapter':
       specifier: ^1.111.3
       version: 1.111.3
-    '@types/date-fns':
-      specifier: ^2.6.3
-      version: 2.6.3
     '@types/node':
       specifier: ^20
       version: 20.16.10
@@ -39,12 +33,6 @@ catalogs:
     '@types/react-dom':
       specifier: ^18.3.1
       version: 18.3.1
-    autoprefixer:
-      specifier: ^10.4.20
-      version: 10.4.20
-    date-fns:
-      specifier: ^4.1.0
-      version: 4.1.0
     framer-motion:
       specifier: ^11.11.7
       version: 11.11.7
@@ -66,18 +54,9 @@ catalogs:
     typescript:
       specifier: ^5.6.3
       version: 5.6.3
-    vitest:
-      specifier: ^2.0.5
-      version: 2.1.1
-    wrangler:
-      specifier: ^4.0.0
-      version: 4.0.0
     zod:
       specifier: ^3.24.1
       version: 3.24.1
-    zustand:
-      specifier: ^5.0.1
-      version: 5.0.1
 
 importers:
 
@@ -481,6 +460,9 @@ importers:
 
   ui/portal/web:
     dependencies:
+      '@fontsource/noto-sans-jp':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@fullpage/react-fullpage':
         specifier: ^0.1.45
         version: 0.1.45
@@ -510,7 +492,7 @@ importers:
         version: 9.10.1(react@18.3.1)
       '@sentry/webpack-plugin':
         specifier: ^3.2.4
-        version: 3.2.4(encoding@0.1.13)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1))
+        version: 3.2.4(encoding@0.1.13)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17)))
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.59.0(react@18.3.1)
@@ -522,7 +504,7 @@ importers:
         version: 8.21.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@tanstack/router-plugin':
         specifier: ^1.102.1
-        version: 1.102.1(@rsbuild/core@1.3.20)(@tanstack/react-router@1.111.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@5.4.8(@types/node@20.16.10)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1))(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1))
+        version: 1.102.1(@rsbuild/core@1.3.20)(@tanstack/react-router@1.111.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@5.4.8(@types/node@20.16.10)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1))(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17)))
       '@tanstack/zod-adapter':
         specifier: 'catalog:'
         version: 1.111.3(@tanstack/react-router@1.111.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(zod@3.24.1)
@@ -543,7 +525,7 @@ importers:
         version: 3.1.0
       graphql-ws:
         specifier: ^6.0.4
-        version: 6.0.4(graphql@16.10.0)(ws@8.18.2)
+        version: 6.0.4(graphql@16.10.0)(ws@8.18.0)
       react:
         specifier: 'catalog:'
         version: 18.3.1
@@ -561,7 +543,7 @@ importers:
         version: 0.4.3(@types/react@18.3.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(rollup@2.79.2)
       workbox-webpack-plugin:
         specifier: ^7.3.0
-        version: 7.3.0(@types/babel__core@7.20.5)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1))
+        version: 7.3.0(@types/babel__core@7.20.5)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17)))
       workbox-window:
         specifier: ^7.3.0
         version: 7.3.0
@@ -2685,6 +2667,9 @@ packages:
   '@floating-ui/utils@0.2.9':
     resolution: {integrity: sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==}
 
+  '@fontsource/noto-sans-jp@5.2.8':
+    resolution: {integrity: sha512-ngWXPtSV3XH8ZmNX9hnfeQ+x/3mCoaAOA3BVDcyS5jQdh4FYqKjf/S9tEUEYDPwGa2pULJVXTO2+oFg42gWvSw==}
+
   '@fullpage/react-fullpage@0.1.45':
     resolution: {integrity: sha512-N6DLBW6Q17shPeier3UGHjAxgbA4qy3G25YccNANsToJuipGUs1Rz6WZXfdfMZ4y0O1WD6a0bLme/O+sBjUXnA==}
 
@@ -4701,6 +4686,7 @@ packages:
 
   '@walletconnect/ethereum-provider@2.21.7':
     resolution: {integrity: sha512-T+cBFCw095tDpR35WqwsTFod2ZsizmLfieSbTqpQDpNjhQyFwYf9d+tn2kcBFmxzENXAsWA8BIZK1tjRrXKtog==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/events@1.0.1':
     resolution: {integrity: sha512-NPTqaoi0oPBVNuLv7qPaJazmGHs5JGyO8eEAk5VGKmJzDR7AHzD4k6ilox5kxk1iwiOnFopBOOMLs86Oa76HpQ==}
@@ -4745,9 +4731,11 @@ packages:
 
   '@walletconnect/sign-client@2.21.0':
     resolution: {integrity: sha512-z7h+PeLa5Au2R591d/8ZlziE0stJvdzP9jNFzFolf2RG/OiXulgFKum8PrIyXy+Rg2q95U9nRVUF9fWcn78yBA==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/sign-client@2.21.7':
     resolution: {integrity: sha512-9k/JEl9copR6nXRhqnmzWz2Zk1hiWysH+o6bp6Cqo8TgDUrZoMLBZMZ6qbo+2HLI54V02kKf0Vg8M81nNFOpjQ==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/time@1.0.2':
     resolution: {integrity: sha512-uzdd9woDcJ1AaBZRhqy5rNC9laqWGErfc4dxA9a87mPdKOgWMD85mcFo9dIYIts/Jwocfwn07EC6EzclKubk/g==}
@@ -4760,9 +4748,11 @@ packages:
 
   '@walletconnect/universal-provider@2.21.0':
     resolution: {integrity: sha512-mtUQvewt+X0VBQay/xOJBvxsB3Xsm1lTwFjZ6WUwSOTR1X+FNb71hSApnV5kbsdDIpYPXeQUbGt2se1n5E5UBg==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/universal-provider@2.21.7':
     resolution: {integrity: sha512-8PB+vA5VuR9PBqt5Y0xj4JC2doYNPlXLGQt3wJORVF9QC227Mm/8R1CAKpmneeLrUH02LkSRwx+wnN/pPnDiQA==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/utils@2.21.0':
     resolution: {integrity: sha512-zfHLiUoBrQ8rP57HTPXW7rQMnYxYI4gT9yTACxVW6LhIFROTF6/ytm5SKNoIvi4a5nX5dfXG4D9XwQUCu8Ilig==}
@@ -8072,6 +8062,7 @@ packages:
 
   oniguruma-to-js@0.4.3:
     resolution: {integrity: sha512-X0jWUcAlxORhOqqBREgPMgnshB7ZGYszBNspP+tS9hPD3l13CdaXcHbgImoHUHlrvGx/7AvFEkTRhAGYh+jzjQ==}
+    deprecated: use oniguruma-to-es instead
 
   open@7.4.2:
     resolution: {integrity: sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q==}
@@ -10755,7 +10746,7 @@ snapshots:
       '@babel/types': 7.26.8
       '@types/gensync': 1.0.4
       convert-source-map: 2.0.0
-      debug: 4.4.1(supports-color@5.5.0)
+      debug: 4.4.1
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -10847,7 +10838,7 @@ snapshots:
       '@babel/core': 7.26.8
       '@babel/helper-compilation-targets': 7.27.2
       '@babel/helper-plugin-utils': 7.27.1
-      debug: 4.4.1(supports-color@5.5.0)
+      debug: 4.4.1
       lodash.debounce: 4.0.8
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -11946,7 +11937,7 @@ snapshots:
       '@babel/parser': 7.26.8
       '@babel/template': 7.26.8
       '@babel/types': 7.26.8
-      debug: 4.4.1(supports-color@5.5.0)
+      debug: 4.4.1
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -11959,7 +11950,7 @@ snapshots:
       '@babel/parser': 7.28.3
       '@babel/template': 7.27.2
       '@babel/types': 7.28.2
-      debug: 4.4.1(supports-color@5.5.0)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
@@ -12969,6 +12960,8 @@ snapshots:
 
   '@floating-ui/utils@0.2.9': {}
 
+  '@fontsource/noto-sans-jp@5.2.8': {}
+
   '@fullpage/react-fullpage@0.1.45':
     dependencies:
       '@babel/polyfill': 7.12.1
@@ -13305,7 +13298,7 @@ snapshots:
   '@metamask/utils@3.6.0':
     dependencies:
       '@types/debug': 4.1.12
-      debug: 4.4.1(supports-color@5.5.0)
+      debug: 4.4.1
       semver: 7.6.3
       superstruct: 1.0.4
     transitivePeerDependencies:
@@ -13315,7 +13308,7 @@ snapshots:
     dependencies:
       '@ethereumjs/tx': 4.2.0
       '@types/debug': 4.1.12
-      debug: 4.4.1(supports-color@5.5.0)
+      debug: 4.4.1
       semver: 7.6.3
       superstruct: 1.0.4
     transitivePeerDependencies:
@@ -14705,12 +14698,12 @@ snapshots:
       hoist-non-react-statics: 3.3.2
       react: 18.3.1
 
-  '@sentry/webpack-plugin@3.2.4(encoding@0.1.13)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1))':
+  '@sentry/webpack-plugin@3.2.4(encoding@0.1.13)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17)))':
     dependencies:
       '@sentry/bundler-plugin-core': 3.2.4(encoding@0.1.13)
       unplugin: 1.0.1
       uuid: 9.0.1
-      webpack: 5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1)
+      webpack: 5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -15190,7 +15183,7 @@ snapshots:
     optionalDependencies:
       '@tanstack/react-router': 1.111.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
-  '@tanstack/router-plugin@1.102.1(@rsbuild/core@1.3.20)(@tanstack/react-router@1.111.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@5.4.8(@types/node@20.16.10)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1))(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1))':
+  '@tanstack/router-plugin@1.102.1(@rsbuild/core@1.3.20)(@tanstack/react-router@1.111.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@5.4.8(@types/node@20.16.10)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1))(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17)))':
     dependencies:
       '@babel/core': 7.26.8
       '@babel/plugin-syntax-jsx': 7.25.9(@babel/core@7.26.8)
@@ -15212,7 +15205,7 @@ snapshots:
       '@rsbuild/core': 1.3.20
       '@tanstack/react-router': 1.111.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       vite: 5.4.8(@types/node@20.16.10)(less@1.7.5)(lightningcss@1.27.0)(terser@5.34.1)
-      webpack: 5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1)
+      webpack: 5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))
     transitivePeerDependencies:
       - supports-color
 
@@ -16197,7 +16190,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.4.1(supports-color@5.5.0)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
@@ -17231,6 +17224,10 @@ snapshots:
       ms: 2.1.3
 
   debug@4.3.7:
+    dependencies:
+      ms: 2.1.3
+
+  debug@4.4.1:
     dependencies:
       ms: 2.1.3
 
@@ -18365,11 +18362,11 @@ snapshots:
 
   graceful-fs@4.2.11: {}
 
-  graphql-ws@6.0.4(graphql@16.10.0)(ws@8.18.2):
+  graphql-ws@6.0.4(graphql@16.10.0)(ws@8.18.0):
     dependencies:
       graphql: 16.10.0
     optionalDependencies:
-      ws: 8.18.2
+      ws: 8.18.0
 
   graphql-ws@6.0.4(graphql@16.10.0)(ws@8.18.3):
     dependencies:
@@ -18527,7 +18524,7 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.1(supports-color@5.5.0)
+      debug: 4.4.1
     transitivePeerDependencies:
       - supports-color
 
@@ -21624,18 +21621,6 @@ snapshots:
       ansi-escapes: 4.3.2
       supports-hyperlinks: 2.3.0
 
-  terser-webpack-plugin@5.3.14(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1)):
-    dependencies:
-      '@jridgewell/trace-mapping': 0.3.30
-      jest-worker: 27.5.1
-      schema-utils: 4.3.0
-      serialize-javascript: 6.0.2
-      terser: 5.34.1
-      webpack: 5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1)
-    optionalDependencies:
-      '@swc/core': 1.7.26(@swc/helpers@0.5.17)
-      esbuild: 0.23.1
-
   terser-webpack-plugin@5.3.14(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.25.0)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.25.0)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.30
@@ -21647,6 +21632,17 @@ snapshots:
     optionalDependencies:
       '@swc/core': 1.7.26(@swc/helpers@0.5.17)
       esbuild: 0.25.0
+
+  terser-webpack-plugin@5.3.14(@swc/core@1.7.26(@swc/helpers@0.5.17))(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))):
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.30
+      jest-worker: 27.5.1
+      schema-utils: 4.3.0
+      serialize-javascript: 6.0.2
+      terser: 5.34.1
+      webpack: 5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))
+    optionalDependencies:
+      '@swc/core': 1.7.26(@swc/helpers@0.5.17)
 
   terser@5.34.1:
     dependencies:
@@ -22380,7 +22376,7 @@ snapshots:
 
   webpack-virtual-modules@0.6.2: {}
 
-  webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1):
+  webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17)):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.6
@@ -22402,7 +22398,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 4.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.14(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1))
+      terser-webpack-plugin: 5.3.14(@swc/core@1.7.26(@swc/helpers@0.5.17))(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17)))
       watchpack: 2.4.2
       webpack-sources: 3.2.3
     transitivePeerDependencies:
@@ -22629,12 +22625,12 @@ snapshots:
 
   workbox-sw@7.3.0: {}
 
-  workbox-webpack-plugin@7.3.0(@types/babel__core@7.20.5)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1)):
+  workbox-webpack-plugin@7.3.0(@types/babel__core@7.20.5)(webpack@5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))):
     dependencies:
       fast-json-stable-stringify: 2.1.0
       pretty-bytes: 5.6.0
       upath: 1.2.0
-      webpack: 5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))(esbuild@0.23.1)
+      webpack: 5.98.0(@swc/core@1.7.26(@swc/helpers@0.5.17))
       webpack-sources: 1.4.3
       workbox-build: 7.3.0(@types/babel__core@7.20.5)
     transitivePeerDependencies:

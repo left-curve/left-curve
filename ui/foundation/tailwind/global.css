@@ -250,7 +250,7 @@ body {
 }
 
 #root {
-  font-family: 'ABCDiatypeRounded', sans-serif;
+  font-family: "ABCDiatypeRounded", "Exposure", var(--cjk-font), system-ui, sans-serif;
   padding-bottom: env(safe-area-inset-bottom);
 }
 

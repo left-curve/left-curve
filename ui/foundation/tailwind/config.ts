@@ -344,9 +344,15 @@ export const tailwindConfig: Partial<Config> = {
           "linear-gradient(170deg, rgba(245,117,137,1) 0%, rgba(249,169,178,1) 35%, rgba(254,241,241,1) 100%)",
       },
       fontFamily: {
-        "diatype-rounded": "ABCDiatypeRounded",
-        "diatype-mono": "ABCDiatypeRoundedMono",
-        exposure: "Exposure",
+        "diatype-rounded": ["ABCDiatypeRounded", "var(--cjk-font)", "system-ui", "sans-serif"],
+        "diatype-mono": [
+          "ABCDiatypeRoundedMono",
+          "var(--cjk-font)",
+          "ui-monospace",
+          "SFMono-Regular",
+          "monospace",
+        ],
+        exposure: ["Exposure", "var(--cjk-font)", "system-ui", "sans-serif"],
       },
       fontSize: {
         xs: ["12px", { lineHeight: "140%" }],
@@ -411,7 +417,7 @@ export const tailwindConfig: Partial<Config> = {
   plugins: [
     require("tailwindcss-animate"),
     tailwindScrollbar({ nocompatible: true }),
-    plugin(({ addUtilities, addComponents, theme }) => {
+    plugin(({ addUtilities, theme }) => {
       addUtilities({
         /* diatype */
         ".display-2xl": {

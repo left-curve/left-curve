@@ -15,6 +15,12 @@ import "@left-curve/foundation/fonts/ABCDiatypeRounded/mono/500.css";
 
 import "@left-curve/foundation/fonts/Exposure/italic/400.css";
 import "@left-curve/foundation/fonts/Exposure/italic/700.css";
+
+// Simplified Chinese (SC)
+import "@fontsource/noto-sans-sc/400.css";
+import "@fontsource/noto-sans-sc/500.css";
+import "@fontsource/noto-sans-sc/700.css";
+
 import "./global.css";
 
 import type React from "react";

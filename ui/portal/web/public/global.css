@@ -4,17 +4,12 @@
 @tailwind utilities;
 
 :root {
-  /*
-    Add a small whitespace between CJK and non-CJK characters.
-    https://x.com/yisibl/status/1979132340942041270
-  */
+  --cjk-font: "Noto Sans SC";
   text-autospace: normal;
-  /*
-    Trim extra whitespaces around CJK punctuation marks.
-    https://x.com/yisibl/status/1764871494293979147
-  */
   font-feature-settings: "halt";
 }
+
+:lang(zh), :lang(zh-CN), html[data-lang="zh"] { --cjk-font: "Noto Sans SC"; }
 
 @layer utilities {
 
