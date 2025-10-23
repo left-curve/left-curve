@@ -69,9 +69,9 @@ import { type QueryAbciParameters, type QueryAbciReturnType, queryAbci } from ".
 import { type QueryTxParameters, type QueryTxReturnType, queryTx } from "./queryTx.js";
 
 export type GrugActions<
-  transport extends Transport = Transport,
-  chain extends Chain | undefined = Chain | undefined,
-  signer extends Signer | undefined = undefined,
+  _transport extends Transport = Transport,
+  _chain extends Chain | undefined = Chain | undefined,
+  _signer extends Signer | undefined = undefined,
 > = {
   getBalance: (args: GetBalanceParameters) => GetBalanceReturnType;
   getBalances: (args: GetBalancesParameters) => GetBalancesReturnType;

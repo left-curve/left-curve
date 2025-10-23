@@ -1,11 +1,12 @@
+import { useControlledState } from "@left-curve/foundation";
+
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
-import { useControlledState } from "#hooks/useControlledState.js";
 
 type AccordionItemProps = {
   text: string;
@@ -34,7 +35,7 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
   return (
     <div
       className={twMerge(
-        "flex w-full flex-col bg-rice-50 rounded-md p-4 shadow-account-card overflow-hidden",
+        "flex w-full flex-col bg-surface-tertiary-rice rounded-md p-4 shadow-account-card overflow-hidden",
         classNames?.container,
       )}
     >

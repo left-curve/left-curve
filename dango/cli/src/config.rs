@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    grug_types::HexBinary,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -11,6 +14,15 @@ pub struct Config {
     pub sentry: SentryConfig,
     pub log_level: String,
     pub log_format: LogFormat,
+    pub pyth: PythLazerConfig,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ClickhouseConfig {
+    pub url: String,
+    pub database: String,
+    pub user: String,
+    pub password: String,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -25,6 +37,7 @@ pub enum LogFormat {
 pub struct GrugConfig {
     pub wasm_cache_capacity: usize,
     pub query_gas_limit: u64,
+    pub priority_range: Option<(HexBinary, HexBinary)>,
 }
 
 impl Default for GrugConfig {
@@ -32,6 +45,7 @@ impl Default for GrugConfig {
         Self {
             wasm_cache_capacity: 1000,
             query_gas_limit: 100_000_000,
+            priority_range: None,
         }
     }
 }
@@ -50,6 +64,7 @@ pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
     pub database: IndexerDatabaseConfig,
+    pub clickhouse: ClickhouseConfig,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -114,4 +129,10 @@ impl Default for TransactionsConfig {
             gas_adjustment: 1.4,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct PythLazerConfig {
+    pub endpoints: Vec<String>,
+    pub access_token: String,
 }

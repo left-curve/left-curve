@@ -1,13 +1,13 @@
 import { motion } from "framer-motion";
 import { Children, cloneElement } from "react";
 import { tv } from "tailwind-variants";
-import { useControlledState } from "#hooks/useControlledState.js";
-import { twMerge } from "#utils/twMerge.js";
+import { useControlledState } from "@left-curve/foundation";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { PropsWithChildren } from "react";
 import type { VariantProps } from "tailwind-variants";
-import { useHasMounted } from "#hooks/useHasMounted.js";
+import { useHasMounted } from "../hooks/useHasMounted.js";
 
 export interface TabsProps extends VariantProps<typeof tabsVariants> {
   onTabChange?: (tab: string) => void;
@@ -61,7 +61,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
       exit={{ opacity: 0 }}
       className={twMerge(styles.base(), classNames?.base)}
     >
-      {tabs.map((e, i) => {
+      {tabs.map((e) => {
         const isKey = typeof e === "string";
         const elemKey = isKey ? e : (e as React.ReactElement).props.title;
         const isActive = elemKey === activeTab;
@@ -69,7 +69,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
         return (
           <motion.button
             className={twMerge(styles.button(), { "flex-1": fullWidth }, classNames?.button)}
-            key={`navLink-${e}`}
+            key={`navLink-${elemKey}`}
             onClick={() => setActiveTab(elemKey)}
           >
             {isKey ? (
@@ -81,7 +81,7 @@ export const Tabs: React.FC<PropsWithChildren<TabsProps>> = ({
                 fullWidth={fullWidth}
               />
             ) : (
-              cloneElement(e as React.ReactElement, { isActive })
+              cloneElement(e as React.ReactElement, { isActive, color })
             )}
             {isActive && hasMounted ? (
               <motion.div
@@ -111,24 +111,24 @@ const tabsVariants = tv({
     },
     color: {
       green: {
-        base: "bg-green-bean-200",
+        base: "bg-surface-tertiary-green",
         "animated-element":
-          "bg-green-bean-50 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+          "bg-surface-primary-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       red: {
-        base: "bg-red-100",
+        base: "bg-surface-secondary-red",
         "animated-element":
           "bg-red-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       "light-green": {
-        base: "bg-green-bean-100",
+        base: "bg-surface-secondary-green",
         "animated-element":
-          "bg-green-bean-400 [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
+          "bg-surface-button-green [box-shadow:0px_4px_6px_2px_#1919191F] w-full h-full rounded-[10px]",
       },
       "line-red": {
         base: "p-0",
-        button: "border-b-[1px] border-gray-100 pt-0",
-        "animated-element": "bg-red-bean-400 w-full h-[2px] bottom-[-1px]",
+        button: "border-b-[1px] border-outline-secondary-gray pt-0",
+        "animated-element": "bg-primitives-red-light-400 w-full h-[2px] bottom-[-1px]",
       },
     },
     fullWidth: {
@@ -189,42 +189,42 @@ const tabVariants = tv({
     {
       isActive: true,
       color: "green",
-      class: "text-black",
-    },
-    {
-      isActive: true,
-      color: "red",
-      class: "text-white-100",
-    },
-    {
-      isActive: false,
-      color: "red",
-      class: "text-gray-300",
+      class: "text-ink-secondary-700",
     },
     {
       isActive: false,
       color: "green",
-      class: "text-gray-300",
+      class: "text-fg-tertiary-400",
+    },
+    {
+      isActive: true,
+      color: "red",
+      class: "text-surface-primary-rice",
+    },
+    {
+      isActive: false,
+      color: "red",
+      class: "text-fg-tertiary-400",
     },
     {
       isActive: true,
       color: "light-green",
-      class: "text-white-100",
+      class: "text-surface-primary-rice",
     },
     {
       isActive: false,
       color: "light-green",
-      class: "text-gray-300",
+      class: "text-fg-tertiary-400",
     },
     {
       isActive: true,
       color: "line-red",
-      class: "text-red-bean-400",
+      class: "text-primitives-red-light-400",
     },
     {
       isActive: false,
       color: "line-red",
-      class: "text-gray-300",
+      class: "text-fg-tertiary-400",
     },
   ],
 });

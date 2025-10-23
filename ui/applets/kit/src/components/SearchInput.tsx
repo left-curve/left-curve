@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { type ReactElement, cloneElement, forwardRef, useState } from "react";
-import { useClickAway } from "react-use";
-import { useDOMRef } from "#hooks/index.js";
-import { twMerge } from "#utils/index.js";
+import { useDOMRef } from "../hooks/useDOMRef.js";
+import { useClickAway } from "../hooks/useClickAway.js";
+import { useControlledState } from "@left-curve/foundation";
 
+import { twMerge } from "@left-curve/foundation";
 import { wait } from "@left-curve/dango/utils";
-import { useControlledState } from "#hooks/useControlledState.js";
+
 import { Input, type InputProps } from "./Input";
 import { Spinner } from "./Spinner";
 
@@ -61,7 +62,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         <div
           ref={menuRef}
           className={twMerge(
-            "absolute top-[4.8rem] shadow-account-card bg-rice-25 rounded-lg p-1 z-30 w-full",
+            "absolute top-[4.8rem] shadow-account-card bg-surface-secondary-rice rounded-lg p-1 z-30 w-full",
             showMenu ? "block" : "hidden",
             options.length ? "scale-100" : "scale-0",
           )}
@@ -70,7 +71,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             <button
               onClick={() => [setInputValue(value), setShowMenu(false)]}
               type="button"
-              className="w-full p-3 hover:bg-rice-50 rounded-md text-left"
+              className="w-full p-3 hover:bg-surface-tertiary-rice rounded-md text-left"
               key={key}
             >
               {cloneElement(OptionComponent as ReactElement, { children: key })}

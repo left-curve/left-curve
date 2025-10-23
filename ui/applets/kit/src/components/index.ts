@@ -13,6 +13,7 @@ export { Table, type TableColumn, type TableClassNames, type ColumnFiltersState 
 export { Cell } from "./Cell";
 export { Tabs, Tab } from "./Tabs";
 export { Input } from "./Input";
+export { OtpInput } from "./OtpInput";
 export { Stepper } from "./Stepper";
 export { Carousel } from "./Carousel";
 export { ResizerContainer } from "./ResizerContainer";
@@ -34,8 +35,9 @@ export { AddressVisualizer } from "./AddressVisualizer";
 export { Range } from "./Range";
 export { Tooltip } from "./Tooltip";
 export { Radio } from "./RadioGroup";
-export { Toast } from "./Toast";
+export { Toast, Toaster } from "./Toast";
 export { PairAssets } from "./PairAssets";
+export { Marquee } from "./Marquee";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -81,3 +83,18 @@ export { IconChevronDownFill } from "./icons/IconChevronDownFill";
 export { IconSun } from "./icons/IconSun";
 export { IconMoon } from "./icons/IconMoon";
 export { IconTheme } from "./icons/IconTheme";
+export { IconTwitter } from "./icons/IconTwitter";
+export { IconDiscord } from "./icons/IconDiscord";
+export { IconMirror } from "./icons/IconMirror";
+export { IconDepth } from "./icons/IconDepth";
+export { IconSent } from "./icons/IconSent";
+export { IconReceived } from "./icons/IconReceived";
+export { IconWallet } from "./icons/IconWallet";
+export { IconLimitOrder } from "./icons/IconLimitOrder";
+export { IconMarketOrder } from "./icons/IconMarketOrder";
+export { IconNewAccount } from "./icons/IconNewAccount";
+export { IconCalendar } from "./icons/IconCalendar";
+export { IconTools } from "./icons/IconTools";
+export { IconApple } from "./icons/IconApple";
+export { IconGoogle } from "./icons/IconGoogle";
+export { IconEmail } from "./icons/IconEmail";

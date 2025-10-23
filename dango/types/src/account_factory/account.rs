@@ -57,7 +57,7 @@ impl PrimaryKey for AccountType {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let index = match self {
             AccountType::Spot => 0,
             AccountType::Margin => 1,

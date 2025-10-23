@@ -1,6 +1,6 @@
 import type { Client, Transport } from "@left-curve/sdk/types";
-import type { DangoClient } from "#types/clients.js";
-import type { Signer } from "#types/signer.js";
+import type { DangoClient } from "../../types/clients.js";
+import type { Signer } from "../../types/signer.js";
 
 import { type GetPairsParameters, type GetPairsReturnType, getPairs } from "./queries/getPairs.js";
 
@@ -55,15 +55,39 @@ import {
 } from "./queries/ordersByUser.js";
 
 import {
+  type QueryCandlesParameters,
+  type QueryCandlesReturnType,
+  queryCandles,
+} from "./queries/candles.js";
+
+import {
   type SimulateWithdrawLiquidityParameters,
   type SimulateWithdrawLiquidityReturnType,
   simulateWithdrawLiquidity,
 } from "./queries/simulateWithdrawLiquidity.js";
 
+import {
+  type QueryTradesParameters,
+  type QueryTradesReturnType,
+  queryTrades,
+} from "./queries/trades.js";
+
+import { getOrder, type GetOrderParameters, type GetOrderReturnType } from "./queries/getOrder.js";
+
+import {
+  dexStatus,
+  type DexStatusReturnType,
+  type DexStatusParameters,
+} from "./queries/dexStatus.js";
+
 export type DexQueryActions = {
+  dexStatus: (args?: DexStatusParameters) => DexStatusReturnType;
+  getOrder: (args: GetOrderParameters) => GetOrderReturnType;
   getPairs: (args?: GetPairsParameters) => GetPairsReturnType;
   getPair: (args: GetPairParameters) => GetPairReturnType;
   ordersByUser: (args: OrdersByUserParameters) => OrdersByUserReturnType;
+  queryCandles: (args: QueryCandlesParameters) => QueryCandlesReturnType;
+  queryTrades: (args: QueryTradesParameters) => QueryTradesReturnType;
   simulateWithdrawLiquidity: (
     args: SimulateWithdrawLiquidityParameters,
   ) => SimulateWithdrawLiquidityReturnType;
@@ -79,9 +103,13 @@ export function dexQueryActions<transport extends Transport = Transport>(
   client: Client<transport>,
 ): DexQueryActions {
   return {
+    dexStatus: (args) => dexStatus(client, args),
+    getOrder: (args) => getOrder(client, args),
     getPairs: (args) => getPairs(client, args),
     getPair: (args) => getPair(client, args),
     ordersByUser: (args) => ordersByUser(client, args),
+    queryCandles: (args) => queryCandles(client, args),
+    queryTrades: (args) => queryTrades(client, args),
     simulateWithdrawLiquidity: (args) => simulateWithdrawLiquidity(client, args),
     simulateSwapExactAmountOut: (args) => simulateSwapExactAmountOut(client, args),
     simulateSwapExactAmountIn: (args) => simulateSwapExactAmountIn(client, args),

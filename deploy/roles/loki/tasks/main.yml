@@ -1,0 +1,26 @@
+- name: Ensure directories exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop: ["{{ loki_dir }}/config", "{{ loki_dir }}/data"]
+
+- name: Copy files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "{{ playbook_dir }}/roles/loki/templates/loki-config.yml", dest: "{{ loki_dir }}/config/loki-config.yml" }
+        - { src: "{{ playbook_dir }}/roles/promtail/templates/promtail-config.yml", dest: "{{ loki_dir }}/config/promtail-config.yml" }
+        - { src: "{{ playbook_dir }}/roles/loki/templates/docker-compose.yml", dest: "{{ loki_dir }}/docker-compose.yml" }
+
+- name: Launch Loki
+  community.docker.docker_compose_v2:
+    project_src: "{{ loki_dir }}"
+    pull: missing
+    state: present
+    recreate: always

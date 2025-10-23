@@ -16,43 +16,53 @@ use {
 pub static PYTH_PRICE_SOURCES: LazyLock<BTreeMap<Denom, PriceSource>> = LazyLock::new(|| {
     btree_map! {
         atom::DENOM.clone() => PriceSource::Pyth {
-            id: ATOM_USD_ID,
+            id: ATOM_USD_ID.id,
+            channel: ATOM_USD_ID.channel,
             precision: 6,
         },
         bch::DENOM.clone() => PriceSource::Pyth {
-            id: BCH_USD_ID,
+            id: BCH_USD_ID.id,
+            channel: BCH_USD_ID.channel,
             precision: 8,
         },
         bnb::DENOM.clone() => PriceSource::Pyth {
-            id: BNB_USD_ID,
+            id: BNB_USD_ID.id,
+            channel: BNB_USD_ID.channel,
             precision: 18,
         },
         btc::DENOM.clone() => PriceSource::Pyth {
-            id: BTC_USD_ID,
+            id: BTC_USD_ID.id,
+            channel: BTC_USD_ID.channel,
             precision: 8,
         },
         doge::DENOM.clone() => PriceSource::Pyth {
-            id: DOGE_USD_ID,
+            id: DOGE_USD_ID.id,
+            channel: DOGE_USD_ID.channel,
             precision: 8,
         },
         eth::DENOM.clone() => PriceSource::Pyth {
-            id: ETH_USD_ID,
+            id: ETH_USD_ID.id,
+            channel: ETH_USD_ID.channel,
             precision: 18,
         },
         ltc::DENOM.clone() => PriceSource::Pyth {
-            id: LTC_USD_ID,
+            id: LTC_USD_ID.id,
+            channel: LTC_USD_ID.channel,
             precision: 8,
         },
         sol::DENOM.clone() => PriceSource::Pyth {
-            id: SOL_USD_ID,
+            id: SOL_USD_ID.id,
+            channel: SOL_USD_ID.channel,
             precision: 9,
         },
         usdc::DENOM.clone() => PriceSource::Pyth {
-            id: USDC_USD_ID,
+            id: USDC_USD_ID.id,
+            channel: USDC_USD_ID.channel,
             precision: 6,
         },
         xrp::DENOM.clone() => PriceSource::Pyth {
-            id: XRP_USD_ID,
+            id: XRP_USD_ID.id,
+            channel: XRP_USD_ID.channel,
             precision: 6,
         },
     }

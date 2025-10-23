@@ -1,6 +1,5 @@
-import { Cell, Table } from "@left-curve/applets-kit";
+import { Cell, Table, useApp } from "@left-curve/applets-kit";
 import { useConfig, usePrices } from "@left-curve/store";
-import { useApp } from "~/hooks/useApp";
 
 import { formatUnits } from "@left-curve/dango/utils";
 
@@ -13,13 +12,13 @@ export type AssetsTableProps = {
 };
 
 export const AssetsTable: React.FC<AssetsTableProps> = ({ balances }) => {
-  const { coins } = useConfig();
+  const { getCoinInfo } = useConfig();
   const { settings } = useApp();
   const { getPrice } = usePrices();
   const { formatNumberOptions } = settings;
 
   const data = Object.entries(balances).map(([denom, amount]) => {
-    const coin = coins[denom];
+    const coin = getCoinInfo(denom);
     const price = getPrice(formatUnits(amount, coin.decimals).toString(), denom, {
       format: true,
       formatOptions: formatNumberOptions,

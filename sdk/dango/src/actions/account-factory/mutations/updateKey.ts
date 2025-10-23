@@ -58,7 +58,7 @@ export async function updateKey<transport extends Transport>(
         : {
             Operation: [{ name: "insert", type: "InsertOperation" }],
             InsertOperation: [
-              // biome-ignore lint/complexity/useLiteralKeys: <explanation>
+              // biome-ignore lint/complexity/useLiteralKeys: This is a dynamic type
               { name: Object.keys(action["insert"]).at(0) as string, type: "string" },
             ],
           }),

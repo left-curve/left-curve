@@ -1,0 +1,138 @@
+# Fetch v4/v6 with retries per item
+- name: Fetch Cloudflare IPv4/IPv6 ranges
+  uri:
+    url: "{{ url }}"
+    return_content: true
+    timeout: 10
+  register: resp
+  retries: 3
+  delay: 2
+  until: resp.status | default(0) == 200
+  loop:
+    - https://www.cloudflare.com/ips-v4
+    - https://www.cloudflare.com/ips-v6
+  loop_control:
+    loop_var: url
+
+- name: Split CF IPv4/IPv6 into lists
+  set_fact:
+    cloudflare_ips_v4: "{{ resp.results[0].content.splitlines() | map('trim') | select('match','\\S') | list }}"
+    cloudflare_ips_v6: "{{ resp.results[1].content.splitlines() | map('trim') | select('match','\\S') | list }}"
+
+- name: Combine CF CIDRs
+  set_fact:
+    cloudflare_ips: "{{ cloudflare_ips_v4 + cloudflare_ips_v6 }}"
+
+- name: Fail if CF CIDR list looks wrong
+  assert:
+    that:
+      - cloudflare_ips | length > 5
+    fail_msg: "Cloudflare IP list fetch failed/empty."
+
+- name: Install certbot + Cloudflare plugin
+  become: true
+  become_user: root
+  apt:
+    name:
+      - certbot
+      - python3-certbot-dns-cloudflare
+      - cron
+    state: present
+    update_cache: yes
+
+- name: Ensure config dir exists
+  file:
+    path: "{{ traefik_dir }}/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop: ["config", "letsencrypt"]
+
+- name: Generate templates
+  become: true
+  become_user: root
+  template:
+    src: "{{ item }}"
+    dest: "{{ traefik_dir }}"
+    owner: "{{ deploy_user }}"
+  loop: ["docker-compose.yml", "traefik.yml"]
+
+- name: Generate templates for config
+  become: true
+  become_user: root
+  template:
+    src: "{{ item }}"
+    dest: "{{ traefik_dir }}/config/"
+    owner: "{{ deploy_user }}"
+  loop: ["certs.yml", "quest.yml"]
+
+- name: Generate templates for letsencrypt
+  become: true
+  become_user: root
+  template:
+    src: "{{ item }}"
+    dest: "{{ traefik_dir }}/letsencrypt/"
+    owner: "root"
+    mode: '0600'
+  loop: ["cloudflare.ini"]
+
+- name: Ensure letsencrypt subdirs exist
+  become: true
+  become_user: root
+  file:
+    path: "{{ traefik_dir }}/letsencrypt/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  loop: ["work", "logs"]
+
+- name: Check if wildcard cert already exists
+  become: true
+  become_user: root
+  stat:
+    path: "{{ traefik_dir }}/letsencrypt/live/{{ dango_domain }}/fullchain.pem"
+  register: cert_status
+
+- name: Create wildcard cert for {{ dango_domain }}
+  become: true
+  become_user: root
+  ansible.builtin.command: >
+    certbot certonly
+    --dns-cloudflare
+    --dns-cloudflare-credentials {{ traefik_dir }}/letsencrypt/cloudflare.ini
+    --config-dir {{ traefik_dir }}/letsencrypt
+    --work-dir {{ traefik_dir }}/letsencrypt/work
+    --logs-dir {{ traefik_dir }}/letsencrypt/logs
+    -d {{ dango_domain }} -d '*.{{ dango_domain }}'
+    --email {{ letsencrypt_email }}
+    --agree-tos --no-eff-email
+  when: not cert_status.stat.exists
+  args:
+    creates: "{{ traefik_dir }}/letsencrypt/live/dango.zone/fullchain.pem"
+
+- name: Deploy all
+  community.docker.docker_compose_v2:
+    recreate: always
+    project_src: "{{ traefik_dir }}"
+    wait: true
+    wait_timeout: 300
+
+- name: Add UFW rules
+  become: true
+  become_user: root
+  ufw:
+    rule: allow
+    direction: in
+    port: "{{ item }}"
+    proto: tcp
+  loop: [80, 443]
+
+- name: Renew Let's Encrypt certs for Traefik
+  become: true
+  become_user: root
+  cron:
+    name: "renew traefik certbot certs"
+    user: root
+    minute: "0"
+    hour: "3"
+    job: "/usr/bin/certbot renew --config-dir {{ traefik_dir }}/letsencrypt --work-dir {{ traefik_dir }}/letsencrypt/work --logs-dir {{ traefik_dir }}/letsencrypt/logs --quiet && /usr/bin/docker compose -f {{ traefik_dir }}/docker-compose.yml exec -T traefik traefik reload"

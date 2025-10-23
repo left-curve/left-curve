@@ -1,6 +1,6 @@
 import QRCodeStyling, { type Options as QROptions } from "qr-code-styling";
 import { useEffect, useRef } from "react";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 import { Spinner } from "./Spinner";
 
 const defaultOptions: QROptions = {
@@ -53,6 +53,10 @@ export const QRCode: React.FC<Props> = ({ data, isLoading, options = {}, ...prop
   return isLoading || !data ? (
     <Spinner color="blue" size="xl" />
   ) : (
-    <div ref={ref} {...props} className={twMerge("bg-rice-25 p-2", props.className)} />
+    <div
+      ref={ref}
+      {...props}
+      className={twMerge("bg-surface-secondary-rice p-2", props.className)}
+    />
   );
 };

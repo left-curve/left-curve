@@ -19,6 +19,13 @@ wasm_cache_capacity = 1000
 # Gas limit when serving query requests.
 query_gas_limit = 100000000
 
+# Range of database keys that will be loaded into memory for better performance.
+# Lower bound is inclusive, upper bound is exclusive.
+#priority_range = [
+#  "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f", # = b"wasm" + dex_contract_address
+#  "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740", # = b"wasm" + increment_last_byte(dex_contract_address)
+#]
+
 ################################################################################
 ###                          Indexer Configuration                           ###
 ################################################################################
@@ -38,6 +45,17 @@ url = "postgres://postgres@db:5432/grug_dev"
 
 # How many connections to keep in the connection pool.
 max_connections = 10
+
+[indexer.clickhouse]
+
+# URL to the Clickhouse database to be used by the indexer.
+url = "http://clickhouse:8123"
+
+user = "default"
+
+password = ""
+
+database = "grug_dev"
 
 [httpd]
 
@@ -111,3 +129,20 @@ sample_rate = 1.0
 
 # Traces sample rate for Sentry.
 traces_sample_rate = 1.0
+
+################################################################################
+###                            Pyth Configuration                            ###
+################################################################################
+
+[pyth]
+
+# Pyth Lazer endpoints. This is a Vec<String>.
+# If the list is empty, Pyth Lazer oracle is disabled.
+endpoints = [
+  "wss://pyth-lazer-0.dourolabs.app/v1/stream",
+  "wss://pyth-lazer-1.dourolabs.app/v1/stream",
+]
+
+# Pyth Lazer access token.
+# If the string is empty, Pyth Lazer oracle is disabled.
+access_token = ""

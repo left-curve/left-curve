@@ -1,0 +1,49 @@
+{
+  "name": "graphiql",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "check": "tsc --noEmit",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=23.0.0"
+  },
+  "dependencies": {
+    "@graphiql/plugin-explorer": "^4.0.6",
+    "@graphiql/react": "^0.34.1",
+    "@graphiql/toolkit": "^0.11.3",
+    "graphiql": "^4.1.1",
+    "graphql-ws": "^6.0.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.25.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "@vividlemon/vite-plugin-sri": "^1.2.0",
+    "eslint": "^9.25.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
+    "jiti": "^2.4.2",
+    "typescript": "~5.8.3",
+    "typescript-eslint": "^8.30.1",
+    "vite": "^6.3.5"
+  },
+  "overrides": {
+    "@graphiql/plugin-explorer": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-musl": "4.41.1"
+  }
+}

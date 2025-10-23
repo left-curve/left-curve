@@ -6,6 +6,19 @@ concurrency:
 
 on:
   workflow_dispatch:
+    inputs:
+      faucet_version:
+        required: true
+        description: "Define faucet version for deployment"
+        default: "latest"
+      environment:
+        required: true
+        type: choice
+        description: "Define in what environment deploy"
+        default: "devnet"
+        options:
+          - "devnet"
+          - "testnet"
 
 jobs:
   deploy-faucet:
@@ -16,6 +29,7 @@ jobs:
     env:
       GITHUB_USER: ${{ github.actor }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      ANSIBLE_VAULT_PASSWORD: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/login-action@v3
@@ -30,16 +44,21 @@ jobs:
       - name: Install Ansible
         run: |
           pipx install ansible
-          pipx ensurepath
           echo "${HOME}/.local/bin" >> $GITHUB_PATH
-          ln -sf -s ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
+          ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-galaxy ~/.local/bin/ansible-galaxy
           ln -sf ~/.local/pipx/venvs/ansible/bin/ansible-playbook ~/.local/bin/ansible-playbook
       - name: Install collections
         run: |
-          pipx ensurepath
           ansible-galaxy collection install -r deploy/requirements.yml
+      - name: Set target IP
+        id: set_ip
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "devnet" ]; then
+            echo "SERVER_IP=100.96.253.40" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" = "testnet" ]; then
+            echo "SERVER_IP=100.107.248.71" >> $GITHUB_ENV
+          fi
       - name: Run Ansible playbook
         run: |
           cd deploy
-          pipx ensurepath
-          ansible-playbook bots.yml --limit 100.96.253.40 -e '{"dango_networks":["devnet"]}' -e bot_version=0.1.5
+          ansible-playbook bots.yml --limit ${{ env.SERVER_IP }} -e '{"dango_networks":["${{ github.event.inputs.environment }}"]}' -e faucet_version=${{ github.event.inputs.faucet_version }}

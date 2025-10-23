@@ -1,14 +1,20 @@
 use {
-    crate::{GUARDIAN_SETS, OracleQuerierNoCache, PRICE_SOURCES},
+    crate::{OracleQuerierNoCache, PRICE_SOURCES, PYTH_TRUSTED_SIGNERS},
     dango_types::oracle::{PrecisionedPrice, PriceSource, QueryMsg},
-    grug::{Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult},
-    pyth_types::{GuardianSet, GuardianSetIndex},
+    grug::{
+        Binary, Bound, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
+        Timestamp,
+    },
     std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
+        QueryMsg::TrustedSigners { start_after, limit } => {
+            let res = query_trusted_signers(ctx, start_after, limit)?;
+            Ok(res.to_json_value()?)
+        },
         QueryMsg::Price { denom } => {
             let res = query_price(ctx, denom)?;
             Ok(res.to_json_value()?)
@@ -25,15 +31,25 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_price_sources(ctx, start_after, limit)?;
             Ok(res.to_json_value()?)
         },
-        QueryMsg::GuardianSet { index } => {
-            let res = query_guardian_set(ctx, index)?;
-            Ok(res.to_json_value()?)
-        },
-        QueryMsg::GuardianSets { start_after, limit } => {
-            let res = query_guardian_sets(ctx, start_after, limit)?;
-            Ok(res.to_json_value()?)
-        },
     }
+}
+
+fn query_trusted_signers(
+    ctx: ImmutableCtx,
+    start_after: Option<Binary>,
+    limit: Option<u32>,
+) -> StdResult<BTreeMap<Binary, Timestamp>> {
+    let start = start_after.as_ref().map(|b| Bound::Exclusive(b.as_ref()));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    PYTH_TRUSTED_SIGNERS
+        .range(ctx.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|res| {
+            let (key, value) = res?;
+            Ok((Binary::from_inner(key.to_vec()), value))
+        })
+        .collect()
 }
 
 fn query_price(ctx: ImmutableCtx, denom: Denom) -> anyhow::Result<PrecisionedPrice> {
@@ -80,24 +96,6 @@ fn query_price_sources(
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
     PRICE_SOURCES
-        .range(ctx.storage, start, None, Order::Ascending)
-        .take(limit)
-        .collect()
-}
-
-fn query_guardian_set(ctx: ImmutableCtx, index: u32) -> StdResult<GuardianSet> {
-    GUARDIAN_SETS.load(ctx.storage, index)
-}
-
-fn query_guardian_sets(
-    ctx: ImmutableCtx,
-    start_after: Option<GuardianSetIndex>,
-    limit: Option<u32>,
-) -> StdResult<BTreeMap<GuardianSetIndex, GuardianSet>> {
-    let start = start_after.map(Bound::Exclusive);
-    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
-
-    GUARDIAN_SETS
         .range(ctx.storage, start, None, Order::Ascending)
         .take(limit)
         .collect()

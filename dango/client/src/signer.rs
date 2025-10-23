@@ -5,6 +5,7 @@ use {
         account::spot,
         account_factory::Username,
         auth::{Credential, Key, Metadata, Nonce, SignDoc, Signature, StandardCredential},
+        signer::SequencedSigner,
     },
     grug::{
         Addr, Addressable, ByteArray, Defined, Hash256, HashExt, JsonSerExt, MaybeDefined, Message,
@@ -98,7 +99,8 @@ impl SingleSigner<Undefined<u32>> {
         }
     }
 
-    pub async fn query_nonce<C>(self, client: &C) -> anyhow::Result<SingleSigner<Defined<u32>>>
+    /// Fetch the next nonce and return a `SingleSigner` with the nonce set.
+    pub async fn with_query_nonce<C>(self, client: &C) -> anyhow::Result<SingleSigner<Defined<u32>>>
     where
         C: QueryClient,
         anyhow::Error: From<C::Error>,
@@ -113,20 +115,6 @@ impl SingleSigner<Undefined<u32>> {
             nonce: Defined::new(nonce),
             sk: self.sk,
         })
-    }
-}
-
-impl SingleSigner<Defined<u32>> {
-    pub async fn update_nonce<C>(&mut self, client: &C) -> anyhow::Result<()>
-    where
-        C: QueryClient,
-        anyhow::Error: From<C::Error>,
-    {
-        let nonce = self.query_next_nonce(client).await?;
-
-        self.nonce = Defined::new(nonce);
-
-        Ok(())
     }
 }
 
@@ -194,6 +182,29 @@ impl Signer for SingleSigner<Defined<u32>> {
             data: metadata.to_json_value()?,
             credential: credential.to_json_value()?,
         })
+    }
+}
+
+#[async_trait::async_trait]
+impl SequencedSigner for SingleSigner<Defined<u32>> {
+    async fn query_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        self.query_next_nonce(client).await
+    }
+
+    async fn update_nonce<C>(&mut self, client: &C) -> anyhow::Result<()>
+    where
+        C: QueryClient,
+        anyhow::Error: From<C::Error>,
+    {
+        let nonce = self.query_next_nonce(client).await?;
+
+        self.nonce = Defined::new(nonce);
+
+        Ok(())
     }
 }
 

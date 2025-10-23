@@ -38,12 +38,12 @@ where
     C: Codec<Empty>,
 {
     #[doc(hidden)]
-    pub fn path_raw(&self, key_raw: &[u8]) -> Path<Empty, Borsh> {
+    pub fn path_raw(&self, key_raw: &[u8]) -> Path<'_, Empty, Borsh> {
         Path::new(self.namespace, &[], Some(RawKey::Borrowed(key_raw)))
     }
 
     #[doc(hidden)]
-    pub fn path(&self, item: T) -> Path<Empty, Borsh> {
+    pub fn path(&self, item: T) -> Path<'_, Empty, Borsh> {
         let mut raw_keys = item.raw_keys();
         let last_raw_key = raw_keys.pop();
         Path::new(self.namespace, &raw_keys, last_raw_key)

@@ -77,7 +77,7 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
           transport,
         });
       },
-      async createNewKey(challenge = "Please sign this message to confirm your identity.") {
+      async createNewKey(_challenge = "Please sign this message to confirm your identity.") {
         const provider = await this.getProvider();
 
         const [controllerAddress] = await provider.request({
@@ -122,7 +122,8 @@ export function eip1193(parameters: EIP1193ConnectorParameters) {
         const provider = await this.getProvider();
         await this.switchChain?.({ chainId: ETHEREUM_HEX_CHAIN_ID });
         const [controllerAddress] = await provider.request({ method: "eth_accounts" });
-        return !!controllerAddress;
+        const accounts = await this.getAccounts();
+        return !!controllerAddress && accounts.length > 0;
       },
       async signArbitrary(payload) {
         const { types, primaryType, message } = payload;

@@ -1,14 +1,19 @@
 import ReactDOM from "react-dom/client";
 import { App } from "./app";
 import { router } from "./app.router";
+import * as ReactScan from "react-scan";
 
 import * as Sentry from "@sentry/react";
 
 const SENTRY_DSN = import.meta.env.PUBLIC_SENTRY_DSN;
+const SENTRY_ENV = import.meta.env.PUBLIC_SENTRY_ENVIRONMENT;
 
-if (SENTRY_DSN) {
+if (process.env.NODE_ENV === "development") ReactScan.start();
+
+if (SENTRY_DSN && SENTRY_ENV) {
   Sentry.init({
     dsn: SENTRY_DSN,
+    environment: SENTRY_ENV,
     integrations: (defaultIntegrations) =>
       defaultIntegrations
         .filter((integration) => integration.name !== "GlobalHandlers")
@@ -18,7 +23,7 @@ if (SENTRY_DSN) {
           Sentry.tanstackRouterBrowserTracingIntegration(router),
         ]),
     tracesSampleRate: 0.5,
-    tracePropagationTargets: [/^https:\/\/testnet\.dango\.exchange\//],
+    tracePropagationTargets: [/^https:\/\/.+\.dango\.zone/],
     replaysOnErrorSampleRate: 0.5,
     maxValueLength: 5000,
   });

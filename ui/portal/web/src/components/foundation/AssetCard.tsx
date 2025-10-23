@@ -1,15 +1,14 @@
 import { useConfig, usePrices } from "@left-curve/store";
-import { useApp } from "~/hooks/useApp";
 
-import { PairAssets } from "@left-curve/applets-kit";
+import { PairAssets, useApp } from "@left-curve/applets-kit";
 import { twMerge } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
 
-import type { AnyCoin, WithAmount } from "@left-curve/store/types";
+import type { Coin } from "@left-curve/dango/types";
 interface Props {
-  coin: WithAmount<AnyCoin>;
+  coin: Coin;
 }
 
 export const AssetCard: React.FC<Props> = ({ coin }) => {
@@ -25,7 +24,7 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
   const price = getPrice(humanAmount, coin.denom, { format: true });
 
   return (
-    <motion.div layout="position" className="flex flex-col p-4">
+    <motion.div layout="position" className="flex flex-col p-4 w-full">
       <div className={twMerge("flex items-center justify-between transition-all")}>
         <div className="flex gap-2 items-center">
           <div className="flex h-8 w-12">
@@ -36,14 +35,17 @@ export const AssetCard: React.FC<Props> = ({ coin }) => {
             )}
           </div>
           <div className="flex flex-col">
-            <p className="text-gray-900 diatype-m-bold">{coinInfo.symbol}</p>
-            <p className="text-gray-500 diatype-m-regular">
-              {formatNumber(humanAmount, formatNumberOptions)}
-            </p>
+            <p className="text-ink-primary-900 diatype-m-bold">{coinInfo.symbol}</p>
+            <p className="text-ink-tertiary-500 diatype-m-regular">{coinInfo.name}</p>
           </div>
         </div>
-        <div className="flex flex-col items-end">
-          <p className="text-gray-900 diatype-m-bold">{price}</p>
+        <div className="flex flex-col items-end text-ink-primary-900">
+          <p className="diatype-m-bold">{price}</p>
+          <p>
+            {coinInfo.type === "lp"
+              ? formatNumber(humanAmount, { ...formatNumberOptions, maximumTotalDigits: 4 })
+              : formatNumber(humanAmount, formatNumberOptions)}
+          </p>
         </div>
       </div>
     </motion.div>

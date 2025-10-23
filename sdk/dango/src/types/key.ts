@@ -1,4 +1,4 @@
-import type { Address, Base64, Hex } from "@left-curve/sdk/types";
+import type { Address, Base64, DateTime, Hex } from "@left-curve/sdk/types";
 
 export type KeyHash = Hex;
 
@@ -16,3 +16,16 @@ export type Key =
   | { ethereum: Address }
   /** An Secp256r1 public key in compressed form. */
   | { secp256r1: Base64 };
+
+export type PublicKey = {
+  /** The key hash of the public key */
+  keyHash: KeyHash;
+  /** The public key */
+  publicKey: Hex;
+  /** The type of the public key */
+  keyType: Uppercase<keyof typeof KeyTag>;
+  /** The block height at which the key was created */
+  createdBlockHeight: number;
+  /** The timestamp at which the key was created */
+  createdAt: DateTime;
+};

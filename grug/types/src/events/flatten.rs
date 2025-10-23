@@ -1,7 +1,7 @@
 use crate::{
     Event, EventId, EventStatus, EvtAuthenticate, EvtBackrun, EvtConfigure, EvtCron, EvtExecute,
     EvtFinalize, EvtGuest, EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpload,
-    EvtWithhold, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus,
+    EvtWithhold, FlatCategory, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus,
     FlatEvtAuthenticate, FlatEvtBackrun, FlatEvtCron, FlatEvtExecute, FlatEvtFinalize,
     FlatEvtGuest, FlatEvtInstantiate, FlatEvtMigrate, FlatEvtReply, FlatEvtTransfer,
     FlatEvtWithhold, MsgsAndBackrunEvents, SubEvent, SubEventStatus,
@@ -25,6 +25,37 @@ pub trait FlattenStatus {
         commitment: FlatCommitmentStatus,
     ) -> Vec<FlatEventInfo>;
 }
+
+pub trait NaiveFlatten: Flatten + Sized {
+    fn naive_flatten(
+        self,
+        commitment: FlatCommitmentStatus,
+        status: FlatEventStatus,
+    ) -> Vec<FlatEventInfo> {
+        let mut id = EventId {
+            block: 0,
+            category: FlatCategory::Tx,
+            category_index: 0,
+            message_index: None,
+            event_index: 0,
+        };
+
+        self.flatten(
+            &EventId {
+                block: 0,
+                category: FlatCategory::Tx,
+                category_index: 0,
+                message_index: None,
+                event_index: 0,
+            },
+            &mut id,
+            commitment,
+            status,
+        )
+    }
+}
+
+impl<T> NaiveFlatten for T where T: Flatten {}
 
 // -------------------------- impl Flat for Status --------------------------
 

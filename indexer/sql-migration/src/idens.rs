@@ -32,6 +32,7 @@ pub enum Transaction {
     GasWanted,
     GasUsed,
     CreatedAt,
+    HttpRequestDetails,
 }
 
 #[derive(DeriveIden)]

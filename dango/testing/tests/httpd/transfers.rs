@@ -2,7 +2,9 @@ use {
     crate::{build_actix_app, paginate_models},
     assertor::*,
     dango_indexer_sql::entity,
-    dango_testing::{HyperlaneTestSuite, create_user_and_account, setup_test_with_indexer},
+    dango_testing::{
+        HyperlaneTestSuite, TestOption, create_user_and_account, setup_test_with_indexer,
+    },
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
@@ -21,8 +23,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -125,8 +127,8 @@ async fn graphql_returns_transfer_and_accounts() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_transfers_with_username() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -245,8 +247,8 @@ async fn graphql_transfers_with_username() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
-    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
 
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
 
@@ -318,8 +320,8 @@ async fn graphql_transfers_with_wrong_username() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn graphql_paginate_transfers() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
 
     // Create 10 transfers to paginate through
     for _ in 0..10 {
@@ -474,8 +476,8 @@ async fn graphql_paginate_transfers() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -536,9 +538,6 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                     NonEmpty::new_unchecked(msgs),
                 )
                 .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -547,15 +546,17 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response
@@ -569,10 +570,12 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 crate_block_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response
@@ -586,10 +589,12 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
                 crate_block_tx.send(3).await.unwrap();
 
                 // 3rd response
-                let (_, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response
@@ -609,8 +614,8 @@ async fn graphql_subscribe_to_transfers() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context) =
-        setup_test_with_indexer().await;
+    let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
 
     // Copied from benchmarks.rs
     let msgs = vec![Message::execute(
@@ -678,9 +683,6 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                     NonEmpty::new_unchecked(msgs),
                 )
                 .should_succeed();
-
-            // Enabling this here will cause the test to hang
-            // suite.app.indexer.wait_for_finish();
         }
         Ok::<(), anyhow::Error>(())
     });
@@ -689,15 +691,17 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
         .run_until(async {
             tokio::task::spawn_local(async move {
                 let name = request_body.name;
-                let (_srv, _ws, framed) =
+                let (_srv, _ws, mut framed) =
                     call_ws_graphql_stream(dango_httpd_context, build_actix_app, request_body)
                         .await?;
 
                 // 1st response is always the existing last block
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 // 1st transfer because we filter on one address
                 assert_that!(
@@ -712,10 +716,12 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                 create_block_tx.send(2).await.unwrap();
 
                 // 2nd response
-                let (framed, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response
@@ -729,10 +735,12 @@ async fn graphql_subscribe_to_transfers_with_filter() -> anyhow::Result<()> {
                 create_block_tx.send(3).await.unwrap();
 
                 // 3rd response
-                let (_, response) = parse_graphql_subscription_response::<
-                    Vec<entity::transfers::Model>,
-                >(framed, name)
-                .await?;
+                let response =
+                    parse_graphql_subscription_response::<Vec<entity::transfers::Model>>(
+                        &mut framed,
+                        name,
+                    )
+                    .await?;
 
                 assert_that!(
                     response

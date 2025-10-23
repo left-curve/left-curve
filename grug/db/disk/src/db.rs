@@ -148,10 +148,7 @@ impl Db for DiskDb {
         let version = match version {
             Some(version) => {
                 if version > latest_version {
-                    return Err(DbError::VersionTooNew {
-                        version,
-                        latest_version,
-                    });
+                    return Err(DbError::version_too_new(version, latest_version));
                 }
                 version
             },
@@ -163,10 +160,7 @@ impl Db for DiskDb {
         // return error.
         if let Some(oldest_version) = self.oldest_version() {
             if version < oldest_version {
-                return Err(DbError::VersionTooOld {
-                    version,
-                    oldest_version,
-                });
+                return Err(DbError::version_too_old(version, oldest_version));
             }
         }
 
@@ -209,7 +203,7 @@ impl Db for DiskDb {
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
         if self.inner.pending_data.read()?.is_some() {
-            return Err(DbError::PendingDataAlreadySet);
+            return Err(DbError::pending_data_already_set());
         }
 
         let (old_version, new_version) = match self.latest_version() {
@@ -225,7 +219,12 @@ impl Db for DiskDb {
 
         // Commit hashed KVs to state commitment.
         // The DB writes here are kept in the in-memory `PendingData`.
-        let mut buffer = Buffer::new(self.state_commitment(), None);
+        let mut buffer = Buffer::new(
+            self.state_commitment(),
+            None,
+            "disk_db_state_commitment_flush_but_not_commit",
+        );
+
         let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
@@ -244,7 +243,7 @@ impl Db for DiskDb {
             .pending_data
             .write()?
             .take()
-            .ok_or(DbError::PendingDataNotSet)?;
+            .ok_or(DbError::pending_data_not_set())?;
         let mut batch = WriteBatch::default();
         let ts = U64Timestamp::from(pending.version);
 
@@ -326,7 +325,12 @@ impl PrunableDb for DiskDb {
         self.inner.db.increase_full_history_ts_low(&cf, ts)?;
 
         // Prune state commitment.
-        let mut buffer = Buffer::new(self.state_commitment(), None);
+        let mut buffer = Buffer::new(
+            self.state_commitment(),
+            None,
+            "disk_db_state_commitment_prune",
+        );
+
         MERKLE_TREE.prune(&mut buffer, up_to_version)?;
 
         let (_, pending) = buffer.disassemble();
@@ -594,25 +598,25 @@ pub(crate) fn new_read_options(
     opts
 }
 
-fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_DEFAULT).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }
 
-pub(crate) fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+pub(crate) fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }
 
-fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_STATE_STORAGE).unwrap_or_else(|| {
         panic!("failed to find state storage column family");
     })
 }
 
-fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily> {
+fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_STATE_COMMITMENT).unwrap_or_else(|| {
         panic!("failed to find state commitment column family");
     })

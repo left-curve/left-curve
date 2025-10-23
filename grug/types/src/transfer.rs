@@ -1,15 +1,18 @@
 use {
     crate::{Addr, Coin, Coins, DecCoin, DecCoins, Denom, Message, StdResult},
-    grug_math::{Udec128, Uint128},
+    grug_math::{Dec, FixedPoint, NumberConst, Uint128},
     std::collections::BTreeMap,
 };
 
 #[derive(Default, Debug)]
-pub struct TransferBuilder<T = Coins> {
+pub struct TransferBuilder<T: Default = Coins> {
     batch: BTreeMap<Addr, T>,
 }
 
-impl<T> TransferBuilder<T> {
+impl<T> TransferBuilder<T>
+where
+    T: Default,
+{
     pub fn new() -> Self {
         Self {
             batch: BTreeMap::new(),
@@ -22,6 +25,10 @@ impl<T> TransferBuilder<T> {
 
     pub fn is_non_empty(&self) -> bool {
         !self.batch.is_empty()
+    }
+
+    pub fn get_mut(&mut self, user: Addr) -> &mut T {
+        self.batch.entry(user).or_default()
     }
 }
 
@@ -51,8 +58,11 @@ impl TransferBuilder<Coins> {
     }
 }
 
-impl TransferBuilder<DecCoins> {
-    pub fn insert(&mut self, address: Addr, denom: Denom, amount: Udec128) -> StdResult<()> {
+impl<const S: u32> TransferBuilder<DecCoins<S>>
+where
+    Dec<u128, S>: FixedPoint<u128> + NumberConst,
+{
+    pub fn insert(&mut self, address: Addr, denom: Denom, amount: Dec<u128, S>) -> StdResult<()> {
         self.batch
             .entry(address)
             .or_default()
@@ -60,7 +70,7 @@ impl TransferBuilder<DecCoins> {
             .map(|_| ())
     }
 
-    pub fn insert_many(&mut self, address: Addr, dec_coins: DecCoins) -> StdResult<()> {
+    pub fn insert_many(&mut self, address: Addr, dec_coins: DecCoins<S>) -> StdResult<()> {
         self.batch
             .entry(address)
             .or_default()

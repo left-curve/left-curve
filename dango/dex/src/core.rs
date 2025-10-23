@@ -1,14 +1,9 @@
 pub mod geometric;
 mod liquidity_pool;
-mod market_order;
-mod merged_orders;
+pub mod mean;
 mod order_filling;
 mod order_matching;
 mod router;
-mod types;
 pub mod xyk;
 
-pub use {
-    liquidity_pool::*, market_order::*, merged_orders::*, order_filling::*, order_matching::*,
-    router::*, types::*,
-};
+pub use {liquidity_pool::*, order_filling::*, order_matching::*, router::*};

@@ -7,7 +7,7 @@ LABEL org.opencontainers.image.source="https://github.com/left-curve/left-curve"
 RUN apt update && apt install -y git make
 
 # Git tag of the cometbft repo.
-ARG COMETBFT_GIT_TAG="v0.38.17"
+ARG COMETBFT_GIT_TAG="v0.38.19"
 ENV COMETBFT_GIT_TAG=$COMETBFT_GIT_TAG
 
 # Download cometbft source code, build, then delete.
@@ -40,8 +40,8 @@ COPY --from=builder /go/bin/cometbft /usr/local/bin/
 # WORKDIR /home/$USERNAME
 # WORKDIR /app
 
-# Expose the Tendermint p2p (26656), RPC (26657), and ABCI (26658) ports.
-EXPOSE 26656 26657 26658
+# Expose the Tendermint p2p (26656), RPC (26657), ABCI (26658) and metrics (26660) ports.
+EXPOSE 26656 26657 26658 26660
 
 # Run cometbft.
 # This assume the config folder has been mounted to `/root/.cometbft/config`.

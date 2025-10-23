@@ -24,8 +24,8 @@ COPY target/${TARGET_ARCH}/release/dango /usr/local/bin/
 # WORKDIR /home/$USERNAME
 WORKDIR /app
 
-# Expose the indexer httpd (8080) and Tendermint ABCI (26658) ports.
-EXPOSE 8080 26658
+# Expose the indexer httpd (8080), indexer metrics (9191), and Tendermint ABCI (26658) ports.
+EXPOSE 8080 26658 9191
 
 # Run dango.
 # This assumes that the `app.toml` file has been mounted to `/root/.dango/config/app.toml`.

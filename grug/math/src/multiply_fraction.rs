@@ -132,33 +132,38 @@ where
 
 // ------------------------------------ dec ------------------------------------
 
-impl<U, const S: u32> MultiplyFraction<Dec<U, S>, U> for Dec<U, S>
+impl<U, const S1: u32, const S2: u32> MultiplyFraction<Dec<U, S2>, U> for Dec<U, S1>
 where
-    Dec<U, S>: Fraction<U> + Copy + Number + FixedPoint<U>,
-    Int<U>: MultiplyFraction<Dec<U, S>, U> + MultiplyRatio,
+    Dec<U, S1>: Fraction<U> + Copy + Number<Dec<U, S2>> + FixedPoint<U>,
+    Dec<U, S2>: Fraction<U> + Copy,
+    Int<U>: MultiplyFraction<Dec<U, S2>, U> + MultiplyRatio,
 {
-    fn checked_mul_dec(self, rhs: Dec<U, S>) -> MathResult<Self> {
+    fn checked_mul_dec(self, rhs: Dec<U, S2>) -> MathResult<Self> {
         self.checked_mul(rhs)
     }
 
-    fn checked_mul_dec_floor(self, rhs: Dec<U, S>) -> MathResult<Self> {
+    fn checked_mul_dec_floor(self, rhs: Dec<U, S2>) -> MathResult<Self> {
         self.0.checked_mul_dec_floor(rhs).map(Self)
     }
 
-    fn checked_mul_dec_ceil(self, rhs: Dec<U, S>) -> MathResult<Self> {
+    fn checked_mul_dec_ceil(self, rhs: Dec<U, S2>) -> MathResult<Self> {
         self.0.checked_mul_dec_ceil(rhs).map(Self)
     }
 
-    fn checked_div_dec(self, rhs: Dec<U, S>) -> MathResult<Self> {
+    fn checked_div_dec(self, rhs: Dec<U, S2>) -> MathResult<Self> {
         self.checked_div(rhs)
     }
 
-    fn checked_div_dec_floor(self, rhs: Dec<U, S>) -> MathResult<Self> {
-        Self::checked_from_ratio_floor(self.numerator(), rhs.numerator())
+    fn checked_div_dec_floor(self, rhs: Dec<U, S2>) -> MathResult<Self> {
+        self.numerator()
+            .checked_multiply_ratio_floor(Dec::<U, S2>::denominator(), rhs.numerator())
+            .map(Self)
     }
 
-    fn checked_div_dec_ceil(self, rhs: Dec<U, S>) -> MathResult<Self> {
-        Self::checked_from_ratio_ceil(self.numerator(), rhs.numerator())
+    fn checked_div_dec_ceil(self, rhs: Dec<U, S2>) -> MathResult<Self> {
+        self.numerator()
+            .checked_multiply_ratio_ceil(Dec::<U, S2>::denominator(), rhs.numerator())
+            .map(Self)
     }
 }
 
@@ -610,7 +615,7 @@ mod int_tests {
 #[cfg(test)]
 mod dec_tests {
     use {
-        crate::{Dec, MultiplyFraction, dec_test, dts, test_utils::dec},
+        crate::{Dec, MultiplyFraction, Number, dec_test, dts, test_utils::dec},
         std::str::FromStr,
     };
 
@@ -730,4 +735,42 @@ mod dec_tests {
             }
         }
     );
+
+    #[test]
+    fn check_div_dec_floor_ceil_different_precision() {
+        let a = dec::<u128, 6>("500.123");
+        let b = dec::<u128, 6>("1.123456");
+
+        assert_eq!(a.checked_div(b).unwrap(), dec("445.164741"));
+
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_div_dec_floor(b).unwrap(), dec("445.164429"));
+        assert_eq!(a.checked_div_dec_ceil(b).unwrap(), dec("445.164430"));
+
+        let a = dec::<i128, 6>("-500.123");
+        let b = dec::<i128, 18>("1.123456789");
+
+        assert_eq!(a.checked_div_dec_floor(b).unwrap(), dec("-445.164430"));
+        assert_eq!(a.checked_div_dec_ceil(b).unwrap(), dec("-445.164429"));
+    }
+
+    #[test]
+    fn check_mul_dec_floor_ceil_different_precision() {
+        let a = dec::<u128, 6>("500.123");
+        let b = dec::<u128, 6>("1.123456");
+
+        assert_eq!(a.checked_mul(b).unwrap(), dec("561.866185"));
+
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_mul_dec_floor(b).unwrap(), dec("561.866579"));
+        assert_eq!(a.checked_mul_dec_ceil(b).unwrap(), dec("561.866580"));
+
+        let a = dec::<i128, 6>("-500.123");
+        let b = dec::<i128, 18>("1.123456789");
+
+        assert_eq!(a.checked_mul_dec_floor(b).unwrap(), dec("-561.866580"));
+        assert_eq!(a.checked_mul_dec_ceil(b).unwrap(), dec("-561.866579"));
+    }
 }

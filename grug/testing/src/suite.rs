@@ -3,17 +3,18 @@ use {
         BalanceTracker, InstantiateOutcome, MakeBlockOutcome, UploadAndInstantiateOutcome,
         UploadOutcome,
     },
+    error_backtrace::Backtraceable,
     grug_app::{
-        App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm,
+        App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer,
+        StorageProvider, UpgradeHandler, Vm,
     },
-    grug_crypto::sha2_256,
     grug_db_memory::MemDb,
     grug_math::Uint128,
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
         Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
-        Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, Signer, StdError, StdResult, Tx,
-        TxOutcome, UnsignedTx,
+        Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, QueryStatusResponse, Signer,
+        StdError, StdResult, Tx, TxOutcome, UnsignedTx,
     },
     grug_vm_rust::RustVm,
     serde::ser::Serialize,
@@ -84,6 +85,7 @@ where
             vm,
             NaiveProposalPreparer,
             NullIndexer,
+            None,
             chain_id,
             block_time,
             default_gas_limit,
@@ -113,6 +115,7 @@ where
             RustVm::new(),
             pp,
             NullIndexer,
+            None,
             chain_id,
             block_time,
             default_gas_limit,
@@ -136,6 +139,7 @@ where
         vm: VM,
         pp: PP,
         mut id: ID,
+        upgrade_handler: Option<UpgradeHandler<VM>>,
         chain_id: String,
         block_time: Duration,
         default_gas_limit: u64,
@@ -166,17 +170,28 @@ where
 
         // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, id, u64::MAX);
+        let app = App::new(db, vm, pp, id, u64::MAX, upgrade_handler);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {
                 panic!("fatal error while initializing chain: {err}");
             });
 
+        Self::new_with_app(app, chain_id, genesis_block, block_time, default_gas_limit)
+    }
+
+    /// Create a new test suite with the given already initialized app instance.
+    pub fn new_with_app(
+        app: App<DB, VM, PP, ID>,
+        chain_id: String,
+        last_finalized_block: BlockInfo,
+        block_time: Duration,
+        default_gas_limit: u64,
+    ) -> Self {
         Self {
             app,
             chain_id,
-            block: genesis_block,
+            block: last_finalized_block,
             block_time,
             default_gas_limit,
             balances: Default::default(),
@@ -406,7 +421,7 @@ where
         B: Into<Binary>,
     {
         let code = code.into();
-        let code_hash = Hash256::from_inner(sha2_256(&code));
+        let code_hash = code.hash256();
 
         let outcome = self.send_message_with_gas(signer, gas_limit, Message::upload(code));
 
@@ -527,7 +542,7 @@ where
         StdError: From<C::Error>,
     {
         let code = code.into();
-        let code_hash = Hash256::from_inner(sha2_256(&code));
+        let code_hash = code.hash256();
         let salt = salt.into();
         let address = Addr::derive(signer.address(), code_hash, &salt);
 
@@ -618,8 +633,17 @@ where
     }
 
     /// Return a `QuerierWrapper` object.
-    pub fn querier(&self) -> QuerierWrapper {
+    pub fn querier(&self) -> QuerierWrapper<'_> {
         QuerierWrapper::new(self)
+    }
+
+    /// Return a `Storage` object representing the storage of a given contract.
+    pub fn contract_storage(&self, address: Addr) -> StorageProvider
+    where
+        <DB as grug_app::Db>::Error: std::fmt::Debug,
+    {
+        let storage = self.app.db.state_storage(None).unwrap();
+        StorageProvider::new(Box::new(storage), &[grug_app::CONTRACT_NAMESPACE, &address])
     }
 }
 
@@ -634,7 +658,7 @@ where
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.app
             .do_query_app(req, 0, false)
-            .map_err(|err| StdError::host(err.to_string()))
+            .map_err(|err| StdError::Host(err.into_generic_backtraced_error()))
     }
 }
 
@@ -647,6 +671,14 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
     Self: Querier,
 {
+    pub fn balances(&mut self) -> BalanceTracker<'_, DB, VM, PP, ID> {
+        BalanceTracker { suite: self }
+    }
+
+    pub fn query_status(&self) -> StdResult<QueryStatusResponse> {
+        <Self as QuerierExt>::query_status(self)
+    }
+
     pub fn query_balance<D>(&self, address: &dyn Addressable, denom: D) -> StdResult<Uint128>
     where
         D: TryInto<Denom>,
@@ -662,7 +694,20 @@ where
         <Self as QuerierExt>::query_balances(self, address, None, Some(u32::MAX))
     }
 
-    pub fn balances(&mut self) -> BalanceTracker<DB, VM, PP, ID> {
-        BalanceTracker { suite: self }
+    pub fn query_supply<D>(&self, denom: D) -> StdResult<Uint128>
+    where
+        D: TryInto<Denom>,
+        StdError: From<D::Error>,
+    {
+        let denom = denom.try_into()?;
+        <Self as QuerierExt>::query_supply(self, denom)
+    }
+
+    pub fn query_supplies(
+        &self,
+        start_after: Option<Denom>,
+        limit: Option<u32>,
+    ) -> StdResult<Coins> {
+        <Self as QuerierExt>::query_supplies(self, start_after, limit)
     }
 }

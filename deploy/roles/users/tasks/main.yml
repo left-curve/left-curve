@@ -8,14 +8,10 @@
     create_home: yes
   loop: "{{ ssh_users }}"
 
-- name: Create deploy user
-  user:
-    name: "{{ deploy_user }}"
-    shell: /bin/bash
-    groups: sudo
-    append: yes
-    state: present
-    create_home: yes
+- name: Enable lingering
+  command: loginctl enable-linger "{{ item }}"
+  become: yes
+  loop: "{{ ssh_users }}"
 
 - name: Ensure .ssh directory exists for ssh_users
   file:
@@ -33,7 +29,16 @@
     key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
   vars:
     ssh_key_path: "{{ item }}.pub"
-  with_items: "{{ ssh_users }}"
+  loop: "{{ ssh_users }}"
+
+- name: Create deploy user
+  user:
+    name: "{{ deploy_user }}"
+    shell: /bin/bash
+    groups: sudo
+    append: yes
+    state: present
+    create_home: yes
 
 - name: Copy deploy ssh keys user
   authorized_key:
@@ -51,14 +56,21 @@
     group: "{{ deploy_user }}"
     mode: '0700'
 
-- name: Copy ssh keys for deploy_user
+- name: Add all ssh_users’ keys to deploy_user
   authorized_key:
     user: "{{ deploy_user }}"
     state: present
-    key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
-  vars:
-    ssh_key_path: "{{ item }}.pub"
-  with_items: "{{ ssh_users }}"
+    key: "{{ lookup('file', role_path ~ '/files/authorized_keys/' ~ item ~ '.pub') }}"
+    manage_dir: true
+  loop: "{{ ssh_users }}"
+
+- name: Add all ssh_users’ keys to ansible_user
+  authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ lookup('file', role_path ~ '/files/authorized_keys/' ~ item ~ '.pub') }}"
+    manage_dir: true
+  loop: "{{ ssh_users }}"
 
 - name: Disable SSH root login
   lineinfile:
@@ -87,7 +99,6 @@
     regexp: "^{{ item }}\\s+ALL=\\(ALL\\) NOPASSWD:ALL$"
     backup: yes
   with_items: "{{ ssh_users }}"
-
 
 - name: Reload SSH
   service:

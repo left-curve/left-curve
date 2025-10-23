@@ -29,6 +29,10 @@ class Decimal {
     return new Decimal(value);
   }
 
+  round(dp: number, rm: number): Decimal {
+    return new Decimal(this.inner.round(dp, rm as Big.RoundingMode));
+  }
+
   plus(num: string | number | Decimal): Decimal {
     const other = Decimal.from(num);
     const result = this.inner.plus(other.inner);
@@ -45,6 +49,14 @@ class Decimal {
     const other = Decimal.from(num);
     const result = this.inner.mul(other.inner);
     return new Decimal(result);
+  }
+
+  mulCeil(num: string | number | Decimal): Decimal {
+    const previousRm = Big.RM;
+    Big.RM = Big.roundUp;
+    const result = this.mul(num);
+    Big.RM = previousRm;
+    return result;
   }
 
   times(num: string | number | Decimal): Decimal {
@@ -124,8 +136,8 @@ class Decimal {
     return this.inner.toString();
   }
 
-  toFixed(decimalPlaces?: number): string {
-    return this.inner.toFixed(decimalPlaces);
+  toFixed(decimalPlaces?: number, rm?: number): string {
+    return this.inner.toFixed(decimalPlaces, rm as Big.RoundingMode);
   }
 
   toNumber(): number {

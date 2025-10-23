@@ -1,11 +1,14 @@
 import {
   Button,
+  formatDate,
   IconAddCross,
   IconTrash,
+  Modals,
   Spinner,
   TextCopy,
   TruncateText,
   twMerge,
+  useApp,
   useMediaQuery,
 } from "@left-curve/applets-kit";
 import { decodeBase64, encodeHex } from "@left-curve/dango/encoding";
@@ -14,9 +17,8 @@ import { useAccount, useSigningClient } from "@left-curve/store";
 import { ConnectionStatus } from "@left-curve/store/types";
 import { useQuery } from "@tanstack/react-query";
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
-import { Modals } from "../modals/RootModal";
+
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 const KeyTranslation = {
   secp256r1: "Passkey",
@@ -27,23 +29,25 @@ const KeyTranslation = {
 export const KeyManagementSection: React.FC = () => {
   const { status, username, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
-  const { showModal } = useApp();
+  const { showModal, settings } = useApp();
   const { isMd } = useMediaQuery();
+
+  const { timeFormat, dateFormat } = settings;
 
   const { data: keys = [], isPending } = useQuery({
     enabled: !!signingClient && !!username,
     queryKey: ["user_keys", username],
-    queryFn: async () => await signingClient?.getKeysByUsername({ username: username as string }),
+    queryFn: async () => await signingClient?.getUserKeys({ username: username as string }),
   });
 
   if (status !== ConnectionStatus.Connected) return null;
 
   return (
-    <div className="rounded-xl bg-rice-25 shadow-account-card flex flex-col w-full p-4 gap-4">
+    <div className="rounded-xl bg-surface-secondary-rice shadow-account-card flex flex-col w-full p-4 gap-4">
       <div className="flex flex-col md:flex-row gap-4 items-start justify-between">
         <div className="flex flex-col gap-4 max-w-lg">
-          <h3 className="h4-bold text-gray-900">{m["settings.keyManagement.title"]()}</h3>
-          <p className="text-gray-500 diatype-sm-regular">
+          <h3 className="h4-bold text-ink-primary-900">{m["settings.keyManagement.title"]()}</h3>
+          <p className="text-ink-tertiary-500 diatype-sm-regular">
             {m["settings.keyManagement.description"]()}
           </p>
         </div>
@@ -55,36 +59,40 @@ export const KeyManagementSection: React.FC = () => {
       {isPending ? (
         <Spinner color="gray" size="md" />
       ) : (
-        Object.entries(keys).map(([keyHash, key]) => {
-          const isActive = keyHash === currentKeyHash;
-          const [[keyType, keyValue]] = Object.entries(key);
-          const isEthereumKey = keyType === "ethereum";
+        keys.map((key) => {
+          const isActive = key.keyHash === currentKeyHash;
+          const isEthereumKey = key.keyType === "ETHEREUM";
           const keyRepresentation = isEthereumKey
-            ? keyValue
-            : `0x${encodeHex(decodeBase64(keyValue))}`;
+            ? key.publicKey
+            : `0x${encodeHex(decodeBase64(key.publicKey))}`;
 
           return (
             <div
               key={uid()}
-              className="flex items-center justify-between rounded-2xl border border-rice-200 hover:bg-rice-50 transition-all p-4"
+              className="flex items-center justify-between rounded-2xl border border-surface-quaternary-rice hover:bg-surface-tertiary-rice transition-all p-4"
             >
               <div className="flex items-start justify-between w-full gap-8">
                 <div className="min-w-0">
-                  <div className="flex gap-[6px] items-center text-gray-700 diatype-m-bold">
+                  <div className="flex gap-[6px] items-center text-ink-secondary-700 diatype-m-bold">
                     {isMd ? <p>{keyRepresentation}</p> : <TruncateText text={keyRepresentation} />}
                     {isActive ? <span className="bg-status-success rounded-full h-2 w-2" /> : null}
                   </div>
 
-                  <p className="text-gray-500 diatype-sm-medium">
-                    {KeyTranslation[keyType as keyof typeof KeyTranslation]}
+                  <p className="text-ink-tertiary-500 diatype-sm-medium">
+                    {KeyTranslation[key.keyType.toLowerCase() as keyof typeof KeyTranslation]}
+                  </p>
+                  <p className="text-ink-tertiary-500 diatype-sm-medium">
+                    {formatDate(key.createdAt, `${dateFormat} ${timeFormat}`)}
                   </p>
                 </div>
                 <div className="flex gap-1">
                   <TextCopy className="w-5 h-5 cursor-pointer" copyText={keyRepresentation} />
                   <IconTrash
-                    onClick={() => (isActive ? null : showModal(Modals.RemoveKey, { keyHash }))}
+                    onClick={() =>
+                      isActive ? null : showModal(Modals.RemoveKey, { keyHash: key.keyHash })
+                    }
                     className={twMerge("w-5 h-5 cursor-pointer", {
-                      "text-gray-300 cursor-default": isActive,
+                      "text-primitives-gray-light-300 cursor-default": isActive,
                     })}
                   />
                 </div>

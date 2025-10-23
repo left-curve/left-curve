@@ -1,10 +1,10 @@
 use {
-    crate::{Batch, Order, Record, Storage, extend_one_byte},
+    crate::{Batch, Order, Record, Storage},
+    ouroboros::self_referencing,
     std::{
         fmt::Display,
         mem::replace,
         sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
-        vec,
     },
 };
 
@@ -22,13 +22,13 @@ impl<S> Shared<S> {
         }
     }
 
-    pub fn read_access(&self) -> RwLockReadGuard<S> {
+    pub fn read_access(&self) -> RwLockReadGuard<'_, S> {
         self.inner
             .read()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 
-    pub fn write_access(&self) -> RwLockWriteGuard<S> {
+    pub fn write_access(&self) -> RwLockWriteGuard<'_, S> {
         self.inner
             .write()
             .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
@@ -82,39 +82,15 @@ where
         self.read_access().read(key)
     }
 
-    // This is very tricky! Took me days to figure out how to do `scan` on a
-    // shared store.
-    //
-    // A naive implementation of the `scan` may be something like this:
-    //
-    // ```rust
-    // let storage = self.storage.borrow();
-    // storage.scan(min, max, order)
-    // ```
-    //
-    // However, this doesn't work! Compiler would complain:
-    //
-    // > cannot return value referencing local variable `storage`
-    // > returns a value referencing data owned by the current function
-    //
-    // Basically, `storage` is dropped at the end of the function. The iterator
-    // created by `storage.scan()` holds an immutable reference to `storage`, so
-    // it cannot be returned.
-    //
-    // For this reason, we need to collect the records into a Vec and have it
-    // owned by the iterator. However we can't collect the entire [min, max)
-    // range either, because it can potentially very big.
-    //
-    // The solution we have for now is to collect 30 records per batch. If the
-    // batch reaches the end, we fetch the next batch. 30 is the default page
-    // limit we use in contracts, so it's a reasonable value.
     fn scan<'a>(
         &'a self,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        Box::new(SharedIter::new(self.read_access(), min, max, order))
+        Box::new(SharedIter::new(self.read_access(), |g| {
+            g.scan(min, max, order)
+        }))
     }
 
     fn scan_keys<'a>(
@@ -152,74 +128,22 @@ where
     }
 }
 
-struct SharedIter<'a, S> {
-    storage: RwLockReadGuard<'a, S>,
-    batch: vec::IntoIter<Record>,
-    min: Option<Vec<u8>>,
-    max: Option<Vec<u8>>,
-    order: Order,
+#[self_referencing]
+pub struct SharedIter<'a, S> {
+    guard: RwLockReadGuard<'a, S>,
+    #[borrows(guard)]
+    #[covariant]
+    inner: Box<dyn Iterator<Item = Record> + 'this>,
 }
 
-impl<'a, S> SharedIter<'a, S> {
-    const BATCH_SIZE: usize = 30;
-
-    pub fn new(
-        storage: RwLockReadGuard<'a, S>,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
-    ) -> Self {
-        Self {
-            storage,
-            batch: Vec::new().into_iter(),
-            min: min.map(|slice| slice.to_vec()),
-            max: max.map(|slice| slice.to_vec()),
-            order,
-        }
-    }
-}
-
-impl<S> SharedIter<'_, S>
-where
-    S: Storage,
-{
-    fn collect_next_batch(&mut self) {
-        let batch = self
-            .storage
-            .scan(self.min.as_deref(), self.max.as_deref(), self.order)
-            .take(Self::BATCH_SIZE)
-            .collect::<Vec<_>>();
-
-        // Now we need to update the bounds.
-        if let Some((key, _)) = batch.iter().last() {
-            match self.order {
-                Order::Ascending => self.min = Some(extend_one_byte(key.clone())),
-                Order::Descending => self.max = Some(key.clone()),
-            }
-        }
-
-        self.batch = batch.into_iter();
-    }
-}
-
-impl<S> Iterator for SharedIter<'_, S>
+impl<'a, S> Iterator for SharedIter<'a, S>
 where
     S: Storage,
 {
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // Get the next record in the batch. If it exists (i.e. the batch hasn't
-        // reached end yet) then simply return this record.
-        if let Some(record) = self.batch.next() {
-            return Some(record);
-        }
-
-        // We're here means the batch has reached end. Collect another batch
-        // from the store. Return the first record in the new batch (which may
-        // be `None`, which means the entire iteration has reached end).
-        self.collect_next_batch();
-        self.batch.next()
+        self.with_inner_mut(|iter| iter.next())
     }
 }
 

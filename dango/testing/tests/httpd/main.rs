@@ -10,8 +10,10 @@ use {
 };
 
 pub mod accounts;
+pub mod candles;
 pub mod grug;
 pub mod metrics;
+pub mod trades;
 pub mod transfers;
 pub mod users;
 

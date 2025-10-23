@@ -1,0 +1,86 @@
+- debug: msg="{{ inventory_hostname }} => {{ dex_bot_host }}"
+
+- name: Check if liquidity setup already done (current deployment)
+  stat:
+    path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}/bot_liquidity_setup_done"
+  register: current_liquidity_setup_flag
+  when: current_deployment is defined and system_wide_directories
+  run_once: true
+  delegate_to: "{{ dex_bot_host }}"
+
+- name: Check if liquidity setup already done
+  stat:
+    path: "{{ deployment_dir }}/bot_liquidity_setup_done"
+  register: liquidity_setup_flag
+  run_once: true
+  delegate_to: "{{ dex_bot_host }}"
+
+- name: Setup liquidity (mint and provide)
+  when:
+    - not liquidity_setup_flag.stat.exists
+    - not (current_liquidity_setup_flag.stat.exists | default(false))
+  run_once: true
+  delegate_to: "{{ dex_bot_host }}"
+  block:
+    - set_fact:
+        mint_command: "dex liquidity mint --url http://dango:8080/ {{ dango.dex_bot.mint_amount }} {{ dango.dex_bot.address }} --address {{ dango.dex_bot.minter_address }} --username {{ dango.dex_bot.minter_username }} --private-key {{ dango.dex_bot.minter_private_key }}"
+        provide_liquidity_command: "dex liquidity provide --url http://dango:8080/ {{ dango.dex_bot.liquidity_amount }} --address {{ dango.dex_bot.minter_address }} --username {{ dango.dex_bot.minter_username }} --private-key {{ dango.dex_bot.minter_private_key }}"
+
+    - debug:
+        msg: "Calling: {{ provide_liquidity_command }} ; {{ mint_command }}"
+
+    - name: Run both liquidity commands in sequence
+      community.docker.docker_compose_v2_exec:
+        project_name: "{{ deployment_name }}"
+        project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+        service: dex-bot
+        command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
+        tty: yes
+      register: liquidity_result
+      retries: 3
+      delay: 5
+      run_once: true
+
+    - name: Show stdout
+      debug:
+        var: liquidity_result.stdout
+      run_once: true
+
+    - name: Show stderr
+      debug:
+        var: liquidity_result.stderr
+      run_once: true
+
+    - name: Query balances
+      community.docker.docker_compose_v2_exec:
+        project_name: "{{ deployment_name }}"
+        project_src: "{{ deployment_dir }}"
+        service: dango
+        command: bash -lc "dango query balances {{ item }}"
+        tty: yes
+      loop: [ "{{ dango.dex_bot.address }}", "{{ dango.dex_bot.dex_address }}" ]
+      register: balances_raw
+      run_once: true
+      delegate_to: "{{ dex_bot_host }}"
+
+    - name: Pretty output
+      run_once: true
+      delegate_to: "{{ dex_bot_host }}"
+      vars:
+        report: |-
+          {%- for r in balances_raw.results -%}
+          {%- set data = (r.stdout | from_json).balances -%}
+          Address: {{ r.item }}
+          -------------------------------
+          {%- for k, v in data.items() if (v|int) > 0 -%}
+          {{ "%-24s %s"|format(k, v) }}
+          {%- endfor -%}
+
+          {%- endfor -%}
+      debug:
+        msg: "{{ report }}"
+
+- name: Mark liquidity setup as done
+  file:
+    path: "{{ deployment_dir }}/bot_liquidity_setup_done"
+    state: touch

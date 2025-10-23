@@ -1,14 +1,28 @@
 use {
     crate::{ExternalApi, ExternalQuerier, ExternalStorage, Region},
+    error_backtrace::Backtraceable,
     grug_types::{
         AuthCtx, AuthResponse, BankMsg, BankQuery, BankQueryResponse, BorshDeExt, BorshSerExt,
         Context, GenericResult, GenericResultExt, ImmutableCtx, Json, JsonDeExt, MutableCtx,
         QuerierWrapper, Response, SubMsgResult, SudoCtx, Tx, TxOutcome, make_auth_ctx,
-        make_immutable_ctx, make_mutable_ctx, make_sudo_ctx, unwrap_into_generic_result,
+        make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
     },
     serde::de::DeserializeOwned,
-    std::fmt::Display,
 };
+
+// TODO: replace with https://doc.rust-lang.org/std/ops/trait.Try.html once stabilized
+#[macro_export]
+#[doc(hidden)]
+macro_rules! unwrap_into_generic_result {
+    ($expr:expr) => {
+        match $expr {
+            Ok(val) => val,
+            Err(err) => {
+                return GenericResult::Err(::error_backtrace::BacktracedError::new(err.to_string()));
+            },
+        }
+    };
+}
 
 /// Reserve a region in Wasm memory of the given number of bytes. Return the
 /// memory address of a Region object that describes the memory region that was
@@ -35,7 +49,7 @@ pub fn do_instantiate<M, E>(
 ) -> usize
 where
     M: DeserializeOwned,
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
@@ -62,7 +76,7 @@ pub fn do_execute<M, E>(
 ) -> usize
 where
     M: DeserializeOwned,
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
@@ -89,7 +103,7 @@ pub fn do_query<M, E>(
 ) -> usize
 where
     M: DeserializeOwned,
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
@@ -116,7 +130,7 @@ pub fn do_migrate<M, E>(
 ) -> usize
 where
     M: DeserializeOwned,
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
@@ -144,7 +158,7 @@ pub fn do_reply<M, E>(
 ) -> usize
 where
     M: DeserializeOwned,
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
@@ -172,7 +186,7 @@ pub fn do_receive<E>(
     ctx_ptr: usize,
 ) -> usize
 where
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
 
@@ -193,7 +207,7 @@ pub fn do_cron_execute<E>(
     ctx_ptr: usize,
 ) -> usize
 where
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
 
@@ -215,7 +229,7 @@ pub fn do_authenticate<E>(
     tx_ptr: usize,
 ) -> usize
 where
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
@@ -239,7 +253,7 @@ pub fn do_backrun<E>(
     tx_ptr: usize,
 ) -> usize
 where
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
@@ -263,7 +277,7 @@ pub fn do_bank_execute<E>(
     msg_ptr: usize,
 ) -> usize
 where
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
@@ -287,7 +301,7 @@ pub fn do_bank_query<E>(
     msg_ptr: usize,
 ) -> usize
 where
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let msg_bytes = unsafe { Region::consume(msg_ptr as *mut Region) };
@@ -311,7 +325,7 @@ pub fn do_withhold_fee<E>(
     tx_ptr: usize,
 ) -> usize
 where
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };
@@ -336,7 +350,7 @@ pub fn do_finalize_fee<E>(
     outcome_ptr: usize,
 ) -> usize
 where
-    E: Display,
+    E: Backtraceable,
 {
     let ctx_bytes = unsafe { Region::consume(ctx_ptr as *mut Region) };
     let tx_bytes = unsafe { Region::consume(tx_ptr as *mut Region) };

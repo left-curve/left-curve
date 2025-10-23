@@ -1,83 +1,87 @@
 use {
-    crate::{PythClient, PythClientTrait, error},
+    crate::{PythClient, PythClientTrait},
     async_stream::stream,
     async_trait::async_trait,
-    grug::{Binary, Inner, Lengthy, NonEmpty},
+    grug::{Inner, Lengthy, NonEmpty},
     indexer_disk_saver::persistence::DiskPersistence,
-    reqwest::{IntoUrl, Url},
+    pyth_types::{LeEcdsaMessage, PriceUpdate, PythId, PythLazerSubscriptionDetails},
+    reqwest::IntoUrl,
     std::{
         collections::HashMap,
         env,
         path::{Path, PathBuf},
         sync::{
             Arc,
-            atomic::{AtomicBool, AtomicU64, Ordering},
+            atomic::{AtomicBool, Ordering},
         },
         thread::sleep,
         time::Duration,
     },
     tokio::runtime::Runtime,
     tokio_stream::StreamExt,
+    tracing::warn,
 };
 
 /// Define the number of samples for each PythId to store in file.
-const CACHE_SAMPLES: usize = 15;
+pub const PYTH_CACHE_SAMPLES: usize = 50;
 
 #[derive(Debug, Clone)]
 pub struct PythClientCache {
-    base_url: Url,
+    client: PythClient,
     // Used to return newer vaas at each call.
-    vaas_index: Arc<AtomicU64>,
     keep_running: Arc<AtomicBool>,
 }
 
 impl PythClientCache {
-    pub fn new<U: IntoUrl>(base_url: U) -> Result<Self, error::Error> {
+    pub fn new<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> Result<Self, anyhow::Error>
+    where
+        V: IntoIterator<Item = U> + Lengthy,
+        U: IntoUrl,
+        T: ToString,
+    {
+        let client = PythClient::new(endpoints, access_token)?;
+
         Ok(Self {
-            base_url: base_url.into_url()?,
-            vaas_index: Arc::new(AtomicU64::new(0)),
-            keep_running: Arc::new(AtomicBool::new(false)),
+            client,
+            keep_running: Arc::new(AtomicBool::new(true)),
         })
     }
 
     /// Load data from cache or retrieve it from the source.
     pub fn load_or_retrieve_data<I>(
-        base_url: &Url,
+        &mut self,
         ids: NonEmpty<I>,
-    ) -> HashMap<PathBuf, Vec<Vec<Binary>>>
+    ) -> HashMap<PathBuf, Vec<NonEmpty<Vec<LeEcdsaMessage>>>>
     where
-        I: IntoIterator + Lengthy + Clone,
-        I::Item: ToString,
+        I: IntoIterator<Item = PythLazerSubscriptionDetails> + Lengthy + Clone,
     {
-        let mut stored_vaas = HashMap::new();
+        let mut stored_data = HashMap::new();
 
         // Load data for each id.
-        for id in ids.into_inner() {
-            let filename = Self::cache_filename(&id.to_string());
+        for subscription_details in ids.into_inner() {
+            let filename = Self::cache_filename(&subscription_details.id);
 
             // If the file is not in memory, try to read from disk.
-            stored_vaas.entry(filename.clone()).or_insert_with(|| {
+            stored_data.entry(filename.clone()).or_insert_with(|| {
                 let mut cache_file = DiskPersistence::new(filename, true);
 
                 if cache_file.exists() {
-                    return cache_file.load::<Vec<Vec<Binary>>>().unwrap();
+                    return cache_file.load().unwrap();
                 }
 
-                // If the file does not exists, retrieve the data from the source.
                 let rt = Runtime::new().unwrap();
                 let values = rt.block_on(async {
-                    let mut client = PythClient::new(base_url.clone()).unwrap();
-
-                    let mut stream = client
-                        .stream(NonEmpty::new(vec![id.to_string()]).unwrap())
+                    let mut stream = self
+                        .client
+                        .stream(NonEmpty::new_unchecked(vec![subscription_details]))
                         .await
                         .unwrap();
 
                     // Retrieve CACHE_SAMPLES values to be able to return newer values each time.
                     let mut values = vec![];
-                    while values.len() < CACHE_SAMPLES {
-                        if let Some(vaas) = stream.next().await {
-                            values.push(vaas);
+                    while values.len() < PYTH_CACHE_SAMPLES {
+                        if let Some(price_update) = stream.next().await {
+                            values.push(price_update);
                         }
                     }
 
@@ -90,13 +94,10 @@ impl PythClientCache {
             });
         }
 
-        stored_vaas
+        stored_data
     }
 
-    fn cache_filename<I>(id: &I) -> PathBuf
-    where
-        I: AsRef<Path>,
-    {
+    pub fn cache_filename(id: &PythId) -> PathBuf {
         let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
 
         let start_path = Path::new(&manifest_dir);
@@ -106,27 +107,28 @@ impl PythClientCache {
             .find(|p| p.join("Cargo.lock").exists())
             .expect("Workspace root not found");
 
-        workspace_root.join("pyth/client/testdata").join(id)
+        workspace_root
+            .join("pyth/client/testdata")
+            .join(id.to_string())
     }
 }
 
 #[async_trait]
 impl PythClientTrait for PythClientCache {
-    type Error = error::Error;
+    type Error = anyhow::Error;
 
     async fn stream<I>(
         &mut self,
         ids: NonEmpty<I>,
-    ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
+    ) -> Result<std::pin::Pin<Box<dyn tokio_stream::Stream<Item = PriceUpdate> + Send>>, Self::Error>
     where
-        I: IntoIterator + Lengthy + Send + Clone,
-        I::Item: ToString,
+        I: IntoIterator<Item = PythLazerSubscriptionDetails> + Lengthy + Send + Clone,
     {
         self.close();
         self.keep_running = Arc::new(AtomicBool::new(true));
-        let keep_running = self.keep_running.clone();
 
-        let mut stored_vaas = Self::load_or_retrieve_data(&self.base_url, ids);
+        let keep_running = self.keep_running.clone();
+        let mut stored_data = self.load_or_retrieve_data(ids);
         let mut index = 0;
 
         let stream = stream! {
@@ -135,41 +137,25 @@ impl PythClientTrait for PythClientCache {
                     return;
                 }
 
-                let vaas = stored_vaas
+                let data = stored_data
                     .iter_mut()
                     .filter_map(|(_, v)| v.get(index).cloned())
-                    .flatten()
+                    .flat_map(|v| v.into_inner())
                     .collect::<Vec<_>>();
 
                 index += 1;
 
-                yield vaas;
+                if data.is_empty() {
+                    warn!("No new VAA data available, waiting for next update");
+                } else {
+                    yield NonEmpty::new_unchecked(data);
+                }
 
-                sleep(Duration::from_millis(500));
+                sleep(Duration::from_millis(400));
             }
         };
 
         Ok(Box::pin(stream))
-    }
-
-    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<Vec<Binary>, Self::Error>
-    where
-        I: IntoIterator + Clone + Lengthy,
-        I::Item: ToString,
-    {
-        // Load the data.
-        let stored_vaas = Self::load_or_retrieve_data(&self.base_url, ids);
-        let index = self.vaas_index.load(Ordering::Acquire) as usize;
-
-        let result = stored_vaas
-            .into_iter()
-            .filter_map(|(_, v)| v.get(index).cloned())
-            .flatten()
-            .collect::<Vec<_>>();
-
-        self.vaas_index.fetch_add(1, Ordering::SeqCst);
-
-        Ok(result)
     }
 
     fn close(&mut self) {

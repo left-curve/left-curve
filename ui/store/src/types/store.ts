@@ -6,6 +6,7 @@ import type {
   ChainId,
   Client,
   Denom,
+  Flatten,
   Hex,
   PairUpdate,
   Transport,
@@ -38,7 +39,10 @@ export type State = {
 
 export type Config<transport extends Transport = Transport, coin extends AnyCoin = AnyCoin> = {
   readonly chain: Chain;
-  readonly coins: Record<Denom, coin>;
+  readonly coins: {
+    byDenom: Record<Denom, coin>;
+    bySymbol: Record<string, coin>;
+  };
   readonly connectors: readonly Connector[];
   readonly storage: Storage;
   readonly state: State;
@@ -55,12 +59,13 @@ export type Config<transport extends Transport = Transport, coin extends AnyCoin
   getCoinInfo(denom: Denom): AnyCoin;
   getAppConfig(): Promise<
     {
-      addresses: AppConfig["addresses"] & Record<Address, string>;
+      addresses: Flatten<AppConfig["addresses"]> & Record<Address, string>;
       accountFactory: { codeHashes: Record<AccountTypes, Hex> };
       pairs: Record<Denom, PairUpdate>;
     } & Omit<AppConfig, "addresses">
   >;
   getClient(): Client<transport>;
+  captureError(error: unknown): void;
   _internal: Internal<transport>;
 };
 export type CreateConfigParameters<
@@ -76,6 +81,7 @@ export type CreateConfigParameters<
   storage?: Storage;
   multiInjectedProviderDiscovery?: boolean;
   connectors?: CreateConnectorFn[];
+  onError?: (error: unknown) => void;
 };
 
 export type ConfigParameter<config extends Config = Config> = {

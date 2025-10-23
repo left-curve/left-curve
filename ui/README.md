@@ -20,7 +20,6 @@ Web interface for accessing [Dango](../dango/)
 | --------------------------------------- | ------------------------------------------------- |
 | [`portal-website`](./ui/portal/website) | Dango portal website                              |
 | [`portal-app`](./ui/portal/app)         | Dango portal react native app for Android and iOS |
-| [`website`](./website/)                 | Dango landing page                                |
 
 ----
 

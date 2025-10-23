@@ -3,20 +3,15 @@
   "compilerOptions": {
     "paths": {
       "~/*": ["./src/*"],
-      "~/paraglide/*": ["./.paraglide/*"],
       "~/constants": ["./constants.config.ts"],
       "~/mock": ["./mockData.ts"],
-      "~/store": ["./store.config.dev.ts"]
+      "~/store": ["./store.config.ts"],
+      "~/datafeed": ["./datafeed.config.ts"],
+      "~/chartiq": ["./.chartiq.config.ts"]
     },
     "noEmit": true
   },
-  "include": [
-    "**/*.ts",
-    "**/*.tsx",
-    "env.d.ts",
-    ".paraglide/**/*.js",
-    "../../config/tailwind/config.ts"
-  ],
+  "include": ["**/*.ts", "**/*.tsx", "env.d.ts", "../../foundation/tailwind/config.ts"],
   "exclude": ["node_modules"],
   "references": [
     {

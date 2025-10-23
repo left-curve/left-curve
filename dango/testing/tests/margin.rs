@@ -11,15 +11,15 @@ use {
         account_factory::AccountParams,
         config::AppConfig,
         constants::{dango, eth, usdc},
-        dex::CreateLimitOrderRequest,
+        dex::{CreateOrderRequest, Direction},
         lending::{self, InterestRateModel, QueryDebtRequest, QueryMarketRequest},
         oracle::{self, PrecisionedPrice, PrecisionlessPrice, PriceSource, QueryPriceRequest},
     },
     grug::{
-        Addr, Addressable, Binary, CheckedContractEvent, Coins, Denom, Inner, IsZero, JsonDeExt,
-        JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty, NonZero, Number,
-        NumberConst, PrevNumber, QuerierExt, QuerierWrapper, ResultExt, SearchEvent, Timestamp,
-        Udec128, Uint128, btree_map, coins,
+        Addr, Addressable, CheckedContractEvent, Coins, Denom, Exponentiate, Inner, IsZero,
+        JsonDeExt, JsonSerExt, Message, MsgConfigure, MultiplyFraction, NextNumber, NonEmpty,
+        NonZero, Number, NumberConst, PrevNumber, QuerierExt, QuerierWrapper, ResultExt,
+        SearchEvent, Timestamp, Udec128, Udec128_24, Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     proptest::{collection::vec, prelude::*, proptest},
@@ -30,14 +30,6 @@ use {
         str::FromStr,
     },
 };
-
-/// An example Pyth VAA for an USDC price feed.
-/// - id: **eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a**
-/// - price: **100000966**
-/// - ema_price: **99999889**
-/// - expo: **-8**
-/// - publish_time: **1730802926**
-const USDC_VAA: &str = "UE5BVQEAAAADuAEAAAAEDQOoMTxJ5BWLUCMy94ZlQ6qBjQEzA/+ZpDKw9AGFXXSyQF2eIKCGN6cNh1f/jzNSYOf15Yk2CRvOtMc7LqzdG7NpAQSNSaXe+ZOZU4+kxAgG74ZwDUuFmTPlElG90sIMNXfFmS6WJrbTBBQNWFL2gUKpdpEp5z/wUwJo/TzB9lHDnq2vAAbYj1fi3S3mzyOvZAPbe5Qy2/L/oQdLW4FPXTVcNxjMl1m0VLYRonpvIO4/S21ovvsefil9l8R3tYNG879aE2LMAQicgal5v2vVqicVvzE2J1vhg61mEvUKKhiZhzzWo8naRgQfuvKVk3257QhmGaDaAYWxU4MJ7goFUBPbBww9gk53AQpxhRMcpv+qmFMHZCdvoWwF4I/x230bO9VOQXie1tLSf25E62lWTAdYiyrh+h/ny7GA1aDLDZYwEzT6fXUPPlg/AAuQHWuf7TcUkOuIeVisiiI5XINdK8NFu36IacZjf0okOT9dApIx4sLAReROml2hs75v4a1K8SlLB3JdQkQLMoUDAQxZDK7Rh3UBSbjTrBKe+c+5lvT6ZgP26SOqF0F26xJIqwn29C8ZzCKkDgBNzx7GbA4bwL1tNNbv6NSxyx+72AlQAQ2+4nnWuPFUrn5dJJRD5VO6CYNu42Mx4XialbPJ6Lbp3gewVGOIIiU69PyeCxX6/Q/qO99Qtc+QlDGcyjmCwQP1AA7IcDlMiDVc4wEhkfCVRxCr//C3pGZsnxZguQr0MYaSnwGQ/FzJhBsU4knRtTZgUUm3rlcwNWDAJlp5MnNcPuYpAQ91tfYjBU0lRYDoYV/00L+RgJ66vx4P4T3R3x1MuDMAalgVHg43JfcUBGytMHWSbJr/24jMWMsEPMqwBuzPvba5ABDyPKTil7cKBdhyJhTJPYNS0V9JLbS6QLPCThaTyapMMW5BQfB07Q21fXnDNZE/FSoS4JxRiKcViiwRQ4lcLE/UARHcd8PSiHsEilgDjWOH/hvpaQ+Iza+rrBithaw+nJIIdClnizW0DqO2lVx0DlERwF8C9hL3hatj888kVWzwtj6RARJoRZtdYKzWJX8KzJvlOcOBxjjiCSyfo3qLfoLHIw2rJwT7HRxqg1wXswDjq2NVjms9jz24dRIEKM0dxfEP6OckAGcp9O4AAAAAABrhAfrtrFhR4yubI7X5QRqMK6xKrj7U3XuBHdGnLqSqcQAAAAAFb/IiAUFVV1YAAAAAAAp8vHgAACcQO03kFK+kZ552XKseu11fj2cpvpUBAFUA6qAgxhzEeXEoE0Yc4VOJSpamwAsh7Qz8J5jR+anpyUoAAAAABfXkxgAAAAAAAPrQ////+AAAAABnKfTuAAAAAGcp9O4AAAAABfXgkQAAAAAAAQTcCsjx5ZH7wLv7N+2Vzze0aT71EUmuA4n/zf/zQdrI6za/FR4xTLzViierrotGyMoKwkcBs++77xpXHT1p3YXWRMQCLxEONHC/rFMy+rS7i7XohTAftvazeHYjyF6a2rZNmf+KdZS2umZMH9qPKRD3USxGDnXfQMg9mgD6HwJnHiPgaublP56r5AqPcI1tyXKMfF10MWvyxkvJbXFUuYkzW0Pi03Asu75UoUT4XeKBXfvF+EL0NmKGNrmXDYH9NpT5H6pKDeS0JDCZ";
 
 /// Calculates the relative difference between two values.
 fn relative_difference<T>(a: T, b: T) -> T
@@ -85,34 +77,6 @@ where
     );
 
     Ok(())
-}
-
-fn feed_oracle_price(
-    suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-    vaa: &str,
-) {
-    // Push price
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::FeedPrices(NonEmpty::new_unchecked(vec![
-                Binary::from_str(vaa).unwrap(),
-            ])),
-            Coins::default(),
-        )
-        .should_succeed();
-}
-
-/// Feeds the oracle contract a price for USDC
-fn feed_usdc_price(
-    suite: &mut TestSuite<NaiveProposalPreparer>,
-    accounts: &mut TestAccounts,
-    contracts: &Contracts,
-) {
-    feed_oracle_price(suite, accounts, contracts, USDC_VAA);
 }
 
 /// Sets the collateral power for a given denom
@@ -220,7 +184,15 @@ fn setup_margin_test_env(
     accounts: &mut TestAccounts,
     contracts: &Contracts,
 ) -> TestAccount {
-    feed_usdc_price(suite, accounts, contracts);
+    register_fixed_price(
+        suite,
+        accounts,
+        contracts,
+        usdc::DENOM.clone(),
+        Udec128::from_str("1.00000966").unwrap(),
+        6,
+    );
+
     register_fixed_price(
         suite,
         accounts,
@@ -732,14 +704,13 @@ fn limit_orders_are_counted_as_collateral_and_can_be_liquidated() {
             &mut margin_account,
             contracts.dex,
             &dango_types::dex::ExecuteMsg::BatchUpdateOrders {
-                creates_market: vec![],
-                creates_limit: vec![CreateLimitOrderRequest {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                    direction: dango_types::dex::Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100_000_000)),
-                    price: Udec128::ONE,
-                }],
+                creates: vec![CreateOrderRequest::new_limit(
+                    dango::DENOM.clone(),
+                    usdc::DENOM.clone(),
+                    Direction::Bid,
+                    NonZero::new_unchecked(Udec128_24::ONE),
+                    NonZero::new_unchecked(Uint128::new(100_000_000)),
+                )],
                 cancels: None,
             },
             Coins::one(usdc::DENOM.clone(), 100_000_000).unwrap(),
@@ -891,7 +862,7 @@ fn test_denom(index: usize) -> impl Strategy<Value = TestDenom> {
     )
         .prop_map(|(denom, precision, price)| TestDenom {
             denom,
-            initial_price: PrecisionlessPrice::new(price, price, Timestamp::from_seconds(0))
+            initial_price: PrecisionlessPrice::new(price, Timestamp::from_seconds(0))
                 .with_precision(precision),
         })
 }
@@ -1286,7 +1257,7 @@ proptest! {
                         denom: coin.denom,
                     })
                     .unwrap();
-                price.value_of_unit_amount(coin.amount).unwrap()
+                price.value_of_unit_amount::<18>(coin.amount).unwrap()
             })
             .reduce(|a, b| a + b)
             .unwrap();

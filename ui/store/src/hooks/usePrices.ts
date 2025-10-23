@@ -27,15 +27,15 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     refetchInterval = 60 * 1000 * 5,
     formatter = formatNumber,
     defaultFormatOptions = {
-      maximumFractionDigits: 2,
-      minFractionDigits: 2,
+      maximumTotalDigits: 5,
+      minimumTotalDigits: 2,
       language: navigator.language,
       mask: 1,
     },
   } = parameters;
   const config = useConfig();
 
-  const coins = parameters.coins || config.coins;
+  const coins = parameters.coins || config.coins.byDenom;
 
   function getPrice<T extends boolean = false>(
     amount: number | string,

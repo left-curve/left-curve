@@ -65,6 +65,6 @@ impl Display for NullIndexerError {
 
 impl From<NullIndexerError> for IndexerError {
     fn from(err: NullIndexerError) -> Self {
-        IndexerError::Generic(err.to_string())
+        IndexerError::generic(err.to_string())
     }
 }

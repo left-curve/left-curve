@@ -17,6 +17,7 @@ testing = ["dep:grug-testing"]
 [dependencies]
 clru               = { workspace = true }
 data-encoding      = { workspace = true }
+error-backtrace    = { workspace = true }
 grug-app           = { workspace = true }
 grug-crypto        = { workspace = true }
 grug-testing       = { workspace = true, optional = true }
@@ -38,6 +39,7 @@ grug-mock-bank = { workspace = true, features = ["library"] }
 grug-tester    = { workspace = true, features = ["library"] }
 grug-testing   = { workspace = true }
 grug-vm-wasm   = { workspace = true, features = ["testing"] }
+identity       = { workspace = true }
 k256           = { workspace = true }
 p256           = { workspace = true }
 rand           = { workspace = true }

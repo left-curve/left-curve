@@ -128,7 +128,7 @@ impl Db for MemDb {
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
         let (new_version, root_hash, changeset) = self.with_read(|inner| {
             if inner.changeset.is_some() {
-                return Err(DbError::ChangeSetAlreadySet);
+                return Err(DbError::change_set_already_set());
             }
 
             let (old_version, new_version) = match self.latest_version() {
@@ -136,9 +136,14 @@ impl Db for MemDb {
                 None => (0, 0),
             };
 
-            let mut cache = Buffer::new(self.state_commitment(), None);
-            let root_hash = MERKLE_TREE.apply_raw(&mut cache, old_version, new_version, &batch)?;
-            let (_, changeset) = cache.disassemble();
+            let mut buffer = Buffer::new(
+                self.state_commitment(),
+                None,
+                "mem_db_state_commitment_flush_but_not_commit",
+            );
+
+            let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
+            let (_, changeset) = buffer.disassemble();
 
             Ok((new_version, root_hash, changeset))
         })?;
@@ -156,7 +161,10 @@ impl Db for MemDb {
 
     fn commit(&self) -> DbResult<()> {
         self.with_write(|mut inner| {
-            let changeset = inner.changeset.take().ok_or(DbError::ChangeSetNotSet)?;
+            let changeset = inner
+                .changeset
+                .take()
+                .ok_or(DbError::change_set_not_set())?;
 
             // Update the version
             inner.latest_version = Some(changeset.version);

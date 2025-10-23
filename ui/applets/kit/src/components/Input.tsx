@@ -1,6 +1,6 @@
 import * as React from "react";
 import { type VariantProps, tv } from "tailwind-variants";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 import { Skeleton } from "./Skeleton";
 
 export interface InputProps
@@ -65,7 +65,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className={base({ className: classNames?.base })}>
         {label ? (
-          <label className="exposure-sm-italic text-gray-700" htmlFor={name}>
+          <label className="exposure-sm-italic text-ink-secondary-700" htmlFor={name}>
             {label}
           </label>
         ) : null}
@@ -81,7 +81,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             <div className="relative flex-1 flex items-center">
               {!props.value && !isLoading && placeholder ? (
                 <div
-                  className={twMerge("w-full absolute z-0 text-gray-500 text-left ", {
+                  className={twMerge("w-full absolute z-0 text-ink-tertiary-500 text-left ", {
                     "text-right": startText === "right",
                   })}
                 >
@@ -120,7 +120,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             block: errorMessage && !hideErrorMessage,
           })}
         >
-          <span className="diatype-sm-regular text-error-500">{errorMessage}</span>
+          <span className="diatype-sm-regular text-status-fail">{errorMessage}</span>
         </div>
 
         <div
@@ -128,11 +128,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             block: !bottomComponent && hintMessage,
           })}
         >
-          <span className="diatype-sm-regular text-gray-500">{hintMessage}</span>
+          <span className="diatype-sm-regular text-ink-tertiary-500">{hintMessage}</span>
         </div>
 
         {bottomComponent ? (
-          <div className="text-gray-500 diatype-sm-regular">{bottomComponent}</div>
+          <div className="text-ink-tertiary-500 diatype-sm-regular">{bottomComponent}</div>
         ) : null}
       </div>
     );
@@ -146,15 +146,15 @@ export { Input };
 const inputVariants = tv(
   {
     slots: {
-      base: " flex flex-col data-[hidden=true]:hidden gap-1 relative",
+      base: " flex flex-col data-[hidden=true]:hidden gap-1 relative text-ink-secondary-700",
       inputWrapper: [
         "relative w-full inline-flex tap-highlight-transparent flex-row items-center shadow-account-card  gap-2 z-10",
-        "bg-rice-25 hover:bg-rice-50 border border-transparent active:border-rice-200",
+        "bg-surface-secondary-rice hover:bg-surface-tertiary-rice border border-transparent active:border-surface-quaternary-rice",
         "px-4 py-[13px] rounded-lg h-[46px]",
       ],
       inputParent: "w-full inline-flex relative items-center gap-2",
       input: [
-        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-gray-400 text-gray-700 leading-none relative z-10",
+        "flex-1 diatype-m-regular bg-transparent !outline-none placeholder:text-ink-tertiary-500 text-ink-secondary-700 leading-none relative z-10",
         "data-[has-start-content=true]:ps-1.5",
         "data-[has-end-content=true]:pe-1.5",
         "file:cursor-pointer file:bg-transparent file:border-0",
@@ -166,14 +166,14 @@ const inputVariants = tv(
         true: {
           base: "opacity-disabled pointer-events-none",
           inputWrapper:
-            "pointer-events-none bg-gray-50 placeholder:text-gray-300 text-gray-300 active:border-transparent",
+            "pointer-events-none bg-surface-disabled-gray placeholder:text-fg-disabled text-fg-disabled active:border-transparent",
           label: "pointer-events-none",
         },
       },
       isInvalid: {
         true: {
-          inputWrapper: "border-error-500",
-          input: "text-gray-700",
+          inputWrapper: "border-status-fail",
+          input: "text-ink-secondary-700",
         },
       },
       startText: {

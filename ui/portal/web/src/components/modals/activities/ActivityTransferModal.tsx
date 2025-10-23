@@ -1,0 +1,132 @@
+import {
+  AddressVisualizer,
+  formatDate,
+  IconButton,
+  IconClose,
+  IconLink,
+  TruncateText,
+  useApp,
+} from "@left-curve/applets-kit";
+import { useConfig, usePrices } from "@left-curve/store";
+
+import { forwardRef } from "react";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { formatUnits } from "@left-curve/dango/utils";
+
+import type { useNavigate } from "@tanstack/react-router";
+import type { Address, Coins } from "@left-curve/dango/types";
+
+type ActivityTransferModalProps = {
+  action?: "received" | "sent";
+  from: Address;
+  to: Address;
+  time: string;
+  txHash: string;
+  coins: Coins;
+  blockHeight: number;
+  navigate: ReturnType<typeof useNavigate>;
+};
+
+export const ActivityTransferModal = forwardRef<undefined, ActivityTransferModalProps>(
+  ({ action = "received", from, to, time, txHash, coins, blockHeight, navigate: _navigate_ }) => {
+    const { hideModal, setSidebarVisibility, settings } = useApp();
+    const { getCoinInfo } = useConfig();
+    const { getPrice } = usePrices();
+    const { timeFormat, dateFormat } = settings;
+
+    const navigate = (url: string) => {
+      hideModal();
+      setSidebarVisibility(false);
+      _navigate_({ to: url });
+    };
+
+    return (
+      <div className="flex flex-col bg-surface-primary-rice rounded-xl relative w-full md:max-w-[25rem] shadow-account-card">
+        <IconButton
+          className="hidden md:block absolute right-2 top-2"
+          variant="link"
+          onClick={hideModal}
+        >
+          <IconClose />
+        </IconButton>
+        <div className="p-4 flex flex-col gap-5">
+          <h2 className="text-lg font-semibold text-center text-ink-primary-900">
+            {action === "received"
+              ? m["activities.activity.modal.received"]()
+              : m["activities.activity.modal.sent"]()}
+          </h2>
+          <div className="flex flex-col gap-4">
+            {Object.entries(coins).map(([denom, amount]) => {
+              const coin = getCoinInfo(denom);
+              const humanAmount = formatUnits(amount, coin.decimals);
+              return (
+                <div className="flex flex-col gap-2 w-full" key={`transfer-coin-${denom}`}>
+                  <div className="flex items-center justify-between  h3-bold text-ink-secondary-700">
+                    <p>
+                      {humanAmount} {coin.symbol}
+                    </p>
+                    <img src={coin.logoURI} alt={`${coin.symbol} logo`} className="h-8 w-8" />
+                  </div>
+                  <p className="text-ink-tertiary-500 diatype-sm-regular">
+                    {getPrice(humanAmount, denom, { format: true })}
+                  </p>
+                </div>
+              );
+            })}
+            <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
+            <div className="flex flex-col gap-2 w-full">
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500 capitalize">
+                  {m["activities.activity.transfer.direction.first"]()}
+                </p>
+                <div className="flex items-center gap-1">
+                  <AddressVisualizer
+                    classNames={{ container: "address-visualizer" }}
+                    address={from}
+                    withIcon
+                    onClick={navigate}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500 capitalize">
+                  {m["activities.activity.transfer.direction.second"]()}
+                </p>
+                <div className="flex items-center gap-1">
+                  <AddressVisualizer
+                    classNames={{ container: "address-visualizer" }}
+                    address={to}
+                    withIcon
+                    onClick={navigate}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500">
+                  {m["activities.activity.modal.time"]()}
+                </p>
+                <div className="flex items-center gap-1">
+                  <p>{formatDate(time, `${dateFormat} ${timeFormat}`)}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2 diatype-sm-medium text-ink-secondary-700">
+                <p className="diatype-sm-regular text-ink-tertiary-500">
+                  {m["activities.activity.link"]({
+                    link: txHash ? "txHash" : "blockHeight",
+                  })}
+                </p>
+                <div
+                  className="flex items-center gap-1 cursor-pointer"
+                  onClick={() => navigate(txHash ? `/tx/${txHash}` : `/block/${blockHeight}`)}
+                >
+                  {txHash ? <TruncateText text={txHash} /> : <p>{blockHeight}</p>}
+                  <IconLink className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  },
+);

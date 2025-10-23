@@ -56,13 +56,7 @@ export type WithRetryParameters = {
   // The max number of times to retry.
   retryCount?: number | undefined;
   // Whether or not to retry when an error is thrown.
-  shouldRetry?: ({
-    count,
-    error,
-  }: {
-    count: number;
-    error: Error;
-  }) => Promise<boolean> | boolean;
+  shouldRetry?: ({ count, error }: { count: number; error: Error }) => Promise<boolean> | boolean;
 };
 
 export type WithRetryErrorType = Error;

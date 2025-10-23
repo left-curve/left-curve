@@ -1,9 +1,11 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
-  "extends": ["@left-curve/config/biome/common"],
+  "root": false,
+  "$schema": "https://biomejs.dev/schemas/2.1.3/schema.json",
+  "extends": ["@left-curve/config/biome/common.json"],
   "linter": {
     "rules": {
       "a11y": {
+        "noStaticElementInteractions": "off",
         "noSvgWithoutTitle": "off",
         "useKeyWithClickEvents": "off"
       }

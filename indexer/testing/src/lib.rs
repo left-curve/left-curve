@@ -19,13 +19,15 @@ use {
     sea_orm::sqlx::types::uuid,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     serde_json::json,
-    std::collections::HashMap,
+    std::{collections::HashMap, time::Instant},
     tokio::time::{Duration, timeout},
 };
 
 pub mod block;
 pub mod graphql;
 pub mod setup;
+
+const DEFAULT_TIMEOUT_SECONDS: u64 = 5;
 
 // Re-export the configurable pagination function for use by other crates
 pub use graphql::paginate_models_with_app_builder;
@@ -115,6 +117,12 @@ where
 {
     let app = actix_web::test::init_service(app).await;
 
+    // When I need to debug the request body
+    // println!(
+    //     "request_body: {}",
+    //     serde_json::to_string_pretty(&requests_body).unwrap()
+    // );
+
     let request = actix_web::test::TestRequest::post()
         .uri("/graphql")
         .set_json(&requests_body)
@@ -130,9 +138,9 @@ where
             println!("Failed to parse GraphQL response: {err}");
 
             if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&graphql_response) {
-                println!("{json:#?}");
+                println!("json: {json:#?}");
             } else {
-                println!("{graphql_response:#?}");
+                println!("graphql_response: {graphql_response:#?}");
             }
         })?;
 
@@ -246,7 +254,7 @@ where
         ))
         .await?;
 
-    let res = timeout(Duration::from_secs(2), framed.next()).await;
+    let res = timeout(Duration::from_secs(DEFAULT_TIMEOUT_SECONDS), framed.next()).await;
 
     // Wait for connection_ack
     match res {
@@ -295,22 +303,29 @@ where
     B: MessageBody + 'static,
 {
     let name = request_body.name;
-    let (_srv, _ws, framed) = call_ws_graphql_stream(context, app_builder, request_body).await?;
-    let (_, response) = parse_graphql_subscription_response(framed, name).await?;
+    let (_srv, _ws, mut framed) =
+        call_ws_graphql_stream(context, app_builder, request_body).await?;
+    let response = parse_graphql_subscription_response(&mut framed, name).await?;
 
     Ok(response)
 }
 
 /// Parses a GraphQL subscription response.
 pub async fn parse_graphql_subscription_response<R>(
-    mut framed: Framed<BoxedSocket, ws::Codec>,
+    framed: &mut Framed<BoxedSocket, ws::Codec>,
     name: &str,
-) -> anyhow::Result<(Framed<BoxedSocket, ws::Codec>, GraphQLCustomResponse<R>)>
+) -> anyhow::Result<GraphQLCustomResponse<R>>
 where
     R: DeserializeOwned,
 {
+    let start = Instant::now();
+
     loop {
-        let res = timeout(Duration::from_secs(2), framed.next()).await;
+        let res = timeout(
+            Duration::from_secs(DEFAULT_TIMEOUT_SECONDS - start.elapsed().as_secs()),
+            framed.next(),
+        )
+        .await;
 
         match res {
             Ok(Some(Ok(ws::Frame::Text(text)))) => {
@@ -318,28 +333,36 @@ where
                 // println!("text response: \n{}", str::from_utf8(&text)?);
 
                 let mut graphql_response: GraphQLSubscriptionResponse =
-                    serde_json::from_slice(&text)?;
+                    serde_json::from_slice(&text).inspect_err(|err| {
+                        println!("Failed to parse GraphQL subscription response: {err}");
+
+                        println!(
+                            "text response: \n{}",
+                            str::from_utf8(&text).unwrap_or_default()
+                        );
+                    })?;
 
                 // When I need to debug the response
-                // println!("response: \n{:#?}", graphql_response);
+                // println!("response: \n{graphql_response:#?}");
 
                 if let Some(data) = graphql_response.payload.data.remove(name) {
-                    return Ok((framed, GraphQLCustomResponse {
+                    return Ok(GraphQLCustomResponse {
                         data: serde_json::from_value(data)?,
                         errors: graphql_response.payload.errors,
-                    }));
+                    });
                 } else {
                     bail!("can't find {name} in response");
                 }
             },
             Ok(Some(Ok(ws::Frame::Ping(ping)))) => {
+                tracing::info!("Received ping for {name}");
                 framed.send(ws::Message::Pong(ping)).await?;
                 continue;
             },
             Ok(Some(Err(e))) => return Err(e.into()),
             Ok(None) => bail!("connection closed unexpectedly"),
             Ok(res) => bail!("unexpected message type: {res:?}"),
-            Err(_) => bail!("connection timed out"),
+            Err(_) => bail!("timeout while waiting for response for {name}"),
         }
     }
 }

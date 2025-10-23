@@ -52,11 +52,9 @@ type Store = StoryObj<typeof IconButton>;
 
 const Template: React.FC<IconButtonProps> = (args) => {
   return (
-    <>
-      <IconButton {...args}>
-        <IconUser className="w-6 h-6" />
-      </IconButton>
-    </>
+    <IconButton {...args}>
+      <IconUser className="w-6 h-6" />
+    </IconButton>
   );
 };
 

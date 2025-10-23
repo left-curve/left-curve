@@ -1,0 +1,39 @@
+services:
+  grafana:
+    image: grafana/grafana-oss:latest
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER={{ grafana_admin_user }}
+      - GF_SECURITY_ADMIN_PASSWORD={{ grafana_admin_password }}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_LOG_FILTERS=rendering:debug
+      - GF_RENDERING_SERVER_URL=http://renderer:8081/render
+      - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
+      - GF_RENDERING_RENDERER_TOKEN={{ lookup('env','GF_RENDERING_RENDERER_TOKEN') }}
+    ports:
+      - "{{ tailscale_ip }}:{{ grafana_port }}:3000"
+    volumes:
+      - ./data:/var/lib/grafana
+      - ./config/grafana.ini:/etc/grafana/grafana.ini
+      - ./config/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+      - ./config/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - renderer
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  renderer:
+    image: grafana/grafana-image-renderer:latest
+    environment:
+      - ENABLE_METRICS='true'
+      - AUTH_TOKEN={{ lookup('env','GF_RENDERING_RENDERER_TOKEN') }}
+
+networks:
+  default:
+    name: monitoring
+    external: true

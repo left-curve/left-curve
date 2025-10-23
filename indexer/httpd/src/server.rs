@@ -7,6 +7,7 @@ use {
         middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
+    grug_httpd::routes::{graphql::graphql_route, index::index},
     sentry_actix::Sentry,
     std::fmt::Display,
 };
@@ -55,7 +56,9 @@ where
             .max_age(3600);
 
         if let Some(origin) = cors_allowed_origin.as_deref() {
-            cors = cors.allowed_origin(origin);
+            for origin in origin.split(',') {
+                cors = cors.allowed_origin(origin.trim());
+            }
         } else {
             cors = cors.allow_any_origin();
         }
@@ -143,10 +146,14 @@ where
     G: Clone + 'static,
 {
     Box::new(move |cfg: &mut ServiceConfig| {
-        cfg.service(routes::index::index)
+        cfg.service(index)
             .service(routes::index::up)
-            .service(routes::api::services::api_services())
-            .service(routes::graphql::graphql_route())
+            .service(routes::blocks::services())
+            .service(graphql_route::<
+                crate::graphql::query::Query,
+                crate::graphql::mutation::Mutation,
+                crate::graphql::subscription::Subscription,
+            >())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))
             .app_data(web::Data::new(graphql_schema.clone()));

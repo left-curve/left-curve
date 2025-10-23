@@ -44,7 +44,7 @@ where
     ///
     /// E.g. If the index key is `(A, B)` and primary key is `(C, D)`, this
     /// allows you to give a value of `(A, B)` and iterate all `(C, D)` values.
-    pub fn prefix(&self, idx: IK) -> IndexPrefix<IK, PK, PK, T, C> {
+    pub fn prefix(&self, idx: IK) -> IndexPrefix<'_, IK, PK, PK, T, C> {
         IndexPrefix {
             prefix: Prefix::new(self.index_set.namespace, &idx.raw_keys()),
             primary_map: &self.primary_map,
@@ -57,7 +57,7 @@ where
     ///
     /// E.g. If the index key is `(A, B)` and primary key is `(C, D)`, this
     /// allows you to give a value of `A` and iterate all `(B, C, D)` values.
-    pub fn sub_prefix(&self, idx: IK::Prefix) -> IndexPrefix<IK, PK, (IK::Suffix, PK), T, C> {
+    pub fn sub_prefix(&self, idx: IK::Prefix) -> IndexPrefix<'_, IK, PK, (IK::Suffix, PK), T, C> {
         IndexPrefix {
             prefix: Prefix::new(self.index_set.namespace, &idx.raw_prefixes()),
             primary_map: &self.primary_map,

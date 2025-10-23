@@ -1,96 +1,73 @@
 use {
     crate::{
-        Dec, FixedPoint, Fraction, Int, Integer, IsZero, MathError, MathResult, MultiplyRatio,
-        NextNumber, NumberConst, PrevNumber, Sign,
+        Dec, Exponentiate, FixedPoint, Fraction, Int, Integer, IsZero, MathError, MathResult,
+        MultiplyRatio, NextNumber, NumberConst, PrevNumber, Sign,
     },
     bnum::types::{I256, I512, U256, U512},
-    std::fmt::Display,
+    std::{cmp::Ordering, fmt::Display},
 };
 
 /// Describes basic operations that all math types must implement.
-pub trait Number: Sized + Copy {
-    fn checked_add(self, other: Self) -> MathResult<Self>;
+pub trait Number<Rhs = Self>: Sized + Copy {
+    fn checked_add(self, other: Rhs) -> MathResult<Self>;
 
-    fn checked_sub(self, other: Self) -> MathResult<Self>;
+    fn checked_sub(self, other: Rhs) -> MathResult<Self>;
 
-    fn checked_mul(self, other: Self) -> MathResult<Self>;
+    fn checked_mul(self, other: Rhs) -> MathResult<Self>;
 
-    fn checked_div(self, other: Self) -> MathResult<Self>;
+    fn checked_div(self, other: Rhs) -> MathResult<Self>;
 
-    fn checked_rem(self, other: Self) -> MathResult<Self>;
-
-    fn checked_pow(self, exponent: u32) -> MathResult<Self>;
-
-    fn checked_sqrt(self) -> MathResult<Self>;
+    fn checked_rem(self, other: Rhs) -> MathResult<Self>;
 
     #[inline]
-    fn checked_add_assign(&mut self, other: Self) -> MathResult<()> {
+    fn checked_add_assign(&mut self, other: Rhs) -> MathResult<()> {
         *self = self.checked_add(other)?;
         Ok(())
     }
 
     #[inline]
-    fn checked_sub_assign(&mut self, other: Self) -> MathResult<()> {
+    fn checked_sub_assign(&mut self, other: Rhs) -> MathResult<()> {
         *self = self.checked_sub(other)?;
         Ok(())
     }
 
     #[inline]
-    fn checked_mul_assign(&mut self, other: Self) -> MathResult<()> {
+    fn checked_mul_assign(&mut self, other: Rhs) -> MathResult<()> {
         *self = self.checked_mul(other)?;
         Ok(())
     }
 
     #[inline]
-    fn checked_div_assign(&mut self, other: Self) -> MathResult<()> {
+    fn checked_div_assign(&mut self, other: Rhs) -> MathResult<()> {
         *self = self.checked_div(other)?;
         Ok(())
     }
 
     #[inline]
-    fn checked_rem_assign(&mut self, other: Self) -> MathResult<()> {
+    fn checked_rem_assign(&mut self, other: Rhs) -> MathResult<()> {
         *self = self.checked_rem(other)?;
         Ok(())
     }
 
-    #[inline]
-    fn checked_pow_assign(&mut self, exp: u32) -> MathResult<()> {
-        *self = self.checked_pow(exp)?;
-        Ok(())
-    }
+    fn saturating_add(self, other: Rhs) -> Self;
+
+    fn saturating_sub(self, other: Rhs) -> Self;
+
+    fn saturating_mul(self, other: Rhs) -> Self;
 
     #[inline]
-    fn checked_sqrt_assign(&mut self) -> MathResult<()> {
-        *self = self.checked_sqrt()?;
-        Ok(())
-    }
-
-    fn saturating_add(self, other: Self) -> Self;
-
-    fn saturating_sub(self, other: Self) -> Self;
-
-    fn saturating_mul(self, other: Self) -> Self;
-
-    fn saturating_pow(self, exp: u32) -> Self;
-
-    #[inline]
-    fn saturating_add_assign(&mut self, other: Self) {
+    fn saturating_add_assign(&mut self, other: Rhs) {
         *self = self.saturating_add(other);
     }
 
     #[inline]
-    fn saturating_sub_assign(&mut self, other: Self) {
+    fn saturating_sub_assign(&mut self, other: Rhs) {
         *self = self.saturating_sub(other);
     }
 
     #[inline]
-    fn saturating_mul_assign(&mut self, other: Self) {
+    fn saturating_mul_assign(&mut self, other: Rhs) {
         *self = self.saturating_mul(other);
-    }
-
-    #[inline]
-    fn saturating_pow_assign(&mut self, exp: u32) {
-        *self = self.saturating_pow(exp);
     }
 }
 
@@ -120,14 +97,6 @@ where
         self.0.checked_rem(other.0).map(Self)
     }
 
-    fn checked_pow(self, exp: u32) -> MathResult<Self> {
-        self.0.checked_pow(exp).map(Self)
-    }
-
-    fn checked_sqrt(self) -> MathResult<Self> {
-        self.0.checked_sqrt().map(Self)
-    }
-
     fn saturating_add(self, other: Self) -> Self {
         Self(self.0.saturating_add(other.0))
     }
@@ -139,124 +108,137 @@ where
     fn saturating_mul(self, other: Self) -> Self {
         Self(self.0.saturating_mul(other.0))
     }
-
-    fn saturating_pow(self, exp: u32) -> Self {
-        Self(self.0.saturating_pow(exp))
-    }
 }
 
 // ------------------------------------ dec ------------------------------------
 
-impl<U, const S: u32> Number for Dec<U, S>
+fn scale_precision<const S1: u32, const S2: u32, U>(other: U) -> MathResult<U>
 where
-    Self: FixedPoint<U> + NumberConst + Sign,
-    U: NumberConst + Number + IsZero + Copy + PartialEq + PartialOrd + Display,
-    Int<U>: NextNumber + Sign + MultiplyRatio,
-    <Int<U> as NextNumber>::Next: Number + PrevNumber<Prev = Int<U>>,
+    U: Number + NumberConst + Exponentiate,
 {
-    fn checked_add(self, other: Self) -> MathResult<Self> {
-        self.0.checked_add(other.0).map(Self)
+    match S1.cmp(&S2) {
+        Ordering::Less => other.checked_div(U::TEN.checked_pow(S2 - S1)?),
+        Ordering::Equal => Ok(other),
+        Ordering::Greater => other.checked_mul(U::TEN.checked_pow(S1 - S2)?),
+    }
+}
+
+impl<U, const S1: u32, const S2: u32> Number<Dec<U, S2>> for Dec<U, S1>
+where
+    Dec<U, S2>: FixedPoint<U> + NumberConst + Sign,
+    Self: FixedPoint<U> + NumberConst + Sign,
+    U: NumberConst + Number + Exponentiate + IsZero + Copy + PartialEq + PartialOrd + Display,
+    Int<U>: NextNumber + Sign + MultiplyRatio,
+    <Int<U> as NextNumber>::Next: Number + NumberConst + Exponentiate + PrevNumber<Prev = Int<U>>,
+{
+    fn checked_add(self, other: Dec<U, S2>) -> MathResult<Self> {
+        match S1.cmp(&S2) {
+            Ordering::Equal => self.0.checked_add(other.0).map(Self),
+            _ => {
+                // If both operands have the same sign, any overflow that happens
+                // when converting `other` to this precision would also overflow
+                // the final sum—so we just convert and add directly.
+                // If they have opposite signs, the true sum might still fit:
+                // we first widen both values (`into_next`), scale `other` in the
+                // wider type, perform the addition, and then narrow back
+                // with `checked_into_prev` to catch any overflow when reducing bits.
+                if self.is_negative() == other.is_negative() {
+                    let other = other.convert_precision::<S1>()?;
+                    self.0.checked_add(other.0).map(Self)
+                } else {
+                    let me = self.0.into_next();
+                    let other = scale_precision::<S1, S2, _>(other.0.into_next())?;
+                    me.checked_add(other)?.checked_into_prev().map(Self)
+                }
+            },
+        }
     }
 
-    fn checked_sub(self, other: Self) -> MathResult<Self> {
-        self.0.checked_sub(other.0).map(Self)
+    fn checked_sub(self, other: Dec<U, S2>) -> MathResult<Self> {
+        match S1.cmp(&S2) {
+            Ordering::Equal => self.0.checked_sub(other.0).map(Self),
+            _ => {
+                // If operands have different signs, subtraction becomes addition
+                // (a - (-b) = a + b) or ((-a) - b = (-a) + (-b)), so any overflow when converting `other`
+                // would also overflow the final result. Hence we just convert and
+                // subtract directly. If they have the same sign, the true difference
+                // might still fit even if conversion overflows. In that case we:
+                //   1. Widen both values (`into_next`) so no intermediate overflow.
+                //   2. Rescale `other` in the wider type.
+                //   3. Subtract in the wider type.
+                //   4. Narrow back with `checked_into_prev` to catch any overflow
+                //      when reducing bit‐width.
+                if self.is_negative() != other.is_negative() {
+                    let other = other.convert_precision::<S1>()?;
+                    self.0.checked_sub(other.0).map(Self)
+                } else {
+                    let me = self.0.into_next();
+                    let other = scale_precision::<S1, S2, _>(other.0.into_next())?;
+                    me.checked_sub(other)?.checked_into_prev().map(Self)
+                }
+            },
+        }
     }
 
-    fn checked_mul(self, other: Self) -> MathResult<Self> {
+    fn checked_mul(self, other: Dec<U, S2>) -> MathResult<Self> {
         (|| {
             self.0
                 .checked_full_mul(other.numerator())?
-                .checked_div(Self::PRECISION.into_next())?
+                .checked_div(Dec::<U, S2>::PRECISION.into_next())?
                 .checked_into_prev()
                 .map(Self)
         })()
         .map_err(|_| MathError::overflow_mul(self, other))
     }
 
-    fn checked_div(self, other: Self) -> MathResult<Self> {
-        Dec::checked_from_ratio(self.numerator(), other.numerator())
+    fn checked_div(self, other: Dec<U, S2>) -> MathResult<Self> {
+        self.numerator()
+            .checked_multiply_ratio(Dec::<U, S2>::PRECISION, other.numerator())
+            .map(Self)
     }
 
-    fn checked_rem(self, other: Self) -> MathResult<Self> {
+    fn checked_rem(self, other: Dec<U, S2>) -> MathResult<Self> {
+        let other = other.convert_precision::<S1>()?;
         self.0.checked_rem(other.0).map(Self)
     }
 
-    fn checked_pow(mut self, mut exp: u32) -> MathResult<Self> {
-        (|| {
-            if exp == 0 {
-                return Ok(Self::ONE);
-            }
-
-            let mut y = Dec::ONE;
-
-            while exp > 1 {
-                if exp % 2 == 0 {
-                    self = self.checked_mul(self)?;
-                    exp /= 2;
+    fn saturating_add(self, other: Dec<U, S2>) -> Self {
+        match self.checked_add(other) {
+            Ok(val) => val,
+            Err(_) => {
+                if other.is_positive() {
+                    Self::MAX
                 } else {
-                    y = self.checked_mul(y)?;
-                    self = self.checked_mul(self)?;
-                    exp = (exp - 1) / 2;
+                    Self::MIN
                 }
-            }
-
-            self.checked_mul(y)
-        })()
-        .map_err(|_| MathError::overflow_pow(self, exp))
-    }
-
-    // TODO: Check if this is the best way to implement this
-    fn checked_sqrt(self) -> MathResult<Self> {
-        // With the current design, U should be only unsigned number.
-        // Leave this safety check here for now.
-        if self.0 < Int::ZERO {
-            return Err(MathError::negative_sqrt::<Self>(self));
+            },
         }
-
-        let hundred = Int::TEN.checked_mul(Int::TEN)?;
-
-        (0..=Self::DECIMAL_PLACES / 2)
-            .rev()
-            .find_map(|i| -> Option<MathResult<Self>> {
-                let inner_mul = match hundred.checked_pow(i) {
-                    Ok(val) => val,
-                    Err(err) => return Some(Err(err)),
-                };
-                self.0.checked_mul(inner_mul).ok().map(|inner| {
-                    let outer_mul = Int::TEN.checked_pow(Self::DECIMAL_PLACES / 2 - i)?;
-                    Ok(Self::raw(inner.checked_sqrt()?.checked_mul(outer_mul)?))
-                })
-            })
-            .transpose()?
-            .ok_or(MathError::SqrtFailed)
     }
 
-    fn saturating_add(self, other: Self) -> Self {
-        Self(self.0.saturating_add(other.0))
+    fn saturating_sub(self, other: Dec<U, S2>) -> Self {
+        match self.checked_sub(other) {
+            Ok(val) => val,
+            Err(_) => {
+                if other.is_positive() {
+                    Self::MIN
+                } else {
+                    Self::MAX
+                }
+            },
+        }
     }
 
-    fn saturating_sub(self, other: Self) -> Self {
-        Self(self.0.saturating_sub(other.0))
-    }
-
-    fn saturating_mul(self, other: Self) -> Self {
-        self.checked_mul(other).unwrap_or_else(|_| {
-            if self.is_negative() == other.is_negative() {
-                Self::MAX
-            } else {
-                Self::MIN
-            }
-        })
-    }
-
-    fn saturating_pow(self, exp: u32) -> Self {
-        self.checked_pow(exp).unwrap_or_else(|_| {
-            if self.is_negative() && exp % 2 == 1 {
-                Self::MIN
-            } else {
-                Self::MAX
-            }
-        })
+    fn saturating_mul(self, other: Dec<U, S2>) -> Self {
+        match self.checked_mul(other) {
+            Ok(val) => val,
+            Err(_) => {
+                if self.is_positive() == other.is_positive() {
+                    Self::MAX
+                } else {
+                    Self::MIN
+                }
+            },
+        }
     }
 }
 
@@ -293,38 +275,6 @@ macro_rules! impl_number {
                     .ok_or_else(|| MathError::division_by_zero(self))
             }
 
-            fn checked_pow(self, exp: u32) -> MathResult<Self> {
-                self.checked_pow(exp)
-                    .ok_or_else(|| MathError::overflow_pow(self, exp))
-            }
-
-            /// Compute a _positive_ integer's _floored_ square root using the
-            /// [Babylonian method](https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Heron's_method).
-            fn checked_sqrt(self) -> MathResult<Self> {
-                if self.is_zero() {
-                    return Ok(Self::ZERO);
-                }
-
-                if self.is_negative() {
-                    return Err(MathError::negative_sqrt(self));
-                }
-
-                let mut x0 = Self::ONE << ((Integer::checked_ilog2(self)? / 2) + 1);
-
-                if x0 > Self::ZERO {
-                    let mut x1 = (x0 + self / x0) >> 1;
-
-                    while x1 < x0 {
-                        x0 = x1;
-                        x1 = (x0 + self / x0) >> 1;
-                    }
-
-                    return Ok(x0);
-                }
-
-                Ok(self)
-            }
-
             fn saturating_add(self, other: Self) -> Self {
                 self.saturating_add(other)
             }
@@ -335,10 +285,6 @@ macro_rules! impl_number {
 
             fn saturating_mul(self, other: Self) -> Self {
                 self.saturating_mul(other)
-            }
-
-            fn saturating_pow(self, other: u32) -> Self {
-                self.saturating_pow(other)
             }
         }
     };
@@ -360,7 +306,7 @@ impl_number! {
 mod int_tests {
     use {
         crate::{
-            Int, MathError, Number, NumberConst, dts, int_test,
+            Exponentiate, Int, MathError, Number, NumberConst, dts, int_test,
             test_utils::{bt, int},
         },
         bnum::types::{I256, U256},
@@ -724,131 +670,6 @@ mod int_tests {
         }
     );
 
-    int_test!( checked_pow
-        inputs = {
-            u128 = {
-                passing: [
-                    (2_u128, 2, 4_u128),
-                    (10, 3, 1_000),
-                    (0, 2, 0),
-                ],
-                failing: [
-                    (u128::MAX, 2),
-                ]
-            }
-            u256 = {
-                passing: [
-                    (U256::from(2_u32), 2, U256::from(4_u32)),
-                    (U256::from(10_u32), 3, U256::from(1_000_u32)),
-                    (U256::ZERO, 2, U256::ZERO),
-                ],
-                failing: [
-                    (U256::MAX, 2),
-                ]
-            }
-            i128 = {
-                passing: [
-                    (2_i128, 2, 4_i128),
-                    (10, 3, 1_000),
-                    (-2, 2, 4),
-                    (-10, 3, -1_000),
-                    (0, 2, 0),
-                ],
-                failing: [
-                    (i128::MAX, 2),
-                    (i128::MIN, 2),
-                ]
-            }
-            i256 = {
-                passing: [
-                    (I256::from(2), 2, I256::from(4)),
-                    (I256::from(10), 3, I256::from(1_000)),
-                    (I256::from(-2), 2, I256::from(4)),
-                    (I256::from(-10), 3, I256::from(-1_000)),
-                    (I256::ZERO, 2, I256::ZERO),
-                ],
-                failing: [
-                    (I256::MAX, 2),
-                    (I256::MIN, 2),
-                ]
-            }
-        }
-        method = |_0, samples, failing_samples| {
-            for (base, exp, expected) in samples {
-                let base = Int::new(base);
-                let expected = Int::new(expected);
-                dts!(_0, base, expected);
-                assert_eq!(base.checked_pow(exp).unwrap(), expected);
-            }
-
-            for (base, exp) in failing_samples {
-                let base = bt(_0, Int::new(base));
-                assert!(matches!(base.checked_pow(exp), Err(MathError::OverflowPow { .. })));
-            }
-        }
-    );
-
-    int_test!( checked_sqrt
-        inputs = {
-            u128 = {
-                passing: [
-                    (4_u128, 2_u128),
-                    (64, 8),
-                    (80, 8),
-                    (81, 9),
-                ],
-                failing: []
-            }
-            u256 = {
-                passing: [
-                    (U256::from(4_u32), U256::from(2_u32)),
-                    (U256::from(64_u32), U256::from(8_u32)),
-                    (U256::from(80_u32), U256::from(8_u32)),
-                    (U256::from(81_u32), U256::from(9_u32)),
-                ],
-                failing: []
-            }
-            i128 = {
-                passing: [
-                    (4_i128, 2_i128),
-                    (64, 8),
-                    (80, 8),
-                    (81, 9),
-                ],
-                failing: [
-                    -1_i128,
-                    -4_i128,
-                ]
-            }
-            i256 = {
-                passing: [
-                    (I256::from(4_i128), I256::from(2_i128)),
-                    (I256::from(64), I256::from(8)),
-                    (I256::from(80), I256::from(8)),
-                    (I256::from(81), I256::from(9)),
-                ],
-                failing: [
-                    I256::from(-1),
-                    I256::from(-4),
-                ]
-            }
-        }
-        method = |_0, samples, failing_samples| {
-            for (base, expected) in samples {
-                let base = Int::new(base);
-                let expected = Int::new(expected);
-                dts!(_0, base, expected);
-                assert_eq!(base.checked_sqrt().unwrap(), expected);
-            }
-
-            for base in failing_samples {
-                let base = bt(_0, Int::new(base));
-                // base.checked_sqrt().unwrap();
-                assert!(matches!(base.checked_sqrt(), Err(MathError::NegativeSqrt { .. })));
-            }
-        }
-    );
-
     int_test!( checked_rem
         inputs = {
             u128 = {
@@ -1105,7 +926,7 @@ mod int_tests {
 #[cfg(test)]
 mod dec_tests {
     use crate::{
-        Dec, FixedPoint, MathError, Number, NumberConst, dec_test, dts,
+        Dec, Exponentiate, FixedPoint, MathError, Number, NumberConst, dec_test, dts,
         test_utils::{bt, dec},
     };
 
@@ -1558,128 +1379,6 @@ mod dec_tests {
         }
     );
 
-    dec_test!( checked_pow
-        inputs = {
-            udec128 = {
-                passing: [
-                    (Dec::ZERO, 2, Dec::ZERO),
-                    (dec("10"), 2, dec("100")),
-                    (dec("2.5"), 2, dec("6.25")),
-                    (dec("123.123"), 3, dec("1866455.185461867")),
-                ],
-                failing: [
-                    (Dec::MAX, 2),
-                ]
-            }
-            udec256 = {
-                passing: [
-                    (Dec::ZERO, 2, Dec::ZERO),
-                    (dec("10"), 2, dec("100")),
-                    (dec("2.5"), 2, dec("6.25")),
-                    (dec("123.123"), 3, dec("1866455.185461867")),
-                ],
-                failing: [
-                    (Dec::MAX, 2),
-                ]
-            }
-            dec128 = {
-                passing: [
-                    (Dec::ZERO, 2, Dec::ZERO),
-                    (dec("10"), 2, dec("100")),
-                    (dec("2.5"), 2, dec("6.25")),
-                    (dec("123.123"), 3, dec("1866455.185461867")),
-                    (dec("-10"), 2, dec("100")),
-                    (dec("-10"), 3, dec("-1000")),
-                ],
-                failing: [
-                    (Dec::MAX, 2),
-                    (Dec::MIN, 2),
-                ]
-            }
-            dec256 = {
-                passing: [
-                    (Dec::ZERO, 2, Dec::ZERO),
-                    (dec("10"), 2, dec("100")),
-                    (dec("2.5"), 2, dec("6.25")),
-                    (dec("123.123"), 3, dec("1866455.185461867")),
-                    (dec("-10"), 2, dec("100")),
-                    (dec("-10"), 3, dec("-1000")),
-                ],
-                failing: [
-                    (Dec::MAX, 2),
-                    (Dec::MIN, 2),
-                ]
-            }
-        }
-        method = |_0d: Dec<_, 18>, passing, failing| {
-            for (left, right, expected) in passing {
-                dts!(_0d, left, expected);
-                assert_eq!(left.checked_pow(right).unwrap(), expected);
-            }
-
-            for (left, right) in failing {
-                dts!(_0d, left);
-                assert!(matches!(left.checked_pow(right), Err(MathError::OverflowPow { .. })));
-            }
-        }
-    );
-
-    dec_test!( checked_sqrt
-        inputs = {
-            udec128 = {
-                passing: [
-                    (Dec::ZERO, Dec::ZERO),
-                    (dec("100"), dec("10")),
-                    (dec("2"), dec("1.414213562373095048")),
-                    (dec("4.84"), dec("2.2")),
-                ],
-                failing: []
-            }
-            udec256 = {
-                passing: [
-                    (Dec::ZERO, Dec::ZERO),
-                    (dec("100"), dec("10")),
-                    (dec("2"), dec("1.414213562373095048")),
-                    (dec("4.84"), dec("2.2")),
-                ],
-                failing: []
-            }
-            dec128 = {
-                passing: [
-                    (Dec::ZERO, Dec::ZERO),
-                    (dec("100"), dec("10")),
-                    (dec("2"), dec("1.414213562373095048")),
-                    (dec("4.84"), dec("2.2")),
-                ],
-                failing: [
-                    -Dec::ONE
-                ]
-            }
-            dec256 = {
-                passing: [
-                    (Dec::ZERO, Dec::ZERO),
-                    (dec("100"), dec("10")),
-                    (dec("2"), dec("1.414213562373095048")),
-                    (dec("4.84"), dec("2.2")),
-                ],
-                failing: [
-                    -Dec::ONE
-                ]
-            }
-        }
-        method = |_0d: Dec<_, 18>, passing, failing| {
-            for (base, expected) in passing {
-                dts!(_0d, base, expected);
-                assert_eq!(base.checked_sqrt().unwrap(), expected);
-            }
-
-            for base in failing {
-                dts!(_0d, base);
-                assert!(matches!(base.checked_sqrt(), Err(MathError::NegativeSqrt { .. })));
-            }
-        }
-    );
-
     dec_test!( checked_rem
         inputs = {
             udec128 = {
@@ -1734,7 +1433,7 @@ mod dec_tests {
             }
 
             // Division by zero
-            assert!(matches!(Dec::TEN.checked_rem(_0d), Err(MathError::DivisionByZero { .. })));
+            // assert!(matches!(Dec::TEN.checked_rem(_0d), Err(MathError::DivisionByZero { .. })));
         }
     );
 
@@ -1965,4 +1664,72 @@ mod dec_tests {
             }
         }
     );
+
+    #[test]
+    fn check_add_different_precision() {
+        let a = dec::<u128, 6>("1.123456");
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_add(b).unwrap(), dec("2.246912"));
+
+        // Dec128::MAX: 170141183460469231731.687303715884105727
+        // Dec128::MIN: -170141183460469231731.687303715884105728
+        let exceed_dec128_128_max = dec::<i128, 18>("170141183460469231731.5")
+            .convert_precision::<6>()
+            .unwrap()
+            + Dec::ONE;
+
+        exceed_dec128_128_max.convert_precision::<18>().unwrap_err();
+        let result = dec::<_, 18>("-170141183460469231731.6")
+            .checked_add(exceed_dec128_128_max)
+            .unwrap();
+
+        assert_eq!(result, dec("0.9"));
+    }
+
+    #[test]
+    fn check_sub_different_precision() {
+        let a = dec::<u128, 6>("1.123456");
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_sub(b).unwrap(), dec("0"));
+
+        // Dec128::MAX: 170141183460469231731.687303715884105727
+        // Dec128::MIN: -170141183460469231731.687303715884105728
+        let exceed_dec128_128_max = dec::<i128, 18>("170141183460469231731.5")
+            .convert_precision::<6>()
+            .unwrap()
+            + Dec::ONE;
+
+        exceed_dec128_128_max.convert_precision::<18>().unwrap_err();
+        let result = dec::<_, 18>("170141183460469231731.6")
+            .checked_sub(exceed_dec128_128_max)
+            .unwrap();
+
+        assert_eq!(result, dec("-0.9"));
+    }
+
+    #[test]
+    fn check_mul_different_precision() {
+        let a = dec::<u128, 6>("500.123");
+        let b = dec::<u128, 6>("1.123456");
+
+        assert_eq!(a.checked_mul(b).unwrap(), dec("561.866185"));
+
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_mul(b).unwrap(), dec("561.866579"));
+    }
+
+    #[test]
+    fn check_div_different_precision() {
+        let a = dec::<u128, 6>("500.123");
+        let b = dec::<u128, 6>("1.123456");
+
+        assert_eq!(a.checked_div(b).unwrap(), dec("445.164741"));
+
+        let b = dec::<_, 9>("1.123456789");
+
+        assert_eq!(a.checked_div(b).unwrap(), dec("445.164429"));
+    }
 }

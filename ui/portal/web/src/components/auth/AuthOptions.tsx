@@ -1,28 +1,23 @@
-import { Button, ExpandOptions, IconPasskey } from "@left-curve/applets-kit";
+import { Button } from "@left-curve/applets-kit";
 import { useConnectors } from "@left-curve/store";
 import { motion } from "framer-motion";
 import type React from "react";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 interface Props {
   action: (method: string) => void;
   isPending: boolean;
-  mode: "signup" | "signin";
 }
 
-export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
+export const AuthOptions: React.FC<Props> = ({ action, isPending }) => {
   const connectors = useConnectors();
 
   return (
     <div className="flex flex-col gap-4 w-full">
-      <Button fullWidth onClick={() => action("passkey")} isLoading={isPending} className="gap-2">
-        <IconPasskey className="w-6 h-6" />
-        <p className="min-w-20"> {m["common.signWithPasskey"]({ action: mode })}</p>
-      </Button>
       {connectors.length > 2 ? (
         connectors.map((connector) => {
-          if (["passkey", "session"].includes(connector.type)) return null;
+          if (["passkey", "session", "privy"].includes(connector.type)) return null;
           return (
             <Button
               key={connector.id}
@@ -34,12 +29,14 @@ export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
               onClick={() => action(connector.id)}
             >
               <img src={connector.icon} alt={connector.name} className="w-6 h-6" />
-              <p className="min-w-20">{connector.name}</p>
+              <p>{connector.name}</p>
             </Button>
           );
         })
       ) : (
-        <p className="text-center text-blue-400">{m["common.notWalletDetected"]()}</p>
+        <p className="text-center text-primitives-blue-light-400">
+          {m["common.notWalletDetected"]()}
+        </p>
       )}
     </div>
   );

@@ -1,29 +1,32 @@
 use {
     crate::{
-        FillingOutcome, INCOMING_ORDERS, LIMIT_ORDERS, MARKET_ORDERS, MAX_ORACLE_STALENESS,
-        MatchingOutcome, MergedOrders, Order, OrderTrait, PAIRS, PassiveLiquidityPool, RESERVES,
-        VOLUMES, VOLUMES_BY_USER, fill_orders, match_and_fill_market_orders, match_limit_orders,
+        MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
+        RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
+        core::{
+            FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders,
+            mean::safe_arithmetic_mean,
+        },
+        liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
     dango_account_factory::AccountQuerier,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        dex::{Direction, LimitOrdersMatched, OrderFilled},
+        dex::{
+            CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
+            Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
+        },
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Api, DecCoins, Denom, EventBuilder, Inner, IsZero, Message, Number, NumberConst,
-        Order as IterationOrder, Response, StdError, StdResult, Storage, SudoCtx, TransferBuilder,
-        Udec128,
+        Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
+        MetricsIterExt, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
+        Order as IterationOrder, PrimaryKey, Response, StdError, StdResult, Storage, SubMessage,
+        SubMsgResult, SudoCtx, Timestamp, TransferBuilder, Udec128, Udec128_6,
     },
-    std::{
-        collections::{BTreeSet, HashMap, hash_map::Entry},
-        iter,
-    },
+    std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
-
-const HALF: Udec128 = Udec128::new_percent(50);
 
 /// Match and fill orders using the uniform price auction strategy.
 ///
@@ -31,6 +34,50 @@ const HALF: Udec128 = Udec128::new_percent(50);
 /// <https://motokodefi.substack.com/p/uniform-price-call-auctions-a-better>
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
+    // Skip the auction if trading is paused.
+    if PAUSED.load(ctx.storage)? {
+        return Ok(Response::new());
+    }
+
+    // Use submessage "reply on error" to catch errors that may happen during
+    // the auction.
+    Ok(Response::new().add_submessage(SubMessage::reply_on_error(
+        Message::execute(
+            ctx.contract,
+            &ExecuteMsg::Callback(CallbackMsg::Auction {}),
+            Coins::new(),
+        )?,
+        &ReplyMsg::AfterAuction {},
+    )?))
+}
+
+#[cfg_attr(not(feature = "library"), grug::export)]
+pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
+    match msg {
+        ReplyMsg::AfterAuction {} => {
+            let error = res.unwrap_err(); // safe to unwrap because we only request reply on error
+
+            #[cfg(feature = "library")]
+            {
+                tracing::error!(
+                    error,
+                    block_height = ctx.block.height,
+                    "!!! AUCTION FAILED !!!"
+                );
+            }
+
+            // Pause trading in case of a failure.
+            PAUSED.save(ctx.storage, &true)?;
+
+            Response::new().add_event(Paused { error: Some(error) })
+        },
+    }
+}
+
+pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
+    #[cfg(feature = "metrics")]
+    let now = std::time::Instant::now();
+
     let app_cfg = ctx.querier.query_dango_config()?;
 
     let mut oracle_querier = OracleQuerier::new_remote(app_cfg.addresses.oracle, ctx.querier)
@@ -38,54 +85,59 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     let mut account_querier = AccountQuerier::new(app_cfg.addresses.account_factory, ctx.querier);
 
     let mut events = EventBuilder::new();
-    let mut refunds = TransferBuilder::<DecCoins>::new();
-    let mut volumes = HashMap::<Addr, Udec128>::new();
-    let mut volumes_by_username = HashMap::<Username, Udec128>::new();
-    let mut fees = DecCoins::new();
-    let mut fee_payments = TransferBuilder::<DecCoins>::new();
+    let mut refunds = TransferBuilder::<DecCoins<6>>::new();
+    let mut volumes = HashMap::<Addr, Udec128_6>::new();
+    let mut volumes_by_username = HashMap::<Username, Udec128_6>::new();
+    let mut fees = DecCoins::<6>::new();
+    let mut fee_payments = TransferBuilder::<DecCoins<6>>::new();
 
-    // Collect incoming orders and clear the temporary storage.
-    let incoming_orders = INCOMING_ORDERS.drain(ctx.storage, None, None)?;
+    // Load all existing pairs and their parameters.
+    let pairs = PAIRS
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<BTreeMap<_, _>>>()?;
 
-    // Add incoming orders to the persistent storage.
-    for (order_key, order) in incoming_orders.values() {
-        debug_assert!(
-            order.created_at_block_height == ctx.block.height,
-            "incoming order was created in a previous block! creation height: {}, current height: {}",
-            order.created_at_block_height,
-            ctx.block.height
-        );
+    // Delete the passive orders left over from the previous block.
+    for ((denoms, direction, price, order_id), order) in ORDERS
+        .idx
+        .user
+        .prefix(app_cfg.addresses.dex)
+        .range(ctx.storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?
+    {
+        decrease_liquidity_depths(
+            ctx.storage,
+            &denoms.0,
+            &denoms.1,
+            direction,
+            price,
+            order.remaining,
+            &pairs[&denoms].bucket_sizes,
+        )?;
 
-        LIMIT_ORDERS.save(ctx.storage, order_key.clone(), order)?;
+        ORDERS.remove(ctx.storage, (denoms, direction, price, order_id))?;
+
+        #[cfg(feature = "metrics")]
+        {
+            if order.amount > order.remaining.into_int_floor() {
+                metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+            }
+        }
     }
 
-    // Find all the unique pairs that have received new orders in the block.
-    let pairs_with_limit_orders = incoming_orders
-        .into_values()
-        .map(|((pair, ..), _)| pair)
-        .collect::<BTreeSet<_>>();
-
-    // Find all the pairs that have market orders in the block.
-    let pairs_with_market_orders = MARKET_ORDERS
-        .keys(ctx.storage, None, None, IterationOrder::Ascending)
-        .map(|res| res.map(|(pair, ..)| pair))
-        .collect::<StdResult<BTreeSet<_>>>()?;
-
-    // Loop through the pairs that have received new orders in the block.
-    // Match and clear the orders for each of them.
+    // Loop through all trading pairs. Match and clear the orders for each of them.
     // TODO: spawn a thread for each pair to process them in parallel.
-    for (base_denom, quote_denom) in pairs_with_limit_orders.union(&pairs_with_market_orders) {
+    for (denoms, pair) in pairs {
         clear_orders_of_pair(
             ctx.storage,
-            ctx.api,
             ctx.block.height,
             app_cfg.addresses.dex,
             &mut oracle_querier,
             &mut account_querier,
             app_cfg.maker_fee_rate.into_inner(),
             app_cfg.taker_fee_rate.into_inner(),
-            base_denom.clone(),
-            quote_denom.clone(),
+            denoms.0,
+            denoms.1,
+            &pair.bucket_sizes,
             &mut events,
             &mut refunds,
             &mut fees,
@@ -95,20 +147,42 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         )?;
     }
 
+    #[cfg(feature = "metrics")]
+    let now_volume = std::time::Instant::now();
+
+    // Calculate the timestamp of `MAX_VOLUME_AGE` ago. Volume data older than
+    // this timestamp are to be purged from storage.
+    // Use `saturating_sub` because tests sometimes use small timestamps.
+    let cutoff = ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE);
+
     // Save the updated volumes.
     for (address, volume) in volumes {
         VOLUMES.save(ctx.storage, (&address, ctx.block.timestamp), &volume)?;
-        // TODO: purge volume data that are too old.
+
+        purge_old_volume_data(VOLUMES, &address, ctx.storage, cutoff)?;
     }
 
     for (username, volume) in volumes_by_username {
         VOLUMES_BY_USER.save(ctx.storage, (&username, ctx.block.timestamp), &volume)?;
-        // TODO: purge volume data that are too old.
+
+        purge_old_volume_data(VOLUMES_BY_USER, &username, ctx.storage, cutoff)?;
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_DURATION_STORE_VOLUME)
+            .record(now_volume.elapsed().as_secs_f64());
     }
 
     // Round refunds and fee to integer amounts. Round _down_ in both cases.
     let refunds = refunds.into_batch();
     let fees = fees.into_coins_floor();
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(crate::metrics::LABEL_DURATION_AUCTION)
+            .record(now.elapsed().as_secs_f64());
+    }
 
     Ok(Response::new()
         .may_add_message(if !refunds.is_empty() {
@@ -133,7 +207,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
 
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
-    api: &dyn Api,
     current_block_height: u64,
     dex_addr: Addr,
     oracle_querier: &mut OracleQuerier,
@@ -142,104 +215,160 @@ fn clear_orders_of_pair(
     taker_fee_rate: Udec128,
     base_denom: Denom,
     quote_denom: Denom,
+    bucket_sizes: &BTreeSet<NonZero<Price>>,
     events: &mut EventBuilder,
-    refunds: &mut TransferBuilder<DecCoins>,
-    fees: &mut DecCoins,
-    fee_payments: &mut TransferBuilder<DecCoins>,
-    volumes: &mut HashMap<Addr, Udec128>,
-    volumes_by_username: &mut HashMap<Username, Udec128>,
+    refunds: &mut TransferBuilder<DecCoins<6>>,
+    fees: &mut DecCoins<6>,
+    fee_payments: &mut TransferBuilder<DecCoins<6>>,
+    volumes: &mut HashMap<Addr, Udec128_6>,
+    volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
-    // --------------------------- 1. Prepare orders ---------------------------
+    #[cfg(feature = "metrics")]
+    let mut now = std::time::Instant::now();
 
-    // Load the market orders for this pair.
-    let mut market_bids = MARKET_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Bid)
-        .drain(storage, None, None)?
-        .into_iter()
-        .peekable();
-    let mut market_asks = MARKET_ORDERS
-        .prefix((base_denom.clone(), quote_denom.clone()))
-        .append(Direction::Ask)
-        .drain(storage, None, None)?
-        .into_iter()
-        .peekable();
+    // --------------------- 1. Update passive pool orders ---------------------
 
-    // Create iterators over user orders.
+    // Generate updated passive orders and insert them into the book.
+    //
+    // NOTE: This operation assumes the pool only generates a limited number of
+    // orders. The admin should set proper parameters so that the pool doesn't
+    // generate too many orders.
+    if let Some(reserve) = RESERVES.may_load(storage, (&base_denom, &quote_denom))? {
+        let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
+        match pair.reflect_curve(
+            oracle_querier,
+            base_denom.clone(),
+            quote_denom.clone(),
+            &reserve,
+        ) {
+            Ok((passive_bids, passive_asks)) => {
+                for (price, amount) in passive_bids {
+                    let (mut order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+                    order_id = !order_id; // See the docs of the `OrderId` type on why we invert this.
+
+                    let remaining = amount.checked_into_dec()?;
+
+                    increase_liquidity_depths(
+                        storage,
+                        &base_denom,
+                        &quote_denom,
+                        Direction::Bid,
+                        price,
+                        remaining,
+                        bucket_sizes,
+                    )?;
+
+                    ORDERS.save(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            Direction::Bid,
+                            price,
+                            order_id,
+                        ),
+                        &Order {
+                            user: dex_addr,
+                            id: order_id,
+                            direction: Direction::Bid,
+                            time_in_force: TimeInForce::GoodTilCanceled,
+                            price,
+                            amount,
+                            remaining,
+                            created_at_block_height: None,
+                        },
+                    )?;
+                }
+
+                for (price, amount) in passive_asks {
+                    let (order_id, _) = NEXT_ORDER_ID.increment(storage)?;
+                    let remaining = amount.checked_into_dec()?;
+
+                    increase_liquidity_depths(
+                        storage,
+                        &base_denom,
+                        &quote_denom,
+                        Direction::Ask,
+                        price,
+                        remaining,
+                        bucket_sizes,
+                    )?;
+
+                    ORDERS.save(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            Direction::Ask,
+                            price,
+                            order_id,
+                        ),
+                        &Order {
+                            user: dex_addr,
+                            id: order_id,
+                            direction: Direction::Ask,
+                            time_in_force: TimeInForce::GoodTilCanceled,
+                            price,
+                            amount,
+                            remaining,
+                            created_at_block_height: None,
+                        },
+                    )?;
+                }
+            },
+            // If there is an error, we simply emit a tracing log and move on.
+            // Do not bail.
+            // The most common cause of errors here is oracle downtime (that
+            // exceeds the `MAX_STALENESS` in `OracleQuerier`), which isn't a
+            // fatal error that necessitates halting of trading.
+            Err(_err) => {
+                #[cfg(feature = "tracing")]
+                tracing::error!(
+                    %base_denom,
+                    %quote_denom,
+                    ?reserve,
+                    %_err,
+                    "!!! REFLECT CURVE FAILED !!!"
+                );
+            },
+        }
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_REFLECT_CURVE,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string()
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
+
+    // ----------------------- 2. Perform order matching -----------------------
+
+    // Create iterators over orders.
     //
     // Iterate BUY orders from the highest price to the lowest.
     // Iterate SELL orders from the lowest price to the highest.
-    let bid_iter = LIMIT_ORDERS
+    let bid_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Bid)
-        .range(storage, None, None, IterationOrder::Descending)
-        .map(|res| {
-            let ((price, _), limit_order) = res?;
-            Ok((price, limit_order))
-        });
-    let ask_iter = LIMIT_ORDERS
+        .values(storage, None, None, IterationOrder::Descending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Descending.to_string()),
+        ]);
+
+    let ask_iter = ORDERS
         .prefix((base_denom.clone(), quote_denom.clone()))
         .append(Direction::Ask)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .map(|res| {
-            let ((price, _), limit_order) = res?;
-            Ok((price, limit_order))
-        });
-
-    // Create iterators over passive orders.
-    //
-    // If the pool doesn't have passive liquidity (reserve is `None`), or if
-    // the order book reflection fails, simply use empty iterators. I.e. place
-    // no passive liquidity orders.
-    let reserve = RESERVES.may_load(storage, (&base_denom, &quote_denom))?;
-    let (passive_bid_iter, passive_ask_iter) = match &reserve {
-        Some(reserve) => {
-            // Create the passive liquidity orders if the pair has a pool.
-            let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
-            pair.reflect_curve(
-                oracle_querier,
-                base_denom.clone(),
-                quote_denom.clone(),
-                reserve,
-            )
-            .inspect_err(|err| {
-                let msg = format!("ERROR: reflect curve failed! base denom: {base_denom}, quote denom: {quote_denom}, reserve: {reserve:?}, error: {err}");
-                api.debug(dex_addr, &msg);
-            })
-            .unwrap_or_else(|_| (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _))
-        },
-        None => (Box::new(iter::empty()) as _, Box::new(iter::empty()) as _),
-    };
-
-    // Merge the orders from users and from the passive pool.
-    let mut merged_bid_iter =
-        MergedOrders::new(bid_iter, passive_bid_iter, IterationOrder::Descending).peekable();
-    let mut merged_ask_iter =
-        MergedOrders::new(ask_iter, passive_ask_iter, IterationOrder::Ascending).peekable();
-
-    // -------------------- 2. Match and fill market orders --------------------
-
-    // Run the market order matching algorithm.
-    // 1. Match market BUY orders against resting SELL limit orders.
-    // 2. Match market SELL orders against resting BUY limit orders.
-    let market_bid_filling_outcomes = match_and_fill_market_orders(
-        &mut market_bids,
-        &mut merged_ask_iter,
-        Direction::Bid,
-        maker_fee_rate,
-        taker_fee_rate,
-        current_block_height,
-    )?;
-    let market_ask_filling_outcomes = match_and_fill_market_orders(
-        &mut market_asks,
-        &mut merged_bid_iter,
-        Direction::Ask,
-        maker_fee_rate,
-        taker_fee_rate,
-        current_block_height,
-    )?;
-
-    // ------------------------- 3. Match limit orders -------------------------
+        .values(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Ascending.to_string()),
+        ]);
 
     // Run the limit order matching algorithm.
     let MatchingOutcome {
@@ -247,31 +376,89 @@ fn clear_orders_of_pair(
         volume,
         bids,
         asks,
-    } = match_limit_orders(merged_bid_iter, merged_ask_iter)?;
+    } = match_orders(bid_iter, ask_iter)?;
 
-    // ------------------------- 4. Fill limit orders --------------------------
+    #[cfg(feature = "tracing")]
+    {
+        let range_str = match range {
+            Some((lower_price, upper_price)) => format!("{lower_price}-{upper_price}"),
+            None => "None".to_string(),
+        };
+
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            range = range_str,
+            volume = volume.to_string(),
+            num_matched_bids = bids.len(),
+            num_matched_asks = asks.len(),
+            "Matched limit orders"
+        );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        let num_trades = bids.len() + asks.len();
+
+        metrics::counter!(crate::metrics::LABEL_TRADES).increment(num_trades as u64);
+
+        metrics::histogram!(
+            crate::metrics::LABEL_TRADES_PER_BLOCK,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string()
+        )
+        .record(num_trades as f64);
+
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_ORDER_MATCHING,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
+
+    // ----------------------- 3. Perform order filling ------------------------
 
     // If matching orders were found, then we need to fill the orders. All orders
     // are filled at the clearing price.
-    let limit_order_filling_outcomes = if let Some((lower_price, higher_price)) = range {
-        // Choose the clearing price. Any price within `range` gives the same
-        // volume (measured in the base asset). We can either take
-        //
-        // - the lower end,
-        // - the higher end, or
-        // - the midpoint of the range.
-        //
-        // Here we choose the midpoint.
-        let clearing_price = lower_price.checked_add(higher_price)?.checked_mul(HALF)?;
+    let filling_outcomes = if let Some((lower_price, upper_price)) = range {
+        // Choose the clearing price, based on the mid price of the resting
+        // order book:
+        // - if mid price is within the range, then use the mid price;
+        // - if mid price is bigger than the upper bound of the range, then use
+        //   the upper bound;
+        // - if mid price is smaller than the lower bound of the range, then use
+        //   the lower bound.
+        // - if the mid price doesn't exist, use the middle point of the range.
+        let clearing_price = match RESTING_ORDER_BOOK
+            .may_load(storage, (&base_denom, &quote_denom))?
+            .and_then(|book| book.mid_price)
+        {
+            Some(mid_price) => {
+                if mid_price < lower_price {
+                    lower_price
+                } else if mid_price > upper_price {
+                    upper_price
+                } else {
+                    mid_price
+                }
+            },
+            // Note: with extreme prices, calculating the middle point of the
+            // range may overflow. We use the "safe" arithmetic mean function
+            // which handles this case.
+            None => safe_arithmetic_mean(lower_price, upper_price)?,
+        };
 
-        events.push(LimitOrdersMatched {
+        events.push(OrdersMatched {
             base_denom: base_denom.clone(),
             quote_denom: quote_denom.clone(),
             clearing_price,
             volume,
         })?;
 
-        fill_orders(
+        Box::new(fill_orders(
             bids,
             asks,
             clearing_price,
@@ -279,51 +466,37 @@ fn clear_orders_of_pair(
             current_block_height,
             maker_fee_rate,
             taker_fee_rate,
-        )?
+        ))
     } else {
-        vec![]
+        Box::new(std::iter::empty()) as Box<dyn Iterator<Item = _>>
     };
-
-    // ----------------------- 5. Update contract state ------------------------
-
-    // Loop over all unmatched market orders and refund the users.
-    for (_, market_order) in market_bids {
-        refunds.insert(
-            market_order.user,
-            quote_denom.clone(),
-            market_order.remaining,
-        )?;
-    }
-    for (_, market_order) in market_asks {
-        refunds.insert(
-            market_order.user,
-            base_denom.clone(),
-            market_order.remaining,
-        )?;
-    }
 
     // Track the inflows and outflows of the dex.
     let mut inflows = DecCoins::new();
     let mut outflows = DecCoins::new();
 
+    #[cfg(feature = "metrics")]
+    let mut metric_volume = HashMap::new();
+
     // Handle order filling outcomes for the user placed orders.
-    for FillingOutcome {
-        order_direction,
-        order,
-        filled_base,
-        filled_quote,
-        refund_base,
-        refund_quote,
-        fee_base,
-        fee_quote,
-    } in market_bid_filling_outcomes
-        .into_values()
-        .chain(market_ask_filling_outcomes.into_values())
-        .chain(limit_order_filling_outcomes)
-    {
-        if let Some((order_id, user)) = order.id_and_user() {
+    for res in filling_outcomes {
+        let FillingOutcome {
+            order,
+            filled_base,
+            filled_quote,
+            refund_base,
+            refund_quote,
+            fee_base,
+            fee_quote,
+            clearing_price,
+        } = res?;
+
+        // If the order is from a user, update refunds and fees.
+        // Otherwise, if it's from the DEX contract itself (a "passive order"),
+        // update the pool inflow/outflow.
+        if order.user != dex_addr {
             fill_user_order(
-                user,
+                order.user,
                 &base_denom,
                 &quote_denom,
                 refund_base,
@@ -334,77 +507,158 @@ fn clear_orders_of_pair(
                 fees,
                 fee_payments,
             )?;
-
-            let clearing_price = filled_quote.checked_div(filled_base)?;
-            let cleared = order.remaining().is_zero();
-
-            // Emit event for filled user orders to be used by the frontend
-            events.push(OrderFilled {
-                user,
-                id: order_id,
-                kind: order.kind(),
-                base_denom: base_denom.clone(),
-                quote_denom: quote_denom.clone(),
-                direction: order_direction,
-                filled_base,
-                filled_quote,
-                refund_base,
-                refund_quote,
-                fee_base,
-                fee_quote,
-                clearing_price,
-                cleared,
-            })?;
-
-            if let Order::Limit(limit_order) = order {
-                if limit_order.remaining.is_zero() {
-                    // Remove the order from the storage if it was fully filled
-                    LIMIT_ORDERS.remove(
-                        storage,
-                        (
-                            (base_denom.clone(), quote_denom.clone()),
-                            order_direction,
-                            limit_order.price,
-                            order_id,
-                        ),
-                    )?;
-                } else {
-                    LIMIT_ORDERS.save(
-                        storage,
-                        (
-                            (base_denom.clone(), quote_denom.clone()),
-                            order_direction,
-                            limit_order.price,
-                            order_id,
-                        ),
-                        &limit_order,
-                    )?;
-                }
-            }
         } else {
             fill_passive_order(
                 &base_denom,
                 &quote_denom,
-                order_direction,
+                order.direction,
                 filled_base,
                 filled_quote,
                 &mut inflows,
                 &mut outflows,
             )?;
+        };
+
+        // For limit orders, delete it from storage if fully filled, or
+        // update if partially filled.
+        // For market orders, delete it from storage, and refund the user
+        // the remaining amount, as market orders are immediate-or-cancel.
+        match order.time_in_force {
+            TimeInForce::GoodTilCanceled => {
+                // Remove all liquidity previously added by this order, i.e.
+                // order.remaining + filled_base, to avoid rounding errors
+                // in the liquidity depth quote.
+                decrease_liquidity_depths(
+                    storage,
+                    &base_denom,
+                    &quote_denom,
+                    order.direction,
+                    order.price,
+                    order.remaining + filled_base,
+                    bucket_sizes,
+                )?;
+
+                // If the order is fully filled, remove it from storage.
+                if order.remaining.is_zero() {
+                    ORDERS.remove(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            order.direction,
+                            order.price,
+                            order.id,
+                        ),
+                    )?;
+
+                    #[cfg(feature = "metrics")]
+                    {
+                        metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+                    }
+                } else {
+                    ORDERS.save(
+                        storage,
+                        (
+                            (base_denom.clone(), quote_denom.clone()),
+                            order.direction,
+                            order.price,
+                            order.id,
+                        ),
+                        &order,
+                    )?;
+
+                    // Update the liquidity with the remaining amount.
+                    increase_liquidity_depths(
+                        storage,
+                        &base_denom,
+                        &quote_denom,
+                        order.direction,
+                        order.price,
+                        order.remaining,
+                        bucket_sizes,
+                    )?;
+                }
+            },
+            TimeInForce::ImmediateOrCancel => {
+                refund_ioc_order(&base_denom, &quote_denom, order, events, refunds)?;
+
+                ORDERS.remove(
+                    storage,
+                    (
+                        (base_denom.clone(), quote_denom.clone()),
+                        order.direction,
+                        order.price,
+                        order.id,
+                    ),
+                )?;
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+                }
+            },
         }
 
+        // Emit event for filled orders to be used by the frontend.
+        events.push(OrderFilled {
+            user: order.user,
+            id: order.id,
+            time_in_force: order.time_in_force,
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            direction: order.direction,
+            filled_base,
+            filled_quote,
+            refund_base,
+            refund_quote,
+            fee_base,
+            fee_quote,
+            clearing_price,
+            cleared: order.remaining.is_zero(),
+        })?;
+
+        // Record the order's trading volume.
         update_trading_volumes(
             storage,
-            api,
-            dex_addr,
             oracle_querier,
             account_querier,
             &base_denom,
             filled_base,
-            order.user().unwrap_or(dex_addr),
+            order.user,
             volumes,
             volumes_by_username,
         )?;
+
+        #[cfg(feature = "metrics")]
+        {
+            let filled_base = filled_base.into_int_floor();
+            let filled_quote = filled_quote.into_int_floor();
+
+            metric_volume
+                .entry((&base_denom, &quote_denom, &base_denom))
+                .or_insert(grug::Int::ZERO)
+                .checked_add_assign(filled_base)?;
+
+            metric_volume
+                .entry((&base_denom, &quote_denom, &quote_denom))
+                .or_insert(grug::Int::ZERO)
+                .checked_add_assign(filled_quote)?;
+
+            metrics::histogram!(
+                crate::metrics::LABEL_VOLUME_PER_TRADE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "token" => base_denom.to_string(),
+            )
+            .record(filled_base.into_inner() as f64);
+
+            metrics::histogram!(
+                crate::metrics::LABEL_VOLUME_PER_TRADE,
+                "base_denom" => base_denom.to_string(),
+                "quote_denom" => quote_denom.to_string(),
+                "token" => quote_denom.to_string(),
+            )
+            .record(filled_quote.into_inner() as f64);
+        }
     }
 
     // Update the pool reserve.
@@ -418,14 +672,180 @@ fn clear_orders_of_pair(
                 reserve.checked_sub(&outflow)?;
             }
 
+            #[cfg(feature = "metrics")]
+            {
+                for coin in [reserve.first(), reserve.second()] {
+                    metrics::gauge!(crate::metrics::LABEL_RESERVE_AMOUNT,
+                        "base_denom" => base_denom.to_string(),
+                        "quote_denom" => quote_denom.to_string(),
+                        "token" => coin.denom.to_string()
+                    )
+                    .set(coin.amount.into_inner() as f64);
+                }
+            }
+
             Ok::<_, StdError>(reserve)
         })?;
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            "Filled orders"
+        );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        for ((bd, qd, token), amount) in metric_volume {
+            metrics::histogram!(
+                crate::metrics::LABEL_VOLUME_PER_BLOCK,
+                "base_denom" => bd.to_string(),
+                "quote_denom" => qd.to_string(),
+                "token" => token.to_string(),
+            )
+            .record(amount.into_inner() as f64);
+        }
+
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_ORDER_FILLING,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
+
+    // ------------------------- 4. Cancel IOC orders --------------------------
+
+    for order in ORDERS
+        .idx
+        .time_in_force
+        .prefix(TimeInForce::ImmediateOrCancel)
+        .append((base_denom.clone(), quote_denom.clone()))
+        .values(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Ascending.to_string()),
+        ])
+        .collect::<StdResult<Vec<_>>>()?
+    {
+        ORDERS.remove(
+            storage,
+            (
+                (base_denom.clone(), quote_denom.clone()),
+                order.direction,
+                order.price,
+                order.id,
+            ),
+        )?;
+
+        refund_ioc_order(&base_denom, &quote_denom, order, events, refunds)?;
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            "Canceled IOC orders"
+        );
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_CANCEL_IOC,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
+
+        now = std::time::Instant::now();
+    }
+
+    // ----------------- 5. Save the resting order book state ------------------
+
+    // Find the best bid and ask prices that remains after all the previous steps.
+    let best_bid_price = ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Bid)
+        .keys(storage, None, None, IterationOrder::Descending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Descending.to_string()),
+        ])
+        .next()
+        .transpose()?
+        .map(|(price, _order_id)| price);
+    let best_ask_price = ORDERS
+        .prefix((base_denom.clone(), quote_denom.clone()))
+        .append(Direction::Ask)
+        .keys(storage, None, None, IterationOrder::Ascending)
+        .with_metrics(crate::metrics::LABEL_DURATION_ITER_NEXT, [
+            ("base_denom", base_denom.to_string()),
+            ("quote_denom", quote_denom.to_string()),
+            ("iteration_order", IterationOrder::Ascending.to_string()),
+        ])
+        .next()
+        .transpose()?
+        .map(|(price, _order_id)| price);
+
+    // Determine the mid price:
+    // - if both best bid and ask prices exist, then take the average of them;
+    // - if only one of them exists, then use that price;
+    // - if none of them exists, then `None`.
+    let mid_price = match (best_bid_price, best_ask_price) {
+        // Note: with extreme prices, computing the average of the best bid and
+        // ask prices may overflow. We use the "safe" arithmetic mean function
+        // which handles this case.
+        (Some(bid), Some(ask)) => Some(safe_arithmetic_mean(bid, ask)?),
+        (Some(bid), None) => Some(bid),
+        (None, Some(ask)) => Some(ask),
+        (None, None) => None,
+    };
+
+    RESTING_ORDER_BOOK.save(
+        storage,
+        (&base_denom, &quote_denom),
+        &RestingOrderBookState {
+            best_bid_price,
+            best_ask_price,
+            mid_price,
+        },
+    )?;
+
+    #[cfg(feature = "tracing")]
+    {
+        tracing::info!(
+            base_denom = base_denom.to_string(),
+            quote_denom = quote_denom.to_string(),
+            ?best_bid_price,
+            ?best_ask_price,
+            ?mid_price,
+            "Saved resting order book state"
+        )
+    }
+
+    #[cfg(feature = "metrics")]
+    {
+        metrics::histogram!(
+            crate::metrics::LABEL_DURATION_UPDATE_REST_STATE,
+            "base_denom" => base_denom.to_string(),
+            "quote_denom" => quote_denom.to_string(),
+        )
+        .record(now.elapsed().as_secs_f64());
     }
 
     Ok(())
 }
 
-/// Handle the `FillingOutcome` of a user order.
+/// Handle the `FillingOutcome` of a user order (limit or market).
 ///
 /// ## Returns
 ///
@@ -435,13 +855,13 @@ fn fill_user_order(
     user: Addr,
     base_denom: &Denom,
     quote_denom: &Denom,
-    refund_base: Udec128,
-    refund_quote: Udec128,
-    fee_base: Udec128,
-    fee_quote: Udec128,
-    refunds: &mut TransferBuilder<DecCoins>,
-    fees: &mut DecCoins,
-    fee_payments: &mut TransferBuilder<DecCoins>,
+    refund_base: Udec128_6,
+    refund_quote: Udec128_6,
+    fee_base: Udec128_6,
+    fee_quote: Udec128_6,
+    refunds: &mut TransferBuilder<DecCoins<6>>,
+    fees: &mut DecCoins<6>,
+    fee_payments: &mut TransferBuilder<DecCoins<6>>,
 ) -> StdResult<()> {
     // Handle fees.
     if fee_base.is_non_zero() {
@@ -463,10 +883,10 @@ fn fill_passive_order(
     base_denom: &Denom,
     quote_denom: &Denom,
     order_direction: Direction,
-    filled_base: Udec128,
-    filled_quote: Udec128,
-    inflows: &mut DecCoins,
-    outflows: &mut DecCoins,
+    filled_base: Udec128_6,
+    filled_quote: Udec128_6,
+    inflows: &mut DecCoins<6>,
+    outflows: &mut DecCoins<6>,
 ) -> StdResult<()> {
     // The order only exists in the storage if it's not owned by the dex, since
     // the passive orders are "virtual". If it is virtual, we need to update the
@@ -485,24 +905,75 @@ fn fill_passive_order(
     Ok(())
 }
 
+/// Given an immediate-or-cancel (IOC) order, add the appropriate amount of
+/// refund to `refunds`, and add an `OrderCanceled` event to `events`.
+///
+/// In debug mode, panic if the order is not IOC.
+fn refund_ioc_order(
+    base_denom: &Denom,
+    quote_denom: &Denom,
+    order: Order,
+    events: &mut EventBuilder,
+    refunds: &mut TransferBuilder<DecCoins<6>>,
+) -> StdResult<()> {
+    // This function is only intended to be called to when IOC orders are to be
+    // automatically canceled.
+    debug_assert_eq!(
+        order.time_in_force,
+        TimeInForce::ImmediateOrCancel,
+        "`refund_order` function called for an order that isn't IOC: {order:?}"
+    );
+
+    let (refund_denom, refund_amount) = match order.direction {
+        Direction::Bid => {
+            let remaining_in_quote = order.remaining.checked_mul_dec_floor(order.price)?;
+            (quote_denom.clone(), remaining_in_quote)
+        },
+        Direction::Ask => (base_denom.clone(), order.remaining),
+    };
+
+    if refund_amount.is_non_zero() {
+        events.push(OrderCanceled {
+            user: order.user,
+            id: order.id,
+            time_in_force: order.time_in_force,
+            remaining: order.remaining,
+            refund: (refund_denom.clone(), refund_amount).into(),
+            base_denom: base_denom.clone(),
+            quote_denom: quote_denom.clone(),
+            direction: order.direction,
+            price: order.price,
+            amount: order.amount,
+        })?;
+
+        refunds.insert(order.user, refund_denom, refund_amount)?;
+    }
+
+    Ok(())
+}
+
 /// Updates trading volumes for both user addresses and usernames
 fn update_trading_volumes(
     storage: &mut dyn Storage,
-    api: &dyn Api,
-    dex_addr: Addr,
     oracle_querier: &mut OracleQuerier,
     account_querier: &mut AccountQuerier,
     base_denom: &Denom,
-    filled: Udec128,
+    filled: Udec128_6,
     order_user: Addr,
-    volumes: &mut HashMap<Addr, Udec128>,
-    volumes_by_username: &mut HashMap<Username, Udec128>,
+    volumes: &mut HashMap<Addr, Udec128_6>,
+    volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
     // Query the base asset's oracle price.
     let base_asset_price = match oracle_querier.query_price(base_denom, None) {
-        Err(err) => {
-            let msg = format!("ERROR: failed to query price! denom: {base_denom}, error: {err}");
-            api.debug(dex_addr, &msg);
+        Err(_err) => {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::warn!(
+                    %base_denom,
+                    %_err,
+                    "Failed to query oracle price for base asset. Skipping volume update"
+                );
+            }
 
             // If the query fails, simply do nothing and return, since we want to
             // ensure that `cron_execute` function doesn't fail.
@@ -512,7 +983,7 @@ fn update_trading_volumes(
     };
 
     // Calculate the volume in USD for the filled order.
-    let new_volume = base_asset_price.value_of_dec_amount(filled)?;
+    let new_volume: Udec128_6 = base_asset_price.value_of_dec_amount(filled)?;
 
     // Record trading volume for the user's address
     {
@@ -526,7 +997,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Udec128::ZERO)
+                    .unwrap_or(Udec128_6::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);
@@ -550,7 +1021,7 @@ fn update_trading_volumes(
                     .values(storage, None, None, IterationOrder::Descending)
                     .next()
                     .transpose()?
-                    .unwrap_or(Udec128::ZERO)
+                    .unwrap_or(Udec128_6::ZERO)
                     .checked_add(new_volume)?;
 
                 v.insert(volume);
@@ -559,4 +1030,342 @@ fn update_trading_volumes(
     }
 
     Ok(())
+}
+
+/// Delete all volume data older than the `cutoff` timestamp, except the most
+/// recent one among them.
+/// We keep the most recent one, such that we can compute the volume between
+/// that time and now (by subtracting the cumulative volume now with the volume
+/// of that time).
+fn purge_old_volume_data<'a, K>(
+    map: Map<'static, (&'a K, Timestamp), Udec128_6>,
+    prefix: &'a K,
+    storage: &mut dyn Storage,
+    cutoff: Timestamp,
+) -> StdResult<()>
+where
+    &'a K: PrimaryKey,
+{
+    // Find the most recent volume data no newer than the `cutoff` timestamp.
+    let max = map
+        .prefix(prefix)
+        .keys(
+            storage,
+            None,
+            Some(Bound::Inclusive(cutoff)),
+            IterationOrder::Descending,
+        )
+        .next()
+        .transpose()?
+        .unwrap_or(cutoff);
+
+    // Delete all volume data older (exclusive) than the most recent one.
+    // Use exclusive such that the most recent one is retained.
+    map.prefix(prefix)
+        .clear(storage, None, Some(Bound::Exclusive(max)));
+
+    Ok(())
+}
+
+// ----------------------------------- tests -----------------------------------
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        dango_types::{
+            config::{AppAddresses, AppConfig},
+            constants::{dango, usdc},
+            dex::{Geometric, OrderId, PairParams, PassiveLiquidity, Price},
+            oracle::PriceSource,
+        },
+        grug::{Bounded, MockContext, MockQuerier, Timestamp, Uint128},
+        std::str::FromStr,
+        test_case::test_case,
+    };
+
+    const MOCK_USER: Addr = Addr::mock(123);
+    const MOCK_DEX: Addr = Addr::mock(0);
+    const MOCK_ORACLE: Addr = Addr::mock(1);
+    const MOCK_ACCOUNT_FACTORY: Addr = Addr::mock(2);
+    const MOCK_BLOCK_HEIGHT: u64 = 888;
+    const MOCK_BLOCK_TIMESTAMP: Timestamp = Timestamp::from_seconds(1_000_000);
+
+    #[test_case(
+        vec![],
+        vec![]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: None,
+            mid_price: None,
+        };
+        "no orders"
+    )]
+    // The ask partially consumes the bid.
+    // The bid remains the best price in the book.
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(2)),
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(50)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(50)),
+        };
+        "limit bid partially matched"
+    )]
+    // Same as the previous test, but the best bid that got partially matched is
+    // a market order.
+    // Market orders are immediate-or-cancel, so the best price falls back to
+    // the next best limit or passive bid, which is 49.
+    #[test_case(
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(2)),
+        ],
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(49), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(49)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(49)),
+        };
+        "market bid partially matched, limit bid other unmatched"
+    )]
+    // The bid and ask at 50 consumes each other exactly.
+    // The bid at 49 becomes the best price remaining in the book.
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(49), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(49)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(49)),
+        };
+        "limit bid first unmatched"
+    )]
+    // Same as the previous test, but the order at 49 is a market order.
+    // The best price falls back to the limit bid at 49.
+    #[test_case(
+        vec![
+            (Direction::Bid, Price::new(49), Uint128::new(1)),
+        ],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(48), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: Some(Price::new(48)),
+            best_ask_price: None,
+            mid_price: Some(Price::new(48)),
+        };
+        "market bid first unmatched, limit bid other unmatched"
+    )]
+    // The following test cases are the same as above, except for mirrored to
+    // the ask side of the book.
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(50), Uint128::new(2)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(50)),
+            mid_price: Some(Price::new(50)),
+        };
+        "limit ask partially matched"
+    )]
+    #[test_case(
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(2)),
+        ],
+        vec![
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(51), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(51)),
+            mid_price: Some(Price::new(51)),
+        };
+        "market ask partially matched, limit ask other unmatched"
+    )]
+    #[test_case(
+        vec![],
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(51), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(51)),
+            mid_price: Some(Price::new(51)),
+        };
+        "limit ask first unmatched"
+    )]
+    #[test_case(
+        vec![
+            (Direction::Ask, Price::new(51), Uint128::new(1)),
+        ],
+        vec![
+            (Direction::Ask, Price::new(50), Uint128::new(1)),
+            (Direction::Bid, Price::new(50), Uint128::new(1)),
+            (Direction::Ask, Price::new(52), Uint128::new(1)),
+        ]
+        => RestingOrderBookState {
+            best_bid_price: None,
+            best_ask_price: Some(Price::new(52)),
+            mid_price: Some(Price::new(52)),
+        };
+        "market ask first unmatched, limit ask other unmatched"
+    )]
+    fn properly_determine_resting_order_book_state(
+        market_orders: Vec<(Direction, Price, Uint128)>, // direction, price, amount
+        limit_orders: Vec<(Direction, Price, Uint128)>,  // direction, price, amount
+    ) -> RestingOrderBookState {
+        let querier = MockQuerier::new()
+            .with_raw_contract_storage(MOCK_ACCOUNT_FACTORY, |_storage| {
+                // The `update_trading_volumes` function queries the username
+                // associated with the user address.
+                // Since trading volume is irrelevant for this test, we simply
+                // do nothing, so that no username is found and the volume updating
+                // logic is simply skipped.
+            })
+            .with_raw_contract_storage(MOCK_ORACLE, |storage| {
+                // Set the prices for dango and USDC.
+                // Used by the `update_trading_volumes` function.
+                dango_oracle::PRICE_SOURCES
+                    .save(
+                        storage,
+                        &dango::DENOM,
+                        &PriceSource::Fixed {
+                            humanized_price: Udec128::new(50),
+                            precision: 0,
+                            timestamp: MOCK_BLOCK_TIMESTAMP,
+                        },
+                    )
+                    .unwrap();
+                dango_oracle::PRICE_SOURCES
+                    .save(
+                        storage,
+                        &usdc::DENOM,
+                        &PriceSource::Fixed {
+                            humanized_price: Udec128::new(1),
+                            precision: 6,
+                            timestamp: MOCK_BLOCK_TIMESTAMP,
+                        },
+                    )
+                    .unwrap();
+            })
+            .with_app_config(AppConfig {
+                addresses: AppAddresses {
+                    account_factory: MOCK_ACCOUNT_FACTORY,
+                    dex: MOCK_DEX,
+                    oracle: MOCK_ORACLE,
+                    ..Default::default()
+                },
+                maker_fee_rate: Bounded::new_unchecked(Udec128::ZERO), // set fee rates to zero for simplicity
+                taker_fee_rate: Bounded::new_unchecked(Udec128::ZERO),
+                ..Default::default()
+            })
+            .unwrap();
+        let mut ctx = MockContext::new()
+            .with_querier(querier)
+            .with_block_height(MOCK_BLOCK_HEIGHT)
+            .with_sender(MOCK_DEX)
+            .with_funds(Coins::new());
+        let market_order_count = market_orders.len();
+
+        // Save paused state as false.
+        PAUSED.save(&mut ctx.storage, &false).unwrap();
+
+        // Save pair config.
+        PAIRS
+            .save(
+                &mut ctx.storage,
+                (&dango::DENOM, &usdc::DENOM),
+                &PairParams {
+                    lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                    pool_type: PassiveLiquidity::Geometric(Geometric {
+                        spacing: Udec128::ZERO,
+                        ratio: Bounded::new_unchecked(Udec128::ONE),
+                        limit: 10,
+                    }),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::from_str("0.001").unwrap()),
+                    min_order_size: Uint128::ZERO,
+                },
+            )
+            .unwrap();
+
+        // Save the market orders.
+        for (index, (direction, price, amount)) in market_orders.into_iter().enumerate() {
+            let id = OrderId::new(index as _);
+            ORDERS
+                .save(
+                    &mut ctx.storage,
+                    (
+                        (dango::DENOM.clone(), usdc::DENOM.clone()),
+                        direction,
+                        price,
+                        id,
+                    ),
+                    &Order {
+                        user: MOCK_USER,
+                        id,
+                        direction,
+                        time_in_force: TimeInForce::ImmediateOrCancel,
+                        price,
+                        amount,
+                        remaining: amount.checked_into_dec().unwrap(),
+                        created_at_block_height: Some(MOCK_BLOCK_HEIGHT),
+                    },
+                )
+                .unwrap();
+        }
+
+        // Save the limit orders.
+        for (index, (direction, price, amount)) in limit_orders.into_iter().enumerate() {
+            let id = OrderId::new((market_order_count + index) as _);
+            ORDERS
+                .save(
+                    &mut ctx.storage,
+                    (
+                        (dango::DENOM.clone(), usdc::DENOM.clone()),
+                        direction,
+                        price,
+                        id,
+                    ),
+                    &Order {
+                        user: MOCK_USER,
+                        id,
+                        direction,
+                        time_in_force: TimeInForce::GoodTilCanceled,
+                        price,
+                        amount,
+                        remaining: amount.checked_into_dec().unwrap(),
+                        created_at_block_height: Some(MOCK_BLOCK_HEIGHT),
+                    },
+                )
+                .unwrap();
+        }
+
+        // Run the auction.
+        auction(ctx.as_mutable()).unwrap();
+
+        // Return the resting order book state after the auction to check for accuracy.
+        RESTING_ORDER_BOOK
+            .load(&ctx.storage, (&dango::DENOM, &usdc::DENOM))
+            .unwrap()
+    }
 }

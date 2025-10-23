@@ -1,4 +1,4 @@
-import { usePagination } from "#hooks/usePagination.js";
+import { usePagination } from "@left-curve/foundation";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "./Button";
@@ -6,11 +6,11 @@ import { IconChevronLeft } from "./icons/IconChevronLeft";
 import { IconChevronRight } from "./icons/IconChevronRight";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 import type { VariantProps } from "tailwind-variants";
-import type { UsePaginationParameters } from "../hooks/usePagination";
+import type { UsePaginationParameters } from "@left-curve/foundation";
 
 type PaginationProps = VariantProps<typeof paginationVariants> &
   Omit<UsePaginationParameters, "setCurrentPage"> & {
@@ -65,7 +65,11 @@ export const Pagination: React.FC<PaginationProps> = ({
         type="button"
         onClick={previousPage}
         disabled={!hasPreviousPage || isDisabled}
-        className={twMerge(styles.item(), !hasPreviousPage && "opacity-60", "mr-3 text-blue-500")}
+        className={twMerge(
+          styles.item(),
+          !hasPreviousPage && "opacity-60",
+          "mr-3 text-ink-secondary-blue",
+        )}
       >
         <IconChevronLeft className="w-5 h-5" />
       </button>
@@ -123,7 +127,11 @@ export const Pagination: React.FC<PaginationProps> = ({
         type="button"
         onClick={nextPage}
         disabled={!hasNextPage || isDisabled}
-        className={twMerge(styles.item(), !hasNextPage && "opacity-60", "ml-3 text-blue-500")}
+        className={twMerge(
+          styles.item(),
+          !hasNextPage && "opacity-60",
+          "ml-3 text-ink-secondary-blue",
+        )}
       >
         <IconChevronRight className="w-5 h-5" />
       </button>
@@ -200,7 +208,7 @@ const PaginationItem: React.FC<PaginationItemProps> = ({ page, setCurrentPage, i
     >
       <span className="relative z-10">{page}</span>
       {isCurrent && (
-        <motion.span className="absolute left-0 top-0 w-full h-full rounded-sm bg-blue-100" />
+        <motion.span className="absolute left-0 top-0 w-full h-full rounded-sm bg-surface-primary-blue" />
       )}
     </motion.button>
   );
@@ -213,14 +221,14 @@ type TruncateElementProps = {
 const TruncateElement: React.FC<TruncateElementProps> = ({ isVisible }) => {
   if (!isVisible) return null;
 
-  return <span className="px-2 text-blue-400 select-none">...</span>;
+  return <span className="px-2 text-ink-secondary-blue select-none">...</span>;
 };
 
 const paginationVariants = tv(
   {
     slots: {
-      base: " text-blue-600  exposure-sm-italic",
-      item: "flex items-center justify-center w-8 h-8 rounded-sm hover:bg-blue-50 transition-all exposure-sm-italic",
+      base: " text-ink-secondary-blue  exposure-sm-italic",
+      item: "flex items-center justify-center w-8 h-8 rounded-sm hover:bg-surface-secondary-blue disabled:hover:bg-transparent transition-all exposure-sm-italic",
     },
     variants: {
       variant: {
@@ -228,13 +236,19 @@ const paginationVariants = tv(
         text: "",
       },
       isDisabled: {
-        true: "pointer-events-none cursor-not-allowed",
+        true: "pointer-events-none cursor-not-allowed ",
       },
     },
     defaultVariants: {
       variant: "default",
       isDisabled: false,
     },
+    compoundVariants: [
+      {
+        isDisabled: true,
+        item: "hover:bg-transparent pointer-events-none cursor-not-allowed ",
+      },
+    ],
   },
   {
     twMerge: true,

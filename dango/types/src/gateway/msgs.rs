@@ -1,5 +1,5 @@
 use {
-    super::{RateLimit, Remote, bridge::TransferRemoteRequest},
+    super::{Addr32, Origin, RateLimit, Remote, bridge::TransferRemoteRequest},
     grug::{Addr, Denom, Part, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -13,7 +13,7 @@ pub struct WithdrawalFee {
 
 #[grug::derive(Serde)]
 pub struct InstantiateMsg {
-    pub routes: BTreeSet<(Part, Addr, Remote)>,
+    pub routes: BTreeSet<(Origin, Addr, Remote)>,
     pub rate_limits: BTreeMap<Denom, RateLimit>,
     pub withdrawal_fees: Vec<WithdrawalFee>,
 }
@@ -26,7 +26,7 @@ pub enum ExecuteMsg {
     ///
     /// Not that this is append-only, meaning you can't change or remove an
     /// existing route.
-    SetRoutes(BTreeSet<(Part, Addr, Remote)>),
+    SetRoutes(BTreeSet<(Origin, Addr, Remote)>),
     /// Set rate limit for the routes.
     SetRateLimits(BTreeMap<Denom, RateLimit>),
     /// Set withdrawal fees for the denoms.

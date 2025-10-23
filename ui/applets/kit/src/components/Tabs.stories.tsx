@@ -47,9 +47,5 @@ export const Default: Store = {
 };
 
 const Template: React.FC<TabsProps> = (args) => {
-  return (
-    <>
-      <Tabs {...args} />
-    </>
-  );
+  return <Tabs {...args} />;
 };

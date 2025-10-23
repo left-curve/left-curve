@@ -2,7 +2,7 @@ use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, fmt},
 };
 
 /// A shorthand for an owned KV pair.
@@ -60,6 +60,21 @@ impl<V> Op<V> {
 pub enum Order {
     Ascending = 1,
     Descending = 2,
+}
+
+impl Order {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Order::Ascending => "ascending",
+            Order::Descending => "descending",
+        }
+    }
+}
+
+impl fmt::Display for Order {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 // We need to convert Order into a primitive type such as `i32` so that it can
