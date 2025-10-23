@@ -80,7 +80,6 @@ const SearchTokenMenu: React.FC<SearchTokenProps> = ({ pairId, onChangePairId })
       </div>
       <SearchTokenTable>
         <SearchTokenTable.Spot
-          classNames={{ cell: "py-2" }}
           data={Object.values(config?.pairs || {}).filter((c) => !c.baseDenom.includes("dango"))}
           searchText={searchText.toUpperCase()}
           onChangePairId={onChangePairId}

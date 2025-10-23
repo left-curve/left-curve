@@ -9,13 +9,23 @@ import {
 import { tv } from "tailwind-variants";
 import { twMerge } from "@left-curve/foundation";
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { Skeleton } from "./Skeleton";
 
 import type React from "react";
-import type { ColumnDef, ColumnFiltersState, Row, Updater } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  Row,
+  SortingState,
+  Updater,
+  HeaderContext,
+  CellContext,
+} from "@tanstack/react-table";
 import type { VariantProps } from "tailwind-variants";
 export type TableColumn<T> = ColumnDef<T>[];
+export type TableHeaderContext<T> = HeaderContext<T, unknown>;
+export type TableCellContext<T> = CellContext<T, unknown>;
 export type { ColumnFiltersState };
 
 export type TableClassNames = {
@@ -31,6 +41,8 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   columns: TableColumn<T>;
   data: T[];
   columnFilters?: ColumnFiltersState;
+  initialSortState?: SortingState;
+  initialColumnVisibility?: Record<string, boolean>;
   onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
   onRowClick?: (row: Row<T>) => void;
   classNames?: TableClassNames;
@@ -51,14 +63,22 @@ export const Table = <T,>({
   onRowClick,
   isLoading = false,
   emptyComponent,
+  initialSortState = [],
+  initialColumnVisibility = {},
   skeletonType = "row",
 }: TableProps<T>) => {
+  const [sorting, onSortingChange] = useState<SortingState>(initialSortState);
+  const [columnVisibility, onColumnVisibilityChange] = useState(initialColumnVisibility);
+
   const table = useReactTable<T>({
     data,
     columns,
-    state: { columnFilters },
+    state: { columnFilters, sorting, columnVisibility },
     enableFilters: true,
+    enableSorting: true,
+    onSortingChange,
     onColumnFiltersChange,
+    onColumnVisibilityChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -68,7 +88,7 @@ export const Table = <T,>({
     style,
   });
 
-  const { rows } = table.getRowModel();
+  const { rows } = table.getSortedRowModel();
 
   const showemptyComponent = !isLoading && rows.length === 0 && emptyComponent;
   const showTableRows = !isLoading && rows.length > 0;
@@ -160,7 +180,7 @@ export const Table = <T,>({
 
 const tabsVariants = tv({
   slots: {
-    base: "grid rounded-xl w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
+    base: "grid rounded-xxs w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
     header: "whitespace-nowrap",
     cell: "",
     row: "",
@@ -170,15 +190,15 @@ const tabsVariants = tv({
       default: {
         base: "bg-surface-secondary-rice shadow-account-card px-4 pt-4 gap-4",
         header:
-          "p-4 last:text-end bg-surface-secondary-green text-ink-tertiary-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
+          "p-4 last:text-end bg-surface-secondary-green text-ink-tertiary-500 first:rounded-l-xxs diatype-xs-bold last:justify-end last:rounded-r-xxs text-start",
         cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end text-start",
         row: "border-b border-outline-secondary-gray last:border-b-0",
       },
       simple: {
         base: "text-ink-tertiary-500 border-separate gap-2",
         header: "p-2 text-ink-tertiary-500 diatype-xs-regular last:text-end text-start",
-        cell: "px-2 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-surface-tertiary-rice",
-        row: "rounded-xl group",
+        cell: "px-2 py-1 last:text-end diatype-xs-medium first:rounded-l-xxs last:rounded-r-xxs group-hover:bg-surface-tertiary-rice",
+        row: "rounded-xxs group",
       },
     },
   },
