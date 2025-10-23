@@ -95,7 +95,11 @@ impl Db for MemDb {
         StateCommitment { db: self.clone() }
     }
 
-    fn state_storage(&self, version: Option<u64>) -> DbResult<StateStorage> {
+    fn state_storage(
+        &self,
+        version: Option<u64>,
+        _source: Option<&'static str>,
+    ) -> DbResult<StateStorage> {
         Ok(StateStorage {
             db: self.clone(),
             version: version.unwrap_or_else(|| self.latest_version().unwrap_or(0)),

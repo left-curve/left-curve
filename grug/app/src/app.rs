@@ -120,7 +120,7 @@ where
         }
 
         let mut buffer = Shared::new(Buffer::new(
-            self.db.state_storage(None)?,
+            self.db.state_storage(None, Some("consensus"))?,
             None,
             "init_chain",
         ));
@@ -259,7 +259,7 @@ where
 
     #[inline]
     fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
-        let storage = self.db.state_storage(None)?;
+        let storage = self.db.state_storage(None, Some("consensus"))?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
         let querier = QuerierProviderImpl::new_boxed(
             self.vm.clone(),
@@ -295,7 +295,11 @@ where
         #[cfg(feature = "metrics")]
         let block_duration = std::time::Instant::now();
 
-        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None, "finalize"));
+        let mut buffer = Shared::new(Buffer::new(
+            self.db.state_storage(None, Some("consensus"))?,
+            None,
+            "finalize",
+        ));
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // Make sure the new block height is exactly the last finalized height
@@ -541,7 +545,9 @@ where
 
         if let Some(block_height) = self.db.latest_version() {
             let querier = {
-                let storage = self.db.state_storage(Some(block_height))?;
+                let storage = self
+                    .db
+                    .state_storage(Some(block_height), Some("consensus"))?;
                 let block = LAST_FINALIZED_BLOCK.load(&storage)?;
                 Arc::new(QuerierProviderImpl::new(
                     self.vm.clone(),
@@ -577,7 +583,11 @@ where
     //   tokens to cover the tx fee;
     // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<CheckTxOutcome> {
-        let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None, "check_tx"));
+        let buffer = Shared::new(Buffer::new(
+            self.db.state_storage(None, Some("check_tx"))?,
+            None,
+            "check_tx",
+        ));
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
         let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
@@ -655,7 +665,7 @@ where
         };
 
         // Use the state storage at the given version to perform the query.
-        let storage = self.db.state_storage(version)?;
+        let storage = self.db.state_storage(version, Some("query_app"))?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         process_query(
@@ -693,7 +703,10 @@ where
             None
         };
 
-        let value = self.db.state_storage(version)?.read(key);
+        let value = self
+            .db
+            .state_storage(version, Some("query_store"))?
+            .read(key);
 
         Ok((value, proof))
     }
@@ -704,7 +717,11 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<TxOutcome> {
-        let buffer = Buffer::new(self.db.state_storage(None)?, None, "simulate");
+        let buffer = Buffer::new(
+            self.db.state_storage(None, Some("simulate"))?,
+            None,
+            "simulate",
+        );
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // We can't "prove" a gas simulation

@@ -137,7 +137,11 @@ impl Db for DiskDb {
         }
     }
 
-    fn state_storage(&self, version: Option<u64>) -> DbResult<StateStorage> {
+    fn state_storage(
+        &self,
+        version: Option<u64>,
+        _source: Option<&'static str>,
+    ) -> DbResult<StateStorage> {
         // Read the latest version.
         // If it doesn't exist, this means not even a single batch has been
         // written yet (e.g. during `InitChain`). In this case just use zero.
@@ -821,7 +825,7 @@ mod tests {
             (1, "pumpkin", Some("cat")),
         ] {
             let found_value = db
-                .state_storage(Some(version))
+                .state_storage(Some(version), None)
                 .unwrap()
                 .read(key.as_bytes())
                 .map(|bz| String::from_utf8(bz).unwrap());
@@ -844,7 +848,7 @@ mod tests {
             ]),
         ] {
             for ((found_key, found_value), (key, value)) in db
-                .state_storage(Some(version))
+                .state_storage(Some(version), None)
                 .unwrap()
                 .scan(None, None, Order::Ascending)
                 .zip(items)
@@ -999,7 +1003,7 @@ mod tests {
         // Attempt access the state under versions 0..=2, should fail.
         for version in 0..=2 {
             // Request state storage. Should fail with `DbError::VersionTooOld`.
-            assert!(db.state_storage(Some(version)).is_err_and(|err| {
+            assert!(db.state_storage(Some(version), None).is_err_and(|err| {
                 err.to_string()
                     .contains("older than the oldest available version (3)")
             }));
@@ -1016,13 +1020,13 @@ mod tests {
         // Proof doesn't work for version 4 though, because the tree is empty.
         // We can't proof anything if the tree is empty...
         {
-            assert!(db.state_storage(Some(3)).is_ok());
+            assert!(db.state_storage(Some(3), None).is_ok());
             assert!(db.prove(b"a", Some(3)).is_ok());
         }
 
         // Doing the same under version 5 (newer than the latest version) should fail.
         {
-            assert!(db.state_storage(Some(5)).is_err_and(|err| {
+            assert!(db.state_storage(Some(5), None).is_err_and(|err| {
                 err.to_string()
                     .contains("newer than the latest version (4)")
             }));

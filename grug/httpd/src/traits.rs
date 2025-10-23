@@ -58,14 +58,14 @@ where
     }
 
     async fn chain_id(&self) -> AppResult<String> {
-        let storage = self.db.state_storage(None)?;
+        let storage = self.db.state_storage(None, Some("httpd"))?;
         let chain_id = CHAIN_ID.load(&storage)?;
 
         Ok(chain_id)
     }
 
     async fn last_finalized_block(&self) -> AppResult<BlockInfo> {
-        let storage = self.db.state_storage(None)?;
+        let storage = self.db.state_storage(None, Some("httpd"))?;
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         Ok(last_finalized_block)

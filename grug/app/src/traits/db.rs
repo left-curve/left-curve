@@ -48,7 +48,11 @@ pub trait Db {
     /// Return the state storage.
     ///
     /// Error if the specified version has already been pruned.
-    fn state_storage(&self, version: Option<u64>) -> Result<Self::StateStorage, Self::Error>;
+    fn state_storage(
+        &self,
+        version: Option<u64>,
+        source: Option<&'static str>,
+    ) -> Result<Self::StateStorage, Self::Error>;
 
     /// Return the most recent version that has been committed.
     ///
