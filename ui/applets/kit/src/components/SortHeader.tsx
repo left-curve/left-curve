@@ -1,37 +1,32 @@
-import { IconChevronDownFill, IconChevronUpDown, IconChevronUpFill } from "@left-curve/applets-kit";
-import type { Dir } from "../hooks/useTableSort";
+import {
+  IconChevronDownFill,
+  IconChevronUpDown,
+  IconChevronUpFill,
+  twMerge,
+} from "@left-curve/applets-kit";
 
-export type SortHeaderProps<K extends string> = {
+export type SortHeaderProps = {
   label: string;
-  sortField: K;
-  sortKey: K;
-  sortDir?: Dir;
-  onClick: (key: K) => void;
+  sorted: false | "asc" | "desc";
+  toggleSort: (desc?: boolean) => void;
   className?: string;
 };
 
-export const SortHeader: React.FC<SortHeaderProps<string>> = ({
-  sortField,
-  label,
-  sortKey,
-  sortDir,
-  onClick,
-  className,
-}) => {
-  const active = sortKey === sortField;
+export const SortHeader: React.FC<SortHeaderProps> = ({ label, sorted, toggleSort, className }) => {
+  const isActive = sorted !== false;
 
   return (
     <button
       type="button"
-      onClick={() => onClick(sortField)}
-      className={["flex items-center gap-1", className].filter(Boolean).join(" ")}
+      onClick={() => toggleSort(sorted === "asc")}
+      className={twMerge("flex items-center gap-1", className)}
     >
       <span>{label}</span>
-      {!active && <IconChevronUpDown className="w-3 h-3 text-ink-tertiary-500" />}
-      {active && sortDir === "asc" && (
+      {!isActive && <IconChevronUpDown className="w-3 h-3 text-ink-tertiary-500" />}
+      {isActive && sorted === "asc" && (
         <IconChevronUpFill className="w-3 h-3 text-ink-tertiary-500" />
       )}
-      {active && sortDir === "desc" && (
+      {isActive && sorted === "desc" && (
         <IconChevronDownFill className="w-3 h-3 text-ink-tertiary-500" />
       )}
     </button>

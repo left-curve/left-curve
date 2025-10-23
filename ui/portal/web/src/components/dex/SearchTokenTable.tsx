@@ -1,11 +1,10 @@
 import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
-import { useMemo, useCallback } from "react";
-import { Cell, SortHeader, Table, useApp, useTableSort } from "@left-curve/applets-kit";
+import { Cell, SortHeader, Table, useApp } from "@left-curve/applets-kit";
 
-import type { SortKeys, TableClassNames, TableColumn } from "@left-curve/applets-kit";
+import type { TableHeaderContext, TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { PairId, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
-import type { PropsWithChildren } from "react";
+import { useMemo, type PropsWithChildren } from "react";
 
 const SearchTokenTableContainer: React.FC<PropsWithChildren> = ({ children }) => <>{children}</>;
 
@@ -17,11 +16,9 @@ type SearchTokenTableProps = {
   onChangePairId: (pairId: PairId) => void;
 };
 
-type SortBy = "pairName" | "price" | "change24h" | "volume" | string;
-
 const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   classNames,
-  data,
+  data: pairs,
   searchText,
   onChangePairId,
 }) => {
@@ -29,45 +26,27 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   const { formatNumberOptions } = settings;
   const { coins } = useConfig();
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
-  const { hasFavPair } = useFavPairs();
+  const { favPairs } = useFavPairs();
 
-  const sortKeys = useMemo<SortKeys<PairUpdate, SortBy>>(
-    () => ({
-      pairName: (row) => {
-        const base = coins.byDenom[row.baseDenom]?.symbol ?? row.baseDenom;
-        const quote = coins.byDenom[row.quoteDenom]?.symbol ?? row.quoteDenom;
-        return `${base}-${quote}`.toUpperCase();
-      },
-      price: (row) => getPrice(1, row.baseDenom, { format: false }),
-      change24h: () => 0,
-      volume: () => 0,
-    }),
-    [coins.byDenom, getPrice],
-  );
-
-  const groupFavs = useCallback(
-    (row: PairUpdate) => hasFavPair({ baseDenom: row.baseDenom, quoteDenom: row.quoteDenom }),
-    [hasFavPair],
-  );
-
-  const { sortedData, sortKey, sortDir, toggleSortDir } = useTableSort<PairUpdate, SortBy>({
-    data,
-    sortKeys,
-    initialKey: "pairName",
-    initialDir: "asc",
-    groupFirst: groupFavs,
-  });
-
-  const sortState = {
-    sortKey,
-    sortDir,
-    onClick: toggleSortDir,
-  } as const;
+  const data = useMemo(() => [...pairs], [pairs, favPairs]);
 
   const columns: TableColumn<PairUpdate> = [
     {
+      id: "isFavorite",
+      accessorFn: (row) =>
+        favPairs.includes(
+          `${coins.byDenom[row.baseDenom].symbol}-${coins.byDenom[row.quoteDenom].symbol}`,
+        ),
+    },
+    {
       id: "pairName",
-      header: () => <SortHeader label="Name" sortField="pairName" {...sortState} />,
+      header: (ctx: TableHeaderContext<PairUpdate>) => (
+        <SortHeader
+          label="Name"
+          sorted={ctx.column.getIsSorted()}
+          toggleSort={ctx.column.toggleSorting}
+        />
+      ),
       cell: ({ row }) => {
         const pair = { baseDenom: row.original.baseDenom, quoteDenom: row.original.quoteDenom };
         return <Cell.PairNameWithFav type="Spot" pairId={pair} />;
@@ -77,37 +56,63 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
         const baseCoin = coins.byDenom[row.original.baseDenom];
         const quoteCoin = coins.byDenom[row.original.quoteDenom];
         return (
-          (baseCoin?.symbol ?? "").toUpperCase().includes(v) ||
-          (quoteCoin?.symbol ?? "").toUpperCase().includes(v)
+          baseCoin.symbol.toUpperCase().includes(v) || quoteCoin.symbol.toUpperCase().includes(v)
         );
+      },
+      accessorFn: (row) => {
+        const baseCoin = coins.byDenom[row.baseDenom];
+        const quoteCoin = coins.byDenom[row.quoteDenom];
+        return `${baseCoin.symbol}-${quoteCoin.symbol}`;
       },
     },
     {
       id: "price",
-      header: () => <SortHeader label="Price" sortField="price" {...sortState} />,
+      header: (ctx: TableHeaderContext<PairUpdate>) => (
+        <SortHeader
+          label="Price"
+          sorted={ctx.column.getIsSorted()}
+          toggleSort={ctx.column.toggleSorting}
+        />
+      ),
       cell: ({ row }) => <Cell.Text text={getPrice(1, row.original.baseDenom, { format: true })} />,
+      accessorFn: (row) => getPrice(1, row.baseDenom, { format: false }),
     },
     {
       id: "change24h",
-      header: () => <SortHeader label="24h Change" sortField="change24h" {...sortState} />,
+      header: (ctx: TableHeaderContext<PairUpdate>) => (
+        <SortHeader
+          label="24h Change"
+          sorted={ctx.column.getIsSorted()}
+          toggleSort={ctx.column.toggleSorting}
+        />
+      ),
       cell: () => <Cell.Text text="-" />,
     },
     {
       id: "volume",
-      header: () => <SortHeader label="Volume" sortField="volume" {...sortState} />,
+      header: (ctx: TableHeaderContext<PairUpdate>) => (
+        <SortHeader
+          label="Volume"
+          sorted={ctx.column.getIsSorted()}
+          toggleSort={ctx.column.toggleSorting}
+        />
+      ),
       cell: () => <Cell.Text text="-" />,
     },
   ];
 
-  const columnFilters = useMemo(() => [{ id: "pairName", value: searchText }], [searchText]);
-
   return (
     <Table
-      data={sortedData}
+      data={data}
       columns={columns}
       style="simple"
       classNames={classNames}
-      columnFilters={columnFilters}
+      initialSortState={[
+        { id: "isFavorite", desc: true },
+        { id: "pairName", desc: false },
+      ]}
+      initialColumnVisibility={{ isFavorite: false }}
+      columnFilters={[{ id: "pairName", value: searchText }]}
       onRowClick={(row) =>
         onChangePairId({
           baseDenom: row.original.baseDenom,

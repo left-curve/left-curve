@@ -9,13 +9,23 @@ import {
 import { tv } from "tailwind-variants";
 import { twMerge } from "@left-curve/foundation";
 
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { Skeleton } from "./Skeleton";
 
 import type React from "react";
-import type { ColumnDef, ColumnFiltersState, Row, Updater } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  Row,
+  SortingState,
+  Updater,
+  HeaderContext,
+  CellContext,
+} from "@tanstack/react-table";
 import type { VariantProps } from "tailwind-variants";
 export type TableColumn<T> = ColumnDef<T>[];
+export type TableHeaderContext<T> = HeaderContext<T, unknown>;
+export type TableCellContext<T> = CellContext<T, unknown>;
 export type { ColumnFiltersState };
 
 export type TableClassNames = {
@@ -31,6 +41,8 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   columns: TableColumn<T>;
   data: T[];
   columnFilters?: ColumnFiltersState;
+  initialSortState?: SortingState;
+  initialColumnVisibility?: Record<string, boolean>;
   onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
   onRowClick?: (row: Row<T>) => void;
   classNames?: TableClassNames;
@@ -51,14 +63,22 @@ export const Table = <T,>({
   onRowClick,
   isLoading = false,
   emptyComponent,
+  initialSortState = [],
+  initialColumnVisibility = {},
   skeletonType = "row",
 }: TableProps<T>) => {
+  const [sorting, onSortingChange] = useState<SortingState>(initialSortState);
+  const [columnVisibility, onColumnVisibilityChange] = useState(initialColumnVisibility);
+
   const table = useReactTable<T>({
     data,
     columns,
-    state: { columnFilters },
+    state: { columnFilters, sorting, columnVisibility },
     enableFilters: true,
+    enableSorting: true,
+    onSortingChange,
     onColumnFiltersChange,
+    onColumnVisibilityChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -68,7 +88,7 @@ export const Table = <T,>({
     style,
   });
 
-  const { rows } = table.getRowModel();
+  const { rows } = table.getSortedRowModel();
 
   const showemptyComponent = !isLoading && rows.length === 0 && emptyComponent;
   const showTableRows = !isLoading && rows.length > 0;

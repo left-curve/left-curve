@@ -350,7 +350,9 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
   const quoteCoin = coins.byDenom[quoteDenom];
   const { toggleFavPair, hasFavPair } = useFavPairs();
 
-  const isFav = hasFavPair(pairId);
+  const pairSymbols = `${baseCoin.symbol}-${quoteCoin.symbol}`;
+
+  const isFav = hasFavPair(pairSymbols);
 
   return (
     <div
@@ -363,7 +365,7 @@ const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, cla
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          toggleFavPair(pairId);
+          toggleFavPair(pairSymbols);
         }}
         className="focus:outline-none"
       >

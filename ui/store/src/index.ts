@@ -166,7 +166,7 @@ export {
 } from "./hooks/useActivities.js";
 
 export { useFavApplets } from "./hooks/useFavApplets.js";
-export { pairEquals, useFavPairs } from "./hooks/useFavPairs.js";
+export { useFavPairs } from "./hooks/useFavPairs.js";
 
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
