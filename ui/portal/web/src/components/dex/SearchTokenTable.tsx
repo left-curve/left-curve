@@ -67,7 +67,7 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   const columns: TableColumn<PairUpdate> = [
     {
       id: "pairName",
-      header: () => <SortHeader label="Name" key="pairName" {...sortState} />,
+      header: () => <SortHeader label="Name" sortField="pairName" {...sortState} />,
       cell: ({ row }) => {
         const pair = { baseDenom: row.original.baseDenom, quoteDenom: row.original.quoteDenom };
         return <Cell.PairNameWithFav type="Spot" pairId={pair} />;
@@ -84,17 +84,17 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
     },
     {
       id: "price",
-      header: () => <SortHeader label="Price" key="price" {...sortState} />,
+      header: () => <SortHeader label="Price" sortField="price" {...sortState} />,
       cell: ({ row }) => <Cell.Text text={getPrice(1, row.original.baseDenom, { format: true })} />,
     },
     {
       id: "change24h",
-      header: () => <SortHeader label="24h Change" key="change24h" {...sortState} />,
+      header: () => <SortHeader label="24h Change" sortField="change24h" {...sortState} />,
       cell: () => <Cell.Text text="-" />,
     },
     {
       id: "volume",
-      header: () => <SortHeader label="Volume" key="volume" {...sortState} />,
+      header: () => <SortHeader label="Volume" sortField="volume" {...sortState} />,
       cell: () => <Cell.Text text="-" />,
     },
   ];

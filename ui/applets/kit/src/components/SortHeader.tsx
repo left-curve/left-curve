@@ -3,7 +3,7 @@ import type { Dir } from "../hooks/useTableSort";
 
 export type SortHeaderProps<K extends string> = {
   label: string;
-  key: K;
+  sortField: K;
   sortKey: K;
   sortDir?: Dir;
   onClick: (key: K) => void;
@@ -11,19 +11,19 @@ export type SortHeaderProps<K extends string> = {
 };
 
 export const SortHeader: React.FC<SortHeaderProps<string>> = ({
-  key,
+  sortField,
   label,
   sortKey,
   sortDir,
   onClick,
   className,
 }) => {
-  const active = sortKey === key;
+  const active = sortKey === sortField;
 
   return (
     <button
       type="button"
-      onClick={() => onClick(key)}
+      onClick={() => onClick(sortField)}
       className={["flex items-center gap-1", className].filter(Boolean).join(" ")}
     >
       <span>{label}</span>
