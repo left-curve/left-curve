@@ -705,12 +705,12 @@
           "language=ja": "🇯🇵 Japanese • 日本語",
           "language=ko": "🇰🇷 Korean • 한국어",
           "language=pl": "🇵🇱 Polish • Polski",
-          "language=pt-pt": "🇵🇹 Portuguese • Português",
+          "language=pt-PT": "🇵🇹 Portuguese • Português",
           "language=ro": "🇷🇴 Romanian • Română",
           "language=ru": "🇷🇺 Russian • Русский",
           "language=tr": "🇹🇷 Turkish • Türkçe",
-          "language=zh-cn": "🇨🇳 Chinese (Simplified) • 中文（简体）",
-          "language=zh-tw": "🇹🇼 Chinese (Traditional) • 中文（繁體）"
+          "language=zh-CN": "🇨🇳 Chinese (Simplified) • 中文（简体）",
+          "language=zh-TW": "🇹🇼 Chinese (Traditional) • 中文（繁體）"
         }
       }
     ],

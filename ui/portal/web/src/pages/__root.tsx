@@ -13,6 +13,7 @@ import { NotFound } from "~/components/foundation/NotFound";
 
 import * as Sentry from "@sentry/react";
 import { Modals, Spinner, twMerge, useApp, useTheme } from "@left-curve/applets-kit";
+import { getLocale } from "@left-curve/foundation/paraglide/runtime.js";
 import { createPortal } from "react-dom";
 
 import type { RouterContext } from "~/app.router";
@@ -36,6 +37,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
+      document.documentElement.lang = getLocale();
       if (location.pathname === "/maintenance") navigate({ to: "/" });
       (async () => {
         try {

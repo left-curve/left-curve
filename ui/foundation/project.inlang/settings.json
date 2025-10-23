@@ -2,8 +2,8 @@
   "$schema": "https://inlang.com/schema/project-settings",
   "baseLocale": "en",
   "sourceLanguageTag": "en",
-  "languageTags": ["en", "zh-cn"],
-  "locales": ["en", "zh-cn"],
+  "languageTags": ["en", "zh-CN"],
+  "locales": ["en", "zh-CN"],
   "modules": [
     "https://cdn.jsdelivr.net/npm/@inlang/plugin-message-format@4/dist/index.js",
     "https://cdn.jsdelivr.net/npm/@inlang/plugin-m-function-matcher@2/dist/index.js",
