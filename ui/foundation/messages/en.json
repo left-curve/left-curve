@@ -198,10 +198,8 @@
       },
       "futureBlock": {
         "targetBlock": "Target Block",
-        "description": "The estimated time for a block to be created and added to the blockchain.",
-        "estimateTimeISO": "Estimated Time (ISO)",
-        "estimateTimeUTC": "Estimated Time (UTC)",
-        "hasNotBeenCreated": "Block {height} has not been created yet.",
+        "description": "This block has not been created yet",
+        "estimateTimeUTC": "Estimated Time",
         "remainingBlocks": "Remaining Blocks",
         "currentBlock": "Current Block"
       }

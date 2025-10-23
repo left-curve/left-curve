@@ -85,8 +85,8 @@
         "declarations": ["input days", "local countDays = days: plural"],
         "selectors": ["countDays"],
         "match": {
-          "countDays=one": "Day",
-          "countDays=other": "Days"
+          "countDays=one": "天",
+          "countDays=other": "天"
         }
       }
     ],
@@ -95,8 +95,8 @@
         "declarations": ["input hours", "local countHours = hours: plural"],
         "selectors": ["countHours"],
         "match": {
-          "countHours=one": "Hour",
-          "countHours=other": "Hours"
+          "countHours=one": "小时",
+          "countHours=other": "小时"
         }
       }
     ],
@@ -105,8 +105,8 @@
         "declarations": ["input minutes", "local countMinutes = minutes: plural"],
         "selectors": ["countMinutes"],
         "match": {
-          "countMinutes=one": "Minute",
-          "countMinutes=other": "Minutes"
+          "countMinutes=one": "分钟",
+          "countMinutes=other": "分钟"
         }
       }
     ],
@@ -115,8 +115,8 @@
         "declarations": ["input seconds", "local countSeconds = seconds: plural"],
         "selectors": ["countSeconds"],
         "match": {
-          "countSeconds=one": "Second",
-          "countSeconds=other": "Seconds"
+          "countSeconds=one": "秒",
+          "countSeconds=other": "秒"
         }
       }
     ]
@@ -198,10 +198,8 @@
       },
       "futureBlock": {
         "targetBlock": "目标区块",
-        "description": "预期将会创建这一区块的时间：",
-        "estimateTimeISO": "预计时间（ISO）",
-        "estimateTimeUTC": "预计时间（UTC）",
-        "hasNotBeenCreated": "区块{height}还不存在呢",
+        "description": "这一区块尚不存在。",
+        "estimateTimeUTC": "预计目标区块将被创建的时间",
         "remainingBlocks": "剩余区块",
         "currentBlock": "当前区块"
       }
