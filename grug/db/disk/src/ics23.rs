@@ -17,7 +17,7 @@ impl IbcDb for DiskDb {
         version: Option<u64>,
     ) -> Result<CommitmentProof, Self::Error> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        let state_storage = self.state_storage(Some(version), None)?;
+        let state_storage = self.state_storage(Some(version))?;
         let state_commitment = self.state_commitment();
 
         let generate_existence_proof = |key: Vec<u8>, value| -> DbResult<_> {

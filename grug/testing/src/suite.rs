@@ -156,7 +156,7 @@ where
         };
 
         let state_storage = db
-            .state_storage(previous_block_height, None)
+            .state_storage(previous_block_height)
             .unwrap_or_else(|err| {
                 panic!(
                     "Fatal error while getting the state storage: {}",
@@ -642,7 +642,7 @@ where
     where
         <DB as grug_app::Db>::Error: std::fmt::Debug,
     {
-        let storage = self.app.db.state_storage(None, None).unwrap();
+        let storage = self.app.db.state_storage(None).unwrap();
         StorageProvider::new(Box::new(storage), &[grug_app::CONTRACT_NAMESPACE, &address])
     }
 }

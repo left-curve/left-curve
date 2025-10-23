@@ -120,7 +120,7 @@ where
         }
 
         let mut buffer = Shared::new(Buffer::new(
-            self.db.state_storage(None, Some("consensus"))?,
+            self.db.state_storage_with_comment(None, "consensus")?,
             None,
             "init_chain",
         ));
@@ -259,7 +259,7 @@ where
 
     #[inline]
     fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
-        let storage = self.db.state_storage(None, Some("consensus"))?;
+        let storage = self.db.state_storage_with_comment(None, "consensus")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
         let querier = QuerierProviderImpl::new_boxed(
             self.vm.clone(),
@@ -296,7 +296,7 @@ where
         let block_duration = std::time::Instant::now();
 
         let mut buffer = Shared::new(Buffer::new(
-            self.db.state_storage(None, Some("consensus"))?,
+            self.db.state_storage_with_comment(None, "consensus")?,
             None,
             "finalize",
         ));
@@ -547,8 +547,9 @@ where
             let querier = {
                 let storage = self
                     .db
-                    .state_storage(Some(block_height), Some("consensus"))?;
+                    .state_storage_with_comment(Some(block_height), "consensus")?;
                 let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+
                 Arc::new(QuerierProviderImpl::new(
                     self.vm.clone(),
                     Box::new(storage),
@@ -584,7 +585,7 @@ where
     // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<CheckTxOutcome> {
         let buffer = Shared::new(Buffer::new(
-            self.db.state_storage(None, Some("check_tx"))?,
+            self.db.state_storage_with_comment(None, "check_tx")?,
             None,
             "check_tx",
         ));
@@ -665,7 +666,7 @@ where
         };
 
         // Use the state storage at the given version to perform the query.
-        let storage = self.db.state_storage(version, Some("query_app"))?;
+        let storage = self.db.state_storage_with_comment(version, "query_app")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         process_query(
@@ -705,7 +706,7 @@ where
 
         let value = self
             .db
-            .state_storage(version, Some("query_store"))?
+            .state_storage_with_comment(version, "query_store")?
             .read(key);
 
         Ok((value, proof))
@@ -718,7 +719,7 @@ where
         prove: bool,
     ) -> AppResult<TxOutcome> {
         let buffer = Buffer::new(
-            self.db.state_storage(None, Some("simulate"))?,
+            self.db.state_storage_with_comment(None, "simulate")?,
             None,
             "simulate",
         );

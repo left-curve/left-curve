@@ -272,7 +272,7 @@ impl StartCmd {
             dango_context,
         );
 
-        hooked_indexer.start(&app.db.state_storage(None, Some("dango_hooked_indexer"))?)?;
+        hooked_indexer.start(&app.db.state_storage_with_comment(None, "hooked_indexer")?)?;
 
         Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }

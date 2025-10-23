@@ -95,10 +95,10 @@ impl Db for MemDb {
         StateCommitment { db: self.clone() }
     }
 
-    fn state_storage(
+    fn state_storage_with_comment(
         &self,
         version: Option<u64>,
-        _source: Option<&'static str>,
+        _comment: &'static str,
     ) -> DbResult<StateStorage> {
         Ok(StateStorage {
             db: self.clone(),

@@ -140,10 +140,10 @@ impl Db for DiskDbLite {
         unimplemented!("`DiskDbLite` does not support state commitment");
     }
 
-    fn state_storage(
+    fn state_storage_with_comment(
         &self,
         version: Option<u64>,
-        source: Option<&'static str>,
+        comment: &'static str,
     ) -> DbResult<Self::StateStorage> {
         // If a version is specified, it must equal the latest version.
         if let Some(requested) = version {
@@ -156,7 +156,7 @@ impl Db for DiskDbLite {
         Ok(StateStorage {
             inner: Arc::clone(&self.inner),
             cf_name: CF_NAME_DEFAULT,
-            _source: source.unwrap_or("undefined"),
+            comment,
         })
     }
 
@@ -317,7 +317,8 @@ impl Db for DiskDbLite {
 pub struct StateStorage {
     inner: Arc<DiskDbLiteInner>,
     cf_name: &'static str,
-    _source: &'static str,
+    #[cfg_attr(not(feature = "metrics"), allow(dead_code))]
+    comment: &'static str,
 }
 
 impl StateStorage {
@@ -352,7 +353,7 @@ impl StateStorage {
         #[cfg(feature = "metrics")]
         let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [
             ("operation", "next_priority"),
-            ("source", self._source),
+            ("comment", self.comment),
         ]);
 
         Box::new(iter)
@@ -384,7 +385,7 @@ impl StateStorage {
         #[cfg(feature = "metrics")]
         let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [
             ("operation", "next"),
-            ("source", self._source),
+            ("comment", self.comment),
         ]);
 
         Box::new(iter)
@@ -420,7 +421,7 @@ impl Storage for StateStorage {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "read", "source" => self._source)
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "read", "comment" => self.comment)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -440,7 +441,7 @@ impl Storage for StateStorage {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan", "source" => self._source)
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan", "comment" => self.comment)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -460,7 +461,7 @@ impl Storage for StateStorage {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_keys", "source" => self._source)
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_keys", "comment" => self.comment)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -480,7 +481,7 @@ impl Storage for StateStorage {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_values", "source" => self._source)
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_values", "comment" => self.comment)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -598,7 +599,7 @@ mod tests {
                 ("larry", Some("engineer")),
             ] {
                 let found_value = db
-                    .state_storage(Some(version), None)
+                    .state_storage(Some(version))
                     .unwrap()
                     .read(k.as_bytes())
                     .map(|v| String::from_utf8(v).unwrap());
@@ -625,7 +626,7 @@ mod tests {
                 ("pumpkin", Some("cat")),
             ] {
                 let found_value = db
-                    .state_storage(Some(version), None)
+                    .state_storage(Some(version))
                     .unwrap()
                     .read(k.as_bytes())
                     .map(|v| String::from_utf8(v).unwrap());

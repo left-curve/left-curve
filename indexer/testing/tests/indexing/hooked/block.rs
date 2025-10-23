@@ -136,13 +136,7 @@ async fn parse_previous_block_after_restart() {
     suite
         .app
         .indexer
-        .start(
-            &suite
-                .app
-                .db
-                .state_storage(None, None)
-                .expect("Can't get storage"),
-        )
+        .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
         .expect("Can't start indexer");
 
     tracing::warn!("Start indexer");
@@ -254,13 +248,7 @@ async fn no_sql_index_error_after_restart() {
     suite
         .app
         .indexer
-        .start(
-            &suite
-                .app
-                .db
-                .state_storage(None, None)
-                .expect("Can't get storage"),
-        )
+        .start(&suite.app.db.state_storage(None).expect("Can't get storage"))
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is still indexed

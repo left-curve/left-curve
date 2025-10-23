@@ -82,11 +82,11 @@ fn main() -> anyhow::Result<()> {
     let cwd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
 
     let db1 = DiskDbLite::open::<_, Vec<u8>>(cwd.join("data_ovh1"), None)?;
-    let storage1 = db1.state_storage(None, None)?;
+    let storage1 = db1.state_storage(None)?;
     let iter1 = storage1.scan(None, None, Order::Ascending);
 
     let db2 = DiskDbLite::open::<_, Vec<u8>>(cwd.join("data_ovh2"), None)?;
-    let storage2 = db2.state_storage(None, None)?;
+    let storage2 = db2.state_storage(None)?;
     let iter2 = storage2.scan(None, None, Order::Ascending);
 
     find_diffs(iter1, iter2);

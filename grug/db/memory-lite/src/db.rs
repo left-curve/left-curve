@@ -139,10 +139,10 @@ impl Db for MemDbLite {
         unimplemented!("`MemDbLite` does not support state commitment");
     }
 
-    fn state_storage(
+    fn state_storage_with_comment(
         &self,
         version: Option<u64>,
-        _source: Option<&'static str>,
+        _comment: &'static str,
     ) -> DbResult<StateStorage> {
         if let Some(requested) = version {
             let db_version = self.latest_version().unwrap_or(0);
