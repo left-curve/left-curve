@@ -263,7 +263,10 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
         fullWidth
         onTabChange={(tab) => setOperation(tab as "market" | "limit")}
         color="line-red"
-      />
+      >
+        <Tab title="market">{m["dex.protrade.orderType"]({ orderType: "market" })}</Tab>
+        <Tab title="limit">{m["dex.protrade.orderType"]({ orderType: "limit" })}</Tab>
+      </Tabs>
       <div className="flex items-center justify-between gap-2">
         <p className="diatype-xs-medium text-ink-tertiary-500">Current Position</p>
         <p className="diatype-xs-bold text-ink-secondary-700">123.00 ETH</p>
@@ -351,7 +354,10 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
           color="line-red"
           classNames={{ button: "exposure-xs-italic" }}
           isDisabled={submission.isPending}
-        />
+        >
+          <Tab title="market">{m["dex.protrade.orderType"]({ orderType: "market" })}</Tab>
+          <Tab title="limit">{m["dex.protrade.orderType"]({ orderType: "limit" })}</Tab>
+        </Tabs>
       </div>
       <div className="w-full flex items-center justify-between px-4 gap-2">
         <IconButton
