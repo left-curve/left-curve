@@ -796,6 +796,15 @@
       "graph": "Graph",
       "trades": "Trades",
       "orderBook": "Order Book",
+      "marketType": [
+        {
+          "declarations": ["input marketType"],
+          "selectors": ["marketType"],
+          "match": {
+            "marketType=spot": "Spot"
+          }
+        }
+      ],
       "orderType": [
         {
           "declarations": ["input orderType"],
