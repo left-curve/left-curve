@@ -181,6 +181,7 @@ where
         owner,
     )?;
 
+    // Instantiate the bitcoin bridge contract.
     let bitcoin = instantiate(
         &mut msgs,
         bitcoin_code_hash,
