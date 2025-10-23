@@ -73,7 +73,7 @@ const StepInputEmail: React.FC<StepInputEmailProps> = ({ disableSignup, setEmail
         placeholder={
           <span>
             {m["auth.enterYou"]()}{" "}
-            <span className="exposure-m-italic text-ink-secondary-rice">email</span>
+            <span className="exposure-m-italic text-ink-secondary-rice">{m["auth.email"]()}</span>
           </span>
         }
       />

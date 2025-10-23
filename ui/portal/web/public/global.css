@@ -3,6 +3,14 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --cjk-font: "Noto Sans SC";
+  text-autospace: normal;
+  font-feature-settings: "halt";
+}
+
+:lang(zh), :lang(zh-CN), html[data-lang="zh"] { --cjk-font: "Noto Sans SC"; }
+
 @layer utilities {
 
   @media (min-height: 1000px) and (min-width: 1280px) {

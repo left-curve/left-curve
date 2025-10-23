@@ -8,6 +8,7 @@
     "preview": "rsbuild preview"
   },
   "dependencies": {
+    "@fontsource/noto-sans-jp": "^5.2.8",
     "@fullpage/react-fullpage": "^0.1.45",
     "@left-curve/applets-convert": "workspace:^",
     "@left-curve/applets-kit": "workspace:^",

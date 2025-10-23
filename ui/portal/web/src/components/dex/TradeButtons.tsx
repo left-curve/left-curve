@@ -53,7 +53,7 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
                       changeAction("buy");
                     }}
                   >
-                    {m["proSwap.buy"]()}
+                    {m["dex.protrade.buy"]()}
                   </Button>
                   <Button
                     className="h-[44px]"
@@ -63,7 +63,7 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
                       changeAction("sell");
                     }}
                   >
-                    {m["proSwap.sell"]()}
+                    {m["dex.protrade.sell"]()}
                   </Button>
                 </div>
               ) : (

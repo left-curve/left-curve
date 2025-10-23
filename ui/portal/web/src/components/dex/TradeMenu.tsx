@@ -11,6 +11,7 @@ import {
   IconUser,
   Input,
   Range,
+  Tab,
   Tabs,
   numberMask,
   twMerge,
@@ -258,11 +259,13 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
       <Tabs
         layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
         selectedTab={operation}
-        keys={["market", "limit"]}
         fullWidth
         onTabChange={(tab) => setOperation(tab as "market" | "limit")}
         color="line-red"
-      />
+      >
+        <Tab title="market">{m["dex.protrade.orderType"]({ orderType: "market" })}</Tab>
+        <Tab title="limit">{m["dex.protrade.orderType"]({ orderType: "limit" })}</Tab>
+      </Tabs>
       <div className="flex items-center justify-between gap-2">
         <p className="diatype-xs-medium text-ink-tertiary-500">Current Position</p>
         <p className="diatype-xs-bold text-ink-secondary-700">123.00 ETH</p>
@@ -344,13 +347,15 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
         <Tabs
           layoutId={!isLg ? "tabs-market-limit-mobile" : "tabs-market-limit"}
           selectedTab={operation}
-          keys={["market", "limit"]}
           fullWidth
           onTabChange={(tab) => setOperation(tab as "market" | "limit")}
           color="line-red"
           classNames={{ button: "exposure-xs-italic" }}
           isDisabled={submission.isPending}
-        />
+        >
+          <Tab title="market">{m["dex.protrade.orderType"]({ orderType: "market" })}</Tab>
+          <Tab title="limit">{m["dex.protrade.orderType"]({ orderType: "limit" })}</Tab>
+        </Tabs>
       </div>
       <div className="w-full flex items-center justify-between px-4 gap-2">
         <IconButton
@@ -365,13 +370,15 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
         <Tabs
           layoutId={!isLg ? "tabs-sell-and-buy-mobile" : "tabs-sell-and-buy"}
           selectedTab={action}
-          keys={["buy", "sell"]}
           fullWidth
           classNames={{ base: "h-[44px] lg:h-auto", button: "exposure-sm-italic" }}
           onTabChange={(tab) => changeAction(tab as "sell" | "buy")}
           color={action === "sell" ? "red" : "light-green"}
           isDisabled={submission.isPending}
-        />
+        >
+          <Tab title="sell">{m["dex.protrade.sell"]()}</Tab>
+          <Tab title="buy">{m["dex.protrade.buy"]()}</Tab>
+        </Tabs>
         <IconButton
           variant="utility"
           size="md"

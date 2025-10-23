@@ -6,20 +6,20 @@
     "send": "Send",
     "viewAll": "View All",
     "max": "Max",
-    "or": "or",
-    "submit": "Submit",
+    "or": "或",
+    "submit": "确认",
     "deposit": "Deposit",
     "withdraw": "Withdraw",
-    "signin": "Log In",
-    "signup": "Register",
+    "signin": "登录",
+    "signup": "注册",
     "dismiss": "Dismiss",
     "continue": "Continue",
-    "back": "Back",
+    "back": "返回",
     "cancel": "Cancel",
     "cancelAll": "Cancel All",
     "delete": "Delete",
     "available": "Available",
-    "username": "Username",
+    "username": "用户名",
     "accounts": "Accounts",
     "switch": "Switch",
     "hi": "Hi",
@@ -29,9 +29,9 @@
     "width": "width",
     "error": "Error",
     "confirm": "Confirm",
-    "default": "Default",
+    "default": "默认",
     "signinWithDesktop": "Connect Desktop Session",
-    "signinWithSession": "Log in with session key",
+    "signinWithSession": "创建会话密钥",
     "motto": "Dango–the one app for everything DeFi",
     "notWalletDetected": "No wallet detected",
     "overview": "Overview",
@@ -64,8 +64,8 @@
         "declarations": ["input action"],
         "selectors": ["action"],
         "match": {
-          "action=signin": "Log in with wallet",
-          "action=signup": "Register with wallet"
+          "action=signin": "使用钱包登陆",
+          "action=signup": "使用钱包注册"
         }
       }
     ],
@@ -74,8 +74,8 @@
         "declarations": ["input action"],
         "selectors": ["action"],
         "match": {
-          "action=signin": "Log in with Passkey",
-          "action=signup": "Register with Passkey"
+          "action=signin": "使用Passkey登陆",
+          "action=signup": "使用Passkey注册"
         }
       }
     ]
@@ -86,8 +86,8 @@
         "declarations": ["input days", "local countDays = days: plural"],
         "selectors": ["countDays"],
         "match": {
-          "countDays=one": "Day",
-          "countDays=other": "Days"
+          "countDays=one": "天",
+          "countDays=other": "天"
         }
       }
     ],
@@ -96,8 +96,8 @@
         "declarations": ["input hours", "local countHours = hours: plural"],
         "selectors": ["countHours"],
         "match": {
-          "countHours=one": "Hour",
-          "countHours=other": "Hours"
+          "countHours=one": "小时",
+          "countHours=other": "小时"
         }
       }
     ],
@@ -106,8 +106,8 @@
         "declarations": ["input minutes", "local countMinutes = minutes: plural"],
         "selectors": ["countMinutes"],
         "match": {
-          "countMinutes=one": "Minute",
-          "countMinutes=other": "Minutes"
+          "countMinutes=one": "分钟",
+          "countMinutes=other": "分钟"
         }
       }
     ],
@@ -116,8 +116,8 @@
         "declarations": ["input seconds", "local countSeconds = seconds: plural"],
         "selectors": ["countSeconds"],
         "match": {
-          "countSeconds=one": "Second",
-          "countSeconds=other": "Seconds"
+          "countSeconds=one": "秒",
+          "countSeconds=other": "秒"
         }
       }
     ]
@@ -126,56 +126,56 @@
     "trade": {
       "id": "trade",
       "img": "/images/emojis/simple/protrading.svg",
-      "title": "Trade",
-      "description": "Buy and sell with advanced tools",
+      "title": "交易",
+      "description": "使用先进工具交易加密货币",
       "path": "/trade",
       "keywords": "swap,dex,trade,pro,charts,data,trading"
     },
     "convert": {
       "id": "convert",
       "img": "/images/emojis/simple/swap.svg",
-      "title": "Convert",
-      "description": "The easiest way to trade at all sizes",
+      "title": "闪兑",
+      "description": "大小额交易轻松完成",
       "path": "/convert",
       "keywords": "swap,trade,convert,exchange"
     },
     "earn": {
       "id": "earn",
       "img": "/images/emojis/simple/pig.svg",
-      "title": "Earn",
-      "description": "Earn tokens by lending or providing liquidity",
+      "title": "理财",
+      "description": "通过借贷或提供流动性赚取代币",
       "path": "/earn",
       "keywords": "earn,staking,liquidity,lending"
     },
     "transfer": {
       "id": "transfer",
       "img": "/images/emojis/simple/money.svg",
-      "title": "Transfer",
-      "description": "Send and receive crypto",
+      "title": "转账",
+      "description": "发送或接收代币",
       "path": "/transfer",
       "keywords": "transfer,send,receive"
     },
     "create-account": {
       "id": "create-account",
       "img": "/images/emojis/simple/wizard.svg",
-      "title": "Open Subaccount",
-      "description": "Create subaccounts",
+      "title": "子账户",
+      "description": "开设子账户",
       "path": "/account/create",
       "keywords": "account,create,register"
     },
     "settings": {
       "id": "settings",
       "img": "/images/emojis/simple/settings.svg",
-      "title": "Settings",
-      "description": "Optimize your display, security, and more",
+      "title": "设定",
+      "description": "优化各种设定参数",
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
     "devtool": {
       "id": "devtool",
       "img": "/images/emojis/simple/factory-2.svg",
-      "title": "DevTool",
-      "description": "Access developer tools",
+      "title": "开发者工具",
+      "description": "小白慎入",
       "path": "/devtool",
       "keywords": "devtool,developer,tools"
     }
@@ -187,30 +187,30 @@
         "title": "Block not found",
         "description": "We couldn’t find the block you were looking for. If it’s a valid block, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
       },
-      "cronsOutcomes": "Cron Outcomes",
+      "cronsOutcomes": "定时任务结果",
       "details": {
-        "blockDetails": "Block {height}",
-        "blockHash": "Block Hash",
-        "blockHeight": "Block Height",
-        "blockTime": "Time",
+        "blockDetails": "区块 {height}",
+        "blockHash": "哈希",
+        "blockHeight": "区块高度",
+        "blockTime": "时间",
         "transactions": "Transactions",
-        "numberOfTx": "Number of Txs"
+        "numberOfTx": "交易数量"
       },
       "futureBlock": {
-        "targetBlock": "Target Block",
-        "description": "This block has not been created yet",
-        "estimateTimeUTC": "Estimated Time",
-        "remainingBlocks": "Remaining Blocks",
-        "currentBlock": "Current Block"
+        "targetBlock": "目标区块",
+        "description": "这一区块尚不存在。",
+        "estimateTimeUTC": "预计目标区块将被创建的时间",
+        "remainingBlocks": "剩余区块",
+        "currentBlock": "当前区块"
       }
     },
     "txs": {
       "title": "Transaction Explorer",
-      "txDetails": "Transaction Details",
+      "txDetails": "交易明细",
       "notFound": {
-        "pre": "We couldn’t find the transaction",
-        "title": "Transaction not found",
-        "description": ". If it’s a valid transaction, it may not have been confirmed onchain yet, so please try again later. If the issue persists, please contact us for further assistance."
+        "pre": "找不到这一交易：",
+        "title": "交易未找到",
+        "description": "。如果是有效的交易，可能尚未在链上确认，请稍后重试。如果问题持续存在，请联系我们以获取进一步协助。"
       },
       "result": [
         {
@@ -222,18 +222,18 @@
           }
         }
       ],
-      "messages": "Messages",
-      "events": "Events",
-      "txHash": "Tx hash",
-      "sender": "Sender",
-      "time": "Time",
-      "block": "Block",
-      "index": "Index",
-      "gasUsed": "Gas Used",
-      "gasWanted": "Gas Wanted",
-      "status": "Status",
-      "success": "Success",
-      "failed": "Failed"
+      "messages": "函数调用",
+      "events": "事件日志",
+      "txHash": "哈希",
+      "sender": "发起者",
+      "time": "时间",
+      "block": "区块",
+      "index": "序号",
+      "gasUsed": "Gas实际消耗量",
+      "gasWanted": "Gas限额",
+      "status": "状态",
+      "success": "成功",
+      "failed": "失败"
     },
     "contracts": {
       "title": "Contract Explorer",
@@ -243,11 +243,11 @@
         "description": " contract you were looking for. If it’s a valid contract, it may not have been deployed yet or it may be an account, so please try again later. If the issue persists, please contact us for further assistance."
       },
       "details": {
-        "contractDetails": "Contract Details",
-        "codeHash": "Code Hash",
+        "contractDetails": "合约明细",
+        "codeHash": "程序码哈希",
         "contractAddress": "Contract Address",
-        "admin": "Admin",
-        "balances": "Balances"
+        "admin": "管理员",
+        "balances": "持有代币"
       },
       "contractDescription": [
         {
@@ -307,9 +307,9 @@
       "getStarted": "Get Started!"
     },
     "renewSession": {
-      "title": "Session expired",
-      "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please log in again.",
-      "stayLogout": "Stay logged out"
+      "title": "回话已过期",
+      "description": "出于安全考虑，每次登陆回话会在关闭标签页或24小时后过期。请重新登陆。",
+      "stayLogout": "保持登出状态"
     },
     "protradeCloseAllOrders": {
       "title": "Close All Orders",
@@ -324,17 +324,17 @@
   },
   "signin": {
     "sentVerificationCode": "We've sent a verification code to ",
-    "usernamesFound": "Usernames found",
-    "connectWalletToContinue": "Connect your wallet to continue",
-    "chooseCredential": "Choose any of the usernames that have been associated with your credential.",
-    "noUsernamesFound": "No usernames found",
-    "noUsernameMessage": "We could not find any username associated with the credential you connected.",
+    "usernamesFound": "选择账户",
+    "connectWalletToContinue": "选择你想使用的钱包",
+    "chooseCredential": "找到了以下与你选择的登陆凭据有关联的账户：",
+    "noUsernamesFound": "找不到用户",
+    "noUsernameMessage": "找不到任何与这个登陆凭据相关联的账户",
     "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
-    "advancedOptions": "Advanced Options",
+    "advancedOptions": "高级选项",
     "continueWithoutSignin": "Continue without signing in",
     "qrInstructions": "Open {domain}, connect with your passkey or wallet and click the qr button in your account menu.",
-    "placeholder": "Enter your ",
-    "noAccount": "Don’t have an account?",
+    "placeholder": "输入你的",
+    "noAccount": "还没有账户？",
     "forgotUsername": "Forgot my username",
     "useAnotherAccount": "Use another account",
     "rememberUsername": {
@@ -354,46 +354,46 @@
   "welcome": {
     "title": "Welcome to Dango",
     "description": "We’re delighted to have you with us and look forward to seeing what you do next.",
-    "scroll": "Scroll to learn more",
-    "trade": "Trade",
-    "tradeText": "crypto assets, real world assets, and derivatives on Dango’s blazingly fast exchange.",
-    "tradeText2": "Enjoy deep liquidity, fast execution, and fair prices.",
-    "leverageUp": "Leverage up",
-    "leverageUpText": "with Dango’s unified trading account with low cost and high capital efficiency.",
-    "leverageUpText2": "Spot, perps, vaults; one account, under a unified margin system.",
-    "earn": "Earn",
-    "earnText": "passive yields on your idle assets, by participating in Dango’s passive market making vaults.",
-    "earnText2": "Make your money work for you!",
-    "join": "Join the ",
-    "community": "community",
-    "of": "of",
-    "dangbros": "Dangbros",
-    "privacyPolicy": "Privacy Policy",
-    "termsOfUse": "Terms of Use"
+    "scroll": "了解更多",
+    "trade": "交易",
+    "tradeText": "借助Dango超高效的基础设施，交易现货、合约、现实世界资产。",
+    "tradeText2": "体验深度流动性、高速撮合、公平价格。",
+    "leverageUp": "杠杆",
+    "leverageUpText": "借助「统一交易账户」，释放资本效率、部署多元策略。",
+    "leverageUpText2": "使用多种保证金进行现货杠杆或合约交易。",
+    "earn": "理财",
+    "earnText": "向「自动做市金库」提供流动性，赚取被动收入。",
+    "earnText2": "让你的资金为你创造价值！",
+    "join": "成为",
+    "community": "「Dangbro」",
+    "of": "社区",
+    "dangbros": "一员",
+    "privacyPolicy": "隐私政策",
+    "termsOfUse": "使用条款"
   },
   "auth": {
     "didntReceiveCode": "Didn't receive the code?",
-    "enterYou": "Enter your",
-    "email": "email",
-    "requetFromFaucet": "Request Funds from Faucet"
+    "enterYou": "输入",
+    "email": "电子邮件地址",
+    "requetFromFaucet": "领取测试网代币"
   },
   "signup": {
     "mobileModal": {
       "title": "Register Not Available!",
       "description": "Unfortunately, sign-up is not supported on mobile devices. Please use a desktop to complete your sign-up."
     },
-    "createAccount": "Create Account",
-    "doThisLater": "Do this later",
-    "alreadyHaveAccount": "Already have an account?",
+    "createAccount": "创建账户",
+    "doThisLater": "跳过，以后再做",
+    "alreadyHaveAccount": "已有账户？",
     "carousel": {
       "title": [
         {
           "declarations": ["input step"],
           "selectors": ["step"],
           "match": {
-            "step=0": "Trade",
-            "step=1": "Leverage up",
-            "step=2": "Earn"
+            "step=0": "交易",
+            "step=1": "杠杆",
+            "step=2": "理财"
           }
         }
       ],
@@ -402,9 +402,9 @@
           "declarations": ["input step"],
           "selectors": ["step"],
           "match": {
-            "step=0": "crypto assets, real world assets, and derivatives in Dango’s blazingly fast exchange. Enjoy deep liquidity, fast execution, and fair prices.",
-            "step=1": "with Dango’s unified trading account with low cost and high capital efficiency. Spot, perps, vaults, one account, under one unified margin system.",
-            "step=2": "passive yields on your idle assets by depositing in Dango’s vaults. Provide liquidity to facilitate trades, or participate in complex strategies operated by professional traders."
+            "step=0": "借助Dango超高效的基础设施，交易现货、合约、现实世界资产。体验深度流动性、高速撮合、公平价格。",
+            "step=1": "借助「统一交易账户」，释放资本效率、部署多元策略。使用多种保证金进行现货杠杆或合约交易。",
+            "step=2": "向「自动做市金库」提供流动性，赚取被动收入。让你的资金为你创造价值！"
           }
         }
       ]
@@ -415,10 +415,10 @@
           "declarations": ["input step"],
           "selectors": ["step"],
           "match": {
-            "step=0": "Credential",
-            "step=1": "Fund",
-            "step=2": "Username",
-            "step=3": "Log in"
+            "step=0": "凭据",
+            "step=1": "存款",
+            "step=2": "用户名",
+            "step=3": "登录"
           }
         }
       ],
@@ -427,9 +427,9 @@
           "declarations": ["input step"],
           "selectors": ["step"],
           "match": {
-            "step=0": "Create Your Account",
-            "step=1": "Fund Your Account",
-            "step=2": "Select a Username"
+            "step=0": "创建账户",
+            "step=1": "为账户充值",
+            "step=2": "选择用户名"
           }
         }
       ],
@@ -438,10 +438,10 @@
           "declarations": ["input step"],
           "selectors": ["step"],
           "match": {
-            "step=0": "Choose a log in credential. You can add or remove credentials afterwards.",
-            "step=1": "Click the button below to request funds from the faucet for this testnet",
-            "step=2": "Your username will be public on-chain and cannot be changed afterwards.",
-            "step=3": "Your user was created and now you can log in with your new account."
+            "step=0": "选择一个登陆凭据。之后随时可以增加或移除凭据。",
+            "step=1": "如果是主网，必须要先存入一定量的资金才可开设账户。如果是测试网，点击下面的按钮领取测试用代币。",
+            "step=2": "用户名选择后不可更改，而且是链上公开信息。不要包含隐私信息。",
+            "step=3": "账户创建成功，现在可以登录了。"
           }
         }
       ]
@@ -460,13 +460,13 @@
     "previous": "Previous"
   },
   "maintenance": {
-    "title": "Website Under Maintenance",
-    "description": "We are currently undergoing maintenance. We apologize for any inconvenience this may cause and appreciate your patience."
+    "title": "服务器维护中",
+    "description": "系统升级维护中。带来不便，敬请谅解。"
   },
   "notFound": {
-    "title": "Oops!",
-    "description": "We can’t find the page you were looking for...",
-    "goToHome": "Go to Homepage"
+    "title": "哎呦",
+    "description": "找不到这个页面",
+    "goToHome": "回到主页"
   },
   "accountCreation": {
     "accountCreated": "Account Created",
@@ -519,8 +519,8 @@
   "activities": {
     "title": "Activities",
     "noActivities": {
-      "title": "No activity yet",
-      "description": "When you trade, transfer tokens, or perform other activities, updates will appear here"
+      "title": "尚无历史活动",
+      "description": "交易、转账等历史活动将会显示在这里"
     },
     "activity": {
       "transfer": {
@@ -661,21 +661,21 @@
     }
   },
   "settings": {
-    "title": "Settings",
-    "display": "Display",
-    "language": "Language",
-    "theme": "Theme",
-    "chart": "Chart Engine",
+    "title": "设定",
+    "display": "显示",
+    "language": "语言",
+    "theme": "色彩主题",
+    "chart": "图表引擎",
     "session": {
-      "title": "Current Session",
-      "description": "For security reasons, each session is limited to 24 hours. Please log in again if your current session expires.",
-      "remaining": "Remaining time",
+      "title": "当前会话",
+      "description": "出于安全考虑，每次登录会话限制为24小时。如果您当前的会话过期，请重新登录。",
+      "remaining": "剩余时间",
       "network": {
-        "title": "Network",
+        "title": "网络状况",
         "chainId": "Chain ID",
-        "latestBlockHeight": "Latest Block Height",
-        "latestBlockTime": "Latest Block Time",
-        "endpoint": "Endpoint"
+        "latestBlockHeight": "最新区块高度",
+        "latestBlockTime": "最新区块时间",
+        "endpoint": "API端点"
       },
       "time": { "hours": "h", "minutes": "m", "seconds": "s" }
     },
@@ -694,44 +694,44 @@
         "declarations": ["input language"],
         "selectors": ["language"],
         "match": {
-          "language=en": "🇺🇸 English",
-          "language=es": "🇪🇸 Spanish • Español",
-          "language=it": "🇮🇹 Italian • Italiano",
-          "language=fr": "🇫🇷 French • Français",
-          "language=de": "🇩🇪 German • Deutsch",
-          "language=fa": "🇮🇷 Persian • فارسی",
-          "language=gu": "🇮🇳 Gujarati • ગુજરાતી",
-          "language=hi": "🇮🇳 Hindi • हिन्दी",
-          "language=ja": "🇯🇵 Japanese • 日本語",
-          "language=ko": "🇰🇷 Korean • 한국어",
-          "language=pl": "🇵🇱 Polish • Polski",
-          "language=pt-PT": "🇵🇹 Portuguese • Português",
-          "language=ro": "🇷🇴 Romanian • Română",
-          "language=ru": "🇷🇺 Russian • Русский",
-          "language=tr": "🇹🇷 Turkish • Türkçe",
-          "language=zh-CN": "🇨🇳 Chinese (Simplified) • 中文（简体）",
-          "language=zh-TW": "🇹🇼 Chinese (Traditional) • 中文（繁體）"
+          "language=en": "🇺🇸 英语 ∙ English",
+          "language=es": "🇪🇸 西班牙语 • Español",
+          "language=it": "🇮🇹 意大利语 • Italiano",
+          "language=fr": "🇫🇷 法语 • Français",
+          "language=de": "🇩🇪 德语 • Deutsch",
+          "language=fa": "🇮🇷 波斯语 • فارسی",
+          "language=gu": "🇮🇳 古吉拉特语 • ગુજરાતી",
+          "language=hi": "🇮🇳 印地语 • हिन्दी",
+          "language=ja": "🇯🇵 日语 • 日本語",
+          "language=ko": "🇰🇷 韩语 • 한국어",
+          "language=pl": "🇵🇱 波兰语 • Polski",
+          "language=pt-PT": "🇵🇹 葡萄牙语 • Português",
+          "language=ro": "🇷🇴 罗马尼亚语 • Română",
+          "language=ru": "🇷🇺 俄语 • Русский",
+          "language=tr": "🇹🇷 土耳其语 • Türkçe",
+          "language=zh-CN": "🇨🇳 中文（简体）",
+          "language=zh-TW": "🇹🇼 中文（繁体） • 中文（繁體）"
         }
       }
     ],
-    "number": "Number Format",
-    "time": "Time Format",
-    "date": "Date Format",
-    "timeZone": "Time Zone",
-    "connectToMobile": "Connect to Mobile",
+    "number": "数字格式",
+    "time": "时间格式",
+    "date": "日期格式",
+    "timeZone": "时区",
+    "connectToMobile": "连接到移动设备",
     "keyManagement": {
-      "title": "Key Management",
-      "description": "Add or remove keys associated with your user profile. You can log in to Dango with any of these keys.",
-      "add": "Add",
+      "title": "密钥管理",
+      "description": "添加或删除与你的账户关联的密钥。你可以使用这些密钥中的任何一个登录。",
+      "add": "添加",
       "management": {
         "add": {
-          "title": "Add new credential",
-          "description": "Choose a credential. You can add or remove credentials later."
+          "title": "添加新的密钥",
+          "description": "选择一个密钥。此后你可以添加或移除密钥。"
         },
         "delete": {
-          "title": "Delete credential",
-          "description": "Are you sure you want to delete this credential?",
-          "warning": "This action cannot be undone."
+          "title": "移除密钥",
+          "description": "确定要删除这个密钥吗？",
+          "warning": "此操作无法撤销。"
         }
       },
       "keyTypes": [
@@ -741,22 +741,22 @@
           "match": {
             "keyType=secp256r1": "Secp256r1",
             "keyType=secp256k1": "Secp256k1",
-            "keyType=ethereum": "Ethereum Wallet"
+            "keyType=ethereum": "以太坊钱包"
           }
         }
       ]
     }
   },
   "searchBar": {
-    "noResult": "No results found.",
+    "noResult": "没有找到任何结果",
     "placeholder": {
-      "title": "Search for",
-      "transactions": "transactions",
-      "apps": "apps",
-      "blocks": "blocks",
-      "accounts": "accounts",
-      "usernames": "usernames",
-      "tokens": "tokens"
+      "title": "搜索",
+      "transactions": "交易",
+      "apps": "应用",
+      "blocks": "区块",
+      "accounts": "账户",
+      "usernames": "用户名",
+      "tokens": "代币"
     }
   },
   "accountMenu": {
@@ -788,11 +788,11 @@
       }
     },
     "protrade": {
+      "buy": "Buy",
+      "sell": "Sell",
       "underDevelopment": "Feature in development",
       "allOrdersCancelled": "All orders cancelled",
       "orderFailed": "Order failed",
-      "buy": "Buy",
-      "sell": "Sell",
       "graph": "Graph",
       "trades": "Trades",
       "orderBook": "Order Book",
@@ -816,47 +816,47 @@
           }
         }
       ],
-      "spread": "Spread",
-      "openOrders": "Open Orders",
+      "spread": "价差",
+      "openOrders": "当前委托",
       "tradeHistory": {
-        "title": "Trade History",
-        "pair": "Pair",
-        "direction": "Direction",
-        "type": "Type",
-        "price": "Price",
-        "size": "Size ({symbol})",
-        "dateAndTime": "Date & Time"
+        "title": "历史成交",
+        "pair": "交易对",
+        "direction": "方向",
+        "type": "类型",
+        "price": "价格",
+        "size": "数量 ({symbol})",
+        "dateAndTime": "日期"
       },
       "history": {
         "id": "ID",
-        "pair": "Pair",
-        "price": "Price",
+        "pair": "交易对",
+        "price": "价格",
         "time": "Time",
-        "limitPrice": "Limit Price",
-        "remaining": "Remaining ({symbol})",
-        "type": "Type",
-        "total": "Total ({symbol})",
-        "size": "Size ({symbol})",
-        "direction": "Direction",
-        "dateAndTime": "Date & Time",
-        "noOpenOrders": "No open orders yet"
+        "limitPrice": "限价",
+        "remaining": "尚未完成量 ({symbol})",
+        "type": "类型",
+        "total": "累计 ({symbol})",
+        "size": "数量 ({symbol})",
+        "direction": "方向",
+        "dateAndTime": "日期",
+        "noOpenOrders": "尚无当前委托"
       },
       "spot": {
-        "24hChange": "24h Change",
-        "volume": "Volume",
-        "fees": "Fees",
-        "orderValue": "Order Value",
-        "orderSize": "Order Size",
-        "availableToTrade": "Available to trade",
-        "slippage": "Slippage",
-        "enableTrading": "Enable Trading",
+        "24hChange": "24小时涨跌",
+        "volume": "24小时成交量",
+        "fees": "预期交易费",
+        "orderValue": "订单价值",
+        "orderSize": "订单总量",
+        "availableToTrade": "可用余额",
+        "slippage": "预期滑点",
+        "enableTrading": "登录",
         "triggerAction": [
           {
             "declarations": ["input action"],
             "selectors": ["action"],
             "match": {
-              "action=buy": "Buy",
-              "action=sell": "Sell"
+              "action=buy": "买入",
+              "action=sell": "卖出"
             }
           }
         ],
@@ -870,12 +870,6 @@
             }
           }
         ]
-      },
-      "searchPairTable": {
-        "name": "Name",
-        "price": "Price",
-        "24hChange": "24h Change",
-        "volume": "Volume"
       }
     },
     "errors": {
