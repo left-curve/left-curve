@@ -11,6 +11,7 @@ import {
   IconUser,
   Input,
   Range,
+  Tab,
   Tabs,
   numberMask,
   twMerge,
@@ -365,13 +366,15 @@ const Menu: React.FC<TradeMenuProps> = ({ state, controllers, className }) => {
         <Tabs
           layoutId={!isLg ? "tabs-sell-and-buy-mobile" : "tabs-sell-and-buy"}
           selectedTab={action}
-          keys={["buy", "sell"]}
           fullWidth
           classNames={{ base: "h-[44px] lg:h-auto", button: "exposure-sm-italic" }}
           onTabChange={(tab) => changeAction(tab as "sell" | "buy")}
           color={action === "sell" ? "red" : "light-green"}
           isDisabled={submission.isPending}
-        />
+        >
+          <Tab title="sell">{m["dex.protrade.sell"]()}</Tab>
+          <Tab title="buy">{m["dex.protrade.buy"]()}</Tab>
+        </Tabs>
         <IconButton
           variant="utility"
           size="md"

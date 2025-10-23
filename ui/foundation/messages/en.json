@@ -735,21 +735,17 @@
         }
       },
       "keyTypes": [
-          {
-            "declarations": ["input keyType"],
-            "selectors": ["keyType"],
-            "match": {
-              "keyType=secp256r1": "Secp256r1",
-              "keyType=secp256k1": "Secp256k1",
-              "keyType=ethereum": "Ethereum Wallet"
-            }
+        {
+          "declarations": ["input keyType"],
+          "selectors": ["keyType"],
+          "match": {
+            "keyType=secp256r1": "Secp256r1",
+            "keyType=secp256k1": "Secp256k1",
+            "keyType=ethereum": "Ethereum Wallet"
           }
-        ]
+        }
+      ]
     }
-  },
-  "proSwap": {
-    "buy": "Buy",
-    "sell": "Sell"
   },
   "searchBar": {
     "noResult": "No results found.",
@@ -795,6 +791,8 @@
       "underDevelopment": "Feature in development",
       "allOrdersCancelled": "All orders cancelled",
       "orderFailed": "Order failed",
+      "buy": "Buy",
+      "sell": "Sell",
       "orderType": [
         {
           "declarations": ["input orderType"],

@@ -747,10 +747,6 @@
       ]
     }
   },
-  "proSwap": {
-    "buy": "Buy",
-    "sell": "Sell"
-  },
   "searchBar": {
     "noResult": "没有找到任何结果",
     "placeholder": {
@@ -792,6 +788,8 @@
       }
     },
     "protrade": {
+      "buy": "Buy",
+      "sell": "Sell",
       "underDevelopment": "Feature in development",
       "allOrdersCancelled": "All orders cancelled",
       "orderFailed": "Order failed",
