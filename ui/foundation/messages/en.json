@@ -126,7 +126,7 @@
       "id": "trade",
       "img": "/images/emojis/simple/protrading.svg",
       "title": "Trade",
-      "description": "Real-Time Charts, Data & Trading",
+      "description": "Buy and sell with advanced tools",
       "path": "/trade",
       "keywords": "swap,dex,trade,pro,charts,data,trading"
     },
@@ -134,7 +134,7 @@
       "id": "convert",
       "img": "/images/emojis/simple/swap.svg",
       "title": "Convert",
-      "description": "The easiest way to trade at all sizes.",
+      "description": "The easiest way to trade at all sizes",
       "path": "/convert",
       "keywords": "swap,trade,convert,exchange"
     },
@@ -150,7 +150,7 @@
       "id": "transfer",
       "img": "/images/emojis/simple/money.svg",
       "title": "Transfer",
-      "description": "Send and receive crypto.",
+      "description": "Send and receive crypto",
       "path": "/transfer",
       "keywords": "transfer,send,receive"
     },
@@ -158,7 +158,7 @@
       "id": "create-account",
       "img": "/images/emojis/simple/wizard.svg",
       "title": "Open Subaccount",
-      "description": "Create subaccounts.",
+      "description": "Create subaccounts",
       "path": "/account/create",
       "keywords": "account,create,register"
     },
@@ -166,7 +166,7 @@
       "id": "settings",
       "img": "/images/emojis/simple/settings.svg",
       "title": "Settings",
-      "description": "Optimize your display, security, and more.",
+      "description": "Optimize your display, security, and more",
       "path": "/settings",
       "keywords": "settings,preferences,options"
     },
@@ -174,7 +174,7 @@
       "id": "devtool",
       "img": "/images/emojis/simple/factory-2.svg",
       "title": "DevTool",
-      "description": "Access developer tools.",
+      "description": "Access developer tools",
       "path": "/devtool",
       "keywords": "devtool,developer,tools"
     }
@@ -198,7 +198,7 @@
       },
       "futureBlock": {
         "targetBlock": "Target Block",
-        "description": " The estimated time for a block to be created and added to the blockchain.",
+        "description": "The estimated time for a block to be created and added to the blockchain.",
         "estimateTimeISO": "Estimated Time (ISO)",
         "estimateTimeUTC": "Estimated Time (UTC)",
         "hasNotBeenCreated": "Block {height} has not been created yet.",
@@ -210,9 +210,9 @@
       "title": "Transaction Explorer",
       "txDetails": "Transaction Details",
       "notFound": {
-        "pre": "We couldn’t find",
+        "pre": "We couldn’t find the transaction",
         "title": "Transaction not found",
-        "description": "on DANGO. If it’s a valid transaction, it may not have been generated yet, so please try again later. If the issue persists, please contact us for further assistance."
+        "description": ". If it’s a valid transaction, it may not have been confirmed onchain yet, so please try again later. If the issue persists, please contact us for further assistance."
       },
       "result": [
         {
@@ -328,7 +328,7 @@
     "sentVerificationCode": "We've sent a verification code to ",
     "usernamesFound": "Usernames found",
     "connectWalletToContinue": "Connect your wallet to continue",
-    "chooseCredential": "Choose any of the credentials that have been associated with your username.",
+    "chooseCredential": "Choose any of the usernames that have been associated with your credential.",
     "noUsernamesFound": "No usernames found",
     "noUsernameMessage": "We could not find any username associated with the credential you connected.",
     "authorizeInDesktop": "Please authorize this mobile device from your desktop app",
@@ -466,8 +466,8 @@
     "description": "We are currently undergoing maintenance. We apologize for any inconvenience this may cause and appreciate your patience."
   },
   "notFound": {
-    "title": "Page not found!",
-    "description": "Sorry! We couldn’t find what you were looking for...",
+    "title": "Oops!",
+    "description": "We can’t find the page you were looking for...",
     "goToHome": "Go to Homepage"
   },
   "accountCreation": {
@@ -696,7 +696,7 @@
         "declarations": ["input language"],
         "selectors": ["language"],
         "match": {
-          "language=en": "English",
+          "language=en": "🇺🇸 English",
           "language=es": "Spanish",
           "language=it": "Italian",
           "language=fr": "French",
@@ -711,7 +711,7 @@
           "language=ro": "Romanian",
           "language=ru": "Russian",
           "language=tr": "Turkish",
-          "language=zh-cn": "Chinese (Simplified)",
+          "language=zh-cn": "🇨🇳 Chinese (Simplified) • 中文 (简体)",
           "language=zh-hk": "Chinese (Traditional)",
           "language=zh-tw": "Chinese (Taiwan)"
         }
