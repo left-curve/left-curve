@@ -1,9 +1,7 @@
-import {
-  IconChevronDownFill,
-  IconChevronUpDown,
-  IconChevronUpFill,
-  twMerge,
-} from "@left-curve/applets-kit";
+import { twMerge } from "@left-curve/foundation";
+import { IconChevronUpDown } from "./icons/IconChevronUpDown";
+import { IconChevronUpFill } from "./icons/IconChevronUpFill";
+import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
 export type SortHeaderProps = {
   label: string;
