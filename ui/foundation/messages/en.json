@@ -733,7 +733,18 @@
           "description": "Are you sure you want to delete this credential?",
           "warning": "This action cannot be undone."
         }
-      }
+      },
+      "keyTypes": [
+          {
+            "declarations": ["input keyType"],
+            "selectors": ["keyType"],
+            "match": {
+              "keyType=secp256r1": "Secp256r1",
+              "keyType=secp256k1": "Secp256k1",
+              "keyType=ethereum": "Ethereum Wallet"
+            }
+          }
+        ]
     }
   },
   "proSwap": {

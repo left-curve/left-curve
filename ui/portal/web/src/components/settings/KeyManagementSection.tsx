@@ -20,12 +20,6 @@ import type React from "react";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-const KeyTranslation = {
-  secp256r1: "Passkey",
-  secp256k1: "Wallet",
-  ethereum: "Ethereum Wallet",
-};
-
 export const KeyManagementSection: React.FC = () => {
   const { status, username, keyHash: currentKeyHash } = useAccount();
   const { data: signingClient } = useSigningClient();
@@ -79,7 +73,7 @@ export const KeyManagementSection: React.FC = () => {
                   </div>
 
                   <p className="text-ink-tertiary-500 diatype-sm-medium">
-                    {KeyTranslation[key.keyType.toLowerCase() as keyof typeof KeyTranslation]}
+                    {m["settings.keyManagement.keyTypes"]({ keyType: key.keyType.toLowerCase() })}
                   </p>
                   <p className="text-ink-tertiary-500 diatype-sm-medium">
                     {formatDate(key.createdAt, `${dateFormat} ${timeFormat}`, { timeZone: settings.timeZone })}
