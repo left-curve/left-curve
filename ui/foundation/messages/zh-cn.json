@@ -6,8 +6,8 @@
     "send": "Send",
     "viewAll": "View All",
     "max": "Max",
-    "or": "or",
-    "submit": "Submit",
+    "or": "或",
+    "submit": "确认",
     "deposit": "Deposit",
     "withdraw": "Withdraw",
     "signin": "登录",
@@ -306,9 +306,9 @@
       "getStarted": "Get Started!"
     },
     "renewSession": {
-      "title": "Session expired",
-      "description": "For your security, each login session expires if you close the tab, move to a different tab, or after 24 hours. Please log in again.",
-      "stayLogout": "Stay logged out"
+      "title": "回话已过期",
+      "description": "出于安全考虑，每次登陆回话会在关闭标签页或24小时后过期。请重新登陆。",
+      "stayLogout": "保持登出状态"
     },
     "protradeCloseAllOrders": {
       "title": "Close All Orders",
@@ -336,7 +336,6 @@
     "noAccount": "还没有账户？",
     "forgotUsername": "Forgot my username",
     "useAnotherAccount": "Use another account",
-    "connectWallet": "使用钱包注册或登录",
     "rememberUsername": {
       "lastLogin": "Last login: {time}"
     },
@@ -358,9 +357,9 @@
     "trade": "交易",
     "tradeText": "借助Dango超高效的基础设施，交易现货、合约、现实世界资产。",
     "tradeText2": "体验深度流动性、高速撮合、公平价格。",
-    "leverageUp": "上杠杆",
+    "leverageUp": "杠杆",
     "leverageUpText": "借助「统一交易账户」，释放资本效率、部署多元策略。",
-    "leverageUpText2": "一个账户、一个保证金系统，涵盖现货、合约、挖矿仓位。",
+    "leverageUpText2": "使用多种保证金进行现货杠杆或合约交易。",
     "earn": "理财",
     "earnText": "向「自动做市金库」提供流动性，赚取被动收入。",
     "earnText2": "让你的资金为你创造价值！",
@@ -373,7 +372,8 @@
   },
   "auth": {
     "didntReceiveCode": "Didn't receive the code?",
-    "enterYou": "Enter your",
+    "enterYou": "输入",
+    "email": "电子邮件地址",
     "requetFromFaucet": "领取测试网代币"
   },
   "signup": {
@@ -390,9 +390,9 @@
           "declarations": ["input step"],
           "selectors": ["step"],
           "match": {
-            "step=0": "Trade",
-            "step=1": "Leverage up",
-            "step=2": "Earn"
+            "step=0": "交易",
+            "step=1": "杠杆",
+            "step=2": "理财"
           }
         }
       ],
@@ -401,9 +401,9 @@
           "declarations": ["input step"],
           "selectors": ["step"],
           "match": {
-            "step=0": "crypto assets, real world assets, and derivatives in Dango’s blazingly fast exchange. Enjoy deep liquidity, fast execution, and fair prices.",
-            "step=1": "with Dango’s unified trading account with low cost and high capital efficiency. Spot, perps, vaults, one account, under one unified margin system.",
-            "step=2": "passive yields on your idle assets by depositing in Dango’s vaults. Provide liquidity to facilitate trades, or participate in complex strategies operated by professional traders."
+            "step=0": "借助Dango超高效的基础设施，交易现货、合约、现实世界资产。体验深度流动性、高速撮合、公平价格。",
+            "step=1": "借助「统一交易账户」，释放资本效率、部署多元策略。使用多种保证金进行现货杠杆或合约交易。",
+            "step=2": "向「自动做市金库」提供流动性，赚取被动收入。让你的资金为你创造价值！"
           }
         }
       ]
@@ -814,8 +814,8 @@
         "limitPrice": "限价",
         "remaining": "尚未完成量 ({symbol})",
         "type": "类型",
-        "total": "Total ({symbol})",
-        "size": "总量 ({symbol})",
+        "total": "累计 ({symbol})",
+        "size": "数量 ({symbol})",
         "direction": "方向",
         "dateAndTime": "日期",
         "noOpenOrders": "尚无当前委托"

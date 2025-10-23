@@ -336,7 +336,6 @@
     "noAccount": "Don’t have an account?",
     "forgotUsername": "Forgot my username",
     "useAnotherAccount": "Use another account",
-    "connectWallet": "Connect wallet",
     "rememberUsername": {
       "lastLogin": "Last login: {time}"
     },
@@ -374,6 +373,7 @@
   "auth": {
     "didntReceiveCode": "Didn't receive the code?",
     "enterYou": "Enter your",
+    "email": "email",
     "requetFromFaucet": "Request Funds from Faucet"
   },
   "signup": {
