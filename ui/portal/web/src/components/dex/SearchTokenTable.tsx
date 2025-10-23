@@ -6,6 +6,8 @@ import type { PairId, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
 import { useMemo, type PropsWithChildren } from "react";
 
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+
 const SearchTokenTableContainer: React.FC<PropsWithChildren> = ({ children }) => <>{children}</>;
 
 type SearchTokenTableProps = {
@@ -42,7 +44,7 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
       id: "pairName",
       header: (ctx: TableHeaderContext<PairUpdate>) => (
         <SortHeader
-          label="Name"
+          label={m["dex.protrade.searchPairTable.name"]()}
           sorted={ctx.column.getIsSorted()}
           toggleSort={ctx.column.toggleSorting}
         />
@@ -69,7 +71,7 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
       id: "price",
       header: (ctx: TableHeaderContext<PairUpdate>) => (
         <SortHeader
-          label="Price"
+          label={m["dex.protrade.searchPairTable.price"]()}
           sorted={ctx.column.getIsSorted()}
           toggleSort={ctx.column.toggleSorting}
         />
@@ -81,7 +83,7 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
       id: "change24h",
       header: (ctx: TableHeaderContext<PairUpdate>) => (
         <SortHeader
-          label="24h Change"
+          label={m["dex.protrade.searchPairTable.24hChange"]()}
           sorted={ctx.column.getIsSorted()}
           toggleSort={ctx.column.toggleSorting}
         />
@@ -92,7 +94,7 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
       id: "volume",
       header: (ctx: TableHeaderContext<PairUpdate>) => (
         <SortHeader
-          label="Volume"
+          label={m["dex.protrade.searchPairTable.volume"]()}
           sorted={ctx.column.getIsSorted()}
           toggleSort={ctx.column.toggleSorting}
         />
