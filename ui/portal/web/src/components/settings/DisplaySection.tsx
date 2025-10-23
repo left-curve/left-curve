@@ -197,7 +197,7 @@ const ThemeSection: React.FC = () => {
         onTabChange={(value) => setThemeSchema(value as "system" | "light" | "dark")}
         classNames={{ base: "exposure-sm-italic" }}
       >
-        <Tab title="system">System</Tab>
+        <Tab title="system">{m["common.default"]()}</Tab>
         <Tab title="light">
           <IconSun className="w-6 h-6" />
         </Tab>
