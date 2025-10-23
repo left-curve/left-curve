@@ -1,6 +1,6 @@
 use {
-    super::{Addr32, Origin, RateLimit, Remote, bridge::TransferRemoteRequest},
-    grug::{Addr, Denom, Part, Uint128},
+    super::{Origin, RateLimit, Remote, bridge::TransferRemoteRequest},
+    grug::{Addr, Denom, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
 

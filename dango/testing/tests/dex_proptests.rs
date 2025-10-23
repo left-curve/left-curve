@@ -1026,7 +1026,7 @@ fn test_dex_actions(
                     remote: Remote::Warp(WarpRemote {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::USDC_WARP,
-                    },
+                    }),
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
@@ -1034,7 +1034,7 @@ fn test_dex_actions(
                     remote: Remote::Warp(WarpRemote {
                         domain: ethereum::DOMAIN,
                         contract: ethereum::WETH_WARP,
-                    },
+                    }),
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },
@@ -1042,7 +1042,7 @@ fn test_dex_actions(
                     remote: Remote::Warp(WarpRemote {
                         domain: solana::DOMAIN,
                         contract: solana::SOL_WARP,
-                    },
+                    }),
                     amount: Uint128::new(u128::MAX),
                     recipient: accounts.user1.address(),
                 },

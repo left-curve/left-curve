@@ -197,6 +197,7 @@ where
         },
         "dango/bitcoin",
         "dango/bitcoin",
+        owner,
     )?;
 
     // Instantiate the gateway contract.

@@ -2,7 +2,7 @@ use {
     dango_testing::{HyperlaneTestSuite, TestOption, TestSuite, setup_test},
     dango_types::{
         constants::{dango, usdc},
-        gateway::{self, Origin, RateLimit, Remote, WarpRemote},
+        gateway::{self, Origin, RateLimit, Remote, WarpRemote, bridge::TransferRemoteRequest},
     },
     grug::{
         Addr, BalanceChange, Coin, Coins, Duration, MathError, QuerierExt, ResultExt, Udec128,
@@ -372,6 +372,7 @@ fn native_denom() {
                     },
                     recipient: Addr::mock(124).into(),
                 }),
+                coins! { dango::DENOM.clone() => 100 },
             )
             .should_succeed();
     }

@@ -28,7 +28,7 @@ use {
         Uint128, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
-    grug_crypto::Identity256,
+    identity::Identity256,
     k256::ecdsa::{Signature, SigningKey, signature::DigestSigner},
     std::{str::FromStr, vec},
 };
@@ -892,6 +892,7 @@ fn cron_execute() {
     assert!(
         events[0]
             .1
+            .to_string()
             .contains("not enough UTXOs to cover the withdraw amount + fee")
     );
 }
