@@ -193,7 +193,6 @@
         "blockHeight": "区块高度",
         "blockTime": "时间",
         "transactions": "Transactions",
-        "proposer": "Proposer",
         "numberOfTx": "交易数量"
       },
       "futureBlock": {

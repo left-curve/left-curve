@@ -219,7 +219,7 @@ const BlockCronsOutcomes: React.FC = () => {
   return (
     <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
       <p className="h4-bold text-ink-primary-900">{m["explorer.block.cronsOutcomes"]()}</p>
-      <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md">
+      <div className="p-4 bg-primitives-gray-light-700 shadow-account-card rounded-md">
         <JsonVisualizer
           json={Array.isArray(cronOutcomes) ? cronOutcomes : [cronOutcomes]}
           collapsed={0}
@@ -257,21 +257,15 @@ const BlockDetails: React.FC = () => {
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
             <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
-              {m["explorer.block.details.proposer"]()}
+              {m["explorer.block.details.blockTime"]()}
             </p>
-            <p>Leftcurve Validator</p>
+            <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
             <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
               {m["explorer.block.details.numberOfTx"]()}
             </p>
             <p>{transactions.length}</p>
-          </div>
-          <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
-              {m["explorer.block.details.blockTime"]()}
-            </p>
-            <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
           </div>
         </div>
         <img

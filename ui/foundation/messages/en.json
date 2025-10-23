@@ -193,7 +193,6 @@
         "blockHeight": "Block Height",
         "blockTime": "Time",
         "transactions": "Transactions",
-        "proposer": "Proposer",
         "numberOfTx": "Number of Txs"
       },
       "futureBlock": {
