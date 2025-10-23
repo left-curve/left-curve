@@ -104,6 +104,7 @@ where
     ID: Indexer,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
+    #[tracing::instrument("init_chain", skip_all)]
     pub fn do_init_chain(
         &self,
         chain_id: String,
@@ -210,6 +211,7 @@ where
         Ok(root_hash.unwrap())
     }
 
+    #[tracing::instrument("prepare_proposal", skip_all)]
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
         #[cfg(feature = "tracing")]
         {
@@ -281,6 +283,7 @@ where
     // 4. remove orphaned nodes
     // 5. flush (but not commit) state changes to DB
     // 5. indexer `index_block`
+    #[tracing::instrument("finalize_block", skip_all)]
     pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
         #[cfg(feature = "tracing")]
         {
@@ -346,13 +349,7 @@ where
         }
 
         // Process transactions one-by-one.
-        #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
-        for (_idx, (tx, _)) in block.txs.clone().into_iter().enumerate() {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::info!(idx = _idx, "Processing transaction");
-            }
-
+        for (idx, (tx, _)) in block.txs.clone().into_iter().enumerate() {
             #[cfg(feature = "metrics")]
             let tx_duration = std::time::Instant::now();
 
@@ -363,6 +360,7 @@ where
                 tx.clone(),
                 AuthMode::Finalize,
                 TraceOption::LOUD,
+                idx,
             );
 
             #[cfg(feature = "metrics")]
@@ -523,6 +521,7 @@ where
         Ok(block_outcome)
     }
 
+    #[tracing::instrument("commit", skip_all)]
     pub fn do_commit(&self) -> AppResult<()> {
         #[cfg(feature = "tracing")]
         {
@@ -576,6 +575,7 @@ where
     // 1.`withhold_fee`, where the taxman makes sure the sender has sufficient
     //   tokens to cover the tx fee;
     // 2. `authenticate`, where the sender account authenticates the transaction.
+    #[tracing::instrument("check_tx", skip_all)]
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<CheckTxOutcome> {
         let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None, "check_tx"));
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
@@ -620,6 +620,7 @@ where
 
     // Returns (last_block_height, last_block_app_hash).
     // Note that we are returning the app hash, not the block hash.
+    #[tracing::instrument("info", skip_all)]
     pub fn do_info(&self) -> AppResult<(u64, Hash256)> {
         let Some(version) = self.db.latest_version() else {
             // The DB doesn't have a version yet. This is the case if the chain
@@ -639,6 +640,7 @@ where
         Ok((version, root_hash))
     }
 
+    #[tracing::instrument("query_app", skip_all)]
     pub fn do_query_app(&self, req: Query, height: u64, prove: bool) -> AppResult<QueryResponse> {
         if prove {
             // We can't do Merkle proof for smart queries. Only raw store query
@@ -673,6 +675,7 @@ where
     /// Returns:
     /// - the value corresponding to the given key; `None` if the key doesn't exist;
     /// - the Merkle proof; `None` if a proof is not requested (`prove` is false).
+    #[tracing::instrument("query_store", skip_all)]
     pub fn do_query_store(
         &self,
         key: &[u8],
@@ -698,6 +701,7 @@ where
         Ok((value, proof))
     }
 
+    #[tracing::instrument("simulate", skip_all)]
     pub fn do_simulate(
         &self,
         unsigned_tx: UnsignedTx,
@@ -737,6 +741,7 @@ where
             tx,
             AuthMode::Simulate,
             TraceOption::MUTE, // Mute tracing outputs during simulation.
+            0,
         ))
     }
 }
@@ -836,6 +841,7 @@ where
     }
 }
 
+#[tracing::instrument("process_tx", skip_all, fields(idx = _idx, sender = %tx.sender))]
 fn process_tx<S, VM>(
     vm: VM,
     storage: S,
@@ -843,6 +849,7 @@ fn process_tx<S, VM>(
     tx: Tx,
     mode: AuthMode,
     trace_opt: TraceOption,
+    _idx: usize,
 ) -> TxOutcome
 where
     S: Storage + Clone + 'static,
@@ -1026,9 +1033,9 @@ where
     #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
     for (_idx, msg) in tx.msgs.iter().enumerate() {
         #[cfg(feature = "tracing")]
-        {
-            tracing::info!(idx = _idx, "Processing message");
-        }
+        let span = tracing::info_span!("process_msg", idx = _idx);
+        #[cfg(feature = "tracing")]
+        let _guard = span.enter();
 
         catch_and_push_event! {
             process_msg(

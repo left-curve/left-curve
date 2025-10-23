@@ -8,6 +8,7 @@ use {
     grug_types::{AuthMode, BlockInfo, Context, EvtAuthenticate, Storage, Tx},
 };
 
+#[tracing::instrument("authenticate", skip_all)]
 pub fn do_authenticate<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
@@ -26,11 +27,7 @@ where
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            dyn_event!(
-                trace_opt.ok_level.into(),
-                sender = tx.sender.to_string(),
-                "Authenticated transaction"
-            );
+            dyn_event!(trace_opt.ok_level.into(), "✅");
         },
         "Failed to authenticate transaction",
         trace_opt.error_level.into(),

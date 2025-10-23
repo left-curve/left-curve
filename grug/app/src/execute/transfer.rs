@@ -12,6 +12,7 @@ use {
     },
 };
 
+#[tracing::instrument("transfer", skip_all, fields(from = %sender))]
 pub fn do_transfer<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
@@ -44,9 +45,8 @@ where
         |_| {
             dyn_event!(
                 trace_opt.ok_level.into(),
-                from = sender.to_string(),
                 transfers = ?msg,
-                "Transferred coins"
+                "✅"
             );
         },
         "Failed to transfer coins",

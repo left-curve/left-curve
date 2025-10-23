@@ -8,6 +8,7 @@ use {
     grug_types::{AuthMode, BlockInfo, Context, EvtBackrun, Storage, Tx},
 };
 
+#[tracing::instrument("backrun", skip_all)]
 pub fn do_backrun<VM>(
     vm: VM,
     storage: Box<dyn Storage>,

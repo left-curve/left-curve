@@ -8,6 +8,7 @@ use {
     grug_types::{AuthMode, BlockInfo, Context, EvtWithhold, Storage, Tx},
 };
 
+#[tracing::instrument("withhold_fee", skip_all)]
 pub fn do_withhold_fee<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
@@ -26,11 +27,7 @@ where
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            dyn_event!(
-                trace_opt.ok_level.into(),
-                sender = tx.sender.to_string(),
-                "Withheld fee"
-            );
+            dyn_event!(trace_opt.ok_level.into(), "✅");
         },
         "Failed to withhold fee",
         trace_opt.error_level.into(),

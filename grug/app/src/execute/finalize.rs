@@ -8,6 +8,7 @@ use {
     grug_types::{AuthMode, BlockInfo, Context, EvtFinalize, Storage, Tx, TxOutcome},
 };
 
+#[tracing::instrument("finalize_fee", skip_all)]
 pub fn do_finalize_fee<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
@@ -36,11 +37,7 @@ where
     #[cfg(feature = "tracing")]
     evt.debug(
         |_| {
-            dyn_event!(
-                trace_opt.ok_level.into(),
-                sender = tx.sender.to_string(),
-                "Finalized fee"
-            );
+            dyn_event!(trace_opt.ok_level.into(), "✅");
         },
         "Failed to finalize fee",
         trace_opt.error_level.into()

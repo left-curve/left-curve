@@ -97,7 +97,7 @@ impl<T> EventResult<T> {
                 ok_closure(val);
             },
             EventResult::Err { error, .. } | EventResult::NestedErr { error, .. } => {
-                dyn_event!(error_level, err = error.to_string(), error_msg);
+                dyn_event!(error_level, err = error.to_string());
             },
         }
     }

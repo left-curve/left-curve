@@ -82,8 +82,14 @@ where
         };
     }
 
-    for submsg in submsgs {
+    for (i, submsg) in submsgs.into_iter().enumerate() {
         let buffer = Shared::new(Buffer::new(storage.clone(), None, "submsg"));
+
+        #[cfg(feature = "tracing")]
+        let span = tracing::info_span!("process_submsg", idx = i);
+        #[cfg(feature = "tracing")]
+        let _guard = span.enter();
+
         let result = process_msg(
             vm.clone(),
             Box::new(buffer.clone()),

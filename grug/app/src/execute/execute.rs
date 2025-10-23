@@ -8,6 +8,7 @@ use {
     grug_types::{Addr, BlockInfo, Context, EvtExecute, MsgExecute, Storage, btree_map},
 };
 
+#[tracing::instrument("execute", skip_all, fields(contract = %msg.contract))]
 pub fn do_execute<VM>(
     vm: VM,
     storage: Box<dyn Storage>,
@@ -35,14 +36,10 @@ where
 
     #[cfg(feature = "tracing")]
     evt.debug(
-        |evt| {
-            dyn_event!(
-                trace_opt.ok_level.into(),
-                contract = evt.contract.to_string(),
-                "Executed contract"
-            );
+        |_evt| {
+            dyn_event!(trace_opt.ok_level.into(), "✅");
         },
-        "Failed to execute contract",
+        "❌",
         trace_opt.error_level.into(),
     );
 
