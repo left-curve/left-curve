@@ -82,7 +82,7 @@ export const KeyManagementSection: React.FC = () => {
                     {KeyTranslation[key.keyType.toLowerCase() as keyof typeof KeyTranslation]}
                   </p>
                   <p className="text-ink-tertiary-500 diatype-sm-medium">
-                    {formatDate(key.createdAt, `${dateFormat} ${timeFormat}`)}
+                    {formatDate(key.createdAt, `${dateFormat} ${timeFormat}`, { timeZone: settings.timeZone })}
                   </p>
                 </div>
                 <div className="flex gap-1">
