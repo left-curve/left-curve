@@ -132,7 +132,7 @@ impl PrimaryKey for bool {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         match self {
             false => vec![RawKey::Fixed8([0])],
             true => vec![RawKey::Fixed8([1])],
@@ -466,7 +466,7 @@ where
 
     const KEY_ELEMS: u8 = 1 + T::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         match self {
             Some(k) => {
                 let mut keys = true.raw_keys();
