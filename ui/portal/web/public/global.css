@@ -3,6 +3,10 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  text-autospace: normal;
+}
+
 @layer utilities {
 
   @media (min-height: 1000px) and (min-width: 1280px) {
