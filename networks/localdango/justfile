@@ -23,7 +23,7 @@ start-dango-release:
   cargo run --release --bin dango start --home ./configs/dango
 
 # Start the localnet
-start-inner profiles="":
+start-inner profiles="" files="":
   #!/usr/bin/env bash
   set -e
 
@@ -43,7 +43,7 @@ start-inner profiles="":
         ;;
     esac
 
-    docker compose --profile analytics --profile faucet --profile dango down --remove-orphans
+    docker compose {{files}} --profile analytics --profile faucet --profile dango down --remove-orphans
     exit $exit_code
   }
 
@@ -51,20 +51,20 @@ start-inner profiles="":
   trap 'cleanup SIGTERM' TERM
   trap 'cleanup' ERR
 
-  docker compose {{profiles}} up -d --wait
-  docker compose logs -f
+  docker compose {{files}} {{profiles}} up -d --wait
+  docker compose {{files}} logs -f
 
-start-src:
+start-without-dango:
       FAUCET_DANGO_ENDPOINT=http://host.docker.internal:8080 \
       DANGO_ABCI_ENDPOINT=tcp://host.docker.internal:26658 \
-      just start-inner "--profile analytics --profile faucet"
+      just start-inner "--profile analytics --profile faucet" "-f docker-compose.yml"
 
 start-dex-bot:
       DEX_BOT_DANGO_ENDPOINT=http://host.docker.internal:8080 \
       docker compose --profile dex-bot
 
 start:
-  just start-inner "--profile analytics --profile faucet --profile dango --profile dex-bot"
+  just start-inner "--profile analytics --profile faucet --profile dango --profile dex-bot" "-f docker-compose.yml -f docker-compose.dango.yml"
 
 # Stop the localnet
 stop:

@@ -107,11 +107,6 @@ services:
     profiles: ["dex-bot"]
     labels:
       <<: *common-labels
-    depends_on:
-      dango:
-        condition: service_healthy
-      cometbft:
-        condition: service_healthy
     environment:
       # NOTE: those are public and only used for development and testnets
       username: ${DEX_BOT_USERNAME}
@@ -140,11 +135,6 @@ services:
     profiles: ["dex-bot"]
     labels:
       <<: *common-labels
-    depends_on:
-      dango:
-        condition: service_healthy
-      dex-bot:
-        condition: service_started
     environment:
       address: ${DEX_BOT_ADDRESS}
       http_url: ${DEX_BOT_DANGO_ENDPOINT:-http://dango:8080}
