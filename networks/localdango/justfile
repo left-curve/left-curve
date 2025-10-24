@@ -75,7 +75,7 @@ logs:
 
 # Delete the generate data in order to restart a new localnet from scratch
 reset:
-  rm -rf ./configs/dango/data dango.log
+  rm -rf ./configs/dango/data
   rm -rf ./configs/dango/indexer
   docker compose down -v dango cometbft prometheus grafana alertmanager loki db clickhouse dex-bot faucet promtail push_gateway node-exporter
   docker volume rm -f localdango_prometheus_data localdango_grafana_data localdango_alertmanager_data localdango_loki_data localdango_db_data localdango_dango_data localdango_dango_indexer localdango_cometbft_data localdango_clickhouse_data localdango_clickhouse_logs
