@@ -10,8 +10,6 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-error-backtrace = { workspace = true }
-grug-app        = { workspace = true }
-grug-types      = { workspace = true }
-rocksdb         = { workspace = true }
-thiserror       = { workspace = true }
+grug-app   = { workspace = true }
+grug-types = { workspace = true }
+rocksdb    = { workspace = true }

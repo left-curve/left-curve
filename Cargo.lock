@@ -4812,11 +4812,9 @@ dependencies = [
 name = "grug-db-disk-types"
 version = "0.0.0"
 dependencies = [
- "error-backtrace",
  "grug-app",
  "grug-types",
  "rocksdb",
- "thiserror 2.0.12",
 ]
 
 [[package]]
