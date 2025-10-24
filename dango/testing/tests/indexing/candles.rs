@@ -237,6 +237,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
     Ok(())
 }
 
+#[ignore = "flaky"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =

@@ -203,7 +203,7 @@ fn provide_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
-    minimum_output: Uint128,
+    minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     // Providing liquidity is not allowed when trading is paused.
     ensure!(
@@ -259,10 +259,12 @@ fn provide_liquidity(
     }
 
     // Ensure the LP mint amount is greater than the minimum.
-    ensure!(
-        lp_mint_amount >= minimum_output,
-        "lp mint amount is below the minimum output: {lp_mint_amount} < {minimum_output}",
-    );
+    if let Some(minimum) = minimum_output {
+        ensure!(
+            lp_mint_amount >= minimum,
+            "LP mint amount is less than the minimum output: {lp_mint_amount} < {minimum}"
+        );
+    }
 
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;

@@ -1409,7 +1409,7 @@ fn provide_liquidity(
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                minimum_output: Uint128::ZERO,
+                minimum_output: None,
             },
             initial_reserves.clone(),
         )
@@ -1432,7 +1432,7 @@ fn provide_liquidity(
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                minimum_output: Uint128::ZERO,
+                minimum_output: None,
             },
             provision.clone(),
         )
@@ -1514,7 +1514,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                minimum_output: Uint128::ZERO,
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 100_000,
@@ -1622,7 +1622,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                minimum_output: Uint128::ZERO,
+                minimum_output: None,
             },
             initial_reserves.clone(),
         )
@@ -1640,7 +1640,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                minimum_output: Uint128::ZERO,
+                minimum_output: None,
             },
             provided_funds.clone(),
         )
@@ -1990,7 +1990,7 @@ fn swap_exact_amount_in(
                 &dex::ExecuteMsg::ProvideLiquidity {
                     base_denom: base_denom.clone(),
                     quote_denom: quote_denom.clone(),
-                    minimum_output: Uint128::ZERO,
+                    minimum_output: None,
                 },
                 reserve.clone(),
             )
@@ -2340,7 +2340,7 @@ fn swap_exact_amount_out(
                 &dex::ExecuteMsg::ProvideLiquidity {
                     base_denom: base_denom.clone(),
                     quote_denom: quote_denom.clone(),
-                    minimum_output: Uint128::ZERO,
+                    minimum_output: None,
                 },
                 reserve.clone(),
             )
@@ -2416,7 +2416,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                minimum_output: Uint128::ZERO,
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 1000000,
@@ -2988,7 +2988,7 @@ fn curve_on_orderbook(
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                minimum_output: Uint128::ZERO,
+                minimum_output: None,
             },
             pool_liquidity.clone(),
         )
@@ -7664,7 +7664,11 @@ fn provide_liquidity_fails_when_minimum_output_is_not_met() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+<<<<<<< HEAD
                 minimum_output: expected_mint_amount + Uint128::new(1),
+=======
+                minimum_output: Some(Uint128::new(100_000_000 + 1)),
+>>>>>>> 75c9b3cec (make the minimum output on providing liquidity optional)
             },
             coins! {
                 dango::DENOM.clone() => 100,
@@ -7691,7 +7695,11 @@ fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+<<<<<<< HEAD
                 minimum_output: Uint128::new(100_000_000) - MINIMUM_LIQUIDITY,
+=======
+                minimum_output: Some(Uint128::new(100_000_000)),
+>>>>>>> 75c9b3cec (make the minimum output on providing liquidity optional)
             },
             coins! {
                 dango::DENOM.clone() => 100,

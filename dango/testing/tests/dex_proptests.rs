@@ -445,7 +445,7 @@ impl DexAction {
                     &dex::ExecuteMsg::ProvideLiquidity {
                         base_denom: base_denom.clone(),
                         quote_denom: quote_denom.clone(),
-                        minimum_output: Uint128::ZERO,
+                        minimum_output: None,
                     },
                     funds.clone(),
                 )
