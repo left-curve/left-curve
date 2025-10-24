@@ -48,7 +48,20 @@ pub trait Db {
     /// Return the state storage.
     ///
     /// Error if the specified version has already been pruned.
-    fn state_storage(&self, version: Option<u64>) -> Result<Self::StateStorage, Self::Error>;
+    fn state_storage(&self, version: Option<u64>) -> Result<Self::StateStorage, Self::Error> {
+        self.state_storage_with_comment(version, "undefined")
+    }
+
+    /// Return the state storage, with an optional comment.
+    ///
+    /// The comment is used in tracing logs, helps clarify the context under
+    /// which the state storage was created. If a comment is not needed, use
+    /// `Db::state_storage` instead.
+    fn state_storage_with_comment(
+        &self,
+        version: Option<u64>,
+        comment: &'static str,
+    ) -> Result<Self::StateStorage, Self::Error>;
 
     /// Return the most recent version that has been committed.
     ///

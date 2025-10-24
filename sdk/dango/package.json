@@ -84,8 +84,7 @@
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
-    "vitest": "catalog:",
-    "@types/big.js": "^6.2.2"
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@left-curve/sdk": "workspace:^",

@@ -140,7 +140,11 @@ impl Db for DiskDbLite {
         unimplemented!("`DiskDbLite` does not support state commitment");
     }
 
-    fn state_storage(&self, version: Option<u64>) -> DbResult<Self::StateStorage> {
+    fn state_storage_with_comment(
+        &self,
+        version: Option<u64>,
+        comment: &'static str,
+    ) -> DbResult<Self::StateStorage> {
         // If a version is specified, it must equal the latest version.
         if let Some(requested) = version {
             let db_version = self.latest_version().unwrap_or(0);
@@ -152,6 +156,7 @@ impl Db for DiskDbLite {
         Ok(StateStorage {
             inner: Arc::clone(&self.inner),
             cf_name: CF_NAME_DEFAULT,
+            comment,
         })
     }
 
@@ -312,6 +317,8 @@ impl Db for DiskDbLite {
 pub struct StateStorage {
     inner: Arc<DiskDbLiteInner>,
     cf_name: &'static str,
+    #[cfg_attr(not(feature = "metrics"), allow(dead_code))]
+    comment: &'static str,
 }
 
 impl StateStorage {
@@ -341,9 +348,15 @@ impl StateStorage {
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         let records = data.records.read().expect("priority records poisoned");
-        Box::new(PriorityIter::new(records, |guard| {
-            guard.scan(Some(min), Some(max), order)
-        }))
+        let iter = PriorityIter::new(records, |guard| guard.scan(Some(min), Some(max), order));
+
+        #[cfg(feature = "metrics")]
+        let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [
+            ("operation", "next_priority"),
+            ("comment", self.comment),
+        ]);
+
+        Box::new(iter)
     }
 
     fn create_non_priority_iterator<'a>(
@@ -370,7 +383,10 @@ impl StateStorage {
             });
 
         #[cfg(feature = "metrics")]
-        let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [("operation", "next")]);
+        let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [
+            ("operation", "next"),
+            ("comment", self.comment),
+        ]);
 
         Box::new(iter)
     }
@@ -405,7 +421,7 @@ impl Storage for StateStorage {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "read")
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "read", "comment" => self.comment)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -425,7 +441,7 @@ impl Storage for StateStorage {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan")
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan", "comment" => self.comment)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -445,7 +461,7 @@ impl Storage for StateStorage {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_keys")
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_keys", "comment" => self.comment)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -465,7 +481,7 @@ impl Storage for StateStorage {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_values")
+            metrics::histogram!(DISK_DB_LITE_LABEL, "operation" => "scan_values", "comment" => self.comment)
                 .record(duration.elapsed().as_secs_f64());
         }
 

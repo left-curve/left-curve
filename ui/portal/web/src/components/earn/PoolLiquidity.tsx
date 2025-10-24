@@ -13,8 +13,8 @@ import {
 } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
 
-import { formatNumber } from "@left-curve/dango/utils";
-import Big from "big.js";
+import { Decimal, formatNumber } from "@left-curve/dango/utils";
+
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PairUpdate } from "@left-curve/dango/types";
@@ -143,7 +143,7 @@ const PoolLiquidityUserLiquidity: React.FC = () => {
   const basePrice = getPrice(innerBase, base.denom);
   const quotePrice = getPrice(innerQuote, quote.denom);
 
-  const totalPrice = formatNumber(Big(basePrice).plus(quotePrice).toString(), {
+  const totalPrice = formatNumber(Decimal(basePrice).plus(quotePrice).toString(), {
     ...formatNumberOptions,
     currency: "USD",
   });

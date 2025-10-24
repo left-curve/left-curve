@@ -852,6 +852,12 @@
             }
           }
         ]
+      },
+      "searchPairTable": {
+        "name": "Name",
+        "price": "Price",
+        "24hChange": "24h Change",
+        "volume": "Volume"
       }
     },
     "errors": {
