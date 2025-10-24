@@ -89,6 +89,26 @@ impl StartCmd {
         let indexer_path = sql_indexer.indexer_path.clone();
         let indexer_context = sql_indexer.context.clone();
 
+        let shutdown = tokio::spawn(async {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to listen for Ctrl-C");
+            eprintln!("Received shutdown signal");
+        });
+
+        let (hooked_indexer, _, dango_httpd_context) = self
+            .setup_indexer_stack(
+                &cfg,
+                sql_indexer,
+                indexer_context,
+                indexer_path,
+                Arc::new(app),
+                &cfg.tendermint.rpc_addr,
+            )
+            .await?;
+
+        let indexer_clone = hooked_indexer.clone();
+
         // Run ABCI server, optionally with indexer and httpd server.
         match (
             cfg.indexer.enabled,
@@ -97,44 +117,37 @@ impl StartCmd {
         ) {
             (true, true, true) => {
                 // Indexer, HTTP server, and metrics server all enabled
-                let (hooked_indexer, _, dango_httpd_context) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
 
-                tokio::try_join!(
-                    Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
-                    Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
-                    self.run_with_indexer(
-                        cfg.grug,
-                        cfg.tendermint,
-                        cfg.pyth,
-                        db,
-                        vm,
-                        hooked_indexer
-                    )
-                )?;
+                tokio::select! {
+                    result = async {
+                        tokio::try_join!(
+                            Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
+                            Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
+                            self.run_with_indexer(
+                                cfg.grug,
+                                cfg.tendermint,
+                                cfg.pyth,
+                                db,
+                                vm,
+                                hooked_indexer
+                            )
+                        )
+                    } => {
+                        result?;
+                    }
+                    _ = shutdown => {
+                        eprintln!("Shutting down gracefully...");
+                        // Give ClickHouse async tasks time to complete after wait_for_finish
+                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    }
+                }
             },
             (true, true, false) => {
                 // Indexer and HTTP server enabled, metrics disabled
-                let (hooked_indexer, _, dango_httpd_context) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
 
-                tokio::try_join!(
+                tokio::select! {
+                    result = async {
+                        tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
                     self.run_with_indexer(
                         cfg.grug,
@@ -144,22 +157,23 @@ impl StartCmd {
                         vm,
                         hooked_indexer
                     )
-                )?;
+                )
+                    } => {
+                        result?;
+                    }
+                    _ = shutdown => {
+                        eprintln!("Shutting down gracefully...");
+                        // Give ClickHouse async tasks time to complete after wait_for_finish
+                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    }
+                }
             },
             (true, false, true) => {
                 // Indexer and metrics enabled, HTTP server disabled
-                let (hooked_indexer, ..) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
 
-                tokio::try_join!(
+                tokio::select! {
+                    result = async {
+                        tokio::try_join!(
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
                     self.run_with_indexer(
                         cfg.grug,
@@ -169,47 +183,97 @@ impl StartCmd {
                         vm,
                         hooked_indexer
                     )
-                )?;
+                )
+                    } => {
+                        result?;
+                    }
+                    _ = shutdown => {
+                        eprintln!("Shutting down gracefully...");
+                        // Give ClickHouse async tasks time to complete after wait_for_finish
+                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    }
+                }
             },
             (true, false, false) => {
                 // Only indexer enabled
-                let (hooked_indexer, ..) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
 
-                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, hooked_indexer)
-                    .await?;
+                tokio::select! {
+                    result = async {
+                        self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, hooked_indexer).await
+                    } => {
+                        result?;
+                    }
+                    _ = shutdown => {
+                        eprintln!("Shutting down gracefully...");
+                        // Give ClickHouse async tasks time to complete after wait_for_finish
+                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    }
+                }
             },
             (false, true, false) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics disabled
-                let httpd_context = HttpdContext::new(Arc::new(app));
-                tokio::try_join!(
-                    Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
-                )?;
+
+                eprintln!("This combination is not supported.");
+
+                // let httpd_context = HttpdContext::new(Arc::new(app));
+
+                // tokio::select! {
+                //     result = async {
+                //         tokio::try_join!(
+                //     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
+                //     self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
+                // )
+                //     } => {
+                //         result?;
+                //     }
+                //     _ = shutdown => {
+                //         eprintln!("Shutting down gracefully...");
+                //         // Give ClickHouse async tasks time to complete after wait_for_finish
+                //         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                //     }
+                // }
             },
             (false, true, true) => {
+                eprintln!("This combination is not supported.");
+
                 // No indexer, but HTTP server enabled (minimal mode), metrics enabled
-                let httpd_context = HttpdContext::new(Arc::new(app));
-                tokio::try_join!(
-                    Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer),
-                    Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler)
-                )?;
+                // let httpd_context = HttpdContext::new(Arc::new(app));
+
+                // tokio::select! {
+                //     result = async {
+                //         tokio::try_join!(
+                //     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
+                //     self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer),
+                //     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler)
+                // )
+                //     } => {
+                //         result?;
+                //     }
+                //     _ = shutdown => {
+                //         eprintln!("Shutting down gracefully...");
+                //         // Give ClickHouse async tasks time to complete after wait_for_finish
+                //         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                //     }
+                // }
             },
             (false, false, _) => {
                 // No indexer, no HTTP server
-                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
-                    .await?;
+                tokio::select! {
+                    result = async {
+                        self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer).await
+                    } => {
+                        result?;
+                    }
+                    _ = shutdown => {
+                        eprintln!("Shutting down gracefully...");
+                        // Give ClickHouse async tasks time to complete after wait_for_finish
+                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    }
+                }
             },
         }
+
+        indexer_clone.wait_for_finish()?;
 
         Ok(())
     }

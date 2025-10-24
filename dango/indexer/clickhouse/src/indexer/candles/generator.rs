@@ -5,6 +5,7 @@ use {
         error::Result,
     },
     chrono::{DateTime, Utc},
+    std::collections::HashMap,
 };
 
 /// Take care of creating candles and storing them in clickhouse when needed
@@ -31,27 +32,50 @@ impl CandleGenerator {
             .inserter::<Candle>("candles")
             .with_max_rows(candles.len() as u64);
 
+        let mut max_block_heights = HashMap::new();
+        let mut max_block_height = 0u64;
+
         for candle in candles {
+            // #[cfg(feature = "tracing")]
+            // tracing::info!(
+            //     "Writing candle interval={:?} (serialized={}) max_block={}",
+            //     candle.interval,
+            //     serde_json::to_string(&candle.interval).unwrap_or_default(),
+            //     candle.max_block_height
+            // );
+
             inserter.write(&candle).await.inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write candle: {candle:#?}: {_err}");
             })?;
 
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                %candle.max_block_height,
-                %candle.min_block_height,
-                %candle.base_denom,
-                %candle.quote_denom,
-                %candle.interval,
-                "Saving candle"
-            );
+            max_block_height = max_block_height.max(candle.max_block_height);
+
+            max_block_heights
+                .entry((
+                    candle.base_denom.clone(),
+                    candle.quote_denom.clone(),
+                    candle.interval,
+                ))
+                .and_modify(|existing| {
+                    if candle.max_block_height > *existing {
+                        *existing = candle.max_block_height;
+                    }
+                })
+                .or_insert(candle.max_block_height);
+        }
+
+        #[cfg(feature = "tracing")]
+        {
+            // tracing::info!(max_block_height, "Saving candle");
+            tracing::info!("{:#?}", max_block_heights);
         }
 
         inserter.commit().await.inspect_err(|_err| {
             #[cfg(feature = "tracing")]
             tracing::error!("Failed to commit inserter for candles: {_err}");
         })?;
+
         inserter.end().await.inspect_err(|_err| {
             #[cfg(feature = "tracing")]
             tracing::error!("Failed to end inserter for candles: {_err}");
@@ -70,6 +94,9 @@ impl CandleGenerator {
         }
 
         drop(candle_cache);
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(candles_len = candles.len(), "Saving candles");
 
         self.store_candles(candles).await
     }
