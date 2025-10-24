@@ -57,11 +57,11 @@ where
 
     pub fn cf_handle<'a>(&self, db: &'a MultiThreadedDb) -> Arc<BoundColumnFamily<'a>> {
         db.cf_handle(self.name).unwrap_or_else(|| {
-            panic!("failed to find column family");
+            panic!("failed to find column family {}", self.name);
         })
     }
 
-    fn iterator_bounds<'a>(
+    fn iterator_bounds(
         &self,
         mut opt: ReadOptions,
         min: Option<&[u8]>,
@@ -81,12 +81,12 @@ impl VersionedCf {
     pub fn read(&self, db: &MultiThreadedDb, version: Option<u64>, key: &[u8]) -> Option<Vec<u8>> {
         db.get_cf_opt(&self.cf_handle(db), key, &self.read_options(version))
             .unwrap_or_else(|err| {
-                panic!("failed to read from column family: {err}");
+                panic!("failed to read from column family {}: {err}", self.name);
             })
     }
 
     pub fn iter<'a>(
-        &self,
+        &'a self,
         db: &'a MultiThreadedDb,
         version: Option<u64>,
         min: Option<&[u8]>,
@@ -101,7 +101,7 @@ impl VersionedCf {
             )
             .map(|item| {
                 let (k, v) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in column family: {err}");
+                    panic!("failed to iterate in column family {}: {err}", self.name);
                 });
                 (k.to_vec(), v.to_vec())
             });
@@ -130,12 +130,12 @@ impl VersionedCf {
 impl PlainCf {
     pub fn read(&self, db: &MultiThreadedDb, key: &[u8]) -> Option<Vec<u8>> {
         db.get_cf(&self.cf_handle(db), key).unwrap_or_else(|err| {
-            panic!("failed to read from column family: {err}");
+            panic!("failed to read from column family {}: {err}", self.name);
         })
     }
 
     pub fn iter<'a>(
-        &self,
+        &'a self,
         db: &'a MultiThreadedDb,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
@@ -149,7 +149,7 @@ impl PlainCf {
             )
             .map(|item| {
                 let (k, v) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in column family: {err}");
+                    panic!("failed to iterate in column family {}: {err}", self.name);
                 });
                 (k.to_vec(), v.to_vec())
             });

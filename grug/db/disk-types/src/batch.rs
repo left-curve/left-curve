@@ -36,7 +36,7 @@ impl<'a> BatchBuilder<'a, Undefined<U64Timestamp>> {
 impl<'a> BatchBuilder<'a, Undefined<U64Timestamp>> {
     pub fn update<'b, C>(&'b mut self, family: PlainCf, callback: C)
     where
-        C: (FnOnce(&mut BatchCtx<'a, 'b>)),
+        C: FnOnce(&mut BatchCtx<'a, 'b>),
     {
         let mut inner = BatchCtx {
             batch: &mut self.batch,
@@ -50,7 +50,7 @@ impl<'a> BatchBuilder<'a, Undefined<U64Timestamp>> {
 impl<'a> BatchBuilder<'a, Defined<U64Timestamp>> {
     pub fn update<'b, C, F>(&'b mut self, family: ColumnFamily<F>, callback: C)
     where
-        C: (FnOnce(&mut BatchCtx<'a, 'b>)),
+        C: FnOnce(&mut BatchCtx<'a, 'b>),
         F: MaybeDefined<Versioned>,
     {
         let timestamp = if F::maybe_defined() {
