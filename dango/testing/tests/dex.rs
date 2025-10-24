@@ -1233,7 +1233,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
     ],
-    Uint128::new(100_001_000)
+    Uint128::new(100_000_000)
     ; "provision at pool ratio"
 )]
 #[test_case(
@@ -1251,7 +1251,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
     ],
-    Uint128::new(50_000_500)
+    Uint128::new(50_000_000)
     ; "provision at half pool balance same ratio"
 )]
 #[test_case(
@@ -1269,7 +1269,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(1)),
         (usdc::DENOM.clone(), Udec128::new(1)),
     ],
-    Uint128::new(72_965_967)
+    Uint128::new(72_965_238)
     ; "provision at different ratio"
 )]
 #[test_case(
@@ -1287,7 +1287,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
     ],
-    Uint128::new(300_001_000)
+    Uint128::new(300_000_000)
     ; "geometric pool provision at pool ratio"
 )]
 #[test_case(
@@ -1305,7 +1305,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
     ],
-    Uint128::new(150_000_500)
+    Uint128::new(150_000_000)
     ; "geometric pool provision at half pool balance same ratio"
 )]
 #[test_case(
@@ -1323,7 +1323,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
     ],
-    Uint128::new(249_909_923)
+    Uint128::new(249_909_089)
     ; "geometric pool provision at different ratio"
 )]
 #[test_case(
@@ -1341,7 +1341,7 @@ fn only_owner_can_create_passive_pool() {
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
         (usdc::DENOM.clone(), Udec128::new(1_000_000)),
     ],
-    Uint128::new(199_900_665)
+    Uint128::new(199_899_999)
     ; "geometric pool provision at different ratio 2"
 )]
 fn provide_liquidity(
@@ -1531,7 +1531,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
 }
 
 #[test_case(
-    Uint128::new(100_001_000),
+    Uint128::new(100_000_000),
     Udec128::new_permille(5),
     coins! {
         dango::DENOM.clone() => 100,
@@ -1540,7 +1540,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
     "withdrawa all"
 )]
 #[test_case(
-    Uint128::new(50_000_500),
+    Uint128::new(50_000_000),
     Udec128::new_permille(5),
     coins! {
         dango::DENOM.clone() => 50,
