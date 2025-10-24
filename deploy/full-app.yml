@@ -109,14 +109,6 @@
             tag: "{{ cometbft_tag }}"
             identity_regexp: "{{ cosign_identity_cometbft_regexp }}"
   post_tasks:
-    - name: Store vars for monitoring
-      set_fact:
-        stored_deployment_name: "{{ deployment_name }}"
-        stored_dango_metrics_port: "{{ dango_metrics_port }}"
-        stored_clickhouse_metrics_port: "{{ clickhouse_metrics_port }}"
-        stored_cometbft_metrics_port: "{{ cometbft_metrics_port }}"
-        stored_db_metrics_port: "{{ db_metrics_port }}"
-
     - name: Log deployment complete
       community.general.syslogger:
         msg: "[{{ deployment_name }}] Finished deployment"
@@ -128,12 +120,8 @@
   become: true
   become_user: "{{ deploy_user }}"
   tags: monitoring
-  vars:
-      deployment_name: "{{ hostvars[groups['full-app'][0]]['stored_deployment_name'] }}"
-      dango_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_dango_metrics_port'] }}"
-      cometbft_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_cometbft_metrics_port'] }}"
-      db_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_db_metrics_port'] }}"
-      clickhouse_metrics_port: "{{ hostvars[groups['full-app'][0]]['stored_clickhouse_metrics_port'] }}"
+  vars_files:
+    - roles/full-app/vars/main.yml
   tasks:
     - block:
         - name: Load prometheus vars
@@ -141,53 +129,61 @@
         - name: Create Dango prometheus targets
           copy:
             content: |
-              - targets: ['{{ tailscale_ip }}:{{ dango_metrics_port }}']
+              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].dango_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'dango'
                   environment: 'preview'
                   dango_network: '{{ dango_network }}'
-            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ ansible_hostname }}-dango.yml"
+                  hostname: '{{ hostvars[item].hostname }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-dango.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
+          loop: "{{ groups['full-app'] }}"
         - name: Create Cometbft prometheus targets
           copy:
             content: |
-              - targets: ['{{ tailscale_ip }}:{{ cometbft_metrics_port }}']
+              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].cometbft_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'cometbft'
                   environment: 'preview'
                   dango_network: '{{ dango_network }}'
-            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ ansible_hostname }}-cometbft.yml"
+                  hostname: '{{ hostvars[item].hostname }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-cometbft.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
+          loop: "{{ groups['full-app'] }}"
         - name: Create Postgres prometheus targets
           when: deploy_includes_postgres
           copy:
             content: |
-              - targets: ['{{ tailscale_ip }}:{{ db_metrics_port }}']
+              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].db_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'postgres'
                   environment: 'preview'
                   dango_network: '{{ dango_network }}'
-            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ ansible_hostname }}-postgres.yml"
+                  hostname: '{{ hostvars[item].hostname }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-postgres.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
+          loop: "{{ groups['full-app'] }}"
         - name: Create Clickhouse prometheus targets
           when: deploy_includes_clickhouse
           copy:
             content: |
-              - targets: ['{{ tailscale_ip }}:{{ clickhouse_metrics_port }}']
+              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].clickhouse_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'clickhouse'
                   environment: 'preview'
                   dango_network: '{{ dango_network }}'
-            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ ansible_hostname }}-clickhouse.yml"
+                  hostname: '{{ hostvars[item].hostname }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-clickhouse.yml"
             owner: "{{ deploy_user }}"
             group: "{{ deploy_user }}"
+          loop: "{{ groups['full-app'] }}"
       when:
         - hostvars[groups['full-app'][0]]['expose_ports'] == true
       become: true
