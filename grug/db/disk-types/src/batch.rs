@@ -1,15 +1,15 @@
 use {
-    crate::{DefaultFamily, Family, MultiThreadedDb, Timestamped, timestamp::U64Timestamp},
+    crate::{ColumnFamily, MultiThreadedDb, PlainCf, Versioned, timestamp::U64Timestamp},
     grug_types::{Defined, MaybeDefined, Undefined},
     rocksdb::{BoundColumnFamily, WriteBatch},
-    std::{collections::BTreeMap, sync::Arc},
+    std::sync::Arc,
 };
 
+/// Builder for batched writes, optionally bound to a specific write timestamp.
 pub struct BatchBuilder<'a, TS: MaybeDefined<U64Timestamp>> {
     db: &'a MultiThreadedDb,
     batch: WriteBatch,
     timestamp: TS,
-    cf: BTreeMap<&'static str, Arc<BoundColumnFamily<'a>>>,
 }
 
 impl<'a> BatchBuilder<'a, Undefined<U64Timestamp>> {
@@ -18,7 +18,6 @@ impl<'a> BatchBuilder<'a, Undefined<U64Timestamp>> {
             db,
             batch: WriteBatch::default(),
             timestamp: Undefined::new(),
-            cf: BTreeMap::new(),
         }
     }
 
@@ -28,19 +27,18 @@ impl<'a> BatchBuilder<'a, Undefined<U64Timestamp>> {
     ) -> BatchBuilder<'a, Defined<U64Timestamp>> {
         BatchBuilder {
             db: self.db,
-            batch: WriteBatch::default(),
+            batch: self.batch,
             timestamp: Defined::new(timestamp),
-            cf: self.cf,
         }
     }
 }
 
 impl<'a> BatchBuilder<'a, Undefined<U64Timestamp>> {
-    pub fn update<'b, C>(&'b mut self, family: DefaultFamily, callback: C)
+    pub fn update<'b, C>(&'b mut self, family: PlainCf, callback: C)
     where
-        C: (FnOnce(&mut BatchInner<'a, 'b>)),
+        C: (FnOnce(&mut BatchCtx<'a, 'b>)),
     {
-        let mut inner = BatchInner {
+        let mut inner = BatchCtx {
             batch: &mut self.batch,
             cf: family.cf_handle(self.db),
             timestamp: None,
@@ -50,10 +48,10 @@ impl<'a> BatchBuilder<'a, Undefined<U64Timestamp>> {
 }
 
 impl<'a> BatchBuilder<'a, Defined<U64Timestamp>> {
-    pub fn update<'b, C, F>(&'b mut self, family: Family<F>, callback: C)
+    pub fn update<'b, C, F>(&'b mut self, family: ColumnFamily<F>, callback: C)
     where
-        C: (FnOnce(&mut BatchInner<'a, 'b>)),
-        F: MaybeDefined<Timestamped>,
+        C: (FnOnce(&mut BatchCtx<'a, 'b>)),
+        F: MaybeDefined<Versioned>,
     {
         let timestamp = if F::maybe_defined() {
             Some(self.timestamp.into_inner())
@@ -61,7 +59,7 @@ impl<'a> BatchBuilder<'a, Defined<U64Timestamp>> {
             None
         };
 
-        let mut inner = BatchInner {
+        let mut inner = BatchCtx {
             batch: &mut self.batch,
             cf: family.cf_handle(self.db),
             timestamp,
@@ -79,13 +77,14 @@ where
     }
 }
 
-pub struct BatchInner<'a, 'b> {
+/// Scoped mutable view into a `WriteBatch` for a specific column family.
+pub struct BatchCtx<'a, 'b> {
     batch: &'b mut WriteBatch,
     cf: Arc<BoundColumnFamily<'a>>,
     timestamp: Option<U64Timestamp>,
 }
 
-impl<'a, 'b> BatchInner<'a, 'b> {
+impl<'a, 'b> BatchCtx<'a, 'b> {
     pub fn put<K, V>(&mut self, key: K, value: V)
     where
         K: AsRef<[u8]>,

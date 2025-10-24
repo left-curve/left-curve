@@ -3,9 +3,7 @@ use grug_types::MetricsIterExt;
 use {
     crate::{DbError, DbResult, digest::batch_hash},
     grug_app::{Db, PrunableDb},
-    grug_db_disk_types::{
-        BatchBuilder, DefaultFamily, Family, TimestampedFamily, U64Timestamp, open_db,
-    },
+    grug_db_disk_types::{BatchBuilder, ColumnFamily, PlainCf, U64Timestamp, VersionedCf, open_db},
     grug_types::{Batch, Empty, Hash256, Op, Order, Record, Storage},
     ouroboros::self_referencing,
     rocksdb::{DBWithThreadMode, MultiThreaded},
@@ -23,9 +21,9 @@ const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 
 const LATEST_BATCH_HASH_KEY: &[u8] = b"hash";
 
-const STORAGE: TimestampedFamily = Family::new("storage");
+const STORAGE: VersionedCf = ColumnFamily::new("storage");
 
-const METADATA: DefaultFamily = Family::new("metadata");
+const METADATA: PlainCf = ColumnFamily::new("metadata");
 
 #[cfg(feature = "metrics")]
 const DISK_DB_LITE_LABEL: &str = "grug.db.disk_lite.duration";
@@ -77,7 +75,13 @@ impl DiskDbLite {
             let mut size = 0;
 
             let records = STORAGE
-                .iter(&db, None, None, None, Order::Ascending)
+                .iter(
+                    &db,
+                    None,
+                    Some(min.as_ref()),
+                    Some(max.as_ref()),
+                    Order::Ascending,
+                )
                 .map(|(k, v)| {
                     #[cfg(feature = "tracing")]
                     {
@@ -159,7 +163,6 @@ impl Db for DiskDbLite {
             db: self.db.clone(),
             priority_data: self.priority_data.clone(),
             version,
-            family: STORAGE,
         })
     }
 
@@ -343,7 +346,6 @@ pub struct StateStorage {
     db: Arc<DBWithThreadMode<MultiThreaded>>,
     priority_data: Option<Arc<PriorityData>>,
     version: u64,
-    family: TimestampedFamily,
 }
 
 impl StateStorage {
@@ -384,9 +386,7 @@ impl StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let iter = self
-            .family
-            .iter(&self.db, Some(self.version), min, max, order);
+        let iter = STORAGE.iter(&self.db, Some(self.version), min, max, order);
 
         #[cfg(feature = "metrics")]
         let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [("operation", "next")]);
@@ -414,7 +414,7 @@ impl Storage for StateStorage {
             }
         }
 
-        let result = self.family.read(&self.db, Some(self.version), key);
+        let result = STORAGE.read(&self.db, Some(self.version), key);
 
         #[cfg(feature = "metrics")]
         {

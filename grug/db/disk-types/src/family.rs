@@ -8,19 +8,26 @@ use {
     std::{marker::PhantomData, sync::Arc},
 };
 
-pub type DefaultFamily = Family<Undefined<Timestamped>>;
+/// Alias for a **plain** (non-timestamped) column family.
+pub type PlainCf = ColumnFamily<Undefined<Versioned>>;
 
-pub type TimestampedFamily = Family<Defined<Timestamped>>;
+/// Alias for a **timestamp-aware** (versioned) column family.
+pub type VersionedCf = ColumnFamily<Defined<Versioned>>;
 
+/// Column-family descriptor parameterized by whether the CF is timestamp-aware
+/// (`Family<Defined<Timestamped>>`) or plain (`Family<Undefined<Timestamped>>`).
+///
+/// This type does **not** own a DB handle; it only carries the CF name and
+/// determines options (e.g. enabling the timestamp comparator) at open time.
 #[derive(Clone, Debug)]
-pub struct Family<T: MaybeDefined<Timestamped>> {
+pub struct ColumnFamily<T: MaybeDefined<Versioned>> {
     pub(crate) name: &'static str,
     _options: PhantomData<T>,
 }
 
-impl<T> Family<T>
+impl<T> ColumnFamily<T>
 where
-    T: MaybeDefined<Timestamped>,
+    T: MaybeDefined<Versioned>,
 {
     pub const fn new(name: &'static str) -> Self {
         Self {
@@ -70,7 +77,7 @@ where
     }
 }
 
-impl TimestampedFamily {
+impl VersionedCf {
     pub fn read(&self, db: &MultiThreadedDb, version: Option<u64>, key: &[u8]) -> Option<Vec<u8>> {
         db.get_cf_opt(&self.cf_handle(db), key, &self.read_options(version))
             .unwrap_or_else(|err| {
@@ -120,7 +127,7 @@ impl TimestampedFamily {
     }
 }
 
-impl DefaultFamily {
+impl PlainCf {
     pub fn read(&self, db: &MultiThreadedDb, key: &[u8]) -> Option<Vec<u8>> {
         db.get_cf(&self.cf_handle(db), key).unwrap_or_else(|err| {
             panic!("failed to read from column family: {err}");
@@ -151,8 +158,9 @@ impl DefaultFamily {
     }
 }
 
+/// Zero-sized marker used in the type-state to indicate a timestamp-aware CF.
 #[derive(Clone, Debug)]
-pub struct Timestamped;
+pub struct Versioned;
 
 #[inline]
 fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
