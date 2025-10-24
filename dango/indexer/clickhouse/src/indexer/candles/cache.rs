@@ -414,6 +414,9 @@ impl CandleCache {
         let all_pairs = PairPrice::all_pairs(clickhouse_client).await?;
         self.denoms.extend(all_pairs);
 
+        #[cfg(feature = "tracing")]
+        tracing::info!(pairs=%pairs.len(), "preload_pairs called");
+
         // Create all fetch tasks
         let fetch_tasks = pairs
             .iter()
@@ -431,61 +434,74 @@ impl CandleCache {
                         #[cfg(feature = "tracing")]
                         let start = Instant::now();
 
-                        loop {
-                            // if start.elapsed() > Duration::from_secs(20) {
-                            //     #[cfg(feature = "tracing")]
-                            //     tracing::warn!(
-                            //         "Timeout while preloading candles for {}-{}",
-                            //         key.base_denom,
-                            //         key.quote_denom
-                            //     );
+                        // loop {
+                        // if start.elapsed() > Duration::from_secs(20) {
+                        //     #[cfg(feature = "tracing")]
+                        //     tracing::warn!(
+                        //         "Timeout while preloading candles for {}-{}",
+                        //         key.base_denom,
+                        //         key.quote_denom
+                        //     );
 
-                            //     return Err(IndexerError::candle_timeout());
-                            // }
+                        //     return Err(IndexerError::candle_timeout());
+                        // }
 
-                            let query_builder = CandleQueryBuilder::new(
-                                key.interval,
-                                key.base_denom.clone(),
-                                key.quote_denom.clone(),
-                            )
-                            .with_limit(MAX_ITEMS);
+                        let query_builder = CandleQueryBuilder::new(
+                            key.interval,
+                            key.base_denom.clone(),
+                            key.quote_denom.clone(),
+                        )
+                        .with_limit(MAX_ITEMS);
 
-                            candles = query_builder.fetch_all(clickhouse_client).await?.candles;
+                        candles = query_builder.fetch_all(clickhouse_client).await?.candles;
 
-                            #[cfg(feature = "tracing")]
-                            tracing::info!(
-                                duration = ?start.elapsed(),
-                                %key.base_denom,
-                                %key.quote_denom,
-                                %key.interval,
-                                "fetched_all done for candle preload",
-                            );
-
-                            if let Some(candle) = candles.first() {
-                                if candle.max_block_height < highest_block_height {
-                                    #[cfg(feature = "tracing")]
-                                    tracing::warn!(
-                                        %candle.max_block_height,
-                                        %highest_block_height,
-                                        %key.base_denom,
-                                        %key.quote_denom,
-                                        %key.interval,
-                                        "Candle is older than latest price");
-
-                                    // `candle` are built async in clickhouse, and this means they're
-                                    // not synced to the latest block yet.
-                                    // This won't happen in production, `preload_pairs` is called at start
-                                    // but during tests, it can happen.
-                                    sleep(Duration::from_millis(100)).await;
-
-                                    continue;
-                                }
+                        if let Some(candle) = candles.first() {
+                            if candle.max_block_height < highest_block_height {
+                                #[cfg(feature = "tracing")]
+                                tracing::warn!(
+                                    %candle.max_block_height,
+                                    %highest_block_height,
+                                    %key.base_denom,
+                                    %key.quote_denom,
+                                    %key.interval,
+                                    "Candle is older than latest price");
                             }
-
-                            candles.reverse(); // Most recent first -> most recent last
-
-                            break;
                         }
+
+                        // #[cfg(feature = "tracing")]
+                        // tracing::info!(
+                        //     duration = ?start.elapsed(),
+                        //     %key.base_denom,
+                        //     %key.quote_denom,
+                        //     %key.interval,
+                        //     "fetched_all done for candle preload",
+                        // );
+
+                        // if let Some(candle) = candles.first() {
+                        //     if candle.max_block_height < highest_block_height {
+                        //         #[cfg(feature = "tracing")]
+                        //         tracing::warn!(
+                        //             %candle.max_block_height,
+                        //             %highest_block_height,
+                        //             %key.base_denom,
+                        //             %key.quote_denom,
+                        //             %key.interval,
+                        //             "Candle is older than latest price");
+
+                        //         // `candle` are built async in clickhouse, and this means they're
+                        //         // not synced to the latest block yet.
+                        //         // This won't happen in production, `preload_pairs` is called at start
+                        //         // but during tests, it can happen.
+                        //         sleep(Duration::from_millis(100)).await;
+
+                        //         continue;
+                        //     }
+                        // }
+
+                        candles.reverse(); // Most recent first -> most recent last
+
+                        //     break;
+                        // }
 
                         Ok::<_, IndexerError>((key, candles))
                     }
@@ -493,13 +509,24 @@ impl CandleCache {
             })
             .collect::<Vec<_>>();
 
+        // #[cfg(feature = "tracing")]
+        // tracing::warn!(tasks_len = %fetch_tasks.len(), "Waiting for preload_pairs tasks to complete...");
+        // #[cfg(feature = "tracing")]
+        // let start = Instant::now();
+
         // Execute all fetches in parallel
         let results = join_all(fetch_tasks).await;
+
+        // #[cfg(feature = "tracing")]
+        // tracing::warn!(elapsed = ?start.elapsed(), "Waited for preload_pairs tasks to complete...");
 
         // Process results
         for result in results {
             match result {
                 Ok((key, candles)) => {
+                    // #[cfg(feature = "tracing")]
+                    // tracing::info!(key = ?key, candles_len = %candles.len(), "Received candles for preload_pairs");
+
                     *self.candles.entry(key).or_default() = candles;
                 },
                 Err(_err) => {

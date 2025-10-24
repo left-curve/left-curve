@@ -1,3 +1,4 @@
+services:
   dex-bot:
     depends_on:
       dango:

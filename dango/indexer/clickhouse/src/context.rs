@@ -93,16 +93,17 @@ impl Context {
         {
             tracing::info!(
                 candles_len = candle_cache.candles.len(),
+                pairs_len = all_pairs.len(),
                 "Preloaded candle cache"
             );
 
-            for (key, values) in candle_cache.candles.iter() {
-                tracing::info!(
-                    key = ?key,
-                    count = values.len(),
-                    "Candle cache entries for pair"
-                );
-            }
+            // for (key, values) in candle_cache.candles.iter() {
+            //     tracing::info!(
+            //         key = ?key,
+            //         count = values.len(),
+            //         "Candle cache entries for pair"
+            //     );
+            // }
         }
 
         drop(candle_cache);

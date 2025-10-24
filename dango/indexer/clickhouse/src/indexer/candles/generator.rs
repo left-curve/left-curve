@@ -36,6 +36,16 @@ impl CandleGenerator {
                 #[cfg(feature = "tracing")]
                 tracing::error!("Failed to write candle: {candle:#?}: {_err}");
             })?;
+
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                %candle.max_block_height,
+                %candle.min_block_height,
+                %candle.base_denom,
+                %candle.quote_denom,
+                %candle.interval,
+                "Saving candle"
+            );
         }
 
         inserter.commit().await.inspect_err(|_err| {
