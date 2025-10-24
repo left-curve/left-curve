@@ -137,7 +137,11 @@ impl Db for DiskDb {
         }
     }
 
-    fn state_storage(&self, version: Option<u64>) -> DbResult<StateStorage> {
+    fn state_storage_with_comment(
+        &self,
+        version: Option<u64>,
+        _comment: &'static str,
+    ) -> DbResult<StateStorage> {
         // Read the latest version.
         // If it doesn't exist, this means not even a single batch has been
         // written yet (e.g. during `InitChain`). In this case just use zero.
