@@ -338,10 +338,13 @@ fn withdraw_liquidity(
     if let Some(minimum_output) = minimum_output {
         // Ensure the refunds are greater than the minimum output.
         ensure!(
-            refunds.amount_of(minimum_output.first().denom)? >= *minimum_output.first().amount
-                && refunds.amount_of(minimum_output.second().denom)?
-                    >= *minimum_output.second().amount,
-            "withdrawn assets are below the minimum output: {refunds:?} < {minimum_output:?}",
+            {
+                let first = minimum_output.first();
+                let second = minimum_output.second();
+                refunds.amount_of(first.denom)? >= *first.amount
+                    && refunds.amount_of(second.denom)? >= *second.amount
+            },
+            "withdrawn assets are less than the minimum output: {refunds:?} < {minimum_output:?}",
         );
     }
 

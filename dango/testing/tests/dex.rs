@@ -7664,11 +7664,7 @@ fn provide_liquidity_fails_when_minimum_output_is_not_met() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-<<<<<<< HEAD
-                minimum_output: expected_mint_amount + Uint128::new(1),
-=======
-                minimum_output: Some(Uint128::new(100_000_000 + 1)),
->>>>>>> 75c9b3cec (make the minimum output on providing liquidity optional)
+                minimum_output: Some(expected_mint_amount + Uint128::new(1)),
             },
             coins! {
                 dango::DENOM.clone() => 100,
@@ -7676,7 +7672,7 @@ fn provide_liquidity_fails_when_minimum_output_is_not_met() {
             },
         )
         .should_fail_with_error(format!(
-            "lp mint amount is below the minimum output: {} < {}",
+            "LP mint amount is less than the minimum output: {} < {}",
             expected_mint_amount,
             expected_mint_amount + Uint128::new(1)
         ));
@@ -7695,11 +7691,7 @@ fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-<<<<<<< HEAD
-                minimum_output: Uint128::new(100_000_000) - MINIMUM_LIQUIDITY,
-=======
-                minimum_output: Some(Uint128::new(100_000_000)),
->>>>>>> 75c9b3cec (make the minimum output on providing liquidity optional)
+                minimum_output: Some(Uint128::new(100_000_000) - MINIMUM_LIQUIDITY),
             },
             coins! {
                 dango::DENOM.clone() => 100,
@@ -7730,7 +7722,7 @@ fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
             Coins::one(lp_denom.clone(), lp_balance).unwrap(),
         )
         .should_fail_with_error(format!(
-            "withdrawn assets are below the minimum output: {:?} < {:?}",
+            "withdrawn assets are less than the minimum output: {:?} < {:?}",
             CoinPair::try_from(coins! {
                 usdc::DENOM.clone() => 99,
                 dango::DENOM.clone() => 99,
