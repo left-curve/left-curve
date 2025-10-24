@@ -1,4 +1,4 @@
-import { useConfig, usePrices } from "@left-curve/store";
+import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
 
 import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
@@ -25,6 +25,8 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
 import { PairAssets } from "./PairAssets";
+import { IconStar } from "./icons/IconStar";
+import { IconEmptyStar } from "./icons/IconEmptyStar";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -335,6 +337,51 @@ const PairName: React.FC<CellPairNameProps> = ({ pairId, type, className }) => {
   );
 };
 
+type CellPairNameWithFavProps = {
+  pairId: PairId;
+  type?: string;
+  className?: string;
+};
+
+const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, className }) => {
+  const { coins } = useConfig();
+  const { baseDenom, quoteDenom } = pairId;
+  const baseCoin = coins.byDenom[baseDenom];
+  const quoteCoin = coins.byDenom[quoteDenom];
+  const { toggleFavPair, hasFavPair } = useFavPairs();
+
+  const pairSymbols = `${baseCoin.symbol}-${quoteCoin.symbol}`;
+
+  const isFav = hasFavPair(pairSymbols);
+
+  return (
+    <div
+      className={twMerge(
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        className,
+      )}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleFavPair(pairSymbols);
+        }}
+        className="focus:outline-none"
+      >
+        {isFav ? (
+          <IconStar className="w-4 h-4 text-fg-primary-700" />
+        ) : (
+          <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
+        )}
+      </button>
+      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5" />
+      <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      {type ? <Badge text={type} color="blue" size="s" /> : null}
+    </div>
+  );
+};
+
 export const Cell = Object.assign(Container, {
   Age,
   Asset,
@@ -351,5 +398,6 @@ export const Cell = Object.assign(Container, {
   TxResult,
   MarketPrice,
   PairName,
+  PairNameWithFav,
   BlockHeight,
 });
