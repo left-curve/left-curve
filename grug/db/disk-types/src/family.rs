@@ -78,7 +78,7 @@ where
 }
 
 impl VersionedCf {
-    pub fn read(&self, db: &MultiThreadedDb, version: Option<u64>, key: &[u8]) -> Option<Vec<u8>> {
+    pub fn read(&self, db: &MultiThreadedDb, version: u64, key: &[u8]) -> Option<Vec<u8>> {
         db.get_cf_opt(&self.cf_handle(db), key, &self.read_options(version))
             .unwrap_or_else(|err| {
                 panic!("failed to read from column family {}: {err}", self.name);
@@ -88,7 +88,7 @@ impl VersionedCf {
     pub fn iter<'a>(
         &'a self,
         db: &'a MultiThreadedDb,
-        version: Option<u64>,
+        version: u64,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
         order: Order,
@@ -109,17 +109,17 @@ impl VersionedCf {
         Box::new(iter)
     }
 
-    pub fn read_options(&self, version: Option<u64>) -> ReadOptions {
+    pub fn read_options(&self, version: u64) -> ReadOptions {
         let mut opts = ReadOptions::default();
-        if let Some(version) = version {
-            opts.set_timestamp(U64Timestamp::from(version));
-        }
+
+        opts.set_timestamp(U64Timestamp::from(version));
+
         opts
     }
 
     fn iteration_options(
         &self,
-        version: Option<u64>,
+        version: u64,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
     ) -> ReadOptions {

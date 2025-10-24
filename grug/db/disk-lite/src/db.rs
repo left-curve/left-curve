@@ -70,39 +70,42 @@ impl DiskDbLite {
         let db = open_db(data_dir, [STORAGE.open_opt(), METADATA.open_opt()])?;
 
         // If `priority_range` is specified, load the data in that range into memory.
-        let priority_data = priority_range.map(|(min, max)| {
-            #[cfg(feature = "tracing")]
-            let mut size = 0;
+        let priority_data =
+            priority_range
+                .zip(latest_version(&db))
+                .map(|((min, max), latest_version)| {
+                    #[cfg(feature = "tracing")]
+                    let mut size = 0;
 
-            let records = STORAGE
-                .iter(
-                    &db,
-                    None,
-                    Some(min.as_ref()),
-                    Some(max.as_ref()),
-                    Order::Ascending,
-                )
-                .map(|(k, v)| {
+                    let records = STORAGE
+                        .iter(
+                            &db,
+                            latest_version,
+                            Some(min.as_ref()),
+                            Some(max.as_ref()),
+                            Order::Ascending,
+                        )
+                        .map(|(k, v)| {
+                            #[cfg(feature = "tracing")]
+                            {
+                                size += k.len() + v.len();
+                            }
+
+                            (k.to_vec(), v.to_vec())
+                        })
+                        .collect::<BTreeMap<_, _>>();
+
                     #[cfg(feature = "tracing")]
                     {
-                        size += k.len() + v.len();
+                        tracing::info!(num_records = records.len(), size, "Loaded priority data");
                     }
 
-                    (k.to_vec(), v.to_vec())
-                })
-                .collect::<BTreeMap<_, _>>();
-
-            #[cfg(feature = "tracing")]
-            {
-                tracing::info!(num_records = records.len(), size, "Loaded priority data");
-            }
-
-            Arc::new(PriorityData {
-                min: min.as_ref().to_vec(),
-                max: max.as_ref().to_vec(),
-                records: RwLock::new(records),
-            })
-        });
+                    Arc::new(PriorityData {
+                        min: min.as_ref().to_vec(),
+                        max: max.as_ref().to_vec(),
+                        records: RwLock::new(records),
+                    })
+                });
 
         Ok(Self {
             db: Arc::new(db),
@@ -172,15 +175,7 @@ impl Db for DiskDbLite {
     }
 
     fn latest_version(&self) -> Option<u64> {
-        METADATA.read(&self.db, LATEST_VERSION_KEY).map(|bytes| {
-            assert_eq!(
-                bytes.len(),
-                8,
-                "latest DB version is of incorrect byte length: {}",
-                bytes.len()
-            );
-            u64::from_le_bytes(bytes.try_into().unwrap())
-        })
+        latest_version(&self.db)
     }
 
     fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash256>> {
@@ -344,6 +339,18 @@ impl PrunableDb for DiskDbLite {
     }
 }
 
+fn latest_version(db: &DBWithThreadMode<MultiThreaded>) -> Option<u64> {
+    METADATA.read(db, LATEST_VERSION_KEY).map(|bytes| {
+        assert_eq!(
+            bytes.len(),
+            8,
+            "latest DB version is of incorrect byte length: {}",
+            bytes.len()
+        );
+        u64::from_le_bytes(bytes.try_into().unwrap())
+    })
+}
+
 // ------------------------------- state storage -------------------------------
 
 #[derive(Clone)]
@@ -366,7 +373,7 @@ impl StateStorage {
         // within the priority range, then create a priority iterator.
         // Note: `min` is inclusive, while `max` is exclusive.
         if let (Some(data), Some(min), Some(max)) = (&self.priority_data, min, max) {
-            if data.min.as_slice() <= min && max < data.max.as_slice() {
+            if data.min.as_slice() <= min && max <= data.max.as_slice() {
                 return self.create_priority_iterator(data, min, max, order);
             }
         }
@@ -399,7 +406,7 @@ impl StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let iter = STORAGE.iter(&self.db, Some(self.version), min, max, order);
+        let iter = STORAGE.iter(&self.db, self.version, min, max, order);
 
         #[cfg(feature = "metrics")]
         let iter = iter.with_metrics(DISK_DB_LITE_LABEL, [
@@ -430,7 +437,7 @@ impl Storage for StateStorage {
             }
         }
 
-        let result = STORAGE.read(&self.db, Some(self.version), key);
+        let result = STORAGE.read(&self.db, self.version, key);
 
         #[cfg(feature = "metrics")]
         {
@@ -665,9 +672,112 @@ mod tests {
         assert_eq!(storage.read(b"2"), Some(b"2".to_vec()));
 
         let cf = STORAGE.cf_handle(&db.db);
-        let read_opts = STORAGE.read_options(Some(2));
+        let read_opts = STORAGE.read_options(2);
 
         // try to read v2, should fail
         db.db.get_cf_opt(&cf, b"2", &read_opts).unwrap_err();
+    }
+
+    #[test]
+    fn priority_data() {
+        let path = TempDataDir::new("_grug_disk_db_lite_pruning_works");
+        let db = DiskDbLite::open::<_, Vec<u8>>(&path, None).unwrap();
+
+        db.flush_and_commit(Batch::from([
+            (b"000".to_vec(), Op::Insert(b"000".to_vec())),
+            (b"001".to_vec(), Op::Insert(b"001".to_vec())),
+            (b"002".to_vec(), Op::Insert(b"002".to_vec())),
+            (b"003".to_vec(), Op::Insert(b"003".to_vec())),
+            (b"004".to_vec(), Op::Insert(b"004".to_vec())),
+        ]))
+        .unwrap();
+
+        // enusre rockdb max is exclusive
+        {
+            assert_eq!(
+                STORAGE
+                    .iter(&db.db, 0, Some(b"000"), Some(b"004"), Order::Ascending)
+                    .collect::<Vec<_>>(),
+                vec![
+                    (b"000".to_vec(), b"000".to_vec()),
+                    (b"001".to_vec(), b"001".to_vec()),
+                    (b"002".to_vec(), b"002".to_vec()),
+                    (b"003".to_vec(), b"003".to_vec()),
+                ]
+            );
+
+            assert_eq!(
+                STORAGE
+                    .iter(&db.db, 0, Some(b"000"), Some(b"005"), Order::Ascending)
+                    .collect::<Vec<_>>(),
+                vec![
+                    (b"000".to_vec(), b"000".to_vec()),
+                    (b"001".to_vec(), b"001".to_vec()),
+                    (b"002".to_vec(), b"002".to_vec()),
+                    (b"003".to_vec(), b"003".to_vec()),
+                    (b"004".to_vec(), b"004".to_vec()),
+                ]
+            );
+        }
+        drop(db);
+
+        let db = DiskDbLite::open::<_, Vec<u8>>(&path, Some(&(b"000".to_vec(), b"004".to_vec())))
+            .unwrap();
+
+        // In order to test the priorty data, we manually delete a key from the db.
+        // This is not something that should happen in a normal use case
+        // but allows us to test the priority data.
+
+        assert_eq!(STORAGE.read(&db.db, 0, b"002"), Some(b"002".to_vec()));
+
+        // Remove the 002 key from the db
+        {
+            let mut batch = BatchBuilder::new(&db.db).with_timestamp(0.into());
+            batch.update(STORAGE, |batch| {
+                batch.delete(b"002");
+            });
+            batch.commit().unwrap();
+        }
+
+        assert_eq!(STORAGE.read(&db.db, 0, b"002"), None);
+
+        // We should be able to read 002 from the priority data
+        let storage = db.state_storage(None).unwrap();
+        assert_eq!(storage.read(b"002"), Some(b"002".to_vec()));
+
+        // Iterate over the a range included in the priority data
+        assert_eq!(
+            storage
+                .scan_values(Some(b"001"), Some(b"003"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            vec![b"001".to_vec(), b"002".to_vec()]
+        );
+
+        // Iterate over the exact range of the priority data
+        assert_eq!(
+            storage
+                .scan_values(Some(b"000"), Some(b"004"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            vec![
+                b"000".to_vec(),
+                b"001".to_vec(),
+                b"002".to_vec(),
+                b"003".to_vec(),
+            ]
+        );
+
+        // Iterate over a range that exceeds the priority data.
+        // Data are loaded from disk, key `002`` should not be found.
+        assert_eq!(
+            storage
+                .scan_values(Some(b"000"), Some(b"005"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            vec![
+                b"000".to_vec(),
+                b"001".to_vec(),
+                b"003".to_vec(),
+                b"004".to_vec(),
+            ]
+        );
     }
 }
