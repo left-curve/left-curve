@@ -1,5 +1,5 @@
 use {
-    dango_dex::{MAX_VOLUME_AGE, VOLUMES, VOLUMES_BY_USER},
+    dango_dex::{MAX_VOLUME_AGE, MINIMUM_LIQUIDITY, VOLUMES, VOLUMES_BY_USER},
     dango_genesis::Contracts,
     dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
     dango_testing::{BridgeOp, TestAccount, TestOption, TestSuite, setup_test_naive},
@@ -7655,6 +7655,8 @@ fn create_and_cancel_order_with_remainder() {
 fn provide_liquidity_fails_when_minimum_output_is_not_met() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
+    let expected_mint_amount = Uint128::new(100_000_000) - MINIMUM_LIQUIDITY;
+
     suite
         .execute(
             &mut accounts.user1,
@@ -7662,7 +7664,7 @@ fn provide_liquidity_fails_when_minimum_output_is_not_met() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                minimum_output: Uint128::new(100_000_000 + 1),
+                minimum_output: expected_mint_amount + Uint128::new(1),
             },
             coins! {
                 dango::DENOM.clone() => 100,
@@ -7670,8 +7672,9 @@ fn provide_liquidity_fails_when_minimum_output_is_not_met() {
             },
         )
         .should_fail_with_error(format!(
-            "lp mint amount is below the minimum output: 100000000 < {}",
-            100_000_000 + 1
+            "lp mint amount is below the minimum output: {} < {}",
+            expected_mint_amount,
+            expected_mint_amount + Uint128::new(1)
         ));
 }
 
@@ -7688,7 +7691,7 @@ fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                minimum_output: Uint128::new(100_000_000),
+                minimum_output: Uint128::new(100_000_000) - MINIMUM_LIQUIDITY,
             },
             coins! {
                 dango::DENOM.clone() => 100,
