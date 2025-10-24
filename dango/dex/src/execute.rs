@@ -244,11 +244,15 @@ fn provide_liquidity(
     let (reserve, mut lp_mint_amount) =
         pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
 
-    // Subtract minimum liquidity from the mint amount if this is the first liquidity provision.
+    // Subtract minimum liquidity from the mint amount if this is the first
+    // liquidity provision.
+    // See the comment on `MINIMUM_LIQUIDITY` on why this is necessary.
     if lp_token_supply.is_zero() {
         lp_mint_amount
             .checked_sub_assign(MINIMUM_LIQUIDITY)
-            .map_err(|e| anyhow!("mint amount is below the MINIMUM_LIQUIDITY: {e}"))?;
+            .map_err(|err| {
+                anyhow!("LP token mint amount is less than `MINIMUM_LIQUIDITY`: {err}")
+            })?;
     }
 
     // Save the updated pool reserve.

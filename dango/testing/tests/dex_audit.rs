@@ -246,7 +246,7 @@ fn issue_6_cannot_mint_zero_lp_tokens() {
                 dango::DENOM.clone() => 100_000,
             },
         )
-        .should_fail_with_error("mint amount is below the MINIMUM_LIQUIDITY");
+        .should_fail_with_error("LP token mint amount is less than `MINIMUM_LIQUIDITY`");
 }
 
 #[test]
