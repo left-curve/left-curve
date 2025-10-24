@@ -370,12 +370,10 @@ impl StartCmd {
             },
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
-                eprintln!("Received SIGINT, shutting down");
                 Ok(())
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
-                eprintln!("Received SIGTERM, shutting down");
                 Ok(())
             },
         }
