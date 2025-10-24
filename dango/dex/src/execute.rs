@@ -334,9 +334,8 @@ fn withdraw_liquidity(
     // Calculate the amount of each asset to return
     let (reserve, refunds) = pair.remove_liquidity(reserve, lp_token_supply, lp_burn_amount)?;
 
-    // If a minimum output is specified, ensure the refunds are greater than the minimum output.
+    // If a minimum output is specified, ensure the refunds are no less than it.
     if let Some(minimum_output) = minimum_output {
-        // Ensure the refunds are greater than the minimum output.
         ensure!(
             {
                 let first = minimum_output.first();
