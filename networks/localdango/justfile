@@ -43,7 +43,7 @@ start-inner profiles="" files="":
         ;;
     esac
 
-    docker compose {{files}} --profile analytics --profile faucet --profile dango down --remove-orphans
+    docker compose {{files}} --profile analytics --profile faucet --profile dango --profile dex-bot down --remove-orphans
     exit $exit_code
   }
 

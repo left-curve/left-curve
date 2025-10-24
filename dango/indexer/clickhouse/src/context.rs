@@ -88,33 +88,10 @@ impl Context {
         candle_cache
             .preload_pairs(&all_pairs, self.clickhouse_client())
             .await?;
-
-        #[cfg(feature = "tracing")]
-        {
-            tracing::info!(
-                candles_len = candle_cache.candles.len(),
-                pairs_len = all_pairs.len(),
-                "Preloaded candle cache"
-            );
-
-            for (key, values) in candle_cache.candles.iter() {
-                tracing::info!(
-                    key = ?key,
-                    count = values.len(),
-                    "Candle cache entries for pair"
-                );
-            }
-        }
-
         drop(candle_cache);
 
         let mut trade_cache = self.trade_cache.write().await;
         trade_cache.preload(self.clickhouse_client()).await?;
-        #[cfg(feature = "tracing")]
-        tracing::info!(
-            trades_len = trade_cache.trades.len(),
-            "Preloaded trade cache"
-        );
         drop(trade_cache);
 
         Ok(())
