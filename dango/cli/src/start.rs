@@ -89,12 +89,7 @@ impl StartCmd {
         let indexer_path = sql_indexer.indexer_path.clone();
         let indexer_context = sql_indexer.context.clone();
 
-        let shutdown = tokio::spawn(async {
-            tokio::signal::ctrl_c()
-                .await
-                .expect("Failed to listen for Ctrl-C");
-            eprintln!("Received shutdown signal");
-        });
+        let app = Arc::new(app);
 
         let (hooked_indexer, _, dango_httpd_context) = self
             .setup_indexer_stack(
@@ -102,7 +97,7 @@ impl StartCmd {
                 sql_indexer,
                 indexer_context,
                 indexer_path,
-                Arc::new(app),
+                app.clone(),
                 &cfg.tendermint.rpc_addr,
             )
             .await?;
@@ -117,63 +112,8 @@ impl StartCmd {
         ) {
             (true, true, true) => {
                 // Indexer, HTTP server, and metrics server all enabled
-
-                tokio::select! {
-                    result = async {
-                        tokio::try_join!(
-                            Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
-                            Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
-                            self.run_with_indexer(
-                                cfg.grug,
-                                cfg.tendermint,
-                                cfg.pyth,
-                                db,
-                                vm,
-                                hooked_indexer
-                            )
-                        )
-                    } => {
-                        result?;
-                    }
-                    _ = shutdown => {
-                        eprintln!("Shutting down gracefully...");
-                        // Give ClickHouse async tasks time to complete after wait_for_finish
-                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                    }
-                }
-            },
-            (true, true, false) => {
-                // Indexer and HTTP server enabled, metrics disabled
-
-                tokio::select! {
-                    result = async {
-                        tokio::try_join!(
+                tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
-                    self.run_with_indexer(
-                        cfg.grug,
-                        cfg.tendermint,
-                        cfg.pyth,
-                        db,
-                        vm,
-                        hooked_indexer
-                    )
-                )
-                    } => {
-                        result?;
-                    }
-                    _ = shutdown => {
-                        eprintln!("Shutting down gracefully...");
-                        // Give ClickHouse async tasks time to complete after wait_for_finish
-                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                    }
-                }
-            },
-            (true, false, true) => {
-                // Indexer and metrics enabled, HTTP server disabled
-
-                tokio::select! {
-                    result = async {
-                        tokio::try_join!(
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
                     self.run_with_indexer(
                         cfg.grug,
@@ -183,93 +123,64 @@ impl StartCmd {
                         vm,
                         hooked_indexer
                     )
-                )
-                    } => {
-                        result?;
-                    }
-                    _ = shutdown => {
-                        eprintln!("Shutting down gracefully...");
-                        // Give ClickHouse async tasks time to complete after wait_for_finish
-                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                    }
-                }
+                )?;
+            },
+            (true, true, false) => {
+                // Indexer and HTTP server enabled, metrics disabled
+                tokio::try_join!(
+                    Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
+                    self.run_with_indexer(
+                        cfg.grug,
+                        cfg.tendermint,
+                        cfg.pyth,
+                        db,
+                        vm,
+                        hooked_indexer
+                    )
+                )?;
+            },
+            (true, false, true) => {
+                // Indexer and metrics enabled, HTTP server disabled
+                tokio::try_join!(
+                    Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
+                    self.run_with_indexer(
+                        cfg.grug,
+                        cfg.tendermint,
+                        cfg.pyth,
+                        db,
+                        vm,
+                        hooked_indexer
+                    )
+                )?;
             },
             (true, false, false) => {
                 // Only indexer enabled
-
-                tokio::select! {
-                    result = async {
-                        self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, hooked_indexer).await
-                    } => {
-                        result?;
-                    }
-                    _ = shutdown => {
-                        eprintln!("Shutting down gracefully...");
-                        // Give ClickHouse async tasks time to complete after wait_for_finish
-                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                    }
-                }
+                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, hooked_indexer)
+                    .await?;
             },
             (false, true, false) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics disabled
+                let httpd_context = HttpdContext::new(app);
 
-                eprintln!("This combination is not supported.");
-
-                // let httpd_context = HttpdContext::new(Arc::new(app));
-
-                // tokio::select! {
-                //     result = async {
-                //         tokio::try_join!(
-                //     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                //     self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
-                // )
-                //     } => {
-                //         result?;
-                //     }
-                //     _ = shutdown => {
-                //         eprintln!("Shutting down gracefully...");
-                //         // Give ClickHouse async tasks time to complete after wait_for_finish
-                //         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                //     }
-                // }
+                tokio::try_join!(
+                    Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
+                )?;
             },
             (false, true, true) => {
-                eprintln!("This combination is not supported.");
-
                 // No indexer, but HTTP server enabled (minimal mode), metrics enabled
-                // let httpd_context = HttpdContext::new(Arc::new(app));
+                let httpd_context = HttpdContext::new(app);
 
-                // tokio::select! {
-                //     result = async {
-                //         tokio::try_join!(
-                //     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
-                //     self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer),
-                //     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler)
-                // )
-                //     } => {
-                //         result?;
-                //     }
-                //     _ = shutdown => {
-                //         eprintln!("Shutting down gracefully...");
-                //         // Give ClickHouse async tasks time to complete after wait_for_finish
-                //         tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                //     }
-                // }
+                tokio::try_join!(
+                    Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
+                    self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer),
+                    Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler)
+                )?;
             },
             (false, false, _) => {
                 // No indexer, no HTTP server
-                tokio::select! {
-                    result = async {
-                        self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer).await
-                    } => {
-                        result?;
-                    }
-                    _ = shutdown => {
-                        eprintln!("Shutting down gracefully...");
-                        // Give ClickHouse async tasks time to complete after wait_for_finish
-                        // tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                    }
-                }
+                self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
+                    .await?;
             },
         }
 
@@ -346,7 +257,7 @@ impl StartCmd {
         cfg: &HttpdConfig,
         context: HttpdContext,
     ) -> anyhow::Result<()> {
-        tracing::info!("Starting minimal HTTP server at {}:{}", &cfg.ip, cfg.port);
+        tracing::info!(cfg.ip, cfg.port, "Starting minimal HTTP server");
 
         grug_httpd::server::run_server(
             &cfg.ip,
@@ -459,10 +370,12 @@ impl StartCmd {
             },
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
+                eprintln!("Received SIGINT, shutting down");
                 Ok(())
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
+                eprintln!("Received SIGTERM, shutting down");
                 Ok(())
             },
         }

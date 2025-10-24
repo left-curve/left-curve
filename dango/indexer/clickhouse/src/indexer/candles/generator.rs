@@ -65,12 +65,6 @@ impl CandleGenerator {
                 .or_insert(candle.max_block_height);
         }
 
-        #[cfg(feature = "tracing")]
-        {
-            // tracing::info!(max_block_height, "Saving candle");
-            tracing::info!("{:#?}", max_block_heights);
-        }
-
         inserter.commit().await.inspect_err(|_err| {
             #[cfg(feature = "tracing")]
             tracing::error!("Failed to commit inserter for candles: {_err}");
@@ -94,9 +88,6 @@ impl CandleGenerator {
         }
 
         drop(candle_cache);
-
-        #[cfg(feature = "tracing")]
-        tracing::info!(candles_len = candles.len(), "Saving candles");
 
         self.store_candles(candles).await
     }

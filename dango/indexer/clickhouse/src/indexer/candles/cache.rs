@@ -16,10 +16,9 @@ use {
     itertools::Itertools,
     std::{
         collections::{HashMap, HashSet},
-        time::{Duration, Instant},
+        time::Instant,
     },
     strum::IntoEnumIterator,
-    tokio::time::sleep,
 };
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -431,8 +430,8 @@ impl CandleCache {
                     async move {
                         let mut candles;
 
-                        #[cfg(feature = "tracing")]
-                        let start = Instant::now();
+                        // #[cfg(feature = "tracing")]
+                        // let start = Instant::now();
 
                         // loop {
                         // if start.elapsed() > Duration::from_secs(20) {

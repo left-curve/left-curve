@@ -56,3 +56,11 @@ Default users:
 Default database: `grug_dev`
 
 **NOTE**: A CometBFT consensus private key is found at [`./configs/cometbft/priv_validator_key.json`](./configs/cometbft/config/priv_validator_key.json). This key is only intended for use in LocalDango. Do not reuse it for any other purpose.
+
+## Using localdango while coding `dango` on your localhost
+
+Run those in different terminals, in order:
+
+1. `just start-without-dango`
+2. `just start-dango`
+3. Once the 2 other commands finished: `just start-dex-bot`
