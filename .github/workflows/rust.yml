@@ -326,7 +326,7 @@ jobs:
 
   backend-build:
     needs: [backend-test, changes]
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
