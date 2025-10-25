@@ -47,6 +47,14 @@ where
         }
     }
 
+    pub fn has_raw(&self, storage: &dyn Storage, ik_raw: &[u8]) -> bool {
+        self.index_map.has_raw(storage, ik_raw)
+    }
+
+    pub fn has(&self, storage: &dyn Storage, idx: IK) -> bool {
+        self.index_map.has(storage, idx)
+    }
+
     /// Given an index value, which may or may not exist, load the corresponding
     /// key.
     pub fn may_load_key(&self, storage: &dyn Storage, idx: IK) -> StdResult<Option<PK::Output>> {
