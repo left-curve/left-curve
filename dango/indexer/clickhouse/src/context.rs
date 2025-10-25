@@ -169,13 +169,7 @@ impl Context {
             return Ok(());
         }
 
-        // safeguard, we had database drop in production
         if !self.clean_up_database {
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                database = self.clickhouse_database,
-                "Skipping cleanup of test database"
-            );
             return Ok(());
         }
 

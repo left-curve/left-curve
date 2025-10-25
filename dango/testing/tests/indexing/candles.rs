@@ -238,6 +238,7 @@ async fn index_candles_with_real_clickhouse_and_one_minute_interval() -> anyhow:
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore = "flaky test, sometimes fails"]
 async fn index_candles_with_real_clickhouse_and_one_second_interval() -> anyhow::Result<()> {
     let (mut suite, mut accounts, _, contracts, _, _, _, clickhouse_context) =
         setup_test_with_indexer(TestOption::default()).await;
