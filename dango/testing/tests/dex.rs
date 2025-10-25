@@ -1,5 +1,5 @@
 use {
-    dango_dex::{MAX_VOLUME_AGE, VOLUMES, VOLUMES_BY_USER},
+    dango_dex::{MAX_VOLUME_AGE, MINIMUM_LIQUIDITY, VOLUMES, VOLUMES_BY_USER},
     dango_genesis::Contracts,
     dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
     dango_testing::{BridgeOp, TestAccount, TestOption, TestSuite, setup_test_naive},
@@ -1409,6 +1409,7 @@ fn provide_liquidity(
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             initial_reserves.clone(),
         )
@@ -1431,6 +1432,7 @@ fn provide_liquidity(
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             provision.clone(),
         )
@@ -1512,6 +1514,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 100_000,
@@ -1619,6 +1622,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             initial_reserves.clone(),
         )
@@ -1636,6 +1640,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             provided_funds.clone(),
         )
@@ -1654,6 +1659,7 @@ fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds
             &dex::ExecuteMsg::WithdrawLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! { lp_denom.clone() => lp_burn_amount },
         )
@@ -1984,6 +1990,7 @@ fn swap_exact_amount_in(
                 &dex::ExecuteMsg::ProvideLiquidity {
                     base_denom: base_denom.clone(),
                     quote_denom: quote_denom.clone(),
+                    minimum_output: None,
                 },
                 reserve.clone(),
             )
@@ -2333,6 +2340,7 @@ fn swap_exact_amount_out(
                 &dex::ExecuteMsg::ProvideLiquidity {
                     base_denom: base_denom.clone(),
                     quote_denom: quote_denom.clone(),
+                    minimum_output: None,
                 },
                 reserve.clone(),
             )
@@ -2408,6 +2416,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 1000000,
@@ -2979,6 +2988,7 @@ fn curve_on_orderbook(
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             pool_liquidity.clone(),
         )
@@ -7639,4 +7649,89 @@ fn create_and_cancel_order_with_remainder() {
     suite.balances().should_change(&accounts.user1, btree_map! {
         usdc::DENOM.clone() => BalanceChange::Unchanged,
     });
+}
+
+#[test]
+fn provide_liquidity_fails_when_minimum_output_is_not_met() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let expected_mint_amount = Uint128::new(100_000_000) - MINIMUM_LIQUIDITY;
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: Some(expected_mint_amount + Uint128::new(1)),
+            },
+            coins! {
+                dango::DENOM.clone() => 100,
+                usdc::DENOM.clone() => 100,
+            },
+        )
+        .should_fail_with_error(format!(
+            "LP mint amount is less than the minimum output: {} < {}",
+            expected_mint_amount,
+            expected_mint_amount + Uint128::new(1)
+        ));
+}
+
+#[test]
+fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: Some(Uint128::new(100_000_000) - MINIMUM_LIQUIDITY),
+            },
+            coins! {
+                dango::DENOM.clone() => 100,
+                usdc::DENOM.clone() => 100,
+            },
+        )
+        .should_succeed();
+
+    let lp_balance = suite
+        .query_balance(&accounts.user1, lp_denom.clone())
+        .unwrap();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::WithdrawLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: Some(
+                    CoinPair::new(
+                        Coin::new(dango::DENOM.clone(), Uint128::new(100)).unwrap(),
+                        Coin::new(usdc::DENOM.clone(), Uint128::new(100)).unwrap(),
+                    )
+                    .unwrap(),
+                ),
+            },
+            Coins::one(lp_denom.clone(), lp_balance).unwrap(),
+        )
+        .should_fail_with_error(format!(
+            "withdrawn assets are less than the minimum output: {:?} < {:?}",
+            CoinPair::try_from(coins! {
+                usdc::DENOM.clone() => 99,
+                dango::DENOM.clone() => 99,
+            })
+            .unwrap(),
+            CoinPair::try_from(coins! {
+                usdc::DENOM.clone() => 100,
+                dango::DENOM.clone() => 100,
+            })
+            .unwrap(),
+        ));
 }
