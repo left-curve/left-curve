@@ -69,7 +69,7 @@ impl StartCmd {
 
         // Create the base app instance for HTTP server
         let app = App::new(
-            db.clone(),
+            db.clone_without_priority_data(),
             vm.clone(),
             NaiveProposalPreparer,
             NullIndexer,
