@@ -1,7 +1,7 @@
 use {
     crate::{
-        CONFIG, INBOUNDS, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, PROCESSED_UTXOS, SIGNATURES,
-        UTXOS,
+        ADDRESS_INDEX, ADDRESSES, CONFIG, INBOUNDS, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS,
+        PROCESSED_UTXOS, SIGNATURES, UTXOS,
     },
     anyhow::{bail, ensure},
     corepc_client::bitcoin::{
@@ -161,6 +161,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             signatures,
             pub_key,
         } => authorize_outbound(ctx, id, signatures, pub_key),
+        ExecuteMsg::CreateDepositAddress {} => create_deposit_address(ctx),
     }
 }
 
@@ -448,6 +449,23 @@ fn check_bitcoin_address(address: &str, network: Network) -> anyhow::Result<()> 
         })?;
 
     Ok(())
+}
+
+/// Create a new deposit address for the user.
+fn create_deposit_address(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let (index, _) = ADDRESS_INDEX.increment(ctx.storage)?;
+
+    // Add a deposit address for the user if he hasn't already one.
+    ADDRESSES.may_update(
+        ctx.storage,
+        ctx.sender,
+        |maybe_address| match maybe_address {
+            Some(_) => bail!("you already have a deposit address"),
+            None => Ok(index),
+        },
+    )?;
+
+    Ok(Response::new())
 }
 
 /// Select the best UTXOs to cover the withdraw amount and fee.

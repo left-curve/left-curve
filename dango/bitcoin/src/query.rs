@@ -1,15 +1,17 @@
 use {
-    crate::{CONFIG, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS},
-    dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, QueryMsg, Transaction, Utxo},
+    crate::{ADDRESSES, CONFIG, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS},
+    dango_types::bitcoin::{
+        BitcoinAddress, BitcoinSignature, Config, QueryMsg, Transaction, UserAddressScript, Utxo,
+    },
     grug::{
-        Bound, DEFAULT_PAGE_LIMIT, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order, StdResult,
-        Storage, Uint128,
+        Addr, Bound, DEFAULT_PAGE_LIMIT, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order,
+        StdResult, Storage, Uint128,
     },
     std::collections::BTreeMap,
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
-pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
+pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
     match msg {
         QueryMsg::Config {} => {
             let res = query_config(ctx.storage)?;
@@ -47,7 +49,12 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> StdResult<Json> {
             let res = query_outbound_signatures(ctx.storage, start_after, limit)?;
             res.to_json_value()
         },
+        QueryMsg::DepositAddress { address } => {
+            let res = query_deposit_address(ctx, address)?;
+            res.to_json_value()
+        },
     }
+    .map_err(Into::into)
 }
 
 fn query_config(storage: &dyn Storage) -> StdResult<Config> {
@@ -59,7 +66,7 @@ fn query_utxos(
     start_after: Option<Utxo>,
     limit: Option<u32>,
     order: Order,
-) -> StdResult<Vec<Utxo>> {
+) -> anyhow::Result<Vec<Utxo>> {
     let start = start_after.map(|utxo| (utxo.amount, utxo.transaction_hash, utxo.vout));
     let start = start.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
@@ -133,4 +140,18 @@ fn query_outbound_signatures(
         .range(storage, start, None, Order::Ascending)
         .take(limit)
         .collect()
+}
+
+fn query_deposit_address(ctx: ImmutableCtx, address: Addr) -> anyhow::Result<BitcoinAddress> {
+    let deposit_index = ADDRESSES.load(ctx.storage, address)?;
+
+    let config = CONFIG.load(ctx.storage)?;
+
+    let user_script = UserAddressScript::new(
+        config.multisig.threshold(),
+        config.multisig.pub_keys().clone(),
+        deposit_index,
+    )?;
+
+    Ok(user_script.address(config.network).to_string())
 }

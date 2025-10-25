@@ -3,8 +3,12 @@ use {
     anyhow::bail,
     corepc_client::bitcoin::{
         Address, Amount, OutPoint, PublicKey, ScriptBuf, Sequence, Transaction as BtcTransaction,
-        TxIn, TxOut, Txid, Witness, absolute::LockTime, hashes::Hash,
-        opcodes::all::OP_CHECKMULTISIG, script::Builder, transaction::Version,
+        TxIn, TxOut, Txid, Witness,
+        absolute::LockTime,
+        hashes::Hash,
+        opcodes::all::{OP_CHECKMULTISIG, OP_DROP},
+        script::Builder,
+        transaction::Version,
     },
     grug::{
         Addr, BorshSerExt, Hash256, HashExt, HexBinary, HexByteArray, Inner, NonEmpty, Order,
@@ -93,6 +97,62 @@ impl MultisigSettings {
     /// Returns the script of the multisig wallet.
     pub fn script(&self) -> &ScriptBuf {
         &self.script
+    }
+}
+
+pub struct UserAddressScript {
+    script: ScriptBuf,
+    index: u64,
+}
+
+impl UserAddressScript {
+    pub fn new(
+        threshold: u8,
+        pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>,
+        index: u64,
+    ) -> anyhow::Result<Self> {
+        if threshold < 1 || threshold > pub_keys.len() as u8 {
+            bail!(
+                "Invalid multisig parameters: threshold = {}, pub_keys = {}",
+                threshold,
+                pub_keys.len()
+            );
+        }
+
+        // Create the script for the multisig.
+        // The redeem script is a P2WSH script is created as:
+        // threshold - pubkeys - num_pub_keys - OP_CHECKMULTISIG - index - OP_DROP
+        let mut builder = Builder::new().push_int(threshold as i64);
+
+        for pubkey in pub_keys.iter() {
+            builder = builder.push_key(&PublicKey::from_slice(pubkey)?);
+        }
+
+        builder = builder
+            .push_int(pub_keys.len() as i64)
+            .push_opcode(OP_CHECKMULTISIG)
+            .push_int(index as i64)
+            .push_opcode(OP_DROP);
+
+        Ok(Self {
+            script: builder.into_script(),
+            index,
+        })
+    }
+
+    /// Returns the Bitcoin address of the multisig wallet.
+    pub fn address(&self, network: Network) -> Address {
+        Address::p2wsh(&self.script, network)
+    }
+
+    /// Returns the script of the multisig wallet.
+    pub fn script(&self) -> &ScriptBuf {
+        &self.script
+    }
+
+    /// Returns the index of the address.
+    pub fn index(&self) -> u64 {
+        self.index
     }
 }
 
@@ -282,9 +342,7 @@ pub struct InstantiateMsg {
 
 #[grug::derive(Serde)]
 pub enum ExecuteMsg {
-    /// Update the guardian addresses and/or threshold.
-    ///
-    /// Can only be called by the chain owner.
+    /// Update config for bridge; can only be called by the chain owner.
     UpdateConfig {
         fee_rate_updater: Option<Addr>,
         minimum_deposit: Option<Uint128>,
@@ -322,6 +380,9 @@ pub enum ExecuteMsg {
         /// The public key of the guardian signing the transaction.
         pub_key: HexByteArray<33>,
     },
+
+    /// Request a bitcoin deposit address for a user.
+    CreateDepositAddress {},
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -363,6 +424,9 @@ pub enum QueryMsg {
         start_after: Option<u32>,
         limit: Option<u32>,
     },
+    /// Query the deposit address for a user.
+    #[returns(BitcoinAddress)]
+    DepositAddress { address: Addr },
 }
 
 // ------------------------------- Events --------------------------------------

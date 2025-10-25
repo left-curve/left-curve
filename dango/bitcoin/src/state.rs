@@ -1,6 +1,9 @@
 use {
     dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, Transaction, Vout},
-    grug::{Addr, Counter, Hash256, HexByteArray, Item, Map, Serde, Set, Uint128},
+    grug::{
+        Addr, Counter, Hash256, HexByteArray, IndexedMap, Item, Map, Serde, Set, Uint128,
+        UniqueIndex,
+    },
     std::collections::{BTreeMap, BTreeSet},
 };
 
@@ -13,6 +16,13 @@ pub const CONFIG: Item<Config, Serde> = Item::new("config");
 /// ```
 pub const INBOUNDS: Map<(Hash256, Vout, Uint128, Option<Addr>), BTreeSet<HexByteArray<33>>> =
     Map::new("inbound");
+
+pub const ADDRESSES: IndexedMap<Addr, u64, AddressIndexes> =
+    IndexedMap::new("address", AddressIndexes {
+        btc_index: UniqueIndex::new(|_, id| *id, "address", "btc__id"),
+    });
+
+pub const ADDRESS_INDEX: Counter<u64> = Counter::new("address_id", 1, 1);
 
 /// UTXOs owned by the multisig, available to be spent for outbound transactions.
 ///
@@ -41,3 +51,8 @@ pub const OUTBOUNDS: Map<u32, Transaction> = Map::new("outbound");
 /// Signatures for outbound transactions that have been signed by validators.
 pub const SIGNATURES: Map<u32, BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>> =
     Map::new("signature");
+
+#[grug::index_list(Addr, u64)]
+pub struct AddressIndexes<'a> {
+    pub btc_index: UniqueIndex<'a, Addr, u64, u64>,
+}
