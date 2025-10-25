@@ -101,6 +101,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 10,
@@ -242,6 +243,7 @@ fn issue_6_cannot_mint_zero_lp_tokens() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 100_000,
@@ -262,6 +264,7 @@ fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 eth::DENOM.clone() => 100_000,
@@ -321,6 +324,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             Coins::new(),
         )
@@ -333,6 +337,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             &dex::ExecuteMsg::WithdrawLiquidity {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             Coins::new(),
         )
@@ -657,6 +662,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 5,

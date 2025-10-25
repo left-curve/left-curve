@@ -64,11 +64,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::ProvideLiquidity {
             base_denom,
             quote_denom,
-        } => provide_liquidity(ctx, base_denom, quote_denom),
+            minimum_output,
+        } => provide_liquidity(ctx, base_denom, quote_denom, minimum_output),
         ExecuteMsg::WithdrawLiquidity {
             base_denom,
             quote_denom,
-        } => withdraw_liquidity(ctx, base_denom, quote_denom),
+            minimum_output,
+        } => withdraw_liquidity(ctx, base_denom, quote_denom, minimum_output),
         ExecuteMsg::SwapExactAmountIn {
             route,
             minimum_output,
@@ -201,6 +203,7 @@ fn provide_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
+    minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     // Providing liquidity is not allowed when trading is paused.
     ensure!(
@@ -255,6 +258,14 @@ fn provide_liquidity(
             })?;
     }
 
+    // Ensure the LP mint amount is greater than the minimum.
+    if let Some(minimum) = minimum_output {
+        ensure!(
+            lp_mint_amount >= minimum,
+            "LP mint amount is less than the minimum output: {lp_mint_amount} < {minimum}"
+        );
+    }
+
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
 
@@ -292,6 +303,7 @@ fn withdraw_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
+    minimum_output: Option<CoinPair>,
 ) -> anyhow::Result<Response> {
     // Withdrawing liquidity is not allowed when trading is paused.
     ensure!(
@@ -321,6 +333,19 @@ fn withdraw_liquidity(
 
     // Calculate the amount of each asset to return
     let (reserve, refunds) = pair.remove_liquidity(reserve, lp_token_supply, lp_burn_amount)?;
+
+    // If a minimum output is specified, ensure the refunds are no less than it.
+    if let Some(minimum_output) = minimum_output {
+        ensure!(
+            {
+                let first = minimum_output.first();
+                let second = minimum_output.second();
+                refunds.amount_of(first.denom)? >= *first.amount
+                    && refunds.amount_of(second.denom)? >= *second.amount
+            },
+            "withdrawn assets are less than the minimum output: {refunds:?} < {minimum_output:?}",
+        );
+    }
 
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;

@@ -89,6 +89,21 @@ impl StartCmd {
         let indexer_path = sql_indexer.indexer_path.clone();
         let indexer_context = sql_indexer.context.clone();
 
+        let app = Arc::new(app);
+
+        let (hooked_indexer, _, dango_httpd_context) = self
+            .setup_indexer_stack(
+                &cfg,
+                sql_indexer,
+                indexer_context,
+                indexer_path,
+                app.clone(),
+                &cfg.tendermint.rpc_addr,
+            )
+            .await?;
+
+        let indexer_clone = hooked_indexer.clone();
+
         // Run ABCI server, optionally with indexer and httpd server.
         match (
             cfg.indexer.enabled,
@@ -97,17 +112,6 @@ impl StartCmd {
         ) {
             (true, true, true) => {
                 // Indexer, HTTP server, and metrics server all enabled
-                let (hooked_indexer, _, dango_httpd_context) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
-
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
@@ -123,17 +127,6 @@ impl StartCmd {
             },
             (true, true, false) => {
                 // Indexer and HTTP server enabled, metrics disabled
-                let (hooked_indexer, _, dango_httpd_context) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
-
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
                     self.run_with_indexer(
@@ -148,17 +141,6 @@ impl StartCmd {
             },
             (true, false, true) => {
                 // Indexer and metrics enabled, HTTP server disabled
-                let (hooked_indexer, ..) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
-
                 tokio::try_join!(
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
                     self.run_with_indexer(
@@ -173,23 +155,13 @@ impl StartCmd {
             },
             (true, false, false) => {
                 // Only indexer enabled
-                let (hooked_indexer, ..) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
-
                 self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, hooked_indexer)
                     .await?;
             },
             (false, true, false) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics disabled
-                let httpd_context = HttpdContext::new(Arc::new(app));
+                let httpd_context = HttpdContext::new(app);
+
                 tokio::try_join!(
                     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
                     self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
@@ -197,7 +169,8 @@ impl StartCmd {
             },
             (false, true, true) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics enabled
-                let httpd_context = HttpdContext::new(Arc::new(app));
+                let httpd_context = HttpdContext::new(app);
+
                 tokio::try_join!(
                     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
                     self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer),
@@ -210,6 +183,8 @@ impl StartCmd {
                     .await?;
             },
         }
+
+        indexer_clone.wait_for_finish()?;
 
         Ok(())
     }
@@ -282,7 +257,7 @@ impl StartCmd {
         cfg: &HttpdConfig,
         context: HttpdContext,
     ) -> anyhow::Result<()> {
-        tracing::info!("Starting minimal HTTP server at {}:{}", &cfg.ip, cfg.port);
+        tracing::info!(cfg.ip, cfg.port, "Starting minimal HTTP server");
 
         grug_httpd::server::run_server(
             &cfg.ip,

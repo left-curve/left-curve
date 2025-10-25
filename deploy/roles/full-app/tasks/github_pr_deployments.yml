@@ -73,6 +73,7 @@
     - item.json.id is defined
 
 - name: Add deployment summary to GitHub
+  when: lookup('env', 'GITHUB_STEP_SUMMARY') != ''
   delegate_to: localhost
   connection: local
   become: false

@@ -151,4 +151,5 @@ endpoints = [
 
 # Pyth Lazer access token.
 # If the string is empty, Pyth Lazer oracle is disabled.
-access_token = "{{ pyth_access_token }}"
+# You can override this with PYTH__ACCESS_TOKEN environment variable
+access_token = ""
