@@ -57,7 +57,7 @@ enum Command {
     /// Start the node
     Start(StartCmd),
 
-    /// Interact with Tendermint RPC
+    /// Interact with Tendermint RPC [alias: tm]
     #[command(next_display_order = None, alias = "tm")]
     Tendermint(TendermintCmd),
 
