@@ -1,10 +1,10 @@
 use {
-    grug_app::{CHAIN_ID, CONFIG, CONTRACTS, GasTracker, TraceOption},
+    grug_app::{AppError, CHAIN_ID, CONFIG, CONTRACTS, GasTracker, TraceOption, UpgradeHandler},
     grug_math::{Bytable, NextNumber, Uint128, Uint256},
     grug_testing::TestBuilder,
     grug_types::{
         Addr, BorshSerExt, Coins, Denom, Duration, Empty, JsonSerExt, MsgExecute, QuerierExt,
-        ResultExt, StdError, Timestamp, coins,
+        ResultExt, StdError, Timestamp, Upgrade, btree_map, coins,
     },
     grug_vm_rust::ContractBuilder,
     std::str::FromStr,
@@ -24,19 +24,7 @@ fn upgrading_without_calling_contract() {
         .set_block_time(Duration::from_seconds(1))
         .add_account("owner", Coins::new())
         .set_owner("owner")
-        .set_upgrade_handler(|mut storage, _vm, block| {
-            assert_eq!(
-                block.height,
-                3,
-                "incorrect upgrade block height! expecting: {}, got: {}",
-                3,
-                block.height
-            );
-
-            CHAIN_ID.save(&mut storage, &NEW_CHAIN_ID.to_string())?;
-
-            Ok(())
-        })
+        .set_halt_height(3)
         // .set_tracing_level(Some(tracing::Level::INFO)) // uncomment this to see tracing logs
         .build();
 
@@ -52,11 +40,43 @@ fn upgrading_without_calling_contract() {
         status.chain_id == OLD_CHAIN_ID && status.last_finalized_block.height == 2
     });
 
-    // Block 3. Upgrade happens.
+    // Block 3. The chain halts as planned.
+    suite
+        .try_make_empty_block()
+        .should_fail_with_error(AppError::scheduled_halt(3, 3));
+
+    // Perform the chain upgrade. Remove the halt height, add the upgrade handler.
+    suite.app.set_upgrade_params(
+        None,
+        Some(UpgradeHandler {
+            metadata: Upgrade {
+                description: "change chain ID".to_string(),
+                git_commit: "1234abcd".to_string(),
+                git_tag: Some("v1.2.3".to_string()),
+            },
+            action: |mut storage, _vm, _block| {
+                CHAIN_ID.save(&mut storage, &NEW_CHAIN_ID.to_string())?;
+                Ok(())
+            },
+        }),
+    );
+
+    // Make block 3 again with the new app. Upgrade happens.
     suite.make_empty_block();
     suite.query_status().should_succeed_and(|status| {
         status.chain_id == NEW_CHAIN_ID && status.last_finalized_block.height == 3
     });
+
+    // The upgrade history should have been saved.
+    suite
+        .query_upgrades(None, None)
+        .should_succeed_and_equal(btree_map! {
+            3 => Upgrade {
+                description: "change chain ID".to_string(),
+                git_commit: "1234abcd".to_string(),
+                git_tag: Some("v1.2.3".to_string()),
+            },
+        });
 }
 
 /// Do an upgrade that involves calling a contract.
@@ -103,49 +123,7 @@ fn upgrading_with_calling_contract() {
     let denom = Denom::from_str("oonga").unwrap();
 
     let (mut suite, accounts) = TestBuilder::new()
-        .set_upgrade_handler(|mut storage, vm, block| {
-            assert_eq!(
-                block.height,
-                3,
-                "incorrect upgrade block height! expecting: {}, got: {}",
-                3,
-                block.height
-            );
-
-            let cfg = CONFIG.load(&storage)?;
-            let bank_contract = CONTRACTS.load(&storage, cfg.bank)?;
-
-            // Build the new bank contract code.
-            let new_mock_bank_code = ContractBuilder::new(Box::new(grug_mock_bank::instantiate))
-                .with_execute(Box::new(new_mock_bank::execute))
-                .build();
-
-            // Update the bank contract's code.
-            grug_app::CODES.update(&mut storage, bank_contract.code_hash, |mut code| {
-                code.code = new_mock_bank_code.to_bytes().into();
-                Ok::<_, StdError>(code)
-            })?;
-
-            // Call the bank contract's `execute` function to update the balances
-            // to 256-bit.
-            grug_app::do_execute(
-                vm,
-                storage,
-                GasTracker::new_limitless(),
-                block,
-                0,
-                Addr::mock(0),
-                MsgExecute {
-                    contract: cfg.bank,
-                    msg: (Empty {}).to_json_value()?,
-                    funds: Coins::new(),
-                },
-                TraceOption::LOUD,
-            )
-            .as_result()
-            .map(|_| ())
-            .map_err(|(_evt, err)| err)
-        })
+    .set_halt_height(3)
         .add_account("owner", coins! { denom.clone() => 123 })
         .set_owner("owner")
         // .set_tracing_level(Some(tracing::Level::INFO)) // uncomment this to see tracing logs
@@ -169,7 +147,60 @@ fn upgrading_with_calling_contract() {
             });
     }
 
-    // Block 3. Upgrade happens.
+    // Block 3. The chain halts as planned.
+    suite
+        .try_make_empty_block()
+        .should_fail_with_error(AppError::scheduled_halt(3, 3));
+
+    // Perform the chain upgrade. Remove the halt height, add the upgrade handler.
+    suite.app.set_upgrade_params(
+        None,
+        Some(UpgradeHandler {
+            metadata: Upgrade {
+                description: "call the bank contract".to_string(),
+                git_commit: "ffffffff".to_string(),
+                git_tag: None,
+            },
+            action: |mut storage, vm, block| {
+                let cfg = CONFIG.load(&storage)?;
+                let bank_contract = CONTRACTS.load(&storage, cfg.bank)?;
+
+                // Build the new bank contract code.
+                let new_mock_bank_code =
+                    ContractBuilder::new(Box::new(grug_mock_bank::instantiate))
+                        .with_execute(Box::new(new_mock_bank::execute))
+                        .build();
+
+                // Update the bank contract's code.
+                grug_app::CODES.update(&mut storage, bank_contract.code_hash, |mut code| {
+                    code.code = new_mock_bank_code.to_bytes().into();
+                    Ok::<_, StdError>(code)
+                })?;
+
+                // Call the bank contract's `execute` function to update the balances
+                // to 256-bit.
+                grug_app::do_execute(
+                    vm,
+                    storage,
+                    GasTracker::new_limitless(),
+                    block,
+                    0,
+                    Addr::mock(0),
+                    MsgExecute {
+                        contract: cfg.bank,
+                        msg: (Empty {}).to_json_value()?,
+                        funds: Coins::new(),
+                    },
+                    TraceOption::LOUD,
+                )
+                .as_result()
+                .map(|_| ())
+                .map_err(|(_evt, err)| err)
+            },
+        }),
+    );
+
+    // Make block 3 again with the new app. Upgrade happens.
     // The balance should be 256-bit now.
     suite.make_empty_block();
     suite

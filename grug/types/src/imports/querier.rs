@@ -1,7 +1,7 @@
 use {
     crate::{
         Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, Query,
-        QueryRequest, QueryResponse, QueryStatusResponse, StdError, StdResult,
+        QueryRequest, QueryResponse, QueryStatusResponse, StdError, StdResult, Upgrade,
     },
     grug_math::Uint128,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -104,6 +104,20 @@ pub trait QuerierExt: Querier {
     ) -> StdResult<BTreeMap<Addr, ContractInfo>> {
         self.query_chain(Query::contracts(start_after, limit))
             .map(|res| res.as_contracts())
+    }
+
+    fn query_upgrade(&self) -> StdResult<Option<Upgrade>> {
+        self.query_chain(Query::upgrade())
+            .map(|res| res.as_upgrade())
+    }
+
+    fn query_upgrades(
+        &self,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    ) -> StdResult<BTreeMap<u64, Upgrade>> {
+        self.query_chain(Query::upgrades(start_after, limit))
+            .map(|res| res.as_upgrades())
     }
 
     /// Note: In most cases, for querying a single storage path in another

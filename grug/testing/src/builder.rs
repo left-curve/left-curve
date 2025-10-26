@@ -57,6 +57,7 @@ pub struct TestBuilder<
     vm: VM,
     pp: PP,
     indexer: ID,
+    halt_height: Option<u64>,
     upgrade_handler: Option<UpgradeHandler<VM>>,
     // Consensus parameters
     tracing_level: Option<Level>,
@@ -156,6 +157,7 @@ where
             vm,
             pp,
             indexer,
+            halt_height: None,
             upgrade_handler: None,
             tracing_level: Some(DEFAULT_TRACING_LEVEL),
             chain_id: None,
@@ -188,6 +190,11 @@ where
     /// Setting this to `None` means no tracing.
     pub fn set_tracing_level(mut self, level: Option<Level>) -> Self {
         self.tracing_level = level;
+        self
+    }
+
+    pub fn set_halt_height(mut self, halt_height: u64) -> Self {
+        self.halt_height = Some(halt_height);
         self
     }
 
@@ -299,6 +306,7 @@ where
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            halt_height: self.halt_height,
             upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
@@ -366,6 +374,7 @@ where
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            halt_height: self.halt_height,
             upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
@@ -418,6 +427,7 @@ where
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            halt_height: self.halt_height,
             upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
@@ -495,6 +505,7 @@ where
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            halt_height: self.halt_height,
             upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
@@ -536,6 +547,7 @@ impl<DB, VM, PP, ID, M1, M2, M3>
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            halt_height: self.halt_height,
             upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
@@ -684,6 +696,7 @@ where
             self.vm,
             self.pp,
             self.indexer,
+            self.halt_height,
             self.upgrade_handler,
             chain_id,
             block_time,

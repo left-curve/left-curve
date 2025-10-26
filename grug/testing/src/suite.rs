@@ -5,8 +5,8 @@ use {
     },
     error_backtrace::Backtraceable,
     grug_app::{
-        App, AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer,
-        StorageProvider, UpgradeHandler, Vm,
+        App, AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer,
+        ProposalPreparer, StorageProvider, UpgradeHandler, Vm,
     },
     grug_db_memory::MemDb,
     grug_math::Uint128,
@@ -86,6 +86,7 @@ where
             NaiveProposalPreparer,
             NullIndexer,
             None,
+            None,
             chain_id,
             block_time,
             default_gas_limit,
@@ -116,6 +117,7 @@ where
             pp,
             NullIndexer,
             None,
+            None,
             chain_id,
             block_time,
             default_gas_limit,
@@ -139,6 +141,7 @@ where
         vm: VM,
         pp: PP,
         mut id: ID,
+        halt_height: Option<u64>,
         upgrade_handler: Option<UpgradeHandler<VM>>,
         chain_id: String,
         block_time: Duration,
@@ -170,7 +173,7 @@ where
 
         // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, id, u64::MAX, upgrade_handler);
+        let app = App::new(db, vm, pp, id, u64::MAX, halt_height, upgrade_handler);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {
@@ -222,16 +225,29 @@ where
         self.block_time = old_block_time;
     }
 
-    /// Make a new block without any transaction.
+    /// Make a new block without any transaction. Panic if any error happens.
     pub fn make_empty_block(&mut self) -> MakeBlockOutcome {
         self.make_block(vec![])
     }
 
-    /// Make a new block with the given transactions.
+    /// Make a new block without any transaction.
+    pub fn try_make_empty_block(&mut self) -> AppResult<MakeBlockOutcome> {
+        self.try_make_block(vec![])
+    }
+
+    /// Make a new block with the given transactions. Panic if any error happens.
     pub fn make_block(&mut self, txs: Vec<Tx>) -> MakeBlockOutcome {
+        self.try_make_block(txs).unwrap_or_else(|err| {
+            panic!("fatal error while making block: {err}");
+        })
+    }
+
+    /// Make a new block with the given transactions.
+    pub fn try_make_block(&mut self, txs: Vec<Tx>) -> AppResult<MakeBlockOutcome> {
         // Advance block height and time
-        self.block.height += 1;
-        self.block.timestamp = self.block.timestamp + self.block_time;
+        let mut new_block = self.block.clone();
+        new_block.height += 1;
+        new_block.timestamp = self.block.timestamp + self.block_time;
 
         // Prepare proposal
         let raw_txs = txs
@@ -246,21 +262,19 @@ where
             .collect::<Vec<_>>();
 
         let block = Block {
-            info: self.block,
+            info: new_block,
             txs: txs.clone(),
         };
 
         // Call ABCI `FinalizeBlock` method
-        let block_outcome = self.app.do_finalize_block(block).unwrap_or_else(|err| {
-            panic!("fatal error while finalizing block: {err}");
-        });
+        let block_outcome = self.app.do_finalize_block(block)?; // TODO: drop uncommitted changes if errors
 
         // Call ABCI `Commit` method
-        self.app.do_commit().unwrap_or_else(|err| {
-            panic!("fatal error while committing block: {err}");
-        });
+        self.app.do_commit()?;
 
-        MakeBlockOutcome { txs, block_outcome }
+        self.block = new_block;
+
+        Ok(MakeBlockOutcome { txs, block_outcome })
     }
 
     /// Execute a single transaction.

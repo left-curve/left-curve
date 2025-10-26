@@ -31,6 +31,9 @@ pub enum AppError {
         msg: String,
     },
 
+    #[error("app gracefully halts as scheduled: current: {current}, scheduled: {scheduled}")]
+    ScheduledHalt { current: u64, scheduled: u64 },
+
     #[error("merkle proof is not supported for `/app` query; use `/store` instead")]
     ProofNotSupported,
 

@@ -52,6 +52,9 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
+    /// A block height that the app with gracefully halt the chain.
+    halt_height: Option<u64>,
+    /// A function that performs a chain upgrade and it's related metadata.
     upgrade_handler: Arc<Option<UpgradeHandler<VM>>>,
 }
 
@@ -62,6 +65,7 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
         pp: PP,
         indexer: ID,
         query_gas_limit: u64,
+        halt_height: Option<u64>,
         upgrade_handler: Option<UpgradeHandler<VM>>,
     ) -> Self {
         #[cfg(feature = "metrics")]
@@ -75,8 +79,21 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             pp,
             indexer,
             query_gas_limit,
+            halt_height,
             upgrade_handler: Arc::new(upgrade_handler),
         }
+    }
+}
+
+#[cfg(feature = "testing")]
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
+    pub fn set_upgrade_params(
+        &mut self,
+        halt_height: Option<u64>,
+        upgrade_handler: Option<UpgradeHandler<VM>>,
+    ) {
+        self.halt_height = halt_height;
+        self.upgrade_handler = Arc::new(upgrade_handler);
     }
 }
 
@@ -93,6 +110,7 @@ where
             pp: self.pp.clone(),
             indexer: NullIndexer,
             query_gas_limit: self.query_gas_limit,
+            halt_height: self.halt_height,
             upgrade_handler: Arc::clone(&self.upgrade_handler),
         }
     }
@@ -312,6 +330,30 @@ where
                 last_finalized_block.height + 1,
                 block.info.height,
             ));
+        }
+
+        // If the app is configured to halt at the current height, then gracefully
+        // halt the chain by returning an error.
+        //
+        // Note: halt height means _the new block_, not _the last finalized block_.
+        // This means if `halt_height` is set to be N, then the chain will finalize
+        // and commit block (N-1), but halt before it finalizes block N.
+        // This behavior is consistent with Cosmos SDK:
+        // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
+        if let Some(halt_height) = self.halt_height {
+            if block.info.height >= halt_height {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::warn!(
+                        last_finalized_height = last_finalized_block.height,
+                        current_height = block.info.height,
+                        halt_height,
+                        "!!! CHAIN HALT !!! gracefully halting the chain as configured"
+                    );
+                }
+
+                return Err(AppError::scheduled_halt(block.info.height, halt_height));
+            }
         }
 
         // If an upgrade handler exists, and we're at the scheduled block height,
