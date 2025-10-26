@@ -86,7 +86,6 @@ where
             NaiveProposalPreparer,
             NullIndexer,
             None,
-            None,
             chain_id,
             block_time,
             default_gas_limit,
@@ -117,7 +116,6 @@ where
             pp,
             NullIndexer,
             None,
-            None,
             chain_id,
             block_time,
             default_gas_limit,
@@ -141,7 +139,6 @@ where
         vm: VM,
         pp: PP,
         mut id: ID,
-        halt_height: Option<u64>,
         upgrade_handler: Option<UpgradeHandler<VM>>,
         chain_id: String,
         block_time: Duration,
@@ -173,7 +170,7 @@ where
 
         // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, id, u64::MAX, halt_height, upgrade_handler);
+        let app = App::new(db, vm, pp, id, u64::MAX, upgrade_handler);
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {

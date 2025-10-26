@@ -76,7 +76,6 @@ impl StartCmd {
             cfg.grug.query_gas_limit,
             // The `App` instance for use in httpd doesn't require upgrade params.
             None,
-            None,
         );
 
         let sql_indexer = indexer_sql::IndexerBuilder::default()
@@ -336,7 +335,6 @@ impl StartCmd {
             ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
             indexer,
             grug_cfg.query_gas_limit,
-            None, // TODO: read from `app.toml`
             None, // currently there's no chain upgrade
         );
 

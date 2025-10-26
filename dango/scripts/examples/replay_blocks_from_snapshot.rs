@@ -28,7 +28,6 @@ fn main() -> anyhow::Result<()> {
         NullIndexer,
         u64::MAX,
         None,
-        None,
     );
 
     for height in (FROM_HEIGHT + 1)..=UNTIL_HEIGHT {

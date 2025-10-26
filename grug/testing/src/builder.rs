@@ -1,16 +1,14 @@
 use {
     crate::{TestAccount, TestAccounts, TestSuite, TestVm, tracing::setup_tracing_subscriber},
     grug_app::{
-        AppError, AppResult, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer,
-        UpgradeHandler,
+        AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, UpgradeHandler,
     },
     grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_types::{
         Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT, GENESIS_SENDER, GenesisState, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, Permission, Permissions, StdResult, Storage, Timestamp, Undefined,
-        Upgrade,
+        MaybeDefined, Message, Permission, Permissions, StdResult, Timestamp, Undefined,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -193,23 +191,8 @@ where
         self
     }
 
-    pub fn set_halt_height(mut self, halt_height: u64) -> Self {
-        self.halt_height = Some(halt_height);
-        self
-    }
-
-    pub fn set_upgrade_handler(
-        mut self,
-        action: fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>,
-    ) -> Self {
-        self.upgrade_handler = Some(UpgradeHandler {
-            metadata: Upgrade {
-                description: "oonga boonga".to_string(),
-                git_commit: "0123abcd".to_string(),
-                git_tag: Some("v1.2.3".to_string()),
-            },
-            action,
-        });
+    pub fn set_upgrade_handler(mut self, upgrade_handler: Option<UpgradeHandler<VM>>) -> Self {
+        self.upgrade_handler = upgrade_handler;
         self
     }
 
@@ -696,7 +679,6 @@ where
             self.vm,
             self.pp,
             self.indexer,
-            self.halt_height,
             self.upgrade_handler,
             chain_id,
             block_time,

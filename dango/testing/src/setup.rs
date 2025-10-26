@@ -408,7 +408,6 @@ where
         vm,
         pp,
         indexer,
-        None, // TODO: support customizing halt height in tests
         None, // TODO: support customizing upgrade handler in tests
         test_opt.chain_id,
         test_opt.block_time,

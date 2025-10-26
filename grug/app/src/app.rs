@@ -52,9 +52,7 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
-    /// A block height that the app with gracefully halt the chain.
-    halt_height: Option<u64>,
-    /// A function that performs a chain upgrade and it's related metadata.
+    /// Instruction on how the chain should handle a chain upgrade.
     upgrade_handler: Arc<Option<UpgradeHandler<VM>>>,
 }
 
@@ -65,7 +63,6 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
         pp: PP,
         indexer: ID,
         query_gas_limit: u64,
-        halt_height: Option<u64>,
         upgrade_handler: Option<UpgradeHandler<VM>>,
     ) -> Self {
         #[cfg(feature = "metrics")]
@@ -79,7 +76,6 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             pp,
             indexer,
             query_gas_limit,
-            halt_height,
             upgrade_handler: Arc::new(upgrade_handler),
         }
     }
@@ -87,12 +83,7 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
 
 #[cfg(feature = "testing")]
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
-    pub fn set_upgrade_params(
-        &mut self,
-        halt_height: Option<u64>,
-        upgrade_handler: Option<UpgradeHandler<VM>>,
-    ) {
-        self.halt_height = halt_height;
+    pub fn set_upgrade_handler(&mut self, upgrade_handler: Option<UpgradeHandler<VM>>) {
         self.upgrade_handler = Arc::new(upgrade_handler);
     }
 }
@@ -110,7 +101,6 @@ where
             pp: self.pp.clone(),
             indexer: NullIndexer,
             query_gas_limit: self.query_gas_limit,
-            halt_height: self.halt_height,
             upgrade_handler: Arc::clone(&self.upgrade_handler),
         }
     }
@@ -332,64 +322,67 @@ where
             ));
         }
 
-        // If the app is configured to halt at the current height, then gracefully
-        // halt the chain by returning an error.
-        //
-        // Note: halt height means _the new block_, not _the last finalized block_.
-        // This means if `halt_height` is set to be N, then the chain will finalize
-        // and commit block (N-1), but halt before it finalizes block N.
-        // This behavior is consistent with Cosmos SDK:
-        // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
-        if let Some(halt_height) = self.halt_height {
-            if block.info.height >= halt_height {
+        match self.upgrade_handler.as_ref() {
+            // If the app is configured to halt, and the halt height is reached, then gracefully
+            // halt the chain by returning an error.
+            //
+            // Note: halt height means _the new block_, not _the last finalized block_.
+            // This means if `halt_height` is set to be N, then the chain will finalize
+            // and commit block (N-1), but halt before it finalizes block N.
+            // This behavior is consistent with Cosmos SDK:
+            // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
+            Some(UpgradeHandler::Halt { at_height }) => {
+                if block.info.height >= *at_height {
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::warn!(
+                            last_finalized_height = last_finalized_block.height,
+                            current_height = block.info.height,
+                            halt_height = *at_height,
+                            "!!! CHAIN HALT !!! gracefully halting the chain as configured"
+                        );
+                    }
+
+                    return Err(AppError::scheduled_halt(block.info.height, *at_height));
+                }
+            },
+            // If the app is configured to ugprade, then run the action.
+            //
+            // The action MUST succeed. It failing is considered a fatal error, and
+            // we panic.
+            Some(UpgradeHandler::Upgrade { metadata, action }) => {
                 #[cfg(feature = "tracing")]
                 {
-                    tracing::warn!(
-                        last_finalized_height = last_finalized_block.height,
-                        current_height = block.info.height,
-                        halt_height,
-                        "!!! CHAIN HALT !!! gracefully halting the chain as configured"
+                    tracing::info!(
+                        height = block.info.height,
+                        description = metadata.description,
+                        "Performing chain upgrade"
                     );
                 }
 
-                return Err(AppError::scheduled_halt(block.info.height, halt_height));
-            }
-        }
-
-        // If an upgrade handler exists, and we're at the scheduled block height,
-        // then run the upgrade action.
-        //
-        // The action MUST succeed. It failing is considered a fatal error, and
-        // we panic.
-        if let Some(upgrade_handler) = self.upgrade_handler.as_ref() {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::info!(
-                    height = block.info.height,
-                    description = upgrade_handler.metadata.description,
-                    "Performing chain upgrade"
+                (action)(Box::new(buffer.clone()), self.vm.clone(), block.info).unwrap_or_else(
+                    |err| {
+                        panic!(
+                            "upgrade failed! height: {}, reason: {}",
+                            block.info.height, err
+                        );
+                    },
                 );
-            }
 
-            (upgrade_handler.action)(Box::new(buffer.clone()), self.vm.clone(), block.info)
-                .unwrap_or_else(|err| {
-                    panic!(
-                        "upgrade failed! height: {}, reason: {}",
-                        block.info.height, err
+                // Save the record of this upgrade.
+                UPGRADES.save(&mut buffer, block.info.height, metadata)?;
+
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::info!(
+                        height = block.info.height,
+                        description = metadata.description,
+                        "Completed chain upgrade"
                     );
-                });
-
-            // Save the record of this upgrade.
-            UPGRADES.save(&mut buffer, block.info.height, &upgrade_handler.metadata)?;
-
-            #[cfg(feature = "tracing")]
-            {
-                tracing::info!(
-                    height = block.info.height,
-                    description = upgrade_handler.metadata.description,
-                    "Completed chain upgrade"
-                );
-            }
+                }
+            },
+            // No chain upgrade is planned at this time. No nothing.
+            None => {},
         }
 
         let mut cron_outcomes = vec![];
