@@ -1,7 +1,7 @@
 use {
     grug_storage::{Index, IndexList, IndexedMap, Item, Map, MultiIndex, Set},
     grug_types::{
-        Addr, BlockInfo, Code, CodeStatus, Config, ContractInfo, Hash256, Json, Timestamp,
+        Addr, BlockInfo, Code, CodeStatus, Config, ContractInfo, Hash256, Json, Timestamp, Upgrade,
     },
 };
 
@@ -34,6 +34,9 @@ pub const CONTRACTS: Map<Addr, ContractInfo> = Map::new("contract");
 /// Each contract has its own storage space, which we term the "substore".
 /// A key in a contract's substore is prefixed by the word "wasm" + contract address.
 pub const CONTRACT_NAMESPACE: &[u8] = b"wasm";
+
+/// Chain upgrades that have been carried out in the past.
+pub const UPGRADES: Map<u64, Upgrade> = Map::new("upgrade");
 
 pub struct CodeIndexes<'a> {
     pub status: MultiIndex<'a, Hash256, CodeStatus, Code>,

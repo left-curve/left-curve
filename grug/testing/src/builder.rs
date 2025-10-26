@@ -10,6 +10,7 @@ use {
         Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GENESIS_BLOCK_HASH,
         GENESIS_BLOCK_HEIGHT, GENESIS_SENDER, GenesisState, HashExt, Json, JsonSerExt,
         MaybeDefined, Message, Permission, Permissions, StdResult, Storage, Timestamp, Undefined,
+        Upgrade,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -192,12 +193,14 @@ where
 
     pub fn set_upgrade_handler(
         mut self,
-        height: u64,
         action: fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>,
     ) -> Self {
         self.upgrade_handler = Some(UpgradeHandler {
-            description: Some("oonga boonga"),
-            height,
+            metadata: Upgrade {
+                description: "oonga boonga".to_string(),
+                git_commit: "0123abcd".to_string(),
+                git_tag: Some("v1.2.3".to_string()),
+            },
             action,
         });
         self

@@ -1,9 +1,11 @@
+use crate::{UPGRADES, query_upgrade, query_upgrades};
 #[cfg(all(feature = "abci", feature = "tracing"))]
 use data_encoding::BASE64;
 #[cfg(any(feature = "abci", feature = "tracing"))]
 use grug_types::JsonSerExt;
 #[cfg(feature = "abci")]
 use grug_types::{HashExt, JsonDeExt};
+
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
@@ -300,6 +302,7 @@ where
             None,
             "finalize",
         ));
+
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // Make sure the new block height is exactly the last finalized height
@@ -317,23 +320,33 @@ where
         // The action MUST succeed. It failing is considered a fatal error, and
         // we panic.
         if let Some(upgrade_handler) = self.upgrade_handler.as_ref() {
-            if upgrade_handler.height == block.info.height {
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::info!(
-                        height = upgrade_handler.height,
-                        description = upgrade_handler.description.unwrap_or(""),
-                        "Performing chain upgrade"
-                    );
-                }
+            #[cfg(feature = "tracing")]
+            {
+                tracing::info!(
+                    height = block.info.height,
+                    description = upgrade_handler.metadata.description,
+                    "Performing chain upgrade"
+                );
+            }
 
-                (upgrade_handler.action)(Box::new(buffer.clone()), self.vm.clone(), block.info)
-                    .unwrap_or_else(|err| {
-                        panic!(
-                            "upgrade failed! height: {}, reason: {}",
-                            upgrade_handler.height, err
-                        );
-                    });
+            (upgrade_handler.action)(Box::new(buffer.clone()), self.vm.clone(), block.info)
+                .unwrap_or_else(|err| {
+                    panic!(
+                        "upgrade failed! height: {}, reason: {}",
+                        block.info.height, err
+                    );
+                });
+
+            // Save the record of this upgrade.
+            UPGRADES.save(&mut buffer, block.info.height, &upgrade_handler.metadata)?;
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::info!(
+                    height = block.info.height,
+                    description = upgrade_handler.metadata.description,
+                    "Completed chain upgrade"
+                );
             }
         }
 
@@ -1275,6 +1288,14 @@ where
         Query::Contracts(req) => {
             let res = query_contracts(&storage, gas_tracker, req)?;
             Ok(QueryResponse::Contracts(res))
+        },
+        Query::Upgrade(_req) => {
+            let res = query_upgrade(&storage, gas_tracker)?;
+            Ok(QueryResponse::Upgrade(res))
+        },
+        Query::Upgrades(req) => {
+            let res = query_upgrades(&storage, gas_tracker, req)?;
+            Ok(QueryResponse::Upgrades(res))
         },
         Query::WasmRaw(req) => {
             let res = query_wasm_raw(storage, gas_tracker, req)?;

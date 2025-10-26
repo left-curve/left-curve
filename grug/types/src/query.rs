@@ -1,7 +1,7 @@
 use {
     crate::{
         Addr, Binary, BlockInfo, Bound, Code, Coin, Coins, Config, ContractInfo, Denom,
-        GenericResult, Hash256, Inner, Json, JsonSerExt, StdResult, extend_one_byte,
+        GenericResult, Hash256, Inner, Json, JsonSerExt, StdResult, Upgrade, extend_one_byte,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
@@ -68,6 +68,10 @@ pub enum Query {
     Contract(QueryContractRequest),
     /// Enumerate metadata of all contracts.
     Contracts(QueryContractsRequest),
+    /// Query the most recent chain upgrade.
+    Upgrade(QueryUpgradeRequest),
+    /// Enumerate historical chain ugprades.
+    Upgrades(QueryUpgradesRequest),
     /// Query a raw key-value pair in a contract's internal state.
     WasmRaw(QueryWasmRawRequest),
     /// Enumerate key-value pairs in a contract's internal state.
@@ -149,6 +153,14 @@ impl Query {
 
     pub fn contracts(start_after: Option<Addr>, limit: Option<u32>) -> Self {
         QueryContractsRequest { start_after, limit }.into()
+    }
+
+    pub fn upgrade() -> Self {
+        QueryUpgradeRequest {}.into()
+    }
+
+    pub fn upgrades(start_after: Option<u64>, limit: Option<u32>) -> Self {
+        QueryUpgradesRequest { start_after, limit }.into()
     }
 
     pub fn wasm_raw<B>(contract: Addr, key: B) -> Self
@@ -279,6 +291,15 @@ pub struct QueryContractsRequest {
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryUpgradeRequest {}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryUpgradesRequest {
+    pub start_after: Option<u64>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct QueryWasmRawRequest {
     pub contract: Addr,
     pub key: Binary,
@@ -326,6 +347,8 @@ impl_into_query! {
     Codes      => QueryCodesRequest      => BTreeMap<Hash256, Code>,
     Contract   => QueryContractRequest   => ContractInfo,
     Contracts  => QueryContractsRequest  => BTreeMap<Addr, ContractInfo>,
+    Upgrade    => QueryUpgradeRequest    => Option<Upgrade>,
+    Upgrades   => QueryUpgradesRequest   => BTreeMap<u64, Upgrade>,
     WasmRaw    => QueryWasmRawRequest    => Option<Binary>,
     WasmScan   => QueryWasmScanRequest   => BTreeMap<Binary, Binary>,
     WasmSmart  => QueryWasmSmartRequest  => Json,
@@ -348,6 +371,8 @@ pub enum QueryResponse {
     Codes(BTreeMap<Hash256, Code>),
     Contract(ContractInfo),
     Contracts(BTreeMap<Addr, ContractInfo>),
+    Upgrade(Option<Upgrade>),
+    Upgrades(BTreeMap<u64, Upgrade>),
     WasmRaw(Option<Binary>),
     WasmScan(BTreeMap<Binary, Binary>),
     WasmSmart(Json),
@@ -406,6 +431,8 @@ impl QueryResponse {
         Codes      => BTreeMap<Hash256, Code>,
         Contract   => ContractInfo,
         Contracts  => BTreeMap<Addr, ContractInfo>,
+        Upgrade    => Option<Upgrade>,
+        Upgrades   => BTreeMap<u64, Upgrade>,
         WasmRaw    => Option<Binary>,
         WasmScan   => BTreeMap<Binary, Binary>,
         WasmSmart  => Json,

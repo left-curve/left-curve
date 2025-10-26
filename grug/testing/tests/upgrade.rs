@@ -24,7 +24,7 @@ fn upgrading_without_calling_contract() {
         .set_block_time(Duration::from_seconds(1))
         .add_account("owner", Coins::new())
         .set_owner("owner")
-        .set_upgrade_handler(3, |mut storage, _vm, block| {
+        .set_upgrade_handler(|mut storage, _vm, block| {
             assert_eq!(
                 block.height,
                 3,
@@ -103,7 +103,7 @@ fn upgrading_with_calling_contract() {
     let denom = Denom::from_str("oonga").unwrap();
 
     let (mut suite, accounts) = TestBuilder::new()
-        .set_upgrade_handler(3, |mut storage, vm, block| {
+        .set_upgrade_handler(|mut storage, vm, block| {
             assert_eq!(
                 block.height,
                 3,

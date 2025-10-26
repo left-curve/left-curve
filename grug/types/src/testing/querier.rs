@@ -2,7 +2,7 @@ use {
     crate::{
         Addr, Binary, BlockInfo, Code, CodeStatus, Coin, Config, ContractInfo, Denom,
         GenericResult, GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage, Order,
-        Querier, Query, QueryResponse, QueryStatusResponse, StdError, StdResult, Storage,
+        Querier, Query, QueryResponse, QueryStatusResponse, StdError, StdResult, Storage, Upgrade,
     },
     error_backtrace::BacktracedError,
     grug_math::{NumberConst, Uint128},
@@ -26,6 +26,7 @@ pub struct MockQuerier {
     supplies: BTreeMap<Denom, Uint128>,
     codes: BTreeMap<Hash256, Code>,
     contracts: BTreeMap<Addr, ContractInfo>,
+    upgrades: BTreeMap<u64, Upgrade>,
     raw_query_handler: MockRawQueryHandler,
     smart_query_handler: Option<SmartQueryHandler>,
 }
@@ -95,6 +96,11 @@ impl MockQuerier {
 
     pub fn with_contract(mut self, address: Addr, contract: ContractInfo) -> Self {
         self.contracts.insert(address, contract);
+        self
+    }
+
+    pub fn with_upgrade(mut self, height: u64, upgrade: Upgrade) -> Self {
+        self.upgrades.insert(height, upgrade);
         self
     }
 
@@ -244,6 +250,26 @@ impl Querier for MockQuerier {
                     .map(|(k, v)| (*k, v.clone()))
                     .collect();
                 Ok(QueryResponse::Contracts(contracts))
+            },
+            Query::Upgrade(_req) => {
+                let most_recent_upgrade = self.upgrades.last_key_value().map(|(_k, v)| v.clone());
+                Ok(QueryResponse::Upgrade(most_recent_upgrade))
+            },
+            Query::Upgrades(req) => {
+                let upgrades = self
+                    .upgrades
+                    .iter()
+                    .filter(|(height, _)| {
+                        if let Some(lower_bound) = &req.start_after {
+                            *height > lower_bound
+                        } else {
+                            true
+                        }
+                    })
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
+                    .map(|(k, v)| (*k, v.clone()))
+                    .collect();
+                Ok(QueryResponse::Upgrades(upgrades))
             },
             Query::WasmRaw(req) => {
                 let maybe_value = self
