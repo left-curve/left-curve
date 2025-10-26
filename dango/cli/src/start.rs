@@ -328,19 +328,13 @@ impl StartCmd {
     where
         ID: Indexer + Send + 'static,
     {
-        let upgrade_handler = if let Some(at_height) = grug_cfg.halt_height {
-            Some(UpgradeHandler::Halt { at_height })
-        } else {
-            None
-        };
-
         let app = App::new(
             db,
             vm,
             ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
             indexer,
             grug_cfg.query_gas_limit,
-            upgrade_handler,
+            grug_cfg.halt_height.map(UpgradeHandler::Halt),
         );
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);

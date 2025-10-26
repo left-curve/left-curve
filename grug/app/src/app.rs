@@ -330,7 +330,7 @@ where
             // and commit block (N-1), but halt before it finalizes block N.
             // This behavior is consistent with Cosmos SDK:
             // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
-            Some(UpgradeHandler::Halt { at_height }) => {
+            Some(UpgradeHandler::Halt(at_height)) => {
                 if block.info.height >= *at_height {
                     #[cfg(feature = "tracing")]
                     {
