@@ -74,8 +74,7 @@ impl StartCmd {
             NaiveProposalPreparer,
             NullIndexer,
             cfg.grug.query_gas_limit,
-            // The `App` instance for use in httpd doesn't require upgrade params.
-            None,
+            None, // app `App` instance for use in httpd doesn't need the upgrade handler
         );
 
         let sql_indexer = indexer_sql::IndexerBuilder::default()
