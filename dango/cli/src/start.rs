@@ -8,7 +8,7 @@ use {
     config_parser::parse_config,
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer},
+    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer, UpgradeHandler},
     grug_client::TendermintRpcClient,
     grug_db_disk_lite::DiskDbLite,
     grug_httpd::context::Context as HttpdContext,
@@ -328,13 +328,19 @@ impl StartCmd {
     where
         ID: Indexer + Send + 'static,
     {
+        let upgrade_handler = if let Some(at_height) = grug_cfg.halt_height {
+            Some(UpgradeHandler::Halt { at_height })
+        } else {
+            None
+        };
+
         let app = App::new(
             db,
             vm,
             ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
             indexer,
             grug_cfg.query_gas_limit,
-            None, // currently there's no chain upgrade
+            upgrade_handler,
         );
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);

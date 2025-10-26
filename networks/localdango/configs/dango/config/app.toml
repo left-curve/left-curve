@@ -26,6 +26,10 @@ query_gas_limit = 100000000
 #  "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740", # = b"wasm" + increment_last_byte(dex_contract_address)
 #]
 
+# If specified, suppose the value is N, Grug app will finalize block N-1, then
+# gracefully halt the chain before processing block N.
+#halt_height = 12345
+
 ################################################################################
 ###                          Indexer Configuration                           ###
 ################################################################################
