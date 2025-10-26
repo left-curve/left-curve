@@ -53,7 +53,7 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
     /// Instruction on how the chain should handle a chain upgrade.
-    upgrade_handler: Arc<Option<UpgradeHandler<VM>>>,
+    upgrade_handler: Option<UpgradeHandler<VM>>,
 }
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
@@ -76,7 +76,7 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             pp,
             indexer,
             query_gas_limit,
-            upgrade_handler: Arc::new(upgrade_handler),
+            upgrade_handler,
         }
     }
 }
@@ -84,7 +84,7 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
 #[cfg(feature = "testing")]
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
     pub fn set_upgrade_handler(&mut self, upgrade_handler: Option<UpgradeHandler<VM>>) {
-        self.upgrade_handler = Arc::new(upgrade_handler);
+        self.upgrade_handler = upgrade_handler;
     }
 }
 
@@ -101,7 +101,7 @@ where
             pp: self.pp.clone(),
             indexer: NullIndexer,
             query_gas_limit: self.query_gas_limit,
-            upgrade_handler: Arc::clone(&self.upgrade_handler),
+            upgrade_handler: self.upgrade_handler.clone(),
         }
     }
 }
@@ -322,7 +322,7 @@ where
             ));
         }
 
-        match self.upgrade_handler.as_ref() {
+        match &self.upgrade_handler {
             // If the app is configured to halt, and the halt height is reached, then gracefully
             // halt the chain by returning an error.
             //

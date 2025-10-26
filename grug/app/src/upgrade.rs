@@ -3,6 +3,7 @@ use {
     grug_types::{BlockInfo, Storage, Upgrade},
 };
 
+#[derive(Clone)]
 pub enum UpgradeHandler<VM> {
     /// The old version of the app is to be set to this state.
     Halt { at_height: u64 },
