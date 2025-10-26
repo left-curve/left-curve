@@ -24,7 +24,7 @@ fn upgrading_without_calling_contract() {
         .set_block_time(Duration::from_seconds(1))
         .add_account("owner", Coins::new())
         .set_owner("owner")
-        .set_upgrade_handler(Some(UpgradeHandler::Halt { at_height: 3 }))
+        .set_upgrade_handler(Some(UpgradeHandler::Halt(3)))
         // .set_tracing_level(Some(tracing::Level::INFO)) // uncomment this to see tracing logs
         .build();
 
@@ -122,7 +122,7 @@ fn upgrading_with_calling_contract() {
     let (mut suite, accounts) = TestBuilder::new()
         .add_account("owner", coins! { denom.clone() => 123 })
         .set_owner("owner")
-        .set_upgrade_handler(Some(UpgradeHandler::Halt { at_height: 3 }))
+        .set_upgrade_handler(Some(UpgradeHandler::Halt(3)))
         // .set_tracing_level(Some(tracing::Level::INFO)) // uncomment this to see tracing logs
         .build();
 

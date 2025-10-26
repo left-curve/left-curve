@@ -359,14 +359,16 @@ where
                     );
                 }
 
-                (action)(Box::new(buffer.clone()), self.vm.clone(), block.info).unwrap_or_else(
-                    |err| {
-                        panic!(
-                            "upgrade failed! height: {}, reason: {}",
-                            block.info.height, err
-                        );
+                // If executing the action errors, an error is returned in the
+                // ABCI response, which leads to a chain halt (as intended).
+                (action)(Box::new(buffer.clone()), self.vm.clone(), block.info).inspect_err(
+                    |_err| {
+                        #[cfg(feature = "tracing")]
+                        {
+                            tracing::error!(reason = %_err, "!!! UPGRADE FAILED !!!");
+                        }
                     },
-                );
+                )?;
 
                 // Save the record of this upgrade.
                 UPGRADES.save(&mut buffer, block.info.height, metadata)?;
