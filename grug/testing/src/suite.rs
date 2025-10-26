@@ -245,7 +245,7 @@ where
     /// Make a new block with the given transactions.
     pub fn try_make_block(&mut self, txs: Vec<Tx>) -> AppResult<MakeBlockOutcome> {
         // Advance block height and time
-        let mut new_block = self.block.clone();
+        let mut new_block = self.block;
         new_block.height += 1;
         new_block.timestamp = self.block.timestamp + self.block_time;
 

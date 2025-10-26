@@ -74,6 +74,7 @@ impl StartCmd {
             NaiveProposalPreparer,
             NullIndexer,
             cfg.grug.query_gas_limit,
+            None, // TODO: read from `app.toml`
             None, // currently there's no chain upgrade
         );
 
@@ -334,6 +335,7 @@ impl StartCmd {
             ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
             indexer,
             grug_cfg.query_gas_limit,
+            None, // TODO: read from `app.toml`
             None, // currently there's no chain upgrade
         );
 

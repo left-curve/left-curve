@@ -49,6 +49,7 @@ fn main() -> anyhow::Result<()> {
         NullIndexer,
         u64::MAX,
         None,
+        None,
     );
 
     let status = app
