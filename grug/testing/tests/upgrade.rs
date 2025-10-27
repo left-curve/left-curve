@@ -10,6 +10,40 @@ use {
     std::str::FromStr,
 };
 
+#[test]
+fn error_cases() {
+    let (mut suite, mut accounts) = TestBuilder::new()
+        .add_account("owner", Coins::new())
+        .add_account("jake", Coins::new())
+        .set_owner("owner")
+        .build();
+
+    // Non-owner attempts to schedule an upgrade. Should fail.
+    suite
+        .upgrade(
+            &mut accounts["jake"],
+            3,
+            "0.1.0",
+            Some("v0.1.0"),
+            Some("https://github.com"),
+        )
+        .should_fail_with_error(AppError::not_owner(
+            accounts["jake"].address,
+            accounts["owner"].address,
+        ));
+
+    // Block 2. Attempt to schedule upgrade at block 2. Should fail.
+    suite
+        .upgrade(
+            &mut accounts["owner"],
+            2,
+            "0.1.0",
+            Some("v0.1.0"),
+            Some("https://github.com"),
+        )
+        .should_fail_with_error(AppError::upgrade_height_not_in_future(2, 2));
+}
+
 /// In this test, we attempt to change the chain ID through a chain upgrade.
 /// This is otherwise not possible through normal transactions.
 /// This upgrade doesn't involve any contract calls.
