@@ -365,7 +365,7 @@ where
         )
     }
 
-    /// Schedule a chain ugprade.
+    /// Schedule a chain upgrade.
     pub fn upgrade<T, U, V>(
         &mut self,
         signer: &mut dyn Signer,
@@ -389,7 +389,7 @@ where
         )
     }
 
-    /// Schedule a chain ugprade under the given gas limit.
+    /// Schedule a chain upgrade under the given gas limit.
     pub fn upgrade_with_gas<T, U, V>(
         &mut self,
         signer: &mut dyn Signer,

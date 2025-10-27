@@ -53,7 +53,7 @@ pub enum Query {
     Config(QueryConfigRequest),
     /// Query the application-specific configuration.
     AppConfig(QueryAppConfigRequest),
-    /// Enumerate historical chain ugprades.
+    /// Enumerate historical chain upgrades.
     Upgrades(QueryUpgradesRequest),
     /// Query the currently planned chain upgrade, if any.
     NextUpgrade(QueryNextUpgradeRequest),

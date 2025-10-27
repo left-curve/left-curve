@@ -2,7 +2,7 @@
 
 There are three dimensions in which to evaluate whether a chain upgrade is a **breaking change**:
 
-- **Consensus-breaking**: a change in the chain's business logic. Given the same finanlized state as of block `N - 1` and the same block `N`, executing the block `N` using the old and the new software would yield different results, resulting in a consensus failure.
+- **Consensus-breaking**: a change in the chain's business logic. Given the same finalized state as of block `N - 1` and the same block `N`, executing the block `N` using the old and the new software would yield different results, resulting in a consensus failure.
 - **State-breaking**: a change in the format in which the chain's state is stored in the DB.
 - **API-breaking**: a change in the chain's transaction or query API.
 
@@ -29,7 +29,7 @@ The typical procedure of a coordinated upgrade is as follows, in chronological o
 
    This signals to node operators at which block the chain will be upgraded, and the proper version of node software they should upgrade to. _The node operators should not upgrade the software at this point yet._
 
-2. The chain finalizes the block right before the upgrade height (`12344` in this example). At the upgrade height (`12345`), during `FinalizeBlock`, Grug app notices the upgrade height is reached, but the chain isn't using the correct version (`1.2.3`), so it performs a graceful halt of the chain by retuning an error in ABCI `FinalizeBlockResponse`. The upgrade height (`12345`) is not finalized, with no state change committed.
+2. The chain finalizes the block right before the upgrade height (`12344` in this example). At the upgrade height (`12345`), during `FinalizeBlock`, Grug app notices the upgrade height is reached, but the chain isn't using the correct version (`1.2.3`), so it performs a graceful halt of the chain by returning an error in ABCI `FinalizeBlockResponse`. The upgrade height (`12345`) is not finalized, with no state change committed.
 
 3. The node operator replaces the node software on the server with the correct version (`1.2.3`), and restart the service.
 
