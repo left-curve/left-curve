@@ -5,19 +5,42 @@ import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/acti
 
 import { createConnector } from "./createConnector.js";
 import { composeArbitraryTypedData } from "@left-curve/dango/utils";
+import { createStorage } from "../storages/createStorage.js";
+
+import Privy, {
+  getEntropyDetailsFromUser,
+  getUserEmbeddedEthereumWallet,
+} from "@privy-io/js-sdk-core";
 
 import type { Eip712Signature } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
 import type { EIP1193Provider } from "../types/eip1193.js";
+import type { AbstractStorage } from "../types/storage.js";
 
 const ETHEREUM_HEX_CHAIN_ID = "0x1";
 
 type PrivyConnectorParameters = {
+  appId: string;
+  clientId: string;
+  loadIframe?: boolean;
+  storage?: AbstractStorage;
   icon?: string;
 };
 
-export function privy(parameters: PrivyConnectorParameters = {}) {
-  const { icon } = parameters;
+export function privy(parameters: PrivyConnectorParameters) {
+  const { appId, clientId, loadIframe, storage: _storage_, icon } = parameters;
+  const storage = createStorage({ storage: _storage_ });
+
+  const privy = new Privy({
+    appId,
+    clientId,
+    storage: {
+      get: (key) => storage.getItem(key),
+      getKeys: () => storage.keys(),
+      put: (key, value) => storage.setItem(key, value),
+      del: (key: string) => storage.removeItem(key),
+    },
+  });
 
   return createConnector<EIP1193Provider>(({ transport, emitter, getUsername, chain }) => {
     return {
@@ -25,6 +48,36 @@ export function privy(parameters: PrivyConnectorParameters = {}) {
       name: "Privy",
       type: "privy",
       icon,
+      privy,
+      async setup() {
+        if (window && loadIframe) {
+          const existIframe = document.getElementById("privy-iframe");
+          if (existIframe) return;
+
+          const iframe = window.document.createElement("iframe");
+          iframe.style.display = "none";
+          iframe.src = privy.embeddedWallet.getURL();
+          iframe.id = "privy-iframe";
+          window.document.body.appendChild(iframe);
+          const iframeWindow = (iframe as HTMLIFrameElement).contentWindow!;
+
+          privy.setMessagePoster({
+            reload: () => iframeWindow.location.reload(),
+            postMessage: (message, targetOrigin, transfer) =>
+              iframeWindow.postMessage(message, targetOrigin, transfer ? [transfer] : undefined),
+          });
+
+          window.addEventListener("message", (event: MessageEvent) => {
+            if (event.origin !== "https://auth.privy.io") return;
+            try {
+              privy.embeddedWallet.onMessage(event.data);
+            } catch (err) {
+              console.error("Error handling iframe message:", err);
+            }
+          });
+        }
+        await privy.initialize();
+      },
       async connect({ username, chainId, keyHash: _keyHash_ }) {
         const client = createSignerClient({
           signer: this,
@@ -55,8 +108,6 @@ export function privy(parameters: PrivyConnectorParameters = {}) {
       },
       async disconnect() {
         emitter.emit("disconnect");
-        (window as any).privy.disconnect();
-        (window as any).privy = undefined;
       },
       async getClient() {
         const username = getUsername();
@@ -70,18 +121,6 @@ export function privy(parameters: PrivyConnectorParameters = {}) {
           transport,
         });
       },
-      async createNewKey(_challenge) {
-        const provider = await this.getProvider();
-
-        const [controllerAddress] = await provider.request({
-          method: "eth_requestAccounts",
-        });
-
-        const addressLowerCase = controllerAddress.toLowerCase();
-
-        const keyHash = createKeyHash(addressLowerCase);
-        return { key: { ethereum: addressLowerCase as Address }, keyHash };
-      },
       async getKeyHash() {
         const provider = await this.getProvider();
         const [controllerAddress] = await provider.request({ method: "eth_requestAccounts" });
@@ -89,8 +128,16 @@ export function privy(parameters: PrivyConnectorParameters = {}) {
         return createKeyHash(addressLowerCase);
       },
       async getProvider() {
-        const provider: EIP1193Provider = await (window as any).privy.getEthereumProvider();
-        return provider;
+        const { user } = await privy.user.get();
+        if (!user) throw new Error("we couldn't recover the session");
+        const wallet = getUserEmbeddedEthereumWallet(user)!;
+        const { entropyId, entropyIdVerifier } = getEntropyDetailsFromUser(user)!;
+
+        return (await privy.embeddedWallet.getEthereumProvider({
+          wallet,
+          entropyId,
+          entropyIdVerifier,
+        })) as unknown as EIP1193Provider;
       },
       async getAccounts() {
         const client = await this.getClient();
