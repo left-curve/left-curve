@@ -73,18 +73,21 @@ export const Table = <T,>({
   ]);
   const [columnVisibility, onColumnVisibilityChange] = useState(initialColumnVisibility);
 
-  const onSortingChange = useCallback((newSorting: Updater<SortingState>) => {
-    setSorting((currentSorting) => {
-      const updatedSorting =
-        typeof newSorting === "function" ? newSorting(currentSorting) : newSorting;
+  const onSortingChange = useCallback(
+    (newSorting: Updater<SortingState>) => {
+      setSorting((currentSorting) => {
+        const updatedSorting =
+          typeof newSorting === "function" ? newSorting(currentSorting) : newSorting;
 
-      const fixedSorting = initialSortState.fixed;
-      const variableSorting = updatedSorting.filter(
-        (sort) => !fixedSorting.find((fixed) => fixed.id === sort.id),
-      );
-      return [...fixedSorting, ...variableSorting];
-    });
-  }, []);
+        const fixedSorting = initialSortState.fixed;
+        const variableSorting = updatedSorting.filter(
+          (sort) => !fixedSorting.find((fixed) => fixed.id === sort.id),
+        );
+        return [...fixedSorting, ...variableSorting];
+      });
+    },
+    [initialSortState.fixed],
+  );
 
   const table = useReactTable<T>({
     data,
