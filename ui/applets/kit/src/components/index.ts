@@ -47,6 +47,7 @@ export { PairAssets } from "./PairAssets";
 export { Marquee } from "./Marquee";
 export { SortHeader } from "./SortHeader";
 export { FormattedNumber } from "./FormattedNumber";
+export { Dot } from "./Dot";
 
 /* ---------------------------------- Icons --------------------------------- */
 

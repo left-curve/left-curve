@@ -18,6 +18,7 @@ type PopoverProps = {
     base?: string;
     trigger?: string;
     menu?: string;
+    panel?: string;
   };
   showArrow?: boolean;
 };
@@ -52,7 +53,10 @@ export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
 
             <PopoverPanel
               anchor="bottom"
-              className={twMerge("flex flex-col absolute z-50 p-2 scrollbar-none")}
+              className={twMerge(
+                "flex flex-col absolute z-50 p-2 scrollbar-none",
+                classNames?.panel,
+              )}
             >
               <ResizerContainer
                 layoutId={`popover-menu-${id}`}

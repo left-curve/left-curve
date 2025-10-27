@@ -10,6 +10,7 @@ import { useAccount, useActivities, useSessionKey } from "@left-curve/store";
 
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
+import { StatusBadge } from "~/components/foundation/StatusBadge";
 
 import * as Sentry from "@sentry/react";
 import { Modals, Spinner, twMerge, useApp, useTheme } from "@left-curve/applets-kit";
@@ -126,6 +127,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         />
         <Header isScrolled={false} />
         <NotFound />
+        <StatusBadge />
       </main>
     );
   },
