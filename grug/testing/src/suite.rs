@@ -170,7 +170,7 @@ where
 
         // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, id, u64::MAX, upgrade_handler);
+        let app = App::new(db, vm, pp, id, u64::MAX, upgrade_handler, "0.0.0"); // TODO: allow customizing the cargo version
 
         app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
             .unwrap_or_else(|err| {
@@ -362,6 +362,52 @@ where
             signer,
             gas_limit,
             Message::configure(new_cfg, new_app_cfg).unwrap(),
+        )
+    }
+
+    /// Schedule a chain ugprade.
+    pub fn upgrade<T, U, V>(
+        &mut self,
+        signer: &mut dyn Signer,
+        height: u64,
+        cargo_version: T,
+        git_tag: Option<U>,
+        url: Option<V>,
+    ) -> TxOutcome
+    where
+        T: Into<String>,
+        U: Into<String>,
+        V: Into<String>,
+    {
+        self.upgrade_with_gas(
+            signer,
+            self.default_gas_limit,
+            height,
+            cargo_version,
+            git_tag,
+            url,
+        )
+    }
+
+    /// Schedule a chain ugprade under the given gas limit.
+    pub fn upgrade_with_gas<T, U, V>(
+        &mut self,
+        signer: &mut dyn Signer,
+        gas_limit: u64,
+        height: u64,
+        cargo_version: T,
+        git_tag: Option<U>,
+        url: Option<V>,
+    ) -> TxOutcome
+    where
+        T: Into<String>,
+        U: Into<String>,
+        V: Into<String>,
+    {
+        self.send_message_with_gas(
+            signer,
+            gas_limit,
+            Message::upgrade(height, cargo_version, git_tag, url),
         )
     }
 

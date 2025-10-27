@@ -1,7 +1,9 @@
+use crate::EvtUpgrade;
 #[cfg(feature = "async-graphql")]
 use async_graphql::Enum;
 #[cfg(feature = "sea-orm")]
 use sea_orm::entity::prelude::*;
+
 use {
     crate::{
         Addr, CheckedContractEvent, Coins, CommitmentStatus, EvtConfigure, EvtUpload,
@@ -183,6 +185,7 @@ impl EventId {
 #[strum(serialize_all = "snake_case")]
 pub enum FlatEvent {
     Configure(EvtConfigure),
+    Upgrade(EvtUpgrade),
     /// Coins were transferred from one account to another.
     Transfer(FlatEvtTransfer),
     /// A wasm binary code was uploaded.

@@ -1,16 +1,16 @@
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, CONTRACTS,
-        GasTracker, LAST_FINALIZED_BLOCK, MeteredItem, MeteredMap, MeteredStorage, StorageProvider,
-        UPGRADES, Vm, call_in_1_out_1,
+        GasTracker, LAST_FINALIZED_BLOCK, MeteredItem, MeteredMap, MeteredStorage, NEXT_UPGRADE,
+        StorageProvider, UPGRADES, Vm, call_in_1_out_1,
     },
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config,
-        Context, ContractInfo, DEFAULT_PAGE_LIMIT, GenericResult, Hash256, Json, Order,
-        QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest, QueryCodesRequest,
-        QueryContractRequest, QueryContractsRequest, QueryStatusResponse, QuerySuppliesRequest,
-        QuerySupplyRequest, QueryUpgradesRequest, QueryWasmRawRequest, QueryWasmScanRequest,
-        QueryWasmSmartRequest, StdResult, Storage, Upgrade,
+        Context, ContractInfo, DEFAULT_PAGE_LIMIT, GenericResult, Hash256, Json, NextUpgrade,
+        Order, PastUpgrade, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest,
+        QueryCodesRequest, QueryContractRequest, QueryContractsRequest, QueryStatusResponse,
+        QuerySuppliesRequest, QuerySupplyRequest, QueryUpgradesRequest, QueryWasmRawRequest,
+        QueryWasmScanRequest, QueryWasmSmartRequest, StdResult, Storage,
     },
     std::collections::BTreeMap,
 };
@@ -34,6 +34,27 @@ pub fn query_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult
 
 pub fn query_app_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<Json> {
     APP_CONFIG.load_with_gas(storage, gas_tracker)
+}
+
+pub fn query_upgrades(
+    storage: &dyn Storage,
+    gas_tracker: GasTracker,
+    req: QueryUpgradesRequest,
+) -> StdResult<BTreeMap<u64, PastUpgrade>> {
+    let start = req.start_after.map(Bound::Exclusive);
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
+    UPGRADES
+        .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
+        .take(limit as usize)
+        .collect()
+}
+
+pub fn query_next_upgrade(
+    storage: &dyn Storage,
+    _gas_tracker: GasTracker,
+) -> StdResult<Option<NextUpgrade>> {
+    NEXT_UPGRADE.may_load(storage) // TODO: consume gas
 }
 
 pub fn query_balance<VM>(
@@ -211,31 +232,6 @@ pub fn query_contracts(
     let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
     CONTRACTS
-        .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
-        .take(limit as usize)
-        .collect()
-}
-
-pub fn query_upgrade(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<Option<Upgrade>> {
-    UPGRADES
-        .range_with_gas(storage, gas_tracker, None, None, Order::Descending)?
-        .map(|res| {
-            let (_height, upgrade) = res?;
-            Ok(upgrade)
-        })
-        .next()
-        .transpose()
-}
-
-pub fn query_upgrades(
-    storage: &dyn Storage,
-    gas_tracker: GasTracker,
-    req: QueryUpgradesRequest,
-) -> StdResult<BTreeMap<u64, Upgrade>> {
-    let start = req.start_after.map(Bound::Exclusive);
-    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
-
-    UPGRADES
         .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
         .take(limit as usize)
         .collect()

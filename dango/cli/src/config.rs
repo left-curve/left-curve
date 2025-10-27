@@ -38,7 +38,6 @@ pub struct GrugConfig {
     pub wasm_cache_capacity: usize,
     pub query_gas_limit: u64,
     pub priority_range: Option<(HexBinary, HexBinary)>,
-    pub halt_height: Option<u64>,
 }
 
 impl Default for GrugConfig {
@@ -47,7 +46,6 @@ impl Default for GrugConfig {
             wasm_cache_capacity: 1000,
             query_gas_limit: 100_000_000,
             priority_range: None,
-            halt_height: None,
         }
     }
 }
