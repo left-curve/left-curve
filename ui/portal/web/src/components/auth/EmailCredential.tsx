@@ -1,11 +1,14 @@
-import { Button, IconEmail, IconLeft, Input, OtpInput } from "@left-curve/applets-kit";
 import { useInputs } from "@left-curve/foundation";
 import { useEffect, useState } from "react";
+import { useConnectors } from "@left-curve/store";
+import { useMutation } from "@tanstack/react-query";
+
+import { Button, IconEmail, IconLeft, Input, OtpInput } from "@left-curve/applets-kit";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
-import { useMutation } from "@tanstack/react-query";
 import { wait } from "@left-curve/dango/utils";
-import { useConnectors } from "@left-curve/store";
+import { PRIVY_ERRORS_MAPPING } from "~/constants";
+
 import type { Connector } from "@left-curve/store/types";
 import type Privy from "@privy-io/js-sdk-core";
 
@@ -25,7 +28,6 @@ export const EmailCredential: React.FC<EmailCredentialProps> = ({
   setEmail,
 }) => {
   const connectors = useConnectors();
-  console.log(connectors);
   const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
 
   if (!connector) return null;
@@ -141,8 +143,9 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({
         await wait(500);
         onAuth();
       } catch (e) {
-        const message = "message" in (e as object) ? (e as Error).message : "something wen't wrong";
-        setError("otp", message);
+        const message = "message" in (e as object) ? (e as Error).message : "authFailed";
+        const error = PRIVY_ERRORS_MAPPING[message as keyof typeof PRIVY_ERRORS_MAPPING];
+        setError("otp", error);
       }
     })();
   }, [inputs.otp?.value]);

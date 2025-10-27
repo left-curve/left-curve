@@ -80,6 +80,7 @@ export const config: Config = createConfig({
     privy({
       appId: PRIVY_APP_ID as string,
       clientId: PRIVY_CLIENT_ID as string,
+      storage: localStorage,
       loadIframe: true,
     }),
   ],

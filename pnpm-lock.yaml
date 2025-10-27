@@ -500,8 +500,8 @@ importers:
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.52.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@privy-io/js-sdk-core':
-        specifier: ^0.55.3
-        version: 0.55.3(typescript@5.6.3)(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))
+        specifier: ^0.56.3
+        version: 0.56.3(typescript@5.6.3)(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))
       '@privy-io/react-auth':
         specifier: ^3.0.1
         version: 3.0.1(@types/react@18.3.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.6.3)(use-sync-external-store@1.5.0(react@18.3.1))(zod@3.24.1)
@@ -3149,6 +3149,9 @@ packages:
   '@privy-io/chains@0.0.2':
     resolution: {integrity: sha512-vT+EcPstcKbvrPyGA2YDD1W8YxaJhKFKYGmS9PaycODpL9HvMsPpkJ1y6SddmVAKL+WIow+nH9cV1/q0aCmPXA==}
 
+  '@privy-io/chains@0.0.3':
+    resolution: {integrity: sha512-4vpm/nROVm4UEASUGPjXIQvirDHYXs/b0vgixwy1EeVVxIRSbkv9tWJXYApWs+h4vaKZZYssKzJMIG2c+gYfSw==}
+
   '@privy-io/ethereum@0.0.2':
     resolution: {integrity: sha512-FnJ1dzgg/tij4jLeKHLlZM9uNk4WN+iIOkc8CG0FZKUQxqXH60Fs/dMF6Xbndd5CQkUO8LUU7FLom/405VKXpQ==}
     peerDependencies:
@@ -3165,8 +3168,8 @@ packages:
       viem:
         optional: true
 
-  '@privy-io/js-sdk-core@0.55.3':
-    resolution: {integrity: sha512-dzrRFBjPo8mFKl35WkDv0RR7qLpKxPaJXHt9NfvCvCTmm68w/c7UrxDsfyJN+DpER3Fw8+aCK50x5ZLf3R1fmg==}
+  '@privy-io/js-sdk-core@0.56.3':
+    resolution: {integrity: sha512-CGpTh2s6QWgFOXdywBGlMI3IVD3cgXDpo8TK2glDZPxkY0QYwd9wnBlxMVQ5KvjRqj0/zXnstOU7pcv8pFF+jw==}
     peerDependencies:
       permissionless: ^0.2.47
       viem: ^2.30.6
@@ -3179,8 +3182,8 @@ packages:
   '@privy-io/public-api@2.45.2':
     resolution: {integrity: sha512-TSuaFq65PPInb0CBJ9dO/vLh4u4oWXVpv5KxShbVsuaArZ8lig+Orl/HUR1Hri6643zXoBqWlWx9wDt4MQvz9A==}
 
-  '@privy-io/public-api@2.46.0':
-    resolution: {integrity: sha512-psq42ZBjTNUyGiE5gNh/E5Q4Sy05xatwf9DveP2SN4ZTN5+UXQW4q+KCKoFoZ+cHIcGU06lidbpJ2l5gXpTBwQ==}
+  '@privy-io/public-api@2.51.0':
+    resolution: {integrity: sha512-RLNNzDtYxLfoNzCl+yIvgDZzgAYPJ7vRRjPrI81i6L0FmcF3CgQSIyb3Yq2wSmgB4GVDIIiZ8XqjDNCt3klGgg==}
 
   '@privy-io/react-auth@3.0.1':
     resolution: {integrity: sha512-1EBSAZFQ66+kClmhdLackerOSqYls1BLsK7Ni1kNIU/lbxDDkouHrR8CEllIuCoLEycguTAGRuPq6Ndrbm7HEQ==}
@@ -4721,6 +4724,7 @@ packages:
 
   '@walletconnect/ethereum-provider@2.21.7':
     resolution: {integrity: sha512-T+cBFCw095tDpR35WqwsTFod2ZsizmLfieSbTqpQDpNjhQyFwYf9d+tn2kcBFmxzENXAsWA8BIZK1tjRrXKtog==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/events@1.0.1':
     resolution: {integrity: sha512-NPTqaoi0oPBVNuLv7qPaJazmGHs5JGyO8eEAk5VGKmJzDR7AHzD4k6ilox5kxk1iwiOnFopBOOMLs86Oa76HpQ==}
@@ -4765,9 +4769,11 @@ packages:
 
   '@walletconnect/sign-client@2.21.0':
     resolution: {integrity: sha512-z7h+PeLa5Au2R591d/8ZlziE0stJvdzP9jNFzFolf2RG/OiXulgFKum8PrIyXy+Rg2q95U9nRVUF9fWcn78yBA==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/sign-client@2.21.7':
     resolution: {integrity: sha512-9k/JEl9copR6nXRhqnmzWz2Zk1hiWysH+o6bp6Cqo8TgDUrZoMLBZMZ6qbo+2HLI54V02kKf0Vg8M81nNFOpjQ==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/time@1.0.2':
     resolution: {integrity: sha512-uzdd9woDcJ1AaBZRhqy5rNC9laqWGErfc4dxA9a87mPdKOgWMD85mcFo9dIYIts/Jwocfwn07EC6EzclKubk/g==}
@@ -4780,9 +4786,11 @@ packages:
 
   '@walletconnect/universal-provider@2.21.0':
     resolution: {integrity: sha512-mtUQvewt+X0VBQay/xOJBvxsB3Xsm1lTwFjZ6WUwSOTR1X+FNb71hSApnV5kbsdDIpYPXeQUbGt2se1n5E5UBg==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/universal-provider@2.21.7':
     resolution: {integrity: sha512-8PB+vA5VuR9PBqt5Y0xj4JC2doYNPlXLGQt3wJORVF9QC227Mm/8R1CAKpmneeLrUH02LkSRwx+wnN/pPnDiQA==}
+    deprecated: 'Reliability and performance improvements. See: https://github.com/WalletConnect/walletconnect-monorepo/releases'
 
   '@walletconnect/utils@2.21.0':
     resolution: {integrity: sha512-zfHLiUoBrQ8rP57HTPXW7rQMnYxYI4gT9yTACxVW6LhIFROTF6/ytm5SKNoIvi4a5nX5dfXG4D9XwQUCu8Ilig==}
@@ -8092,6 +8100,7 @@ packages:
 
   oniguruma-to-js@0.4.3:
     resolution: {integrity: sha512-X0jWUcAlxORhOqqBREgPMgnshB7ZGYszBNspP+tS9hPD3l13CdaXcHbgImoHUHlrvGx/7AvFEkTRhAGYh+jzjQ==}
+    deprecated: use oniguruma-to-es instead
 
   open@7.4.2:
     resolution: {integrity: sha512-MVHddDVweXZF3awtlAS+6pgKLlm/JgxZ90+/NBurBoQctVOOB/zDdVjcyPzQ+0laDGbsWgrRkflI65sQeOgT9Q==}
@@ -13537,6 +13546,8 @@ snapshots:
 
   '@privy-io/chains@0.0.2': {}
 
+  '@privy-io/chains@0.0.3': {}
+
   '@privy-io/ethereum@0.0.2(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))':
     dependencies:
       viem: 2.37.9(typescript@5.6.3)(zod@3.24.1)
@@ -13567,12 +13578,12 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@privy-io/js-sdk-core@0.55.3(typescript@5.6.3)(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))':
+  '@privy-io/js-sdk-core@0.56.3(typescript@5.6.3)(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))':
     dependencies:
       '@privy-io/api-base': 1.7.1
-      '@privy-io/chains': 0.0.2
+      '@privy-io/chains': 0.0.3
       '@privy-io/ethereum': 0.0.2(viem@2.37.9(typescript@5.6.3)(zod@3.24.1))
-      '@privy-io/public-api': 2.46.0(typescript@5.6.3)
+      '@privy-io/public-api': 2.51.0(typescript@5.6.3)
       canonicalize: 2.1.0
       eventemitter3: 5.0.1
       fetch-retry: 6.0.0
@@ -13600,7 +13611,7 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@privy-io/public-api@2.46.0(typescript@5.6.3)':
+  '@privy-io/public-api@2.51.0(typescript@5.6.3)':
     dependencies:
       '@privy-io/api-base': 1.7.1
       bs58: 5.0.0

@@ -1,7 +1,15 @@
-import { Button, IconGoogle, IconTwitter } from "@left-curve/applets-kit";
-import { wait } from "@left-curve/dango/utils";
+import { useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useConnectors } from "@left-curve/store";
+
+import { Button, IconGoogle, IconTwitter, useApp } from "@left-curve/applets-kit";
+
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { PRIVY_ERRORS_MAPPING } from "~/constants";
+
+import type { Connector } from "@left-curve/store/types";
+import type Privy from "@privy-io/js-sdk-core";
+import type { OAuthProviderType } from "@privy-io/js-sdk-core";
 
 type SocialCredentialProps = {
   signup?: boolean;
@@ -9,52 +17,78 @@ type SocialCredentialProps = {
 };
 
 export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, signup }) => {
-  const [onAuthProvider, setOnAuthProvider] = useState<"google" | "twitter" | null>(null);
-  /*   const { createWallet } = usePrivy();
-  const { initOAuth } = useLoginWithOAuth({
-    onComplete: ({ loginMethod }) => {
-      setOnAuthProvider(loginMethod as string as "google" | "twitter");
-      onComplete.mutateAsync();
-    },
-  }); */
+  const { toast } = useApp();
+  const connectors = useConnectors();
+  const connector = connectors.find((c) => c.id === "privy") as Connector & { privy: Privy };
 
-  const onComplete = useMutation({
-    mutationFn: async () => {
-      // if (signup) await createWallet();
-      await wait(500);
+  const requestAuth = useMutation({
+    mutationFn: async (provider: OAuthProviderType) => {
+      const { url } = await connector.privy.auth.oauth.generateURL(
+        provider,
+        `${window.location.origin}/${signup ? "signup" : "signin"}`,
+      );
+      window.location.href = url;
+    },
+  });
+
+  const handleAuth = useMutation({
+    mutationFn: async (params: { code: string; status: string; provider: OAuthProviderType }) => {
+      const { code, status, provider } = params;
+      await connector.privy.auth.oauth.loginWithCode(
+        code,
+        status,
+        provider,
+        undefined,
+        signup ? "login-or-sign-up" : "no-signup",
+      );
+
       await onAuth();
     },
-  });
-
-  const googleAuth = useMutation({
-    mutationFn: async () => {
-      if ((window as any).privy) await onAuth();
-      // else await initOAuth({ provider: "google", disableSignup: !signup });
+    onError: (e) => {
+      const message = "message" in (e as object) ? (e as Error).message : "authFailed";
+      const error = PRIVY_ERRORS_MAPPING[message as keyof typeof PRIVY_ERRORS_MAPPING];
+      toast.error({
+        title: m["common.error"](),
+        description: error,
+      });
     },
   });
 
-  const xAuth = useMutation({
-    mutationFn: async () => {
-      if ((window as any).privy) await onAuth();
-      // else await initOAuth({ provider: "twitter", disableSignup: !signup });
-    },
-  });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthState = params.get("privy_oauth_state");
+    const oauthCode = params.get("privy_oauth_code");
+    const oauthProvider = params.get("privy_oauth_provider");
+    if (!oauthCode || !oauthState || !oauthProvider) return;
+    handleAuth.mutate({
+      code: oauthCode,
+      status: oauthState,
+      provider: oauthProvider as OAuthProviderType,
+    });
+  }, []);
 
   return (
     <div className="grid grid-cols-2 gap-3 w-full">
       <Button
-        onClick={() => googleAuth.mutateAsync()}
+        onClick={() => requestAuth.mutateAsync("google")}
         variant="secondary"
         fullWidth
-        isLoading={(onAuthProvider === "google" && onComplete.isPending) || googleAuth.isPending}
+        isLoading={
+          (requestAuth.isPending && requestAuth.variables === "google") ||
+          (handleAuth.isPending && handleAuth.variables?.provider === "google")
+        }
       >
         <IconGoogle />
       </Button>
       <Button
-        onClick={() => xAuth.mutateAsync()}
+        isDisabled
+        onClick={() => requestAuth.mutateAsync("twitter")}
         variant="secondary"
         fullWidth
-        isLoading={(onAuthProvider === "twitter" && onComplete.isPending) || xAuth.isPending}
+        isLoading={
+          (requestAuth.isPending && requestAuth.variables === "twitter") ||
+          (handleAuth.isPending && handleAuth.variables?.provider === "twitter")
+        }
       >
         <IconTwitter />
       </Button>
