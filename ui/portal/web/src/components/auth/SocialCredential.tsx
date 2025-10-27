@@ -70,7 +70,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
   }, []);
 
   return (
-    <div className="grid grid-cols-2 gap-3 w-full">
+    <div className="w-full">
       <Button
         onClick={() => requestAuth.mutateAsync("google")}
         variant="secondary"
@@ -82,7 +82,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
       >
         <IconGoogle />
       </Button>
-      <Button
+      {/*   <Button
         isDisabled
         onClick={() => requestAuth.mutateAsync("twitter")}
         variant="secondary"
@@ -93,7 +93,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
         }
       >
         <IconTwitter />
-      </Button>
+      </Button> */}
     </div>
   );
 };
