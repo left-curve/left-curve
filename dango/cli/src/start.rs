@@ -74,7 +74,7 @@ impl StartCmd {
             NaiveProposalPreparer,
             NullIndexer,
             cfg.grug.query_gas_limit,
-            None, // app `App` instance for use in httpd doesn't need the upgrade handler
+            None, // the `App` instance for use in httpd doesn't need the upgrade handler
             env!("CARGO_PKG_VERSION"),
         );
 
