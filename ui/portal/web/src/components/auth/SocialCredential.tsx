@@ -46,7 +46,9 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
     },
     onError: (e) => {
       const message = "message" in (e as object) ? (e as Error).message : "authFailed";
-      const error = PRIVY_ERRORS_MAPPING[message as keyof typeof PRIVY_ERRORS_MAPPING];
+      const error =
+        PRIVY_ERRORS_MAPPING[message as keyof typeof PRIVY_ERRORS_MAPPING] ||
+        m["auth.errors.authFailed"]();
       toast.error({
         title: m["common.error"](),
         description: error,
