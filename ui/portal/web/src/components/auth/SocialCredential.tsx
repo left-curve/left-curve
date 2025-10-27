@@ -40,6 +40,13 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
         provider,
         undefined,
         signup ? "login-or-sign-up" : "no-signup",
+        {
+          embedded: {
+            ethereum: {
+              createOnLogin: "users-without-wallets",
+            },
+          },
+        },
       );
 
       await onAuth();
@@ -70,7 +77,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
   }, []);
 
   return (
-    <div className="w-full">
+    <div className="grid grid-cols-2 gap-3 w-full">
       <Button
         onClick={() => requestAuth.mutateAsync("google")}
         variant="secondary"
@@ -82,8 +89,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
       >
         <IconGoogle />
       </Button>
-      {/*   <Button
-        isDisabled
+      <Button
         onClick={() => requestAuth.mutateAsync("twitter")}
         variant="secondary"
         fullWidth
@@ -93,7 +99,7 @@ export const SocialCredential: React.FC<SocialCredentialProps> = ({ onAuth, sign
         }
       >
         <IconTwitter />
-      </Button> */}
+      </Button>
     </div>
   );
 };
