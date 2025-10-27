@@ -380,7 +380,7 @@
     "requetFromFaucet": "Request Funds from Faucet",
     "errors": {
       "invalidVerificationCode": "Invalid verification code",
-      "userNotFound": "This email account is not binded to any account",
+      "userNotFound": "This email account is not bound to any account",
       "authFailed": "Authentication error. Please try again later."
     }
   },

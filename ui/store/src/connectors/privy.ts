@@ -129,7 +129,7 @@ export function privy(parameters: PrivyConnectorParameters) {
       },
       async getProvider() {
         const { user } = await privy.user.get();
-        if (!user) throw new Error("we couldn't recovery the session");
+        if (!user) throw new Error("we couldn't recover the session");
         const wallet = getUserEmbeddedEthereumWallet(user)!;
         const { entropyId, entropyIdVerifier } = getEntropyDetailsFromUser(user)!;
 
