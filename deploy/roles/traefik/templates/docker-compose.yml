@@ -36,6 +36,7 @@ services:
     networks:
       - traefik
       - monitoring
+      - cloudflare
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping", "--entrypoints.traefik.address=:8888"]
       interval: 10s
@@ -48,4 +49,6 @@ networks:
     driver: bridge
     name: traefik
   monitoring:
+    external: true
+  cloudflare:
     external: true
