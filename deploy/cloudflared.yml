@@ -1,0 +1,5 @@
+- hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  roles:
+    - cloudflared

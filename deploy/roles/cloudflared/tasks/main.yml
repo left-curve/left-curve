@@ -1,0 +1,35 @@
+---
+- name: Create cloudflared directory
+  file:
+    path: "{{ cloudflared_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy .env file
+  become: true
+  become_user: root
+  template:
+    src: env.j2
+    owner: "{{ deploy_user }}"
+    dest: "{{ cloudflared_dir }}/.env"
+    mode: '0600'
+
+- name: Copy docker-compose template
+  become: true
+  become_user: root
+  template:
+    src: docker-compose.yml
+    owner: "{{ deploy_user }}"
+    dest: "{{ cloudflared_dir }}/docker-compose.yml"
+    mode: '0644'
+
+- name: Create cloudflare network
+  community.docker.docker_network:
+    name: cloudflare
+
+- name: Start cloudflared
+  community.docker.docker_compose_v2:
+    project_src: "{{ cloudflared_dir }}"
+    state: present
+    recreate: always
+    wait: true
