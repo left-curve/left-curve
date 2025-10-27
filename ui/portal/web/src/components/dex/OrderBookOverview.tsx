@@ -1,4 +1,4 @@
-import { Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import { FormattedNumber, Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
@@ -10,7 +10,7 @@ import {
   useOrderBookState,
   type useProTradeState,
 } from "@left-curve/store";
-import { calculateTradeSize, Decimal, formatNumber } from "@left-curve/dango/utils";
+import { calculateTradeSize, Decimal, formatNumber, parseUnits } from "@left-curve/dango/utils";
 
 import { IconLink, ResizerContainer, Tabs, twMerge, formatDate } from "@left-curve/applets-kit";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -70,14 +70,7 @@ type OrderBookRowProps = {
 
 const OrderRow: React.FC<OrderBookRowProps> = (props) => {
   const { price, size, total, type, max } = props;
-  const { settings } = useApp();
-  const { formatNumberOptions } = settings;
   const depthBarWidthPercent = Decimal(size).div(max).times(100).toFixed(0);
-
-  const formattedSize = formatNumber(size, {
-    ...formatNumberOptions,
-    minimumTotalDigits: 8,
-  });
 
   const depthBarClass =
     type === "bid"
@@ -98,19 +91,18 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
             : "text-status-fail lg:order-none lg:text-left",
         )}
       >
-        {formatNumber(price, { ...formatNumberOptions, minimumTotalDigits: 10 })}
+        <FormattedNumber number={price} formatOptions={{ minimumTotalDigits: 10 }} />
       </div>
-      <div className="z-10 justify-end text-end hidden lg:flex gap-1">{formattedSize}</div>
+      <div className="z-10 justify-end text-end hidden lg:flex gap-1">
+        <FormattedNumber number={size} formatOptions={{ minimumTotalDigits: 8 }} />
+      </div>
       <div
         className={twMerge(
           "z-10",
           type === "bid" ? "text-start lg:text-end" : "order-1 lg:order-none text-end",
         )}
       >
-        {formatNumber(total, {
-          ...formatNumberOptions,
-          minimumTotalDigits: 8,
-        })}
+        <FormattedNumber number={total} formatOptions={{ minimumTotalDigits: 8 }} />
       </div>
     </div>
   );
@@ -177,7 +169,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
 const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { navigate } = useRouter();
   const { settings } = useApp();
-  const { formatNumberOptions, timeFormat } = settings;
+  const { timeFormat } = settings;
   const { baseCoin, quoteCoin, pairId } = state;
   const { liveTradesStore } = useLiveTradesState({ pairId, subscribe: true });
 
@@ -190,47 +182,44 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
       </div>
-      <div className="relative flex-1 w-full flex flex-col gap-1 items-center tabular-nums lining-nums">
-        {trades.map((trade, index) => {
-          const size = calculateTradeSize(trade, baseCoin.decimals).toFixed();
-
-          const formattedSize = formatNumber(size, {
-            ...formatNumberOptions,
-            maximumTotalDigits: 5,
-            minimumTotalDigits: 5,
-          });
-
-          return (
-            <div
-              key={`${trade.addr}-${trade.createdAt}-${index}`}
-              onClick={() => navigate({ to: `/block/${trade.blockHeight}` })}
-              className={
-                "grid grid-cols-3 diatype-xs-medium text-ink-secondary-700 w-full cursor-pointer group relative"
-              }
+      <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
+        {trades.map((trade, index) => (
+          <div
+            key={`${trade.addr}-${trade.createdAt}-${index}`}
+            onClick={() => navigate({ to: `/block/${trade.blockHeight}` })}
+            className={
+              "grid grid-cols-3 diatype-xs-medium text-ink-secondary-700 w-full cursor-pointer group relative"
+            }
+          >
+            <p
+              className={twMerge(
+                "z-10",
+                trade.direction === Direction.Buy ? "text-status-success" : "text-status-fail",
+              )}
             >
-              <p
-                className={twMerge(
-                  "z-10",
-                  trade.direction === Direction.Buy ? "text-status-success" : "text-status-fail",
+              <FormattedNumber
+                number={parseUnits(
+                  trade.clearingPrice,
+                  baseCoin.decimals - quoteCoin.decimals,
+                  true,
                 )}
-              >
-                {formatNumber(
-                  Decimal(trade.clearingPrice)
-                    .times(Decimal(10).pow(baseCoin.decimals - quoteCoin.decimals))
-                    .toFixed(),
-                  { ...formatNumberOptions, minimumTotalDigits: 8 },
-                )}
-              </p>
-              <p className="text-center z-10 flex gap-1 justify-center">{formattedSize}</p>
+                formatOptions={{ minimumTotalDigits: 8 }}
+              />
+            </p>
+            <p className="text-center z-10 flex gap-1 justify-center">
+              <FormattedNumber
+                number={calculateTradeSize(trade, baseCoin.decimals).toFixed()}
+                formatOptions={{ maximumTotalDigits: 5, minimumTotalDigits: 5 }}
+              />
+            </p>
 
-              <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
-                <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
-                <IconLink className="w-3 h-3 min-h-3 min-w-3" />
-              </div>
-              <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
+            <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
+              <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
+              <IconLink className="w-3 h-3 min-h-3 min-w-3" />
             </div>
-          );
-        })}
+            <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -267,7 +256,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
 
   const asksOrdered = isLg ? [...asks.records].reverse() : [...asks.records];
   return (
-    <div className="flex-1 h-full flex gap-2 lg:flex-col items-start justify-center w-full tabular-nums lining-nums">
+    <div className="flex-1 h-full flex gap-2 lg:flex-col items-start justify-center w-full">
       <div className="asks-container flex flex-1 flex-col w-full gap-1 order-2 lg:order-1 lg:justify-end">
         {asksOrdered.map((ask, i) => (
           <OrderRow key={`ask-${ask.price}-${i}`} type="ask" {...ask} max={asks.total} />
