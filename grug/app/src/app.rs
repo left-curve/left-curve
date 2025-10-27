@@ -338,21 +338,24 @@ where
             ));
         }
 
-        // If a planned upgrade exists and the block height reached, then run
+        // If a planned upgrade exists and the block height is reached, then run
         // the chain upgrade logic.
         if let Some(upgrade) = NEXT_UPGRADE.may_load(&buffer)? {
             if block.info.height >= upgrade.height {
+                // Current node software version doesn't match the upgrade version.
+                // Exit early, halt the chain, awaiting the node operator to
+                // deploy the right version.
+                //
+                // See the equivalent code is Cosmos SDK:
+                // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
                 if self.cargo_version != upgrade.cargo_version {
-                    // Current node software version doesn't match the upgrade version.
-                    // Halt the chain, awaiting the node operator to deploy the right version.
-                    // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
                     #[cfg(feature = "tracing")]
                     {
                         tracing::warn!(
                             last_finalized_height = last_finalized_block.height,
                             current_version = self.cargo_version,
                             upgrade_version = upgrade.cargo_version,
-                            "!!! CHAIN HALT !!! gracefully halting the chain as configured"
+                            "!!! PRE-PLANNED CHAIN HALT !!!"
                         );
                     }
 
@@ -362,8 +365,12 @@ where
                     ));
                 }
 
-                // If the current node software version matches the upgrade version,
-                // and an ugprade handler exists, then do the upgrade.
+                // Now the current node software version matches the upgrade version.
+                // We can proceed with the upgrade.
+                //
+                // If an action is specified in the `upgrade_handler`, then execute it.
+                // This action MUST succeed. If not, it's considered a critical
+                // error. We halt the chain, awaiting a fix.
                 if let Some(handler) = self.upgrade_handler {
                     #[cfg(feature = "tracing")]
                     {
