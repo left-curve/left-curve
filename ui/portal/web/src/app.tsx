@@ -7,9 +7,6 @@ import { AppRouter, router } from "./app.router";
 import { AppProvider } from "@left-curve/foundation";
 import { Toaster, toast } from "@left-curve/applets-kit";
 import { RootModal } from "./components/modals/RootModal";
-import { PrivyProvider } from "@privy-io/react-auth";
-import { AppPrivy } from "./app.privy";
-import { PRIVY_APP_ID, PRIVY_CLIENT_ID } from "~/constants";
 
 import type React from "react";
 
