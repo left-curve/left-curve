@@ -150,7 +150,7 @@ const DateFormatSection: React.FC = () => {
       >
         <Select.Item value="MM/dd/yyyy">08/29/2025</Select.Item>
         <Select.Item value="dd/MM/yyyy">29/08/2025</Select.Item>
-        <Select.Item value="yyyy/MM/dd">2025/08/29</Select.Item>
+        <Select.Item value="yyyy-MM-dd">2025-08-29</Select.Item>
       </Select>
     </div>
   );
@@ -197,7 +197,7 @@ const ThemeSection: React.FC = () => {
         onTabChange={(value) => setThemeSchema(value as "system" | "light" | "dark")}
         classNames={{ base: "exposure-sm-italic" }}
       >
-        <Tab title="system">System</Tab>
+        <Tab title="system">{m["common.default"]()}</Tab>
         <Tab title="light">
           <IconSun className="w-6 h-6" />
         </Tab>

@@ -282,7 +282,7 @@ const Credential: React.FC = () => {
         {isMd ? (
           <Button variant="secondary" fullWidth onClick={() => setData({ view: "wallets" })}>
             <IconWallet />
-            {m["signin.connectWallet"]()}
+            {m["common.signWithWallet"]({ action: "signup" })}
           </Button>
         ) : null}
       </div>

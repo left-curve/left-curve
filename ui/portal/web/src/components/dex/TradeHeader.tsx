@@ -23,7 +23,7 @@ type TradeHeaderProps = {
 export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
   const { isLg } = useMediaQuery();
   const [isExpanded, setIsExpanded] = useState(isLg);
-  const { pairId, onChangePairId } = state;
+  const { pairId, onChangePairId, type } = state;
 
   useEffect(() => {
     setIsExpanded(isLg);
@@ -35,7 +35,11 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
         <div className="flex lg:flex-col gap-[2px]">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
           <div className="lg:pl-8">
-            <Badge text="Spot" color="blue" size="s" />
+            <Badge
+              text={m["dex.protrade.marketType"]({ marketType: type })}
+              color="blue"
+              size="s"
+            />
           </div>
         </div>
         <div className="flex gap-2 items-center">

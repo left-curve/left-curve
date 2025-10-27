@@ -178,7 +178,7 @@ const CredentialStep: React.FC = () => {
         {isMd ? (
           <Button variant="secondary" fullWidth onClick={() => setData({ view: "wallets" })}>
             <IconWallet />
-            {m["signin.connectWallet"]()}
+            {m["common.signWithWallet"]({ action: "signin" })}
           </Button>
         ) : null}
         {isMd ? null : (

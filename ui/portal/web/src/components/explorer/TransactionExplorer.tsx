@@ -120,15 +120,15 @@ const Details: React.FC = () => {
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
-            {m["explorer.txs.gasUsed"]()}
-          </p>
-          <p>{gasUsed}</p>
-        </div>
-        <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
           <p>{gasWanted}</p>
+        </div>
+        <div className="flex md:items-center gap-1 flex-col md:flex-row">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
+            {m["explorer.txs.gasUsed"]()}
+          </p>
+          <p>{gasUsed}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
           <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">

@@ -1,4 +1,4 @@
-import { Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
+import { Select, Spinner, Tab, useApp, useMediaQuery } from "@left-curve/applets-kit";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
@@ -40,11 +40,14 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
         color="line-red"
         layoutId="tabs-order-history"
         selectedTab={activeTab}
-        keys={isLg ? ["order book", "trades"] : ["graph", "order book", "trades"]}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic" }}
-      />
+      >
+        {!isLg && <Tab title="graph">{m["dex.protrade.graph"]()}</Tab>}
+        <Tab title="order book">{m["dex.protrade.orderBook"]()}</Tab>
+        <Tab title="trades">{m["dex.protrade.trades"]()}</Tab>
+      </Tabs>
       <div
         id="chart-container-mobile"
         className={twMerge("h-full w-full", { hidden: activeTab !== "graph" })}
