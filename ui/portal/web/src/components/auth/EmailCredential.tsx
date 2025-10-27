@@ -127,9 +127,9 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({
   }, [cooldown]);
 
   const { isLoading } = useQuery({
+    enabled: otpValue.length === 6,
     queryKey: ["send-email-code", email, otpValue],
     queryFn: async () => {
-      if (otpValue.length !== 6) return null;
       try {
         await privy.auth.email.loginWithCode(
           email,
