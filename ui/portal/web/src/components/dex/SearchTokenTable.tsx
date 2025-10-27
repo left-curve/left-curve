@@ -109,10 +109,10 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
       columns={columns}
       style="simple"
       classNames={classNames}
-      initialSortState={[
-        { id: "isFavorite", desc: true },
-        { id: "pairName", desc: false },
-      ]}
+      initialSortState={{
+        fixed: [{ id: "isFavorite", desc: true }],
+        variable: [{ id: "pairName", desc: false }],
+      }}
       initialColumnVisibility={{ isFavorite: false }}
       columnFilters={[{ id: "pairName", value: searchText }]}
       onRowClick={(row) =>
