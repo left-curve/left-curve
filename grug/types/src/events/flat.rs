@@ -1,12 +1,10 @@
-use crate::EvtUpgrade;
 #[cfg(feature = "async-graphql")]
 use async_graphql::Enum;
 #[cfg(feature = "sea-orm")]
 use sea_orm::entity::prelude::*;
-
 use {
     crate::{
-        Addr, CheckedContractEvent, Coins, CommitmentStatus, EvtConfigure, EvtUpload,
+        Addr, CheckedContractEvent, Coins, CommitmentStatus, EvtConfigure, EvtUpgrade, EvtUpload,
         FlattenStatus, Hash256, Json, Label, ReplyOn, Timestamp, TxEvents,
     },
     borsh::{BorshDeserialize, BorshSerialize},
