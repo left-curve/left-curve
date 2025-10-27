@@ -29,12 +29,12 @@ The typical procedure of a coordinated upgrade is as follows, in chronological o
 
    This signals to node operators at which block the chain will be upgraded, and the proper version of node software they should upgrade to. _The node operators should not upgrade the software at this point yet._
 
-2. The chain finalizes the block right before the upgrade height (`12344` in this example). At the upgrade height (`12345`), during `FinalizeBlock`, Grug app notices the upgrade height is reached, but the chain isn't using the correct version (`1.2.3`), so it performs a graceful halt of the chain by retuning an error in ABCI `FinalizeBlockResponse`.
+2. The chain finalizes the block right before the upgrade height (`12344` in this example). At the upgrade height (`12345`), during `FinalizeBlock`, Grug app notices the upgrade height is reached, but the chain isn't using the correct version (`1.2.3`), so it performs a graceful halt of the chain by retuning an error in ABCI `FinalizeBlockResponse`. The upgrade height (`12345`) is not finalized, with no state change committed.
 
 3. The node operator replaces the node software on the server with the correct version (`1.2.3`), and restart the service.
 
-4. CometBFT attempts `FinalizeBlock` again. Grug app notices the upgrade height is reached, and the software is of the correct version. It run the upgrade logic specified in `App::upgrade_handler` (if any), and then resumes producing processing blocks using the business logic of the new version.
+4. CometBFT attempts `FinalizeBlock` of the upgrade height (`12345`) again. Grug app notices the upgrade height is reached, and the software is of the correct version. It runs the upgrade logic specified in `App::upgrade_handler` (if any), and then resumes processing blocks.
 
 ## Automation
 
-Cosmos SDK chains uses a similar approach to coordinate upgrades, with their [`x/upgrade`](https://docs.cosmos.network/v0.53/build/modules/upgrade) module. There exists a tool, [cosmovisor](https://docs.cosmos.network/main/build/tooling/cosmovisor), that automates the step (3) discussed in the previous section, without the node operator having to manually do anything. Such a tool doesn't exist for Grug chains yet, but we're working on it.
+Cosmos SDK chains uses a similar approach to coordinate upgrades, with the [`x/upgrade`](https://docs.cosmos.network/v0.53/build/modules/upgrade) module. There exists a tool, [cosmovisor](https://docs.cosmos.network/main/build/tooling/cosmovisor), that automates the step (3) discussed in the previous section, without the node operator having to manually do anything. Such a tool doesn't exist for Grug chains yet, but we're working on it.
