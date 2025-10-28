@@ -244,7 +244,7 @@ fn apply(
     // If an old root node exists (i.e. tree isn't empty at the old version),
     // mark it as orphaned.
     if NODES.has(storage, (old_version, &ROOT_BITS)) {
-        mark_node_as_orphaned(storage, new_version, old_version, ROOT_BITS)?;
+        ORPHANS.insert(storage, (new_version, old_version, &ROOT_BITS))?;
     }
 
     // Recursively apply the ops, starting at the old root.
@@ -252,7 +252,7 @@ fn apply(
         // If the new tree is non-empty (i.e. it has a root node), save this
         // new root node and return its hash.
         Outcome::Updated(new_root_node) | Outcome::Unchanged(Some(new_root_node)) => {
-            save_node(storage, new_version, ROOT_BITS, &new_root_node)?;
+            NODES.save(storage, (new_version, &ROOT_BITS), &new_root_node)?;
             Ok(Some(new_root_node.hash()))
         },
         // The new tree is empty. do nothing and just return `None`.
@@ -315,7 +315,7 @@ fn apply_at_internal(
     if let (Outcome::Updated(_) | Outcome::Deleted, Some(left_child)) =
         (&left_outcome, &internal_node.left_child)
     {
-        mark_node_as_orphaned(storage, new_version, left_child.version, left_bits)?;
+        ORPHANS.insert(storage, (new_version, left_child.version, &left_bits))?;
     }
 
     // If the right child exists and have been updated or deleted, then the
@@ -323,7 +323,7 @@ fn apply_at_internal(
     if let (Outcome::Updated(_) | Outcome::Deleted, Some(right_child)) =
         (&right_outcome, &internal_node.right_child)
     {
-        mark_node_as_orphaned(storage, new_version, right_child.version, right_bits)?;
+        ORPHANS.insert(storage, (new_version, right_child.version, &right_bits))?;
     }
 
     match (left_outcome, right_outcome) {
@@ -344,11 +344,13 @@ fn apply_at_internal(
         },
         (Outcome::Unchanged(Some(left)), Outcome::Deleted) if left.is_leaf() => {
             // Mark left child as orphaned
-            mark_node_as_orphaned(
+            ORPHANS.insert(
                 storage,
-                new_version,
-                internal_node.left_child.unwrap().version,
-                left_bits,
+                (
+                    new_version,
+                    internal_node.left_child.unwrap().version,
+                    &left_bits,
+                ),
             )?;
 
             Ok(Outcome::Updated(left))
@@ -363,11 +365,13 @@ fn apply_at_internal(
         },
         (Outcome::Deleted, Outcome::Unchanged(Some(right))) if right.is_leaf() => {
             // Mark right child as orphaned
-            mark_node_as_orphaned(
+            ORPHANS.insert(
                 storage,
-                new_version,
-                internal_node.right_child.unwrap().version,
-                right_bits,
+                (
+                    new_version,
+                    internal_node.right_child.unwrap().version,
+                    &right_bits,
+                ),
             )?;
 
             Ok(Outcome::Updated(right))
@@ -377,7 +381,7 @@ fn apply_at_internal(
         (left, right) => {
             internal_node.left_child = match left {
                 Outcome::Updated(node) => {
-                    save_node(storage, new_version, left_bits, &node)?;
+                    NODES.save(storage, (new_version, &left_bits), &node)?;
 
                     Some(Child {
                         version: new_version,
@@ -390,7 +394,7 @@ fn apply_at_internal(
 
             internal_node.right_child = match right {
                 Outcome::Updated(node) => {
-                    save_node(storage, new_version, right_bits, &node)?;
+                    NODES.save(storage, (new_version, &right_bits), &node)?;
 
                     Some(Child {
                         version: new_version,
@@ -512,10 +516,10 @@ fn create_subtree(
 
             // If a subtree is non-empty, save it's root node.
             if let Outcome::Updated(node) | Outcome::Unchanged(Some(node)) = &left_outcome {
-                save_node(storage, version, left_bits, node)?;
+                NODES.save(storage, (version, &left_bits), node)?;
             }
             if let Outcome::Updated(node) | Outcome::Unchanged(Some(node)) = &right_outcome {
-                save_node(storage, version, right_bits, node)?;
+                NODES.save(storage, (version, &right_bits), node)?;
             }
 
             Ok(Outcome::Updated(Node::Internal(InternalNode {
@@ -524,26 +528,6 @@ fn create_subtree(
             })))
         },
     }
-}
-
-#[inline]
-fn save_node(
-    storage: &mut dyn Storage,
-    version: u64,
-    bits: BitArray,
-    node: &Node,
-) -> StdResult<()> {
-    NODES.save(storage, (version, &bits), node)
-}
-
-#[inline]
-fn mark_node_as_orphaned(
-    storage: &mut dyn Storage,
-    orphaned_since_version: u64,
-    version: u64,
-    bits: BitArray,
-) -> StdResult<()> {
-    ORPHANS.insert(storage, (orphaned_since_version, version, &bits))
 }
 
 #[inline]
