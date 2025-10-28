@@ -13,7 +13,7 @@ use {
 /// 1. For consensus. If two nodes see they have the same root hash, they are
 ///    sure they have the same state, without having to check the state itself.
 /// 2. For light clients. The commitment scheme should be able to generate proof
-///    that a given key-value pair exists or does not exits in the state. This
+///    that a given key-value pair exists or does not exist in the state. This
 ///    can be used in light clients, which has application in trust-minimized
 ///    cross-chain bridging.
 pub trait Commitment {
