@@ -36,7 +36,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="overflow-hidden z-10 relative p-4 lg:p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] h-[27.25rem] lg:min-h-[37rem] xl:min-h-[100%] lg:h-full"
+      className="overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37rem] h-full"
     >
       <Tabs
         color="line-red"
@@ -79,7 +79,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
     type === "bid" ? "bg-status-success lg:right-auto right-0" : "bg-status-fail lg:right-auto";
 
   return (
-    <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3 px-4">
+    <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3 px-4 min-h-[23px] items-center">
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
@@ -179,7 +179,7 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const trades = liveTradesStore((s) => s.trades);
 
   return (
-    <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[60vh] overflow-y-scroll scrollbar-none overflow-x-hidden relative">
+    <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[60vh] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4">
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
