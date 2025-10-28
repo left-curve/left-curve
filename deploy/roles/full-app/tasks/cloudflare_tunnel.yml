@@ -1,6 +1,7 @@
 - set_fact:
     pr_tunnel_name: "pr-{{ github_pr_number }}-{{ hostname }}"
 
+# 1) Find by name
 - name: List tunnels (filter by name)
   uri:
     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}"
@@ -8,30 +9,37 @@
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: list_resp
 
+# 2) Ensure exists (create if missing)
 - name: Create tunnel if missing
   uri:
     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel"
     method: POST
-    headers: { Authorization: "Bearer {{ cloudflare_api_token }}", Content-Type: "application/json" }
+    headers:
+      Authorization: "Bearer {{ cloudflare_api_token }}"
+      Content-Type: "application/json"
     body_format: json
-    body: { name: "{{ pr_tunnel_name }}", config_src: "cloudflare" }
+    body:
+      name: "{{ pr_tunnel_name }}"
+      config_src: "cloudflare"
   register: create_resp
-  when: list_resp.json.result|length == 0
+  when: (list_resp.json.result | length) == 0
+
+# 3) Pick the tunnel ID (from list or create)
+- set_fact:
+    pr_tunnel_id: >-
+      {{ (list_resp.json.result[0].id
+          if (list_resp.json.result | length) > 0
+          else create_resp.json.result.id) }}
+
+# 4) Fetch the run token (base64 string)
+- name: Get tunnel token
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ pr_tunnel_id }}/token"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: token_resp
 
 - set_fact:
-    pr_tunnel_token: "{{ token_resp.json.result }}"
-    pr_tunnel_id: "{{ (token_resp.json.result | b64decode | from_json).t }}"
-
-- name: CNAME PR hostnames → tunnel
-  community.general.cloudflare_dns:
-    zone: "{{ dango_domain }}"
-    record: "{{ item }}"
-    type: CNAME
-    value: "{{ pr_tunnel_id }}.cfargotunnel.com"
-    proxied: true
-    state: present
-    api_token: "{{ cloudflare_api_token }}"
-  loop:
-    - "api-pr-{{ github_pr_number }}"
-    - "www-pr-{{ github_pr_number }}"
-    - "faucet-pr-{{ github_pr_number }}"
+    pr_tunnel_token: "{{ token_resp.json.result }}"   # base64 token for cloudflared
+    # Optional: decode to derive ID for DNS if needed
+    pr_tunnel_id_check: "{{ (pr_tunnel_token | b64decode | from_json).t }}"
