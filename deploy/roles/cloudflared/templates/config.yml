@@ -1,0 +1,10 @@
+# tunnel: {{ cloudflare_tunnel_name }}
+
+ingress:
+  - hostname: api-devnet-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik.devnet.ports.dango_port }}
+  - hostname: www-devnet-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik.devnet.ports.dango_frontend_port }}
+  - hostname: faucet-devnet-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik.devnet.ports.faucet_port }}
+  - service: http_status:404
