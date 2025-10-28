@@ -33,7 +33,7 @@ system_wide_directories: false
 # Set this to true to deploy a new database and cometbft/dango directory
 reset_data: false
 
-cloudflare_tunnel: false
+cloudflare_tunnel_enabled: false
 
 cosign_certificate_oidc_issuer: "https://token.actions.githubusercontent.com"
 # Regex identities that accept PRs, branches, and tags for this repo/workflows

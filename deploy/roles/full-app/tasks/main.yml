@@ -10,7 +10,7 @@
 # 3. `ansible-playbook full-app.yml -e traefik_enabled=true`
 
 - import_tasks: cloudflare_tunnel.yml
-  when: cloudflare_tunnel and github_pr_number is defined
+  when: cloudflare_tunnel_enabled and github_pr_number is defined
 - import_tasks: validate.yml
 - import_tasks: stop_previous.yml
   when: system_wide_directories

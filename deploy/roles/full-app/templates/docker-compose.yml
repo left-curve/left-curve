@@ -49,7 +49,7 @@ services:
       retries: 10
 {% endif %}
 
-{% if cloudflare_tunnel %}
+{% if cloudflare_tunnel_enabled %}
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
