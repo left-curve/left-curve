@@ -36,7 +36,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[37rem] h-full"
+      className="overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[46.5rem] h-full"
     >
       <Tabs
         color="line-red"
@@ -179,7 +179,7 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const trades = liveTradesStore((s) => s.trades);
 
   return (
-    <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[60vh] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4">
+    <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[43rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4">
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
@@ -317,7 +317,7 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote }) => {
   }, [orderBook]);
 
   return (
-    <div className="hidden lg:flex w-full pt-2 pb-[6px] items-center justify-between relative order-2 px-4">
+    <div className="hidden lg:flex w-full py-1 items-center justify-between relative order-2 px-4">
       <p
         className={twMerge(
           "diatype-m-bold relative z-20",
