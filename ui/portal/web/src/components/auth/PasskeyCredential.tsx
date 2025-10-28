@@ -1,16 +1,16 @@
-import { Button, IconPasskey } from "@left-curve/applets-kit";
+import { Button, type ButtonProps, IconPasskey } from "@left-curve/applets-kit";
 
-import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { useMutation } from "@tanstack/react-query";
 
 import type React from "react";
 
 type PasskeyCredentialProps = {
-  action: "signin" | "signup";
   onAuth: () => Promise<void>;
+  label: string;
+  variant?: ButtonProps["variant"];
 };
 
-export const PasskeyCredential: React.FC<PasskeyCredentialProps> = ({ onAuth, action }) => {
+export const PasskeyCredential: React.FC<PasskeyCredentialProps> = ({ onAuth, label, variant }) => {
   const { isPending, mutateAsync } = useMutation({
     mutationFn: async () => {
       await onAuth();
@@ -23,10 +23,10 @@ export const PasskeyCredential: React.FC<PasskeyCredentialProps> = ({ onAuth, ac
       onClick={() => mutateAsync()}
       isLoading={isPending}
       className="gap-2"
-      variant="secondary"
+      variant={variant || "secondary"}
     >
       <IconPasskey className="w-6 h-6" />
-      <p className="min-w-20"> {m["common.signWithPasskey"]({ action })}</p>
+      <p>{label}</p>
     </Button>
   );
 };

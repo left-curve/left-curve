@@ -375,6 +375,8 @@
     "termsOfUse": "Terms of Use"
   },
   "auth": {
+    "passkey": "Passkey",
+    "wallets": "Wallets",
     "didntReceiveCode": "Didn't receive the code?",
     "enterYou": "Enter your",
     "requetFromFaucet": "Request Funds from Faucet",
