@@ -75,7 +75,7 @@ export const StatusBadge: React.FC = () => {
   if (!isWsChecked || !isChainChecked || !isDexChecked) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 flex flex-col gap-2 z-50">
+    <div className="hidden fixed bottom-4 left-4 lg:flex flex-col gap-2 z-50">
       <Popover
         showArrow={false}
         trigger={
