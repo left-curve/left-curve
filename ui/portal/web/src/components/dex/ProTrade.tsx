@@ -104,8 +104,8 @@ const ProTradeHeader: React.FC = () => {
 };
 
 const ProTradeOverview: React.FC = () => {
-  const { state } = useProTrade();
-  return <OrderBookOverview state={state} />;
+  const { state, controllers } = useProTrade();
+  return <OrderBookOverview state={state} controllers={controllers} />;
 };
 
 const ChartIQ = lazy(() =>

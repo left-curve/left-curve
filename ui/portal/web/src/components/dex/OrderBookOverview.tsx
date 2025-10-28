@@ -17,12 +17,14 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
 import type { AnyCoin } from "@left-curve/store/types";
+import type { Controllers } from "@left-curve/applets-kit";
 
 type OrderBookOverviewProps = {
   state: ReturnType<typeof useProTradeState>;
+  controllers: Controllers;
 };
 
-export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) => {
+export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, controllers }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
   const { isLg } = useMediaQuery();
@@ -34,7 +36,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="overflow-hidden z-10 relative p-4 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] h-[27.25rem] lg:min-h-[37rem] xl:min-h-[100%] lg:h-full"
+      className="overflow-hidden z-10 relative p-4 lg:p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] h-[27.25rem] lg:min-h-[37rem] xl:min-h-[100%] lg:h-full"
     >
       <Tabs
         color="line-red"
@@ -43,7 +45,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
         keys={isLg ? ["order book", "trades"] : ["graph", "order book", "trades"]}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
-        classNames={{ button: "exposure-xs-italic" }}
+        classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
       />
       <div
         id="chart-container-mobile"
@@ -51,8 +53,8 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state }) =
       />
       {(activeTab === "trades" || activeTab === "order book") && (
         <>
-          {activeTab === "order book" && <OrderBook state={state} />}
-          {activeTab === "trades" && <LiveTrades state={state} />}
+          {activeTab === "order book" && <OrderBook state={state} controllers={controllers} />}
+          {activeTab === "trades" && <LiveTrades state={state} controllers={controllers} />}
         </>
       )}
       <Subscription pairId={state.pairId} />
@@ -66,30 +68,30 @@ type OrderBookRowProps = {
   total: string;
   max: string;
   type: "bid" | "ask";
+  onSelectPrice: (price: string) => void;
 };
 
 const OrderRow: React.FC<OrderBookRowProps> = (props) => {
-  const { price, size, total, type, max } = props;
-  const depthBarWidthPercent = Decimal(size).div(max).times(100).toFixed(0);
+  const { price, size, total, type, max, onSelectPrice } = props;
+  const depthBarWidthPercent = Decimal(size).div(max).times(100).toFixed();
 
   const depthBarClass =
-    type === "bid"
-      ? "bg-status-success lg:-left-4 lg:right-auto right-0"
-      : "bg-status-fail left-0 lg:-left-4 lg:right-auto";
+    type === "bid" ? "bg-status-success lg:right-auto right-0" : "bg-status-fail lg:right-auto";
 
   return (
-    <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3">
+    <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3 px-4">
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}
       />
       <div
         className={twMerge(
-          "z-10",
+          "z-10 cursor-pointer",
           type === "bid"
             ? "text-status-success text-end lg:text-left lg:order-none order-2"
             : "text-status-fail lg:order-none lg:text-left",
         )}
+        onClick={() => onSelectPrice(price)}
       >
         <FormattedNumber number={price} formatOptions={{ minimumTotalDigits: 10 }} />
       </div>
@@ -108,7 +110,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
   );
 };
 
-const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
+const OrderBook: React.FC<OrderBookOverviewProps> = ({ state, controllers }) => {
   const { baseCoin, quoteCoin, pair, pairId, bucketRecords, bucketSize, setBucketSize } = state;
 
   const bucketSizeCoin = liquidityDepthStore((s) => s.bucketSizeCoin);
@@ -118,7 +120,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
 
   return (
     <div className="flex gap-2 flex-col items-center justify-center h-full">
-      <div className="flex items-center justify-between w-full">
+      <div className="flex items-center justify-between w-full px-4">
         <Select value={bucketSize} onChange={(key) => setBucketSize(key)} variant="plain">
           {pair.params.bucketSizes.map((size) => {
             return (
@@ -140,7 +142,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
           <Select.Item value={quoteCoin.symbol}>{quoteCoin.symbol}</Select.Item>
         </Select>
       </div>
-      <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2">
+      <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-4 lg:grid-cols-3 gap-2 px-4">
         <p className="order-2 lg:order-none text-end lg:text-start">
           {m["dex.protrade.history.price"]()}
         </p>
@@ -161,6 +163,7 @@ const OrderBook: React.FC<OrderBookOverviewProps> = ({ state }) => {
         bucketRecords={bucketRecords}
         base={baseCoin}
         quote={quoteCoin}
+        onSelectPrice={(price) => controllers.setValue("price", price)}
       />
     </div>
   );
@@ -231,6 +234,7 @@ type LiquidityDepthProps = {
   bucketRecords: number;
   base: AnyCoin;
   quote: AnyCoin;
+  onSelectPrice: (price: string) => void;
 };
 
 const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
@@ -239,6 +243,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   bucketRecords,
   base,
   quote,
+  onSelectPrice,
 }) => {
   const { isLg } = useMediaQuery();
   const { liquidityDepthStore } = useLiquidityDepthState({
@@ -255,11 +260,20 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
   const { bids, asks } = liquidityDepth;
 
   const asksOrdered = isLg ? [...asks.records].reverse() : [...asks.records];
+
+  const max = Decimal.max(bids.highestSize, asks.highestSize).toFixed();
+
   return (
     <div className="flex-1 h-full flex gap-2 lg:flex-col items-start justify-center w-full">
       <div className="asks-container flex flex-1 flex-col w-full gap-1 order-2 lg:order-1 lg:justify-end">
         {asksOrdered.map((ask, i) => (
-          <OrderRow key={`ask-${ask.price}-${i}`} type="ask" {...ask} max={asks.total} />
+          <OrderRow
+            key={`ask-${ask.price}-${i}`}
+            type="ask"
+            {...ask}
+            max={max}
+            onSelectPrice={onSelectPrice}
+          />
         ))}
       </div>
 
@@ -267,7 +281,13 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
 
       <div className="bid-container flex flex-1 flex-col w-full gap-1 order-1 lg:order-3">
         {[...bids.records].map((bid, i) => (
-          <OrderRow key={`bid-${bid.price}-${i}`} type="bid" {...bid} max={bids.total} />
+          <OrderRow
+            key={`bid-${bid.price}-${i}`}
+            type="bid"
+            {...bid}
+            max={max}
+            onSelectPrice={onSelectPrice}
+          />
         ))}
       </div>
     </div>
@@ -297,7 +317,7 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote }) => {
   }, [orderBook]);
 
   return (
-    <div className="hidden lg:flex w-full pt-2 pb-[6px] items-center justify-between relative order-2">
+    <div className="hidden lg:flex w-full pt-2 pb-[6px] items-center justify-between relative order-2 px-4">
       <p
         className={twMerge(
           "diatype-m-bold relative z-20",
