@@ -7,6 +7,7 @@ import { AppRouter, router } from "./app.router";
 import { AppProvider } from "@left-curve/foundation";
 import { Toaster, toast } from "@left-curve/applets-kit";
 import { RootModal } from "./components/modals/RootModal";
+import { StatusBadge } from "./components/foundation/StatusBadge";
 
 import type React from "react";
 
@@ -63,6 +64,7 @@ export const App: React.FC = () => {
           <AppRouter />
           <RootModal />
           <Toaster />
+          <StatusBadge />
         </AppProvider>
       </DangoStoreProvider>
     </QueryClientProvider>
