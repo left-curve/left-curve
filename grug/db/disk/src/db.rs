@@ -22,6 +22,7 @@ const CF_NAME_DEFAULT: &str = "default";
 
 /// The preimage column family maps key hashes to raw keys. This is necessary
 /// for generating ICS-23 compatible Merkle proofs.
+#[cfg(feature = "ibc")]
 const CF_NAME_PREIMAGES: &str = "preimages";
 
 /// The state commitment (SC) family stores Merkle tree nodes, which hold hashed
@@ -106,6 +107,7 @@ impl<T> DiskDb<T> {
         // for state storage column family, enable timestamping.
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
+            #[cfg(feature = "ibc")]
             (CF_NAME_PREIMAGES, new_cf_options_with_ts()),
             (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
             (CF_NAME_STATE_COMMITMENT, Options::default()),
@@ -306,12 +308,16 @@ where
 
         // Writes in preimages (note: don't forget timestamping, and deleting
         // key hashes that are deleted in state storage - see Zellic audut).
-        let cf = cf_preimages(&self.inner.db);
-        for (key, op) in &pending.state_storage {
-            if let Op::Insert(_) = op {
-                batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
-            } else {
-                batch.delete_cf_with_ts(&cf, key.hash256(), ts);
+        // This is only necessary if the `ibc` feature is enabled.
+        #[cfg(feature = "ibc")]
+        {
+            let cf = cf_preimages(&self.inner.db);
+            for (key, op) in &pending.state_storage {
+                if let Op::Insert(_) = op {
+                    batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
+                } else {
+                    batch.delete_cf_with_ts(&cf, key.hash256(), ts);
+                }
             }
         }
 
@@ -352,8 +358,11 @@ where
         self.inner.db.increase_full_history_ts_low(&cf, ts)?;
 
         // Same for preimages.
-        let cf = cf_preimages(&self.inner.db);
-        self.inner.db.increase_full_history_ts_low(&cf, ts)?;
+        #[cfg(feature = "ibc")]
+        {
+            let cf = cf_preimages(&self.inner.db);
+            self.inner.db.increase_full_history_ts_low(&cf, ts)?;
+        }
 
         // Prune state commitment.
         let mut buffer = Buffer::new(
@@ -671,6 +680,7 @@ fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>
     })
 }
 
+#[cfg(feature = "ibc")]
 pub(crate) fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
         panic!("failed to find default column family");
