@@ -21,12 +21,14 @@ const textColor = {
 };
 
 export const StatusBadge: React.FC = () => {
-  const [enableWsCheck, setEnableWsCheck] = useState(() => {
-    setTimeout(() => setEnableWsCheck(true), 1_000);
-    return false;
-  });
+  const [enableWsCheck, setEnableWsCheck] = useState(false);
   const publicClient = usePublicClient();
   const { navigate } = useApp();
+
+  useEffect(() => {
+    const t = setTimeout(() => setEnableWsCheck(true), 1_000);
+    return () => clearTimeout(t);
+  }, []);
 
   const { data: wsIsConnected, isFetched: isWsChecked } = useQuery({
     enabled: enableWsCheck,
