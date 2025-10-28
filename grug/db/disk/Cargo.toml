@@ -10,7 +10,6 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-default = ["ibc"]
 ibc     = ["grug-app/ibc", "grug-jmt/ibc", "ics23"]
 metrics = ["dep:metrics", "grug-types/metrics"]
 tracing = ["dep:tracing"]
