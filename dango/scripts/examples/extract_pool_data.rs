@@ -6,7 +6,8 @@ use {
     },
     grug::{Addr, JsonSerExt, Query, addr},
     grug_app::{App, NaiveProposalPreparer, NullIndexer},
-    grug_db_memory_lite::MemDbLite,
+    grug_commitment_simple::Simple,
+    grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     std::path::PathBuf,
 };
@@ -25,7 +26,7 @@ fn main() -> anyhow::Result<()> {
         .join(format!("db-{HEIGHT}.borsh"));
 
     let app = App::new(
-        MemDbLite::recover(snapshot)?,
+        MemDb::<Simple>::recover(snapshot)?,
         RustVm::new(),
         NaiveProposalPreparer,
         NullIndexer,

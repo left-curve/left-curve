@@ -6,7 +6,8 @@ use {
         Timestamp,
     },
     grug_app::{App, NaiveProposalPreparer, NullIndexer},
-    grug_db_memory_lite::MemDbLite,
+    grug_commitment_simple::Simple,
+    grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
     std::{fs, path::PathBuf},
@@ -36,7 +37,7 @@ fn main() -> anyhow::Result<()> {
     let _codes = RustVm::genesis_codes();
 
     let app = App::new(
-        MemDbLite::new(),
+        MemDb::<Simple>::new(),
         RustVm::new(),
         NaiveProposalPreparer,
         NullIndexer,

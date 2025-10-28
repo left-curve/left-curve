@@ -27,11 +27,10 @@ members = [
   "dango/warp",
   "grug/app",
   "grug/client",
+  "grug/commitment/simple",
   "grug/crypto",
   "grug/db/disk",
-  "grug/db/disk-lite",
   "grug/db/memory",
-  "grug/db/memory-lite",
   "grug/ffi",
   "grug/httpd",
   "grug/jellyfish-merkle",
@@ -229,11 +228,10 @@ grug                        = { path = "grug/std" }
 grug-app                    = { path = "grug/app" }
 grug-auth                   = { path = "grug/auth" }
 grug-client                 = { path = "grug/client" }
+grug-commitment-simple      = { path = "grug/commitment/simple" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
-grug-db-disk-lite           = { path = "grug/db/disk-lite" }
 grug-db-memory              = { path = "grug/db/memory" }
-grug-db-memory-lite         = { path = "grug/db/memory-lite" }
 grug-ffi                    = { path = "grug/ffi" }
 grug-httpd                  = { path = "grug/httpd" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }

@@ -2,7 +2,7 @@
 use ics23::CommitmentProof;
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{Batch, Hash256, Storage},
+    grug_types::{Batch, Hash256, StdResult, Storage},
 };
 
 /// Represents a database that our blockchain operates over.
@@ -68,6 +68,11 @@ pub trait Db {
     /// `None` if not a single version has been committed.
     fn latest_version(&self) -> Option<u64>;
 
+    /// Return the oldest version available in the database.
+    /// Versions older than this have been pruned.
+    /// Return `None` if the DB hasn't been pruned once.
+    fn oldest_version(&self) -> Option<u64>;
+
     /// Return the Merkle root hash at the specified version.
     ///
     /// If version is unspecified, return that of the latest committed version.
@@ -104,23 +109,40 @@ pub trait Db {
         self.commit()?;
         Ok((new_version, root_hash))
     }
-}
-
-/// Represents a database that can be pruned.
-///
-/// These methods aren't used by the app, so we split them off into a separate
-/// trait.
-pub trait PrunableDb: Db {
-    /// Return the oldest version available in the database.
-    /// Versions older than this have been pruned.
-    /// Return `None` if the DB hasn't been pruned once.
-    fn oldest_version(&self) -> Option<u64>;
 
     /// Prune data of less or equal to the given version.
     ///
     /// That is, `up_to_version` will be thd oldest version available in the
     /// database post pruning.
     fn prune(&self, up_to_version: u64) -> Result<(), Self::Error>;
+}
+
+/// Represents a state commitment scheme.
+///
+/// A commitment scheme generates a fixed-length root hash for a state of
+/// arbitrary size. The root hash is used in two ways:
+///
+/// 1. For consensus. If two nodes see they have the same root hash, they are
+///    sure they have the same state, without having to check the state itself.
+/// 2. For light clients. The commitment scheme should be able to generate proof
+///    that a given key-value pair exists or does not exits in the state. This
+///    can be used in light clients, which has application in trust-minimized
+///    cross-chain bridging.
+pub trait Commitment {
+    type Proof: BorshSerialize + BorshDeserialize;
+
+    fn root_hash(storage: &dyn Storage, version: u64) -> StdResult<Option<Hash256>>;
+
+    fn apply(
+        storage: &mut dyn Storage,
+        old_version: u64,
+        new_version: u64,
+        batch: &Batch,
+    ) -> StdResult<Option<Hash256>>;
+
+    fn prove(storage: &dyn Storage, key_hash: Hash256, version: u64) -> StdResult<Self::Proof>;
+
+    fn prune(storage: &mut dyn Storage, up_to_version: u64) -> StdResult<()>;
 }
 
 /// Represents a database that is capable of generating IBC compatible storage

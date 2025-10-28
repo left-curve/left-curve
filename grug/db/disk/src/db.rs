@@ -1,13 +1,13 @@
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
-    grug_app::{Db, PrunableDb},
-    grug_jmt::MerkleTree,
-    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage},
+    grug_app::{Commitment, Db},
+    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
     },
     std::{
+        marker::PhantomData,
         path::Path,
         sync::{Arc, RwLock},
     },
@@ -45,9 +45,6 @@ const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 /// Storage key for the oldest version.
 const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 
-/// Jellyfish Merkle tree (JMT) using default namespaces.
-pub(crate) const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
-
 /// The base storage primitive.
 ///
 /// Its main feature is the separation of state storage (SS) and state commitment
@@ -75,8 +72,9 @@ pub(crate) const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
 /// it's just because we're having here is sort of a quick hack and we don't
 /// have time to look into those advanced features yet. We will keep experimenting
 /// and maybe our implementation will converge with Sei's some time later.
-pub struct DiskDb {
+pub struct DiskDb<T> {
     pub(crate) inner: Arc<DiskDbInner>,
+    _commitment: PhantomData<T>,
 }
 
 pub(crate) struct DiskDbInner {
@@ -93,7 +91,7 @@ pub(crate) struct PendingData {
     state_storage: Batch,
 }
 
-impl DiskDb {
+impl<T> DiskDb<T> {
     /// Create a DiskDb instance by opening a physical RocksDB instance.
     pub fn open<P>(data_dir: P) -> DbResult<Self>
     where
@@ -113,21 +111,26 @@ impl DiskDb {
                 db,
                 pending_data: RwLock::new(None),
             }),
+            _commitment: PhantomData,
         })
     }
 }
 
-impl Clone for DiskDb {
+impl<T> Clone for DiskDb<T> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
+            _commitment: PhantomData,
         }
     }
 }
 
-impl Db for DiskDb {
+impl<T> Db for DiskDb<T>
+where
+    T: Commitment,
+{
     type Error = DbError;
-    type Proof = Proof;
+    type Proof = T::Proof;
     type StateCommitment = StateCommitment;
     type StateStorage = StateStorage;
 
@@ -192,14 +195,32 @@ impl Db for DiskDb {
         Some(u64::from_le_bytes(array))
     }
 
-    fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash256>> {
-        let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        Ok(MERKLE_TREE.root_hash(&self.state_commitment(), version)?)
+    fn oldest_version(&self) -> Option<u64> {
+        let cf = cf_default(&self.inner.db);
+        let bytes = self
+            .inner
+            .db
+            .get_cf(&cf, OLDEST_VERSION_KEY)
+            .unwrap_or_else(|err| {
+                panic!("failed to read from default column family: {err}");
+            })?;
+        let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
+            panic!(
+                "oldest version is of incorrect byte length: {}",
+                bytes.len()
+            );
+        });
+        Some(u64::from_le_bytes(array))
     }
 
-    fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
+    fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash256>> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
+        Ok(T::root_hash(&self.state_commitment(), version)?)
+    }
+
+    fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Self::Proof> {
+        let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
+        Ok(T::prove(&self.state_commitment(), key.hash256(), version)?)
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
@@ -229,7 +250,7 @@ impl Db for DiskDb {
             "disk_db_state_commitment_flush_but_not_commit",
         );
 
-        let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
+        let root_hash = T::apply(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
         *(self.inner.pending_data.write()?) = Some(PendingData {
@@ -288,26 +309,6 @@ impl Db for DiskDb {
 
         Ok(self.inner.db.write(batch)?)
     }
-}
-
-impl PrunableDb for DiskDb {
-    fn oldest_version(&self) -> Option<u64> {
-        let cf = cf_default(&self.inner.db);
-        let bytes = self
-            .inner
-            .db
-            .get_cf(&cf, OLDEST_VERSION_KEY)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from default column family: {err}");
-            })?;
-        let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
-            panic!(
-                "oldest version is of incorrect byte length: {}",
-                bytes.len()
-            );
-        });
-        Some(u64::from_le_bytes(array))
-    }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
         let ts = U64Timestamp::from(up_to_version);
@@ -335,7 +336,7 @@ impl PrunableDb for DiskDb {
             "disk_db_state_commitment_prune",
         );
 
-        MERKLE_TREE.prune(&mut buffer, up_to_version)?;
+        T::prune(&mut buffer, up_to_version)?;
 
         let (_, pending) = buffer.disassemble();
         let mut batch = WriteBatch::default();
@@ -626,14 +627,14 @@ fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnF
     })
 }
 
-// ----------------------------------- test ------------------------------------
+// ------------------------ tests using JMT commitment -------------------------
 
 #[cfg(test)]
-mod tests {
+mod tests_jmt {
     use {
         crate::DiskDb,
-        grug_app::{Db, PrunableDb},
-        grug_jmt::verify_proof,
+        grug_app::Db,
+        grug_jmt::{MerkleTree, verify_proof},
         grug_types::{
             Batch, Hash256, HashExt, MembershipProof, NonMembershipProof, Op, Order, Proof,
             ProofNode, Storage,
@@ -788,7 +789,7 @@ mod tests {
     #[test]
     fn disk_db_works() {
         let path = TempDataDir::new("_grug_disk_db_works");
-        let db = DiskDb::open(&path).unwrap();
+        let db = DiskDb::<MerkleTree>::open(&path).unwrap();
 
         // Write a batch. The very first batch have version 0.
         let batch = Batch::from([
@@ -973,7 +974,7 @@ mod tests {
     #[test]
     fn disk_db_pruning_works() {
         let path = TempDataDir::new("_grug_disk_db_pruning_works");
-        let db = DiskDb::open(&path).unwrap();
+        let db = DiskDb::<MerkleTree>::open(&path).unwrap();
 
         // Apply a few batches. Same test data as used in the JMT test.
         for batch in [
@@ -1035,6 +1036,83 @@ mod tests {
                 err.to_string()
                     .contains("data not found! type: grug_jmt::node::Node")
             }));
+        }
+    }
+}
+
+// ----------------------- tests using simple commitment -----------------------
+
+#[cfg(test)]
+mod tests_simple {
+    use {super::*, grug_commitment_simple::Simple, grug_types::hash, temp_rocksdb::TempDataDir};
+
+    // sha256(6 | donald | 1 | 5 | trump | 4 | jake | 1 | 8 | shepherd | 3 | joe | 1 | 5 | biden | 5 | larry | 1 | 8 | engineer)
+    // = sha256(0006646f6e616c640100057472756d7000046a616b65010008736865706865726400036a6f65010005626964656e00056c61727279010008656e67696e656572)
+    const V0_HASH: Hash256 =
+        hash!("be33ce9316ee2af84f037db3a9d6d01bd2e61557ae7859d4d02138b08e6cc9f9");
+
+    // sha256(6 | donald | 1 | 4 | duck | 3 | joe | 0 | 7 | pumpkin | 1 | 3 | cat)
+    // = sha256(0006646f6e616c640100046475636b00036a6f6500000770756d706b696e010003636174)
+    const V1_HASH: Hash256 =
+        hash!("27fc5226bce75bd7750366ee3ddcf35f2d8daafb9f8e14f855f673e1e6fcb021");
+
+    #[test]
+    fn disk_db_lite_works() {
+        let path = TempDataDir::new("_grug_disk_db_lite_works");
+        let db = DiskDb::<Simple>::open(&path).unwrap();
+
+        // Write a 1st batch.
+        {
+            let batch = Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
+                (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
+                (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
+                (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
+            ]);
+            let (version, root_hash) = db.flush_and_commit(batch).unwrap();
+            assert_eq!(version, 0);
+            assert_eq!(root_hash, Some(V0_HASH));
+
+            for (k, v) in [
+                ("donald", Some("trump")),
+                ("jake", Some("shepherd")),
+                ("joe", Some("biden")),
+                ("larry", Some("engineer")),
+            ] {
+                let found_value = db
+                    .state_storage(Some(version))
+                    .unwrap()
+                    .read(k.as_bytes())
+                    .map(|v| String::from_utf8(v).unwrap());
+                assert_eq!(found_value.as_deref(), v);
+            }
+        }
+
+        // Write a 2nd batch.
+        {
+            let batch = Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
+                (b"joe".to_vec(), Op::Delete),
+                (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
+            ]);
+            let (version, root_hash) = db.flush_and_commit(batch).unwrap();
+            assert_eq!(version, 1);
+            assert_eq!(root_hash, Some(V1_HASH));
+
+            for (k, v) in [
+                ("donald", Some("duck")),
+                ("jake", Some("shepherd")),
+                ("joe", None),
+                ("larry", Some("engineer")),
+                ("pumpkin", Some("cat")),
+            ] {
+                let found_value = db
+                    .state_storage(Some(version))
+                    .unwrap()
+                    .read(k.as_bytes())
+                    .map(|v| String::from_utf8(v).unwrap());
+                assert_eq!(found_value.as_deref(), v);
+            }
         }
     }
 }

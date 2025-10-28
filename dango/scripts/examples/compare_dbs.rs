@@ -4,7 +4,8 @@
 use {
     grug::{Order, Record, Storage},
     grug_app::Db,
-    grug_db_disk_lite::DiskDbLite,
+    grug_commitment_simple::Simple,
+    grug_db_disk::DiskDb,
     std::{cmp::Ordering, path::PathBuf},
 };
 
@@ -81,11 +82,11 @@ fn find_diffs<'a>(
 fn main() -> anyhow::Result<()> {
     let cwd = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples");
 
-    let db1 = DiskDbLite::open::<_, Vec<u8>>(cwd.join("data_ovh1"), None)?;
+    let db1 = DiskDb::<Simple>::open(cwd.join("data_ovh1"))?;
     let storage1 = db1.state_storage(None)?;
     let iter1 = storage1.scan(None, None, Order::Ascending);
 
-    let db2 = DiskDbLite::open::<_, Vec<u8>>(cwd.join("data_ovh2"), None)?;
+    let db2 = DiskDb::<Simple>::open(cwd.join("data_ovh2"))?;
     let storage2 = db2.state_storage(None)?;
     let iter2 = storage2.scan(None, None, Order::Ascending);
 

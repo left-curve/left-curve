@@ -15,7 +15,8 @@ use {
     dango_genesis::GenesisCodes,
     grug::{Block, BorshDeExt, Hash256, Query},
     grug_app::{App, Db, NaiveProposalPreparer, NullIndexer},
-    grug_db_disk_lite::DiskDbLite,
+    grug_commitment_simple::Simple,
+    grug_db_disk::DiskDb,
     grug_vm_rust::RustVm,
     hex_literal::hex,
     std::path::PathBuf,
@@ -25,9 +26,9 @@ const FROM_HEIGHT: u64 = 650000; // inclusive
 
 const UNTIL_HEIGHT: u64 = 652000; // inclusive
 
-const PRIORITY_MIN: [u8; 24] = hex!("7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"); // equals b"wasm" + the dex contract address
+const _PRIORITY_MIN: [u8; 24] = hex!("7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f"); // equals b"wasm" + the dex contract address
 
-const PRIORITY_MAX: [u8; 24] = hex!("7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740"); // equals b"wasm" + increment_last_byte(the dex contract address)
+const _PRIORITY_MAX: [u8; 24] = hex!("7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740"); // equals b"wasm" + increment_last_byte(the dex contract address)
 
 // Use the following min/max to only load the `dango_dex::state::ORDERS` map:
 //
@@ -59,7 +60,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Load the DB. As a basic sanity check, ensure the DB version equals `FROM_HEIGHT`.
-    let db = DiskDbLite::open(&data, Some(&(PRIORITY_MIN, PRIORITY_MAX)))?;
+    let db = DiskDb::<Simple>::open(&data)?;
 
     ensure!(
         db.latest_version()

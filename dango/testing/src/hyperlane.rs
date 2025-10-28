@@ -4,19 +4,15 @@ use {
     dango_types::{gateway::Domain, warp::TokenMessage},
     grug::{Addr, Addressable, Coins, Hash256, Signer, TestSuite, Uint128},
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, Vm},
-    grug_db_memory_lite::MemDbLite,
+    grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     hyperlane_testing::{MockValidatorSets, constants::MOCK_HYPERLANE_LOCAL_DOMAIN},
     hyperlane_types::{Addr32, mailbox},
     std::ops::{Deref, DerefMut},
 };
 
-pub struct HyperlaneTestSuite<
-    DB = MemDbLite,
-    VM = RustVm,
-    PP = NaiveProposalPreparer,
-    ID = NullIndexer,
-> where
+pub struct HyperlaneTestSuite<DB = MemDb, VM = RustVm, PP = NaiveProposalPreparer, ID = NullIndexer>
+where
     DB: Db,
     VM: Vm + Clone + 'static,
     PP: ProposalPreparer,
