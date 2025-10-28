@@ -14,8 +14,7 @@ use {
     anyhow::ensure,
     dango_genesis::GenesisCodes,
     grug::{Block, BorshDeExt, Hash256, Query},
-    grug_app::{App, Db, NaiveProposalPreparer, NullIndexer},
-    grug_commitment_simple::Simple,
+    grug_app::{App, Db, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_db_disk::DiskDb,
     grug_vm_rust::RustVm,
     hex_literal::hex,
@@ -60,7 +59,7 @@ fn main() -> anyhow::Result<()> {
     }
 
     // Load the DB. As a basic sanity check, ensure the DB version equals `FROM_HEIGHT`.
-    let db = DiskDb::<Simple>::open(&data)?;
+    let db = DiskDb::<SimpleCommitment>::open(&data)?;
 
     ensure!(
         db.latest_version()

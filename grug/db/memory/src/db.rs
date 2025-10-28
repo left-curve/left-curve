@@ -1,7 +1,6 @@
 use {
     crate::{DbError, DbResult},
-    grug_app::{Commitment, Db},
-    grug_commitment_simple::Simple,
+    grug_app::{Commitment, Db, SimpleCommitment},
     grug_types::{
         Batch, Buffer, Hash256, HashExt, MockStorage, Op, Order, Record, Shared, Storage,
     },
@@ -39,7 +38,7 @@ struct MemDbInner {
     changeset: Option<ChangeSet>,
 }
 
-pub struct MemDb<T = Simple> {
+pub struct MemDb<T = SimpleCommitment> {
     inner: Shared<MemDbInner>,
     _commitment: PhantomData<T>,
 }

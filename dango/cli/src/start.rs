@@ -8,9 +8,8 @@ use {
     config_parser::parse_config,
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer},
+    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_client::TendermintRpcClient,
-    grug_commitment_simple::Simple,
     grug_db_disk::DiskDb,
     grug_httpd::context::Context as HttpdContext,
     grug_types::GIT_COMMIT,
@@ -40,7 +39,7 @@ impl StartCmd {
         let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Open disk DB.
-        let db = DiskDb::<Simple>::open(app_dir.data_dir())?;
+        let db = DiskDb::<SimpleCommitment>::open(app_dir.data_dir())?;
 
         // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
         let _codes = RustVm::genesis_codes();
@@ -197,7 +196,7 @@ impl StartCmd {
         sql_indexer: indexer_sql::Indexer,
         indexer_context: indexer_sql::context::Context,
         indexer_path: IndexerPath,
-        app: Arc<App<DiskDb<Simple>, RustVm, NaiveProposalPreparer, NullIndexer>>,
+        app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(
         HookedIndexer,
@@ -322,7 +321,7 @@ impl StartCmd {
         grug_cfg: GrugConfig,
         tendermint_cfg: TendermintConfig,
         pyth_lazer_cfg: PythLazerConfig,
-        db: DiskDb<Simple>,
+        db: DiskDb<SimpleCommitment>,
         vm: RustVm,
         indexer: ID,
     ) -> anyhow::Result<()>

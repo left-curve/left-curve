@@ -5,8 +5,7 @@ use {
         dex, oracle,
     },
     grug::{Addr, JsonSerExt, Query, addr},
-    grug_app::{App, NaiveProposalPreparer, NullIndexer},
-    grug_commitment_simple::Simple,
+    grug_app::{App, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     std::path::PathBuf,
@@ -26,7 +25,7 @@ fn main() -> anyhow::Result<()> {
         .join(format!("db-{HEIGHT}.borsh"));
 
     let app = App::new(
-        MemDb::<Simple>::recover(snapshot)?,
+        MemDb::<SimpleCommitment>::recover(snapshot)?,
         RustVm::new(),
         NaiveProposalPreparer,
         NullIndexer,

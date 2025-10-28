@@ -3305,7 +3305,6 @@ dependencies = [
  "futures",
  "grug-app",
  "grug-client",
- "grug-commitment-simple",
  "grug-db-disk",
  "grug-httpd",
  "grug-types",
@@ -3531,7 +3530,6 @@ dependencies = [
  "dango-proposal-preparer",
  "dango-testing",
  "grug-app",
- "grug-commitment-simple",
  "grug-db-memory",
  "grug-httpd",
  "grug-testing",
@@ -3589,7 +3587,6 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
- "grug-commitment-simple",
  "grug-db-disk",
  "grug-db-memory",
  "grug-vm-rust",
@@ -3646,7 +3643,6 @@ dependencies = [
  "grug",
  "grug-app",
  "grug-client",
- "grug-commitment-simple",
  "grug-db-disk",
  "grug-db-memory",
  "grug-testing",
@@ -4736,6 +4732,7 @@ dependencies = [
  "ics23",
  "metrics",
  "prost",
+ "sha2 0.10.9",
  "tendermint",
  "thiserror 2.0.12",
  "tower",
@@ -4753,17 +4750,6 @@ dependencies = [
  "serde",
  "tendermint",
  "tendermint-rpc",
-]
-
-[[package]]
-name = "grug-commitment-simple"
-version = "0.0.0"
-dependencies = [
- "grug-app",
- "grug-storage",
- "grug-types",
- "sha2 0.10.9",
- "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -4795,7 +4781,6 @@ version = "0.0.0"
 dependencies = [
  "error-backtrace",
  "grug-app",
- "grug-commitment-simple",
  "grug-jmt",
  "grug-types",
  "hex-literal",
@@ -4816,7 +4801,6 @@ dependencies = [
  "borsh",
  "error-backtrace",
  "grug-app",
- "grug-commitment-simple",
  "grug-types",
  "ouroboros",
  "thiserror 2.0.12",

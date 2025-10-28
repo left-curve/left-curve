@@ -6,8 +6,7 @@ use {
         Addr, Coins, Duration, JsonSerExt, QuerierExt, Query, QueryStatusRequest, ResultExt,
         StdResult, addr,
     },
-    grug_app::{App, NaiveProposalPreparer, NullIndexer},
-    grug_commitment_simple::Simple,
+    grug_app::{App, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     hex_literal::hex,
@@ -31,7 +30,7 @@ fn main() -> anyhow::Result<()> {
 
     let _codes = RustVm::genesis_codes();
 
-    let db = MemDb::<Simple>::recover(cwd.join(format!("db-{FROM_HEIGHT}.borsh")))?;
+    let db = MemDb::<SimpleCommitment>::recover(cwd.join(format!("db-{FROM_HEIGHT}.borsh")))?;
 
     // In this DB snapshot, the chain owner has been changed to another account.
     // Let's change it back to `test1`, so we can use `test1` to sign the reset

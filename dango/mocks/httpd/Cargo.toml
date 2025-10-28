@@ -18,7 +18,6 @@ dango-indexer-sql        = { workspace = true }
 dango-proposal-preparer  = { workspace = true }
 dango-testing            = { workspace = true }
 grug-app                 = { workspace = true }
-grug-commitment-simple   = { workspace = true }
 grug-db-memory           = { workspace = true }
 grug-httpd               = { workspace = true }
 grug-testing             = { workspace = true }

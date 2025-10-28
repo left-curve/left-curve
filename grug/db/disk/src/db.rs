@@ -1044,7 +1044,7 @@ mod tests_jmt {
 
 #[cfg(test)]
 mod tests_simple {
-    use {super::*, grug_commitment_simple::Simple, grug_types::hash, temp_rocksdb::TempDataDir};
+    use {super::*, grug_app::SimpleCommitment, grug_types::hash, temp_rocksdb::TempDataDir};
 
     // sha256(6 | donald | 1 | 5 | trump | 4 | jake | 1 | 8 | shepherd | 3 | joe | 1 | 5 | biden | 5 | larry | 1 | 8 | engineer)
     // = sha256(0006646f6e616c640100057472756d7000046a616b65010008736865706865726400036a6f65010005626964656e00056c61727279010008656e67696e656572)
@@ -1059,7 +1059,7 @@ mod tests_simple {
     #[test]
     fn disk_db_lite_works() {
         let path = TempDataDir::new("_grug_disk_db_lite_works");
-        let db = DiskDb::<Simple>::open(&path).unwrap();
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
 
         // Write a 1st batch.
         {

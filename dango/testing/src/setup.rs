@@ -13,8 +13,7 @@ use {
         Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, Message, TendermintRpcClient,
         Uint128,
     },
-    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
-    grug_commitment_simple::Simple,
+    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
     grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
     grug_vm_hybrid::HybridVm,
@@ -260,7 +259,7 @@ pub fn setup_benchmark_hybrid(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb<Simple>, HybridVm, NullIndexer>,
+    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, HybridVm, NullIndexer>,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
@@ -305,7 +304,7 @@ pub fn setup_benchmark_wasm(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb<Simple>, WasmVm, NullIndexer>,
+    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, WasmVm, NullIndexer>,
     TestAccounts,
     Codes<Vec<u8>>,
     Contracts,

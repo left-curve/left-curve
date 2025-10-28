@@ -1,15 +1,44 @@
 use {
-    grug_app::Commitment,
+    borsh::{BorshDeserialize, BorshSerialize},
     grug_storage::Item,
     grug_types::{Batch, Hash256, Op, StdResult, Storage},
     sha2::{Digest, Sha256},
 };
 
-const LATEST_VERSION_AND_ROOT_HASH: Item<(u64, Hash256)> = Item::new("latest");
+/// Represents a state commitment scheme.
+///
+/// A commitment scheme generates a fixed-length root hash for a state of
+/// arbitrary size. The root hash is used in two ways:
+///
+/// 1. For consensus. If two nodes see they have the same root hash, they are
+///    sure they have the same state, without having to check the state itself.
+/// 2. For light clients. The commitment scheme should be able to generate proof
+///    that a given key-value pair exists or does not exits in the state. This
+///    can be used in light clients, which has application in trust-minimized
+///    cross-chain bridging.
+pub trait Commitment {
+    type Proof: BorshSerialize + BorshDeserialize;
 
-pub struct Simple;
+    fn root_hash(storage: &dyn Storage, version: u64) -> StdResult<Option<Hash256>>;
 
-impl Commitment for Simple {
+    fn apply(
+        storage: &mut dyn Storage,
+        old_version: u64,
+        new_version: u64,
+        batch: &Batch,
+    ) -> StdResult<Option<Hash256>>;
+
+    fn prove(storage: &dyn Storage, key_hash: Hash256, version: u64) -> StdResult<Self::Proof>;
+
+    fn prune(storage: &mut dyn Storage, up_to_version: u64) -> StdResult<()>;
+}
+
+const LATEST_VERSION_AND_ROOT_HASH: Item<'static, (u64, Hash256)> = Item::new("latest");
+
+/// The simplest possible commitment scheme. It simply hashes the changeset.
+pub struct SimpleCommitment;
+
+impl Commitment for SimpleCommitment {
     type Proof = ();
 
     fn root_hash(storage: &dyn Storage, version: u64) -> StdResult<Option<Hash256>> {

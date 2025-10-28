@@ -5,8 +5,7 @@ use {
         BlockInfo, GENESIS_BLOCK_HASH, GENESIS_BLOCK_HEIGHT, GenesisState, Json, JsonDeExt,
         Timestamp,
     },
-    grug_app::{App, NaiveProposalPreparer, NullIndexer},
-    grug_commitment_simple::Simple,
+    grug_app::{App, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
@@ -37,7 +36,7 @@ fn main() -> anyhow::Result<()> {
     let _codes = RustVm::genesis_codes();
 
     let app = App::new(
-        MemDb::<Simple>::new(),
+        MemDb::<SimpleCommitment>::new(),
         RustVm::new(),
         NaiveProposalPreparer,
         NullIndexer,

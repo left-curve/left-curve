@@ -1,8 +1,7 @@
 use {
     anyhow::ensure,
     dango_genesis::GenesisCodes,
-    grug_app::{App, NaiveProposalPreparer, NullIndexer},
-    grug_commitment_simple::Simple,
+    grug_app::{App, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_db_disk::DiskDb,
     grug_vm_rust::RustVm,
     indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
@@ -18,7 +17,7 @@ fn main() -> anyhow::Result<()> {
 
     let indexer_path = IndexerPath::Dir(cwd.clone());
 
-    let db = DiskDb::<Simple>::open(cwd.join("data"))?;
+    let db = DiskDb::<SimpleCommitment>::open(cwd.join("data"))?;
 
     let _codes = RustVm::genesis_codes();
 
