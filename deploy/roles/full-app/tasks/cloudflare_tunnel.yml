@@ -31,6 +31,9 @@
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: token_resp
 
+- debug:
+    var: token_resp
+
 - set_fact:
     pr_tunnel_token: "{{ token_resp.json.result.token }}"
 
