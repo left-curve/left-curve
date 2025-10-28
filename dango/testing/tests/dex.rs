@@ -19,7 +19,7 @@ use {
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
-        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order,
+        LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order,
         QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Uint128,
         UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
@@ -2008,7 +2008,7 @@ fn swap_exact_amount_in(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountIn {
-                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(route)),
+                route: LengthBounded::new_unchecked(UniqueVec::new_unchecked(route)),
                 minimum_output,
             },
             swap_funds.clone(),
@@ -2358,7 +2358,7 @@ fn swap_exact_amount_out(
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountOut {
-                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(route)),
+                route: LengthBounded::new_unchecked(UniqueVec::new_unchecked(route)),
                 output: NonZero::new(exact_out.clone()).unwrap(),
             },
             swap_funds.clone(),
@@ -2464,7 +2464,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountIn {
-                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                route: LengthBounded::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                 }])),
@@ -2484,7 +2484,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountOut {
-                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                route: LengthBounded::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
                 }])),

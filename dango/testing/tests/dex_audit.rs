@@ -15,9 +15,9 @@ use {
         },
         dex::{
             self, AmountOption, CreateOrderRequest, Direction, ExecuteMsg, Geometric,
-            LiquidityDepth, OrderId, OrdersByPairResponse, OrdersByUserResponse, PairParams,
-            PairUpdate, PassiveLiquidity, Price, PriceOption, QueryPairRequest, SwapRoute,
-            TimeInForce,
+            LiquidityDepth, OrderId, OrdersByPairResponse, OrdersByUserResponse, PairId,
+            PairParams, PairUpdate, PassiveLiquidity, Price, PriceOption, QueryPairRequest,
+            SwapRoute, TimeInForce,
         },
         gateway::Remote,
         oracle::{self, PriceSource},
@@ -347,7 +347,13 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountIn {
-                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                route: SwapRoute::new_unchecked(
+                    UniqueVec::new(vec![PairId {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    }])
+                    .unwrap(),
+                ),
                 minimum_output: None,
             },
             Coins::new(),
@@ -359,7 +365,13 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountOut {
-                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                route: SwapRoute::new_unchecked(
+                    UniqueVec::new(vec![PairId {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    }])
+                    .unwrap(),
+                ),
                 output: NonZero::new_unchecked(Coin::new(eth::DENOM.clone(), 100).unwrap()),
             },
             Coins::new(),
