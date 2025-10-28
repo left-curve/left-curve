@@ -271,35 +271,29 @@ impl Storage for StateCommitment {
 
     fn scan<'a>(
         &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
+        _min: Option<&[u8]>,
+        _max: Option<&[u8]>,
+        _order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        Box::new(SharedIter::new(self.inner.read_access(), |inner| {
-            inner.state_commitment.scan(min, max, order)
-        }))
+        unimplemented!("this isn't used by the Merkle tree");
     }
 
     fn scan_keys<'a>(
         &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
+        _min: Option<&[u8]>,
+        _max: Option<&[u8]>,
+        _order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        Box::new(SharedIter::new(self.inner.read_access(), |inner| {
-            inner.state_commitment.scan_keys(min, max, order)
-        }))
+        unimplemented!("this isn't used by the Merkle tree");
     }
 
     fn scan_values<'a>(
         &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
+        _min: Option<&[u8]>,
+        _max: Option<&[u8]>,
+        _order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        Box::new(SharedIter::new(self.inner.read_access(), |inner| {
-            inner.state_commitment.scan_values(min, max, order)
-        }))
+        unimplemented!("this isn't used by the Merkle tree");
     }
 
     fn write(&mut self, _key: &[u8], _value: &[u8]) {
