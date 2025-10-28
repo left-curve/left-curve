@@ -1,3 +1,5 @@
+#[cfg(feature = "metrics")]
+use grug_types::MetricsIterExt;
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     grug_app::{Commitment, Db},
@@ -44,6 +46,9 @@ const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 
 /// Storage key for the oldest version.
 const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
+
+#[cfg(feature = "metrics")]
+const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
 /// The base storage primitive.
 ///
@@ -143,7 +148,7 @@ where
     fn state_storage_with_comment(
         &self,
         version: Option<u64>,
-        _comment: &'static str,
+        comment: &'static str,
     ) -> DbResult<StateStorage> {
         // Read the latest version.
         // If it doesn't exist, this means not even a single batch has been
@@ -174,6 +179,7 @@ where
         Ok(StateStorage {
             inner: Arc::clone(&self.inner),
             version,
+            comment,
         })
     }
 
@@ -224,6 +230,9 @@ where
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         // A write batch must not already exist. If it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
@@ -259,10 +268,19 @@ where
             state_storage: batch,
         });
 
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "flush_but_not_commit")
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         Ok((new_version, root_hash))
     }
 
     fn commit(&self) -> DbResult<()> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let pending = self
             .inner
             .pending_data
@@ -307,7 +325,15 @@ where
             }
         }
 
-        Ok(self.inner.db.write(batch)?)
+        self.inner.db.write(batch)?;
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "commit")
+                .record(duration.elapsed().as_secs_f64());
+        }
+
+        Ok(())
     }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
@@ -353,22 +379,17 @@ where
         let cf = cf_default(&self.inner.db);
         batch.put_cf(&cf, OLDEST_VERSION_KEY, up_to_version.to_le_bytes());
 
-        Ok(self.inner.db.write(batch)?)
+        self.inner.db.write(batch)?;
+
+        Ok(())
     }
 }
 
 // ----------------------------- state commitment ------------------------------
 
+#[derive(Clone)]
 pub struct StateCommitment {
     inner: Arc<DiskDbInner>,
-}
-
-impl Clone for StateCommitment {
-    fn clone(&self) -> Self {
-        Self {
-            inner: Arc::clone(&self.inner),
-        }
-    }
 }
 
 impl Storage for StateCommitment {
@@ -463,25 +484,17 @@ impl Storage for StateCommitment {
 pub struct StateStorage {
     inner: Arc<DiskDbInner>,
     version: u64,
+    #[cfg_attr(not(feature = "metrics"), allow(dead_code))]
+    comment: &'static str,
 }
 
-impl Storage for StateStorage {
-    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        let opts = new_read_options(Some(self.version), None, None);
-        self.inner
-            .db
-            .get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from state storage: {err}");
-            })
-    }
-
-    fn scan<'a>(
+impl StateStorage {
+    fn create_iterator<'a>(
         &'a self,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+    ) -> impl Iterator<Item = Record> + 'a {
         let opts = new_read_options(Some(self.version), min, max);
         let mode = into_iterator_mode(order);
         let iter = self
@@ -494,6 +507,57 @@ impl Storage for StateStorage {
                 });
                 (k.to_vec(), v.to_vec())
             });
+
+        #[cfg(feature = "metrics")]
+        let iter = iter.with_metrics(DISK_DB_LABEL, [
+            ("operation", "next"),
+            ("comment", self.comment),
+        ]);
+
+        Box::new(iter)
+    }
+}
+
+impl Storage for StateStorage {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let opts = new_read_options(Some(self.version), None, None);
+        let value = self
+            .inner
+            .db
+            .get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts)
+            .unwrap_or_else(|err| {
+                panic!("failed to read from state storage: {err}");
+            });
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "read", "comment" => self.comment)
+                .record(duration.elapsed().as_secs_f64());
+        }
+
+        value
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let iter = self.create_iterator(min, max, order);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan", "comment" => self.comment)
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         Box::new(iter)
     }
 
@@ -503,18 +567,17 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(Some(self.version), min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode)
-            .map(|item| {
-                let (k, _) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in state storage: {err}");
-                });
-                k.to_vec()
-            });
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let iter = self.create_iterator(min, max, order).map(|(k, _)| k);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_keys", "comment" => self.comment)
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         Box::new(iter)
     }
 
@@ -524,18 +587,17 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(Some(self.version), min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode)
-            .map(|item| {
-                let (_, v) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in state storage: {err}");
-                });
-                v.to_vec()
-            });
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let iter = self.create_iterator(min, max, order).map(|(_, v)| v);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_values", "comment" => self.comment)
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         Box::new(iter)
     }
 
