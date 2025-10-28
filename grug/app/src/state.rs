@@ -40,7 +40,7 @@ pub const CONTRACT_NAMESPACE: &[u8] = b"wasm";
 pub const NEXT_UPGRADE: Item<NextUpgrade> = Item::new("next_upgrade");
 
 /// Chain upgrades that have been carried out in the past.
-pub const UPGRADES: Map<u64, PastUpgrade> = Map::new("upgrade");
+pub const PREV_UPGRADES: Map<u64, PastUpgrade> = Map::new("prev_upgrade");
 
 pub struct CodeIndexes<'a> {
     pub status: MultiIndex<'a, Hash256, CodeStatus, Code>,

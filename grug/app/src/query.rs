@@ -2,7 +2,7 @@ use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, CONTRACTS,
         GasTracker, LAST_FINALIZED_BLOCK, MeteredItem, MeteredMap, MeteredStorage, NEXT_UPGRADE,
-        StorageProvider, UPGRADES, Vm, call_in_1_out_1,
+        PREV_UPGRADES, StorageProvider, Vm, call_in_1_out_1,
     },
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config,
@@ -44,7 +44,7 @@ pub fn query_upgrades(
     let start = req.start_after.map(Bound::Exclusive);
     let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
 
-    UPGRADES
+    PREV_UPGRADES
         .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
         .take(limit as usize)
         .collect()
