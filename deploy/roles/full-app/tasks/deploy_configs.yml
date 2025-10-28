@@ -15,7 +15,7 @@
 - file:
     path: "{{ item }}"
     state: directory
-  loop: ["{{ deployment_dir }}"]
+  loop: ["{{ deployment_dir }}", "{{ deployment_dir }}/cloudflared"]
 
 - name: Deploy configuration files
   become: true
@@ -34,6 +34,7 @@
         - { src: "config/dango/app.toml", dest: "{{ dango_directory }}/config/app.toml" }
         - { src: "docker-compose.yml", dest: "{{ deployment_dir }}/docker-compose.yml" }
         - { src: "env.j2", dest: "{{ deployment_dir }}/.env" }
+        - { src: "cloudflared/config.yml", dest: "{{ deployment_dir }}/cloudflared/config.yml" }
 
 - name: Deploy clickhouse configuration files
   become: true

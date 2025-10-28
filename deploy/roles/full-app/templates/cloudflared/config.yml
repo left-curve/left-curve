@@ -1,0 +1,8 @@
+ingress:
+  - hostname: api-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik[net].ports.dango_port }}
+  - hostname: www-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik[net].ports.dango_frontend_port }}
+  - hostname: faucet-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik[net].ports.faucet_port }}
+  - service: http_status:404
