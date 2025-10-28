@@ -37,13 +37,10 @@
 - name: Ensure per-host CNAME → tunnel
   community.general.cloudflare_dns:
     zone: "{{ dango_domain }}"
-    record: "{{ item }}"
+    record: "{{ item.1 }}-{{ item.0 }}-{{ hostname }}"
     type: CNAME
     value: "{{ tunnel_id }}.cfargotunnel.com"
     proxied: true
     state: present
     api_token: "{{ cloudflare_api_token }}"
-  loop:
-    - api-devnet-{{ hostname }}
-    - www-devnet-{{ hostname }}
-    - faucet-devnet-{{ hostname }}
+  loop: "{{ ['devnet','testnet'] | product(['api','www','faucet']) | list }}"
