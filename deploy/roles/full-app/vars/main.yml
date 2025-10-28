@@ -32,8 +32,10 @@ cometbft_directory: "{{ deployment_dir }}/cometbft"
 system_wide_directories: false
 # Set this to true to deploy a new database and cometbft/dango directory
 reset_data: false
-cosign_certificate_oidc_issuer: "https://token.actions.githubusercontent.com"
 
+cloudflare_tunnel: false
+
+cosign_certificate_oidc_issuer: "https://token.actions.githubusercontent.com"
 # Regex identities that accept PRs, branches, and tags for this repo/workflows
 # Anchored and constrained to this repository and workflow files.
 cosign_identity_rust_regexp: '^https://github.com/left-curve/left-curve/\.github/workflows/rust\.yml@refs/(heads|pull|tags)/.*$'

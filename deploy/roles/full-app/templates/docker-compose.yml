@@ -49,6 +49,7 @@ services:
       retries: 10
 {% endif %}
 
+{% if cloudflare_tunnel %}
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
@@ -65,6 +66,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+{% endif %}
 
 {% if deploy_includes_clickhouse %}
   clickhouse:
