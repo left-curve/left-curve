@@ -76,7 +76,9 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
   const depthBarWidthPercent = Decimal(size).div(max).times(100).toFixed();
 
   const depthBarClass =
-    type === "bid" ? "bg-status-success lg:right-auto right-0" : "bg-status-fail lg:right-auto";
+    type === "bid"
+      ? "bg-utility-success-500 lg:right-auto right-0"
+      : "bg-utility-error-300 lg:right-auto";
 
   return (
     <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3 px-4 min-h-[23px] items-center">
@@ -88,8 +90,8 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
         className={twMerge(
           "z-10 cursor-pointer",
           type === "bid"
-            ? "text-status-success text-end lg:text-left lg:order-none order-2"
-            : "text-status-fail lg:order-none lg:text-left",
+            ? "text-utility-success-600 text-end lg:text-left lg:order-none order-2"
+            : "text-utility-error-600 lg:order-none lg:text-left",
         )}
         onClick={() => onSelectPrice(price)}
       >
@@ -197,7 +199,9 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
             <p
               className={twMerge(
                 "z-10",
-                trade.direction === Direction.Buy ? "text-status-success" : "text-status-fail",
+                trade.direction === Direction.Buy
+                  ? "text-utility-success-600"
+                  : "text-utility-error-600",
               )}
             >
               <FormattedNumber
@@ -321,7 +325,9 @@ const Spread: React.FC<SpreadProps> = ({ pairId, base, quote }) => {
       <p
         className={twMerge(
           "diatype-m-bold relative z-20",
-          Decimal(previousPrice).lte(currentPrice) ? "text-status-fail" : "text-status-success",
+          Decimal(previousPrice).lte(currentPrice)
+            ? "text-utility-error-600"
+            : "text-utility-success-600",
         )}
       >
         {formatNumber(currentPrice || "0", formatNumberOptions)}
