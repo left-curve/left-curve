@@ -79,6 +79,13 @@ impl Extension for MetricsExtension {
             );
         }
 
+        if let Some(duration) = async_graphql::Number::from_f64(duration) {
+            res.extensions.insert(
+                "duration".to_string(),
+                async_graphql::Value::Number(duration),
+            );
+        }
+
         let operation = operation_name.unwrap_or("anonymous");
 
         let op_type_str = match ctx.data::<OperationType>() {
