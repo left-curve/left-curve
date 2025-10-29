@@ -22,7 +22,8 @@ async fn up_returns_200() -> anyhow::Result<()> {
                 let expected = json!({
                     "block": { "height": 1 },
                     "is_running": true,
-                    "indexed_block_height": 1
+                    "indexed_block_height": 1,
+                    "chain_id": "",
                 });
 
                 assert_json_include!(actual: up_response, expected: expected);

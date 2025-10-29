@@ -38,6 +38,6 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         is_running,
         git_commit: GIT_COMMIT,
         indexed_block_height: None,
-        chain_id: var("CHAIN_ID").map_err(ErrorInternalServerError)?.as_str(),
+        chain_id: var("CHAIN_ID").unwrap_or_default().as_str(),
     }))
 }
