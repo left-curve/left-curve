@@ -5,7 +5,7 @@
 export { usePagination, type UsePaginationParameters } from "./hooks/usePagination.js";
 export { useControlledState } from "./hooks/useControlledState.js";
 export { useCountdown } from "./hooks/useCountdown.js";
-export { useInputs } from "./hooks/useInputs.js";
+export { useInputs, type Controllers } from "./hooks/useInputs.js";
 export { useWatchEffect } from "./hooks/useWatch.js";
 
 /* -------------------------------------------------------------------------- */

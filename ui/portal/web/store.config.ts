@@ -67,7 +67,7 @@ const coins = {
 export const config: Config = createConfig({
   multiInjectedProviderDiscovery: true,
   chain,
-  transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true }),
+  transport: graphql(`${chain.urls.indexer}/graphql`, { batch: true, lazy: false }),
   coins,
   connectors: [
     passkey(),

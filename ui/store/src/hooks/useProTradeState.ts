@@ -154,7 +154,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       }));
     },
     initialData: [],
-    refetchInterval: 1000 * 10,
   });
 
   const history = useQueryWithPagination({

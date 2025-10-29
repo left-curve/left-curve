@@ -27,7 +27,7 @@ export const ExpandOptions: React.FC<PropsWithChildren<ExpandOptionsProps>> = ({
   return (
     <div className={twMerge("w-full", className)}>
       <div className="flex items-center justify-center text-ink-tertiary-500">
-        {showLine ? <span className="flex-1 h-[1px]  " /> : null}
+        {showLine ? <span className="flex-1 h-[1px] bg-outline-secondary-gray" /> : null}
         <div
           className="flex items-center justify-center gap-1 px-2 cursor-pointer"
           onClick={() => setOptionExpanded(!isOptionExpanded)}

@@ -98,6 +98,58 @@
   --color-ink-disabled-300: theme('colors.primitives.gray.light.300');
   --color-ink-disabled-blue: theme('colors.primitives.rice.light.200');
 
+  /* Utility */
+  --color-utility-error-25: theme('colors.primitives.error.25');
+  --color-utility-error-50: theme('colors.primitives.error.50');
+  --color-utility-error-100: theme('colors.primitives.error.100');
+  --color-utility-error-200: theme('colors.primitives.error.200');
+  --color-utility-error-300: theme('colors.primitives.error.300');
+  --color-utility-error-400: theme('colors.primitives.error.400');
+  --color-utility-error-500: theme('colors.primitives.error.500');
+  --color-utility-error-600: theme('colors.primitives.error.600');
+  --color-utility-error-700: theme('colors.primitives.error.700');
+  --color-utility-error-800: theme('colors.primitives.error.800');
+  --color-utility-error-900: theme('colors.primitives.error.900');
+  --color-utility-error-950: theme('colors.primitives.error.950');
+
+  --color-utility-gray-25: theme('colors.primitives.gray.light.25');
+  --color-utility-gray-50: theme('colors.primitives.gray.light.50');
+  --color-utility-gray-100: theme('colors.primitives.gray.light.100');
+  --color-utility-gray-200: theme('colors.primitives.gray.light.200');
+  --color-utility-gray-300: theme('colors.primitives.gray.light.300');
+  --color-utility-gray-400: theme('colors.primitives.gray.light.400');
+  --color-utility-gray-500: theme('colors.primitives.gray.light.500');
+  --color-utility-gray-600: theme('colors.primitives.gray.light.600');
+  --color-utility-gray-700: theme('colors.primitives.gray.light.700');
+  --color-utility-gray-800: theme('colors.primitives.gray.light.800');
+  --color-utility-gray-900: theme('colors.primitives.gray.light.900');
+  --color-utility-gray-950: theme('colors.primitives.gray.light.950');
+
+  --color-utility-success-25: theme('colors.primitives.success.25');
+  --color-utility-success-50: theme('colors.primitives.success.50');
+  --color-utility-success-100: theme('colors.primitives.success.100');
+  --color-utility-success-200: theme('colors.primitives.success.200');
+  --color-utility-success-300: theme('colors.primitives.success.300');
+  --color-utility-success-400: theme('colors.primitives.success.400');
+  --color-utility-success-500: theme('colors.primitives.success.500');
+  --color-utility-success-600: theme('colors.primitives.success.600');
+  --color-utility-success-700: theme('colors.primitives.success.700');
+  --color-utility-success-800: theme('colors.primitives.success.800');
+  --color-utility-success-900: theme('colors.primitives.success.900');
+  --color-utility-success-950: theme('colors.primitives.success.950');
+
+  --color-utility-warning-25: theme('colors.primitives.warning.25');
+  --color-utility-warning-50: theme('colors.primitives.warning.50');
+  --color-utility-warning-100: theme('colors.primitives.warning.100');
+  --color-utility-warning-200: theme('colors.primitives.warning.200');
+  --color-utility-warning-300: theme('colors.primitives.warning.300');
+  --color-utility-warning-400: theme('colors.primitives.warning.400');
+  --color-utility-warning-500: theme('colors.primitives.warning.500');
+  --color-utility-warning-600: theme('colors.primitives.warning.600');
+  --color-utility-warning-700: theme('colors.primitives.warning.700');
+  --color-utility-warning-800: theme('colors.primitives.warning.800');
+  --color-utility-warning-900: theme('colors.primitives.warning.900');
+  --color-utility-warning-950: theme('colors.primitives.warning.950');
 
   /* Status */
   --color-status-fail: #E71818;
@@ -216,6 +268,58 @@
   --color-ink-disabled-300: theme('colors.primitives.gray.dark.400');
   --color-ink-disabled-blue: theme('colors.primitives.blue.dark.900');
 
+    /* Utility */
+  --color-utility-error-25: theme('colors.primitives.error.950');
+  --color-utility-error-50: theme('colors.primitives.error.900');
+  --color-utility-error-100: theme('colors.primitives.error.800');
+  --color-utility-error-200: theme('colors.primitives.error.700');
+  --color-utility-error-300: theme('colors.primitives.error.600');
+  --color-utility-error-400: theme('colors.primitives.error.500');
+  --color-utility-error-500: theme('colors.primitives.error.400');
+  --color-utility-error-600: theme('colors.primitives.error.300');
+  --color-utility-error-700: theme('colors.primitives.error.200');
+  --color-utility-error-800: theme('colors.primitives.error.100');
+  --color-utility-error-900: theme('colors.primitives.error.50');
+  --color-utility-error-950: theme('colors.primitives.error.25');
+
+  --color-utility-gray-25: theme('colors.primitives.gray.dark.950');
+  --color-utility-gray-50: theme('colors.primitives.gray.dark.900');
+  --color-utility-gray-100: theme('colors.primitives.gray.dark.800');
+  --color-utility-gray-200: theme('colors.primitives.gray.dark.700');
+  --color-utility-gray-300: theme('colors.primitives.gray.dark.600');
+  --color-utility-gray-400: theme('colors.primitives.gray.dark.500');
+  --color-utility-gray-500: theme('colors.primitives.gray.dark.400');
+  --color-utility-gray-600: theme('colors.primitives.gray.dark.300');
+  --color-utility-gray-700: theme('colors.primitives.gray.dark.200');
+  --color-utility-gray-800: theme('colors.primitives.gray.dark.100');
+  --color-utility-gray-900: theme('colors.primitives.gray.dark.50');
+  --color-utility-gray-950: theme('colors.primitives.gray.dark.25');
+
+  --color-utility-success-25: theme('colors.primitives.success.950');
+  --color-utility-success-50: theme('colors.primitives.success.900');
+  --color-utility-success-100: theme('colors.primitives.success.800');
+  --color-utility-success-200: theme('colors.primitives.success.700');
+  --color-utility-success-300: theme('colors.primitives.success.600');
+  --color-utility-success-400: theme('colors.primitives.success.500');
+  --color-utility-success-500: theme('colors.primitives.success.400');
+  --color-utility-success-600: theme('colors.primitives.success.300');
+  --color-utility-success-700: theme('colors.primitives.success.200');
+  --color-utility-success-800: theme('colors.primitives.success.100');
+  --color-utility-success-900: theme('colors.primitives.success.50');
+  --color-utility-success-950: theme('colors.primitives.success.25');
+
+  --color-utility-warning-25: theme('colors.primitives.warning.950');
+  --color-utility-warning-50: theme('colors.primitives.warning.900');
+  --color-utility-warning-100: theme('colors.primitives.warning.800');
+  --color-utility-warning-200: theme('colors.primitives.warning.700');
+  --color-utility-warning-300: theme('colors.primitives.warning.600');
+  --color-utility-warning-400: theme('colors.primitives.warning.500');
+  --color-utility-warning-500: theme('colors.primitives.warning.400');
+  --color-utility-warning-600: theme('colors.primitives.warning.300');
+  --color-utility-warning-700: theme('colors.primitives.warning.200');
+  --color-utility-warning-800: theme('colors.primitives.warning.100');
+  --color-utility-warning-900: theme('colors.primitives.warning.50');
+  --color-utility-warning-950: theme('colors.primitives.warning.25');
 
   /* Status */
   --color-status-fail: #FF6B6B;
