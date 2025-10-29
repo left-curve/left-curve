@@ -168,7 +168,7 @@ const StepInputOtp: React.FC<StepInputOptProps> = ({
   return (
     <div className="flex flex-col gap-6 w-full items-center text-center">
       <OtpInput length={6} {...register("otp")} />
-      {isLoading && <Spinner size="sm" />}
+      {isLoading && <Spinner size="sm" color="blue" />}
       <div className="flex justify-center items-center gap-2">
         <p>{m["auth.didntReceiveCode"]()}</p>
         <Button

@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { useConfig } from "./useConfig.js";
 import { useAccount } from "./useAccount.js";
 import { useStorage } from "./useStorage.js";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { snakeToCamel, uid } from "@left-curve/dango/utils";
 
@@ -47,6 +48,7 @@ export type ActivityRecord<key extends keyof Activities = keyof Activities> = {
 };
 
 export function useActivities() {
+  const queryClient = useQueryClient();
   const { username = "", accounts, account } = useAccount();
   const { refetch: refetchBalances } = useBalances({ address: account?.address });
   const { subscriptions } = useConfig();
@@ -174,6 +176,8 @@ export function useActivities() {
               case "order_filled":
               case "order_created":
               case "order_canceled": {
+                queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
+                queryClient.invalidateQueries({ queryKey: ["tradeHistory", account?.address] });
                 refetchBalances();
                 return {
                   data: data as Activities[keyof Activities],

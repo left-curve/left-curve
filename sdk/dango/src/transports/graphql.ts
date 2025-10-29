@@ -34,6 +34,8 @@ export type GraphqlTransportConfig = {
   key?: string;
   /** The timeout (in ms) for the HTTP request. Default: 10_000 */
   timeout?: number;
+  /** Whether to create the WebSocket client in lazy mode. Default: true */
+  lazy?: boolean;
 };
 
 export type GraphqlTransport = Transport<"http-graphql", CometBftRpcSchema>; /**
@@ -54,6 +56,7 @@ export function graphql(
     fetchOptions,
     onFetchRequest,
     onFetchResponse,
+    lazy = true,
   } = config;
   return ({ chain } = {}) => {
     const url = _url_ || chain?.urls.indexer;
@@ -63,7 +66,17 @@ export function graphql(
     const batch = _batch_ ? batchOptions : undefined;
     const timeout = _timeout_ ?? 10_000;
 
-    const wsClient = createClient({ url });
+    const wsClientStatus = { isConnected: false };
+
+    const wsClient = createClient({ url, lazy });
+
+    wsClient.on("connected", () => {
+      wsClientStatus.isConnected = true;
+    });
+
+    wsClient.on("closed", () => {
+      wsClientStatus.isConnected = false;
+    });
 
     const client = graphqlClient(url, {
       fetchOptions,
@@ -109,6 +122,8 @@ export function graphql(
         },
       );
     };
+
+    subscribe.getClientStatus = () => wsClientStatus;
 
     return createTransport<"http-graphql">({
       type: "http-graphql",

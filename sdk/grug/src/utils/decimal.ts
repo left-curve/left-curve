@@ -9,6 +9,7 @@ export type DecimalConstructor = {
   DP: number;
   RM: number;
   from(value: BigSource): Decimal;
+  max(...values: (string | number | Decimal)[]): Decimal;
 };
 
 Big.DP = 18;
@@ -22,6 +23,16 @@ class Decimal {
     } catch (error) {
       throw new Error(`Invalid input for Decimal: "${value}". ${error}`);
     }
+  }
+
+  static max(...values: (string | number | Decimal)[]): Decimal {
+    if (values.length === 0) {
+      throw new Error("Decimal.max requires at least one argument");
+    }
+    return values.reduce((max, current) => {
+      const currentDecimal = Decimal.from(current);
+      return currentDecimal.gt(max) ? currentDecimal : max;
+    }, Decimal.from(values[0])) as Decimal;
   }
 
   static from(value: string | number | Decimal): Decimal {
@@ -167,6 +178,16 @@ Object.defineProperty(DecimalFactory, "RM", {
 
 Object.defineProperty(DecimalFactory, "ZERO", {
   value: new Decimal("0"),
+  writable: false,
+});
+
+Object.defineProperty(DecimalFactory, "from", {
+  value: Decimal.from,
+  writable: false,
+});
+
+Object.defineProperty(DecimalFactory, "max", {
+  value: Decimal.max,
   writable: false,
 });
 

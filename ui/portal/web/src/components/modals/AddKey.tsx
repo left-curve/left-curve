@@ -1,8 +1,9 @@
 import { useAccount, useConnectors, useSigningClient, useSubmitTx } from "@left-curve/store";
 import { forwardRef } from "react";
 
-import { IconButton, IconClose, IconKey, useApp } from "@left-curve/applets-kit";
+import { ExpandOptions, IconButton, IconClose, IconKey, useApp } from "@left-curve/applets-kit";
 import { AuthOptions } from "../auth/AuthOptions";
+import { PasskeyCredential } from "../auth/PasskeyCredential";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
@@ -57,8 +58,15 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
         </div>
       </div>
       <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
-      <div className="p-4">
-        <AuthOptions mode="signin" action={addKey} isPending={isPending} />
+      <div className="flex flex-col gap-4 w-full p-4">
+        <PasskeyCredential
+          label={m["auth.passkey"]()}
+          onAuth={() => addKey("passkey")}
+          variant="primary"
+        />
+        <ExpandOptions showOptionText={m["auth.wallets"]()} showLine>
+          <AuthOptions action={addKey} isPending={isPending} />
+        </ExpandOptions>
       </div>
     </div>
   );

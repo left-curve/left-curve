@@ -64,8 +64,6 @@ entryPoints:
     address: :8085
   devnet-cometbft_rpc:
     address: :26657
-  devnet-cometbft_abci:
-    address: :26658
   devnet-cometbft_metrics:
     address: :26660
   testnet-dango-metrics:
@@ -76,8 +74,6 @@ entryPoints:
     address: :8055
   testnet-cometbft_rpc:
     address: :36657
-  testnet-cometbft_abci:
-    address: :36658
   testnet-cometbft_metrics:
     address: :36660
 
