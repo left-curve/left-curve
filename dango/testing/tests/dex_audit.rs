@@ -9,7 +9,7 @@ use {
     },
     dango_types::{
         constants::{
-            dango, eth,
+            btc, dango, eth,
             mock::{ONE, ONE_TENTH},
             usdc,
         },
@@ -846,4 +846,63 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             limit: None,
         })
         .should_succeed_and(|orders| orders.is_empty());
+}
+
+/// Prior to the fix, a zero length swap route was allowed, which resulted in charging a fee
+/// despite not having any swaps performed.
+#[test]
+fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Provide liquidity to the pool.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 100_000,
+                usdc::DENOM.clone() => 100_000,
+            },
+        )
+        .should_succeed();
+
+    // Attempt to swap with a zero length route.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("length of grug_types::unique_vec::UniqueVec<dango_types::dex::msgs::PairId> out of range: 0 < 1");
+
+    // Attempt to swap with a three length route.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: SwapRoute::new_unchecked(UniqueVec::new(vec![PairId {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }, PairId {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }, PairId {
+                    base_denom: btc::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }]).unwrap()),
+                output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error("length of grug_types::unique_vec::UniqueVec<dango_types::dex::msgs::PairId> out of range: 3 > 2");
 }
