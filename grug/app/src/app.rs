@@ -287,6 +287,7 @@ where
             tracing::info!(
                 block_height = block.info.height,
                 block_time = block.info.timestamp.to_rfc3339_string(),
+                block_hash = block.info.hash.to_string(),
                 num_txs = block.txs.len(),
                 "Received FinalizeBlock request"
             );
@@ -305,6 +306,15 @@ where
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
         if block.info.height != last_finalized_block.height + 1 {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(
+                    expect = last_finalized_block.height + 1,
+                    actual = block.info.height,
+                    "!!! WRONG BLOCK HEIGHT !!!"
+                );
+            }
+
             return Err(AppError::incorrect_block_height(
                 last_finalized_block.height + 1,
                 block.info.height,
