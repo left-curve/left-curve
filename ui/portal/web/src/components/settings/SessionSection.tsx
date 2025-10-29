@@ -1,13 +1,12 @@
 import { useAccount, useConfig, useSessionKey } from "@left-curve/store";
-import { useEffect, useState } from "react";
 
 import {
+  CurrentBlock,
   IconMobile,
   IconNetwork,
   IconTimer,
   IconUser,
   Modals,
-  Skeleton,
   useApp,
   useMediaQuery,
 } from "@left-curve/applets-kit";
@@ -16,7 +15,6 @@ import { SessionCountdown } from "./SessionCountdown";
 
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-import type { BlockInfo } from "@left-curve/dango/types";
 import type React from "react";
 import type { PropsWithChildren } from "react";
 
@@ -75,22 +73,7 @@ const RemainingTimeSection: React.FC = () => {
 };
 
 const NetworkSection: React.FC = () => {
-  const [currentBlock, setCurrentBlock] = useState<BlockInfo>();
   const { chain } = useConfig();
-  const { subscriptions } = useApp();
-
-  useEffect(() => {
-    const unsubscribe = subscriptions.subscribe("block", {
-      listener: ({ blockHeight, hash, createdAt }) => {
-        setCurrentBlock({
-          height: blockHeight.toString(),
-          hash,
-          timestamp: new Date(createdAt).toJSON(),
-        });
-      },
-    });
-    return () => unsubscribe();
-  }, []);
 
   return (
     <div className="flex items-start justify-between rounded-md gap-8 w-full px-2">
@@ -119,22 +102,20 @@ const NetworkSection: React.FC = () => {
             <p className="md:min-w-[10rem] text-ink-tertiary-500">
               {m["settings.session.network.latestBlockHeight"]()}
             </p>
-            {currentBlock ? (
-              <p className="break-all whitespace-normal">{currentBlock.height}</p>
-            ) : (
-              <Skeleton className="h-4 w-24" />
-            )}
+            <CurrentBlock
+              classNames={{ container: "break-all whitespace-normal", skeleton: "h-4 w-24" }}
+              selector="height"
+            />
           </div>
 
           <div className="flex md:items-center flex-col md:flex-row diatype-sm-regular">
             <p className="md:min-w-[10rem] text-ink-tertiary-500">
               {m["settings.session.network.latestBlockTime"]()}
             </p>
-            {currentBlock ? (
-              <p className="break-all whitespace-normal">{currentBlock.timestamp}</p>
-            ) : (
-              <Skeleton className="h-4 w-48" />
-            )}
+            <CurrentBlock
+              classNames={{ container: "break-all whitespace-normal", skeleton: "h-4 w-24" }}
+              selector="timestamp"
+            />
           </div>
 
           <div className="flex md:items-center flex-col md:flex-row diatype-sm-regular">

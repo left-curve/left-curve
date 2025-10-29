@@ -7,6 +7,12 @@ export const DEFAULT_SESSION_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours
 export const PRIVY_APP_ID = import.meta.env.PUBLIC_PRIVY_APP_ID;
 export const PRIVY_CLIENT_ID = import.meta.env.PUBLIC_PRIVY_CLIENT_ID;
 
+export const PRIVY_ERRORS_MAPPING = {
+  "User already has one email account linked": m["auth.errors.userNotFound"](),
+  authFailed: m["auth.errors.authFailed"](),
+  "User does not exist": m["auth.errors.userNotFound"](),
+};
+
 export const WEBRTC_URI = import.meta.env.PUBLIC_WEBRTC_URI;
 
 const translations = m as unknown as Record<string, () => string>;

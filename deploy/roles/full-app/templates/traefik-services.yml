@@ -55,10 +55,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-cometbft-1:26657"
-    {{ dango_network }}-cometbft_abci:
-      loadBalancer:
-        servers:
-          - url: "http://{{ deployment_name }}-cometbft-1:26658"
     {{ dango_network }}-cometbft_metrics:
       loadBalancer:
         servers:

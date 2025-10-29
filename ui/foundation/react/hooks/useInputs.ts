@@ -2,6 +2,12 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import type { ChangeEvent, FocusEvent } from "react";
 
+export type Controllers = {
+  inputs: Record<string, { value: string }>;
+  reset: () => void;
+  setValue: (name: string, value: string) => void;
+};
+
 type UseInputsOptions = {
   initialValues?: Record<string, string>;
   strategy?: ValidateStrategy;

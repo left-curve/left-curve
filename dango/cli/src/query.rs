@@ -1,12 +1,11 @@
 use {
-    crate::{config::Config, home_directory::HomeDirectory},
+    crate::{config::Config, home_directory::HomeDirectory, prompt::print_json_pretty},
     clap::{Parser, Subcommand},
-    colored_json::ToColoredJson,
     config_parser::parse_config,
     grug_client::TendermintRpcClient,
     grug_types::{
-        Addr, Binary, BlockClient, Bound, Denom, Hash, Hash256, JsonDeExt, JsonSerExt, Proof,
-        Query, QueryClient, QueryWasmSmartRequest, SearchTxClient,
+        Addr, Binary, Bound, Denom, Hash256, JsonDeExt, Proof, Query, QueryClient,
+        QueryWasmSmartRequest,
     },
     serde::Serialize,
     std::str::FromStr,
@@ -24,18 +23,8 @@ pub struct QueryCmd {
 
 #[derive(Subcommand)]
 enum SubCmd {
-    /// Tendermint node status
+    /// Grug status
     Status,
-    /// Get transaction by hash
-    Tx {
-        /// Transaction hash in hex encoding
-        hash: String,
-    },
-    /// Get block results by height
-    Block {
-        /// Block height [default: latest]
-        height: Option<u64>,
-    },
     /// Query the chain's global configuration
     Config,
     /// Query the application-specific configuration
@@ -139,16 +128,7 @@ impl QueryCmd {
         let client = TendermintRpcClient::new(cfg.tendermint.rpc_addr.as_str())?;
 
         let req = match self.subcmd {
-            SubCmd::Status => {
-                let res = client.status().await?;
-                return print_json_pretty(res);
-            },
-            SubCmd::Tx { hash } => {
-                return query_tx(&client, &hash).await;
-            },
-            SubCmd::Block { height } => {
-                return query_block(&client, height).await;
-            },
+            SubCmd::Status => Query::status(),
             SubCmd::Config => Query::config(),
             SubCmd::AppConfig => Query::app_config(),
             SubCmd::Balance { address, denom } => {
@@ -176,7 +156,7 @@ impl QueryCmd {
             SubCmd::Contract { address } => Query::contract(address),
             SubCmd::Contracts { start_after, limit } => Query::contracts(start_after, limit),
             SubCmd::WasmRaw { contract, key } => {
-                // We interpret the input raw key as Hex encoded
+                // We interpret the input raw key as Hex encoded.
                 let key = Binary::from(hex::decode(key)?);
                 Query::wasm_raw(contract, key)
             },
@@ -211,7 +191,7 @@ impl QueryCmd {
                 Query::wasm_scan(contract, min, max, limit)
             },
             SubCmd::WasmSmart { contract, msg } => {
-                // The input should be a JSON string, e.g. `{"config":{}}`
+                // The input should be a JSON string, e.g. `{"config":{}}`.
                 let msg = msg.deserialize_json()?;
                 Query::WasmSmart(QueryWasmSmartRequest { contract, msg })
             },
@@ -225,21 +205,6 @@ impl QueryCmd {
             .await
             .and_then(print_json_pretty)
     }
-}
-
-async fn query_tx(client: &TendermintRpcClient, hash: &str) -> anyhow::Result<()> {
-    // Cast the hex string to uppercase, so that users can use either upper or
-    // lowercase on the CLI.
-    let hash = Hash::from_str(&hash.to_ascii_uppercase())?;
-    let res = client.search_tx(hash).await?;
-
-    print_json_pretty(res)
-}
-
-async fn query_block(client: &TendermintRpcClient, height: Option<u64>) -> anyhow::Result<()> {
-    let res = client.query_block_outcome(height).await?;
-
-    print_json_pretty(res)
 }
 
 #[derive(Serialize)]
@@ -263,16 +228,4 @@ async fn query_store(
         value: value.map(hex::encode),
         proof,
     })
-}
-
-fn print_json_pretty<T>(data: T) -> anyhow::Result<()>
-where
-    T: Serialize,
-{
-    let json = data.to_json_string_pretty()?;
-    let colored = json.to_colored_json_auto()?;
-
-    println!("{colored}");
-
-    Ok(())
 }

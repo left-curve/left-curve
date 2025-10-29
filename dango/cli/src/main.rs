@@ -6,6 +6,7 @@ mod keys;
 mod prompt;
 mod query;
 mod start;
+mod tendermint;
 #[cfg(feature = "testing")]
 mod test;
 mod tx;
@@ -15,7 +16,7 @@ use crate::test::TestCmd;
 use {
     crate::{
         db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
-        query::QueryCmd, start::StartCmd, tx::TxCmd,
+        query::QueryCmd, start::StartCmd, tendermint::TendermintCmd, tx::TxCmd,
     },
     clap::Parser,
     config::Config,
@@ -55,6 +56,10 @@ enum Command {
 
     /// Start the node
     Start(StartCmd),
+
+    /// Interact with Tendermint RPC [alias: tm]
+    #[command(next_display_order = None, alias = "tm")]
+    Tendermint(TendermintCmd),
 
     /// Run test
     #[cfg(feature = "testing")]
@@ -126,6 +131,7 @@ async fn main() -> anyhow::Result<()> {
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
+        Command::Tendermint(cmd) => cmd.run(app_dir).await,
         #[cfg(feature = "testing")]
         Command::Test(cmd) => cmd.run(app_dir).await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
