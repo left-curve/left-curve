@@ -56,14 +56,16 @@ function liquidityDepthMapper(parameters: {
       });
 
       acc.total = total;
+      acc.highestSize = size.lt(acc.highestSize) ? acc.highestSize : size.toFixed();
       return acc;
     },
-    Object.assign({ records: [], total: "0" }),
+    Object.assign({ records: [], total: "0", highestSize: "0" }),
   );
 }
 
 type LiquidityDepthOverview = {
   total: string;
+  highestSize: string;
   records: { price: string; size: string; total: string }[];
 };
 
@@ -86,8 +88,9 @@ export const liquidityDepthStore = create<LiquidityDepthStoreState>((set, get) =
   setBucketSizeCoin: (bucketSizeCoin) => set(() => ({ bucketSizeCoin })),
   setLiquidityDepth: ({ blockHeight, ...liquidityDepth }) => {
     const { lastUpdatedBlockHeight } = get();
-    if (+blockHeight <= +lastUpdatedBlockHeight) return;
-    set({ liquidityDepth, lastUpdatedBlockHeight: blockHeight });
+    if (+blockHeight > +lastUpdatedBlockHeight || blockHeight === "0") {
+      set({ liquidityDepth, lastUpdatedBlockHeight: blockHeight });
+    }
   },
 }));
 
@@ -105,8 +108,6 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
 
   const baseCoin = coins.byDenom[pairId.baseDenom];
   const quoteCoin = coins.byDenom[pairId.quoteDenom];
-
-  const { bucketSizeCoin, setLiquidityDepth } = liquidityDepthStore();
 
   useEffect(() => {
     if (!appConfig || !subscribe) return;
@@ -148,6 +149,7 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
         if ("Ok" in statusResponse && "Ok" in liquidityDepthResponse) {
           const { status } = statusResponse.Ok;
           const { wasmSmart: liquidityDepth } = liquidityDepthResponse.Ok;
+          const { bucketSizeCoin, setLiquidityDepth } = liquidityDepthStore.getState();
 
           const asks = liquidityDepthMapper({
             records: liquidityDepth.askDepth || [],
@@ -170,7 +172,7 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
       },
     });
     return unsubscribe;
-  }, [appConfig, bucketRecords, bucketSizeCoin, bucketSize, baseCoin, quoteCoin, subscribe]);
+  }, [appConfig, bucketRecords, bucketSize, baseCoin, quoteCoin, subscribe]);
 
   return { liquidityDepthStore };
 }

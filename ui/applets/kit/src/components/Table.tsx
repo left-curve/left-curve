@@ -9,7 +9,7 @@ import {
 import { tv } from "tailwind-variants";
 import { twMerge } from "@left-curve/foundation";
 
-import { Fragment, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { Skeleton } from "./Skeleton";
 
 import type React from "react";
@@ -41,7 +41,7 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   columns: TableColumn<T>;
   data: T[];
   columnFilters?: ColumnFiltersState;
-  initialSortState?: SortingState;
+  initialSortState?: { fixed: SortingState; variable: SortingState };
   initialColumnVisibility?: Record<string, boolean>;
   onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
   onRowClick?: (row: Row<T>) => void;
@@ -63,12 +63,31 @@ export const Table = <T,>({
   onRowClick,
   isLoading = false,
   emptyComponent,
-  initialSortState = [],
+  initialSortState = { fixed: [], variable: [] },
   initialColumnVisibility = {},
   skeletonType = "row",
 }: TableProps<T>) => {
-  const [sorting, onSortingChange] = useState<SortingState>(initialSortState);
+  const [sorting, setSorting] = useState<SortingState>([
+    ...initialSortState.fixed,
+    ...initialSortState.variable,
+  ]);
   const [columnVisibility, onColumnVisibilityChange] = useState(initialColumnVisibility);
+
+  const onSortingChange = useCallback(
+    (newSorting: Updater<SortingState>) => {
+      setSorting((currentSorting) => {
+        const updatedSorting =
+          typeof newSorting === "function" ? newSorting(currentSorting) : newSorting;
+
+        const fixedSorting = initialSortState.fixed;
+        const variableSorting = updatedSorting.filter(
+          (sort) => !fixedSorting.find((fixed) => fixed.id === sort.id),
+        );
+        return [...fixedSorting, ...variableSorting];
+      });
+    },
+    [initialSortState.fixed],
+  );
 
   const table = useReactTable<T>({
     data,
