@@ -30,7 +30,7 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
   }, [isLg]);
 
   return (
-    <div className="flex bg-surface-tertiary-rice lg:gap-8 p-4 flex-col lg:flex-row w-full lg:justify-between shadow-account-card z-20 lg:z-10">
+    <div className="flex bg-surface-tertiary-rice lg:gap-8 px-4 py-3 flex-col lg:flex-row w-full lg:justify-between shadow-account-card z-20 lg:z-10">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
         <div className="flex lg:flex-col gap-[2px]">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
