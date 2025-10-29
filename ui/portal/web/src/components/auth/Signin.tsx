@@ -174,7 +174,10 @@ const CredentialStep: React.FC = () => {
       </div>
       <div className="flex flex-col items-center w-full gap-4">
         <SocialCredential onAuth={() => signInWithCredential("privy")} />
-        <PasskeyCredential onAuth={() => signInWithCredential("passkey")} action="signin" />
+        <PasskeyCredential
+          onAuth={() => signInWithCredential("passkey")}
+          label={m["common.signWithPasskey"]({ action: "signin" })}
+        />
         {isMd ? (
           <Button variant="secondary" fullWidth onClick={() => setData({ view: "wallets" })}>
             <IconWallet />

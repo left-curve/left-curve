@@ -2,8 +2,9 @@ import { useCallback, useMemo } from "react";
 import { useConfig } from "./useConfig.js";
 import { useAccount } from "./useAccount.js";
 import { useStorage } from "./useStorage.js";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { uid } from "@left-curve/dango/utils";
+import { snakeToCamel, uid } from "@left-curve/dango/utils";
 
 import type {
   AccountTypes,
@@ -16,6 +17,7 @@ import type {
   UID,
   Username,
 } from "@left-curve/dango/types";
+import { useBalances } from "./useBalances.js";
 
 export type Activities = {
   transfer: {
@@ -46,7 +48,9 @@ export type ActivityRecord<key extends keyof Activities = keyof Activities> = {
 };
 
 export function useActivities() {
+  const queryClient = useQueryClient();
   const { username = "", accounts, account } = useAccount();
+  const { refetch: refetchBalances } = useBalances({ address: account?.address });
   const { subscriptions } = useConfig();
   const userAddresses = useMemo(() => (accounts ? accounts.map((a) => a.address) : []), [accounts]);
 
@@ -147,6 +151,7 @@ export function useActivities() {
             switch (type) {
               case "sent":
               case "received": {
+                refetchBalances();
                 const isSent = type === "sent";
                 const { to, from, user, coins } = data as {
                   to?: Address;
@@ -168,14 +173,16 @@ export function useActivities() {
 
                 return { data: details, type: "transfer" as const };
               }
-              case "order_filled": {
-                return { data: data as OrderFilledEvent, type: "orderFilled" as const };
-              }
-              case "order_created": {
-                return { data: data as OrderCreatedEvent, type: "orderCreated" as const };
-              }
+              case "order_filled":
+              case "order_created":
               case "order_canceled": {
-                return { data: data as OrderCanceledEvent, type: "orderCanceled" as const };
+                queryClient.invalidateQueries({ queryKey: ["ordersByUser", account?.address] });
+                queryClient.invalidateQueries({ queryKey: ["tradeHistory", account?.address] });
+                refetchBalances();
+                return {
+                  data: data as Activities[keyof Activities],
+                  type: snakeToCamel(type) as keyof Activities,
+                };
               }
             }
           })();

@@ -111,13 +111,6 @@ services:
         url: "http://ovh2:26657"
         target: "_blank"
 
-      - name: "CometBFT abci"
-        icon: "fas fa-network-wired"
-        subtitle: "Port 26658"
-        tag: "testnet"
-        url: "http://ovh2:26658"
-        target: "_blank"
-
   - name: "Devnet"
     icon: "fas fa-code"
     items:
@@ -151,13 +144,6 @@ services:
         subtitle: "Port 26657"
         tag: "devnet"
         url: "http://ovh1:26657"
-        target: "_blank"
-
-      - name: "CometBFT abci"
-        icon: "fas fa-network-wired"
-        subtitle: "Port 26658"
-        tag: "devnet"
-        url: "http://ovh1:26658"
         target: "_blank"
 
   - name: "Logging Stack"

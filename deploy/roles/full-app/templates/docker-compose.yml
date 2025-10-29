@@ -126,6 +126,7 @@ services:
       - INDEXER__CLICKHOUSE__DATABASE=${CLICKHOUSE_DATABASE}
       - INDEXER__CLICKHOUSE__URL=${CLICKHOUSE_URL}
       - PYTH__ACCESS_TOKEN=${PYTH__ACCESS_TOKEN}
+      - CHAIN_ID=${CHAIN_ID}
       - RUST_BACKTRACE=1
     tty: true
     healthcheck:
@@ -237,7 +238,6 @@ services:
     ports:
       - "${BINDING_IP}:${COMETBFT_P2P_PORT:-0}:26656"
       - "${BINDING_IP}:${COMETBFT_RPC_PORT:-0}:26657"
-      - "${BINDING_IP}:${COMETBFT_ABCI_PORT:-0}:26658"
       - "${BINDING_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
 {% endif %}
     networks:

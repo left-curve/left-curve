@@ -4,6 +4,7 @@ use {
     async_graphql::futures_util::TryFutureExt,
     chrono::{Duration, Utc},
     grug_types::{BlockInfo, GIT_COMMIT},
+    std::env::var,
 };
 
 #[get("/")]
@@ -17,6 +18,7 @@ pub struct UpResponse<'a> {
     pub is_running: bool,
     pub git_commit: &'a str,
     pub indexed_block_height: Option<u64>,
+    pub chain_id: &'a str,
 }
 
 #[get("/up")]
@@ -36,5 +38,6 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         is_running,
         git_commit: GIT_COMMIT,
         indexed_block_height: None,
+        chain_id: var("CHAIN_ID").unwrap_or_default().as_str(),
     }))
 }
