@@ -1,7 +1,7 @@
 use {
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_storage::Item,
-    grug_types::{Batch, Hash256, Op, StdResult, Storage},
+    grug_storage::Map,
+    grug_types::{Batch, Bound, Hash256, Op, StdResult, Storage},
     sha2::{Digest, Sha256},
 };
 
@@ -33,21 +33,18 @@ pub trait Commitment {
     fn prune(storage: &mut dyn Storage, up_to_version: u64) -> StdResult<()>;
 }
 
-const LATEST_VERSION_AND_ROOT_HASH: Item<'static, (u64, Hash256)> = Item::new("latest");
-
 /// The simplest possible commitment scheme. It simply hashes the changeset.
 pub struct SimpleCommitment;
+
+impl SimpleCommitment {
+    pub const ROOT_HASHES: Map<'static, u64, Hash256> = Map::new("root_hash");
+}
 
 impl Commitment for SimpleCommitment {
     type Proof = ();
 
     fn root_hash(storage: &dyn Storage, version: u64) -> StdResult<Option<Hash256>> {
-        // If a latest version exists the it equals the version requested, then
-        // return the stored root hash. Otherwise return `None`.
-        match LATEST_VERSION_AND_ROOT_HASH.may_load(storage)? {
-            Some((latest_version, root_hash)) if latest_version == version => Ok(Some(root_hash)),
-            _ => Ok(None),
-        }
+        Self::ROOT_HASHES.may_load(storage, version)
     }
 
     fn apply(
@@ -75,7 +72,7 @@ impl Commitment for SimpleCommitment {
         }
         let root_hash = Hash256::from_inner(hasher.finalize().into());
 
-        LATEST_VERSION_AND_ROOT_HASH.save(storage, &(new_version, root_hash))?;
+        Self::ROOT_HASHES.save(storage, new_version, &root_hash)?;
 
         Ok(Some(root_hash))
     }
@@ -84,7 +81,9 @@ impl Commitment for SimpleCommitment {
         Ok(())
     }
 
-    fn prune(_storage: &mut dyn Storage, _up_to_version: u64) -> StdResult<()> {
+    fn prune(storage: &mut dyn Storage, up_to_version: u64) -> StdResult<()> {
+        Self::ROOT_HASHES.clear(storage, None, Some(Bound::Exclusive(up_to_version)));
+
         Ok(())
     }
 }

@@ -1,4 +1,5 @@
 use {
+    grug_app::SimpleCommitment,
     grug_types::{BlockInfo, BorshDeExt, BorshSerExt},
     rocksdb::{DB, DBWithThreadMode, IteratorMode, MultiThreaded, Options, WriteBatch},
     std::path::PathBuf,
@@ -92,10 +93,10 @@ pub fn migrate_db(path: PathBuf) {
     let cf = grug_db_disk::cf_state_commitment(&db);
     batch.put_cf(
         &cf,
-        "latest",
-        (last_finalized_block.height, last_finalized_block.hash)
-            .to_borsh_vec()
-            .unwrap(),
+        SimpleCommitment::ROOT_HASHES
+            .path(last_finalized_block.height)
+            .storage_key(),
+        last_finalized_block.hash.to_borsh_vec().unwrap(),
     );
 
     // Write state storage (with timestamp).
