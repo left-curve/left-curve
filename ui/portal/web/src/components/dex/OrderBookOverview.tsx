@@ -78,7 +78,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
   const depthBarClass =
     type === "bid"
       ? "bg-utility-success-500 lg:right-auto right-0"
-      : "bg-utility-error-300 lg:right-auto";
+      : "bg-utility-error-300 opacity-[18%] lg:right-auto";
 
   return (
     <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3 px-4 min-h-[23px] items-center">
@@ -88,7 +88,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
       />
       <div
         className={twMerge(
-          "z-10 cursor-pointer",
+          "z-10 cursor-pointer leading-[8px]",
           type === "bid"
             ? "text-utility-success-600 text-end lg:text-left lg:order-none order-2"
             : "text-utility-error-600 lg:order-none lg:text-left",
@@ -269,7 +269,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
 
   return (
     <div className="flex-1 h-full flex gap-2 lg:flex-col items-start justify-center w-full">
-      <div className="asks-container flex flex-1 flex-col w-full gap-1 order-2 lg:order-1 lg:justify-end">
+      <div className="asks-container flex flex-1 flex-col w-full gap-[2px] order-2 lg:order-1 lg:justify-end">
         {asksOrdered.map((ask, i) => (
           <OrderRow
             key={`ask-${ask.price}-${i}`}
@@ -283,7 +283,7 @@ const LiquidityDepth: React.FC<LiquidityDepthProps> = ({
 
       <Spread pairId={pairId} base={base} quote={quote} />
 
-      <div className="bid-container flex flex-1 flex-col w-full gap-1 order-1 lg:order-3">
+      <div className="bid-container flex flex-1 flex-col w-full gap-[2px] order-1 lg:order-3">
         {[...bids.records].map((bid, i) => (
           <OrderRow
             key={`bid-${bid.price}-${i}`}
