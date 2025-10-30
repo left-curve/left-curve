@@ -281,6 +281,7 @@ services:
 {% endif %}
     networks:
       - default
+      - traefik
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
