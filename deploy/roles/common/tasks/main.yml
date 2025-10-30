@@ -136,5 +136,11 @@
     sysctl_set: yes
     reload: yes
   loop:
-    - { name: "fs.nr_open",  value: "1048576" }
-    - { name: "fs.file-max", value: "1048576" }
+    # File descriptor limits
+    - { name: "fs.nr_open",                value: "1048576" }
+    - { name: "fs.file-max",               value: "1048576" }
+
+    # Connection backlog tuning
+    - { name: "net.core.somaxconn",        value: "65535" }
+    - { name: "net.core.netdev_max_backlog", value: "16384" }
+    - { name: "net.ipv4.tcp_max_syn_backlog", value: "65535" }
