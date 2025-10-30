@@ -67,6 +67,7 @@ services:
       - "${DEPLOYMENT_DIR}/clickhouse/init.sh:/docker-entrypoint-initdb.d/init.sh:ro"
     networks:
       - default
+      - traefik
 {% if expose_ports %}
     ports:
       # - "127.0.0.1:8123:8123" # HTTP interface
@@ -261,6 +262,7 @@ services:
 {% endif %}
     networks:
       - default
+      - traefik
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:26657/health"]
