@@ -61,7 +61,7 @@ enum SubCmd {
     },
     /// Schedule a chain upgrade
     Upgrade {
-        /// Block height at which this upgrade is to be executed at
+        /// Block height at which this upgrade is to be executed
         height: u64,
         /// Version of the dango CLI binary to use
         cargo_version: String,
