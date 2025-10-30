@@ -120,3 +120,11 @@
   with_items:
     - 10-banner
     - 20-sysinfo
+
+- name: Raise kernel fd ceiling
+  community.general.sysctl:
+    name: fs.nr_open
+    value: 200000
+    state: present
+    sysctl_set: yes
+    reload: yes
