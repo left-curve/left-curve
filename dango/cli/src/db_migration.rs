@@ -1,6 +1,6 @@
 use {
     grug_app::SimpleCommitment,
-    grug_types::{BlockInfo, BorshDeExt, BorshSerExt},
+    grug_types::{BorshSerExt, Hash256},
     rocksdb::{DB, DBWithThreadMode, IteratorMode, MultiThreaded, Options, WriteBatch},
     std::path::PathBuf,
 };
@@ -24,20 +24,19 @@ pub fn migrate_db(path: PathBuf) {
         .unwrap();
     let latest_version = u64::from_le_bytes(latest_version_raw);
 
-    tracing::info!(latest_version, "Loaded DB metadata");
-
-    // Read the last finalized block
-    let last_finalized_block = db
-        .get_cf(db.cf_handle("default").unwrap(), b"last_finalized_block")
+    // Read the root hash.
+    let latest_root_hash_raw = db
+        .get_cf(db.cf_handle("metadata").unwrap(), "hash")
         .unwrap()
         .unwrap()
-        .deserialize_borsh::<BlockInfo>()
+        .try_into()
         .unwrap();
+    let latest_root_hash = Hash256::from_inner(latest_root_hash_raw);
 
     tracing::info!(
-        height = last_finalized_block.height,
-        hash = last_finalized_block.hash.to_string(),
-        "Loaded last finalized block"
+        version = latest_version,
+        root_hash = latest_root_hash.to_string(),
+        "Loaded DB metadata"
     );
 
     // Load the entire state storage.
@@ -94,9 +93,9 @@ pub fn migrate_db(path: PathBuf) {
     batch.put_cf(
         &cf,
         SimpleCommitment::ROOT_HASHES
-            .path(last_finalized_block.height)
+            .path(latest_version)
             .storage_key(),
-        last_finalized_block.hash.to_borsh_vec().unwrap(),
+        latest_root_hash.to_borsh_vec().unwrap(),
     );
 
     // Write state storage (with timestamp).
