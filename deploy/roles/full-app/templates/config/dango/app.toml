@@ -98,8 +98,7 @@ port = 9191
 [tendermint]
 
 # Tendermint RPC listening address.
-# NOTE: I'm using the full docker host including namespace
-rpc_addr = "http://{{ deployment_name}}-{{ cometbft_host }}-1:26657"
+rpc_addr = "http://{{ cometbft_host }}:26657"
 
 # Tendermint ABCI listening address.
 abci_addr = "0.0.0.0:26658"
