@@ -104,7 +104,10 @@ where
             graphql_schema.clone(),
         ))
     })
-    .workers(4)
+    .workers(8)
+    .max_connections(10_000)
+    .backlog(8192)
+    .keep_alive(actix_web::http::KeepAlive::Os)
     .worker_max_blocking_threads(16)
     .bind((ip.to_string(), port))?
     .run()

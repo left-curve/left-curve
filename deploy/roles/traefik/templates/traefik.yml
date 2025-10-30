@@ -20,10 +20,22 @@ providers:
     directory: /config
     watch: true
 
+serversTransport:
+  maxIdleConnsPerHost: 4096
+  forwardingTimeouts:
+    dialTimeout: 10s
+    responseHeaderTimeout: 60s
+
 entryPoints:
   # Public (all interfaces)
   web:
     address: :80
+    reusePort: true
+    transport:
+      lifeCycle:
+        requestAcceptGraceTimeout: 0s
+      respondingTimeouts:
+        readTimeout: 60s
     forwardedHeaders:
       trustedIPs:
 {% for cidr in cloudflare_ips %}
@@ -31,6 +43,12 @@ entryPoints:
 {% endfor %}
   websecure:
     address: :443
+    reusePort: true
+    transport:
+      lifeCycle:
+        requestAcceptGraceTimeout: 0s
+      respondingTimeouts:
+        readTimeout: 60s
     forwardedHeaders:
       trustedIPs:
 {% for cidr in cloudflare_ips %}

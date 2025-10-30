@@ -30,10 +30,17 @@
 - name: Reconfigure locales
   command: dpkg-reconfigure --frontend=noninteractive locales
 
-- name: Set hostname in /etc/hostname
-  hostname:
-    name: "{{ hostname }}"
-    use: debian
+- name: Write /etc/hostname
+  become: yes
+  ansible.builtin.copy:
+    dest: /etc/hostname
+    content: "{{ hostname }}\n"
+    mode: "0644"
+
+- name: Apply hostname immediately (no D-Bus)
+  become: yes
+  ansible.builtin.command: hostname -F /etc/hostname
+  changed_when: false
 
 - name: Update /etc/hosts
   lineinfile:
@@ -120,3 +127,20 @@
   with_items:
     - 10-banner
     - 20-sysinfo
+
+- name: Raise kernel fd ceilings
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_set: yes
+    reload: yes
+  loop:
+    # File descriptor limits
+    - { name: "fs.nr_open",                value: "1048576" }
+    - { name: "fs.file-max",               value: "1048576" }
+
+    # Connection backlog tuning
+    - { name: "net.core.somaxconn",        value: "65535" }
+    - { name: "net.core.netdev_max_backlog", value: "16384" }
+    - { name: "net.ipv4.tcp_max_syn_backlog", value: "65535" }

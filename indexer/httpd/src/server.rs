@@ -74,6 +74,11 @@ where
 
         app.configure(config_app(context.clone(), graphql_schema.clone()))
     })
+    .workers(8)
+    .max_connections(10_000)
+    .backlog(8192)
+    .keep_alive(actix_web::http::KeepAlive::Os)
+    .worker_max_blocking_threads(16)
     .bind((ip.to_string(), port))?
     .run()
     .await?;
