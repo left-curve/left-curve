@@ -1,8 +1,9 @@
 use {
     crate::{
         Addr, Binary, BlockInfo, Code, CodeStatus, Coin, Config, ContractInfo, Denom,
-        GenericResult, GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage, Order,
-        Querier, Query, QueryResponse, QueryStatusResponse, StdError, StdResult, Storage,
+        GenericResult, GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage,
+        NextUpgrade, Order, PastUpgrade, Querier, Query, QueryResponse, QueryStatusResponse,
+        StdError, StdResult, Storage,
     },
     error_backtrace::BacktracedError,
     grug_math::{NumberConst, Uint128},
@@ -22,6 +23,8 @@ pub struct MockQuerier {
     status: Option<QueryStatusResponse>,
     config: Option<Config>,
     app_config: Option<Json>,
+    upgrades: BTreeMap<u64, PastUpgrade>,
+    next_upgrade: Option<NextUpgrade>,
     balances: BTreeMap<Addr, BTreeMap<Denom, Uint128>>,
     supplies: BTreeMap<Denom, Uint128>,
     codes: BTreeMap<Hash256, Code>,
@@ -57,6 +60,16 @@ impl MockQuerier {
     {
         self.app_config = Some(config.to_json_value()?);
         Ok(self)
+    }
+
+    pub fn with_upgrade(mut self, height: u64, upgrade: PastUpgrade) -> Self {
+        self.upgrades.insert(height, upgrade);
+        self
+    }
+
+    pub fn with_next_upgrade(mut self, next_upgrade: Option<NextUpgrade>) -> Self {
+        self.next_upgrade = next_upgrade;
+        self
     }
 
     pub fn with_balance<D, A>(mut self, address: Addr, denom: D, amount: A) -> StdResult<Self>
@@ -145,6 +158,26 @@ impl Querier for MockQuerier {
                     .clone()
                     .expect("[MockQuerier]: app config is not set");
                 Ok(QueryResponse::AppConfig(app_cfg))
+            },
+            Query::Upgrades(req) => {
+                let upgrades = self
+                    .upgrades
+                    .iter()
+                    .filter(|(height, _)| {
+                        if let Some(lower_bound) = &req.start_after {
+                            *height > lower_bound
+                        } else {
+                            true
+                        }
+                    })
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
+                    .map(|(k, v)| (*k, v.clone()))
+                    .collect();
+                Ok(QueryResponse::Upgrades(upgrades))
+            },
+            Query::NextUpgrade(_req) => {
+                let next_upgrade = self.next_upgrade.clone();
+                Ok(QueryResponse::NextUpgrade(next_upgrade))
             },
             Query::Balance(req) => {
                 let amount = self

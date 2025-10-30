@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, Query,
-        QueryRequest, QueryResponse, QueryStatusResponse, StdError, StdResult,
+        Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, NextUpgrade,
+        PastUpgrade, Query, QueryRequest, QueryResponse, QueryStatusResponse, StdError, StdResult,
     },
     grug_math::Uint128,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -52,6 +52,20 @@ pub trait QuerierExt: Querier {
     {
         self.query_chain(Query::app_config())
             .and_then(|res| res.as_app_config().deserialize_json())
+    }
+
+    fn query_upgrades(
+        &self,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    ) -> StdResult<BTreeMap<u64, PastUpgrade>> {
+        self.query_chain(Query::upgrades(start_after, limit))
+            .map(|res| res.as_upgrades())
+    }
+
+    fn query_next_upgrade(&self) -> StdResult<Option<NextUpgrade>> {
+        self.query_chain(Query::next_upgrade())
+            .map(|res| res.as_next_upgrade())
     }
 
     fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint128> {
