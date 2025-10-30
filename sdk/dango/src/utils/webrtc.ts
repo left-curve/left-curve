@@ -150,11 +150,17 @@ export class DataChannel {
   async createPeerConnection(socketId: string): Promise<void> {
     const promiseId = uid();
     this.#metadata = { promiseId, socketId };
+    const iceGatheringPromise = new Promise<void>((resolve) => {
+      this.#connection.onicegatheringstatechange = () => {
+        if (this.#connection.iceGatheringState === "complete") resolve();
+      };
+    });
     const offer = await this.#connection.createOffer();
     await this.#connection.setLocalDescription(offer);
+    await iceGatheringPromise;
     this.#webSocketSend({
       to: this.#metadata.socketId,
-      message: { offer },
+      message: { offer: this.#connection.localDescription },
       type: "offer",
     });
     const { promise, resolve, reject } = withResolvers();
