@@ -1,9 +1,0 @@
----
-- name: daemon-reload
-  command: systemctl daemon-reload
-  changed_when: false
-
-- name: restart docker
-  service:
-    name: docker
-    state: restarted

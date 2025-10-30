@@ -65,7 +65,6 @@
     content: |
       [Service]
       LimitNOFILE=200000
-  notify: restart docker
 
 - name: Set Docker default ulimits
   ansible.builtin.copy:
@@ -77,9 +76,6 @@
           "nofile": { "Name": "nofile", "Soft": 200000, "Hard": 200000 }
         }
       }
-  notify: restart docker
-
-- meta: flush_handlers
 
 - name: Reload systemd
   command: systemctl daemon-reload
