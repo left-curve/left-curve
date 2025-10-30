@@ -15,6 +15,8 @@ use {
 pub enum Event {
     /// The chain- or app-level configurations were updated.
     Configure(EvtConfigure),
+    /// A chain upgrade was scheduled.
+    Upgrade(EvtUpgrade),
     /// Coins were transferred from one account to another.
     Transfer(EvtTransfer),
     /// A wasm binary code was uploaded.
@@ -64,6 +66,7 @@ macro_rules! generate_downcast {
 impl Event {
     generate_downcast! {
         Configure    => EvtConfigure,
+        Upgrade      => EvtUpgrade,
         Transfer     => EvtTransfer,
         Upload       => EvtUpload,
         Instantiate  => EvtInstantiate,
@@ -105,6 +108,14 @@ impl Event {
 pub struct EvtConfigure {
     pub sender: Addr,
     // TODO: not sure what else we need here. the old and new configs?
+}
+
+/// An event indicating that a chain upgrade was scheduled.
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct EvtUpgrade {
+    pub sender: Addr,
+    pub height: u64,
+    pub cargo_version: String,
 }
 
 /// An event indicating that coins were transferred from one account to another.

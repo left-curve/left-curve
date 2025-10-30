@@ -307,7 +307,7 @@ const TxMessages: React.FC<CellTxMessagesProps> = ({ messages }) => {
   return (
     <div className="flex h-full items-center gap-1">
       <Badge text={capitalize(firstMessage.methodName)} color="blue" />
-      {extraMessages ? <Badge text={`+${extraMessages}`} color="red" /> : null}
+      {extraMessages ? <Badge text={`+${extraMessages}`} color="blue" /> : null}
     </div>
   );
 };

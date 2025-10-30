@@ -29,6 +29,15 @@ enum SubCmd {
     Config,
     /// Query the application-specific configuration
     AppConfig,
+    /// Query the next scheduled chain upgrade, if any.
+    NextUpgrade,
+    /// Enumerate chain upgrades that have been executed in the past.
+    PastUpgrades {
+        /// Start after this block height
+        start_after: Option<u64>,
+        /// Maximum number of items to display
+        limit: Option<u32>,
+    },
     /// Query an account's balance in a single denom
     Balance {
         /// Account address
@@ -131,6 +140,8 @@ impl QueryCmd {
             SubCmd::Status => Query::status(),
             SubCmd::Config => Query::config(),
             SubCmd::AppConfig => Query::app_config(),
+            SubCmd::NextUpgrade => Query::next_upgrade(),
+            SubCmd::PastUpgrades { start_after, limit } => Query::past_upgrades(start_after, limit),
             SubCmd::Balance { address, denom } => {
                 let denom = Denom::try_from(denom)?;
                 Query::balance(address, denom)

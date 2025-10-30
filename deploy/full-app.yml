@@ -108,6 +108,10 @@
             image: "ghcr.io/left-curve/left-curve/cometbft"
             tag: "{{ cometbft_tag }}"
             identity_regexp: "{{ cosign_identity_cometbft_regexp }}"
+    - name: Set dango and cometbft hosts
+      set_fact:
+        dango_host: "{{ deployment_name }}-dango-1"
+        cometbft_host: "{{ deployment_name }}-cometbft-1"
   post_tasks:
     - name: Log deployment complete
       community.general.syslogger:
