@@ -47,13 +47,14 @@
   "dependencies": {
     "@headlessui/react": "^2.1.10",
     "@left-curve/dango": "workspace:^",
-    "@left-curve/store": "workspace:^",
     "@left-curve/foundation": "workspace:^",
+    "@left-curve/store": "workspace:^",
     "@microlink/react-json-view": "^1.26.2",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.4",
     "framer-motion": "catalog:",
     "qr-code-styling": "^1.7.2",
+    "react-zxing": "^2.1.0",
     "tailwind-variants": "^0.2.1"
   },
   "devDependencies": {
