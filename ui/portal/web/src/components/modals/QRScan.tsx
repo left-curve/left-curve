@@ -26,7 +26,6 @@ export const QRScan: React.FC<QRScanProps> = ({ onScan }) => {
           isAlreadyScanned.current = true;
           onScan(socketId);
         }}
-        allowMultiple={false}
         components={{ audio: false }}
         formats={["qr_code"]}
         classNames={{ container: "qr-container", video: "bg-surface-primary-rice" }}

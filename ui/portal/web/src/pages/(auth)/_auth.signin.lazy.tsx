@@ -14,7 +14,7 @@ function SigninApplet() {
   const { socketId } = useSearch({ strict: false });
 
   useEffect(() => {
-    if (socketId) showModal(Modals.SignWithDesktop, { socketId, navigate });
+    if (socketId) showModal(Modals.SignWithDesktopFromNativeCamera, { socketId, navigate });
   }, []);
 
   return (
