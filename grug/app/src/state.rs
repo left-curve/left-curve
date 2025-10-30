@@ -1,12 +1,16 @@
 use {
     grug_storage::{Index, IndexList, IndexedMap, Item, Map, MultiIndex, Set},
     grug_types::{
-        Addr, BlockInfo, Code, CodeStatus, Config, ContractInfo, Hash256, Json, Timestamp,
+        Addr, BlockInfo, Code, CodeStatus, Config, ContractInfo, Hash256, Json, NextUpgrade,
+        PastUpgrade, Timestamp,
     },
 };
 
 /// A string that identifies the chain
 pub const CHAIN_ID: Item<String> = Item::new("chain_id");
+
+/// The most recently finalized block
+pub const LAST_FINALIZED_BLOCK: Item<BlockInfo> = Item::new("last_finalized_block");
 
 /// Chain-level configuration
 pub const CONFIG: Item<Config> = Item::new("config");
@@ -14,14 +18,17 @@ pub const CONFIG: Item<Config> = Item::new("config");
 /// Application-specific configuration.
 pub const APP_CONFIG: Item<Json> = Item::new("app_config");
 
-/// The most recently finalized block
-pub const LAST_FINALIZED_BLOCK: Item<BlockInfo> = Item::new("last_finalized_block");
-
 /// Scheduled cronjobs.
 ///
 /// This needs to be a `Set` instead of `Map<Timestamp, Addr>` because there can
 /// be multiple jobs with the same scheduled time.
 pub const NEXT_CRONJOBS: Set<(Timestamp, Addr)> = Set::new("jobs");
+
+/// A chain upgrade that is scheduled to happen in a future block.
+pub const NEXT_UPGRADE: Item<NextUpgrade> = Item::new("next_upgrade");
+
+/// Chain upgrades that have been carried out in the past.
+pub const PAST_UPGRADES: Map<u64, PastUpgrade> = Map::new("prev_upgrade");
 
 /// Wasm contract byte codes: code_hash => byte_code
 pub const CODES: IndexedMap<Hash256, Code, CodeIndexes> = IndexedMap::new("codes", CodeIndexes {

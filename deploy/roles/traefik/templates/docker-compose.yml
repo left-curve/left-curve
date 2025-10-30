@@ -1,6 +1,10 @@
 services:
   traefik:
     image: traefik:v3.5
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     ports:
       - "80:80"
       - "443:443"
