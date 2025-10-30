@@ -20,12 +20,14 @@ export const QRScan: React.FC<QRScanProps> = ({ onScan }) => {
       </div>
       <Scanner
         onScan={([{ rawValue }]) => {
+          console.log("Scanned QR code:", rawValue);
           const socketId = rawValue.split("socketId=")[1];
           if (!socketId) return;
           if (isAlreadyScanned.current) return;
           isAlreadyScanned.current = true;
           onScan(socketId);
         }}
+        onError={console.log}
         components={{ audio: false }}
         formats={["qr_code"]}
         classNames={{ container: "qr-container", video: "bg-surface-primary-rice" }}
