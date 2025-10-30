@@ -56,10 +56,6 @@ services:
 {% if deploy_includes_clickhouse %}
   clickhouse:
     image: clickhouse/clickhouse-server:latest
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
     labels:
       <<: *common-labels
       service_name: "clickhouse"
