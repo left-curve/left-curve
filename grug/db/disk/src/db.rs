@@ -83,6 +83,7 @@ pub struct DiskDb<T> {
     _commitment: PhantomData<T>,
 }
 
+#[derive(Debug)]
 pub(crate) struct DiskDbInner {
     pub db: DBWithThreadMode<MultiThreaded>,
     // Data that are ready to be persisted to the physical database.
@@ -91,6 +92,7 @@ pub(crate) struct DiskDbInner {
     pending_data: RwLock<Option<PendingData>>,
 }
 
+#[derive(Debug)]
 pub(crate) struct PendingData {
     version: u64,
     state_commitment: Batch,
@@ -396,7 +398,7 @@ where
 
 // ----------------------------- state commitment ------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StateCommitment {
     inner: Arc<DiskDbInner>,
 }
@@ -489,7 +491,7 @@ impl Storage for StateCommitment {
 
 // ------------------------------- state storage -------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StateStorage {
     inner: Arc<DiskDbInner>,
     version: u64,
@@ -1116,7 +1118,13 @@ mod tests_jmt {
 
 #[cfg(test)]
 mod tests_simple {
-    use {super::*, grug_app::SimpleCommitment, grug_types::hash, temp_rocksdb::TempDataDir};
+    use {
+        super::*,
+        grug_app::SimpleCommitment,
+        grug_types::{ResultExt, hash},
+        rocksdb::CompactOptions,
+        temp_rocksdb::TempDataDir,
+    };
 
     // sha256(6 | donald | 1 | 5 | trump | 4 | jake | 1 | 8 | shepherd | 3 | joe | 1 | 5 | biden | 5 | larry | 1 | 8 | engineer)
     // = sha256(0006646f6e616c640100057472756d7000046a616b65010008736865706865726400036a6f65010005626964656e00056c61727279010008656e67696e656572)
@@ -1186,5 +1194,84 @@ mod tests_simple {
                 assert_eq!(found_value.as_deref(), v);
             }
         }
+    }
+
+    #[test]
+    fn prune_works() {
+        let path = TempDataDir::new("_grug_disk_db_lite_pruning_works");
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        for batch in [
+            // v0
+            Batch::from([(b"0".to_vec(), Op::Insert(b"0".to_vec()))]),
+            // v1
+            Batch::from([(b"1".to_vec(), Op::Insert(b"1".to_vec()))]),
+            // v2
+            Batch::from([(b"2".to_vec(), Op::Insert(b"2".to_vec()))]),
+            // v3
+            Batch::from([(b"3".to_vec(), Op::Insert(b"3".to_vec()))]),
+            // v4
+            Batch::from([(b"4".to_vec(), Op::Insert(b"4".to_vec()))]),
+        ] {
+            db.flush_and_commit(batch).unwrap();
+        }
+
+        let current_version = db.latest_version();
+        assert_eq!(current_version, Some(4));
+
+        let storage = db.state_storage(current_version).unwrap();
+        assert_eq!(storage.read(b"2"), Some(b"2".to_vec()));
+        assert_eq!(storage.read(b"4"), Some(b"4".to_vec()));
+
+        db.flush_and_commit(Batch::from([(b"2".to_vec(), Op::Insert(b"22".to_vec()))]))
+            .unwrap();
+
+        assert_eq!(
+            db.state_storage(Some(5)).unwrap().read(b"2"),
+            Some(b"22".to_vec())
+        );
+
+        assert_eq!(
+            db.state_storage(None).unwrap().read(b"2"),
+            Some(b"22".to_vec())
+        );
+
+        // Prune the db at 3, which is exclusive (3 becomes the oldest version)
+        db.prune(3).unwrap();
+
+        db.inner.db.compact_range_cf_opt(
+            &cf_state_storage(&db.inner.db),
+            None::<&[u8]>,
+            None::<&[u8]>,
+            &CompactOptions::default(),
+        );
+
+        assert_eq!(
+            db.state_storage(Some(4)).unwrap().read(b"2"),
+            Some(b"2".to_vec())
+        );
+
+        assert_eq!(
+            db.state_storage(Some(3)).unwrap().read(b"2"),
+            Some(b"2".to_vec())
+        );
+
+        // Try to read at version = 2. We return an error trying create a storage at a pruned version.
+        // This is not ensuring that we really pruned the db, but that we saved the correct oldest version.
+        db.state_storage(Some(2)).should_fail_with_error(
+            "requested version (2) is older than the oldest available version (3)",
+        );
+
+        // Ensure that the prune really pruned the db.
+        db.inner
+            .db
+            .get_cf_opt(
+                &cf_state_storage(&db.inner.db),
+                b"2",
+                &new_read_options(Some(2), None, None),
+            )
+            .should_fail_with_error(
+                "Invalid argument: Read timestamp:  is smaller than full_history_ts_low",
+            );
     }
 }
