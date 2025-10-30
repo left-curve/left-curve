@@ -1,6 +1,10 @@
 services:
   cloudflared:
     image: cloudflare/cloudflared:latest
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     container_name: cloudflared
     restart: unless-stopped
     command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml --metrics 0.0.0.0:2000 run --token ${CLOUDFLARE_TUNNEL_TOKEN}

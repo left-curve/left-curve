@@ -1,3 +1,8 @@
+protocol: quic
+edge-ip-version: auto
+ha-connections: 12
+transport-loglevel: warn
+
 ingress:
 {% for net in ['devnet', 'testnet'] %}
   - hostname: api-{{ net }}-{{ hostname }}.{{ dango_domain }}
