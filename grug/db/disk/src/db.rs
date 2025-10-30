@@ -18,17 +18,17 @@ use {
 /// We use three column families (CFs) for storing data.
 /// The default family is used for metadata. Currently the only metadata we have
 /// is the latest version.
-const CF_NAME_DEFAULT: &str = "default";
+pub const CF_NAME_DEFAULT: &str = "default";
 
 /// The preimage column family maps key hashes to raw keys. This is necessary
 /// for generating ICS-23 compatible Merkle proofs.
 #[cfg(feature = "ibc")]
-const CF_NAME_PREIMAGES: &str = "preimages";
+pub const CF_NAME_PREIMAGES: &str = "preimages";
 
 /// The state commitment (SC) family stores Merkle tree nodes, which hold hashed
 /// key-value pair data. We use this CF for deriving the Merkle root hash for the
 /// state (used in consensus) and generating Merkle proofs (used in light clients).
-const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
+pub const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 
 /// The state storage (SS) family stores raw, prehash key-value pair data.
 /// When performing normal read/write/remove/scan interactions, we use this CF.
@@ -40,16 +40,16 @@ const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 /// Unfortunately the Rust API for RocksDB does not support timestamping,
 /// we have to add it in. Our fork is here, under the `0.21.0-cw` branch:
 /// https://github.com/left-curve/rust-rocksdb/tree/v0.21.0-cw
-const CF_NAME_STATE_STORAGE: &str = "state_storage";
+pub const CF_NAME_STATE_STORAGE: &str = "state_storage";
 
 /// Storage key for the latest version.
-const LATEST_VERSION_KEY: &[u8] = b"latest_version";
+pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 
 /// Storage key for the oldest version.
-const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
+pub const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 
 #[cfg(feature = "metrics")]
-const DISK_DB_LABEL: &str = "grug.db.disk.duration";
+pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
 /// The base storage primitive.
 ///
@@ -636,14 +636,14 @@ fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
 // TODO: rocksdb tuning? see:
 // https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/opts.go#L29-L65
 // https://github.com/turbofish-org/merk/blob/develop/src/merk/mod.rs#L84-L102
-fn new_db_options() -> Options {
+pub fn new_db_options() -> Options {
     let mut opts = Options::default();
     opts.create_if_missing(true);
     opts.create_missing_column_families(true);
     opts
 }
 
-fn new_cf_options_with_ts() -> Options {
+pub fn new_cf_options_with_ts() -> Options {
     let mut opts = Options::default();
     // Must use a timestamp-enabled comparator
     opts.set_comparator_with_ts(
@@ -674,7 +674,7 @@ pub(crate) fn new_read_options(
     opts
 }
 
-fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_DEFAULT).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
@@ -687,13 +687,13 @@ pub(crate) fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundCol
     })
 }
 
-fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_STATE_STORAGE).unwrap_or_else(|| {
         panic!("failed to find state storage column family");
     })
 }
 
-fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_STATE_COMMITMENT).unwrap_or_else(|| {
         panic!("failed to find state commitment column family");
     })
