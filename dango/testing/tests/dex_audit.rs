@@ -8,8 +8,9 @@ use {
         BridgeOp, Preset, TestOption, setup_test_naive, setup_test_naive_with_custom_genesis,
     },
     dango_types::{
+        bank,
         constants::{
-            dango, eth,
+            btc, dango, eth,
             mock::{ONE, ONE_TENTH},
             usdc,
         },
@@ -23,13 +24,15 @@ use {
         oracle::{self, PriceSource},
     },
     grug::{
-        BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, NonZero, Number, NumberConst,
-        QuerierExt, ResultExt, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map,
+        Addr, BalanceChange, Bounded, Coin, CoinPair, Coins, ContractBuilder, Denom, Inner, Json,
+        JsonSerExt, Message, MsgExecute, MutableCtx, NonZero, Number, NumberConst, QuerierExt,
+        Response, ResultExt, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map,
         btree_set, coins,
     },
     grug_types::Addressable,
     hyperlane_types::constants::ethereum,
     rand::Rng,
+    serde::{Deserialize, Serialize},
     std::{
         collections::{BTreeSet, HashMap},
         str::FromStr,
@@ -377,6 +380,154 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             Coins::new(),
         )
         .should_fail_with_error("can't update orders when trading is paused");
+}
+
+#[test]
+fn issue_63_contract_not_implementing_receive_does_not_brick_auction() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Define a simple proxy contract that simply forwards the message to the target contract.
+    #[derive(Serialize, Deserialize)]
+    struct ProxyInstantiateMsg {}
+    #[derive(Serialize, Deserialize)]
+    struct ProxyExecuteMsg {
+        contract: Addr,
+        msg: Json,
+    }
+
+    // Build the proxy contract
+    let proxy_code = ContractBuilder::new(Box::new(
+        |_: MutableCtx, _: ProxyInstantiateMsg| -> anyhow::Result<Response> {
+            Ok(Response::default())
+        },
+    ))
+    .with_execute(Box::new(
+        |ctx: MutableCtx, msg: ProxyExecuteMsg| -> anyhow::Result<Response> {
+            Ok(Response::new().add_message(Message::execute(msg.contract, &msg.msg, ctx.funds)?))
+        },
+    ))
+    .build();
+
+    // Upload the proxy code
+    let proxy_code_hash = suite
+        .upload(&mut accounts.owner, proxy_code)
+        .should_succeed()
+        .code_hash;
+
+    println!("proxy uploaded");
+
+    // Instantiate the proxy contract
+    let proxy_address = suite
+        .instantiate(
+            &mut accounts.owner,
+            proxy_code_hash,
+            &ProxyInstantiateMsg {},
+            "proxy",
+            None,
+            None,
+            Coins::new(),
+        )
+        .should_succeed()
+        .address;
+
+    println!("proxy instantiated");
+
+    // Set the oracle price for BTC and USDC
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                btc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::new(100_000),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                usdc::DENOM.clone() => PriceSource::Fixed {
+                    humanized_price: Udec128::new(1),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(u128::MAX),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    println!("oracle prices set");
+
+    // Provide liquidity to the btc pair
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 100_000,
+                usdc::DENOM.clone() => 100_000,
+            },
+        )
+        .should_succeed();
+
+    println!("liquidity provided");
+
+    // Place a BTC buy order at 90 000 through the proxy contract that will be matched
+    // against passive liquidity pool.
+    suite
+        .execute(
+            &mut accounts.user1,
+            proxy_address,
+            &ProxyExecuteMsg {
+                contract: contracts.dex,
+                msg: ExecuteMsg::BatchUpdateOrders {
+                    creates: vec![CreateOrderRequest {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                        price: PriceOption::Limit(NonZero::new_unchecked(Price::new(90_000))),
+                        amount: AmountOption::Bid {
+                            quote: NonZero::new_unchecked(Uint128::new(1_000_000)),
+                        },
+                        time_in_force: TimeInForce::GoodTilCanceled,
+                    }],
+                    cancels: None,
+                }
+                .to_json_value()
+                .unwrap(),
+            },
+            coins! {
+                usdc::DENOM.clone() => 1_000_000,
+            },
+        )
+        .should_succeed();
+
+    // Assert that the DEX is not paused
+    suite
+        .query_wasm_smart(contracts.dex, dex::QueryPausedRequest {})
+        .should_succeed_and_equal(false);
+
+    // Assert that the funds are orphaned in the Bank module
+    suite
+        .query_wasm_smart(contracts.bank, bank::QueryOrphanedTransferRequest {
+            sender: proxy_address,
+            recipient: accounts.user1.address(),
+        })
+        .should_succeed_and_equal(coins! {
+            btc::DENOM.clone() => 1_000_000,
+        });
+
+    println!("order placed");
 }
 
 /// Prior to the fix, the depth quote amount was subject to rounding errors when
