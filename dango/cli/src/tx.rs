@@ -67,7 +67,7 @@ enum SubCmd {
         cargo_version: String,
         /// Git tag of the dango CLI binary to use
         git_tag: Option<String>,
-        /// URL pointing to documentations explaining this upgrade
+        /// URL pointing to documentation explaining this upgrade
         url: Option<String>,
     },
     /// Send coins to the given recipient address
