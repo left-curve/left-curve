@@ -1340,13 +1340,13 @@ where
             let res = query_app_config(&storage, gas_tracker)?;
             Ok(QueryResponse::AppConfig(res))
         },
-        Query::PastUpgrades(req) => {
-            let res = query_past_upgrades(&storage, gas_tracker, req)?;
-            Ok(QueryResponse::PastUpgrades(res))
-        },
         Query::NextUpgrade(_req) => {
             let res = query_next_upgrade(&storage, gas_tracker)?;
             Ok(QueryResponse::NextUpgrade(res))
+        },
+        Query::PastUpgrades(req) => {
+            let res = query_past_upgrades(&storage, gas_tracker, req)?;
+            Ok(QueryResponse::PastUpgrades(res))
         },
         Query::Balance(req) => {
             let res = query_balance(vm, storage, gas_tracker, block, query_depth, req)?;
