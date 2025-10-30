@@ -9,6 +9,10 @@ services:
   postgres:
     image: postgres:17
     shm_size: 1gb
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     labels:
       <<: *common-labels
       service_name: "postgres"
@@ -52,6 +56,10 @@ services:
 {% if deploy_includes_clickhouse %}
   clickhouse:
     image: clickhouse/clickhouse-server:latest
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     labels:
       <<: *common-labels
       service_name: "clickhouse"
@@ -117,6 +125,10 @@ services:
 {% if not deploy_includes_clickhouse %}
       - clickhouse
 {% endif %}
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     volumes:
       - "${DANGO_DIRECTORY}:/root/.dango"
     environment:
@@ -137,6 +149,10 @@ services:
 
   dango-frontend:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     labels:
       <<: *common-labels
       service_name: "dango-frontend"
@@ -166,6 +182,10 @@ services:
 
   faucet-bot:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     labels:
       <<: *common-labels
       service_name: "faucet_bot"
@@ -227,6 +247,10 @@ services:
 
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-latest}
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     labels:
       <<: *common-labels
       service_name: "cometbft"
