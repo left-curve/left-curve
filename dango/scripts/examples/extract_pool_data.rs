@@ -31,6 +31,7 @@ fn main() -> anyhow::Result<()> {
         NullIndexer,
         u64::MAX,
         None,
+        env!("CARGO_PKG_VERSION"),
     );
 
     // Query app config.

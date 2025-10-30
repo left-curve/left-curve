@@ -4,7 +4,7 @@ use async_graphql::Enum;
 use sea_orm::entity::prelude::*;
 use {
     crate::{
-        Addr, CheckedContractEvent, Coins, CommitmentStatus, EvtConfigure, EvtUpload,
+        Addr, CheckedContractEvent, Coins, CommitmentStatus, EvtConfigure, EvtUpgrade, EvtUpload,
         FlattenStatus, Hash256, Json, Label, ReplyOn, Timestamp, TxEvents,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -183,6 +183,7 @@ impl EventId {
 #[strum(serialize_all = "snake_case")]
 pub enum FlatEvent {
     Configure(EvtConfigure),
+    Upgrade(EvtUpgrade),
     /// Coins were transferred from one account to another.
     Transfer(FlatEvtTransfer),
     /// A wasm binary code was uploaded.

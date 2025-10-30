@@ -39,7 +39,10 @@ export const QRConnect = forwardRef((_props, _ref) => {
       });
 
       dataChannel.sendMessage({ id, message: { data: { ...response, username } } });
-      toast.success({ title: "Connection established" });
+      toast.success({
+        title: "Connection established",
+        description: null,
+      });
       hideModal();
     } catch (error) {
       captureException(error);

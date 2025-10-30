@@ -1,7 +1,8 @@
 use {
     crate::{
         Addr, Binary, BlockInfo, Bound, Code, Coin, Coins, Config, ContractInfo, Denom,
-        GenericResult, Hash256, Inner, Json, JsonSerExt, StdResult, extend_one_byte,
+        GenericResult, Hash256, Inner, Json, JsonSerExt, NextUpgrade, PastUpgrade, StdResult,
+        extend_one_byte,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     paste::paste,
@@ -52,6 +53,10 @@ pub enum Query {
     Config(QueryConfigRequest),
     /// Query the application-specific configuration.
     AppConfig(QueryAppConfigRequest),
+    /// Enumerate historical chain upgrades.
+    Upgrades(QueryUpgradesRequest),
+    /// Query the currently planned chain upgrade, if any.
+    NextUpgrade(QueryNextUpgradeRequest),
     /// Query an account's balance in a single denom.
     Balance(QueryBalanceRequest),
     /// Enumerate an account's balances in all denoms.
@@ -112,6 +117,14 @@ impl Query {
 
     pub fn app_config() -> Self {
         QueryAppConfigRequest {}.into()
+    }
+
+    pub fn upgrades(start_after: Option<u64>, limit: Option<u32>) -> Self {
+        QueryUpgradesRequest { start_after, limit }.into()
+    }
+
+    pub fn next_upgrade() -> Self {
+        QueryNextUpgradeRequest {}.into()
     }
 
     pub fn balance(address: Addr, denom: Denom) -> Self {
@@ -230,6 +243,15 @@ pub struct QueryAppConfigsRequest {
 }
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryUpgradesRequest {
+    pub start_after: Option<u64>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QueryNextUpgradeRequest {}
+
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct QueryBalanceRequest {
     pub address: Addr,
     pub denom: Denom,
@@ -315,21 +337,23 @@ macro_rules! impl_into_query {
 }
 
 impl_into_query! {
-    Status     => QueryStatusRequest     => QueryStatusResponse,
-    Config     => QueryConfigRequest     => Config,
-    AppConfig  => QueryAppConfigRequest  => Json,
-    Balance    => QueryBalanceRequest    => Coin,
-    Balances   => QueryBalancesRequest   => Coins,
-    Supply     => QuerySupplyRequest     => Coin,
-    Supplies   => QuerySuppliesRequest   => Coins,
-    Code       => QueryCodeRequest       => Code,
-    Codes      => QueryCodesRequest      => BTreeMap<Hash256, Code>,
-    Contract   => QueryContractRequest   => ContractInfo,
-    Contracts  => QueryContractsRequest  => BTreeMap<Addr, ContractInfo>,
-    WasmRaw    => QueryWasmRawRequest    => Option<Binary>,
-    WasmScan   => QueryWasmScanRequest   => BTreeMap<Binary, Binary>,
-    WasmSmart  => QueryWasmSmartRequest  => Json,
-    Multi      => Vec<Query>             => Vec<QueryResponse>,
+    Status      => QueryStatusRequest      => QueryStatusResponse,
+    Config      => QueryConfigRequest      => Config,
+    AppConfig   => QueryAppConfigRequest   => Json,
+    Upgrades    => QueryUpgradesRequest    => UpgradeLog,
+    NextUpgrade => QueryNextUpgradeRequest => Option<NextUpgrade>,
+    Balance     => QueryBalanceRequest     => Coin,
+    Balances    => QueryBalancesRequest    => Coins,
+    Supply      => QuerySupplyRequest      => Coin,
+    Supplies    => QuerySuppliesRequest    => Coins,
+    Code        => QueryCodeRequest        => Code,
+    Codes       => QueryCodesRequest       => BTreeMap<Hash256, Code>,
+    Contract    => QueryContractRequest    => ContractInfo,
+    Contracts   => QueryContractsRequest   => BTreeMap<Addr, ContractInfo>,
+    WasmRaw     => QueryWasmRawRequest     => Option<Binary>,
+    WasmScan    => QueryWasmScanRequest    => BTreeMap<Binary, Binary>,
+    WasmSmart   => QueryWasmSmartRequest   => Json,
+    Multi       => Vec<Query>              => Vec<QueryResponse>,
 }
 
 // --------------------------------- response ----------------------------------
@@ -340,6 +364,8 @@ pub enum QueryResponse {
     Status(QueryStatusResponse),
     Config(Config),
     AppConfig(Json),
+    Upgrades(BTreeMap<u64, PastUpgrade>),
+    NextUpgrade(Option<NextUpgrade>),
     Balance(Coin),
     Balances(Coins),
     Supply(Coin),
@@ -395,20 +421,22 @@ macro_rules! generate_downcast {
 
 impl QueryResponse {
     generate_downcast! {
-        Status     => QueryStatusResponse,
-        Config     => Config,
-        AppConfig  => Json,
-        Balance    => Coin,
-        Balances   => Coins,
-        Supply     => Coin,
-        Supplies   => Coins,
-        Code       => Code,
-        Codes      => BTreeMap<Hash256, Code>,
-        Contract   => ContractInfo,
-        Contracts  => BTreeMap<Addr, ContractInfo>,
-        WasmRaw    => Option<Binary>,
-        WasmScan   => BTreeMap<Binary, Binary>,
-        WasmSmart  => Json,
-        Multi      => Vec<GenericResult<QueryResponse>>,
+        Status      => QueryStatusResponse,
+        Config      => Config,
+        AppConfig   => Json,
+        Upgrades    => BTreeMap<u64, PastUpgrade>,
+        NextUpgrade => Option<NextUpgrade>,
+        Balance     => Coin,
+        Balances    => Coins,
+        Supply      => Coin,
+        Supplies    => Coins,
+        Code        => Code,
+        Codes       => BTreeMap<Hash256, Code>,
+        Contract    => ContractInfo,
+        Contracts   => BTreeMap<Addr, ContractInfo>,
+        WasmRaw     => Option<Binary>,
+        WasmScan    => BTreeMap<Binary, Binary>,
+        WasmSmart   => Json,
+        Multi       => Vec<GenericResult<QueryResponse>>,
     }
 }
