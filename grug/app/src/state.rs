@@ -28,7 +28,7 @@ pub const NEXT_CRONJOBS: Set<(Timestamp, Addr)> = Set::new("jobs");
 pub const NEXT_UPGRADE: Item<NextUpgrade> = Item::new("next_upgrade");
 
 /// Chain upgrades that have been carried out in the past.
-pub const PREV_UPGRADES: Map<u64, PastUpgrade> = Map::new("prev_upgrade");
+pub const PAST_UPGRADES: Map<u64, PastUpgrade> = Map::new("prev_upgrade");
 
 /// Wasm contract byte codes: code_hash => byte_code
 pub const CODES: IndexedMap<Hash256, Code, CodeIndexes> = IndexedMap::new("codes", CodeIndexes {

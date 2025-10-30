@@ -127,7 +127,7 @@ fn upgrading_without_calling_contract() {
 
     // The upgrade history should have been saved.
     suite
-        .query_upgrades(None, None)
+        .query_past_upgrades(None, None)
         .should_succeed_and_equal(btree_map! {
             3 => PastUpgrade {
                 cargo_version: "0.1.0".to_string(),
