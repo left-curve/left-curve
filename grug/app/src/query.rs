@@ -2,14 +2,14 @@ use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, CONTRACTS,
         GasTracker, LAST_FINALIZED_BLOCK, MeteredItem, MeteredMap, MeteredStorage, NEXT_UPGRADE,
-        PREV_UPGRADES, StorageProvider, Vm, call_in_1_out_1,
+        PAST_UPGRADES, StorageProvider, Vm, call_in_1_out_1,
     },
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config,
         Context, ContractInfo, DEFAULT_PAGE_LIMIT, GenericResult, Hash256, Json, NextUpgrade,
         Order, PastUpgrade, QueryBalanceRequest, QueryBalancesRequest, QueryCodeRequest,
-        QueryCodesRequest, QueryContractRequest, QueryContractsRequest, QueryStatusResponse,
-        QuerySuppliesRequest, QuerySupplyRequest, QueryUpgradesRequest, QueryWasmRawRequest,
+        QueryCodesRequest, QueryContractRequest, QueryContractsRequest, QueryPastUpgradesRequest,
+        QueryStatusResponse, QuerySuppliesRequest, QuerySupplyRequest, QueryWasmRawRequest,
         QueryWasmScanRequest, QueryWasmSmartRequest, StdResult, Storage,
     },
     std::collections::BTreeMap,
@@ -36,25 +36,25 @@ pub fn query_app_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdRe
     APP_CONFIG.load_with_gas(storage, gas_tracker)
 }
 
-pub fn query_upgrades(
-    storage: &dyn Storage,
-    gas_tracker: GasTracker,
-    req: QueryUpgradesRequest,
-) -> StdResult<BTreeMap<u64, PastUpgrade>> {
-    let start = req.start_after.map(Bound::Exclusive);
-    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
-
-    PREV_UPGRADES
-        .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
-        .take(limit as usize)
-        .collect()
-}
-
 pub fn query_next_upgrade(
     storage: &dyn Storage,
     _gas_tracker: GasTracker,
 ) -> StdResult<Option<NextUpgrade>> {
     NEXT_UPGRADE.may_load(storage) // TODO: consume gas
+}
+
+pub fn query_past_upgrades(
+    storage: &dyn Storage,
+    gas_tracker: GasTracker,
+    req: QueryPastUpgradesRequest,
+) -> StdResult<BTreeMap<u64, PastUpgrade>> {
+    let start = req.start_after.map(Bound::Exclusive);
+    let limit = req.limit.unwrap_or(DEFAULT_PAGE_LIMIT);
+
+    PAST_UPGRADES
+        .range_with_gas(storage, gas_tracker, start, None, Order::Ascending)?
+        .take(limit as usize)
+        .collect()
 }
 
 pub fn query_balance<VM>(
