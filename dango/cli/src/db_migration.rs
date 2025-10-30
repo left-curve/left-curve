@@ -6,6 +6,11 @@ use {
 };
 
 pub fn migrate_db(path: PathBuf) {
+    // If the DB doesn't exist, do nothing. This makes PR branch deploy work.
+    if !path.exists() {
+        return;
+    }
+
     tracing::info!("Migrating database");
 
     // ----------------------- Read data from the old DB -----------------------
