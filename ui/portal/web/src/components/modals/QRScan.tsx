@@ -14,7 +14,6 @@ export const QRScan: React.FC<QRScanProps> = ({ onScan }) => {
   const isAlreadyScanned = useRef(false);
   const { ref } = useZxing({
     onError: (error) => console.error(error),
-    onDecodeError: (error) => console.error(error),
     onDecodeResult(rawValue) {
       const value = rawValue.getText();
       console.log("Scanned QR code:", value);
