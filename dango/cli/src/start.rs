@@ -39,15 +39,6 @@ impl StartCmd {
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
 
-        // A one-off special database migration.
-        //
-        // We can't do this via the `UpgradeHandler` because we need lower level
-        // access to the database. In the upgrade handler we only get the state
-        // storage as a `dyn Storage`.
-        //
-        // FIXME: delete after the migration is done.
-        crate::db_migration::migrate_db(app_dir.data_dir());
-
         // Open disk DB.
         let db = DiskDb::<SimpleCommitment>::open(app_dir.data_dir())?;
 

@@ -3318,7 +3318,6 @@ dependencies = [
  "pyth-client",
  "pyth-types",
  "rand 0.8.5",
- "rocksdb",
  "sentry",
  "serde",
  "tendermint",
