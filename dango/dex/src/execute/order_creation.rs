@@ -108,6 +108,7 @@ pub(super) fn create_order(
         pair.min_order_size_base,
         order.base_denom
     );
+
     ensure!(
         amount_in_quote >= pair.min_order_size_quote,
         "order size ({} {}) is less than the minimum ({} {})",
