@@ -186,10 +186,10 @@ const Messages: React.FC = () => {
     <div className="flex flex-col w-full gap-6">
       {!tx.hasSucceeded && errorText && (
         <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
-          <p className="h4-bold text-ink-primary-900">Error</p>
+          <p className="h4-bold text-ink-primary-900">{m["explorer.txs.error"]()}</p>
           <AccordionItem
             key={"error-message"}
-            text={"Message"}
+            text={m["explorer.txs.message"]()}
             classNames={{ text: "capitalize" }}
             defaultExpanded={false}
           >
@@ -199,7 +199,7 @@ const Messages: React.FC = () => {
           </AccordionItem>
           <AccordionItem
             key={"error-backtrace"}
-            text={"Backtrace"}
+            text={m["explorer.txs.backtrace"]()}
             classNames={{ text: "capitalize" }}
           >
             <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
