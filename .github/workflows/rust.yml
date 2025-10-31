@@ -8,6 +8,7 @@ env:
   GIT_COMMIT: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
   DEPLOY_BACKEND_IMAGE_TAG: latest
   DEPLOY_FRONTEND_IMAGE_TAG: latest
+  DEX_BOT_TAG: c1ec727f196a850987bcd9c07d1e5482aca75ce4 # FIXME: remove after PR #30 in the bots repo is merged
 
 on:
   workflow_dispatch:
