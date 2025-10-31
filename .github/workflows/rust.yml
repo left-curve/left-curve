@@ -38,6 +38,7 @@ on:
       - "rustfmt.toml"
       - ".force_backend_rebuild"
       - ".force_frontend_rebuild"
+      - ".force_localdango"
       - ".force_deploy"
       - "networks/localdango/**"
       # - "sdk/**"
@@ -68,6 +69,7 @@ on:
       - "rustfmt.toml"
       - ".force_backend_rebuild"
       - ".force_frontend_rebuild"
+      - ".force_localdango"
       - ".force_deploy"
       - "networks/localdango/**"
       # - "sdk/**"
@@ -117,6 +119,7 @@ jobs:
               - '.force_frontend_rebuild'
             localdango:
               - 'networks/localdango/**'
+              - ".force_localdango"
       - name: Add detected changes to summary
         run: |
           echo "## 🔍 Detected Changes" >> $GITHUB_STEP_SUMMARY
