@@ -139,7 +139,7 @@ const ChainStatusSection: React.FC<ChainStatusSectionProps> = ({ chainStatus }) 
         <CurrentBlock
           classNames={{
             container: "diatype-xs-medium text-ink-tertiary-500",
-            skeleton: "h-4 w-12",
+            skeleton: "h-[16.8px] w-12",
           }}
         />
       </div>

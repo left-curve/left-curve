@@ -253,7 +253,10 @@
       "gasWanted": "Gas Wanted",
       "status": "Status",
       "success": "Success",
-      "failed": "Failed"
+      "failed": "Failed",
+      "error": "Error",
+      "message": "Message",
+      "backtrace": "Backtrace"
     },
     "contracts": {
       "title": "Contract Explorer",
