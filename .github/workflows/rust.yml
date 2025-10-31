@@ -1086,8 +1086,8 @@ jobs:
         run: |
           cd networks/localdango
           cp env-example .env
-          docker compose --profile dango down -v
-          docker compose --profile dango up -d --wait || {
+          docker compose --profile dango --profile dex-bot --profile faucet down -v
+          docker compose --profile dango --profile dex-bot --profile faucet up -d --wait || {
             echo "Services failed to become healthy"
             docker compose ps
             docker compose logs
