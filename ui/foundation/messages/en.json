@@ -256,7 +256,7 @@
       "failed": "Failed",
       "error": "Error",
       "message": "Message",
-      "backtrace":"Backtrace"
+      "backtrace": "Backtrace"
     },
     "contracts": {
       "title": "Contract Explorer",

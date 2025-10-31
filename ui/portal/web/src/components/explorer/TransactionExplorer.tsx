@@ -29,10 +29,7 @@ function getTransactionError(tx: IndexedTransaction): string | null {
     : nested;
 
   const match = text.match(/["']error["']\s*:\s*"(.*?)"/i);
-  if (match?.[1]) {
-    console.log("entra");
-    return match[1].trim();
-  }
+  if (match?.[1]) return match[1].trim();
 
   return null;
 }
@@ -179,7 +176,16 @@ const Messages: React.FC = () => {
   const { nestedEvents, messages } = tx;
   const errorText = getTransactionError(tx);
 
-  const { error, backtrace } = errorText ? JSON.parse(errorText) : { error: null, backtrace: "" };
+  const { error, backtrace } = (() => {
+    if (!errorText) return { error: null, backtrace: "" };
+    try {
+      const parsed = JSON.parse(errorText);
+      return { error: parsed.error ?? null, backtrace: parsed.backtrace ?? "" };
+    } catch {
+      return { error: null, backtrace: errorText };
+    }
+  })();
+
   const formatted = backtrace.replace(/ (\d+):/g, "\n$1:");
 
   return (
@@ -194,7 +200,7 @@ const Messages: React.FC = () => {
             defaultExpanded={false}
           >
             <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
-              <JsonVisualizer json={error} collapsed={0} />
+              <JsonVisualizer json={error} collapsed={1} />
             </div>
           </AccordionItem>
           <AccordionItem
