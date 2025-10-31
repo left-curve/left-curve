@@ -19,6 +19,24 @@ import type { IndexedTransaction } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
+function getTransactionError(tx: IndexedTransaction): string | null {
+  if (tx.errorMessage?.trim()) return tx.errorMessage.trim();
+  const nested = tx.nestedEvents;
+  if (!nested?.trim()) return null;
+
+  const text = JSON.stringify(JSON.parse(nested || "{}")).startsWith("{")
+    ? JSON.stringify(JSON.parse(nested))
+    : nested;
+
+  const match = text.match(/["']error["']\s*:\s*"(.*?)"/i);
+  if (match?.[1]) {
+    console.log("entra");
+    return match[1].trim();
+  }
+
+  return null;
+}
+
 type TransactionProps = {
   txHash: string;
   className?: string;
@@ -65,6 +83,7 @@ const Details: React.FC = () => {
 
   const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
     tx;
+
   return (
     <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-ink-secondary-700 diatype-sm-medium relative overflow-hidden">
       <h1 className="h4-bold text-ink-primary-900">{m["explorer.txs.txDetails"]()}</h1>
@@ -158,9 +177,37 @@ const Messages: React.FC = () => {
   if (!tx) return null;
 
   const { nestedEvents, messages } = tx;
+  const errorText = getTransactionError(tx);
+
+  const { error, backtrace } = errorText ? JSON.parse(errorText) : { error: null, backtrace: "" };
+  const formatted = backtrace.replace(/ (\d+):/g, "\n$1:");
 
   return (
     <div className="flex flex-col w-full gap-6">
+      {!tx.hasSucceeded && errorText && (
+        <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
+          <p className="h4-bold text-ink-primary-900">Error</p>
+          <AccordionItem
+            key={"error-message"}
+            text={"Message"}
+            classNames={{ text: "capitalize" }}
+            defaultExpanded={false}
+          >
+            <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
+              <JsonVisualizer json={{ error }} collapsed={1} />
+            </div>
+          </AccordionItem>
+          <AccordionItem
+            key={"error-backtrace"}
+            text={"Backtrace"}
+            classNames={{ text: "capitalize" }}
+          >
+            <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
+              <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>{formatted}</pre>
+            </div>
+          </AccordionItem>
+        </div>
+      )}
       <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
         <p className="h4-bold text-ink-primary-900">{m["explorer.txs.messages"]()}</p>
         {messages.map(({ data, methodName, orderIdx }) => {

@@ -39,8 +39,9 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
         classNames?.container,
       )}
     >
-      <div
-        className="flex items-center justify-between cursor-pointer"
+      <button
+        type="button"
+        className="flex items-center justify-between cursor-pointer outline-none w-full"
         onClick={() => setIsOpen(!isOpen)}
       >
         <p className={twMerge("diatype-m-bold", classNames?.text)}>{text}</p>
@@ -53,7 +54,7 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
         >
           {icon ? icon : <IconChevronDownFill className="w-4 h-4" />}
         </div>
-      </div>
+      </button>
 
       <AnimatePresence initial={false}>
         {isOpen && (
