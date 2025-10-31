@@ -7,6 +7,11 @@
         pool_name: "pool-{{ pool.name }}-{{ dango_network }}"
         pool_monitor_id: "{{ (monitor_id_map[pool.name] if monitor_id_map is defined and monitor_id_map.get(pool.name) is defined else omit) }}"
 
+    - name: Initialize per-iteration vars
+      set_fact:
+        existing_pool_id: ""
+        created_pool_id: ""
+
     - name: Build origins from inventory hosts
       vars:
         hosts: "{{ groups['full-app'] | default([]) }}"
@@ -37,7 +42,7 @@
         existing_pool_id: "{{ existing_pool.id }}"
 
     - name: Create pool if missing
-      when: existing_pool_id is not defined
+      when: (existing_pool_id | default('') | length) == 0
       uri:
         url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools"
         method: POST
@@ -62,6 +67,7 @@
     - name: Capture created pool id when created
       when: >-
         create_pool is defined and
+        (create_pool.status is defined) and
         create_pool.status == 200 and
         create_pool.json is defined and
         create_pool.json.result is defined and
@@ -70,7 +76,13 @@
         created_pool_id: "{{ create_pool.json.result.id }}"
 
     - name: Warn if pool creation skipped due to origins limit
-      when: create_pool is defined and create_pool.status == 400 and (create_pool.json.errors | map(attribute='code') | list | select('equalto', 1002) | list | length > 0)
+      when: >-
+        create_pool is defined and
+        (create_pool.status is defined) and
+        create_pool.status == 400 and
+        (create_pool.json is defined) and
+        (create_pool.json.errors is defined) and
+        (create_pool.json.errors | map(attribute='code') | list | select('equalto', 1002) | list | length > 0)
       debug:
         msg: >-
           Skipping creation of {{ pool_name }}: account origin limit reached.
