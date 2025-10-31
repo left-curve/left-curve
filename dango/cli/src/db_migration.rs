@@ -13,7 +13,7 @@ pub fn migrate_db(path: PathBuf) {
         return;
     }
 
-    tracing::info!("Migrating database");
+    tracing::info!(?path, "Migrating database");
 
     // ----------------------- Read data from the old DB -----------------------
 
