@@ -835,3 +835,58 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
         })
         .should_succeed_and(|orders| orders.is_empty());
 }
+
+#[test]
+fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    // Provide some liquidity with owner account
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1000,
+                usdc::DENOM.clone() => 5,
+            },
+        )
+        .should_succeed();
+
+    // Feed oracle prices. Use 0 as Timestamp to ensure that the order price is stale.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => oracle::PriceSource::Fixed {
+                    humanized_price: Udec128::new(200),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(0),
+                },
+                usdc::DENOM.clone() => oracle::PriceSource::Fixed {
+                    humanized_price: Udec128::new(1),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(0),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Query simulate provide liquidity with stale oracle price
+    suite
+        .query_wasm_smart(contracts.dex, dex::QuerySimulateProvideLiquidityRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            deposit: CoinPair::new_unchecked(
+                Coin::new(usdc::DENOM.clone(), 1000).unwrap(),
+                Coin::new(dango::DENOM.clone(), 5).unwrap(),
+            ),
+        })
+        .should_fail_with_error("price is too old!");
+}
