@@ -10,11 +10,13 @@ import { Decimal } from "@left-curve/dango/utils";
 
 import {
   Direction,
+  type StatusResponse,
   type Directions,
   type LiquidityDepth,
   type LiquidityDepthResponse,
   type PairId,
   type QueryRequest,
+  type StdResult,
 } from "@left-curve/dango/types";
 import type { AnyCoin } from "../types/coin.js";
 import { create } from "zustand";
@@ -68,19 +70,28 @@ type LiquidityDepthOverview = {
 };
 
 export type LiquidityDepthStoreState = {
+  lastUpdatedBlockHeight: string;
   bucketSizeCoin: "base" | "quote";
   setBucketSizeCoin: (symbol: "base" | "quote") => void;
   liquidityDepth?: {
     asks: LiquidityDepthOverview;
     bids: LiquidityDepthOverview;
   };
-  setLiquidityDepth: (liquidityDepth: LiquidityDepthStoreState["liquidityDepth"]) => void;
+  setLiquidityDepth: (
+    liquidityDepth: LiquidityDepthStoreState["liquidityDepth"] & { blockHeight: string },
+  ) => void;
 };
 
-export const liquidityDepthStore = create<LiquidityDepthStoreState>((set) => ({
+export const liquidityDepthStore = create<LiquidityDepthStoreState>((set, get) => ({
+  lastUpdatedBlockHeight: "0",
   bucketSizeCoin: "base",
   setBucketSizeCoin: (bucketSizeCoin) => set(() => ({ bucketSizeCoin })),
-  setLiquidityDepth: (liquidityDepth) => set(() => ({ liquidityDepth })),
+  setLiquidityDepth: ({ blockHeight, ...liquidityDepth }) => {
+    const { lastUpdatedBlockHeight } = get();
+    if (+blockHeight > +lastUpdatedBlockHeight || blockHeight === "0") {
+      set({ liquidityDepth, lastUpdatedBlockHeight: blockHeight });
+    }
+  },
 }));
 
 type UseLiquidityDepthStateParameters = {
@@ -92,7 +103,7 @@ type UseLiquidityDepthStateParameters = {
 
 export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParameters) {
   const { pairId, subscribe, bucketSize, bucketRecords } = parameters;
-  const { subscriptions, coins } = useConfig();
+  const { subscriptions, coins, captureError } = useConfig();
   const { data: appConfig } = useAppConfig();
 
   const baseCoin = coins.byDenom[pairId.baseDenom];
@@ -105,41 +116,59 @@ export function useLiquidityDepthState(parameters: UseLiquidityDepthStateParamet
       params: {
         interval: 1,
         request: snakeCaseJsonSerialization<QueryRequest>({
-          wasmSmart: {
-            contract: addresses.dex,
-            msg: {
-              liquidityDepth: {
-                baseDenom: baseCoin.denom,
-                quoteDenom: quoteCoin.denom,
-                bucketSize,
+          multi: [
+            {
+              status: {},
+            },
+            {
+              wasmSmart: {
+                contract: addresses.dex,
+                msg: {
+                  liquidityDepth: {
+                    baseDenom: baseCoin.denom,
+                    quoteDenom: quoteCoin.denom,
+                    bucketSize,
+                  },
+                },
               },
             },
-          },
+          ],
         }),
       },
       listener: (event) => {
-        type Event = { wasmSmart: LiquidityDepthResponse };
-        const { wasmSmart: liquidityDepth } = camelCaseJsonDeserialization<Event>(event);
+        type Event = {
+          multi: [
+            StdResult<{ status: StatusResponse }>,
+            StdResult<{ wasmSmart: LiquidityDepthResponse }>,
+          ];
+        };
 
-        const { bucketSizeCoin, setLiquidityDepth } = liquidityDepthStore.getState();
+        const { multi } = camelCaseJsonDeserialization<Event>(event);
+        const [statusResponse, liquidityDepthResponse] = multi;
 
-        const asks = liquidityDepthMapper({
-          records: liquidityDepth.askDepth || [],
-          direction: Direction.Sell,
-          coins: { base: baseCoin, quote: quoteCoin },
-          bucketSizeCoin,
-          bucketRecords,
-        });
+        if ("Ok" in statusResponse && "Ok" in liquidityDepthResponse) {
+          const { status } = statusResponse.Ok;
+          const { wasmSmart: liquidityDepth } = liquidityDepthResponse.Ok;
+          const { bucketSizeCoin, setLiquidityDepth } = liquidityDepthStore.getState();
 
-        const bids = liquidityDepthMapper({
-          records: liquidityDepth.bidDepth || [],
-          direction: Direction.Buy,
-          coins: { base: baseCoin, quote: quoteCoin },
-          bucketSizeCoin,
-          bucketRecords,
-        });
+          const asks = liquidityDepthMapper({
+            records: liquidityDepth.askDepth || [],
+            direction: Direction.Sell,
+            coins: { base: baseCoin, quote: quoteCoin },
+            bucketSizeCoin,
+            bucketRecords,
+          });
 
-        setLiquidityDepth({ asks, bids });
+          const bids = liquidityDepthMapper({
+            records: liquidityDepth.bidDepth || [],
+            direction: Direction.Buy,
+            coins: { base: baseCoin, quote: quoteCoin },
+            bucketSizeCoin,
+            bucketRecords,
+          });
+
+          setLiquidityDepth({ asks, bids, blockHeight: status.lastFinalizedBlock.height });
+        } else captureError(new Error("Failed to fetch liquidity depth data"));
       },
     });
     return unsubscribe;
