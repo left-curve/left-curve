@@ -47,7 +47,7 @@ export const QRCode: React.FC<Props> = ({ data, isLoading, options = {}, ...prop
   }, [isLoading]);
 
   useEffect(() => {
-    console.log("QR Code data updated:", data);
+    if (!data) return;
     qrCode.update({ data });
   }, [data, isLoading]);
 

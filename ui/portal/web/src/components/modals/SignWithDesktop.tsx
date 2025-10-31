@@ -1,8 +1,7 @@
 import { useSigninWithDesktop } from "@left-curve/store";
 import { forwardRef } from "react";
 
-import { Spinner, useApp } from "@left-curve/applets-kit";
-import { QRScan } from "./QRScan";
+import { QRCodeReader, Spinner, useApp } from "@left-curve/applets-kit";
 
 import { WEBRTC_URI } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
@@ -31,12 +30,14 @@ export const SignWithDesktop = forwardRef((_, _ref) => {
     <div className="flex flex-col h-full bg-surface-primary-rice items-center justify-center gap-2">
       {isPending ? (
         <div className="flex flex-col items-center justify-center gap-2 p-4">
-          <Spinner size="lg" color="pink" />
-          <p className="diatype-m-bold text-center">{m["signin.authorizeInDesktop"]()}</p>
+          <Spinner size="lg" color="blue" />
+          <p className="diatype-m-bold text-center text-ink-tertiary-500">
+            {m["signin.authorizeInDesktop"]()}
+          </p>
         </div>
       ) : (
         <div className="h-full w-full">
-          <QRScan onScan={(scannedSocketId) => connectWithDesktop({ socketId: scannedSocketId })} />
+          <QRCodeReader onScan={(socketId) => connectWithDesktop({ socketId })} />
         </div>
       )}
     </div>
