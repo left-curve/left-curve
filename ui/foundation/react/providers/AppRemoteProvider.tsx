@@ -1,9 +1,10 @@
-import { type AppState, createContext, type ToastController } from "@left-curve/foundation";
+import { createContext } from "../utils/context";
 import { requestRemote, useAppConfig, useConfig, type WindowDangoStore } from "@left-curve/store";
-import { useTheme } from "../hooks/useTheme";
 
 import type { PropsWithChildren } from "react";
 import type React from "react";
+import type { AppState } from "./AppProvider";
+import type { ToastController } from "../types/toast";
 
 export interface WindowDangoRemoteApp extends WindowDangoStore {
   dango: WindowDangoStore["dango"] & {
@@ -41,7 +42,6 @@ export { useRemoteApp };
 export const AppRemoteProvider: React.FC<PropsWithChildren> = ({ children }) => {
   const { subscriptions } = useConfig();
   const config = useAppConfig();
-  const _theme = useTheme();
 
   return (
     <RemoteContextProvider
