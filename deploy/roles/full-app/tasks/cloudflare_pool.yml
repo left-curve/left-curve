@@ -1,0 +1,87 @@
+# expects: pool (name), cf_pools, cloudflare_account_id, cloudflare_api_token
+
+- name: Ensure Cloudflare pool for service
+  block:
+    - name: Compute pool name and monitor id
+      set_fact:
+        pool_name: "pool-{{ pool.name }}-{{ dango_network }}"
+        pool_monitor_id: "{{ (monitor_id_map[pool.name] if monitor_id_map is defined and monitor_id_map.get(pool.name) is defined else omit) }}"
+
+    - name: Build origins from inventory hosts
+      vars:
+        hosts: "{{ groups['full-app'] | default([]) }}"
+      set_fact:
+        pool_origins: []
+
+    - name: Append origin for each full-app host
+      vars:
+        hn: "{{ hostvars[item].hostname | default(hostvars[item].cloudflare_tunnel_name | default(item)) }}"
+        addr: "{{ pool.name }}-{{ dango_network }}-{{ hn }}.{{ dango_domain }}"
+        origin_name: "{{ pool.name }}-{{ dango_network }}-{{ hn }}"
+      set_fact:
+        pool_origins: "{{ pool_origins + [ { 'name': origin_name, 'address': addr, 'enabled': true, 'header': { 'Host': [ addr ] } } ] }}"
+      loop: "{{ groups['full-app'] | default([]) }}"
+
+    - name: Find existing pool by name
+      set_fact:
+        existing_pool: >-
+          {{
+            (cf_pools.json.result
+             | selectattr('name','equalto', pool_name)
+             | list | first) | default(None)
+          }}
+
+    - name: Set existing pool id when found
+      when: existing_pool is mapping
+      set_fact:
+        existing_pool_id: "{{ existing_pool.id }}"
+
+    - name: Create pool if missing
+      when: existing_pool_id is not defined
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ pool_name }}"
+          origins: "{{ pool_origins }}"
+          check_regions: ["WEU"]
+          monitor: "{{ pool_monitor_id | default(omit) }}"
+      register: create_pool
+      failed_when: >-
+        not (
+          create_pool.status == 200
+          or (create_pool.status == 409)
+          or (create_pool.status == 400 and (create_pool.json.errors | map(attribute='code') | list | select('equalto', 1002) | list | length > 0))
+        )
+      changed_when: create_pool.status == 200
+
+    - name: Capture created pool id when created
+      when: >-
+        create_pool is defined and
+        create_pool.status == 200 and
+        create_pool.json is defined and
+        create_pool.json.result is defined and
+        (create_pool.json.result is mapping)
+      set_fact:
+        created_pool_id: "{{ create_pool.json.result.id }}"
+
+    - name: Warn if pool creation skipped due to origins limit
+      when: create_pool is defined and create_pool.status == 400 and (create_pool.json.errors | map(attribute='code') | list | select('equalto', 1002) | list | length > 0)
+      debug:
+        msg: >-
+          Skipping creation of {{ pool_name }}: account origin limit reached.
+          Existing pools: {{ (cf_pools.json.result | map(attribute='name') | list) | default([]) }}
+
+    - debug:
+        msg:
+          pool_name: "{{ pool_name }}"
+          existing_pool_id: "{{ existing_pool_id | default('none') }}"
+          created_pool_id: "{{ created_pool_id | default('n/a') }}"
+          origins: "{{ pool_origins | map(attribute='address') | list }}"
+  delegate_to: localhost
+  become: false
+  run_once: true

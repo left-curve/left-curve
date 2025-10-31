@@ -19,131 +19,49 @@
   loop_control:
     loop_var: mon
 
-# # Run these tasks only once, on localhost
-# - block:
-#     - name: Get all monitors (account scope)
-#       uri:
-#         url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/monitors"
-#         method: GET
-#         headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
-#       register: cf_monitors
-#
-#     - name: Build map of existing monitors by (name,path)
-#       set_fact:
-#         monitor_index: >-
-#           {{
-#             dict(
-#               cf_monitors.json.result
-#               | map('extract', {'k':'description','v':'path','id':'id'})
-#               | map('regex_replace','^(.*)$','\g<1>')  # no-op, keeps types
-#             )
-#           }}
-#       vars:
-#         # turn list -> { "name|/path": "id", ... }
-#         map: "{{ dict(cf_monitors.json.result | map('json_query','join(`|`, [description, path])') | zip(cf_monitors.json.result | map(attribute='id'))) }}"
-#       when: false  # helper; see next task
-#
-#     - name: Build map of existing monitors by key "name|path"
-#       set_fact:
-#         monitor_by_key: "{{ dict(cf_monitors.json.result
-#                                    | map('community.general.json_query','{k: join(`|`, [description, path]), v: id}')
-#                                    | map(attribute='k')
-#                                    | zip(cf_monitors.json.result | map(attribute='id'))) }}"
-#   run_once: true
-#   delegate_to: localhost
-#
-# - name: Ensure monitors (WWW/API/FAUCET)
-#   vars:
-#     monitors:
-#       - { name: "www",    path: "/",       expect: "200" }
-#       - { name: "api",    path: "/up",     expect: "200" }
-#       - { name: "faucet", path: "/health", expect: "200" }
-#     key: "{{ item.name }}|{{ item.path }}"
-#   block:
-#     - name: Create monitor if missing
-#       uri:
-#         url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/monitors"
-#         method: POST
-#         headers:
-#           Authorization: "Bearer {{ cloudflare_api_token }}"
-#           Content-Type: "application/json"
-#         body_format: json
-#         body:
-#           type: "https"
-#           method: "GET"
-#           path: "{{ item.path }}"
-#           expected_codes: "{{ item.expect }}"
-#           interval: 60
-#           timeout: 5
-#           retries: 2
-#           description: "{{ item.name }}"   # <- we key on this + path
-#       register: create_mon
-#       when: monitor_by_key.get(key) is not defined
-#       changed_when: create_mon.status == 200
-#
-#     - name: Set monitor id fact
-#       set_fact:
-#         "monitor_id_{{ item.name }}": >-
-#           {{
-#             (monitor_by_key.get(key))
-#             | default(create_mon.json.result.id)
-#           }}
-#   loop: "{{ monitors }}"
-#   run_once: true
-#   delegate_to: localhost
-#
-# - name: List all Cloudflare monitors
-#   run_once: true
-#   delegate_to: localhost
-#   uri:
-#     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/monitors"
-#     method: GET
-#     headers:
-#       Authorization: "Bearer {{ cloudflare_api_token }}"
-#   register: cf_monitors
-#
-# - name: Show monitor names, paths, IDs
-#   debug:
-#     msg: >-
-#       {{
-#         cf_monitors.json.result
-#         | map(attribute='id')
-#         | zip(cf_monitors.json.result | map(attribute='path'))
-#         | zip(cf_monitors.json.result | map(attribute='description'))
-#         | map('flatten')
-#       }}
+- name: Refresh monitors after creation
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/monitors"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_monitors
 
-# - name: Create CF monitors
-#   vars:
-#     monitors:
-#       - { name: "www", path: "/", expect: "200" }
-#       - { name: "api", path: "/up", expect: "200" }
-#       - { name: "faucet", path: "/health", expect: "200" }
-#   loop: "{{ monitors }}"
-#   uri:
-#     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/monitors"
-#     method: POST
-#     headers:
-#       Authorization: "Bearer {{ cloudflare_api_token }}"
-#       Content-Type: "application/json"
-#     body_format: json
-#     body:
-#       expected_codes: "{{ item.expect }}"
-#       method: "GET"
-#       timeout: 5
-#       path: "{{ item.path }}"
-#       interval: 60
-#       retries: 2
-#       type: "https"
-#       description: "{{ item.name }} monitor"
-#   register: monitor_create
-#   failed_when: monitor_create.status not in [200,409]   # 409 means exists
-#   run_once: true
-#   delegate_to: localhost
+- name: Build monitor id map by name
+  run_once: true
+  become: false
+  delegate_to: localhost
+  set_fact:
+    monitor_id_map: "{{ dict(cf_monitors.json.result | map(attribute='description') | zip(cf_monitors.json.result | map(attribute='id'))) }}"
+
+- name: Get all pools
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_pools
+
+- debug: var=cf_pools.json.result
+  run_once: true
+  become: false
+  delegate_to: localhost
+
+- name: Create pools for services
+  vars:
+    pool: { name: "{{ service }}" }
+  include_tasks: cloudflare_pool.yml
+  loop: "{{ monitor_defs | map(attribute='name') | unique | list }}"
+  loop_control:
+    loop_var: service
 
 # - name: Create CF pools
 #   vars:
-#     nets: [devnet, mainnet]
+#     nets: [devnet, testnet]
 #     services: [www, api, faucet]
 #     hosts: [ovh1, ovh2]
 #   loop: "{{ services | product(nets) | product(hosts) | list }}"
@@ -165,7 +83,7 @@
 #       check_regions: ["WEU"]
 #       monitor: "{{ lookup('vars', 'monitor_' + item.0.0 + '_id', default='') }}"
 #   failed_when: monitor_create.status not in [200,409]
-#
+
 # - name: Create CF LBs
 #   vars:
 #     nets: [devnet, mainnet]

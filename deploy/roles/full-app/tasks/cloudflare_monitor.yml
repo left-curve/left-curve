@@ -41,12 +41,17 @@
       set_fact:
         "monitor_id_{{ mon.name }}": "{{ existing_id | default(create_mon.json.result.id) }}"
 
+    - name: Capture created monitor id when created
+      when: create_mon is defined and create_mon.json is defined and not (create_mon.skipped | default(false))
+      set_fact:
+        created_id: "{{ create_mon.json.result.id }}"
+
     - debug:
         msg:
           name: "{{ mon.name }}"
           path: "{{ mon.path }}"
           existing_id: "{{ existing_id | default('none') }}"
-          created_id: "{{ (create_mon.json.result.id if create_mon is defined else 'n/a') }}"
+          created_id: "{{ created_id | default('n/a') }}"
   delegate_to: localhost
   become: false
   run_once: true
