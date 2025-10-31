@@ -3306,7 +3306,7 @@ dependencies = [
  "futures",
  "grug-app",
  "grug-client",
- "grug-db-disk-lite",
+ "grug-db-disk",
  "grug-httpd",
  "grug-types",
  "grug-vm-rust",
@@ -3588,8 +3588,8 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
- "grug-db-disk-lite",
- "grug-db-memory-lite",
+ "grug-db-disk",
+ "grug-db-memory",
  "grug-vm-rust",
  "hex",
  "hex-literal",
@@ -3644,8 +3644,8 @@ dependencies = [
  "grug",
  "grug-app",
  "grug-client",
- "grug-db-disk-lite",
- "grug-db-memory-lite",
+ "grug-db-disk",
+ "grug-db-memory",
  "grug-testing",
  "grug-types",
  "grug-vm-hybrid",
@@ -4744,6 +4744,7 @@ dependencies = [
  "ics23",
  "metrics",
  "prost",
+ "sha2 0.10.9",
  "tendermint",
  "thiserror 2.0.12",
  "tower",
@@ -4796,25 +4797,10 @@ dependencies = [
  "grug-types",
  "hex-literal",
  "ics23",
+ "metrics",
  "proptest",
  "rocksdb",
  "temp-rocksdb",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "grug-db-disk-lite"
-version = "0.0.0"
-dependencies = [
- "error-backtrace",
- "grug-app",
- "grug-types",
- "metrics",
- "ouroboros",
- "rocksdb",
- "sha2 0.10.9",
- "temp-rocksdb",
- "tempfile",
  "thiserror 2.0.12",
  "tracing",
 ]
@@ -4823,23 +4809,12 @@ dependencies = [
 name = "grug-db-memory"
 version = "0.0.0"
 dependencies = [
- "error-backtrace",
- "grug-app",
- "grug-jmt",
- "grug-types",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "grug-db-memory-lite"
-version = "0.0.0"
-dependencies = [
  "anyhow",
  "borsh",
  "error-backtrace",
  "grug-app",
  "grug-types",
- "sha2 0.10.9",
+ "ouroboros",
  "thiserror 2.0.12",
 ]
 
@@ -4898,6 +4873,7 @@ name = "grug-jmt"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "grug-app",
  "grug-storage",
  "grug-types",
  "hex-literal",

@@ -1,7 +1,7 @@
 use {
     crate::{
-        BitArray, INTERNAL_NODE_HASH_PREFIX, InternalNode, LEAF_NODE_HASH_PERFIX, MerkleTree, Node,
-        ROOT_BITS,
+        BitArray, INTERNAL_NODE_HASH_PREFIX, InternalNode, LEAF_NODE_HASH_PERFIX, MerkleTree,
+        NODES, Node, ROOT_BITS,
     },
     grug_types::{Hash256, Order, StdResult, Storage},
     ics23::{HashOp, InnerOp, InnerSpec, LeafOp, LengthOp, ProofSpec},
@@ -36,7 +36,7 @@ pub static ICS23_PROOF_SPEC: LazyLock<ProofSpec> = LazyLock::new(|| ProofSpec {
     prehash_key_before_comparison: true,
 });
 
-impl MerkleTree<'_> {
+impl MerkleTree {
     /// Traverse the tree, find the leaf node containing the key hash, and
     /// return the ICS-23 path (the list of `InnerOp`'s) that can prove this
     /// key's existence.
@@ -47,7 +47,6 @@ impl MerkleTree<'_> {
     /// before calling. This is typically done by querying the state storage
     /// first.
     pub fn ics23_prove_existence(
-        &self,
         storage: &dyn Storage,
         version: u64,
         key_hash: Hash256,
@@ -55,7 +54,7 @@ impl MerkleTree<'_> {
         let mut bits = ROOT_BITS;
         let bitarray = BitArray::from_bytes(&key_hash);
         let mut iter = bitarray.range(None, None, Order::Ascending);
-        let mut node = self.nodes.load(storage, (version, &bits))?;
+        let mut node = NODES.load(storage, (version, &bits))?;
         let mut path = vec![];
 
         loop {
@@ -70,7 +69,7 @@ impl MerkleTree<'_> {
                 }) => match (iter.next(), left_child, right_child) {
                     (Some(0), Some(child), sibling) => {
                         bits.push(0);
-                        node = self.nodes.load(storage, (child.version, &bits))?;
+                        node = NODES.load(storage, (child.version, &bits))?;
                         path.push(InnerOp {
                             // Not sure why we have to include the `HashOp` here
                             // when it's already in the `ProofSpec`.
@@ -81,7 +80,7 @@ impl MerkleTree<'_> {
                     },
                     (Some(1), sibling, Some(child)) => {
                         bits.push(1);
-                        node = self.nodes.load(storage, (child.version, &bits))?;
+                        node = NODES.load(storage, (child.version, &bits))?;
                         path.push(InnerOp {
                             hash: ICS23_PROOF_SPEC.inner_spec.as_ref().unwrap().hash,
                             prefix: [

@@ -10,7 +10,7 @@ use {
         constants::usdc,
     },
     grug::{Coins, ContractWrapper, Hash256, HashExt, JsonSerExt, Op, ResultExt},
-    grug_db_memory_lite::MemDbLite,
+    grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     hyperlane_types::constants::solana,
     indexer_hooked::HookedIndexer,
@@ -19,12 +19,7 @@ use {
 };
 
 pub fn create_user_account(
-    suite: &mut HyperlaneTestSuite<
-        MemDbLite,
-        RustVm,
-        ProposalPreparer<PythClientCache>,
-        HookedIndexer,
-    >,
+    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     contracts: &Contracts,
     test_account: &mut TestAccount,
 ) {
@@ -32,12 +27,7 @@ pub fn create_user_account(
 }
 
 pub fn add_user_public_key(
-    suite: &mut HyperlaneTestSuite<
-        MemDbLite,
-        RustVm,
-        ProposalPreparer<PythClientCache>,
-        HookedIndexer,
-    >,
+    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     contracts: &Contracts,
     test_account: &mut TestAccount,
 ) -> (Key, Hash256) {
@@ -59,12 +49,7 @@ pub fn add_user_public_key(
 }
 
 pub fn add_account_with_existing_user(
-    suite: &mut HyperlaneTestSuite<
-        MemDbLite,
-        RustVm,
-        ProposalPreparer<PythClientCache>,
-        HookedIndexer,
-    >,
+    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     contracts: &Contracts,
     test_account: &mut TestAccount,
 ) -> TestAccount {
@@ -79,12 +64,7 @@ pub fn add_account_with_existing_user(
 }
 
 pub fn create_user_and_account(
-    suite: &mut HyperlaneTestSuite<
-        MemDbLite,
-        RustVm,
-        ProposalPreparer<PythClientCache>,
-        HookedIndexer,
-    >,
+    suite: &mut HyperlaneTestSuite<MemDb, RustVm, ProposalPreparer<PythClientCache>, HookedIndexer>,
     accounts: &mut TestAccounts,
     contracts: &Contracts,
     codes: &Codes<ContractWrapper>,

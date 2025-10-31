@@ -5,6 +5,7 @@ export const Modals = {
   ConfirmSend: "confirm-send",
   ConfirmAccount: "confirm-account",
   SignWithDesktop: "sign-with-desktop",
+  SignWithDesktopFromNativeCamera: "sign-with-desktop-from-native-camera",
   ConfirmSwap: "confirm-swap",
   RenewSession: "renew-session",
   ProTradeCloseAll: "pro-trade-close-all",

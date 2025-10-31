@@ -38,7 +38,9 @@ on:
       - "rustfmt.toml"
       - ".force_backend_rebuild"
       - ".force_frontend_rebuild"
+      - ".force_localdango"
       - ".force_deploy"
+      - "networks/localdango/**"
       # - "sdk/**"
       # - "ui/store/**"
       # - "ui/portal/**"
@@ -67,7 +69,9 @@ on:
       - "rustfmt.toml"
       - ".force_backend_rebuild"
       - ".force_frontend_rebuild"
+      - ".force_localdango"
       - ".force_deploy"
+      - "networks/localdango/**"
       # - "sdk/**"
       # - "ui/store/**"
       # - "ui/portal/**"
@@ -80,6 +84,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      localdango: ${{ steps.filter.outputs.localdango }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -112,6 +117,9 @@ jobs:
               - 'biome.json'
               - 'docker/dango-frontend/**'
               - '.force_frontend_rebuild'
+            localdango:
+              - 'networks/localdango/**'
+              - ".force_localdango"
       - name: Add detected changes to summary
         run: |
           echo "## 🔍 Detected Changes" >> $GITHUB_STEP_SUMMARY
@@ -119,6 +127,7 @@ jobs:
           echo "| --------- | --------------- |" >> $GITHUB_STEP_SUMMARY
           backend_status="${{ steps.filter.outputs.backend }}"
           frontend_status="${{ steps.filter.outputs.frontend }}"
+          localdango_status="${{ steps.filter.outputs.localdango }}"
           if [ "$backend_status" = "true" ]; then
             echo "| backend | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
@@ -128,6 +137,11 @@ jobs:
             echo "| frontend | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
           else
             echo "| frontend | ❌ No |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ "$localdango_status" = "true" ]; then
+            echo "| localdango | ✅ Yes |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| localdango | ❌ No |" >> $GITHUB_STEP_SUMMARY
           fi
 
   format:
@@ -1045,23 +1059,24 @@ jobs:
     env:
       BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
       FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
+      LOCALDANGO_CHANGED: ${{ needs.changes.outputs.localdango }}
     permissions:
       packages: read
     steps:
       - uses: actions/checkout@v4
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
       - uses: docker/setup-buildx-action@v3
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
       - uses: docker/login-action@v3
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Ensure localdango works
-        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true'
+        if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
         env:
           DANGO_TAG: ${{ needs.set-image-tags.outputs.backend_tag }}
           FRONTEND_TAG: ${{ needs.set-image-tags.outputs.frontend_tag }}
@@ -1070,10 +1085,12 @@ jobs:
           DANGO_PORT: 0
           COMETBFT_PORT: 0
           COMETBFT_TAG: v0.38.19
+          PYTH__ACCESS_TOKEN: ${{ secrets.PYTH__ACCESS_TOKEN }}
         run: |
           cd networks/localdango
-          docker compose --profile dango down -v
-          docker compose --profile dango up -d --wait || {
+          cp env-example .env
+          docker compose --profile dango --profile dex-bot --profile faucet -f docker-compose.dango.yml -f docker-compose.yml down -v
+          docker compose --profile dango --profile dex-bot --profile faucet -f docker-compose.dango.yml -f docker-compose.yml up -d --wait || {
             echo "Services failed to become healthy"
             docker compose ps
             docker compose logs
