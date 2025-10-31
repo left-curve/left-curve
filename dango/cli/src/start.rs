@@ -335,7 +335,7 @@ impl StartCmd {
             ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
             indexer,
             grug_cfg.query_gas_limit,
-            None,
+            Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
             env!("CARGO_PKG_VERSION"),
         );
 
