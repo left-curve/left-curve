@@ -8,9 +8,9 @@ use {
     config_parser::parse_config,
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer},
+    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_client::TendermintRpcClient,
-    grug_db_disk_lite::DiskDbLite,
+    grug_db_disk::DiskDb,
     grug_httpd::context::Context as HttpdContext,
     grug_types::GIT_COMMIT,
     grug_vm_rust::RustVm,
@@ -29,6 +29,7 @@ pub struct StartCmd;
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         tracing::info!("Using git commit: {GIT_COMMIT}");
+
         // Initialize metrics handler.
         // This should be done as soon as possible to capture all events.
         let metrics_handler = PrometheusBuilder::new().install_recorder()?;
@@ -38,8 +39,17 @@ impl StartCmd {
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
 
+        // A one-off special database migration.
+        //
+        // We can't do this via the `UpgradeHandler` because we need lower level
+        // access to the database. In the upgrade handler we only get the state
+        // storage as a `dyn Storage`.
+        //
+        // FIXME: delete after the migration is done.
+        crate::db_migration::migrate_db(app_dir.data_dir());
+
         // Open disk DB.
-        let db = DiskDbLite::open(app_dir.data_dir(), cfg.grug.priority_range.as_ref())?;
+        let db = DiskDb::<SimpleCommitment>::open(app_dir.data_dir())?;
 
         // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
         let _codes = RustVm::genesis_codes();
@@ -197,7 +207,7 @@ impl StartCmd {
         sql_indexer: indexer_sql::Indexer,
         indexer_context: indexer_sql::context::Context,
         indexer_path: IndexerPath,
-        app: Arc<App<DiskDbLite, RustVm, NaiveProposalPreparer, NullIndexer>>,
+        app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(
         HookedIndexer,
@@ -322,7 +332,7 @@ impl StartCmd {
         grug_cfg: GrugConfig,
         tendermint_cfg: TendermintConfig,
         pyth_lazer_cfg: PythLazerConfig,
-        db: DiskDbLite,
+        db: DiskDb<SimpleCommitment>,
         vm: RustVm,
         indexer: ID,
     ) -> anyhow::Result<()>

@@ -10,18 +10,23 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-ibc = ["grug-app/ibc", "grug-jmt/ibc", "ics23"]
+ibc     = ["grug-app/ibc", "grug-jmt/ibc", "ics23"]
+metrics = ["dep:metrics", "grug-types/metrics"]
+tracing = ["dep:tracing"]
 
 [dependencies]
 error-backtrace = { workspace = true }
 grug-app        = { workspace = true }
-grug-jmt        = { workspace = true }
+grug-jmt        = { workspace = true, optional = true }
 grug-types      = { workspace = true }
 ics23           = { workspace = true, optional = true }
+metrics         = { workspace = true, optional = true }
 rocksdb         = { workspace = true }
 thiserror       = { workspace = true }
+tracing         = { workspace = true, optional = true }
 
 [dev-dependencies]
+grug-jmt     = { workspace = true }
 hex-literal  = { workspace = true }
 proptest     = { workspace = true }
 temp-rocksdb = { workspace = true }
