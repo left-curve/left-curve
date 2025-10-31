@@ -1067,8 +1067,10 @@ jobs:
           DANGO_PORT: 0
           COMETBFT_PORT: 0
           COMETBFT_TAG: v0.38.19
+          PYTH__ACCESS_TOKEN: ${{ secrets.PYTH__ACCESS_TOKEN }}
         run: |
           cd networks/localdango
+          cp env-example .env
           docker compose --profile dango down -v
           docker compose --profile dango up -d --wait || {
             echo "Services failed to become healthy"
