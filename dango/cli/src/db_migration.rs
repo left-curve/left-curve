@@ -6,9 +6,13 @@ use {
 };
 
 pub fn migrate_db(path: PathBuf) {
-    // If the DB doesn't exist, do nothing. This makes PR branch deploy work.
-    if !path.exists() {
-        tracing::info!(?path, "DB path doesn't exist. Skipping DB migration");
+    // If the DB doesn't exist, or it exists but is empty, do nothing.
+    // This makes PR branch deploy work.
+    if !path.exists() || path.read_dir().unwrap().next().is_none() {
+        tracing::info!(
+            ?path,
+            "DB path doesn't exist or is empty. Skipping DB migration"
+        );
 
         return;
     }
