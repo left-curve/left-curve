@@ -1,7 +1,7 @@
 use {
-    crate::{DbResult, DiskDb, MERKLE_TREE, cf_preimages, new_read_options},
+    crate::{DbResult, DiskDb, cf_preimages, new_read_options},
     grug_app::{Db, IbcDb},
-    grug_jmt::ICS23_PROOF_SPEC,
+    grug_jmt::{ICS23_PROOF_SPEC, MerkleTree},
     grug_types::{HashExt, Storage},
     ics23::{
         CommitmentProof, ExistenceProof, NonExistenceProof,
@@ -10,7 +10,7 @@ use {
     rocksdb::{Direction, IteratorMode},
 };
 
-impl IbcDb for DiskDb {
+impl IbcDb for DiskDb<MerkleTree> {
     fn ics23_prove(
         &self,
         key: Vec<u8>,
@@ -22,7 +22,7 @@ impl IbcDb for DiskDb {
 
         let generate_existence_proof = |key: Vec<u8>, value| -> DbResult<_> {
             let key_hash = key.hash256();
-            let path = MERKLE_TREE.ics23_prove_existence(&state_commitment, version, key_hash)?;
+            let path = MerkleTree::ics23_prove_existence(&state_commitment, version, key_hash)?;
 
             Ok(ExistenceProof {
                 key,
