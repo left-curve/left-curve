@@ -48,7 +48,7 @@ static PARAMS: [(&LazyLock<Denom>, &LazyLock<Denom>, u128); 3] = [
     (&btc::DENOM, &usdc::DENOM, 5_000),
     // 5 (USD) / 4,000 (USD per ETH) * 1e+18 (wei per ETH) = 1.25e+15 wei
     (&eth::DENOM, &usdc::DENOM, 1_250_000_000_000_000),
-    // 5 (USD) / 200 (USD per SOL) * 1e+9 (lamports per ETH) = 25,000,000 lamports
+    // 5 (USD) / 200 (USD per SOL) * 1e+9 (lamports per SOL) = 25,000,000 lamports
     (&sol::DENOM, &usdc::DENOM, 25_000_000),
 ];
 
