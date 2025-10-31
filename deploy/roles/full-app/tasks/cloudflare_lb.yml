@@ -59,31 +59,6 @@
   loop_control:
     loop_var: service
 
-# - name: Create CF pools
-#   vars:
-#     nets: [devnet, testnet]
-#     services: [www, api, faucet]
-#     hosts: [ovh1, ovh2]
-#   loop: "{{ services | product(nets) | product(hosts) | list }}"
-#   uri:
-#     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools"
-#     method: POST
-#     headers:
-#       Authorization: "Bearer {{ cloudflare_api_token }}"
-#       Content-Type: "application/json"
-#     body_format: json
-#     body:
-#       name: "pool-{{ item.0.0 }}-{{ item.0.1 }}-{{ item.1 }}"
-#       origins:
-#         - name: "{{ item.0.0 }}-{{ item.0.1 }}-{{ item.1 }}"
-#           address: "{{ item.0.0 }}-{{ item.0.1 }}-{{ item.1 }}.{{ dango_domain }}"
-#           enabled: true
-#           header:
-#             Host: "{{ item.0.0 }}-{{ item.0.1 }}-{{ item.1 }}.{{ dango_domain }}"
-#       check_regions: ["WEU"]
-#       monitor: "{{ lookup('vars', 'monitor_' + item.0.0 + '_id', default='') }}"
-#   failed_when: monitor_create.status not in [200,409]
-
 # - name: Create CF LBs
 #   vars:
 #     nets: [devnet, mainnet]
