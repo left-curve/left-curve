@@ -84,9 +84,12 @@ export const QRConnect = forwardRef((_props, _ref) => {
       <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
       <div className="flex justify-center items-center p-8">
         <QRCode
-          className="bg-surface-primary-rice"
           isLoading={isLoadingDataChannel || isLoadingCredential}
-          data={`${document.location.origin}/signin?socketId=${dataChannel?.getSocketId()}`}
+          data={
+            dataChannel
+              ? `${document.location.origin}/signin?socketId=${dataChannel.getSocketId()}`
+              : undefined
+          }
         />
       </div>
     </div>
