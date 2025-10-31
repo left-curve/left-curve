@@ -8,6 +8,8 @@ use {
 pub fn migrate_db(path: PathBuf) {
     // If the DB doesn't exist, do nothing. This makes PR branch deploy work.
     if !path.exists() {
+        tracing::info!(?path, "DB path doesn't exist. Skipping DB migration");
+
         return;
     }
 
@@ -63,7 +65,7 @@ pub fn migrate_db(path: PathBuf) {
         "expect data dir to be deleted, but it still exists"
     );
 
-    tracing::info!(path = path.to_str().unwrap(), "Deleted old database");
+    tracing::info!(?path, "Deleted old database");
 
     // ----------------------- Write data to the new DB ------------------------
 
