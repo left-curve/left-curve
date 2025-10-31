@@ -2,7 +2,7 @@
 
 - name: Find existing monitor by name+path
   set_fact:
-    _existing_mon: >-
+    existing_mon: >-
       {{
         (cf_monitors.json.result
          | selectattr('description','equalto', mon.name)
@@ -12,10 +12,10 @@
 
 - name: Derive existing monitor id safely
   set_fact:
-    _existing_id: "{{ (_existing_mon is mapping) | ternary(_existing_mon.id, omit) }}"
+    existing_id: "{{ (existing_mon is mapping) | ternary(existing_mon.id, omit) }}"
 
 - name: Create monitor if missing
-  when: _existing_id is not defined
+  when: existing_id is not defined
   uri:
     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/monitors"
     method: POST
@@ -32,15 +32,15 @@
       timeout: 5
       retries: 2
       description: "{{ mon.name }}"
-  register: _create_mon
+  register: create_mon
 
 - name: Expose monitor id fact per service
   set_fact:
-    "monitor_id_{{ mon.name }}": "{{ _existing_id | default(_create_mon.json.result.id) }}"
+    "monitor_id_{{ mon.name }}": "{{ existing_id | default(create_mon.json.result.id) }}"
 
 - debug:
     msg:
       name: "{{ mon.name }}"
       path: "{{ mon.path }}"
-      existing_id: "{{ _existing_id | default('none') }}"
-      created_id: "{{ (_create_mon.json.result.id if _create_mon is defined else 'n/a') }}"
+      existing_id: "{{ existing_id | default('none') }}"
+      created_id: "{{ (create_mon.json.result.id if create_mon is defined else 'n/a') }}"
