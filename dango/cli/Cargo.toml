@@ -55,10 +55,6 @@ tower-abci                  = { workspace = true }
 tracing                     = { workspace = true }
 tracing-subscriber          = { workspace = true }
 
-# Used only by the one-off DB migration.
-# FIXME: delete
-rocksdb = { workspace = true }
-
 [[bin]]
 name = "dango"
 path = "src/main.rs"
