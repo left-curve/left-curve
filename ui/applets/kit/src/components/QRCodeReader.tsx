@@ -17,7 +17,6 @@ export const QRCodeReader: React.FC<QRCodeReaderProps> = ({ onScan }) => {
   const { ref: videoRef, hasInitialized } = useQRCodeReader({
     onDecodeResult: (rawValue) => {
       const value = rawValue.getText();
-      console.log("Scanned QR code:", value);
       const socketId = value.split("socketId=")[1];
       if (!socketId) return;
       if (isAlreadyScanned.current) return;

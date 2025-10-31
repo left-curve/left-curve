@@ -47,7 +47,6 @@ export function useQRCodeReader(parameters: UseQRCodeReaderParameters) {
   }, []);
 
   useEffect(() => {
-    console.log("video element *:", ref.current);
     const videoElement = ref.current;
     if (!videoElement) return;
 
@@ -67,10 +66,8 @@ export function useQRCodeReader(parameters: UseQRCodeReaderParameters) {
             decodeCallback,
           );
         }
-        console.log("QR reader initialized");
         setHasInitialized(true);
       } catch (e: unknown) {
-        console.log("QR reader initialization error:", e);
         decodeErrorHandlerRef.current?.(e as Exception);
       }
     };
