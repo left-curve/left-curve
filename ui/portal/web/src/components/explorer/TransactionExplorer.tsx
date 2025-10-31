@@ -19,21 +19,6 @@ import type { IndexedTransaction } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
 import type { PropsWithChildren } from "react";
 
-function getTransactionError(tx: IndexedTransaction): string | null {
-  if (tx.errorMessage?.trim()) return tx.errorMessage.trim();
-  const nested = tx.nestedEvents;
-  if (!nested?.trim()) return null;
-
-  const text = JSON.stringify(JSON.parse(nested || "{}")).startsWith("{")
-    ? JSON.stringify(JSON.parse(nested))
-    : nested;
-
-  const match = text.match(/["']error["']\s*:\s*"(.*?)"/i);
-  if (match?.[1]) return match[1].trim();
-
-  return null;
-}
-
 type TransactionProps = {
   txHash: string;
   className?: string;
@@ -173,45 +158,50 @@ const Messages: React.FC = () => {
 
   if (!tx) return null;
 
-  const { nestedEvents, messages } = tx;
-  const errorText = getTransactionError(tx);
+  const { nestedEvents, messages, errorMessage } = tx;
 
   const { error, backtrace } = (() => {
-    if (!errorText) return { error: null, backtrace: "" };
+    if (!errorMessage) return { error: undefined, backtrace: undefined };
     try {
-      const parsed = JSON.parse(errorText);
-      return { error: parsed.error ?? null, backtrace: parsed.backtrace ?? "" };
+      const parsed = JSON.parse(errorMessage);
+      return { error: parsed.error, backtrace: parsed.backtrace };
     } catch {
-      return { error: null, backtrace: errorText };
+      return { error: undefined, backtrace: undefined };
     }
   })();
 
-  const formatted = backtrace.replace(/ (\d+):/g, "\n$1:");
+  const shouldShowErrorAccordion = errorMessage && (error || backtrace);
 
   return (
     <div className="flex flex-col w-full gap-6">
-      {!tx.hasSucceeded && errorText && (
+      {shouldShowErrorAccordion && (
         <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
           <p className="h4-bold text-ink-primary-900">{m["explorer.txs.error"]()}</p>
-          <AccordionItem
-            key={"error-message"}
-            text={m["explorer.txs.message"]()}
-            classNames={{ text: "capitalize", menu: "overflow-visible" }}
-            defaultExpanded={false}
-          >
-            <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
-              <JsonVisualizer json={error} collapsed={1} />
-            </div>
-          </AccordionItem>
-          <AccordionItem
-            key={"error-backtrace"}
-            text={m["explorer.txs.backtrace"]()}
-            classNames={{ text: "capitalize", menu: "overflow-visible" }}
-          >
-            <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
-              <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>{formatted}</pre>
-            </div>
-          </AccordionItem>
+          {error && (
+            <AccordionItem
+              key={"error-message"}
+              text={m["explorer.txs.message"]()}
+              classNames={{ text: "capitalize", menu: "overflow-visible" }}
+              defaultExpanded={false}
+            >
+              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
+                <JsonVisualizer json={{ error }} collapsed={1} />
+              </div>
+            </AccordionItem>
+          )}
+          {backtrace && (
+            <AccordionItem
+              key={"error-backtrace"}
+              text={m["explorer.txs.backtrace"]()}
+              classNames={{ text: "capitalize", menu: "overflow-visible" }}
+            >
+              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
+                <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+                  {backtrace.replace(/ (\d+):/g, "\n$1:")}
+                </pre>
+              </div>
+            </AccordionItem>
+          )}
         </div>
       )}
       <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
