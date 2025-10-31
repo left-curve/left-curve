@@ -38,8 +38,10 @@ export const SignWithDesktopFromNativeCamera = forwardRef<
   return (
     <div className="flex flex-col h-full bg-surface-primary-rice items-center justify-center gap-2">
       <div className="flex flex-col items-center justify-center gap-2 p-4">
-        <Spinner size="lg" color="pink" />
-        <p className="diatype-m-bold text-center">{m["signin.authorizeInDesktop"]()}</p>
+        <Spinner size="lg" color="blue" />
+        <p className="diatype-m-bold text-center text-ink-tertiary-500">
+          {m["signin.authorizeInDesktop"]()}
+        </p>
       </div>
     </div>
   );
