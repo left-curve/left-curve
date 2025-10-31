@@ -3,6 +3,18 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FocusEvent } from "react";
 
 export type Controllers = {
+  register: (
+    name: string,
+    options?: InputOptions,
+  ) => {
+    ref: (el: HTMLInputElement | null) => void;
+    name: string;
+    value: string;
+    errorMessage?: string;
+    onChange: (event: ChangeEvent<HTMLInputElement> | string) => void;
+    onBlur: (event: FocusEvent<HTMLInputElement>) => void;
+  };
+  handleSubmit: <T>(fn: (data: T) => void) => (e: React.FormEvent<HTMLFormElement>) => void;
   inputs: Record<string, { value: string }>;
   reset: () => void;
   setValue: (name: string, value: string) => void;

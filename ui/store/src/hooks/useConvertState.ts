@@ -1,19 +1,32 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { startTransition, useMemo, useState } from "react";
 import { useAppConfig } from "./useAppConfig.js";
 import { useConfig } from "./useConfig.js";
 import { usePrices } from "./usePrices.js";
 import { usePublicClient } from "./usePublicClient.js";
 
-import { formatUnits } from "@left-curve/dango/utils";
+import { formatUnits, parseUnits } from "@left-curve/dango/utils";
 
-import type { Coin, PairUpdate } from "@left-curve/dango/types";
-
-const BASE_DENOM = "USDC";
+import type { Address, Coin, PairUpdate } from "@left-curve/dango/types";
+import { useSubmitTx } from "./useSubmitTx.js";
+import { useAccount } from "./useAccount.js";
+import { useSigningClient } from "./useSigningClient.js";
 
 export type UseConvertStateParameters = {
   pair: { from: string; to: string };
+  controllers: {
+    inputs: Record<string, { value: string }>;
+    reset: () => void;
+    setValue: (name: string, value: string) => void;
+  };
   onChangePair: (pair: { from: string; to: string }) => void;
+  submission: {
+    onError: (error: unknown) => void;
+    confirm: () => Promise<void>;
+  };
+  simulation: {
+    onError: (error: unknown) => void;
+  };
 };
 
 export type ConvertInfo = {
@@ -24,35 +37,48 @@ export type ConvertInfo = {
 };
 
 export function useConvertState(parameters: UseConvertStateParameters) {
-  const { onChangePair } = parameters;
+  const { onChangePair, controllers } = parameters;
+  const { inputs, setValue } = controllers;
   const { from, to } = parameters.pair;
   const { coins } = useConfig();
-  const { data: config, ...pairs } = useAppConfig();
+  const { account } = useAccount();
+  const client = usePublicClient();
+  const { data: config } = useAppConfig();
+  const { data: signingClient } = useSigningClient();
+
   const { getPrice } = usePrices();
 
-  const client = usePublicClient();
+  const pairId = useMemo(
+    () => ({
+      base: from === "USDC" ? coins.bySymbol[to] : coins.bySymbol[from],
+      quote: from === "USDC" ? coins.bySymbol[from] : coins.bySymbol[to],
+    }),
+    [from, to],
+  );
 
-  const changeQuote = (quote: string) => {
-    const newPair = isReverse ? { from: quote, to } : { from, to: quote };
+  const pair = config?.pairs[pairId.base.denom];
+
+  const changePair = (symbol: string) => {
+    const newPair = isReverse ? { from: symbol, to } : { from, to: symbol };
     onChangePair(newPair);
   };
 
   const [direction, setDirection] = useState<"reverse" | "normal">(
-    from === BASE_DENOM ? "normal" : "reverse",
+    from === "USDC" ? "normal" : "reverse",
   );
 
   const toggleDirection = () => {
-    const newPair = { from: to, to: from };
-    onChangePair(newPair);
-    setDirection(isReverse ? "normal" : "reverse");
+    startTransition(() => {
+      const newPair = { from: to, to: from };
+      onChangePair(newPair);
+      setDirection(isReverse ? "normal" : "reverse");
+    });
   };
 
   const isReverse = direction === "reverse";
 
-  const baseCoin = coins.bySymbol[isReverse ? to : from];
-  const quoteCoin = coins.bySymbol[isReverse ? from : to];
-
-  const pair = config?.pairs?.[quoteCoin.denom];
+  const fromCoin = coins.bySymbol[from];
+  const toCoin = coins.bySymbol[to];
 
   const statistics = useQuery({
     queryKey: ["pair_statistics"],
@@ -62,17 +88,51 @@ export function useConvertState(parameters: UseConvertStateParameters) {
     },
   });
 
-  const {
-    mutateAsync: simulate,
-    mutate: _,
-    ...simulation
-  } = useMutation({
-    mutationFn: async (operation: { input: Coin; pair: PairUpdate }) => {
-      const { input, pair } = operation;
-      const output = await client.simulateSwapExactAmountIn({
-        input,
-        route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
+  const simulation = useMutation({
+    onError: (e, direction) => {
+      setValue(direction === "from" ? "to" : "from", "0");
+      parameters.simulation.onError(e);
+    },
+    mutationFn: async (direction: "from" | "to") => {
+      const fromAmount = inputs.from?.value || "0";
+      const toAmount = inputs.to?.value || "0";
+
+      if (direction === "from") {
+        const input = {
+          denom: fromCoin.denom,
+          amount: parseUnits(fromAmount, fromCoin.decimals),
+        };
+
+        if (fromAmount === "0") {
+          setValue("to", "0");
+          return { input, output: { denom: toCoin.denom, amount: "0" } };
+        }
+
+        const output = await client.simulateSwapExactAmountIn({
+          input,
+          route: [{ baseDenom: pairId.base.denom, quoteDenom: pairId.quote.denom }],
+        });
+
+        setValue("to", formatUnits(output.amount, toCoin.decimals));
+        return { input, output };
+      }
+
+      const output = {
+        denom: toCoin.denom,
+        amount: parseUnits(toAmount, toCoin.decimals),
+      };
+
+      if (toAmount === "0") {
+        setValue("from", "0");
+        return { input: { denom: fromCoin.denom, amount: "0" }, output };
+      }
+
+      const input = await client.simulateSwapExactAmountOut({
+        output,
+        route: [{ baseDenom: pairId.base.denom, quoteDenom: pairId.quote.denom }],
       });
+
+      setValue("from", formatUnits(input.amount, fromCoin.decimals));
 
       return { input, output };
     },
@@ -88,21 +148,47 @@ export function useConvertState(parameters: UseConvertStateParameters) {
     );
   }, [pair, simulation.data]);
 
+  const submission = useSubmitTx({
+    mutation: {
+      invalidateKeys: [["quests", account?.username]],
+      mutationFn: async (_, { abort }) => {
+        if (!signingClient) throw new Error("error: no signing client");
+        if (!pair) throw new Error("error: no pair");
+        if (!simulation.data) throw new Error("error: no simulation data");
+
+        const { input } = simulation.data;
+
+        await parameters.submission.confirm().catch(abort);
+
+        await signingClient.swapExactAmountIn({
+          sender: account!.address as Address,
+          route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
+          input: {
+            denom: input.denom,
+            amount: input.amount,
+          },
+        });
+      },
+      onSuccess: () => {
+        controllers.reset();
+        simulation.reset();
+      },
+    },
+  });
+
   return {
     coins,
     pair,
-    pairs: { ...pairs, data: config?.pairs || {} },
+    pairId,
     statistics,
-    quote: quoteCoin,
-    base: baseCoin,
+    fromCoin,
+    toCoin,
     isReverse,
     direction,
     fee,
     toggleDirection,
-    changeQuote,
-    simulation: {
-      simulate,
-      ...simulation,
-    },
+    changePair,
+    submission,
+    simulation,
   };
 }

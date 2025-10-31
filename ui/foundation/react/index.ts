@@ -2,6 +2,7 @@
 /*                                    Hooks                                   */
 /* -------------------------------------------------------------------------- */
 
+export { useApp } from "./hooks/useApp.js";
 export { usePagination, type UsePaginationParameters } from "./hooks/usePagination.js";
 export { useControlledState } from "./hooks/useControlledState.js";
 export { useCountdown } from "./hooks/useCountdown.js";
@@ -16,10 +17,10 @@ export { WizardProvider, useWizard } from "./providers/WizardProvider.js";
 
 export {
   AppProvider,
-  useApp,
   type AppProviderProps,
   type AppState,
 } from "./providers/AppProvider.js";
+export { AppRemoteProvider } from "./providers/AppRemoteProvider.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                    Types                                   */
