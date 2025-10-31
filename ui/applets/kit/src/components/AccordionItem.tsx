@@ -15,6 +15,7 @@ type AccordionItemProps = {
     container?: string;
     text?: string;
     icon?: string;
+    menu?: string;
   };
   defaultExpanded?: boolean;
   onChange?: (isOpen: boolean) => void;
@@ -63,7 +64,7 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden"
+            className={twMerge("overflow-hidden", classNames?.menu)}
           >
             <div className="w-full pt-4">{children}</div>
           </motion.div>

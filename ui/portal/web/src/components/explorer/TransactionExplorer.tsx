@@ -190,17 +190,17 @@ const Messages: React.FC = () => {
           <AccordionItem
             key={"error-message"}
             text={m["explorer.txs.message"]()}
-            classNames={{ text: "capitalize" }}
+            classNames={{ text: "capitalize", menu: "overflow-visible" }}
             defaultExpanded={false}
           >
             <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
-              <JsonVisualizer json={{ error }} collapsed={1} />
+              <JsonVisualizer json={error} collapsed={0} />
             </div>
           </AccordionItem>
           <AccordionItem
             key={"error-backtrace"}
             text={m["explorer.txs.backtrace"]()}
-            classNames={{ text: "capitalize" }}
+            classNames={{ text: "capitalize", menu: "overflow-visible" }}
           >
             <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
               <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>{formatted}</pre>
@@ -216,7 +216,7 @@ const Messages: React.FC = () => {
             <AccordionItem
               key={orderIdx}
               text={methodName}
-              classNames={{ text: "capitalize" }}
+              classNames={{ text: "capitalize", menu: "overflow-visible" }}
               defaultExpanded
             >
               <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
