@@ -13,10 +13,7 @@ type QRScanProps = {
 export const QRScan: React.FC<QRScanProps> = ({ onScan }) => {
   const isAlreadyScanned = useRef(false);
   const { ref } = useZxing({
-    hints: new Map<DecodeHintType, any>([
-      [DecodeHintType.TRY_HARDER, true],
-      [DecodeHintType.POSSIBLE_FORMATS, ["QR_CODE"]],
-    ]),
+    hints: new Map<DecodeHintType, any>([[DecodeHintType.POSSIBLE_FORMATS, ["QR_CODE"]]]),
     onError: (error) => console.error(error),
     onDecodeResult(rawValue) {
       const value = rawValue.getText();
