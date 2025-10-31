@@ -59,6 +59,41 @@
   loop_control:
     loop_var: service
 
+# Zone-scoped Load Balancers
+- name: Ensure Cloudflare zone id
+  run_once: true
+  become: false
+  delegate_to: localhost
+  when: cloudflare_zone_id is not defined
+  block:
+    - name: Lookup Cloudflare zone by name
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones?name={{ dango_domain }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+      register: zone_info
+
+    - name: Set Cloudflare zone id
+      set_fact:
+        cloudflare_zone_id: "{{ zone_info.json.result[0].id }}"
+
+- name: Get all load balancers
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/load_balancers"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_load_balancers
+
+- debug: var=cf_load_balancers.json.result
+  run_once: true
+  become: false
+  delegate_to: localhost
+
 # - name: Create CF LBs
 #   vars:
 #     nets: [devnet, mainnet]
