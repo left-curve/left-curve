@@ -75,6 +75,24 @@
       set_fact:
         created_pool_id: "{{ create_pool.json.result.id }}"
 
+    - name: Update pool to desired state (always)
+      when: (existing_pool_id | default('') | length) > 0
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools/{{ existing_pool_id }}"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ pool_name }}"
+          origins: "{{ pool_origins }}"
+          check_regions: ["WEU"]
+          monitor: "{{ pool_monitor_id | default(omit) }}"
+      register: update_pool
+      failed_when: update_pool.status not in [200]
+      changed_when: false
+
     - name: Warn if pool creation skipped due to origins limit
       when: >-
         create_pool is defined and
@@ -94,6 +112,7 @@
           existing_pool_id: "{{ existing_pool_id | default('none') }}"
           created_pool_id: "{{ created_pool_id | default('n/a') }}"
           origins: "{{ pool_origins | map(attribute='address') | list }}"
+          update_status: "{{ (update_pool.status if (update_pool is defined and update_pool.status is defined) else 'n/a') }}"
   delegate_to: localhost
   become: false
   run_once: true
