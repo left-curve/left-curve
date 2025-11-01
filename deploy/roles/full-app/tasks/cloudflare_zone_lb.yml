@@ -59,6 +59,50 @@
       debug:
         msg: "Skipping LB {{ lb_name }} because pool {{ pool_name }} was not found."
 
+    - name: Extract existing LB attributes safely
+      when: (existing_lb_id | default('') | length) > 0
+      set_fact:
+        existing_default_pools: "{{ existing_lb.default_pools | default([]) }}"
+        existing_fallback_pool: "{{ existing_lb.fallback_pool | default('') }}"
+        existing_proxied: "{{ existing_lb.proxied | default(false) }}"
+        existing_steering: "{{ existing_lb.steering_policy | default('off') }}"
+        existing_affinity: "{{ existing_lb.session_affinity | default('') }}"
+        existing_affinity_ttl: "{{ (existing_lb.session_affinity_attributes.ttl if (existing_lb.session_affinity_attributes is defined and existing_lb.session_affinity_attributes.ttl is defined) else 0) }}"
+
+    - name: Decide if LB needs update
+      when: (existing_lb_id | default('') | length) > 0 and (pool_id is defined)
+      set_fact:
+        need_update: >-
+          {{
+            (existing_default_pools != [ pool_id ])
+            or (existing_fallback_pool != pool_id)
+            or (existing_proxied != true)
+            or (existing_steering != 'random')
+            or (existing_affinity != 'cookie')
+            or (existing_affinity_ttl | int != 3600)
+          }}
+
+    - name: Update LB to desired state
+      when: (existing_lb_id | default('') | length) > 0 and (pool_id is defined) and (need_update | default(false))
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/load_balancers/{{ existing_lb_id }}"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ lb_name }}"
+          default_pools: [ "{{ pool_id }}" ]
+          fallback_pool: "{{ pool_id }}"
+          proxied: true
+          steering_policy: "random"
+          session_affinity: "cookie"
+          session_affinity_attributes: { ttl: 3600 }
+      register: update_lb
+      failed_when: update_lb.status not in [200]
+      changed_when: update_lb.status == 200
+
     - name: Debug LB ensure summary
       debug:
         msg:
@@ -66,7 +110,9 @@
           pool_name: "{{ pool_name }}"
           pool_id: "{{ pool_id | default('missing') }}"
           existing_lb_id: "{{ existing_lb_id | default('none') }}"
-          created_status: "{{ (create_lb.status if create_lb is defined else 'skipped') }}"
+          created_status: "{{ (create_lb.status if (create_lb is defined and create_lb.status is defined) else 'n/a') }}"
+          updated: "{{ need_update | default(false) }}"
+          update_status: "{{ (update_lb.status if (update_lb is defined and update_lb.status is defined) else 'n/a') }}"
   delegate_to: localhost
   become: false
   run_once: true
