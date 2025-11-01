@@ -6,8 +6,8 @@ use {
         },
     },
     grug::{
-        Addr, Bounded, Coin, CoinPair, Denom, MaxLength, NonZero, Timestamp, Udec128, Udec128_6,
-        Uint128, UniqueVec, ZeroInclusiveOneExclusive,
+        Addr, Bounded, Coin, CoinPair, Denom, LengthBounded, NonZero, Timestamp, Udec128,
+        Udec128_6, Uint128, UniqueVec, ZeroInclusiveOneExclusive,
     },
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -24,7 +24,7 @@ use {
 /// support comes with USDC as the quote asset. As such, it's possible to go
 /// from any one asset to any other in no more than 2 hops. If we plan to support
 /// non-USDC quoted pairs, the maximum route length can be adjusted.
-pub type SwapRoute = MaxLength<UniqueVec<PairId>, 2>;
+pub type SwapRoute = LengthBounded<UniqueVec<PairId>, 1, 2>;
 
 pub type MaxSlippage = Bounded<Udec128, ZeroInclusiveOneExclusive>;
 
