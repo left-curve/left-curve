@@ -1,0 +1,15 @@
+protocol: quic
+edge-ip-version: auto
+ha-connections: 12
+transport-loglevel: warn
+
+ingress:
+{% for net in ['devnet', 'testnet'] %}
+  - hostname: api-{{ net }}-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik[net].ports.dango_port }}
+  - hostname: www-{{ net }}-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik[net].ports.dango_frontend_port }}
+  - hostname: faucet-{{ net }}-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik[net].ports.faucet_port }}
+{% endfor %}
+  - service: http_status:404

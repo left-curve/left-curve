@@ -1,0 +1,8 @@
+ingress:
+  - hostname: api-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
+    service: http://dango:8080
+  - hostname: www-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
+    service: http://dango-frontend
+  - hostname: faucet-pr-{{ github_pr_number }}-{{ hostname }}.{{ dango_domain }}
+    service: http://faucet-bot:8082
+  - service: http_status:404
