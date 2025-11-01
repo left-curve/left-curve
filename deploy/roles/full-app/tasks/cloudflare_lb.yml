@@ -59,6 +59,17 @@
   loop_control:
     loop_var: service
 
+# Refresh pools to capture any newly-created IDs
+- name: Refresh pools after creation
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_pools
+
 # Zone-scoped Load Balancers
 - name: Ensure Cloudflare zone id
   run_once: true
@@ -94,26 +105,11 @@
   become: false
   delegate_to: localhost
 
-# - name: Create CF LBs
-#   vars:
-#     nets: [devnet, mainnet]
-#     services: [www, api, faucet]
-#   loop: "{{ services | product(nets) | list }}"
-#   uri:
-#     url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/load_balancers"
-#     method: POST
-#     headers:
-#       Authorization: "Bearer {{ cloudflare_api_token }}"
-#       Content-Type: "application/json"
-#     body_format: json
-#     body:
-#       name: "{{ item.0 }}-{{ item.1 }}.{{ dango_domain }}"
-#       default_pools:
-#         - "pool-{{ item.0 }}-{{ item.1 }}-ovh1"
-#         - "pool-{{ item.0 }}-{{ item.1 }}-ovh2"
-#       fallback_pool: "pool-{{ item.0 }}-{{ item.1 }}-ovh1"
-#       proxied: true
-#       steering_policy: "weighted"
-#       session_affinity: "cookie"
-#       session_affinity_attributes: { ttl: 3600 }
-#   failed_when: monitor_create.status not in [200,409]
+- name: Create LBs for services and networks
+  vars:
+    services: "{{ monitor_defs | map(attribute='name') | unique | list }}"
+    nets: "{{ target_networks | default([dango_network]) }}"
+  include_tasks: cloudflare_zone_lb.yml
+  loop: "{{ services | product(nets) | list }}"
+  loop_control:
+    loop_var: svcnet

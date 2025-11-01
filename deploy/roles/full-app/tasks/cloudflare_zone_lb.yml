@@ -1,0 +1,72 @@
+# expects: svcnet (tuple [service, net]), cf_pools, cf_load_balancers, cloudflare_zone_id, cloudflare_api_token
+
+- name: Ensure Cloudflare zone LB
+  block:
+    - name: Derive service/network and names
+      set_fact:
+        lb_service: "{{ svcnet.0 }}"
+        lb_network: "{{ svcnet.1 }}"
+        lb_name: "lb-{{ svcnet.0 }}-{{ svcnet.1 }}.{{ dango_domain }}"
+        pool_name: "pool-{{ svcnet.0 }}-{{ svcnet.1 }}"
+
+    - name: Lookup pool id for service/network
+      set_fact:
+        pool_id: >-
+          {{
+            (cf_pools.json.result
+             | selectattr('name','equalto', pool_name)
+             | map(attribute='id')
+             | list | first) | default(omit)
+          }}
+
+    - name: Find existing LB by name
+      set_fact:
+        existing_lb: >-
+          {{
+            (cf_load_balancers.json.result
+             | selectattr('name','equalto', lb_name)
+             | list | first) | default(None)
+          }}
+
+    - name: Set existing LB id when found
+      when: existing_lb is mapping
+      set_fact:
+        existing_lb_id: "{{ existing_lb.id }}"
+
+    - name: Create LB if missing
+      when: (existing_lb_id | default('') | length) == 0 and (pool_id is defined)
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/load_balancers"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ lb_name }}"
+          default_pools: [ "{{ pool_id }}" ]
+          fallback_pool: "{{ pool_id }}"
+          proxied: true
+          steering_policy: "random"
+          session_affinity: "cookie"
+          session_affinity_attributes: { ttl: 3600 }
+      register: create_lb
+      failed_when: create_lb.status not in [200,409]
+      changed_when: create_lb.status == 200
+
+    - name: Skip LB creation when pool_id missing
+      when: (existing_lb_id | default('') | length) == 0 and (pool_id is not defined)
+      debug:
+        msg: "Skipping LB {{ lb_name }} because pool {{ pool_name }} was not found."
+
+    - name: Debug LB ensure summary
+      debug:
+        msg:
+          lb: "{{ lb_name }}"
+          pool_name: "{{ pool_name }}"
+          pool_id: "{{ pool_id | default('missing') }}"
+          existing_lb_id: "{{ existing_lb_id | default('none') }}"
+          created_status: "{{ (create_lb.status if create_lb is defined else 'skipped') }}"
+  delegate_to: localhost
+  become: false
+  run_once: true
