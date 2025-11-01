@@ -138,13 +138,29 @@ pub fn setup_test_naive_with_custom_genesis(
     )
 }
 
+pub async fn setup_test_with_indexer(
+    test_opt: TestOption,
+) -> (
+    TestSuiteWithIndexer,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+    MockValidatorSets,
+    indexer_httpd::context::Context,
+    dango_httpd::context::Context,
+    dango_indexer_clickhouse::context::Context,
+) {
+    setup_test_with_indexer_and_custom_genesis(test_opt, GenesisOption::preset_test()).await
+}
+
 /// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
 /// `ContractWrapper` codes but with a non-blocking indexer.
 ///
 /// Used for running tests that require an indexer.
 /// Synchronous wrapper for setup_test_with_indexer_async
-pub async fn setup_test_with_indexer(
+pub async fn setup_test_with_indexer_and_custom_genesis(
     options: TestOption,
+    genesis_opt: GenesisOption,
 ) -> (
     TestSuiteWithIndexer,
     TestAccounts,
@@ -219,7 +235,7 @@ pub async fn setup_test_with_indexer(
         hooked_indexer,
         RustVm::genesis_codes(),
         options,
-        GenesisOption::preset_test(),
+        genesis_opt,
     );
 
     clickhouse_context.start_cache().await.unwrap();
