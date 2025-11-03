@@ -55,10 +55,9 @@
         zone: "{{ dango_domain }}"
         record: "{{ item }}-{{ deployment_name }}-{{ hostname }}"
         type: CNAME
-        value: "{{ hostname }}.{{ dango_domain }}."
         api_token: "{{ cloudflare_api_token }}"
         state: absent
-      loop: ["www", "api", "faucet", "graphiql"]
+      loop: ["www", "api", "faucet", "graphiql", "cometbft"]
       ignore_errors: true
 
     - name: Cleanup deployment
@@ -140,22 +139,6 @@
 
     - set_fact:
         pr_tunnel_id: "{{ (cf_list.json.result[0].id) if (cf_list.json.result|length)>0 else omit }}"
-      ignore_errors: true
-
-    # 2) Remove DNS records
-    - name: Delete PR DNS
-      community.general.cloudflare_dns:
-        zone: "{{ dango_domain }}"
-        record: "{{ item }}-{{ dango_network }}-pr{{ github_pr_number }}"
-        type: CNAME
-        state: absent
-        api_token: "{{ cloudflare_api_token }}"
-      loop:
-        - "api"
-        - "www"
-        - "faucet"
-        - "graphiql"
-      when: dango_network is defined
       ignore_errors: true
 
     - name: Delete PR tunnel (Cloudflare)
