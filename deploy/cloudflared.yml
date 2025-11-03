@@ -8,14 +8,6 @@
       - { name: "faucet", path: "/health", expect: "200" }
     dango_networks:
       - devnet
-      - testnet
+      # - testnet
   roles:
     - cloudflared
-  tasks:
-    - name: Run LB tasks
-      include_role:
-        name: cloudflared
-        tasks_from: cloudflare_lb.yml
-      loop: "{{ dango_networks }}"
-      loop_control:
-        loop_var: dango_network
