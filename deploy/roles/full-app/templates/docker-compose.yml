@@ -145,14 +145,14 @@ services:
         hard: 200000
     volumes:
       - "${DANGO_DIRECTORY}:/root/.dango"
+    env_file:
+      - .env
     environment:
       - INDEXER__DATABASE__URL=${POSTGRES_DATABASE_URL}
       - INDEXER__CLICKHOUSE__USER=${CLICKHOUSE_DANGO_USER}
       - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_DANGO_PASSWORD}
       - INDEXER__CLICKHOUSE__DATABASE=${CLICKHOUSE_DATABASE}
       - INDEXER__CLICKHOUSE__URL=${CLICKHOUSE_URL}
-      - PYTH__ACCESS_TOKEN=${PYTH__ACCESS_TOKEN}
-      - CHAIN_ID=${CHAIN_ID}
       - RUST_BACKTRACE=1
     tty: true
     healthcheck:
