@@ -2540,7 +2540,19 @@ fn swap_is_disallowed_for_dango_and_allowed_for_eth_by_default() {
 
 #[test]
 fn geometric_pool_swaps_fail_without_oracle_price() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                permissions: dango_types::dex::Permissions {
+                    swap: dango_types::dex::PairPermissions {
+                        permissions: vec![],
+                        default_permission: Permission::Everybody,
+                    },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
 
     // Provide liquidity to pair before changing the pool type since XYK does not require an oracle price
     suite
