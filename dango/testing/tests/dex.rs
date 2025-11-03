@@ -1,8 +1,11 @@
 use {
     dango_dex::{MAX_VOLUME_AGE, MINIMUM_LIQUIDITY, VOLUMES, VOLUMES_BY_USER},
-    dango_genesis::Contracts,
+    dango_genesis::{Contracts, DexOption, GenesisOption},
     dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
-    dango_testing::{BridgeOp, TestAccount, TestOption, TestSuite, setup_test_naive},
+    dango_testing::{
+        BridgeOp, Preset, TestAccount, TestOption, TestSuite, setup_test_naive,
+        setup_test_naive_with_custom_genesis,
+    },
     dango_types::{
         account::single::Params,
         account_factory::AccountParams,
@@ -20,8 +23,8 @@ use {
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order,
-        QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Uint128,
-        UniqueVec, btree_map, btree_set, coin_pair, coins,
+        Permission, QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128,
+        Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
@@ -1947,7 +1950,19 @@ fn swap_exact_amount_in(
     expected_protocol_fee: Coins,
     expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
 ) {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                permissions: dango_types::dex::Permissions {
+                    swap: dango_types::dex::PairPermissions {
+                        permissions: BTreeMap::new(),
+                        default_permission: Permission::Everybody,
+                    },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
 
     for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
         suite
@@ -2302,7 +2317,19 @@ fn swap_exact_amount_out(
     expected_protocol_fee: Coin,
     expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
 ) {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                permissions: dango_types::dex::Permissions {
+                    swap: dango_types::dex::PairPermissions {
+                        permissions: BTreeMap::new(),
+                        default_permission: Permission::Everybody,
+                    },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
 
     // Update the pairs with the new swap fee rates.
     for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
