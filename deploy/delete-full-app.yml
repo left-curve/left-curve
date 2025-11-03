@@ -58,7 +58,7 @@
         value: "{{ hostname }}.{{ dango_domain }}."
         api_token: "{{ cloudflare_api_token }}"
         state: absent
-      loop: ["www", "api", "faucet", "cometbft"]
+      loop: ["www", "api", "faucet", "graphiql"]
       ignore_errors: true
 
     - name: Cleanup deployment
@@ -128,7 +128,7 @@
       when: delete_clickhouse_database_at_merge
 
     - set_fact:
-      pr_tunnel_name: "pr-{{ github_pr_number }}-{{ hostname }}"
+        pr_tunnel_name: "{{ deployment_name }}-{{ hostname }}"
 
     - uri:
         url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}"
@@ -140,19 +140,22 @@
 
     - set_fact:
         pr_tunnel_id: "{{ (cf_list.json.result[0].id) if (cf_list.json.result|length)>0 else omit }}"
+      ignore_errors: true
 
     # 2) Remove DNS records
     - name: Delete PR DNS
       community.general.cloudflare_dns:
         zone: "{{ dango_domain }}"
-        record: "{{ item }}"
+        record: "{{ item }}-{{ dango_network }}-pr{{ github_pr_number }}"
         type: CNAME
         state: absent
         api_token: "{{ cloudflare_api_token }}"
       loop:
-        - "api-{{ dango_network }}-pr{{ github_pr_number }}"
-        - "www-{{ dango_network }}-pr{{ github_pr_number }}"
-        - "faucet-{{ dango_network }}-pr{{ github_pr_number }}"
+        - "api"
+        - "www"
+        - "faucet"
+        - "graphiql"
+      when: dango_network is defined
       ignore_errors: true
 
     - name: Delete PR tunnel (Cloudflare)

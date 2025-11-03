@@ -56,9 +56,13 @@ Those are deployed differently for testnet/devnet and PR review apps.
 
 ### PR review apps
 
-`cloudflare_tunnel_enabled` is set to true, the review app docker compose
-includes a specific cloudflare tunnel. Then we create CNAME for each service,
-per PR, to that specific tunnel.
+When `cloudflare_tunnel_enabled` is set to true, the review app docker compose
+includes a cloudflare tunnel container. Then we create CNAME for each service,
+to that specific "PR-container" tunnel.
+
+We add a new `traefik` config file, so :80 and :443 and connected to the PR
+containers. It routes those port to proper container services based on
+hostname.
 
 ### devnet/testnet
 
