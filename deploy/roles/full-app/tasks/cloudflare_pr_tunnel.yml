@@ -3,7 +3,7 @@
 
 # find
 - uri:
-    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}"
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}&is_deleted=false"
     method: GET
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: list_resp
@@ -13,7 +13,8 @@
     var: list_resp
 
 # create if missing
-- uri:
+- name: Create tunnel if missing
+  uri:
     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel"
     method: POST
     headers:
@@ -25,7 +26,8 @@
   when: (list_resp.json.result | length) == 0
 
 # set tunnel_id
-- set_fact:
+- name: Set tunnel_id with existing tunnel
+  set_fact:
     pr_tunnel_id: >-
       {{ (list_resp.json.result[0].id
           if (list_resp.json.result | length) > 0
@@ -36,21 +38,24 @@
     var: pr_tunnel_id
 
 # fetch token
-- uri:
+- name: Fetch tunnel token
+  uri:
     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ pr_tunnel_id }}/token"
     method: GET
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: token_resp
 
 # set token (string or object-safe)
-- set_fact:
+- name: Set pr_tunnel_token from fetched tunnel token
+  set_fact:
     pr_tunnel_token: >-
       {{ token_resp.json.result
          if (token_resp.json.result is string)
          else token_resp.json.result.token }}
 
 # derive id from token if you didn’t keep pr_tunnel_id
-- set_fact:
+- name: Set token_id from tunnel_token
+  set_fact:
     pr_tunnel_id: "{{ (pr_tunnel_token | b64decode | from_json).t }}"
   when: pr_tunnel_id is not defined
 
