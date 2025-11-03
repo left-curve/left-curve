@@ -1,3 +1,4 @@
+mod config;
 mod direction;
 mod events;
 mod msgs;
@@ -6,7 +7,9 @@ mod pair;
 mod price;
 mod time_in_force;
 
-pub use {direction::*, events::*, msgs::*, order::*, pair::*, price::*, time_in_force::*};
+pub use {
+    config::*, direction::*, events::*, msgs::*, order::*, pair::*, price::*, time_in_force::*,
+};
 
 use {grug::Part, std::sync::LazyLock};
 

@@ -618,6 +618,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
     let (mut suite, mut accounts, _, contracts, _) =
         setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
             dex: DexOption {
+                permissions: dango_types::dex::Permissions::default(),
                 pairs: vec![PairUpdate {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),

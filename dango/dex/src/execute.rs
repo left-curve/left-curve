@@ -376,8 +376,19 @@ fn swap_exact_amount_in(
         "can't swap when trading is paused"
     );
 
-    let input = ctx.funds.into_one_coin()?;
+    // Load app config
     let app_cfg = ctx.querier.query_dango_config()?;
+
+    // Ensure the user has the permission to swap.
+    ensure!(
+        app_cfg
+            .dex_permissions
+            .swap
+            .has_permission(&route.inner(), ctx.sender),
+        "unauthorized: you don't have the permission to swap"
+    );
+
+    let input = ctx.funds.into_one_coin()?;
 
     // Create the oracle querier with max staleness.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
@@ -444,7 +455,17 @@ fn swap_exact_amount_out(
         "can't swap when trading is paused"
     );
 
+    // Load app config
     let app_cfg = ctx.querier.query_dango_config()?;
+
+    // Ensure the user has the permission to swap.
+    ensure!(
+        app_cfg
+            .dex_permissions
+            .swap
+            .has_permission(&route.inner(), ctx.sender),
+        "unauthorized: you don't have the permission to swap"
+    );
 
     // Create the oracle querier with max staleness.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
