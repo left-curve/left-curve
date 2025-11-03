@@ -49,3 +49,19 @@ cosign verify \
   --certificate-identity-regexp "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/heads/main" \
   ghcr.io/left-curve/left-curve/dango@sha256:<digest>
 ```
+
+## Cloudflare tunnels and load balancers
+
+Those are deployed differently for testnet/devnet and PR review apps.
+
+### PR review apps
+
+`cloudflare_tunnel_enabled` is set to true, the review app docker compose
+includes a specific cloudflare tunnel. Then we create CNAME for each service,
+per PR, to that specific tunnel.
+
+### devnet/testnet
+
+Each host has a specific cloudflare tunnel name with the hostname. A
+`cloudflare` docker network is created. The host running traefik includes the
+cloudflare network.

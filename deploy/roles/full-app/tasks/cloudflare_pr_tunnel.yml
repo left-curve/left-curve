@@ -45,3 +45,14 @@
 - set_fact:
     pr_tunnel_id: "{{ (pr_tunnel_token | b64decode | from_json).t }}"
   when: pr_tunnel_id is not defined
+
+- name: Ensure per-host CNAME → tunnel
+  community.general.cloudflare_dns:
+    zone: "{{ dango_domain }}"
+    record: "{{ item }}-{{ dango_network }}-{{ hostname }}"
+    type: CNAME
+    value: "{{ pr_tunnel_id }}.cfargotunnel.com"
+    proxied: true
+    state: present
+    api_token: "{{ cloudflare_api_token }}"
+  loop: ["www", "api", "faucet", "cometbft"]

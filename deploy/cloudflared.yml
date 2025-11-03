@@ -8,9 +8,9 @@
       - { name: "faucet", path: "/health", expect: "200" }
     dango_networks:
       - devnet
-      - testnet
-  # roles:
-  #   - cloudflared
+      # - testnet
+  roles:
+    - cloudflared
   tasks:
     - name: Run LB tasks
       include_role:

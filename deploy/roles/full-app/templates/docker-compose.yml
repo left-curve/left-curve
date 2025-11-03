@@ -60,10 +60,10 @@ services:
     command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml --metrics 0.0.0.0:2000 run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     env_file:
       - .env
+    networks:
+      - default
     volumes:
       - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
-    networks:
-      - cloudflare
     healthcheck:
       test: ["CMD", "cloudflared", "--config", "/etc/cloudflared/config.yml", "--metrics", "0.0.0.0:2000", "tunnel", "ready"]
       interval: 5s
@@ -86,7 +86,6 @@ services:
     networks:
       - default
       - traefik
-      - cloudflare
 {% if expose_ports %}
     ports:
       # - "127.0.0.1:8123:8123" # HTTP interface
@@ -308,8 +307,6 @@ services:
 
 networks:
   traefik:
-    external: true
-  cloudflare:
     external: true
 {% if not deploy_includes_postgres %}
   postgres:

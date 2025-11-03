@@ -9,7 +9,7 @@
 # Used to deploy devnet
 # 3. `ansible-playbook full-app.yml -e traefik_enabled=true`
 
-- import_tasks: cloudflare_tunnel.yml
+- import_tasks: cloudflare_pr_tunnel.yml
   when: cloudflare_tunnel_enabled and github_pr_number is defined
 - import_tasks: validate.yml
 - import_tasks: stop_previous.yml
@@ -19,7 +19,6 @@
   when: verify_signatures
 - import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
-- import_tasks: cloudflare.yml
 - import_tasks: update_traefik.yml
   when: traefik_enabled
 - import_tasks: update_pr_traefik.yml

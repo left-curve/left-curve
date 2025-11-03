@@ -136,6 +136,7 @@
         headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
       register: cf_list
       failed_when: false
+      ignore_errors: true
 
     - set_fact:
         pr_tunnel_id: "{{ (cf_list.json.result[0].id) if (cf_list.json.result|length)>0 else omit }}"
@@ -152,6 +153,7 @@
         - "api-{{ dango_network }}-pr{{ github_pr_number }}"
         - "www-{{ dango_network }}-pr{{ github_pr_number }}"
         - "faucet-{{ dango_network }}-pr{{ github_pr_number }}"
+      ignore_errors: true
 
     - name: Delete PR tunnel (Cloudflare)
       uri:
@@ -159,6 +161,7 @@
         method: DELETE
         headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
       when: pr_tunnel_id is defined
+      ignore_errors: true
 
     - name: Log deletion complete
       community.general.syslogger:
