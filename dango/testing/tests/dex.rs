@@ -2432,6 +2432,113 @@ fn swap_exact_amount_out(
 }
 
 #[test]
+fn swap_is_disallowed_for_dango_and_allowed_for_eth_by_default() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Provide liquidity to pairs before attempting to swap
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1000000,
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                eth::DENOM.clone() => 1000000,
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+
+    println!("liquidity provided");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountIn {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1000000,
+            },
+        )
+        .should_fail_with_error("unauthorized: you don't have the permission to swap");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                output: NonZero::new(Coin::new(dango::DENOM.clone(), 50000).unwrap()).unwrap(),
+            },
+            coins! {
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_fail_with_error("unauthorized: you don't have the permission to swap");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountIn {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                minimum_output: None,
+            },
+            coins! {
+                eth::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                output: NonZero::new(Coin::new(eth::DENOM.clone(), 50000).unwrap()).unwrap(),
+            },
+            coins! {
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+}
+
+#[test]
 fn geometric_pool_swaps_fail_without_oracle_price() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
