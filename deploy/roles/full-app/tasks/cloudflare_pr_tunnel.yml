@@ -8,6 +8,10 @@
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: list_resp
 
+- name: Show existing tunnel
+  debug:
+    var: list_resp
+
 # create if missing
 - uri:
     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel"
@@ -26,6 +30,10 @@
       {{ (list_resp.json.result[0].id
           if (list_resp.json.result | length) > 0
           else create_resp.json.result.id) }}
+
+- name: Show existing tunnel_id
+  debug:
+    var: pr_tunnel_id
 
 # fetch token
 - uri:
