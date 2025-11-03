@@ -1,6 +1,9 @@
 use {
-    dango_genesis::Contracts,
-    dango_testing::{BridgeOp, TestAccounts, TestOption, TestSuite, setup_test_naive},
+    dango_genesis::{Contracts, DexOption, GenesisOption},
+    dango_testing::{
+        BridgeOp, Preset, TestAccounts, TestOption, TestSuite, setup_test_naive,
+        setup_test_naive_with_custom_genesis,
+    },
     dango_types::{
         constants::{dango, dango_usdc, eth, eth_usdc, sol, sol_usdc, usdc},
         dex::{
@@ -11,8 +14,8 @@ use {
     },
     grug::{
         Addressable, BlockOutcome, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero,
-        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt,
-        ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
+        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Permission,
+        QuerierExt, ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
         ZeroInclusiveOneExclusive, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
@@ -1021,37 +1024,51 @@ fn test_dex_actions(
     dex_actions: Vec<DexAction>,
     pool_types: Vec<PassiveLiquidity>,
 ) -> Result<(TestSuite<NaiveProposalPreparer>, TestAccounts, Contracts), TestCaseError> {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption {
-        bridge_ops: |accounts| {
-            vec![
-                BridgeOp {
-                    remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::USDC_WARP,
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive_with_custom_genesis(
+        TestOption {
+            bridge_ops: |accounts| {
+                vec![
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::USDC_WARP,
+                        },
+                        amount: Uint128::new(u128::MAX),
+                        recipient: accounts.user1.address(),
                     },
-                    amount: Uint128::new(u128::MAX),
-                    recipient: accounts.user1.address(),
-                },
-                BridgeOp {
-                    remote: Remote::Warp {
-                        domain: ethereum::DOMAIN,
-                        contract: ethereum::WETH_WARP,
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: ethereum::DOMAIN,
+                            contract: ethereum::WETH_WARP,
+                        },
+                        amount: Uint128::new(u128::MAX),
+                        recipient: accounts.user1.address(),
                     },
-                    amount: Uint128::new(u128::MAX),
-                    recipient: accounts.user1.address(),
-                },
-                BridgeOp {
-                    remote: Remote::Warp {
-                        domain: solana::DOMAIN,
-                        contract: solana::SOL_WARP,
+                    BridgeOp {
+                        remote: Remote::Warp {
+                            domain: solana::DOMAIN,
+                            contract: solana::SOL_WARP,
+                        },
+                        amount: Uint128::new(u128::MAX),
+                        recipient: accounts.user1.address(),
                     },
-                    amount: Uint128::new(u128::MAX),
-                    recipient: accounts.user1.address(),
-                },
-            ]
+                ]
+            },
+            ..Default::default()
         },
-        ..Default::default()
-    });
+        GenesisOption {
+            dex: DexOption {
+                permissions: dango_types::dex::Permissions {
+                    swap: dango_types::dex::PairPermissions {
+                        permissions: vec![],
+                        default_permission: Permission::Everybody,
+                    },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        },
+    );
 
     // Print user address
     println!("user1 address: {}", accounts.user1.address());
