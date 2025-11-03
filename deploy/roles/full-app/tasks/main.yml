@@ -21,6 +21,8 @@
 - import_tasks: deploy_standalone.yml
 - import_tasks: update_traefik.yml
   when: traefik_enabled
+# This was used when I had no cloudflare tunnel and the connections is direct
+# with a CNAME to the host IP
 # - import_tasks: update_pr_traefik.yml
 #   when: not traefik_enabled
 - import_tasks: delete_old_deploy.yml

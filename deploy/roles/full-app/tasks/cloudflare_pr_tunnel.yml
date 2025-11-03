@@ -8,10 +8,6 @@
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: list_resp
 
-- name: Show existing tunnel
-  debug:
-    var: list_resp
-
 # create if missing
 - name: Create tunnel if missing
   uri:

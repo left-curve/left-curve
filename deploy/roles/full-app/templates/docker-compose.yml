@@ -303,6 +303,7 @@ services:
     environment:
       - GRAPHQL_ENDPOINT=${INDEXER_URL}/graphql
     networks:
+      - default
       - traefik
 
 networks:
