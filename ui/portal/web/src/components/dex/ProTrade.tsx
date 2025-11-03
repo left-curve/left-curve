@@ -176,7 +176,7 @@ const ProTradeHistory: React.FC = () => {
         </Tabs>
         <span className="w-full absolute h-[2px] bg-outline-secondary-gray bottom-[0px] z-0" />
       </div>
-      <div className="w-full h-full relative">
+      <div className="w-full h-full relative min-h-[11.5rem]">
         {activeTab === "orders" ? <ProTradeOpenOrders /> : null}
         {activeTab === "trade-history" ? <ProTradeOrdersHistory /> : null}
       </div>
@@ -193,10 +193,6 @@ const ProTradeOpenOrders: React.FC = () => {
   const { formatNumberOptions } = settings;
 
   const columns: TableColumn<OrdersByUserResponse & { id: OrderId }> = [
-    /*  {
-      header: "Time",
-      cell: ({ row }) => <Cell.Time date={row.original.time} />,
-    }, */
     {
       header: m["dex.protrade.history.id"](),
       cell: ({ row }) => {
@@ -328,7 +324,7 @@ const ProTradeOpenOrders: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-0 max-h-[31vh] overflow-y-scroll",
+        base: "pb-0 max-h-[9.5rem] overflow-y-scroll",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !orders.data.length,
         }),
