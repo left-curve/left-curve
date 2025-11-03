@@ -19,7 +19,7 @@
   when: verify_signatures
 - import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
-# - import_tasks: cloudflare.yml
+- import_tasks: cloudflare.yml
 - import_tasks: update_traefik.yml
   when: traefik_enabled
 - import_tasks: update_pr_traefik.yml

@@ -14,7 +14,7 @@
   tasks:
     - name: Run LB tasks
       include_role:
-        name: full-app
+        name: cloudflared
         tasks_from: cloudflare_lb.yml
       loop: "{{ dango_networks }}"
       loop_control:

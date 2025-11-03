@@ -20,7 +20,7 @@
 
     - name: Append origin for each full-app host
       vars:
-        hn: "{{ hostvars[item].hostname | default(hostvars[item].cloudflare_tunnel_name | default(item)) }}"
+        hn: "{{ hostvars[item].hostname | default(item)) }}"
         addr: "{{ pool.name }}-{{ dango_network }}-{{ hn }}.{{ dango_domain }}"
         origin_name: "{{ pool.name }}-{{ dango_network }}-{{ hn }}"
       set_fact:
