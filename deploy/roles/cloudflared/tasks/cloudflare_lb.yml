@@ -46,7 +46,8 @@
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: cf_pools
 
-- debug: var=cf_pools.json.result
+- name: Show debug
+  debug: var=cf_pools.json.result
   run_once: true
   become: false
   delegate_to: localhost
@@ -100,7 +101,8 @@
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: cf_load_balancers
 
-- debug: var=cf_load_balancers.json.result
+- name: Show debug
+  debug: var=cf_load_balancers.json.result
   run_once: true
   become: false
   delegate_to: localhost
