@@ -1,20 +1,20 @@
 use {
-    crate::dex::PairId,
+    crate::{
+        constants::{dango, usdc},
+        dex::PairId,
+    },
     grug::{Addr, Permission},
-    serde::{Deserialize, Serialize},
     std::collections::BTreeMap,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "snake_case")]
+#[grug::derive(Serde)]
 pub struct Permissions {
     pub swap: PairPermissions,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(deny_unknown_fields, rename_all = "snake_case")]
+#[grug::derive(Serde)]
 pub struct PairPermissions {
-    pub permissions: BTreeMap<PairId, Permission>,
+    pub permissions: Vec<(PairId, Permission)>,
     pub default_permission: Permission,
 }
 
@@ -22,8 +22,14 @@ impl Default for Permissions {
     fn default() -> Self {
         Permissions {
             swap: PairPermissions {
-                permissions: BTreeMap::new(),
-                default_permission: Permission::Nobody,
+                permissions: vec![(
+                    PairId {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    },
+                    Permission::Nobody,
+                )],
+                default_permission: Permission::Everybody,
             },
         }
     }
@@ -32,7 +38,7 @@ impl Default for Permissions {
 impl PairPermissions {
     pub fn has_permission(&self, pair_ids: &[PairId], sender: Addr) -> bool {
         pair_ids.iter().all(|pair_id| {
-            self.permissions
+            self.permissions.clone().into_iter().collect::<BTreeMap<PairId, Permission>>()
                 .get(pair_id)
                 .unwrap_or(&self.default_permission) // Disallow for everyone by default.
                 .has_permission(sender)

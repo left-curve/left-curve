@@ -1955,7 +1955,7 @@ fn swap_exact_amount_in(
             dex: DexOption {
                 permissions: dango_types::dex::Permissions {
                     swap: dango_types::dex::PairPermissions {
-                        permissions: BTreeMap::new(),
+                        permissions: vec![],
                         default_permission: Permission::Everybody,
                     },
                 },
@@ -2322,7 +2322,7 @@ fn swap_exact_amount_out(
             dex: DexOption {
                 permissions: dango_types::dex::Permissions {
                     swap: dango_types::dex::PairPermissions {
-                        permissions: BTreeMap::new(),
+                        permissions: vec![],
                         default_permission: Permission::Everybody,
                     },
                 },
