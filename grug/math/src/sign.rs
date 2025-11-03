@@ -243,14 +243,14 @@ mod int_tests {
         method = |_0, passing, failing| {
             for (base, neg) in passing {
                 let base = bt(_0, Int::new(base));
-                println!("base: {}", base);
+                println!("base: {base}");
                 println!("base.checked_neg(): {:?}", base.checked_neg());
                 assert_eq!(base.checked_neg().unwrap(), Int::new(neg));
             }
 
             for failing in failing {
                 let base = bt(_0, Int::new(failing));
-                println!("failing: {}", base);
+                println!("failing: {base}");
                 println!("failing.checked_neg(): {:?}", base.checked_neg());
                 assert!(matches!(base.checked_neg(), Err(MathError::InvalidNegation { .. })));
             }

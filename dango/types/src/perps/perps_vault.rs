@@ -28,25 +28,22 @@ impl PerpsVaultState {
         params: &HashMap<Denom, PerpsMarketParams>,
         oracle_prices: &HashMap<Denom, Udec128>,
     ) -> anyhow::Result<Int128> {
-        Ok(markets
+        markets
             .iter()
             .map(|market| {
                 let params = params.get(&market.denom).ok_or(anyhow::anyhow!(
                     "params not found for denom: {}",
                     market.denom
                 ))?;
-                let oracle_price = oracle_prices
-                    .get(&market.denom)
-                    .ok_or(anyhow::anyhow!(
-                        "oracle price not found for denom: {}",
-                        market.denom
-                    ))?
-                    .clone();
+                let oracle_price = *oracle_prices.get(&market.denom).ok_or(anyhow::anyhow!(
+                    "oracle price not found for denom: {}",
+                    market.denom
+                ))?;
                 market.market_pnl(params, oracle_price)
             })
             .try_fold(Int128::ZERO, |acc, x| {
                 Ok::<_, anyhow::Error>(acc.checked_add(x?)?)
-            })?)
+            })
     }
 
     /// Returns the vault's withdrawable value.

@@ -238,8 +238,8 @@ fn query_perps_positions(
             None,
             fill_price,
             &vault_denom_price,
-            &market_state,
-            &market_params,
+            market_state,
+            market_params,
         )?;
 
         let response = PerpsPositionResponse {

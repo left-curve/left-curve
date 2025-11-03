@@ -53,6 +53,12 @@ pub struct PerpsMarketAccumulators {
     pub quadratic_fee_basis: Int128,
 }
 
+impl Default for PerpsMarketAccumulators {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerpsMarketAccumulators {
     pub fn new() -> Self {
         Self {
@@ -281,9 +287,9 @@ impl PerpsMarketState {
     ) -> Result<Self, MathError> {
         let mut accumulators = self.accumulators.clone();
         if current_pos.size.is_non_zero() {
-            accumulators.decrease(&current_pos)?;
+            accumulators.decrease(current_pos)?;
         }
-        accumulators.increase(&new_pos)?;
+        accumulators.increase(new_pos)?;
 
         Ok(Self {
             accumulators,
@@ -319,7 +325,7 @@ impl PerpsMarketState {
             .checked_sub(cost_basis_sum)?
             .checked_add(last_term)?;
 
-        Ok(trader_price_pnl.into_int().checked_neg()?)
+        trader_price_pnl.into_int().checked_neg()
     }
 
     /// Returns the unrealized funding PnL of the market.
@@ -334,7 +340,7 @@ impl PerpsMarketState {
             .checked_mul(funding_index)?
             .checked_sub(self.accumulators.funding_basis_sum)?;
 
-        Ok(traders_funding_pnl.into_int().checked_neg()?)
+        traders_funding_pnl.into_int().checked_neg()
     }
 
     /// Returns the PnL for this market from the perspective of the vault.
