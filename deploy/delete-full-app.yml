@@ -129,7 +129,8 @@
     - set_fact:
         pr_tunnel_name: "{{ deployment_name }}-{{ hostname }}"
 
-    - uri:
+    - name: Fetch PR tunnel
+      uri:
         url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}"
         method: GET
         headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
@@ -137,7 +138,8 @@
       failed_when: false
       ignore_errors: true
 
-    - set_fact:
+    - name: Set PR tunnel_id
+      set_fact:
         pr_tunnel_id: "{{ (cf_list.json.result[0].id) if (cf_list.json.result|length)>0 else omit }}"
       ignore_errors: true
 
