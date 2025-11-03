@@ -41,10 +41,13 @@
          if (token_resp.json.result is string)
          else token_resp.json.result.token }}
 
-# (optional) derive id from token if you didn’t keep pr_tunnel_id
+# derive id from token if you didn’t keep pr_tunnel_id
 - set_fact:
     pr_tunnel_id: "{{ (pr_tunnel_token | b64decode | from_json).t }}"
   when: pr_tunnel_id is not defined
+
+- debug:
+    var: pr_tunnel_id
 
 - name: Ensure per-host CNAME → tunnel
   community.general.cloudflare_dns:
