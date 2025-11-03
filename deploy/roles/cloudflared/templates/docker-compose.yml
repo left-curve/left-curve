@@ -14,6 +14,7 @@ services:
       - ./config.yml:/etc/cloudflared/config.yml:ro
     networks:
       - cloudflare
+      - traefik
     healthcheck:
       test: ["CMD", "cloudflared", "--config", "/etc/cloudflared/config.yml", "--metrics", "0.0.0.0:2000", "tunnel", "ready"]
       interval: 5s
@@ -21,5 +22,7 @@ services:
       retries: 5
 
 networks:
+  traefik:
+    external: true
   cloudflare:
     external: true

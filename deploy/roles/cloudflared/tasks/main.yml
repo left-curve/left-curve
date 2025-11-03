@@ -1,7 +1,7 @@
 ---
-- import_tasks: cloudflare_tunnel.yml
+- include_tasks: cloudflare_tunnel.yml
 
-- import_tasks: cloudflare_lb.yml
+- include_tasks: cloudflare_lb.yml
   loop: "{{ dango_networks }}"
   loop_control:
     loop_var: dango_network
