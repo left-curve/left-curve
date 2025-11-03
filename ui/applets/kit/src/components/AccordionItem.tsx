@@ -15,6 +15,7 @@ type AccordionItemProps = {
     container?: string;
     text?: string;
     icon?: string;
+    menu?: string;
   };
   defaultExpanded?: boolean;
   onChange?: (isOpen: boolean) => void;
@@ -39,8 +40,9 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
         classNames?.container,
       )}
     >
-      <div
-        className="flex items-center justify-between cursor-pointer"
+      <button
+        type="button"
+        className="flex items-center justify-between cursor-pointer outline-none w-full"
         onClick={() => setIsOpen(!isOpen)}
       >
         <p className={twMerge("diatype-m-bold", classNames?.text)}>{text}</p>
@@ -53,7 +55,7 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
         >
           {icon ? icon : <IconChevronDownFill className="w-4 h-4" />}
         </div>
-      </div>
+      </button>
 
       <AnimatePresence initial={false}>
         {isOpen && (
@@ -62,7 +64,7 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden"
+            className={twMerge("overflow-hidden", classNames?.menu)}
           >
             <div className="w-full pt-4">{children}</div>
           </motion.div>
