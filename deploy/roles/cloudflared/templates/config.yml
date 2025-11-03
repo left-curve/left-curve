@@ -4,12 +4,12 @@ ha-connections: 12
 transport-loglevel: warn
 
 ingress:
-{% for net in ['devnet', 'testnet'] %}
-  - hostname: api-{{ net }}-{{ hostname }}.{{ dango_domain }}
-    service: http://traefik:{{ traefik[net].ports.dango_port }}
-  - hostname: www-{{ net }}-{{ hostname }}.{{ dango_domain }}
-    service: http://traefik:{{ traefik[net].ports.dango_frontend_port }}
-  - hostname: faucet-{{ net }}-{{ hostname }}.{{ dango_domain }}
-    service: http://traefik:{{ traefik[net].ports.faucet_port }}
+{% for dango_network in dango_networks %}
+  - hostname: api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik[dango_network].ports.dango_port }}
+  - hostname: www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik[dango_network].ports.dango_frontend_port }}
+  - hostname: faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}
+    service: http://traefik:{{ traefik[dango_network].ports.faucet_port }}
 {% endfor %}
   - service: http_status:404
