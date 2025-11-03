@@ -384,7 +384,7 @@ fn swap_exact_amount_in(
         app_cfg
             .dex_permissions
             .swap
-            .has_permission(&route.inner(), ctx.sender),
+            .has_permission(route.inner(), ctx.sender),
         "unauthorized: you don't have the permission to swap"
     );
 
@@ -463,7 +463,7 @@ fn swap_exact_amount_out(
         app_cfg
             .dex_permissions
             .swap
-            .has_permission(&route.inner(), ctx.sender),
+            .has_permission(route.inner(), ctx.sender),
         "unauthorized: you don't have the permission to swap"
     );
 
