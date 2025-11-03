@@ -2,7 +2,7 @@ import ReactDOM from "react-dom/client";
 import { useState } from "react";
 import { Convert } from "./applet";
 import { DangoRemoteProvider } from "@left-curve/store";
-import { useRemoteApp, AppRemoteProvider } from "@left-curve/applets-kit";
+import { AppRemoteProvider } from "@left-curve/applets-kit";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 
 import "@left-curve/foundation/fonts/ABCDiatypeRounded/normal/800.css";
@@ -29,12 +29,11 @@ const queryClient = new QueryClient({
 });
 
 export const ConvertApplet: React.FC = () => {
-  const appState = useRemoteApp();
   const [{ from, to }, onChangePair] = useState({ from: "USDC", to: "BTC" });
 
   return (
     <div className="w-full md:max-w-[25rem] mx-auto flex flex-col p-4 pt-6 gap-4 min-h-[100svh] md:min-h-fit text-ink-primary-900">
-      <Convert pair={{ from, to }} onChangePair={onChangePair} appState={appState}>
+      <Convert pair={{ from, to }} onChangePair={onChangePair}>
         <Convert.Header />
         <Convert.Form />
         <Convert.Details />

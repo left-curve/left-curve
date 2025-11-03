@@ -79,13 +79,13 @@
       }
     ]
   },
-  "statusBadge":{
+  "statusBadge": {
     "status": "Status",
     "websocket": "WebSocket",
     "chain": "Chain",
     "dex": "DEX",
     "block": "Block",
-    "statusText":[
+    "statusText": [
       {
         "declarations": ["input status"],
         "selectors": ["status"],
@@ -808,7 +808,8 @@
       "youSwap": "You swap",
       "rate": "Rate",
       "errors": {
-        "failure": "Swap failed"
+        "failure": "Swap failed",
+        "simulationFailed": "Not enough liquidity to fulfill the swap"
       }
     },
     "protrade": {
