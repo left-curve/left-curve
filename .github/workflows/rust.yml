@@ -1117,7 +1117,7 @@ jobs:
       packages: read
       deployments: write
       contents: read
-    needs: [security-artifacts, set-image-tags]
+    needs: [security-artifacts, set-image-tags, "localdango"]
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -1239,7 +1239,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pnpm install @playwright/test@latest
+          pnpm i -w @playwright/test@latest
           pnpm exec playwright install --with-deps
           pnpm test:e2e
 
