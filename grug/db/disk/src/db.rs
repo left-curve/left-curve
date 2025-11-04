@@ -376,10 +376,8 @@ where
             #[cfg(feature = "metrics")]
             let duration = std::time::Instant::now();
 
-            // Prune the DB.
             self.prune(pending.version - self.cfg.prune_keep_recent)?;
 
-            // Force a DB compaction is requested.
             if self.cfg.prune_force_compact {
                 self.compact();
             }

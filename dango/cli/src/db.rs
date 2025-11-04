@@ -9,8 +9,9 @@ use {
 
 #[derive(Subcommand)]
 pub enum DbCmd {
-    /// Prune the database up to a given height (exclusive)
+    /// Prune the database
     Prune {
+        /// Delete historical states up to this height (exclusive)
         up_to_version: u64,
 
         /// Force an immediate database compaction following the pruning
