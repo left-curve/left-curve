@@ -22,6 +22,7 @@ grug-jmt        = { workspace = true, optional = true }
 grug-types      = { workspace = true }
 ics23           = { workspace = true, optional = true }
 metrics         = { workspace = true, optional = true }
+ouroboros       = { workspace = true }
 rocksdb         = { workspace = true }
 serde           = { workspace = true, features = ["derive"], optional = true }
 thiserror       = { workspace = true }

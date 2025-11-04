@@ -21,22 +21,24 @@ query_gas_limit = 100000000
 
 [grug.db]
 
-# The interval of auto-pruning (i.e. perform a pruning every X versions).
-# 0 means no auto-pruning.
-prune_interval = 0
-
-# At each auto-pruning, how many recent versions to keep.
-prune_keep_recent = 25
-
-# Whether to force an immediate database compaction when auto-pruning.
-prune_force_compact = false
-
 # Range of database keys that will be loaded into memory for better performance.
 # Lower bound is inclusive, upper bound is exclusive.
 #priority_range = [
-#  "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f", # = b"wasm" + dex_contract_address
-#  "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740", # = b"wasm" + increment_last_byte(dex_contract_address)
+# "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f", # = b"wasm" + dex_contract_address
+# "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740", # = b"wasm" + increment_last_byte(dex_contract_address)
 #]
+
+[grug.db.pruning]
+
+# The interval of auto-pruning (i.e. perform a pruning every X versions).
+# 0 means no auto-pruning.
+interval = 0
+
+# At each auto-pruning, how many recent versions to keep.
+keep_recent = 25
+
+# Whether to force an immediate database compaction when auto-pruning.
+force_compact = false
 
 ################################################################################
 ###                          Indexer Configuration                           ###
