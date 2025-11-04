@@ -393,20 +393,7 @@ where
 
             // Force a DB compaction is requested.
             if self.cfg.prune_force_compact {
-                self.inner.db.compact_range_cf(
-                    &cf_state_storage(&self.inner.db),
-                    None::<&[u8]>,
-                    None::<&[u8]>,
-                );
-
-                #[cfg(feature = "ibc")]
-                {
-                    self.inner.db.compact_range_cf(
-                        &cf_preimages(&self.inner.db),
-                        None::<&[u8]>,
-                        None::<&[u8]>,
-                    );
-                }
+                self.compact();
             }
 
             #[cfg(feature = "metrics")]
@@ -468,6 +455,26 @@ where
         self.inner.db.write(batch)?;
 
         Ok(())
+    }
+}
+
+impl<T> DiskDb<T> {
+    /// Force an immediate compaction of the timestamped column families.
+    pub fn compact(&self) {
+        self.inner.db.compact_range_cf(
+            &cf_state_storage(&self.inner.db),
+            None::<&[u8]>,
+            None::<&[u8]>,
+        );
+
+        #[cfg(feature = "ibc")]
+        {
+            self.inner.db.compact_range_cf(
+                &cf_preimages(&self.inner.db),
+                None::<&[u8]>,
+                None::<&[u8]>,
+            );
+        }
     }
 }
 
@@ -1197,7 +1204,6 @@ mod tests_simple {
         super::*,
         grug_app::SimpleCommitment,
         grug_types::{ResultExt, btree_map, hash},
-        rocksdb::CompactOptions,
         temp_rocksdb::TempDataDir,
     };
 
@@ -1312,14 +1318,9 @@ mod tests_simple {
         );
 
         // Prune the db at 3, which is exclusive (3 becomes the oldest version)
+        // and force an immediate compaction.
         db.prune(3).unwrap();
-
-        db.inner.db.compact_range_cf_opt(
-            &cf_state_storage(&db.inner.db),
-            None::<&[u8]>,
-            None::<&[u8]>,
-            &CompactOptions::default(),
-        );
+        db.compact();
 
         assert_eq!(
             db.state_storage(Some(4)).unwrap().read(b"2"),
