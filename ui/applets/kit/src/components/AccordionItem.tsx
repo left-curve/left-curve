@@ -48,12 +48,20 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
         <p className={twMerge("diatype-m-bold", classNames?.text)}>{text}</p>
         <div
           className={twMerge(
-            "w-6 h-6 transition-all",
-            isOpen ? "rotate-180" : "rotate-0",
+            "w-6 h-6 flex items-center justify-center transition-all",
             classNames?.icon,
           )}
         >
-          {icon ? icon : <IconChevronDownFill className="w-4 h-4" />}
+          {icon ? (
+            icon
+          ) : (
+            <IconChevronDownFill
+              className={twMerge(
+                "w-4 h-4 transition-all duration-75",
+                isOpen ? "rotate-180" : "rotate-0",
+              )}
+            />
+          )}
         </div>
       </button>
 
