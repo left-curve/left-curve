@@ -155,7 +155,7 @@ impl<T> Clone for DiskDb<T> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
-            cfg: self.cfg.clone(),
+            cfg: self.cfg,
             _commitment: PhantomData,
         }
     }
