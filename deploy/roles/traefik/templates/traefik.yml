@@ -60,6 +60,8 @@ entryPoints:
     address: ":{{ traefik.devnet.ports.dango_frontend_port }}"
   devnet-faucet_bot:
     address: ":{{ traefik.devnet.ports.faucet_port }}"
+  devnet-graphiql:
+    address: ":{{ traefik.devnet.ports.graphiql_port }}"
   devnet-cometbft_p2p:
     address: ":{{ traefik.devnet.ports.cometbft_p2p_port }}"
   testnet-dango:
@@ -68,6 +70,8 @@ entryPoints:
     address: ":{{ traefik.testnet.ports.dango_frontend_port }}"
   testnet-faucet_bot:
     address: ":{{ traefik.testnet.ports.faucet_port }}"
+  testnet-graphiql:
+    address: ":{{ traefik.testnet.ports.graphiql_port }}"
   testnet-cometbft_p2p:
     address: ":{{ traefik.testnet.ports.cometbft_p2p_port }}"
 
