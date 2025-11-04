@@ -54,7 +54,7 @@ pub const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
 /// Configurations related to the disk DB.
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
     // The interval of auto-pruning (i.e. perform a pruning every X versions).
@@ -64,16 +64,6 @@ pub struct Config {
     pub prune_keep_recent: u64,
     /// Whether to force an immediate database compaction when auto-pruning.
     pub prune_force_compact: bool,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            prune_interval: 0,
-            prune_keep_recent: 0,
-            prune_force_compact: false,
-        }
-    }
 }
 
 /// The base storage primitive.
