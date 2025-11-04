@@ -60,7 +60,7 @@ export const StatusBadge: React.FC = () => {
 
   const wsStatus = wsIsConnected ? "success" : "error";
   const chainStatus = isChainPaused ? "error" : "success";
-  const dexStatus = isDexPaused ? "error" : "success";
+  const dexStatus = isChainPaused || isDexPaused ? "error" : "success";
 
   const globalStatus = useMemo(() => {
     if (chainStatus === "error") return "error";
