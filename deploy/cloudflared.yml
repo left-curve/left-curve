@@ -3,9 +3,10 @@
   become_user: "{{ deploy_user }}"
   vars:
     monitor_defs:
-      - { name: "www",    path: "/",       expect: "200" }
-      - { name: "api",    path: "/up",     expect: "200" }
-      - { name: "faucet", path: "/health", expect: "200" }
+      - { name: "graphiql",    path: "/",       expect: "200" }
+      - { name: "www",         path: "/",       expect: "200" }
+      - { name: "api",         path: "/up",     expect: "200" }
+      - { name: "faucet",      path: "/health", expect: "200" }
     dango_networks:
       - devnet
       - testnet
