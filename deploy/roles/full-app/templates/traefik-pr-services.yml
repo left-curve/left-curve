@@ -1,9 +1,5 @@
 http:
   middlewares:
-    {{ dango_network }}-graphiql-stripprefix:
-      stripPrefix:
-        prefixes:
-          - "/graphiql"
     {{ dango_network }}-cors-dango:
       headers:
         accessControlAllowOriginListRegex:
