@@ -131,7 +131,7 @@
 
     - name: Fetch PR tunnel
       uri:
-        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}"
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}&is_deleted=false"
         method: GET
         headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
       register: cf_list
