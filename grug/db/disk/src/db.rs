@@ -373,19 +373,10 @@ where
             && pending.version % self.cfg.prune_interval == 0
             && pending.version > self.cfg.prune_keep_recent
         {
-            #[cfg(feature = "metrics")]
-            let duration = std::time::Instant::now();
-
             self.prune(pending.version - self.cfg.prune_keep_recent)?;
 
             if self.cfg.prune_force_compact {
                 self.compact();
-            }
-
-            #[cfg(feature = "metrics")]
-            {
-                metrics::histogram!(DISK_DB_LABEL, "operation" => "auto_prune")
-                    .record(duration.elapsed().as_secs_f64());
             }
         }
 
@@ -397,6 +388,9 @@ where
         {
             tracing::info!(up_to_version, "Pruning database");
         }
+
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
 
         let ts = U64Timestamp::from(up_to_version);
 
@@ -445,6 +439,12 @@ where
 
         self.inner.db.write(batch)?;
 
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "prune")
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         Ok(())
     }
 }
@@ -456,6 +456,9 @@ impl<T> DiskDb<T> {
         {
             tracing::info!("Compacting database");
         }
+
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
 
         self.inner.db.compact_range_cf(
             &cf_state_storage(&self.inner.db),
@@ -470,6 +473,12 @@ impl<T> DiskDb<T> {
                 None::<&[u8]>,
                 None::<&[u8]>,
             );
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "compact")
+                .record(duration.elapsed().as_secs_f64());
         }
     }
 }
