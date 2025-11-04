@@ -1236,8 +1236,10 @@ jobs:
 
       - name: Verify frontend and backend connection
         if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pnpm install -g @playwright/test@latest
+          pnpm install @playwright/test@latest
           pnpm exec playwright install --with-deps
           pnpm test:e2e
 
