@@ -41,7 +41,7 @@ traefik:
       dango_port: 8080
       dango_frontend_port: 8081
       faucet_port: 8082
-      graphiql_port: 8083
+      graphiql_port: 8086
       cometbft_p2p_port: 26656
       cometbft_rpc_port: 26657
   testnet:
@@ -49,7 +49,7 @@ traefik:
       dango_port: 8050
       dango_frontend_port: 8051
       faucet_port: 8052
-      graphiql_port: 8053
+      graphiql_port: 8056
       cometbft_p2p_port: 36656
       cometbft_rpc_port: 36657
 
