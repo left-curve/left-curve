@@ -1,7 +1,22 @@
-use {crate::home_directory::HomeDirectory, clap::Subcommand, colored::Colorize, std::fs};
+use {
+    crate::home_directory::HomeDirectory,
+    clap::Subcommand,
+    colored::Colorize,
+    grug_app::{Db, SimpleCommitment},
+    grug_db_disk::DiskDb,
+    std::fs,
+};
 
 #[derive(Subcommand)]
 pub enum DbCmd {
+    /// Prune the database up to a given height (exclusive)
+    Prune {
+        up_to_version: u64,
+
+        /// Force an immediate database compaction following the pruning
+        #[arg(long)]
+        compact: bool,
+    },
     /// Delete the entire database
     Reset {
         /// Skip confirmation
@@ -20,6 +35,20 @@ impl DbCmd {
         }
 
         match self {
+            DbCmd::Prune {
+                up_to_version,
+                compact,
+            } => {
+                let db = DiskDb::<SimpleCommitment>::open(dir.data_dir())?;
+
+                db.prune(up_to_version)?;
+
+                if compact {
+                    db.compact();
+                }
+
+                Ok(())
+            },
             DbCmd::Reset { yes } => {
                 if !yes {
                     confirm(

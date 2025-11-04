@@ -373,23 +373,11 @@ where
             && pending.version % self.cfg.prune_interval == 0
             && pending.version > self.cfg.prune_keep_recent
         {
-            let up_to_version = pending.version - self.cfg.prune_keep_recent;
-
-            #[cfg(feature = "tracing")]
-            {
-                tracing::info!(
-                    current_version = pending.version,
-                    up_to_version,
-                    force_compact = self.cfg.prune_force_compact,
-                    "Pruning database"
-                );
-            }
-
             #[cfg(feature = "metrics")]
             let duration = std::time::Instant::now();
 
             // Prune the DB.
-            self.prune(up_to_version)?;
+            self.prune(pending.version - self.cfg.prune_keep_recent)?;
 
             // Force a DB compaction is requested.
             if self.cfg.prune_force_compact {
@@ -407,6 +395,11 @@ where
     }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(up_to_version, "Pruning database");
+        }
+
         let ts = U64Timestamp::from(up_to_version);
 
         // Prune state storage.
@@ -461,6 +454,11 @@ where
 impl<T> DiskDb<T> {
     /// Force an immediate compaction of the timestamped column families.
     pub fn compact(&self) {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!("Compacting database");
+        }
+
         self.inner.db.compact_range_cf(
             &cf_state_storage(&self.inner.db),
             None::<&[u8]>,
