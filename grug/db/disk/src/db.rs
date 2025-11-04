@@ -370,8 +370,8 @@ where
 
         // Perform auto-pruning if the configured interval is reached.
         if self.cfg.prune_interval != 0
-            && pending.version > self.cfg.prune_interval
             && pending.version % self.cfg.prune_interval == 0
+            && pending.version > self.cfg.prune_keep_recent
         {
             let up_to_version = pending.version - self.cfg.prune_keep_recent;
 
@@ -1352,6 +1352,8 @@ mod tests_simple {
 
     #[test]
     fn auto_prune_works() {
+        const KEY: &[u8] = b"data";
+
         let path = TempDataDir::new("_grug_disk_db_auto_prune_works");
         let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
             prune_interval: 2,
@@ -1363,7 +1365,7 @@ mod tests_simple {
         // Write four batches of versions 0, 1, 2, 3.
         for version in 0..=3 {
             db.flush_and_commit(btree_map! {
-                b"data".to_vec() => Op::Insert(vec![version]),
+                KEY.to_vec() => Op::Insert(vec![version]),
             })
             .unwrap();
         }
@@ -1374,17 +1376,14 @@ mod tests_simple {
         assert_eq!(db.oldest_version(), None);
         for version in 0..=3 {
             assert_eq!(
-                db.state_storage(Some(version))
-                    .unwrap()
-                    .read(b"data")
-                    .unwrap(),
+                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
                 vec![version as u8]
             );
         }
 
         // Write a batch of version 4.
         db.flush_and_commit(btree_map! {
-            b"data".to_vec() => Op::Insert(vec![4]),
+            KEY.to_vec() => Op::Insert(vec![4]),
         })
         .unwrap();
 
@@ -1399,7 +1398,7 @@ mod tests_simple {
                 .db
                 .get_cf_opt(
                     &cf_state_storage(&db.inner.db),
-                    b"2",
+                    KEY,
                     &new_read_options(Some(version), None, None),
                 )
                 .should_fail_with_error(
@@ -1408,10 +1407,7 @@ mod tests_simple {
         }
         for version in 2..=4 {
             assert_eq!(
-                db.state_storage(Some(version))
-                    .unwrap()
-                    .read(b"data")
-                    .unwrap(),
+                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
                 vec![version as u8]
             );
         }
