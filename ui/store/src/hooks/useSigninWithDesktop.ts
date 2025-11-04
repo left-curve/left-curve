@@ -5,7 +5,7 @@ import { useConnectors } from "./useConnectors.js";
 import { useSubmitTx } from "./useSubmitTx.js";
 
 import { Secp256k1 } from "@left-curve/dango/crypto";
-import { Actions, DataChannel } from "@left-curve/dango/utils";
+import { MessageExchanger } from "../messageExchanger.js";
 
 import type { NestedOmit, Result, SessionResponse } from "@left-curve/dango/types";
 import type { UseConnectorsReturnType } from "./useConnectors.js";
@@ -33,19 +33,19 @@ export function useSigninWithDesktop(parameters: UseSigninWithDesktopParameters)
     mutation: {
       ...mutation,
       mutationFn: async ({ socketId }) => {
-        const dataChannel = await DataChannel.create(url);
+        const messageExchanger = await MessageExchanger.create(url);
         const connector = connectors.find((connector) => connector.id === "session");
         if (!connector) throw new Error("error: missing connector");
 
-        await dataChannel.createPeerConnection(socketId);
+        await messageExchanger.createPeerConnection(socketId);
 
         const keyPair = Secp256k1.makeKeyPair();
         const publicKey = keyPair.getPublicKey();
 
-        const { error, data } = await dataChannel.sendAsyncMessage<
+        const { error, data } = await messageExchanger.sendMessage<
           Result<SessionResponse & { username: string }>
         >({
-          type: Actions.GenerateSession,
+          type: "create-session",
           message: {
             expireAt: +expiresAt,
             publicKey: encodeBase64(publicKey),

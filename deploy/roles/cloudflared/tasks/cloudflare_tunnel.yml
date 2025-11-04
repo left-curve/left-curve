@@ -1,9 +1,11 @@
 ---
-- set_fact:
+- name: Set tunnel name
+  set_fact:
     tunnel_name: "host-{{ hostname }}"
 
 # find
-- uri:
+- name: Fetch existing tunnels
+  uri:
     url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ tunnel_name }}&is_deleted=false"
     method: GET
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
