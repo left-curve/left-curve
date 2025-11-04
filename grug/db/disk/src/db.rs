@@ -54,7 +54,7 @@ pub const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
 /// Configurations related to the disk DB.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
     // The interval of auto-pruning (i.e. perform a pruning every X versions).
