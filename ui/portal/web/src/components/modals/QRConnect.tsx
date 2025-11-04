@@ -1,5 +1,5 @@
 import { useAccount, useConnectorClient, useMessageExchanger } from "@left-curve/store";
-import { forwardRef, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 
 import { IconButton, IconClose, IconMobile, QRCode, useApp } from "@left-curve/applets-kit";
 
@@ -16,45 +16,51 @@ export const QRConnect = forwardRef((_props, _ref) => {
   const { username } = useAccount();
 
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
-  const { messageExchanger, isLoading } = useMessageExchanger({
+  const { data: messageExchanger, isLoading } = useMessageExchanger({
     url: WS_URI,
   });
 
-  messageExchanger?.subscribe(async (msg) => {
-    const { id, type, message } = msg;
-    if (!signingClient || isLoadingCredential || type !== "create-session") return;
-    try {
-      setIsLoadingCredential(true);
+  useEffect(() => {
+    const unsubscribe = messageExchanger?.subscribe(async (msg) => {
+      const { id, type, message } = msg;
+      if (!signingClient || isLoadingCredential || type !== "create-session") return;
+      try {
+        setIsLoadingCredential(true);
 
-      const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
+        const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
 
-      const response = await signingClient.createSession({
-        expireAt,
-        pubKey: decodeBase64(publicKey),
-      });
+        const response = await signingClient.createSession({
+          expireAt,
+          pubKey: decodeBase64(publicKey),
+        });
 
-      messageExchanger.sendMessage({ id, message: { data: { ...response, username } } });
-      toast.success({
-        title: "Connection established",
-        description: null,
-      });
-      hideModal();
-    } catch (error) {
-      captureException(error);
-      console.error("Error creating session: ", error);
-      toast.error({
-        title: m["common.error"](),
-        description: m["signin.errors.mobileSessionAborted"](),
-      });
-      hideModal();
-      messageExchanger.sendMessage({
-        id,
-        message: { error: error instanceof Error ? error.message : (error as JsonValue) },
-      });
-    } finally {
-      setIsLoadingCredential(false);
-    }
-  });
+        messageExchanger.sendMessage({ id, message: { data: { ...response, username } } });
+        toast.success({
+          title: "Connection established",
+          description: null,
+        });
+        hideModal();
+      } catch (error) {
+        captureException(error);
+        console.error("Error creating session: ", error);
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.mobileSessionAborted"](),
+        });
+        hideModal();
+        messageExchanger.sendMessage({
+          id,
+          message: { error: error instanceof Error ? error.message : (error as JsonValue) },
+        });
+      } finally {
+        setIsLoadingCredential(false);
+      }
+    });
+    return () => {
+      unsubscribe?.();
+      messageExchanger?.close();
+    };
+  }, [messageExchanger]);
 
   return (
     <div className="flex flex-col bg-surface-primary-rice rounded-xl relative">
