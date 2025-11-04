@@ -18,41 +18,42 @@ export const QRConnect = forwardRef((_props, _ref) => {
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
   const { messageExchanger, isLoading } = useMessageExchanger({
     url: WS_URI,
-    subscribe: async (msg, exchanger) => {
-      const { id, type, message } = msg;
-      if (!signingClient || isLoadingCredential || type !== "create-session") return;
-      try {
-        setIsLoadingCredential(true);
+  });
 
-        const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
+  messageExchanger?.subscribe(async (msg) => {
+    const { id, type, message } = msg;
+    if (!signingClient || isLoadingCredential || type !== "create-session") return;
+    try {
+      setIsLoadingCredential(true);
 
-        const response = await signingClient.createSession({
-          expireAt,
-          pubKey: decodeBase64(publicKey),
-        });
+      const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
 
-        exchanger.sendMessage({ id, message: { data: { ...response, username } } });
-        toast.success({
-          title: "Connection established",
-          description: null,
-        });
-        hideModal();
-      } catch (error) {
-        captureException(error);
-        console.error("Error creating session: ", error);
-        toast.error({
-          title: m["common.error"](),
-          description: m["signin.errors.mobileSessionAborted"](),
-        });
-        hideModal();
-        exchanger.sendMessage({
-          id,
-          message: { error: error instanceof Error ? error.message : (error as JsonValue) },
-        });
-      } finally {
-        setIsLoadingCredential(false);
-      }
-    },
+      const response = await signingClient.createSession({
+        expireAt,
+        pubKey: decodeBase64(publicKey),
+      });
+
+      messageExchanger.sendMessage({ id, message: { data: { ...response, username } } });
+      toast.success({
+        title: "Connection established",
+        description: null,
+      });
+      hideModal();
+    } catch (error) {
+      captureException(error);
+      console.error("Error creating session: ", error);
+      toast.error({
+        title: m["common.error"](),
+        description: m["signin.errors.mobileSessionAborted"](),
+      });
+      hideModal();
+      messageExchanger.sendMessage({
+        id,
+        message: { error: error instanceof Error ? error.message : (error as JsonValue) },
+      });
+    } finally {
+      setIsLoadingCredential(false);
+    }
   });
 
   return (
