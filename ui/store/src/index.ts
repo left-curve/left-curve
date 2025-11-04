@@ -97,7 +97,7 @@ export {
 } from "./hooks/useAccountInfo.js";
 
 export {
-  type UseMessageExchangerParamaters,
+  type UseMessageExchangerParameters,
   type UseMessageExchangerReturnType,
   useMessageExchanger,
 } from "./hooks/useMessageExchanger.js";

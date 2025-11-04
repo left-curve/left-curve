@@ -30,7 +30,6 @@ export class MessageExchanger {
     this.#keyPair = keyPair;
     this.#listeners = new Set();
     this.#resolver = new Map();
-    this.#ws.onclose = this.#onWebSocketClose.bind(this);
     this.#ws.onerror = this.#onWebSocketError.bind(this);
     this.#ws.onmessage = this.#onWebSocketMessage.bind(this);
   }
@@ -47,10 +46,6 @@ export class MessageExchanger {
         message: serializeJson(data.message),
       }),
     );
-  }
-
-  #onWebSocketClose() {
-    console.log("WebSocket Disconnected");
   }
 
   #onWebSocketError(error: unknown) {
@@ -82,7 +77,6 @@ export class MessageExchanger {
   async #onHandShakeInit(peerSocketId: string, message: string) {
     this.#peerSocketId = peerSocketId;
     const { id, data } = deserializeJson<MessageData<{ publicKey: JsonWebKey }>>(message);
-    console.log(data);
     const peerPublicKey = await WebCryptoECDH.importPublicKey(data.publicKey);
     this.#sharedSecret = await WebCryptoECDH.deriveSecret(this.#keyPair.privateKey, peerPublicKey);
 

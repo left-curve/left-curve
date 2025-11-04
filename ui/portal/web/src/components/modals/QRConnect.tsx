@@ -1,5 +1,5 @@
 import { useAccount, useConnectorClient, useMessageExchanger } from "@left-curve/store";
-import { forwardRef, useId, useState } from "react";
+import { forwardRef, useState } from "react";
 
 import { IconButton, IconClose, IconMobile, QRCode, useApp } from "@left-curve/applets-kit";
 
@@ -11,51 +11,48 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 import type { JsonValue } from "@left-curve/dango/types";
 
 export const QRConnect = forwardRef((_props, _ref) => {
-  const id = useId();
-  const [isLoadingCredential, setIsLoadingCredential] = useState(false);
-  const { data: messageExchanger, isLoading } = useMessageExchanger({
-    url: WS_URI,
-    key: id,
-  });
-
   const { toast, hideModal } = useApp();
   const { data: signingClient } = useConnectorClient();
   const { username } = useAccount();
 
-  messageExchanger?.subscribe(async (msg) => {
-    const { id, type, message } = msg;
-    if (!signingClient || isLoadingCredential || type !== "create-session") return;
-    try {
-      setIsLoadingCredential(true);
+  const [isLoadingCredential, setIsLoadingCredential] = useState(false);
+  const { messageExchanger, isLoading } = useMessageExchanger({
+    url: WS_URI,
+    subscribe: async (msg, exchanger) => {
+      const { id, type, message } = msg;
+      if (!signingClient || isLoadingCredential || type !== "create-session") return;
+      try {
+        setIsLoadingCredential(true);
 
-      const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
+        const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
 
-      const response = await signingClient.createSession({
-        expireAt,
-        pubKey: decodeBase64(publicKey),
-      });
+        const response = await signingClient.createSession({
+          expireAt,
+          pubKey: decodeBase64(publicKey),
+        });
 
-      messageExchanger.sendMessage({ id, message: { data: { ...response, username } } });
-      toast.success({
-        title: "Connection established",
-        description: null,
-      });
-      hideModal();
-    } catch (error) {
-      captureException(error);
-      console.error("Error creating session: ", error);
-      toast.error({
-        title: m["common.error"](),
-        description: m["signin.errors.mobileSessionAborted"](),
-      });
-      hideModal();
-      messageExchanger.sendMessage({
-        id,
-        message: { error: error instanceof Error ? error.message : (error as JsonValue) },
-      });
-    } finally {
-      setIsLoadingCredential(false);
-    }
+        exchanger.sendMessage({ id, message: { data: { ...response, username } } });
+        toast.success({
+          title: "Connection established",
+          description: null,
+        });
+        hideModal();
+      } catch (error) {
+        captureException(error);
+        console.error("Error creating session: ", error);
+        toast.error({
+          title: m["common.error"](),
+          description: m["signin.errors.mobileSessionAborted"](),
+        });
+        hideModal();
+        exchanger.sendMessage({
+          id,
+          message: { error: error instanceof Error ? error.message : (error as JsonValue) },
+        });
+      } finally {
+        setIsLoadingCredential(false);
+      }
+    },
   });
 
   return (
