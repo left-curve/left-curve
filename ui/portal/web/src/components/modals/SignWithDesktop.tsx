@@ -3,14 +3,14 @@ import { forwardRef } from "react";
 
 import { QRCodeReader, Spinner, useApp } from "@left-curve/applets-kit";
 
-import { WEBRTC_URI } from "~/constants";
+import { WS_URI } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const SignWithDesktop = forwardRef((_, _ref) => {
   const { toast, hideModal, navigate } = useApp();
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
-    url: WEBRTC_URI,
+    url: WS_URI,
     toast: {
       error: () =>
         toast.error({
