@@ -1186,6 +1186,17 @@ jobs:
         if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
         with:
           ref: ${{ github.head_ref || github.ref }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.16.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "pnpm"
+
       - uses: docker/setup-buildx-action@v3
         if: env.BACKEND_CHANGED == 'true' || env.FRONTEND_CHANGED == 'true' || env.LOCALDANGO_CHANGED == 'true'
       - uses: docker/login-action@v3
@@ -1205,7 +1216,6 @@ jobs:
           COMETBFT_PORT: 0
           COMETBFT_TAG: v0.38.19
           PYTH__ACCESS_TOKEN: ${{ secrets.PYTH__ACCESS_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd networks/localdango
           cp env-example .env
@@ -1223,8 +1233,14 @@ jobs:
             docker compose ps
             exit 1
           }
-          pnpm i
+
+      - name: Verify frontend and backend connection
+        if: always()
+        run: |
+          pnpm install --save-dev @playwright/test@latest
+          pnpm exec playwright install --with-deps
           pnpm test:e2e
+
       - name: Cleanup
         if: always()
         run: |
