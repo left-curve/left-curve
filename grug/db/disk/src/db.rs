@@ -61,7 +61,7 @@ pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
     /// Records in this range will be loaded into memory. Reading and iterating
-    /// within this range will be done entirely in memory, without access the
+    /// within this range will be done entirely in memory, without accessing the
     /// disk.
     ///
     /// Lower bound is inclusive, upper bound is exclusive.
