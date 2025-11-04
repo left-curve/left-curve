@@ -6,7 +6,7 @@
       set_fact:
         lb_service: "{{ svcnet.0 }}"
         lb_network: "{{ svcnet.1 }}"
-        lb_name: "lb-{{ svcnet.0 }}-{{ svcnet.1 }}.{{ dango_domain }}"
+        lb_name: "{{ svcnet.0 }}-{{ svcnet.1 }}.{{ dango_domain }}"
         pool_name: "pool-{{ svcnet.0 }}-{{ svcnet.1 }}"
         desired_lb_description: "Auto-managed by Ansible: service={{ svcnet.0 }}, network={{ svcnet.1 }}"
 
