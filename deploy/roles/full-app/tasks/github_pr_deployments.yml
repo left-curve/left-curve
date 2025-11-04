@@ -16,6 +16,7 @@
     - "dango-frontend"
     - "dango-api"
     - "dango-metrics"
+    - "dango-graphiql"
     - "faucet-bot"
     - "cometbft-p2p"
     - "cometbft-rpc"
