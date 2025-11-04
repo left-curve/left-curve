@@ -94,7 +94,7 @@ services:
       - name: "Dango GraphiQL"
         icon: "fas fa-project-diagram"
         tag: "testnet"
-        url: "https://api-testnet.dango.zone/graphiql"
+        url: "https://graphiql-testnet.dango.zone"
         target: "_blank"
 
       - name: "Faucet"
@@ -135,7 +135,7 @@ services:
       - name: "Dango GraphiQL"
         icon: "fas fa-project-diagram"
         tag: "devnet"
-        url: "https://api-devnet.dango.zone/graphiql"
+        url: "https://graphiql-devnet.dango.zone"
         target: "_blank"
 
       - name: "Faucet"
