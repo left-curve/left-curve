@@ -144,3 +144,8 @@
     - { name: "net.core.somaxconn",        value: "65535" }
     - { name: "net.core.netdev_max_backlog", value: "16384" }
     - { name: "net.ipv4.tcp_max_syn_backlog", value: "65535" }
+
+    # UDP buffer sizes for cloudflared
+    - { name: "net.core.rmem_max",         value: "7500000" }
+    - { name: "net.core.wmem_max",         value: "7500000" }
+

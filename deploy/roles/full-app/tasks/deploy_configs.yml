@@ -15,7 +15,7 @@
 - file:
     path: "{{ item }}"
     state: directory
-  loop: ["{{ deployment_dir }}"]
+  loop: ["{{ deployment_dir }}", "{{ deployment_dir }}/cloudflared"]
 
 - name: Deploy configuration files
   become: true
@@ -25,7 +25,7 @@
         src: "{{ item.src }}"
         dest: "{{ item.dest }}"
         owner: "{{ deploy_user }}"
-        mode: 0600
+        mode: "{{ item.mode | default('0600') }}"
       loop:
         - { src: "config/cometbft/config.toml.j2", dest: "{{ cometbft_directory }}/config/config.toml" }
         - { src: "config/cometbft/genesis.json", dest: "{{ cometbft_directory }}/config/genesis.json" }
@@ -34,6 +34,7 @@
         - { src: "config/dango/app.toml", dest: "{{ dango_directory }}/config/app.toml" }
         - { src: "docker-compose.yml", dest: "{{ deployment_dir }}/docker-compose.yml" }
         - { src: "env.j2", dest: "{{ deployment_dir }}/.env" }
+        - { src: "cloudflared/config.yml", dest: "{{ deployment_dir }}/cloudflared/config.yml", mode: "0644" }
 
 - name: Deploy clickhouse configuration files
   become: true

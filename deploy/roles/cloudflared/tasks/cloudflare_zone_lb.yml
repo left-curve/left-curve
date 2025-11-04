@@ -1,0 +1,98 @@
+# expects: svcnet (tuple [service, net]), cf_pools, cf_load_balancers, cloudflare_zone_id, cloudflare_api_token
+
+- name: Ensure Cloudflare zone LB
+  block:
+    - name: Derive service/network and names
+      set_fact:
+        lb_service: "{{ svcnet.0 }}"
+        lb_network: "{{ svcnet.1 }}"
+        lb_name: "lb-{{ svcnet.0 }}-{{ svcnet.1 }}.{{ dango_domain }}"
+        pool_name: "pool-{{ svcnet.0 }}-{{ svcnet.1 }}"
+        desired_lb_description: "Auto-managed by Ansible: service={{ svcnet.0 }}, network={{ svcnet.1 }}"
+
+    - name: Lookup pool id for service/network
+      set_fact:
+        pool_id: >-
+          {{
+            (cf_pools.json.result
+             | selectattr('name','equalto', pool_name)
+             | map(attribute='id')
+             | list | first) | default(omit)
+          }}
+
+    - name: Find existing LB by name
+      set_fact:
+        existing_lb: >-
+          {{
+            (cf_load_balancers.json.result
+             | selectattr('name','equalto', lb_name)
+             | list | first) | default(None)
+          }}
+
+    - name: Set existing LB id when found
+      when: existing_lb is mapping
+      set_fact:
+        existing_lb_id: "{{ existing_lb.id }}"
+
+    - name: Create LB if missing
+      when: (existing_lb_id | default('') | length) == 0 and (pool_id is defined)
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/load_balancers"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ lb_name }}"
+          description: "{{ desired_lb_description }}"
+          default_pools: [ "{{ pool_id }}" ]
+          fallback_pool: "{{ pool_id }}"
+          proxied: true
+          steering_policy: "random"
+          session_affinity: "cookie"
+          session_affinity_attributes: { ttl: 3600 }
+      register: create_lb
+      failed_when: create_lb.status not in [200,409]
+      changed_when: create_lb.status == 200
+
+    - name: Skip LB creation when pool_id missing
+      when: (existing_lb_id | default('') | length) == 0 and (pool_id is not defined)
+      debug:
+        msg: "Skipping LB {{ lb_name }} because pool {{ pool_name }} was not found."
+
+    - name: Update LB to desired state (always)
+      when: (existing_lb_id | default('') | length) > 0 and (pool_id is defined)
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/load_balancers/{{ existing_lb_id }}"
+        method: PUT
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          name: "{{ lb_name }}"
+          description: "{{ desired_lb_description }}"
+          default_pools: [ "{{ pool_id }}" ]
+          fallback_pool: "{{ pool_id }}"
+          proxied: true
+          steering_policy: "random"
+          session_affinity: "cookie"
+          session_affinity_attributes: { ttl: 3600 }
+      register: update_lb
+      failed_when: update_lb.status not in [200]
+      changed_when: false
+
+    - name: Debug LB ensure summary
+      debug:
+        msg:
+          lb: "{{ lb_name }}"
+          description: "{{ desired_lb_description }}"
+          pool_name: "{{ pool_name }}"
+          pool_id: "{{ pool_id | default('missing') }}"
+          existing_lb_id: "{{ existing_lb_id | default('none') }}"
+          created_status: "{{ (create_lb.status if (create_lb is defined and create_lb.status is defined) else 'n/a') }}"
+          update_status: "{{ (update_lb.status if (update_lb is defined and update_lb.status is defined) else 'n/a') }}"
+  delegate_to: localhost
+  become: false
+  run_once: true

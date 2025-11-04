@@ -98,7 +98,7 @@ port = 9191
 [tendermint]
 
 # Tendermint RPC listening address.
-rpc_addr = "http://{{ cometbft_host }}:26657"
+rpc_addr = "http://cometbft:26657"
 
 # Tendermint ABCI listening address.
 abci_addr = "0.0.0.0:26658"
@@ -110,7 +110,7 @@ abci_addr = "0.0.0.0:26658"
 [transactions]
 
 # Chain identifier.
-chain_id = "{{ chain_id }}"
+chain_id = ""
 
 # Scaling factor to apply to simulated gas consumption.
 gas_adjustment = 1.4

@@ -53,6 +53,24 @@ services:
       retries: 10
 {% endif %}
 
+{% if cloudflare_tunnel_enabled %}
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml --metrics 0.0.0.0:2000 run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    env_file:
+      - .env
+    networks:
+      - default
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+    healthcheck:
+      test: ["CMD", "cloudflared", "--config", "/etc/cloudflared/config.yml", "--metrics", "0.0.0.0:2000", "tunnel", "ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+{% endif %}
+
 {% if deploy_includes_clickhouse %}
   clickhouse:
     image: clickhouse/clickhouse-server:latest
@@ -127,14 +145,14 @@ services:
         hard: 200000
     volumes:
       - "${DANGO_DIRECTORY}:/root/.dango"
+    env_file:
+      - .env
     environment:
       - INDEXER__DATABASE__URL=${POSTGRES_DATABASE_URL}
       - INDEXER__CLICKHOUSE__USER=${CLICKHOUSE_DANGO_USER}
       - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_DANGO_PASSWORD}
       - INDEXER__CLICKHOUSE__DATABASE=${CLICKHOUSE_DATABASE}
       - INDEXER__CLICKHOUSE__URL=${CLICKHOUSE_URL}
-      - PYTH__ACCESS_TOKEN=${PYTH__ACCESS_TOKEN}
-      - CHAIN_ID=${CHAIN_ID}
       - RUST_BACKTRACE=1
     tty: true
     healthcheck:
@@ -285,6 +303,7 @@ services:
     environment:
       - GRAPHQL_ENDPOINT=${INDEXER_URL}/graphql
     networks:
+      - default
       - traefik
 
 networks:
