@@ -9,6 +9,8 @@ use {
 
 #[derive(Subcommand)]
 pub enum DbCmd {
+    /// Print the database version
+    Version,
     /// Prune the database
     Prune {
         /// Delete historical states up to this height (exclusive)
@@ -36,6 +38,12 @@ impl DbCmd {
         }
 
         match self {
+            DbCmd::Version => {
+                let db = DiskDb::<SimpleCommitment>::open(dir.data_dir())?;
+
+                println!("Latest version: {:?}", db.latest_version());
+                println!("Oldest version: {:?}", db.oldest_version());
+            },
             DbCmd::Prune {
                 up_to_version,
                 compact,
@@ -47,8 +55,6 @@ impl DbCmd {
                 if compact {
                     db.compact();
                 }
-
-                Ok(())
             },
             DbCmd::Reset { yes } => {
                 if !yes {
@@ -61,9 +67,11 @@ impl DbCmd {
                     )?;
                 }
 
-                Ok(fs::remove_dir_all(data_dir)?)
+                fs::remove_dir_all(data_dir)?;
             },
         }
+
+        Ok(())
     }
 }
 
