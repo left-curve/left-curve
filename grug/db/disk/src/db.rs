@@ -64,7 +64,7 @@ pub struct Config {
     /// within this range will be done entirely in memory, without access the
     /// disk.
     ///
-    /// Lower bound is inclusive, upper bound in exclusive.
+    /// Lower bound is inclusive, upper bound is exclusive.
     pub priority_range: Option<(Vec<u8>, Vec<u8>)>,
     /// Options regarding auto-pruning.
     pub pruning: PruningConfig,
