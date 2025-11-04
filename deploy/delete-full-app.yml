@@ -57,7 +57,7 @@
         type: CNAME
         api_token: "{{ cloudflare_api_token }}"
         state: absent
-      loop: ["www", "api", "faucet", "graphiql", "cometbft"]
+      loop: ["www", "api", "faucet", "graphiql"]
       ignore_errors: true
 
     - name: Cleanup deployment
