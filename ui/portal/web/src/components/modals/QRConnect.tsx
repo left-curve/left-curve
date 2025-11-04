@@ -1,7 +1,14 @@
-import { useAccount, useConnectorClient, useMessageExchanger } from "@left-curve/store";
-import { forwardRef, useEffect, useState } from "react";
+import { MessageExchanger, useAccount, useConnectorClient } from "@left-curve/store";
+import { forwardRef, useEffect } from "react";
 
-import { IconButton, IconClose, IconMobile, QRCode, useApp } from "@left-curve/applets-kit";
+import {
+  IconButton,
+  IconClose,
+  IconMobile,
+  QRCode,
+  useApp,
+  useAsync,
+} from "@left-curve/applets-kit";
 
 import { decodeBase64 } from "@left-curve/dango/encoding";
 import { captureException } from "@sentry/react";
@@ -15,18 +22,16 @@ export const QRConnect = forwardRef((_props, _ref) => {
   const { data: signingClient } = useConnectorClient();
   const { username } = useAccount();
 
-  const [isLoadingCredential, setIsLoadingCredential] = useState(false);
-  const { data: messageExchanger, isLoading } = useMessageExchanger({
-    url: WS_URI,
-  });
+  const { loading: isLoading, value: messageExchanger } = useAsync(
+    () => MessageExchanger.create(WS_URI),
+    [],
+  );
 
   useEffect(() => {
     const unsubscribe = messageExchanger?.subscribe(async (msg) => {
       const { id, type, message } = msg;
-      if (!signingClient || isLoadingCredential || type !== "create-session") return;
+      if (!signingClient || type !== "create-session") return;
       try {
-        setIsLoadingCredential(true);
-
         const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
 
         const response = await signingClient.createSession({
@@ -52,15 +57,12 @@ export const QRConnect = forwardRef((_props, _ref) => {
           id,
           message: { error: error instanceof Error ? error.message : (error as JsonValue) },
         });
-      } finally {
-        setIsLoadingCredential(false);
       }
     });
     return () => {
       unsubscribe?.();
-      messageExchanger?.close();
     };
-  }, [messageExchanger]);
+  }, [messageExchanger, signingClient]);
 
   return (
     <div className="flex flex-col bg-surface-primary-rice rounded-xl relative">
@@ -85,7 +87,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
       <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
       <div className="flex justify-center items-center p-8">
         <QRCode
-          isLoading={isLoading || isLoadingCredential}
+          isLoading={isLoading}
           data={
             messageExchanger
               ? `${document.location.origin}/signin?socketId=${messageExchanger.getSocketId()}`

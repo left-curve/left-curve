@@ -97,12 +97,6 @@ export {
 } from "./hooks/useAccountInfo.js";
 
 export {
-  type UseMessageExchangerParameters,
-  type UseMessageExchangerReturnType,
-  useMessageExchanger,
-} from "./hooks/useMessageExchanger.js";
-
-export {
   type UseSigninWithDesktopParameters,
   type UseSigninWithDesktopReturnType,
   useSigninWithDesktop,
