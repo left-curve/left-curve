@@ -65,19 +65,17 @@ export const AccordionItem: React.FC<PropsWithChildren<AccordionItemProps>> = ({
         </div>
       </button>
 
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className={twMerge("overflow-hidden", classNames?.menu)}
-          >
-            <div className="w-full pt-4">{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.1, ease: "easeInOut" }}
+          className={twMerge("overflow-hidden", classNames?.menu)}
+        >
+          <div className="w-full pt-4">{children}</div>
+        </motion.div>
+      )}
     </div>
   );
 };
