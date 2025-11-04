@@ -15,7 +15,13 @@
 - file:
     path: "{{ item }}"
     state: directory
-  loop: ["{{ deployment_dir }}", "{{ deployment_dir }}/cloudflared"]
+  loop: ["{{ deployment_dir }}"]
+
+- file:
+    path: "{{ item }}"
+    state: directory
+  loop: ["{{ deployment_dir }}/cloudflared"]
+  when: cloudflare_tunnel_enabled
 
 - name: Deploy configuration files
   become: true
@@ -34,7 +40,19 @@
         - { src: "config/dango/app.toml", dest: "{{ dango_directory }}/config/app.toml" }
         - { src: "docker-compose.yml", dest: "{{ deployment_dir }}/docker-compose.yml" }
         - { src: "env.j2", dest: "{{ deployment_dir }}/.env" }
+
+- name: Deploy configuration files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+        mode: "{{ item.mode | default('0600') }}"
+      loop:
         - { src: "cloudflared/config.yml", dest: "{{ deployment_dir }}/cloudflared/config.yml", mode: "0644" }
+  when: cloudflare_tunnel_enabled
 
 - name: Deploy clickhouse configuration files
   become: true
