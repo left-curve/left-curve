@@ -8,6 +8,9 @@ export { useControlledState } from "./hooks/useControlledState.js";
 export { useCountdown } from "./hooks/useCountdown.js";
 export { useInputs, type Controllers } from "./hooks/useInputs.js";
 export { useWatchEffect } from "./hooks/useWatch.js";
+export { useAsyncFn } from "./hooks/useAsyncFn.js";
+export { useAsync } from "./hooks/useAsync.js";
+export { useMountedState } from "./hooks/useMountedState.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                  Providers                                 */
