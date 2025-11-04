@@ -133,23 +133,6 @@ http:
       tls: {}
       service: "{{ dango_network }}-graphiql"
 
-    {{ dango_network }}-cloudflare-graphiql:
-      rule: "Host(`api-{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
-      entryPoints:
-        - "web"
-      service: "{{ dango_network }}-graphiql"
-      middlewares:
-        - "{{ dango_network }}-graphiql-stripprefix"
-
-    {{ dango_network }}-cloudflare-graphiql-ssl:
-      rule: "Host(`api-{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"
-      entryPoints:
-        - "websecure"
-      tls: {}
-      service: "{{ dango_network }}-graphiql"
-      middlewares:
-        - "{{ dango_network }}-graphiql-stripprefix"
-
     {{ dango_network }}-cloudflare-frontend:
       rule: "Host(`www-{{ dango_network }}.{{ dango_domain }}`)"
       entryPoints:
