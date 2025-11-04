@@ -6,12 +6,12 @@ transport-loglevel: warn
 ingress:
 {% for dango_network in dango_networks %}
   - hostname: api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}
-    service: http://traefik:{{ traefik[dango_network].ports.dango_port }}
+    service: http://traefik
   - hostname: graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}
-    service: http://traefik:{{ traefik[dango_network].ports.dango_port }}
+    service: http://traefik
   - hostname: www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}
-    service: http://traefik:{{ traefik[dango_network].ports.dango_frontend_port }}
+    service: http://traefik
   - hostname: faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}
-    service: http://traefik:{{ traefik[dango_network].ports.faucet_port }}
+    service: http://traefik
 {% endfor %}
   - service: http_status:404
