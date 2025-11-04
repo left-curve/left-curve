@@ -51,6 +51,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://{{ deployment_name }}-faucet-bot-1:8082"
+    {{ dango_network }}-graphiql:
+      loadBalancer:
+        servers:
+          - url: "http://{{ deployment_name }}-graphiql-1:80"
     {{ dango_network }}-cometbft_rpc:
       loadBalancer:
         servers:
@@ -136,6 +140,19 @@ http:
       service: "{{ dango_network }}-faucet_bot"
       middlewares:
         - "{{ dango_network }}-cors-dango"
+
+    {{ dango_network }}-main-graphiql:
+      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-graphiql"
+
+    {{ dango_network }}-main-graphiql-ssl:
+      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls: {}
+      service: "{{ dango_network }}-graphiql"
 
     {{ dango_network }}-cloudflare-graphiql:
       rule: "Host(`api-{{ dango_network }}.{{ dango_domain }}`) && PathPrefix(`/graphiql`)"

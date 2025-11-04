@@ -104,3 +104,20 @@ http:
       service: "{{ dango_network }}-faucet_bot"
       middlewares:
         - "{{ dango_network }}-cors-dango"
+
+    {{ dango_network }}-main-graphiql:
+      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-graphiql"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
+
+    {{ dango_network }}-main-graphiql-ssl:
+      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls: {}
+      service: "{{ dango_network }}-graphiql"
+      middlewares:
+        - "{{ dango_network }}-cors-dango"
