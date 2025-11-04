@@ -51,7 +51,7 @@
          else token_resp.json.result.token }}
 
 # derive id from token if you didn’t keep tunnel_id
-- name: Set token_id from tunnel_token
+- name: Set tunnel_id from tunnel_token
   set_fact:
     tunnel_id: "{{ (cloudflare_tunnel_token | b64decode | from_json).t }}"
   when: tunnel_id is not defined
