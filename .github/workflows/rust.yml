@@ -1205,6 +1205,7 @@ jobs:
           COMETBFT_PORT: 0
           COMETBFT_TAG: v0.38.19
           PYTH__ACCESS_TOKEN: ${{ secrets.PYTH__ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd networks/localdango
           cp env-example .env
@@ -1222,6 +1223,8 @@ jobs:
             docker compose ps
             exit 1
           }
+          pnpm i
+          pnpm test:e2e
       - name: Cleanup
         if: always()
         run: |
