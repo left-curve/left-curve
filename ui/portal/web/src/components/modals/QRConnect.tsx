@@ -1,12 +1,11 @@
-import { decodeBase64 } from "@left-curve/dango/encoding";
-import { Actions } from "@left-curve/dango/utils";
-import { useAccount, useConnectorClient, useDataChannel } from "@left-curve/store";
-import { captureException } from "@sentry/react";
+import { useAccount, useConnectorClient, useMessageExchanger } from "@left-curve/store";
 import { forwardRef, useId, useState } from "react";
 
 import { IconButton, IconClose, IconMobile, QRCode, useApp } from "@left-curve/applets-kit";
 
-import { WEBRTC_URI } from "~/constants";
+import { decodeBase64 } from "@left-curve/dango/encoding";
+import { captureException } from "@sentry/react";
+import { WS_URI } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { JsonValue } from "@left-curve/dango/types";
@@ -14,8 +13,8 @@ import type { JsonValue } from "@left-curve/dango/types";
 export const QRConnect = forwardRef((_props, _ref) => {
   const id = useId();
   const [isLoadingCredential, setIsLoadingCredential] = useState(false);
-  const { data: dataChannel, isLoading: isLoadingDataChannel } = useDataChannel({
-    url: WEBRTC_URI,
+  const { data: messageExchanger, isLoading } = useMessageExchanger({
+    url: WS_URI,
     key: id,
   });
 
@@ -23,12 +22,10 @@ export const QRConnect = forwardRef((_props, _ref) => {
   const { data: signingClient } = useConnectorClient();
   const { username } = useAccount();
 
-  dataChannel?.subscribe(async (msg) => {
-    if (!signingClient || isLoadingCredential) return;
-
+  messageExchanger?.subscribe(async (msg) => {
     const { id, type, message } = msg;
+    if (!signingClient || isLoadingCredential || type !== "create-session") return;
     try {
-      if (type !== Actions.GenerateSession || isLoadingCredential) return;
       setIsLoadingCredential(true);
 
       const { expireAt, publicKey } = message as { expireAt: number; publicKey: string };
@@ -38,7 +35,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
         pubKey: decodeBase64(publicKey),
       });
 
-      dataChannel.sendMessage({ id, message: { data: { ...response, username } } });
+      messageExchanger.sendMessage({ id, message: { data: { ...response, username } } });
       toast.success({
         title: "Connection established",
         description: null,
@@ -52,7 +49,7 @@ export const QRConnect = forwardRef((_props, _ref) => {
         description: m["signin.errors.mobileSessionAborted"](),
       });
       hideModal();
-      dataChannel.sendMessage({
+      messageExchanger.sendMessage({
         id,
         message: { error: error instanceof Error ? error.message : (error as JsonValue) },
       });
@@ -84,10 +81,10 @@ export const QRConnect = forwardRef((_props, _ref) => {
       <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
       <div className="flex justify-center items-center p-8">
         <QRCode
-          isLoading={isLoadingDataChannel || isLoadingCredential}
+          isLoading={isLoading || isLoadingCredential}
           data={
-            dataChannel
-              ? `${document.location.origin}/signin?socketId=${dataChannel.getSocketId()}`
+            messageExchanger
+              ? `${document.location.origin}/signin?socketId=${messageExchanger.getSocketId()}`
               : undefined
           }
         />
