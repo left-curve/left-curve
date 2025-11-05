@@ -1,5 +1,7 @@
 #[cfg(feature = "metrics")]
 use grug_types::MetricsIterExt;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     grug_app::{Commitment, Db},
@@ -51,6 +53,19 @@ pub const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 #[cfg(feature = "metrics")]
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
+/// Configurations related to the disk DB.
+#[derive(Default, Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Config {
+    // The interval of auto-pruning (i.e. perform a pruning every X versions).
+    // 0 means no auto-pruning.
+    pub prune_interval: u64,
+    /// At each auto-pruning, how many recent versions to keep.
+    pub prune_keep_recent: u64,
+    /// Whether to force an immediate database compaction when auto-pruning.
+    pub prune_force_compact: bool,
+}
+
 /// The base storage primitive.
 ///
 /// Its main feature is the separation of state storage (SS) and state commitment
@@ -80,6 +95,7 @@ pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 /// and maybe our implementation will converge with Sei's some time later.
 pub struct DiskDb<T> {
     pub(crate) inner: Arc<DiskDbInner>,
+    cfg: Config,
     _commitment: PhantomData<T>,
 }
 
@@ -100,8 +116,17 @@ pub(crate) struct PendingData {
 }
 
 impl<T> DiskDb<T> {
-    /// Create a DiskDb instance by opening a physical RocksDB instance.
+    /// Create a DiskDb instance by opening a physical RocksDB instance, using
+    /// the default configurations.
     pub fn open<P>(data_dir: P) -> DbResult<Self>
+    where
+        P: AsRef<Path>,
+    {
+        Self::open_with_cfg(data_dir, Config::default())
+    }
+
+    /// Create a DiskDb instance by opening a physical RocksDB instance.
+    pub fn open_with_cfg<P>(data_dir: P, cfg: Config) -> DbResult<Self>
     where
         P: AsRef<Path>,
     {
@@ -120,6 +145,7 @@ impl<T> DiskDb<T> {
                 db,
                 pending_data: RwLock::new(None),
             }),
+            cfg,
             _commitment: PhantomData,
         })
     }
@@ -129,6 +155,7 @@ impl<T> Clone for DiskDb<T> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
+            cfg: self.cfg,
             _commitment: PhantomData,
         }
     }
@@ -341,10 +368,30 @@ where
                 .record(duration.elapsed().as_secs_f64());
         }
 
+        // Perform auto-pruning if the configured interval is reached.
+        if self.cfg.prune_interval != 0
+            && pending.version % self.cfg.prune_interval == 0
+            && pending.version > self.cfg.prune_keep_recent
+        {
+            self.prune(pending.version - self.cfg.prune_keep_recent)?;
+
+            if self.cfg.prune_force_compact {
+                self.compact();
+            }
+        }
+
         Ok(())
     }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(up_to_version, "Pruning database");
+        }
+
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let ts = U64Timestamp::from(up_to_version);
 
         // Prune state storage.
@@ -370,7 +417,7 @@ where
         let mut buffer = Buffer::new(
             self.state_commitment(),
             None,
-            "disk_db_state_commitment_prune",
+            "disk_db/state_commitment/prune",
         );
 
         T::prune(&mut buffer, up_to_version)?;
@@ -392,7 +439,47 @@ where
 
         self.inner.db.write(batch)?;
 
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "prune")
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         Ok(())
+    }
+}
+
+impl<T> DiskDb<T> {
+    /// Force an immediate compaction of the timestamped column families.
+    pub fn compact(&self) {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!("Compacting database");
+        }
+
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        self.inner.db.compact_range_cf(
+            &cf_state_storage(&self.inner.db),
+            None::<&[u8]>,
+            None::<&[u8]>,
+        );
+
+        #[cfg(feature = "ibc")]
+        {
+            self.inner.db.compact_range_cf(
+                &cf_preimages(&self.inner.db),
+                None::<&[u8]>,
+                None::<&[u8]>,
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "compact")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 }
 
@@ -1121,8 +1208,7 @@ mod tests_simple {
     use {
         super::*,
         grug_app::SimpleCommitment,
-        grug_types::{ResultExt, hash},
-        rocksdb::CompactOptions,
+        grug_types::{ResultExt, btree_map, hash},
         temp_rocksdb::TempDataDir,
     };
 
@@ -1237,14 +1323,9 @@ mod tests_simple {
         );
 
         // Prune the db at 3, which is exclusive (3 becomes the oldest version)
+        // and force an immediate compaction.
         db.prune(3).unwrap();
-
-        db.inner.db.compact_range_cf_opt(
-            &cf_state_storage(&db.inner.db),
-            None::<&[u8]>,
-            None::<&[u8]>,
-            &CompactOptions::default(),
-        );
+        db.compact();
 
         assert_eq!(
             db.state_storage(Some(4)).unwrap().read(b"2"),
@@ -1273,5 +1354,68 @@ mod tests_simple {
             .should_fail_with_error(
                 "Invalid argument: Read timestamp:  is smaller than full_history_ts_low",
             );
+    }
+
+    #[test]
+    fn auto_prune_works() {
+        const KEY: &[u8] = b"data";
+
+        let path = TempDataDir::new("_grug_disk_db_auto_prune_works");
+        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
+            prune_interval: 2,
+            prune_keep_recent: 2,
+            prune_force_compact: true,
+        })
+        .unwrap();
+
+        // Write four batches of versions 0, 1, 2, 3.
+        for version in 0..=3 {
+            db.flush_and_commit(btree_map! {
+                KEY.to_vec() => Op::Insert(vec![version]),
+            })
+            .unwrap();
+        }
+
+        // No pruning should have happened at this point. Oldest version should
+        // not have been set (it's only set the first time a pruning is performed),
+        // and we should be able to read the historical values.
+        assert_eq!(db.oldest_version(), None);
+        for version in 0..=3 {
+            assert_eq!(
+                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
+                vec![version as u8]
+            );
+        }
+
+        // Write a batch of version 4.
+        db.flush_and_commit(btree_map! {
+            KEY.to_vec() => Op::Insert(vec![4]),
+        })
+        .unwrap();
+
+        // A pruning should have happened. with `up_to_version` = 4 - 2 = 2
+        // (exclusive, meaning version 0 & 1 are gone, version 2 is kept).
+        assert_eq!(db.oldest_version(), Some(2));
+        for version in 0..=1 {
+            db.state_storage(Some(version))
+                .should_fail_with_error(DbError::version_too_old(version, 2));
+
+            db.inner
+                .db
+                .get_cf_opt(
+                    &cf_state_storage(&db.inner.db),
+                    KEY,
+                    &new_read_options(Some(version), None, None),
+                )
+                .should_fail_with_error(
+                    "Invalid argument: Read timestamp:  is smaller than full_history_ts_low",
+                );
+        }
+        for version in 2..=4 {
+            assert_eq!(
+                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
+                vec![version as u8]
+            );
+        }
     }
 }

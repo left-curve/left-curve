@@ -19,6 +19,18 @@ wasm_cache_capacity = 1000
 # Gas limit when serving query requests.
 query_gas_limit = 100000000
 
+[grug.db]
+
+# The interval of auto-pruning (i.e. perform a pruning every X versions).
+# 0 means no auto-pruning.
+prune_interval = 100
+
+# At each auto-pruning, how many recent versions to keep.
+prune_keep_recent = 25
+
+# Whether to force an immediate database compaction when auto-pruning.
+prune_force_compact = false
+
 # Range of database keys that will be loaded into memory for better performance.
 # Lower bound is inclusive, upper bound is exclusive.
 #priority_range = [
