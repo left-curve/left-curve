@@ -64,7 +64,7 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
 
     let graphql_query = r#"
       subscription QueryApp($request: String!, $block_interval: Int!) {
-        queryApp(request: $request, blockInterval: $block_interval)
+        queryApp(request: $request, blockInterval: $block_interval) { response blockHeight }
       }
     "#;
 
@@ -125,7 +125,7 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
 
                 assert_json_eq!(
                     response.data.into_inner(),
-                    json!({"balance": {"amount": "0", "denom": "ugrug"}})
+                    json!({"response": {"balance": {"amount": "0", "denom": "ugrug"}}, "blockHeight": 1})
                 );
 
                 crate_block_tx.send(2).await?;
@@ -136,7 +136,7 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
 
                 assert_json_eq!(
                     response.data.into_inner(),
-                    json!({"balance": {"amount": "2000", "denom": "ugrug"}})
+                    json!({"response": {"balance": {"amount": "2000", "denom": "ugrug"}}, "blockHeight": 2})
                 );
 
                 crate_block_tx.send(3).await?;
@@ -147,7 +147,7 @@ async fn graphql_subscribe_to_query_app() -> anyhow::Result<()> {
 
                 assert_json_eq!(
                     response.data.into_inner(),
-                    json!({"balance": {"amount": "4000", "denom": "ugrug"}})
+                    json!({"response": {"balance": {"amount": "4000", "denom": "ugrug"}}, "blockHeight": 3})
                 );
 
                 Ok::<(), anyhow::Error>(())
