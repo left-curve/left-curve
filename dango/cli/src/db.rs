@@ -11,6 +11,8 @@ use {
 pub enum DbCmd {
     /// Print the database version
     Version,
+    /// Execute a database compaction
+    Compact,
     /// Prune the database
     Prune {
         /// Delete historical states up to this height (exclusive)
@@ -43,6 +45,10 @@ impl DbCmd {
 
                 println!("Latest version: {:?}", db.latest_version());
                 println!("Oldest version: {:?}", db.oldest_version());
+            },
+            DbCmd::Compact => {
+                let db = DiskDb::<SimpleCommitment>::open(dir.data_dir())?;
+                db.compact();
             },
             DbCmd::Prune {
                 up_to_version,
