@@ -30,6 +30,10 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
 
   const [chartState, setChartState] = useStorage<object>(`tv.${pairSymbol}`, {
     sync: true,
+    version: 1.1,
+    migrations: {
+      1: () => ({}),
+    },
   });
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
