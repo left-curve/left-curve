@@ -1120,6 +1120,7 @@ jobs:
         if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTEND_URL: "http://localhost"
         run: |
           pnpm i --frozen-lockfile
           pnpm exec playwright install --only-shell chromium
