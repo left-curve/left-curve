@@ -57,12 +57,13 @@
       register: liquidity_result
       retries: 3
       delay: 5
-      run_once: true
+      failed_when: false
 
     - name: Show liquidity command output
       debug:
         msg: |
           Status: {{ 'SUCCESS ✅' if liquidity_result is succeeded else 'FAILED ❌' }}
+          Exit Code: {{ liquidity_result.container.State.ExitCode | default('unknown') }}
           Stdout: {{ liquidity_result.stdout | default('No stdout available') }}
           Stderr: {{ liquidity_result.stderr | default('No stderr available') }}
 
@@ -89,12 +90,8 @@
         tty: yes
       loop: [ "{{ dango.dex_bot.address }}", "{{ dango.dex_bot.dex_address }}" ]
       register: balances_raw
-      run_once: true
-      delegate_to: "{{ dex_bot_host }}"
 
     - name: Pretty output
-      run_once: true
-      delegate_to: "{{ dex_bot_host }}"
       vars:
         report: |-
           {%- for r in balances_raw.results -%}
