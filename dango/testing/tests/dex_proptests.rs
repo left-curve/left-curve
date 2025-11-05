@@ -1,8 +1,7 @@
 use {
     dango_genesis::{Contracts, DexOption, GenesisOption},
     dango_testing::{
-        BridgeOp, Preset, TestAccounts, TestOption, TestSuite, setup_test_naive,
-        setup_test_naive_with_custom_genesis,
+        BridgeOp, Preset, TestAccounts, TestOption, TestSuite, setup_test_naive_with_custom_genesis,
     },
     dango_types::{
         constants::{dango, dango_usdc, eth, eth_usdc, sol, sol_usdc, usdc},
