@@ -999,7 +999,7 @@ jobs:
       packages: read
       deployments: write
       contents: read
-    needs: [security-artifacts, set-image-tags]
+    needs: [security-artifacts, set-image-tags, localdango]
     runs-on: [self-hosted]
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -1114,6 +1114,7 @@ jobs:
             docker compose ps
             exit 1
           }
+          docker compose ps
 
       - name: Verify frontend and backend connection
         if: always()
