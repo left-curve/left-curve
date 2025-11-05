@@ -1240,7 +1240,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pnpm i --frozen-lockfile
-          pnpm exec playwright install --with-deps --only-shell chromium
+          pnpm exec playwright install --only-shell chromium
           pnpm test:e2e
 
       - name: Cleanup
