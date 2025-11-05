@@ -169,10 +169,22 @@ impl<T> DiskDb<T> {
             #[cfg(feature = "tracing")]
             let mut size = 0;
 
-            let latest_version = read_version(&db, LATEST_VERSION_KEY);
-            let opts = new_read_options(latest_version, Some(min.as_ref()), Some(max.as_ref()));
-            let records = db
-                .iterator_cf_opt(&cf_state_storage(&db), opts, IteratorMode::Start)
+            // On a brand new database, where the `state_storage` column family
+            // is completely empty, with no data ever written into it yet, the
+            // iterator fails with:
+            //
+            // > Invalid argument: cannot call this method on column family
+            //   state_storage that enables timestamp
+            //
+            // Therefore, we check whether the `latest_version` exists, If not,
+            // it means the DB is new, then we default the priority data to an
+            // empty B-tree map.
+            let records = if let Some(latest_version) = read_version(&db, LATEST_VERSION_KEY) {
+                db.iterator_cf_opt(
+                    &cf_state_storage(&db),
+                    new_read_options(Some(latest_version), Some(min.as_ref()), Some(max.as_ref())),
+                    IteratorMode::Start,
+                )
                 .map(|item| {
                     let (k, v) = item.unwrap_or_else(|err| {
                         panic!("failed to load record for priority data: {err}");
@@ -185,7 +197,10 @@ impl<T> DiskDb<T> {
 
                     (k.to_vec(), v.to_vec())
                 })
-                .collect::<BTreeMap<_, _>>();
+                .collect::<BTreeMap<_, _>>()
+            } else {
+                BTreeMap::new()
+            };
 
             #[cfg(feature = "tracing")]
             {
@@ -1686,5 +1701,17 @@ mod tests_simple {
                 .collect::<Vec<_>>(),
             [b"000", b"001", b"003", b"004"]
         );
+    }
+
+    #[test]
+    fn priority_data_new_db() {
+        let path = TempDataDir::new("_grug_disk_db_priority_data_new_db");
+
+        // Open a brand new DB with priority data. Should succeed.
+        let _db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
+            priority_range: Some((b"000".to_vec(), b"004".to_vec())),
+            ..Default::default()
+        })
+        .unwrap();
     }
 }
