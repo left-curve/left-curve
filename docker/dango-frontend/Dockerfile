@@ -27,7 +27,7 @@ ARG PRIVY_CLIENT_ID
 ENV PUBLIC_PRIVY_CLIENT_ID=$PRIVY_CLIENT_ID
 
 # CONFIG_ENVIRONMENT: ${{ github.ref_name == 'ui/testnet' && 'test' || github.ref_name == 'ui/release' && 'prod' || 'dev' }}
-# PUBLIC_WEBRTC_URI: ${{ secrets.PUBLIC_WEBRTC_URI }}
+# PUBLIC_WS_URI: ${{ vars.WS_URI }}
 # PUBLIC_SENTRY_DSN: ${{ secrets.PUBLIC_SENTRY_DSN }}
 # SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
 # SENTRY_ORG: ${{ secrets.SENTRY_ORG }}

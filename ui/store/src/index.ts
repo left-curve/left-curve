@@ -1,6 +1,10 @@
 export { createConfig } from "./createConfig.js";
 export { createEventBus } from "./createEventBus.js";
 
+export { WebCryptoECDH } from "./ecdh.js";
+
+export { MessageExchanger } from "./messageExchanger.js";
+
 export {
   DangoStoreContext,
   DangoStoreProvider,
@@ -91,12 +95,6 @@ export {
   type UseAccountInfoReturnType,
   useAccountInfo,
 } from "./hooks/useAccountInfo.js";
-
-export {
-  type UseDataChannelParamaters,
-  type UseDataChannelReturnType,
-  useDataChannel,
-} from "./hooks/useDataChannel.js";
 
 export {
   type UseSigninWithDesktopParameters,

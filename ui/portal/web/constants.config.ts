@@ -13,7 +13,7 @@ export const PRIVY_ERRORS_MAPPING = {
   "User does not exist": m["auth.errors.userNotFound"](),
 };
 
-export const WEBRTC_URI = import.meta.env.PUBLIC_WEBRTC_URI;
+export const WS_URI = import.meta.env.PUBLIC_WS_URI;
 
 const translations = m as unknown as Record<string, () => string>;
 export const APPLETS: Record<string, AppletMetadata> = Object.keys(translations)

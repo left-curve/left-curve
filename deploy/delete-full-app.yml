@@ -55,10 +55,9 @@
         zone: "{{ dango_domain }}"
         record: "{{ item }}-{{ deployment_name }}-{{ hostname }}"
         type: CNAME
-        value: "{{ hostname }}.{{ dango_domain }}."
         api_token: "{{ cloudflare_api_token }}"
         state: absent
-      loop: ["www", "api", "faucet", "cometbft"]
+      loop: ["www", "api", "faucet", "graphiql"]
       ignore_errors: true
 
     - name: Cleanup deployment
@@ -123,6 +122,31 @@
         priority: info
         ident: dango
       when: delete_clickhouse_database_at_merge
+
+    - set_fact:
+        pr_tunnel_name: "{{ deployment_name }}-{{ hostname }}"
+
+    - name: Fetch PR tunnel
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}&is_deleted=false"
+        method: GET
+        headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+      register: cf_list
+      failed_when: false
+      ignore_errors: true
+
+    - name: Set PR tunnel_id
+      set_fact:
+        pr_tunnel_id: "{{ (cf_list.json.result[0].id) if (cf_list.json.result|length)>0 else omit }}"
+      ignore_errors: true
+
+    - name: Delete PR tunnel (Cloudflare)
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ pr_tunnel_id }}"
+        method: DELETE
+        headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+      when: pr_tunnel_id is defined
+      ignore_errors: true
 
     - name: Log deletion complete
       community.general.syslogger:

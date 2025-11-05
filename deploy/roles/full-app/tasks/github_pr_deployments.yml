@@ -16,6 +16,7 @@
     - "dango-frontend"
     - "dango-api"
     - "dango-metrics"
+    - "dango-graphiql"
     - "faucet-bot"
     - "cometbft-p2p"
     - "cometbft-rpc"
@@ -41,7 +42,7 @@
   loop:
     - { name: "dango-frontend", description: "Frontend", url: "https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
     - { name: "dango-api", description: "Dango API", url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
-    - { name: "dango-graphiql", description: "Dango GraphiQL", url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql" }
+    - { name: "dango-graphiql", description: "Dango GraphiQL", url: "https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
     - { name: "dango-metrics", description: "Dango Metrics", url: "http://{{ tailscale_ip }}:{{ dango_metrics_port }}" }
     - { name: "faucet-bot", description: "Faucet", url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
     - { name: "cometbft-p2p", description: "CometBFT P2P", url: "http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}" }
@@ -83,7 +84,7 @@
     | **Status** | ✅ |
     | **Dango Frontend** | [https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
     | **Dango GraphQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql) |
-    | **Dango GraphiQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql) |
+    | **Dango GraphiQL** | [https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
     | **Dango metrics** | [http://{{ tailscale_ip }}:{{ dango_metrics_port }}/metrics](http://{{ tailscale_ip }}:{{ dango_metrics_port }}/metrics) |
     | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](http://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
     | **CometBFT P2P** | [http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}](http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}) |

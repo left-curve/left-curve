@@ -1,0 +1,100 @@
+---
+- name: Set tunnel name
+  set_fact:
+    tunnel_name: "host-{{ hostname }}"
+
+# find
+- name: Fetch existing tunnels
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ tunnel_name }}&is_deleted=false"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: list_resp
+
+# create if missing
+- name: Create tunnel if missing
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cloudflare_api_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: { name: "{{ tunnel_name }}", config_src: "cloudflare" }
+  register: create_resp
+  when: (list_resp.json.result | length) == 0
+
+# set tunnel_id
+- name: Set tunnel_id with existing tunnel
+  set_fact:
+    tunnel_id: >-
+      {{ (list_resp.json.result[0].id
+          if (list_resp.json.result | length) > 0
+          else create_resp.json.result.id) }}
+
+- name: Show existing tunnel_id
+  debug:
+    var: tunnel_id
+
+# fetch token
+- name: Fetch tunnel token
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ tunnel_id }}/token"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: token_resp
+
+# set token (string or object-safe)
+- name: Set tunnel_token from fetched tunnel token
+  set_fact:
+    cloudflare_tunnel_token: >-
+      {{ token_resp.json.result
+         if (token_resp.json.result is string)
+         else token_resp.json.result.token }}
+
+# derive id from token if you didn’t keep tunnel_id
+- name: Set tunnel_id from tunnel_token
+  set_fact:
+    tunnel_id: "{{ (cloudflare_tunnel_token | b64decode | from_json).t }}"
+  when: tunnel_id is not defined
+
+- name: Create cloudflared directory
+  file:
+    path: "{{ cloudflared_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy cloudflared templates
+  become: true
+  become_user: root
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ cloudflared_dir }}/{{ item.dest }}"
+    owner: "{{ deploy_user }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: "env.j2", dest: ".env", mode: "0600" }
+    - { src: "config.yml", dest: "config.yml", mode: "0644" }
+    - { src: "docker-compose.yml", dest: "docker-compose.yml", mode: "0644" }
+
+- name: Create cloudflare network
+  community.docker.docker_network:
+    name: cloudflare
+
+- name: Start cloudflared
+  community.docker.docker_compose_v2:
+    project_src: "{{ cloudflared_dir }}"
+    state: present
+    recreate: always
+    wait: true
+
+- name: Ensure per-host CNAME → tunnel
+  community.general.cloudflare_dns:
+    zone: "{{ dango_domain }}"
+    record: "{{ item.1 }}-{{ item.0 }}-{{ hostname }}"
+    type: CNAME
+    value: "{{ tunnel_id }}.cfargotunnel.com"
+    proxied: true
+    state: present
+    api_token: "{{ cloudflare_api_token }}"
+  loop: "{{ dango_networks | product(['api','www','faucet','graphiql']) | list }}"

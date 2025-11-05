@@ -1,9 +1,5 @@
 http:
   middlewares:
-    {{ dango_network }}-graphiql-stripprefix:
-      stripPrefix:
-        prefixes:
-          - "/graphiql"
     {{ dango_network }}-cors-dango:
       headers:
         accessControlAllowOriginListRegex:
@@ -41,23 +37,6 @@ http:
           - url: "http://{{ deployment_name }}-graphiql-1:80"
 
   routers:
-    {{ dango_network }}-main-graphiql:
-      rule: "(Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
-      entryPoints:
-        - "web"
-      service: "{{ dango_network }}-graphiql"
-      middlewares:
-        - "{{ dango_network }}-graphiql-stripprefix"
-
-    {{ dango_network }}-main-graphiql-ssl:
-      rule: "(Host(`api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)) && PathPrefix(`/graphiql`)"
-      entryPoints:
-        - "websecure"
-      tls: {}
-      service: "{{ dango_network }}-graphiql"
-      middlewares:
-        - "{{ dango_network }}-graphiql-stripprefix"
-
     {{ dango_network }}-main-frontend:
       rule: "Host(`www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
       entryPoints:
@@ -104,3 +83,16 @@ http:
       service: "{{ dango_network }}-faucet_bot"
       middlewares:
         - "{{ dango_network }}-cors-dango"
+
+    {{ dango_network }}-main-graphiql:
+      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "{{ dango_network }}-graphiql"
+
+    {{ dango_network }}-main-graphiql-ssl:
+      rule: "Host(`graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}`)"
+      entryPoints:
+        - "websecure"
+      tls: {}
+      service: "{{ dango_network }}-graphiql"

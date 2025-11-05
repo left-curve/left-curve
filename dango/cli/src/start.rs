@@ -40,7 +40,7 @@ impl StartCmd {
         let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Open disk DB.
-        let db = DiskDb::<SimpleCommitment>::open(app_dir.data_dir())?;
+        let db = DiskDb::<SimpleCommitment>::open_with_cfg(app_dir.data_dir(), cfg.grug.db)?;
 
         // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
         let _codes = RustVm::genesis_codes();

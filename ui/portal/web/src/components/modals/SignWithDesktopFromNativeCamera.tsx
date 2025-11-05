@@ -3,7 +3,7 @@ import { forwardRef, useEffect } from "react";
 
 import { Spinner, useApp } from "@left-curve/applets-kit";
 
-import { WEBRTC_URI } from "~/constants";
+import { WS_URI } from "~/constants";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { useNavigate } from "@tanstack/react-router";
@@ -15,7 +15,7 @@ export const SignWithDesktopFromNativeCamera = forwardRef<
   const { toast, hideModal } = useApp();
 
   const { mutateAsync: connectWithDesktop } = useSigninWithDesktop({
-    url: WEBRTC_URI,
+    url: WS_URI,
     toast: {
       error: () =>
         toast.error({
