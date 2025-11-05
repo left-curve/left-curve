@@ -11,16 +11,16 @@ pub struct PerpsVaultState {
     pub denom: Denom,
     /// The amount of the denom that is deposited into the vault.
     pub deposits: Uint128,
-    /// The amount of shares that that have been minted.
+    /// The amount of shares that have been minted.
     pub shares: Uint128,
-    /// The realised pnl of the vault.
-    pub realised_pnl: Pnl,
+    /// The realized pnl of the vault.
+    pub realized_pnl: Pnl,
 }
 
 impl PerpsVaultState {
     /// Returns the vault's PnL.
     ///
-    /// This is the sum of the realised cash flow and the unrealized PnL capped
+    /// This is the sum of the realized PnL and the unrealized PnL capped
     /// at 0 for each market.
     pub fn vault_pnl(
         &self,

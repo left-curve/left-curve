@@ -25,7 +25,9 @@ pub enum ExecuteMsg {
     },
     /// Batch update orders.
     BatchUpdateOrders {
-        /// The orders to update. A map from denom to position size change (positive for long, negative for short).
+        /// The orders to update. A map from denom to position size change
+        /// (positive for long, negative for short).Size is in market denom
+        /// units.
         orders: BTreeMap<Denom, Int128>,
     },
     /// Update the parameters for the perps markets.

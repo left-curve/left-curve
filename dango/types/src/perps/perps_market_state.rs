@@ -36,8 +36,8 @@ pub struct PerpsMarketState {
     pub last_funding_index: Dec128,
     /// The perps market accumulators. Used to calculate the NAV of the vault.
     pub accumulators: PerpsMarketAccumulators,
-    /// The realised pnl of the market.
-    pub realised_pnl: Pnl,
+    /// The realized pnl of the market.
+    pub realized_pnl: Pnl,
 }
 
 /// Global, per-market accumulators — enable O(1) NAV calculation.
@@ -345,7 +345,7 @@ impl PerpsMarketState {
 
     /// Returns the PnL for this market from the perspective of the vault.
     ///
-    /// This is the sum of the realised cash flow and the unrealized PnL capped
+    /// This is the sum of the realized PnL and the unrealized PnL capped
     /// at 0.
     pub fn market_pnl(
         &self,
@@ -365,7 +365,7 @@ impl PerpsMarketState {
         let funding_pnl = max(Int128::ZERO, self.unrealized_funding_pnl()?);
 
         Ok(self
-            .realised_pnl
+            .realized_pnl
             .total()?
             .checked_add(price_pnl)?
             .checked_add(funding_pnl)?)

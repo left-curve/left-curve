@@ -185,7 +185,7 @@ fn deposit_works() {
             denom: usdc::DENOM.clone(),
             deposits: Uint128::from(123),
             shares: Uint128::from(123) * INITIAL_SHARES_PER_TOKEN,
-            realised_pnl: Default::default(),
+            realized_pnl: Default::default(),
         });
 
     // Ensure the user's deposit is updated
@@ -220,7 +220,7 @@ fn withdraw_works() {
             denom: usdc::DENOM.clone(),
             deposits: Uint128::from(123),
             shares: Uint128::from(123) * INITIAL_SHARES_PER_TOKEN,
-            realised_pnl: Default::default(),
+            realized_pnl: Default::default(),
         });
 
     // Ensure the user's deposit is updated
@@ -249,7 +249,7 @@ fn withdraw_works() {
             denom: usdc::DENOM.clone(),
             deposits: Uint128::from(23),
             shares: Uint128::from(23) * INITIAL_SHARES_PER_TOKEN,
-            realised_pnl: Default::default(),
+            realized_pnl: Default::default(),
         });
 
     // Ensure the user's deposit is updated
@@ -511,7 +511,7 @@ fn vault_pnl_works() {
                 funding_basis_sum: Dec128::ZERO,
                 quadratic_fee_basis: Int128::new(100_000_000) * Int128::new(100_000_000),
             },
-            realised_pnl: Pnl {
+            realized_pnl: Pnl {
                 fees: Int128::new(202_000),
                 ..Default::default()
             },
@@ -537,7 +537,7 @@ fn vault_pnl_works() {
     let market_pnl = perps_market_state
         .market_pnl(&params, oracle_price)
         .unwrap();
-    assert_eq!(market_pnl, perps_market_state.realised_pnl.total().unwrap());
+    assert_eq!(market_pnl, perps_market_state.realized_pnl.total().unwrap());
 
     // Increase time of chain so that funding rate accrues
     suite.increase_time(Duration::from_days(30));
@@ -643,9 +643,9 @@ fn vault_pnl_works() {
             assert_eq!(state.last_updated, suite.block.timestamp);
             assert_eq!(state.accumulators.cost_basis_sum, Dec128::ZERO);
             assert_eq!(state.accumulators.quadratic_fee_basis, Int128::ZERO);
-            assert_eq!(state.realised_pnl.fees, Int128::new(404_000));
-            assert_eq!(state.realised_pnl.price_pnl, Int128::ZERO);
-            assert_eq!(state.realised_pnl.funding_pnl, Int128::ZERO);
+            assert_eq!(state.realized_pnl.fees, Int128::new(404_000));
+            assert_eq!(state.realized_pnl.price_pnl, Int128::ZERO);
+            assert_eq!(state.realized_pnl.funding_pnl, Int128::ZERO);
             true
         });
     // Ensure market skew is correct
@@ -670,7 +670,7 @@ fn vault_pnl_works() {
     // Market PnL should be the realized pnl plus the unrealized funding pnl
     assert_eq!(
         market_pnl,
-        perps_market_state.realised_pnl.total().unwrap() + market_unrealized_funding_pnl
+        perps_market_state.realized_pnl.total().unwrap() + market_unrealized_funding_pnl
     );
 
     // Increase time of chain
@@ -730,8 +730,8 @@ fn vault_pnl_works() {
                 Int128::new(-100_000_000) * Int128::new(100_000_000)
             );
             assert_eq!(
-                state.realised_pnl.fees,
-                perps_market_state.realised_pnl.fees
+                state.realized_pnl.fees,
+                perps_market_state.realized_pnl.fees
                     + margin_account_1_position
                         .unrealized_pnl
                         .fees
@@ -739,7 +739,7 @@ fn vault_pnl_works() {
                         .unwrap()
             );
             assert_eq!(
-                state.realised_pnl.price_pnl,
+                state.realized_pnl.price_pnl,
                 margin_account_1_position
                     .unrealized_pnl
                     .price_pnl
@@ -747,8 +747,8 @@ fn vault_pnl_works() {
                     .unwrap()
             );
             assert_eq!(
-                state.realised_pnl.funding_pnl,
-                perps_market_state.realised_pnl.funding_pnl
+                state.realized_pnl.funding_pnl,
+                perps_market_state.realized_pnl.funding_pnl
                     + margin_account_1_position
                         .unrealized_pnl
                         .funding_pnl
@@ -799,8 +799,8 @@ fn vault_pnl_works() {
             assert_eq!(state.accumulators.cost_basis_sum, Dec128::ZERO,);
             assert_eq!(state.accumulators.quadratic_fee_basis, Int128::ZERO,);
             assert_eq!(
-                state.realised_pnl.fees,
-                perps_market_state.realised_pnl.fees
+                state.realized_pnl.fees,
+                perps_market_state.realized_pnl.fees
                     + margin_account_2_position
                         .unrealized_pnl
                         .fees
@@ -808,8 +808,8 @@ fn vault_pnl_works() {
                         .unwrap()
             );
             assert_eq!(
-                state.realised_pnl.price_pnl,
-                perps_market_state.realised_pnl.price_pnl
+                state.realized_pnl.price_pnl,
+                perps_market_state.realized_pnl.price_pnl
                     + margin_account_2_position
                         .unrealized_pnl
                         .price_pnl
@@ -817,8 +817,8 @@ fn vault_pnl_works() {
                         .unwrap()
             );
             assert_eq!(
-                state.realised_pnl.funding_pnl,
-                perps_market_state.realised_pnl.funding_pnl
+                state.realized_pnl.funding_pnl,
+                perps_market_state.realized_pnl.funding_pnl
                     + margin_account_2_position
                         .unrealized_pnl
                         .funding_pnl
@@ -833,16 +833,16 @@ fn vault_pnl_works() {
         .query_wasm_smart(contracts.perps, QueryPerpsVaultStateRequest {})
         .should_succeed_and(|state| {
             assert_eq!(
-                state.realised_pnl.fees,
-                perps_market_state.realised_pnl.fees
+                state.realized_pnl.fees,
+                perps_market_state.realized_pnl.fees
             );
             assert_eq!(
-                state.realised_pnl.price_pnl,
-                perps_market_state.realised_pnl.price_pnl
+                state.realized_pnl.price_pnl,
+                perps_market_state.realized_pnl.price_pnl
             );
             assert_eq!(
-                state.realised_pnl.funding_pnl,
-                perps_market_state.realised_pnl.funding_pnl
+                state.realized_pnl.funding_pnl,
+                perps_market_state.realized_pnl.funding_pnl
             );
             true
         });

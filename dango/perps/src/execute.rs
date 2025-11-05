@@ -27,7 +27,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
         denom: msg.perps_vault_denom,
         deposits: Uint128::ZERO,
         shares: Uint128::ZERO,
-        realised_pnl: Default::default(),
+        realized_pnl: Default::default(),
     })?;
 
     // Store the perps market params and initialize perps market states.
@@ -41,7 +41,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
             last_funding_rate: Dec128::ZERO,
             last_funding_index: Dec128::ZERO,
             accumulators: PerpsMarketAccumulators::new(),
-            realised_pnl: Default::default(),
+            realized_pnl: Default::default(),
         })?;
     }
 
@@ -116,7 +116,7 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
         denom: vault_state.denom,
         deposits: vault_state.deposits.checked_add(*deposited.amount)?,
         shares: vault_state.shares.checked_add(shares)?,
-        realised_pnl: vault_state.realised_pnl,
+        realized_pnl: vault_state.realized_pnl,
     })?;
 
     // Store the deposit
@@ -184,7 +184,7 @@ fn withdraw(ctx: MutableCtx, withdrawn_shares: Uint128) -> anyhow::Result<Respon
         denom: vault_state.denom.clone(),
         deposits: vault_state.deposits.checked_sub(withdrawn_amount)?,
         shares: vault_state.shares.checked_sub(withdrawn_shares)?,
-        realised_pnl: vault_state.realised_pnl,
+        realized_pnl: vault_state.realized_pnl,
     })?;
 
     // Update the user's deposit
@@ -226,6 +226,13 @@ fn batch_update_orders(
     Ok(Response::new())
 }
 
+/// Modifies a position by the given amount.
+///
+/// Arguments:
+/// - `ctx`: The mutable context.
+/// - `denom`: The denom of the market.
+/// - `amount`: The amount to modify the position by. Positive for long,
+/// negative for short.Size is in market denom units.
 fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow::Result<()> {
     let params = PERPS_MARKET_PARAMS.load(ctx.storage, &denom)?;
     let market_state = PERPS_MARKETS.load(ctx.storage, &denom)?;
@@ -324,29 +331,28 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
         entry_execution_price: fill_price,
         entry_skew: skew, // skew BEFORE trade
         entry_funding_index: new_market_state.last_funding_index,
-        realized_pnl: current_pos.realized_pnl.add(&position_unrealized_pnl)?,
+        realized_pnl: current_pos.realized_pnl.add(&position_unrealized_pnl)?, /* Position's previously unrealized pnl becomes realized when updating position */
         denom: denom.clone(),
     };
 
-    // Update the market accumulators
-    let new_market_state = new_market_state.update_accumulators(&current_pos, &new_pos)?;
+    // Update the market accumulators and open interest
+    let new_market_state = new_market_state
+        .update_accumulators(&current_pos, &new_pos)?
+        .update_open_interest(&current_pos, &new_pos)?;
 
-    // Update the cash flow
-    let realised_cash_flow = position_unrealized_pnl.checked_neg()?;
+    // Update the market's realized pnl
+    let market_realized_pnl = position_unrealized_pnl.checked_neg()?;
     let new_market_state = PerpsMarketState {
-        realised_pnl: market_state.realised_pnl.add(&realised_cash_flow)?,
+        realized_pnl: market_state.realized_pnl.add(&market_realized_pnl)?,
         ..new_market_state
     };
-
-    // Update the open interest of the market
-    let new_market_state = new_market_state.update_open_interest(&current_pos, &new_pos)?;
 
     // Save the new market state
     PERPS_MARKETS.save(ctx.storage, &denom, &new_market_state)?;
 
     // Update the vault state
     PERPS_VAULT.save(ctx.storage, &PerpsVaultState {
-        realised_pnl: vault_state.realised_pnl.add(&realised_cash_flow)?,
+        realized_pnl: vault_state.realized_pnl.add(&market_realized_pnl)?,
         ..vault_state
     })?;
 

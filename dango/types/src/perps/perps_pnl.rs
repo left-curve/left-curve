@@ -11,14 +11,14 @@ pub struct Pnl {
 }
 
 impl Pnl {
-    /// Returns the total realised cash flow.
+    /// Returns the total realized PnL.
     pub fn total(&self) -> Result<Int128, MathError> {
         self.fees
             .checked_add(self.price_pnl)?
             .checked_add(self.funding_pnl)
     }
 
-    /// Add two realised cash flows together.
+    /// Add two realized PnLs together.
     pub fn add(&self, other: &Pnl) -> Result<Pnl, MathError> {
         Ok(Pnl {
             fees: self.fees.checked_add(other.fees)?,
