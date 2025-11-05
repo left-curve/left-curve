@@ -56,6 +56,9 @@ pub const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 #[cfg(feature = "metrics")]
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
+#[cfg(feature = "metrics")]
+pub const PRIORITY_DATA_LOCK_COUNT_LABEL: &str = "grug.db.disk.priority_data_lock_count";
+
 /// Configurations related to the disk DB.
 #[derive(Default, Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -353,7 +356,23 @@ where
 
         // If priority data exists, apply the change set to it.
         if let Some(data) = &self.inner.priority_data {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!("Attempting to acquire write lock on priority data");
+            }
+
             let mut records = data.records.write().expect("priority data poisoned");
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!("Acquired write lock on priority data");
+            }
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "write").increment(1);
+            }
+
             for (k, op) in pending.state_storage.range::<[u8], _>((
                 Bound::Included(data.min.as_slice()),
                 Bound::Excluded(data.max.as_slice()),
@@ -363,6 +382,16 @@ where
                 } else {
                     records.remove(k);
                 }
+            }
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!("Released write lock on priority data");
+            }
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "write").decrement(1);
             }
         }
 
@@ -662,10 +691,35 @@ impl StateStorage {
         max: &[u8],
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let records = data.records.read().expect("priority records poisoned");
-        Box::new(PriorityDataIter::new(records, |g| {
-            g.scan(Some(min), Some(max), order)
-        }))
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                operation = "read",
+                comment = self.comment,
+                "Attempting to acquire read lock on priority data"
+            );
+        }
+
+        let records = data.records.read().expect("priority data poisoned");
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                operation = "read",
+                comment = self.comment,
+                "Acquired read lock on priority data"
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
+        }
+
+        Box::new(PriorityDataIter {
+            inner: PriorityDataIterInner::new(records, |g| g.scan(Some(min), Some(max), order)),
+            comment: self.comment,
+        })
     }
 
     fn create_non_priority_iterator<'a>(
@@ -707,12 +761,48 @@ impl Storage for StateStorage {
         // Note: `min` is inclusive, while `max` is exclusive.
         if let Some(data) = &self.inner.priority_data {
             if data.min.as_slice() <= key && key < data.max.as_slice() {
-                return data
-                    .records
-                    .read()
-                    .expect("priority records poisoned")
-                    .get(key)
-                    .cloned();
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!(
+                        operation = "read",
+                        comment = self.comment,
+                        "Attempting to acquire read lock on priority data"
+                    );
+                }
+
+                let records = data.records.read().expect("priority data poisoned");
+
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!(
+                        operation = "read",
+                        comment = self.comment,
+                        "Acquired read lock on priority data"
+                    );
+                }
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
+                }
+
+                let value = records.get(key).cloned();
+
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!(
+                        operation = "read",
+                        comment = self.comment,
+                        "Released read lock on priority data"
+                    );
+                }
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
+                }
+
+                return value;
             }
         }
 
@@ -807,8 +897,13 @@ impl Storage for StateStorage {
     }
 }
 
-#[self_referencing]
 struct PriorityDataIter<'a> {
+    inner: PriorityDataIterInner<'a>,
+    comment: &'static str,
+}
+
+#[self_referencing]
+struct PriorityDataIterInner<'a> {
     guard: RwLockReadGuard<'a, BTreeMap<Vec<u8>, Vec<u8>>>,
     #[borrows(guard)]
     #[covariant]
@@ -819,7 +914,25 @@ impl<'a> Iterator for PriorityDataIter<'a> {
     type Item = Record;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.with_inner_mut(|iter| iter.next())
+        self.inner.with_inner_mut(|iter| iter.next())
+    }
+}
+
+impl<'a> Drop for PriorityDataIter<'a> {
+    fn drop(&mut self) {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                operation = "read",
+                comment = self.comment,
+                "Released read lock on priority data"
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
+        }
     }
 }
 
