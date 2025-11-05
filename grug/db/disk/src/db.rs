@@ -644,9 +644,10 @@ impl StateStorage {
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // If priority data exists, and the iterator range completely falls
         // within the priority range, then create a priority iterator.
-        // Note: `min` is inclusive, while `max` is exclusive.
+        // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
+        // are both exclusive.
         if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
-            if data.min.as_slice() <= min && max < data.max.as_slice() {
+            if data.min.as_slice() <= min && max <= data.max.as_slice() {
                 return self.create_priority_iterator(data, min, max, order);
             }
         }
@@ -1541,5 +1542,149 @@ mod tests_simple {
                 vec![version as u8]
             );
         }
+    }
+
+    #[test]
+    fn priority_data() {
+        let path = TempDataDir::new("_grug_disk_db_priority_data");
+
+        // First, open the DB _without_ priority data, and write some records.
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        db.flush_and_commit(Batch::from([
+            (b"000".to_vec(), Op::Insert(b"000".to_vec())),
+            (b"001".to_vec(), Op::Insert(b"001".to_vec())),
+            (b"002".to_vec(), Op::Insert(b"002".to_vec())),
+            (b"003".to_vec(), Op::Insert(b"003".to_vec())),
+            (b"004".to_vec(), Op::Insert(b"004".to_vec())),
+        ]))
+        .unwrap();
+
+        // Enusre rockdb max is exclusive.
+        {
+            assert_eq!(
+                db.inner
+                    .db
+                    .iterator_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        new_read_options(Some(0), Some(b"000"), Some(b"004")),
+                        IteratorMode::Start,
+                    )
+                    .map(|res| {
+                        let (k, v) = res.unwrap();
+                        (k.to_vec(), v.to_vec())
+                    })
+                    .collect::<Vec<_>>(),
+                [
+                    (b"000".to_vec(), b"000".to_vec()),
+                    (b"001".to_vec(), b"001".to_vec()),
+                    (b"002".to_vec(), b"002".to_vec()),
+                    (b"003".to_vec(), b"003".to_vec()),
+                ]
+            );
+
+            assert_eq!(
+                db.inner
+                    .db
+                    .iterator_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        new_read_options(Some(0), Some(b"000"), Some(b"005")),
+                        IteratorMode::Start,
+                    )
+                    .map(|res| {
+                        let (k, v) = res.unwrap();
+                        (k.to_vec(), v.to_vec())
+                    })
+                    .collect::<Vec<_>>(),
+                [
+                    (b"000".to_vec(), b"000".to_vec()),
+                    (b"001".to_vec(), b"001".to_vec()),
+                    (b"002".to_vec(), b"002".to_vec()),
+                    (b"003".to_vec(), b"003".to_vec()),
+                    (b"004".to_vec(), b"004".to_vec()),
+                ]
+            );
+        }
+
+        drop(db);
+
+        // Open the DB again, _with_ priority data this time.
+        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
+            priority_range: Some((b"000".to_vec(), b"004".to_vec())),
+            ..Default::default()
+        })
+        .unwrap();
+
+        // In order to test the priorty data, we manually delete a key from the db.
+        // This is not something that should happen in a normal use case but allows
+        // us to test the priority data.
+        // Remove the `002` key from the db.
+        {
+            assert_eq!(
+                db.inner
+                    .db
+                    .get_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        b"002",
+                        &new_read_options(Some(0), None, None)
+                    )
+                    .unwrap()
+                    .unwrap(),
+                b"002"
+            );
+
+            db.inner
+                .db
+                .delete_cf_with_ts(
+                    &cf_state_storage(&db.inner.db),
+                    b"002",
+                    U64Timestamp::from(0),
+                )
+                .unwrap();
+
+            assert!(
+                db.inner
+                    .db
+                    .get_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        b"002",
+                        &new_read_options(Some(0), None, None)
+                    )
+                    .unwrap()
+                    .is_none()
+            );
+        }
+
+        let storage = db.state_storage(None).unwrap();
+
+        // We should be able to read `002` from the priority data.
+        // This proves we're accessing it from priority data (as expected), not
+        // from the underlying rocksdb.
+        assert_eq!(storage.read(b"002").unwrap(), b"002");
+
+        // Iterate over the a range included in the priority data
+        assert_eq!(
+            storage
+                .scan_values(Some(b"001"), Some(b"003"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            [b"001", b"002"]
+        );
+
+        // Iterate over the exact range of the priority data
+        assert_eq!(
+            storage
+                .scan_values(Some(b"000"), Some(b"004"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            [b"000", b"001", b"002", b"003"]
+        );
+
+        // Iterate over a range that exceeds the priority data.
+        // Data are loaded from disk, key `002` should not be found.
+        assert_eq!(
+            storage
+                .scan_values(Some(b"000"), Some(b"005"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            [b"000", b"001", b"003", b"004"]
+        );
     }
 }
