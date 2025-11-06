@@ -57,13 +57,18 @@ pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 #[derive(Default, Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
-    // The interval of auto-pruning (i.e. perform a pruning every X versions).
-    // 0 means no auto-pruning.
+    /// The interval of auto-pruning (i.e. perform a pruning every X versions).
+    /// 0 means no auto-pruning.
     pub prune_interval: u64,
     /// At each auto-pruning, how many recent versions to keep.
     pub prune_keep_recent: u64,
-    /// Whether to force an immediate database compaction when auto-pruning.
-    pub prune_force_compact: bool,
+    /// The interval of manual compaction (i.e. perform a manual compaction
+    /// every X versions).
+    /// 0 means no manual compaction, which leaves it to RocksDB's internal
+    /// logic to decide when to compact. In our practical experience, in a live
+    /// network with a lot of read requests from RPC, RocksDB compacts infrequently
+    /// or not at all, resulting in performance degradation over time.
+    pub compact_interval: u64,
 }
 
 /// The base storage primitive.
@@ -374,10 +379,14 @@ where
             && pending.version > self.cfg.prune_keep_recent
         {
             self.prune(pending.version - self.cfg.prune_keep_recent)?;
+        }
 
-            if self.cfg.prune_force_compact {
-                self.compact();
-            }
+        // Perform manual compaction if the configured interval is reached.
+        if self.cfg.compact_interval != 0
+            && pending.version % self.cfg.compact_interval == 0
+            && pending.version > self.cfg.compact_interval
+        {
+            self.compact();
         }
 
         Ok(())
@@ -1357,14 +1366,14 @@ mod tests_simple {
     }
 
     #[test]
-    fn auto_prune_works() {
+    fn auto_pruning_and_manual_compaction_works() {
         const KEY: &[u8] = b"data";
 
         let path = TempDataDir::new("_grug_disk_db_auto_prune_works");
         let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
             prune_interval: 2,
             prune_keep_recent: 2,
-            prune_force_compact: true,
+            compact_interval: 2,
         })
         .unwrap();
 
