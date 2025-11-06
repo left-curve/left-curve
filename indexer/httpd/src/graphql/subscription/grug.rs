@@ -13,6 +13,12 @@ use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
 #[derive(Default)]
 pub struct GrugSubscription;
 
+#[derive(SimpleObject)]
+pub struct QueryResponseWithBlockHeight {
+    pub response: QueryResponse,
+    pub block_height: u64,
+}
+
 #[Subscription]
 impl GrugSubscription {
     async fn query_app<'a>(
@@ -24,7 +30,7 @@ impl GrugSubscription {
             desc = "Receive updates every N blocks from the initial block height when subscription starts"
         )]
         block_interval: u64,
-    ) -> Result<impl Stream<Item = Result<QueryResponse, Error>> + 'a> {
+    ) -> Result<impl Stream<Item = Result<QueryResponseWithBlockHeight, Error>> + 'a> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         #[cfg(feature = "metrics")]
@@ -35,14 +41,21 @@ impl GrugSubscription {
         ));
 
         let stream = app_ctx.pubsub.subscribe().await?;
-        let initial_response = GrugQuery::_query_app(&app_ctx.base, request.clone(), None).await;
         let latest_block_height = app_ctx.base.grug_app.last_finalized_block().await?.height;
+        let initial_response =
+            GrugQuery::_query_app(&app_ctx.base, request.clone(), Some(latest_block_height)).await;
 
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
+            let block_height = latest_block_height;
 
-            async { initial_response }
+            async move {
+                initial_response.map(|response| QueryResponseWithBlockHeight {
+                    response,
+                    block_height,
+                })
+            }
         })
         .chain(
             stream
@@ -64,7 +77,12 @@ impl GrugSubscription {
                     let request = request.clone();
 
                     async move {
-                        GrugQuery::_query_app(&app_ctx.base, request, Some(block_height)).await
+                        GrugQuery::_query_app(&app_ctx.base, request, Some(block_height))
+                            .await
+                            .map(|response| QueryResponseWithBlockHeight {
+                                response,
+                                block_height,
+                            })
                     }
                 }),
         ))
