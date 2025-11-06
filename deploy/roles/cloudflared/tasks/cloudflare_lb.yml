@@ -1,3 +1,7 @@
+- name: Debug var
+  debug:
+    var: dango_network
+
 - name: Get all monitors
   run_once: true
   become: false
@@ -106,6 +110,16 @@
   run_once: true
   become: false
   delegate_to: localhost
+
+- name: Debug variables
+  vars:
+    services: "{{ monitor_defs | map(attribute='name') | unique | list }}"
+    nets: "{{ target_networks | default([dango_network]) }}"
+  debug:
+    var: svcnet
+  loop: "{{ services | product(nets) | list }}"
+  loop_control:
+    loop_var: svcnet
 
 - name: Create LBs for services and networks
   vars:

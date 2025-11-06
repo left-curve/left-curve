@@ -32,13 +32,18 @@ query_gas_limit = 100000000
 
 # The interval of auto-pruning (i.e. perform a pruning every X versions).
 # 0 means no auto-pruning.
-interval = 0
+prune_interval = 0
 
 # At each auto-pruning, how many recent versions to keep.
-keep_recent = 25
+prune_keep_recent = 25
 
-# Whether to force an immediate database compaction when auto-pruning.
-force_compact = false
+# The interval of manual compaction (i.e. perform a manual compaction
+# every X versions).
+# 0 means no manual compaction, which leaves it to RocksDB's internal
+# logic to decide when to compact. In our practical experience, in a live
+# network with a lot of read requests from RPC, RocksDB compacts infrequently
+# or not at all, resulting in performance degradation over time.
+compact_interval = 0
 
 ################################################################################
 ###                          Indexer Configuration                           ###

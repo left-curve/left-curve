@@ -30,6 +30,10 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
 
   const [chartState, setChartState] = useStorage<object>(`tv.${pairSymbol}`, {
     sync: true,
+    version: 1.1,
+    migrations: {
+      1: () => ({}),
+    },
   });
 
   const widgetRef = useRef<TV.IChartingLibraryWidget | null>(null);
@@ -39,9 +43,8 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       "tradingview.time_hours_format",
       timeFormat.includes("a") ? "12-hours" : "24-hours",
     );
+
     const toolbar_bg = theme === "dark" ? "#2d2c2a" : "#FFFCF6";
-    const toTimestamp = Math.floor(Date.now() / 1000);
-    const fromTimestamp = toTimestamp - 3600 * 4;
 
     const datafeed = createTradingViewDataFeed({
       client: publicClient,
@@ -61,10 +64,6 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       theme,
       auto_save_delay: 1,
       datafeed,
-      timeframe: {
-        from: fromTimestamp,
-        to: toTimestamp,
-      },
       loading_screen: {
         backgroundColor: "transparent",
         foregroundColor: "#F9A9B2",
