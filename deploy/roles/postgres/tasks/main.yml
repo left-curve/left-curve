@@ -25,6 +25,32 @@
     mode: '0755'
   loop: ["{{ config_dir }}"]
 
+- name: Write .env for docker-compose
+  become: true
+  become_user: root
+  copy:
+    dest: "{{ deploy_dir }}/.env"
+    mode: "0600"
+    owner: '{{ deploy_user }}'
+    content: |
+      CONTAINER_NAME=postgres
+      PSQL_VERSION={{ psql_version }}
+      POSTGRES_USER={{ postgres_user }}
+      POSTGRES_PASSWORD={{ postgres_password }}
+      TAILSCALE_IP={{ tailscale_ip }}
+      HOST_PORT={{ host_port }}
+      DATA_DIR={{ data_dir }}
+      CONFIG_DIR={{ config_dir }}
+
+- name: Copy docker-compose.yml
+  become: true
+  become_user: root
+  copy:
+    src: files/docker-compose.yml
+    dest: "{{ deploy_dir }}/docker-compose.yml"
+    mode: '0644'
+    owner: '{{ deploy_user }}'
+
 - name: Copy postgres config
   become: true
   become_user: root
@@ -53,50 +79,43 @@
   docker_network:
     name: postgres
 
-- name: Deploy postgres container
-  docker_container:
-    name: "{{ container_name }}"
-    image: "postgres:{{ psql_version }}"
-    restart_policy: unless-stopped
-    state: started
-    networks:
-      - name: postgres
-    env:
-      POSTGRES_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
-      POSTGRES_PASSWORD: "{{ postgres_password }}"
-      POSTGRES_INITDB_ARGS: "-c include=/etc/postgresql/postgresql.conf"
-    labels:
-      com.docker.compose.service: "postgres"
-      service_name: "postgres"
-      environment: "production"
-    ports:
-      - "{{ tailscale_ip }}:{{ host_port }}:5432"
-    volumes:
-      - "{{ data_dir }}:/var/lib/postgresql/data"
-      - "{{ config_dir }}/postgresql.conf:/etc/postgresql/postgresql.conf:ro"
-      - "{{ config_dir }}/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "{{ lookup('env','DB_USER', default='postgres') }}", "-q"]
-      interval: 2s
-      timeout: 5s
-      retries: 10
+- name: Pre-pull images (avoid downtime while pulling)
+  community.docker.docker_image:
+    name: "{{ item }}"
+    source: pull
+  loop:
+    - "postgres:{{ psql_version }}"
+    - "prometheuscommunity/postgres-exporter:latest"
 
-- name: Deploy postgres exporter
-  docker_container:
+# Hand-over: stop old containers just before composing up (few seconds gap)
+- name: Stop old exporter (free 9187)
+  community.docker.docker_container:
     name: postgres-exporter
-    image: prometheuscommunity/postgres-exporter:latest
-    restart_policy: unless-stopped
-    state: started
-    networks:
-      - name: postgres
-    env:
-      DATA_SOURCE_URI: "{{ container_name }}:5432/postgres?sslmode=disable"
-      DATA_SOURCE_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
-      DATA_SOURCE_PASS: "{{ postgres_password }}"
-    ports:
-      - "{{ tailscale_ip }}:9187:9187"
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9187/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop old postgres (free port & volume)
+  community.docker.docker_container:
+    name: "{{ container_name }}"
+    state: stopped
+  ignore_errors: yes
+
+# kill old single-container deployment (keeps data dir / named volumes)
+- name: Remove legacy postgres containers if present
+  community.docker.docker_container:
+    name: "{{ item }}"
+    state: absent
+    force_kill: true
+    keep_volumes: true
+  loop:
+    - "{{ container_name }}"
+    - "postgres-exporter"
+
+- name: Start postgres stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ deploy_dir }}"
+    pull: always
+    recreate: always
+    remove_orphans: true
+    wait: true
+    wait_timeout: 300
