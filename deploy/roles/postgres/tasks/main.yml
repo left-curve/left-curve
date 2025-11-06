@@ -87,30 +87,6 @@
     - "postgres:{{ psql_version }}"
     - "prometheuscommunity/postgres-exporter:latest"
 
-# Hand-over: stop old containers just before composing up (few seconds gap)
-- name: Stop old exporter (free 9187)
-  community.docker.docker_container:
-    name: postgres-exporter
-    state: stopped
-  ignore_errors: yes
-
-- name: Stop old postgres (free port & volume)
-  community.docker.docker_container:
-    name: "{{ container_name }}"
-    state: stopped
-  ignore_errors: yes
-
-# kill old single-container deployment (keeps data dir / named volumes)
-- name: Remove legacy postgres containers if present
-  community.docker.docker_container:
-    name: "{{ item }}"
-    state: absent
-    force_kill: true
-    keep_volumes: true
-  loop:
-    - "{{ container_name }}"
-    - "postgres-exporter"
-
 - name: Start postgres stack
   community.docker.docker_compose_v2:
     project_src: "{{ deploy_dir }}"
