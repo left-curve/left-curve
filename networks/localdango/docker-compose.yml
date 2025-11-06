@@ -104,6 +104,7 @@ services:
 
   dex-bot:
     image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
+    pull_policy: always
     profiles: ["dex-bot"]
     labels:
       <<: *common-labels
