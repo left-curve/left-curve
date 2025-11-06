@@ -28,8 +28,13 @@ prune_interval = 100
 # At each auto-pruning, how many recent versions to keep.
 prune_keep_recent = 25
 
-# Whether to force an immediate database compaction when auto-pruning.
-prune_force_compact = false
+# The interval of manual compaction (i.e. perform a manual compaction
+# every X versions).
+# 0 means no manual compaction, which leaves it to RocksDB's internal
+# logic to decide when to compact. In our practical experience, in a live
+# network with a lot of read requests from RPC, RocksDB compacts infrequently
+# or not at all, resulting in preformance degradation over time.
+compact_interval = 0
 
 # Range of database keys that will be loaded into memory for better performance.
 # Lower bound is inclusive, upper bound is exclusive.
