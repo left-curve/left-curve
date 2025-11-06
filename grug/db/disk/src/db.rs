@@ -67,7 +67,7 @@ pub struct Config {
     /// 0 means no manual compaction, which leaves it to RocksDB's internal
     /// logic to decide when to compact. In our practical experience, in a live
     /// network with a lot of read requests from RPC, RocksDB compacts infrequently
-    /// or not at all, resulting in preformance degradation over time.
+    /// or not at all, resulting in performance degradation over time.
     pub compact_interval: u64,
 }
 
