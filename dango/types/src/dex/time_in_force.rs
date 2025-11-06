@@ -1,4 +1,4 @@
-use grug::{PrimaryKey, RawKey, StdError, StdResult};
+use grug::{Binary, PrimaryKey, RawKey, StdError, StdResult};
 
 #[grug::derive(Borsh, Serde)]
 #[derive(Copy, PartialOrd, Ord, Hash)]
@@ -37,9 +37,10 @@ impl PrimaryKey for TimeInForce {
         match bytes {
             [0] => Ok(TimeInForce::GoodTilCanceled),
             [1] => Ok(TimeInForce::ImmediateOrCancel),
-            _ => Err(StdError::deserialize::<Self::Output, _>(
+            _ => Err(StdError::deserialize::<Self::Output, _, Binary>(
                 "key",
                 "invalid time-in-force! must be 0|1",
+                bytes.into(),
             )),
         }
     }
