@@ -72,7 +72,7 @@
           app_settings__order_number__max: 5
           app_settings__order_type: market
           app_settings__healthcheck_file: /tmp/dango_dex_app_healthcheck
-        env_file: "{{ {{ deployment_dir }}/.env"
+        env_file: "{{ deployment_dir }}/.env"
       register: liquidity_result
       retries: 3
       delay: 5
