@@ -13,6 +13,7 @@ use {
     dango_types::{
         DangoQuerier,
         account_factory::Username,
+        constants::usd,
         dex::{
             CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
             Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
@@ -20,8 +21,8 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
-        MetricsIterExt, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
+        Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Exponentiate, Inner, IsZero, Map,
+        Message, MetricsIterExt, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
         Order as IterationOrder, PrimaryKey, Response, StdError, StdResult, Storage, SubMessage,
         SubMsgResult, SudoCtx, Timestamp, TransferBuilder, Udec128, Udec128_6,
     },
@@ -619,10 +620,9 @@ fn clear_orders_of_pair(
         // Record the order's trading volume.
         update_trading_volumes(
             storage,
-            oracle_querier,
             account_querier,
-            &base_denom,
-            filled_base,
+            &quote_denom,
+            filled_quote,
             order.user,
             volumes,
             volumes_by_username,
@@ -955,35 +955,21 @@ fn refund_ioc_order(
 /// Updates trading volumes for both user addresses and usernames
 fn update_trading_volumes(
     storage: &mut dyn Storage,
-    oracle_querier: &mut OracleQuerier,
     account_querier: &mut AccountQuerier,
-    base_denom: &Denom,
-    filled: Udec128_6,
+    quote_denom: &Denom,
+    filled_quote: Udec128_6,
     order_user: Addr,
     volumes: &mut HashMap<Addr, Udec128_6>,
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
-    // Query the base asset's oracle price.
-    let base_asset_price = match oracle_querier.query_price(base_denom, None) {
-        Err(_err) => {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::warn!(
-                    %base_denom,
-                    %_err,
-                    "Failed to query oracle price for base asset. Skipping volume update"
-                );
-            }
+    // Only track trading volumes where quote asset is alloyed USD.
+    if quote_denom != &usd::DENOM.clone() {
+        return Ok(());
+    }
 
-            // If the query fails, simply do nothing and return, since we want to
-            // ensure that `cron_execute` function doesn't fail.
-            return Ok(());
-        },
-        Ok(price) => price,
-    };
-
-    // Calculate the volume in USD for the filled order.
-    let new_volume: Udec128_6 = base_asset_price.value_of_dec_amount(filled)?;
+    // Store the volume as a decimal of whole USD amounts, not USD microunits.
+    let new_volume =
+        filled_quote.checked_div_dec_floor(Udec128::new(10).checked_pow(usd::DECIMAL)?)?;
 
     // Record trading volume for the user's address
     {
