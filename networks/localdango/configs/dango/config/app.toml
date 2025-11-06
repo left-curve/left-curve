@@ -26,7 +26,7 @@ query_gas_limit = 100000000
 prune_interval = 100
 
 # At each auto-pruning, how many recent versions to keep.
-prune_keep_recent = 2000
+prune_keep_recent = 25
 
 # The interval of manual compaction (i.e. perform a manual compaction
 # every X versions).
@@ -34,7 +34,7 @@ prune_keep_recent = 2000
 # logic to decide when to compact. In our practical experience, in a live
 # network with a lot of read requests from RPC, RocksDB compacts infrequently
 # or not at all, resulting in performance degradation over time.
-compact_interval = 0
+compact_interval = 2000
 
 # Range of database keys that will be loaded into memory for better performance.
 # Lower bound is inclusive, upper bound is exclusive.
