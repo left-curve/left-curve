@@ -33,7 +33,7 @@ prune_keep_recent = 25
 # 0 means no manual compaction, which leaves it to RocksDB's internal
 # logic to decide when to compact. In our practical experience, in a live
 # network with a lot of read requests from RPC, RocksDB compacts infrequently
-# or not at all, resulting in preformance degradation over time.
+# or not at all, resulting in performance degradation over time.
 compact_interval = 0
 
 # Range of database keys that will be loaded into memory for better performance.
