@@ -49,7 +49,7 @@
           --network {{ deployment_name }}_default \
           --env-file {{ deployment_dir }}/.env \
           -e http_url=http://dango:8080 \
-          -e chain_id={{ dango.chain_id }} \
+          -e chain_id={{ chain_id }} \
           -e app_settings__sleep__min=1s \
           -e app_settings__sleep__max=2s \
           -e app_settings__size_percent__min=0.0005 \
