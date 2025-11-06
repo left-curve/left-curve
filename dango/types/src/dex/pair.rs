@@ -20,8 +20,10 @@ pub struct PairParams {
     /// For the xyk pool, this also sets the spread of the orders when the
     /// passive liquidity is reflected onto the orderbook.
     pub swap_fee_rate: Bounded<Udec128, ZeroExclusiveOneExclusive>,
+    /// Minimum order size, defined _in the base asset_.
+    pub min_order_size_base: Uint128,
     /// Minimum order size, defined _in the quote asset_.
-    pub min_order_size: Uint128,
+    pub min_order_size_quote: Uint128,
 }
 
 #[grug::derive(Serde, Borsh)]

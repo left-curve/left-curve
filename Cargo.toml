@@ -23,6 +23,7 @@ members = [
   "dango/taxman",
   "dango/testing",
   "dango/types",
+  "dango/upgrade",
   "dango/vesting",
   "dango/warp",
   "grug/app",
@@ -221,6 +222,7 @@ dango-scripts               = { path = "dango/scripts" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
 dango-types                 = { path = "dango/types" }
+dango-upgrade               = { path = "dango/upgrade" }
 dango-vesting               = { path = "dango/vesting" }
 dango-warp                  = { path = "dango/warp" }
 grug                        = { path = "grug/std" }
