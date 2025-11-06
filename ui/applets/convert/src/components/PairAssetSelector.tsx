@@ -11,8 +11,8 @@ export const PairAssetSelector: React.FC<PairAssetSelectorProps> = ({ value, onC
   const { coins } = useConfig();
   const { data: config } = useAppConfig();
 
-  const pairs = Object.entries(config?.pairs || {}).filter(
-    ([_, v]) => v.params.curveInvariant !== "xyk",
+  const pairs = Object.fromEntries(
+    Object.entries(config?.pairs || {}).filter(([_, v]) => v.params.curveInvariant !== "xyk"),
   );
 
   const pairCoins = Object.keys(pairs);
