@@ -26,7 +26,7 @@ query_gas_limit = 100000000
 prune_interval = 100
 
 # At each auto-pruning, how many recent versions to keep.
-prune_keep_recent = 25
+prune_keep_recent = 2000
 
 # The interval of manual compaction (i.e. perform a manual compaction
 # every X versions).
