@@ -40,46 +40,43 @@
     #   register: liquidity_result
     #   retries: 3
     #   delay: 5
-    #   run_once: true
 
-    - name: Run both liquidity commands in sequence in one-off container
-      community.docker.docker_container:
-        name: "{{ deployment_name }}-dex-bot-liquidity"
-        image: "ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }}"
-        command: >
+    - name: Run both liquidity commands and capture output
+      shell: |
+        docker run --rm \
+          --name {{ deployment_name }}-dex-bot-liquidity \
+          --network {{ deployment_name }}_default \
+          --env-file {{ deployment_dir }}/.env \
+          -e http_url=http://dango:8080 \
+          -e chain_id={{ chain_id }} \
+          -e app_settings__sleep__min=1s \
+          -e app_settings__sleep__max=2s \
+          -e app_settings__size_percent__min=0.0005 \
+          -e app_settings__size_percent__max=0.003 \
+          -e app_settings__price_percent__min=0.05 \
+          -e app_settings__price_percent__max=0.2 \
+          -e app_settings__order_number__min=1 \
+          -e app_settings__order_number__max=5 \
+          -e app_settings__order_type=market \
+          ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }} \
           bash -lc '{{ provide_liquidity_command }} && {{ mint_command }}'
-        auto_remove: false
-        detach: false
-        tty: true
-        pull: yes
-        networks:
-          - name: "{{ deployment_name }}_default"
       register: liquidity_result
       ignore_errors: true
       retries: 3
       delay: 5
-      until: liquidity_result is succeeded
+      failed_when: false
 
     - name: Show liquidity command output
       debug:
         msg: |
-          Status: {{ 'SUCCESS ✅' if liquidity_result is succeeded else 'FAILED ❌' }}
-          Stdout: {{ liquidity_result.stdout | default('No stdout available') }}
-          Stderr: {{ liquidity_result.stderr | default('No stderr available') }}
+          Status: {{ 'SUCCESS ✅' if liquidity_result.rc == 0 else 'FAILED ❌' }}
+          Exit Code: {{ liquidity_result.rc }}
 
-    - name: Fallback - get manual logs if output not available
-      block:
-        - command: docker logs {{ deployment_name }}-dex-bot-liquidity
-          register: manual_logs
-        - debug:
-            msg: "Manual logs: {{ manual_logs.stdout }}"
-      when: liquidity_result.stdout is not defined or liquidity_result is failed
-      ignore_errors: true
+          === STDOUT ===
+          {{ liquidity_result.stdout }}
 
-    - name: Cleanup container
-      community.docker.docker_container:
-        name: "{{ deployment_name }}-dex-bot-liquidity"
-        state: absent
+          === STDERR ===
+          {{ liquidity_result.stderr }}
 
     - name: Query balances
       community.docker.docker_compose_v2_exec:
@@ -90,12 +87,8 @@
         tty: yes
       loop: [ "{{ dango.dex_bot.address }}", "{{ dango.dex_bot.dex_address }}" ]
       register: balances_raw
-      run_once: true
-      delegate_to: "{{ dex_bot_host }}"
 
     - name: Pretty output
-      run_once: true
-      delegate_to: "{{ dex_bot_host }}"
       vars:
         report: |-
           {%- for r in balances_raw.results -%}
