@@ -14,9 +14,9 @@
 - name: Abort if DB password is empty
   assert:
     that:
-      - db_password is defined
-      - db_password | length > 0
-    fail_msg: "DB_PASSWORD must be set and non-empty, aborting deployment."
+      - postgres_password is defined
+      - postgres_password | length > 0
+    fail_msg: "postgres_password must be set and non-empty, aborting deployment."
 
 - name: Ensure directories exists
   file:
@@ -63,14 +63,14 @@
       - name: postgres
     env:
       POSTGRES_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
-      POSTGRES_PASSWORD: "{{ db_password }}"
+      POSTGRES_PASSWORD: "{{ postgres_password }}"
       POSTGRES_INITDB_ARGS: "-c include=/etc/postgresql/postgresql.conf"
     labels:
       com.docker.compose.service: "postgres"
       service_name: "postgres"
       environment: "production"
     ports:
-      - "127.0.0.1:{{ host_port }}:5432"
+      - "{{ tailscale_ip }}:{{ host_port }}:5432"
     volumes:
       - "{{ data_dir }}:/var/lib/postgresql/data"
       - "{{ config_dir }}/postgresql.conf:/etc/postgresql/postgresql.conf:ro"
@@ -92,7 +92,7 @@
     env:
       DATA_SOURCE_URI: "{{ container_name }}:5432/postgres?sslmode=disable"
       DATA_SOURCE_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
-      DATA_SOURCE_PASS: "{{ db_password }}"
+      DATA_SOURCE_PASS: "{{ postgres_password }}"
     ports:
       - "{{ tailscale_ip }}:9187:9187"
     healthcheck:
