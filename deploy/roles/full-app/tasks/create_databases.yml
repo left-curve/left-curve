@@ -15,6 +15,16 @@
         login_port: "{{ postgres_port }}"
         state: present
 
+    - name: Create postgres Dango DB read user
+      community.postgresql.postgresql_user:
+        name: "{{ postgres_dango_read_user }}"
+        password: "{{ postgres_dango_read_password }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
     - name: Create postgres Dango production database
       community.postgresql.postgresql_db:
         name: "{{ postgres_database }}"
@@ -30,6 +40,60 @@
         type: database
         privs: ALL
         roles: "{{ postgres_dango_user }}"
+        login_db: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant CONNECT on database
+      community.postgresql.postgresql_privs:
+        type: database
+        privs: CONNECT
+        objs: "{{ postgres_database }}"
+        roles: "{{ postgres_dango_read_user }}"
+        login_db: postgres
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant USAGE on schema
+      community.postgresql.postgresql_privs:
+        type: schema
+        privs: USAGE
+        objs: public
+        roles: "{{ postgres_dango_read_user }}"
+        login_db: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant SELECT on all tables
+      community.postgresql.postgresql_privs:
+        type: table
+        privs: SELECT
+        objs: ALL_IN_SCHEMA
+        schema: public
+        roles: "{{ postgres_dango_read_user }}"
+        login_db: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant USAGE and SELECT on sequences
+      community.postgresql.postgresql_privs:
+        type: sequence
+        privs: USAGE,SELECT
+        objs: ALL_IN_SCHEMA
+        schema: public
+        roles: "{{ postgres_dango_read_user }}"
         login_db: "{{ postgres_database }}"
         login_user: "{{ postgres_user }}"
         login_password: "{{ postgres_password }}"
