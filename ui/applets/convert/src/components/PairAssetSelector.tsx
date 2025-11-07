@@ -10,7 +10,12 @@ type PairAssetSelectorProps = {
 export const PairAssetSelector: React.FC<PairAssetSelectorProps> = ({ value, onChange }) => {
   const { coins } = useConfig();
   const { data: config } = useAppConfig();
-  const pairCoins = Object.keys(config?.pairs || {});
+
+  const pairs = Object.fromEntries(
+    Object.entries(config?.pairs || {}).filter(([_, v]) => v.params.curveInvariant !== "xyk"),
+  );
+
+  const pairCoins = Object.keys(pairs);
 
   const coinPairs = Object.values(coins.byDenom).filter((c) => pairCoins.includes(c.denom));
 

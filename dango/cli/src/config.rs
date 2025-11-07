@@ -85,6 +85,7 @@ pub struct HttpdConfig {
     pub ip: String,
     pub port: u16,
     pub cors_allowed_origin: Option<String>,
+    pub static_files_path: Option<String>,
 }
 
 impl Default for HttpdConfig {
@@ -94,6 +95,7 @@ impl Default for HttpdConfig {
             ip: "127.0.0.1".to_string(),
             port: 0,
             cors_allowed_origin: None,
+            static_files_path: None,
         }
     }
 }

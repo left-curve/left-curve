@@ -248,6 +248,7 @@ impl StartCmd {
             indexer_httpd_context.clone(),
             clickhouse_context.clone(),
             dango_context,
+            cfg.httpd.static_files_path.clone(),
         );
 
         hooked_indexer.start(&app.db.state_storage_with_comment(None, "hooked_indexer")?)?;
@@ -337,7 +338,7 @@ impl StartCmd {
             ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
             indexer,
             grug_cfg.query_gas_limit,
-            None,
+            Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
             env!("CARGO_PKG_VERSION"),
         );
 

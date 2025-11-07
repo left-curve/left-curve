@@ -146,6 +146,7 @@ where
         indexer_httpd_context.clone(),
         indexer_clickhouse_context.clone(),
         dango_context,
+        None,
     );
 
     dango_httpd::server::run_server("127.0.0.1", port, cors_allowed_origin, dango_httpd_context)

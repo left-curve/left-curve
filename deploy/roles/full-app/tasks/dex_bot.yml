@@ -61,6 +61,7 @@
           ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }} \
           bash -lc '{{ provide_liquidity_command }} && {{ mint_command }}'
       register: liquidity_result
+      ignore_errors: true
       retries: 3
       delay: 5
       failed_when: false
@@ -106,3 +107,8 @@
   file:
     path: "{{ deployment_dir }}/bot_liquidity_setup_done"
     state: touch
+  when:
+    - liquidity_result is defined
+    - liquidity_result is succeeded
+  run_once: true
+  delegate_to: "{{ dex_bot_host }}"

@@ -3285,7 +3285,7 @@ dependencies = [
 
 [[package]]
 name = "dango-cli"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "bip32",
@@ -3300,6 +3300,7 @@ dependencies = [
  "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-types",
+ "dango-upgrade",
  "data-encoding",
  "dialoguer",
  "futures",
@@ -3406,6 +3407,7 @@ name = "dango-httpd"
 version = "0.0.0"
 dependencies = [
  "actix-cors",
+ "actix-files",
  "actix-web",
  "actix-web-metrics",
  "async-graphql",
@@ -3695,6 +3697,17 @@ dependencies = [
  "sea-orm",
  "serde",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "dango-upgrade"
+version = "0.0.0"
+dependencies = [
+ "dango-dex",
+ "dango-types",
+ "grug",
+ "grug-app",
+ "tracing",
 ]
 
 [[package]]

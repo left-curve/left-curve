@@ -94,7 +94,7 @@ impl TryFrom<i32> for Order {
             2 => Ok(Order::Descending),
             _ => {
                 let reason = format!("must be 1 (asc) or 2 (desc), found {value}");
-                Err(StdError::deserialize::<Self, _>("index", reason))
+                Err(StdError::deserialize::<Self, _, _>("index", reason, value))
             },
         }
     }
