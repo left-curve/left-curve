@@ -13,7 +13,7 @@ async fn not_found_handler(app_ctx: web::Data<Context>) -> HttpResponse {
     let static_files_path = app_ctx.static_files_path.as_deref();
 
     if let Some(static_files_path) = static_files_path {
-        let file_path = format!("{}/404.html", static_files_path);
+        let file_path = format!("{static_files_path}/404.html");
         if let Ok(html_content) = std::fs::read_to_string(&file_path) {
             return HttpResponse::NotFound()
                 .content_type("text/html; charset=utf-8")
@@ -145,16 +145,4 @@ where
     .await?;
 
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_not_found_handler_logic() {
-        // Test that the function compiles and returns a 404 response
-        // The actual integration test would require a full context setup
-        assert_eq!(404, 404); // Basic smoke test
-    }
 }
