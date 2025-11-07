@@ -4799,6 +4799,7 @@ dependencies = [
  "hex-literal",
  "ics23",
  "metrics",
+ "ouroboros",
  "proptest",
  "rocksdb",
  "serde",

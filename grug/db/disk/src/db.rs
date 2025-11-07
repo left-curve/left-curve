@@ -6,14 +6,17 @@ use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     grug_app::{Commitment, Db},
     grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
+    ouroboros::self_referencing,
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
     },
     std::{
+        collections::BTreeMap,
         marker::PhantomData,
+        ops::Bound,
         path::Path,
-        sync::{Arc, RwLock},
+        sync::{Arc, RwLock, RwLockReadGuard},
     },
 };
 
@@ -53,10 +56,26 @@ pub const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 #[cfg(feature = "metrics")]
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
+#[cfg(feature = "metrics")]
+pub const PRIORITY_DATA_LOCK_COUNT_LABEL: &str = "grug.db.disk.priority_data_lock_count";
+
 /// Configurations related to the disk DB.
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
+    /// Records in this range will be loaded into memory. Reading and iterating
+    /// within this range will be done entirely in memory, without accessing the
+    /// disk.
+    ///
+    /// Lower bound is inclusive, upper bound is exclusive.
+    pub priority_range: Option<(Vec<u8>, Vec<u8>)>,
+    /// Options regarding auto-pruning.
+    pub pruning: PruningConfig,
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct PruningConfig {
     /// The interval of auto-pruning (i.e. perform a pruning every X versions).
     /// 0 means no auto-pruning.
     pub prune_interval: u64,
@@ -100,7 +119,7 @@ pub struct Config {
 /// and maybe our implementation will converge with Sei's some time later.
 pub struct DiskDb<T> {
     pub(crate) inner: Arc<DiskDbInner>,
-    cfg: Config,
+    prune: PruningConfig,
     _commitment: PhantomData<T>,
 }
 
@@ -111,6 +130,7 @@ pub(crate) struct DiskDbInner {
     // Ideally we want to just use a `rocksdb::WriteBatch` here, but it's not
     // thread-safe.
     pending_data: RwLock<Option<PendingData>>,
+    priority_data: Option<PriorityData>,
 }
 
 #[derive(Debug)]
@@ -118,6 +138,13 @@ pub(crate) struct PendingData {
     version: u64,
     state_commitment: Batch,
     state_storage: Batch,
+}
+
+#[derive(Debug)]
+struct PriorityData {
+    min: Vec<u8>, // inclusive
+    max: Vec<u8>, // exclusive
+    records: RwLock<BTreeMap<Vec<u8>, Vec<u8>>>,
 }
 
 impl<T> DiskDb<T> {
@@ -145,12 +172,63 @@ impl<T> DiskDb<T> {
             (CF_NAME_STATE_COMMITMENT, Options::default()),
         ])?;
 
+        // If `priority_range` is specified, load the data in that range into memory.
+        let priority_data = cfg.priority_range.map(|(min, max)| {
+            #[cfg(feature = "tracing")]
+            let mut size = 0;
+
+            // On a brand new database, where the `state_storage` column family
+            // is completely empty, with no data ever written into it yet, the
+            // iterator fails with:
+            //
+            // > Invalid argument: cannot call this method on column family
+            //   state_storage that enables timestamp
+            //
+            // Therefore, we check whether the `latest_version` exists, If not,
+            // it means the DB is new, then we default the priority data to an
+            // empty B-tree map.
+            let records = if let Some(latest_version) = read_version(&db, LATEST_VERSION_KEY) {
+                db.iterator_cf_opt(
+                    &cf_state_storage(&db),
+                    new_read_options(Some(latest_version), Some(min.as_ref()), Some(max.as_ref())),
+                    IteratorMode::Start,
+                )
+                .map(|item| {
+                    let (k, v) = item.unwrap_or_else(|err| {
+                        panic!("failed to load record for priority data: {err}");
+                    });
+
+                    #[cfg(feature = "tracing")]
+                    {
+                        size += k.len() + v.len();
+                    }
+
+                    (k.to_vec(), v.to_vec())
+                })
+                .collect::<BTreeMap<_, _>>()
+            } else {
+                BTreeMap::new()
+            };
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::info!(num_records = records.len(), size, "Loaded priority data");
+            }
+
+            PriorityData {
+                min,
+                max,
+                records: RwLock::new(records),
+            }
+        });
+
         Ok(Self {
             inner: Arc::new(DiskDbInner {
                 db,
                 pending_data: RwLock::new(None),
+                priority_data,
             }),
-            cfg,
+            prune: cfg.pruning,
             _commitment: PhantomData,
         })
     }
@@ -160,7 +238,7 @@ impl<T> Clone for DiskDb<T> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
-            cfg: self.cfg,
+            prune: self.prune,
             _commitment: PhantomData,
         }
     }
@@ -184,6 +262,10 @@ where
     fn state_storage_with_comment(
         &self,
         version: Option<u64>,
+        #[cfg_attr(
+            not(any(feature = "tracing", feature = "metrics")),
+            allow(unused_variables)
+        )]
         comment: &'static str,
     ) -> DbResult<StateStorage> {
         // Read the latest version.
@@ -215,44 +297,17 @@ where
         Ok(StateStorage {
             inner: Arc::clone(&self.inner),
             version,
+            #[cfg(any(feature = "tracing", feature = "metrics"))]
             comment,
         })
     }
 
     fn latest_version(&self) -> Option<u64> {
-        let cf = cf_default(&self.inner.db);
-        let bytes = self
-            .inner
-            .db
-            .get_cf(&cf, LATEST_VERSION_KEY)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from default column family: {err}");
-            })?;
-        let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
-            panic!(
-                "latest version is of incorrect byte length: {}",
-                bytes.len()
-            );
-        });
-        Some(u64::from_le_bytes(array))
+        read_version(&self.inner.db, LATEST_VERSION_KEY)
     }
 
     fn oldest_version(&self) -> Option<u64> {
-        let cf = cf_default(&self.inner.db);
-        let bytes = self
-            .inner
-            .db
-            .get_cf(&cf, OLDEST_VERSION_KEY)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from default column family: {err}");
-            })?;
-        let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
-            panic!(
-                "oldest version is of incorrect byte length: {}",
-                bytes.len()
-            );
-        });
-        Some(u64::from_le_bytes(array))
+        read_version(&self.inner.db, OLDEST_VERSION_KEY)
     }
 
     fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash256>> {
@@ -292,7 +347,7 @@ where
         let mut buffer = Buffer::new(
             self.state_commitment(),
             None,
-            "disk_db_state_commitment_flush_but_not_commit",
+            "disk_db/state_commitment/flush_but_not_commit",
         );
 
         let root_hash = T::apply(&mut buffer, old_version, new_version, &batch)?;
@@ -323,6 +378,49 @@ where
             .write()?
             .take()
             .ok_or(DbError::pending_data_not_set())?;
+
+        // If priority data exists, apply the change set to it.
+        if let Some(data) = &self.inner.priority_data {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!("Attempting to acquire write lock on priority data");
+            }
+
+            let mut records = data.records.write().expect("priority data poisoned");
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!("Acquired write lock on priority data");
+            }
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "write").increment(1);
+            }
+
+            for (k, op) in pending.state_storage.range::<[u8], _>((
+                Bound::Included(data.min.as_slice()),
+                Bound::Excluded(data.max.as_slice()),
+            )) {
+                if let Op::Insert(v) = op {
+                    records.insert(k.clone(), v.clone());
+                } else {
+                    records.remove(k);
+                }
+            }
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!("Released write lock on priority data");
+            }
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "write").decrement(1);
+            }
+        }
+
+        // Now, prepare the write batch that will be written to RocksDB.
         let mut batch = WriteBatch::default();
         let ts = U64Timestamp::from(pending.version);
 
@@ -374,17 +472,17 @@ where
         }
 
         // Perform auto-pruning if the configured interval is reached.
-        if self.cfg.prune_interval != 0
-            && pending.version % self.cfg.prune_interval == 0
-            && pending.version > self.cfg.prune_keep_recent
+        if self.prune.prune_interval != 0
+            && pending.version % self.prune.prune_interval == 0
+            && pending.version > self.prune.prune_keep_recent
         {
-            self.prune(pending.version - self.cfg.prune_keep_recent)?;
+            self.prune(pending.version - self.prune.prune_keep_recent)?;
         }
 
         // Perform manual compaction if the configured interval is reached.
-        if self.cfg.compact_interval != 0
-            && pending.version % self.cfg.compact_interval == 0
-            && pending.version > self.cfg.compact_interval
+        if self.prune.compact_interval != 0
+            && pending.version % self.prune.compact_interval == 0
+            && pending.version > self.prune.compact_interval
         {
             self.compact();
         }
@@ -591,7 +689,7 @@ impl Storage for StateCommitment {
 pub struct StateStorage {
     inner: Arc<DiskDbInner>,
     version: u64,
-    #[cfg_attr(not(feature = "metrics"), allow(dead_code))]
+    #[cfg(any(feature = "tracing", feature = "metrics"))]
     comment: &'static str,
 }
 
@@ -601,7 +699,65 @@ impl StateStorage {
         min: Option<&[u8]>,
         max: Option<&[u8]>,
         order: Order,
-    ) -> impl Iterator<Item = Record> + 'a {
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        // If priority data exists, and the iterator range completely falls
+        // within the priority range, then create a priority iterator.
+        // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
+        // are both exclusive.
+        if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
+            if data.min.as_slice() <= min && max <= data.max.as_slice() {
+                return self.create_priority_iterator(data, min, max, order);
+            }
+        }
+
+        self.create_non_priority_iterator(min, max, order)
+    }
+
+    fn create_priority_iterator<'a>(
+        &'a self,
+        data: &'a PriorityData,
+        min: &[u8],
+        max: &[u8],
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                operation = "read",
+                comment = self.comment,
+                "Attempting to acquire read lock on priority data"
+            );
+        }
+
+        let records = data.records.read().expect("priority data poisoned");
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                operation = "read",
+                comment = self.comment,
+                "Acquired read lock on priority data"
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
+        }
+
+        Box::new(PriorityDataIter {
+            inner: PriorityDataIterInner::new(records, |g| g.scan(Some(min), Some(max), order)),
+            #[cfg(feature = "tracing")]
+            comment: self.comment,
+        })
+    }
+
+    fn create_non_priority_iterator<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         let opts = new_read_options(Some(self.version), min, max);
         let mode = into_iterator_mode(order);
         let iter = self
@@ -629,6 +785,56 @@ impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
+
+        // If the key falls in the priority data range, read the value from
+        // priority data, without accessing the disk.
+        // Note: `min` is inclusive, while `max` is exclusive.
+        if let Some(data) = &self.inner.priority_data {
+            if data.min.as_slice() <= key && key < data.max.as_slice() {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!(
+                        operation = "read",
+                        comment = self.comment,
+                        "Attempting to acquire read lock on priority data"
+                    );
+                }
+
+                let records = data.records.read().expect("priority data poisoned");
+
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!(
+                        operation = "read",
+                        comment = self.comment,
+                        "Acquired read lock on priority data"
+                    );
+                }
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
+                }
+
+                let value = records.get(key).cloned();
+
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!(
+                        operation = "read",
+                        comment = self.comment,
+                        "Released read lock on priority data"
+                    );
+                }
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
+                }
+
+                return value;
+            }
+        }
 
         let opts = new_read_options(Some(self.version), None, None);
         let value = self
@@ -665,7 +871,7 @@ impl Storage for StateStorage {
                 .record(duration.elapsed().as_secs_f64());
         }
 
-        Box::new(iter)
+        iter
     }
 
     fn scan_keys<'a>(
@@ -718,6 +924,46 @@ impl Storage for StateStorage {
 
     fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
         unreachable!("write function called on read-only storage");
+    }
+}
+
+struct PriorityDataIter<'a> {
+    inner: PriorityDataIterInner<'a>,
+    #[cfg(feature = "tracing")]
+    comment: &'static str,
+}
+
+#[self_referencing]
+struct PriorityDataIterInner<'a> {
+    guard: RwLockReadGuard<'a, BTreeMap<Vec<u8>, Vec<u8>>>,
+    #[borrows(guard)]
+    #[covariant]
+    inner: Box<dyn Iterator<Item = Record> + 'this>,
+}
+
+impl<'a> Iterator for PriorityDataIter<'a> {
+    type Item = Record;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.with_inner_mut(|iter| iter.next())
+    }
+}
+
+impl<'a> Drop for PriorityDataIter<'a> {
+    fn drop(&mut self) {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                operation = "read",
+                comment = self.comment,
+                "Released read lock on priority data"
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
+        }
     }
 }
 
@@ -795,6 +1041,17 @@ pub fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundCol
     db.cf_handle(CF_NAME_STATE_COMMITMENT).unwrap_or_else(|| {
         panic!("failed to find state commitment column family");
     })
+}
+
+pub fn read_version(db: &DBWithThreadMode<MultiThreaded>, k: &[u8]) -> Option<u64> {
+    let cf = cf_default(db);
+    let bytes = db.get_cf(&cf, k).unwrap_or_else(|err| {
+        panic!("failed to read from default column family: {err}");
+    })?;
+    let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
+        panic!("version is of incorrect byte length: {}", bytes.len());
+    });
+    Some(u64::from_le_bytes(array))
 }
 
 // ------------------------ tests using JMT commitment -------------------------
@@ -1371,9 +1628,12 @@ mod tests_simple {
 
         let path = TempDataDir::new("_grug_disk_db_auto_prune_works");
         let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            prune_interval: 2,
-            prune_keep_recent: 2,
-            compact_interval: 2,
+            pruning: PruningConfig {
+                prune_interval: 2,
+                prune_keep_recent: 2,
+                compact_interval: 2,
+            },
+            ..Default::default()
         })
         .unwrap();
 
@@ -1426,5 +1686,161 @@ mod tests_simple {
                 vec![version as u8]
             );
         }
+    }
+
+    #[test]
+    fn priority_data() {
+        let path = TempDataDir::new("_grug_disk_db_priority_data");
+
+        // First, open the DB _without_ priority data, and write some records.
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        db.flush_and_commit(Batch::from([
+            (b"000".to_vec(), Op::Insert(b"000".to_vec())),
+            (b"001".to_vec(), Op::Insert(b"001".to_vec())),
+            (b"002".to_vec(), Op::Insert(b"002".to_vec())),
+            (b"003".to_vec(), Op::Insert(b"003".to_vec())),
+            (b"004".to_vec(), Op::Insert(b"004".to_vec())),
+        ]))
+        .unwrap();
+
+        // Enusre rockdb max is exclusive.
+        {
+            assert_eq!(
+                db.inner
+                    .db
+                    .iterator_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        new_read_options(Some(0), Some(b"000"), Some(b"004")),
+                        IteratorMode::Start,
+                    )
+                    .map(|res| {
+                        let (k, v) = res.unwrap();
+                        (k.to_vec(), v.to_vec())
+                    })
+                    .collect::<Vec<_>>(),
+                [
+                    (b"000".to_vec(), b"000".to_vec()),
+                    (b"001".to_vec(), b"001".to_vec()),
+                    (b"002".to_vec(), b"002".to_vec()),
+                    (b"003".to_vec(), b"003".to_vec()),
+                ]
+            );
+
+            assert_eq!(
+                db.inner
+                    .db
+                    .iterator_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        new_read_options(Some(0), Some(b"000"), Some(b"005")),
+                        IteratorMode::Start,
+                    )
+                    .map(|res| {
+                        let (k, v) = res.unwrap();
+                        (k.to_vec(), v.to_vec())
+                    })
+                    .collect::<Vec<_>>(),
+                [
+                    (b"000".to_vec(), b"000".to_vec()),
+                    (b"001".to_vec(), b"001".to_vec()),
+                    (b"002".to_vec(), b"002".to_vec()),
+                    (b"003".to_vec(), b"003".to_vec()),
+                    (b"004".to_vec(), b"004".to_vec()),
+                ]
+            );
+        }
+
+        drop(db);
+
+        // Open the DB again, _with_ priority data this time.
+        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
+            priority_range: Some((b"000".to_vec(), b"004".to_vec())),
+            ..Default::default()
+        })
+        .unwrap();
+
+        // In order to test the priorty data, we manually delete a key from the db.
+        // This is not something that should happen in a normal use case but allows
+        // us to test the priority data.
+        // Remove the `002` key from the db.
+        {
+            assert_eq!(
+                db.inner
+                    .db
+                    .get_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        b"002",
+                        &new_read_options(Some(0), None, None)
+                    )
+                    .unwrap()
+                    .unwrap(),
+                b"002"
+            );
+
+            db.inner
+                .db
+                .delete_cf_with_ts(
+                    &cf_state_storage(&db.inner.db),
+                    b"002",
+                    U64Timestamp::from(0),
+                )
+                .unwrap();
+
+            assert!(
+                db.inner
+                    .db
+                    .get_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        b"002",
+                        &new_read_options(Some(0), None, None)
+                    )
+                    .unwrap()
+                    .is_none()
+            );
+        }
+
+        let storage = db.state_storage(None).unwrap();
+
+        // We should be able to read `002` from the priority data.
+        // This proves we're accessing it from priority data (as expected), not
+        // from the underlying rocksdb.
+        assert_eq!(storage.read(b"002").unwrap(), b"002");
+
+        // Iterate over the a range included in the priority data
+        assert_eq!(
+            storage
+                .scan_values(Some(b"001"), Some(b"003"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            [b"001", b"002"]
+        );
+
+        // Iterate over the exact range of the priority data
+        assert_eq!(
+            storage
+                .scan_values(Some(b"000"), Some(b"004"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            [b"000", b"001", b"002", b"003"]
+        );
+
+        // Iterate over a range that exceeds the priority data.
+        // Data are loaded from disk, key `002` should not be found.
+        assert_eq!(
+            storage
+                .scan_values(Some(b"000"), Some(b"005"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            [b"000", b"001", b"003", b"004"]
+        );
+    }
+
+    #[test]
+    fn priority_data_new_db() {
+        let path = TempDataDir::new("_grug_disk_db_priority_data_new_db");
+
+        // Open a brand new DB with priority data. Should succeed.
+        let _db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
+            priority_range: Some((b"000".to_vec(), b"004".to_vec())),
+            ..Default::default()
+        })
+        .unwrap();
     }
 }
