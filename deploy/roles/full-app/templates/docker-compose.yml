@@ -305,6 +305,12 @@ services:
     networks:
       - default
       - traefik
+    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 networks:
   traefik:
