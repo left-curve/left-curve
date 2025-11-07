@@ -105,7 +105,7 @@ jobs:
               - 'Cargo.lock'
               - 'clippy.toml'
               - 'rustfmt.toml'
-              - 'docker/dango-builder/**'
+              - 'docker/dango/**'
               - '.force_backend_rebuild'
             frontend:
               - 'sdk/**'
