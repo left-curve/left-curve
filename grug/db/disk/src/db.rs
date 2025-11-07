@@ -240,7 +240,10 @@ fn statistics(opts: Options, inner: Arc<DiskDbInner>) {
                 ]),
             ] {
                 for (prop_name, label) in properties {
-                    if let Ok(Some(v)) = inner.db.property_int_value(prop_name) {
+                    if let Ok(Some(v)) = inner
+                        .db
+                        .property_int_value_cf(&cf_state_storage(&inner.db), prop_name)
+                    {
                         metrics::gauge!(category, "type" => label).set(v as f64);
                     }
                 }
@@ -249,7 +252,10 @@ fn statistics(opts: Options, inner: Arc<DiskDbInner>) {
             // Number of SST files per LSM level (crucial for iterator performance)
             for level in 0..7 {
                 let prop = num_files_at_level(level);
-                if let Ok(Some(v)) = inner.db.property_int_value(&prop) {
+                if let Ok(Some(v)) = inner
+                    .db
+                    .property_int_value_cf(&cf_state_storage(&inner.db), &prop)
+                {
                     metrics::gauge!(
                         "rocksdb_lsm_count",
                         "type" => "num_files_at_level",
@@ -264,19 +270,14 @@ fn statistics(opts: Options, inner: Arc<DiskDbInner>) {
             // Total number of compactions executed
             let h = opts.get_histogram_data(Histogram::CompactionTime);
             metrics::gauge!("rocksdb_compactions_total").set(h.count() as f64);
-            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "p50")
-                .set(h.median() as f64);
-            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "p95")
-                .set(h.p95() as f64);
-            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "p99")
-                .set(h.p99() as f64);
-            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "avg")
-                .set(h.average() as f64);
+            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "p50").set(h.median());
+            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "p95").set(h.p95());
+            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "p99").set(h.p99());
+            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "avg").set(h.average());
 
             // Iterator cost (p95 in microseconds)
             let h = opts.get_histogram_data(Histogram::DbSeek);
-            metrics::gauge!("rocksdb_latency_micros", "type" => "iter_seek_p95")
-                .set(h.p95() as f64);
+            metrics::gauge!("rocksdb_latency_micros", "type" => "iter_seek_p95").set(h.p95());
         }
     });
 }
