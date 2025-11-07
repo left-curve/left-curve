@@ -6,8 +6,8 @@ use {
     },
     grug_math::{Bytable, Dec, Int},
     grug_types::{
-        Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Inner, LengthBounded,
-        Lengthy, Part, StdError, StdResult, nested_namespaces_with_key,
+        Binary, Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Inner,
+        LengthBounded, Lengthy, Part, StdError, StdResult, nested_namespaces_with_key,
     },
     std::{mem, str, vec},
 };
@@ -115,9 +115,10 @@ impl PrimaryKey for () {
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         if !bytes.is_empty() {
-            return Err(StdError::deserialize::<Self::Output, _>(
+            return Err(StdError::deserialize::<Self::Output, _, Binary>(
                 "key",
                 "expecting empty bytes",
+                bytes.into(),
             ));
         }
 
@@ -169,8 +170,9 @@ impl PrimaryKey for &str {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        String::from_utf8(bytes.to_vec())
-            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
+        String::from_utf8(bytes.to_vec()).map_err(|err| {
+            StdError::deserialize::<Self::Output, _, Binary>("key", err, bytes.into())
+        })
     }
 }
 
@@ -186,8 +188,9 @@ impl PrimaryKey for String {
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        String::from_utf8(bytes.to_vec())
-            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
+        String::from_utf8(bytes.to_vec()).map_err(|err| {
+            StdError::deserialize::<Self::Output, _, Binary>("key", err, bytes.into())
+        })
     }
 }
 
@@ -224,7 +227,9 @@ impl PrimaryKey for Part {
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         str::from_utf8(bytes)
-            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
+            .map_err(|err| {
+                StdError::deserialize::<Self::Output, _, Binary>("key", err, bytes.into())
+            })
             .and_then(TryInto::try_into)
     }
 }
@@ -242,7 +247,9 @@ impl PrimaryKey for Denom {
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         String::from_utf8(bytes.to_vec())
-            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
+            .map_err(|err| {
+                StdError::deserialize::<Self::Output, _, Binary>("key", err, bytes.into())
+            })
             .and_then(TryInto::try_into)
     }
 }
@@ -298,9 +305,10 @@ impl PrimaryKey for CodeStatus {
                 let usage = u32::from_be_bytes(bytes[3..].try_into()?);
                 Ok(CodeStatus::InUse { usage })
             },
-            tag => Err(StdError::deserialize::<Self::Output, _>(
+            tag => Err(StdError::deserialize::<Self::Output, _, Binary>(
                 "key",
                 format!("unknown tag: {tag:?}"),
+                bytes.into(),
             )),
         }
     }
@@ -535,13 +543,14 @@ macro_rules! impl_unsigned_integer_key {
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    return Err(StdError::deserialize::<Self::Output, _>(
+                    return Err(StdError::deserialize::<Self::Output, _, Binary>(
                         "key",
                         format!(
                             "wrong number of bytes: expecting {}, got {}",
                             mem::size_of::<Self>(),
                             bytes.len(),
                         ),
+                        bytes.into(),
                     ));
                 };
 
@@ -582,13 +591,14 @@ macro_rules! impl_signed_integer_key {
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    return Err(StdError::deserialize::<Self::Output, _>(
+                    return Err(StdError::deserialize::<Self::Output, _, Binary>(
                         "key",
                         format!(
                             "wrong number of bytes: expecting {}, got {}",
                             mem::size_of::<Self>(),
                             bytes.len(),
-                        )
+                        ),
+                        bytes.into(),
                     ));
                 };
 
@@ -627,13 +637,14 @@ macro_rules! impl_bnum_signed_integer_key {
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    return Err(StdError::deserialize::<Self::Output, _>(
+                    return Err(StdError::deserialize::<Self::Output, _, Binary>(
                         "key",
                         format!(
                             "wrong number of bytes: expecting {}, got {}",
                             mem::size_of::<Self>(),
                             bytes.len(),
-                        )
+                        ),
+                        bytes.into(),
                     ));
                 };
 

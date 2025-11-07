@@ -1,5 +1,5 @@
 use {
-    dango_types::constants::{btc, eth, sol, usdc},
+    dango_types::constants::{btc, dango, eth, sol, usdc},
     grug::{Addr, BlockInfo, Denom, Storage, Uint128, addr},
     grug_app::{AppResult, CONTRACT_NAMESPACE, StorageProvider},
     std::sync::LazyLock,
@@ -43,13 +43,15 @@ const DEX: Addr = addr!("8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f");
 
 // (base_denom, quote_denom) => min_order_size_base.
 // We set the minimum order size in the base asset to ~5 USD.
-static PARAMS: [(&LazyLock<Denom>, &LazyLock<Denom>, u128); 3] = [
+static PARAMS: [(&LazyLock<Denom>, &LazyLock<Denom>, u128); 4] = [
     // 5 (USD) / 100,000 (USD per BTC) * 100,000,000 (sats per BTC) = 5,000 sats
     (&btc::DENOM, &usdc::DENOM, 5_000),
     // 5 (USD) / 4,000 (USD per ETH) * 1e+18 (wei per ETH) = 1.25e+15 wei
     (&eth::DENOM, &usdc::DENOM, 1_250_000_000_000_000),
     // 5 (USD) / 200 (USD per SOL) * 1e+9 (lamports per SOL) = 25,000,000 lamports
     (&sol::DENOM, &usdc::DENOM, 25_000_000),
+    // No minimum size for Dango pair.
+    (&dango::DENOM, &usdc::DENOM, 0),
 ];
 
 pub fn do_upgrade<VM>(storage: Box<dyn Storage>, _vm: VM, _block: BlockInfo) -> AppResult<()> {

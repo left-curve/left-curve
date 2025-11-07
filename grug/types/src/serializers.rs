@@ -1,5 +1,5 @@
 use {
-    crate::{Inner, Json, StdError, StdResult},
+    crate::{Binary, Inner, Json, StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     prost::Message,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -62,7 +62,7 @@ where
         D: DeserializeOwned,
     {
         serde_json::from_slice(self.as_ref())
-            .map_err(|err| StdError::deserialize::<D, _>("json", err))
+            .map_err(|err| StdError::deserialize::<D, _, Binary>("json", err, self.as_ref().into()))
     }
 }
 
@@ -80,7 +80,8 @@ impl JsonDeExt for serde_json::Value {
     where
         D: DeserializeOwned,
     {
-        serde_json::from_value(self).map_err(|err| StdError::deserialize::<D, _>("json", err))
+        serde_json::from_value(self.clone())
+            .map_err(|err| StdError::deserialize::<D, _, _>("json", err, self))
     }
 }
 
@@ -118,7 +119,9 @@ where
     where
         D: BorshDeserialize,
     {
-        borsh::from_slice(self.as_ref()).map_err(|err| StdError::deserialize::<D, _>("borsh", err))
+        borsh::from_slice(self.as_ref()).map_err(|err| {
+            StdError::deserialize::<D, _, Binary>("borsh", err, self.as_ref().into())
+        })
     }
 }
 
@@ -156,6 +159,8 @@ where
     where
         D: Message + Default,
     {
-        D::decode(self.as_ref()).map_err(|err| StdError::deserialize::<D, _>("protobuf", err))
+        D::decode(self.as_ref()).map_err(|err| {
+            StdError::deserialize::<D, _, Binary>("protobuf", err, self.as_ref().into())
+        })
     }
 }
