@@ -1,0 +1,91 @@
+---
+- name: Ensure directories exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ metabase_dir }}"
+    - "{{ traefik_dir }}/config"
+
+- name: Validate required variables
+  assert:
+    that:
+      - metabase_db_password is defined
+      - metabase_db_password | length > 0
+      - postgres_user is defined
+      - postgres_password is defined
+    fail_msg: "metabase_db_password, postgres_user, and postgres_password must be defined"
+
+- name: Deploy Metabase files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "docker-compose.yml", dest: "{{ metabase_dir }}/docker-compose.yml" }
+
+- name: Configure Traefik routing for Metabase
+  become: true
+  become_user: root
+  template:
+    src: "traefik-services.yml"
+    dest: "{{ traefik_dir }}/config/metabase.yml"
+    owner: "{{ deploy_user }}"
+
+- name: Ensure postgres Docker network exists
+  community.docker.docker_network:
+    name: postgres
+    state: present
+
+- name: Install psycopg2 for Postgres modules
+  become: true
+  become_user: root
+  apt:
+    name: python3-psycopg2
+    state: present
+  when: metabase_use_postgres
+
+- block:
+    - name: Create Postgres Metabase user
+      community.postgresql.postgresql_user:
+        name: "{{ metabase_db_user }}"
+        password: "{{ metabase_db_password }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Create Postgres Metabase database
+      community.postgresql.postgresql_db:
+        name: "{{ metabase_db_name }}"
+        owner: "{{ metabase_db_user }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant privileges on Metabase database to Metabase user
+      community.postgresql.postgresql_privs:
+        type: database
+        privs: ALL
+        roles: "{{ metabase_db_user }}"
+        login_db: "{{ metabase_db_name }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+  when: metabase_use_postgres
+
+- name: Launch Metabase stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ metabase_dir }}"
+    pull: missing
+    state: present
+    recreate: always
