@@ -15,7 +15,7 @@ mod legacy_dex {
 
     pub const PAIRS: Map<(&Denom, &Denom), PairParams> = Map::new("pair");
 
-    #[grug::derive(Serde, Borsh)]
+    #[grug::derive(Borsh)]
     pub struct PairParams {
         pub lp_denom: Denom,
         pub pool_type: PassiveLiquidity,
