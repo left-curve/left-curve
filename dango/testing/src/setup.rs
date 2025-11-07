@@ -253,6 +253,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         indexer_httpd_context.clone(),
         clickhouse_context.clone(),
         dango_context,
+        None,
     );
 
     (
