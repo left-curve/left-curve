@@ -262,6 +262,10 @@ where
     fn state_storage_with_comment(
         &self,
         version: Option<u64>,
+        #[cfg_attr(
+            not(any(feature = "tracing", feature = "metrics")),
+            allow(unused_variables)
+        )]
         comment: &'static str,
     ) -> DbResult<StateStorage> {
         // Read the latest version.
@@ -293,6 +297,7 @@ where
         Ok(StateStorage {
             inner: Arc::clone(&self.inner),
             version,
+            #[cfg(any(feature = "tracing", feature = "metrics"))]
             comment,
         })
     }
@@ -684,7 +689,7 @@ impl Storage for StateCommitment {
 pub struct StateStorage {
     inner: Arc<DiskDbInner>,
     version: u64,
-    #[cfg_attr(not(feature = "metrics"), allow(dead_code))]
+    #[cfg(any(feature = "tracing", feature = "metrics"))]
     comment: &'static str,
 }
 
@@ -742,6 +747,7 @@ impl StateStorage {
 
         Box::new(PriorityDataIter {
             inner: PriorityDataIterInner::new(records, |g| g.scan(Some(min), Some(max), order)),
+            #[cfg(feature = "tracing")]
             comment: self.comment,
         })
     }
@@ -923,6 +929,7 @@ impl Storage for StateStorage {
 
 struct PriorityDataIter<'a> {
     inner: PriorityDataIterInner<'a>,
+    #[cfg(feature = "tracing")]
     comment: &'static str,
 }
 
