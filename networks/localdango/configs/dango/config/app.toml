@@ -32,7 +32,7 @@ query_gas_limit = 100000000
 
 # The interval of auto-pruning (i.e. perform a pruning every X versions).
 # 0 means no auto-pruning.
-prune_interval = 0
+prune_interval = 100
 
 # At each auto-pruning, how many recent versions to keep.
 prune_keep_recent = 25
