@@ -1,5 +1,3 @@
-#[cfg(feature = "metrics")]
-use grug_types::MetricsIterExt;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use {
@@ -15,6 +13,12 @@ use {
         path::Path,
         sync::{Arc, RwLock},
     },
+};
+#[cfg(feature = "metrics")]
+use {
+    grug_types::MetricsIterExt,
+    rocksdb::{properties::*, statistics::Histogram},
+    std::time::Duration,
 };
 
 /// We use three column families (CFs) for storing data.
@@ -52,6 +56,68 @@ pub const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 
 #[cfg(feature = "metrics")]
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
+
+#[cfg(feature = "metrics")]
+#[rustfmt::skip]
+pub const ROCKSDB_STATISTICS: [(&str, &[(&PropName, &str)]); 10] = [
+    // ============= BYTES =============
+    // Memtable (RAM)
+    ("rocksdb_memtable_bytes", &[
+        (CUR_SIZE_ACTIVE_MEM_TABLE, "cur_size_active"),
+        (CUR_SIZE_ALL_MEM_TABLES, "cur_size_all"),
+        (SIZE_ALL_MEM_TABLES, "size_all"),
+    ]),
+    // SST / on-disk space
+    ("rocksdb_sst_bytes", &[
+        (LIVE_SST_FILES_SIZE, "live_sst_files_size"),
+        (TOTAL_SST_FILES_SIZE, "total_sst_files_size"),
+        (ESTIMATE_LIVE_DATA_SIZE, "estimate_live_data_size"),
+    ]),
+    // Compaction backlog (bytes to rewrite)
+    ("rocksdb_compaction_bytes", &[
+        (ESTIMATE_PENDING_COMPACTION_BYTES, "estimate_pending_compaction"),
+    ]),
+    // Block cache usage
+    ("rocksdb_block_cache_bytes", &[
+        (BLOCK_CACHE_CAPACITY, "capacity"),
+        (BLOCK_CACHE_USAGE, "usage"),
+        (BLOCK_CACHE_PINNED_USAGE, "pinned_usage"),
+    ]),
+    // ============= COUNTS =============
+    // Memtable entries & deletes
+    ("rocksdb_memtable_count", &[
+        (NUM_ENTRIES_ACTIVE_MEM_TABLE, "entries_active"),
+        (NUM_ENTRIES_IMM_MEM_TABLES, "entries_imm"),
+        (NUM_DELETES_ACTIVE_MEM_TABLE, "deletes_active"),
+        (NUM_DELETES_IMM_MEM_TABLES, "deletes_imm"),
+    ]),
+    // Memtable state (immutables, flushes, etc.)
+    ("rocksdb_memtable_state_count", &[
+        (NUM_IMMUTABLE_MEM_TABLE, "immutable"),
+        (NUM_IMMUTABLE_MEM_TABLE_FLUSHED, "immutable_flushed"),
+        (NUM_RUNNING_FLUSHES, "running_flushes"),
+    ]),
+    // Active compactions
+    ("rocksdb_compaction_count", &[
+        (NUM_RUNNING_COMPACTIONS, "running_compactions"),
+    ]),
+    // LSM structure info
+    ("rocksdb_lsm_count", &[
+        (NUM_LIVE_VERSIONS, "live_versions"),
+        (CURRENT_SUPER_VERSION_NUMBER, "super_version_number"),
+    ]),
+    // Background errors
+    ("rocksdb_errors_count", &[
+        (BACKGROUND_ERRORS, "background_errors"),
+    ]),
+    // ============= FLAGS (0/1) =============
+    ("rocksdb_flags", &[
+        (COMPACTION_PENDING, "compaction_pending"),
+        (MEM_TABLE_FLUSH_PENDING, "memtable_flush_pending"),
+        (IS_WRITE_STOPPED, "is_write_stopped"),
+        (IS_FILE_DELETIONS_ENABLED, "is_file_deletions_enabled"),
+    ]),
+];
 
 /// Configurations related to the disk DB.
 #[derive(Default, Debug, Clone, Copy)]
@@ -153,7 +219,9 @@ impl<T> DiskDb<T> {
         });
 
         #[cfg(feature = "metrics")]
-        statistics(opts, inner.clone());
+        {
+            rocksdb_statistics(opts, inner.clone());
+        }
 
         Ok(Self {
             inner,
@@ -164,87 +232,20 @@ impl<T> DiskDb<T> {
 }
 
 #[cfg(feature = "metrics")]
-fn statistics(opts: Options, inner: Arc<DiskDbInner>) {
+fn rocksdb_statistics(opts: Options, inner: Arc<DiskDbInner>) {
     std::thread::spawn(move || {
-        use {
-            rocksdb::{properties::*, statistics::Histogram},
-            std::time::Duration,
-        };
-
         loop {
             std::thread::sleep(Duration::from_secs(5));
 
             // ======== PROPERTIES (inner.db) ========
-            for (category, properties) in [
-                // ============= BYTES =============
 
-                // Memtable (RAM)
-                ("rocksdb_memtable_bytes", vec![
-                    (CUR_SIZE_ACTIVE_MEM_TABLE, "cur_size_active"),
-                    (CUR_SIZE_ALL_MEM_TABLES, "cur_size_all"),
-                    (SIZE_ALL_MEM_TABLES, "size_all"),
-                ]),
-                // SST / on-disk space
-                ("rocksdb_sst_bytes", vec![
-                    (LIVE_SST_FILES_SIZE, "live_sst_files_size"),
-                    (TOTAL_SST_FILES_SIZE, "total_sst_files_size"),
-                    (ESTIMATE_LIVE_DATA_SIZE, "estimate_live_data_size"),
-                ]),
-                // Compaction backlog (bytes to rewrite)
-                ("rocksdb_compaction_bytes", vec![(
-                    ESTIMATE_PENDING_COMPACTION_BYTES,
-                    "estimate_pending_compaction",
-                )]),
-                // Block cache usage
-                ("rocksdb_block_cache_bytes", vec![
-                    (BLOCK_CACHE_CAPACITY, "capacity"),
-                    (BLOCK_CACHE_USAGE, "usage"),
-                    (BLOCK_CACHE_PINNED_USAGE, "pinned_usage"),
-                ]),
-                // ============= COUNTS =============
-
-                // Memtable entries & deletes
-                ("rocksdb_memtable_count", vec![
-                    (NUM_ENTRIES_ACTIVE_MEM_TABLE, "entries_active"),
-                    (NUM_ENTRIES_IMM_MEM_TABLES, "entries_imm"),
-                    (NUM_DELETES_ACTIVE_MEM_TABLE, "deletes_active"),
-                    (NUM_DELETES_IMM_MEM_TABLES, "deletes_imm"),
-                ]),
-                // Memtable state (immutables, flushes, etc.)
-                ("rocksdb_memtable_state_count", vec![
-                    (NUM_IMMUTABLE_MEM_TABLE, "immutable"),
-                    (NUM_IMMUTABLE_MEM_TABLE_FLUSHED, "immutable_flushed"),
-                    (NUM_RUNNING_FLUSHES, "running_flushes"),
-                ]),
-                // Active compactions
-                ("rocksdb_compaction_count", vec![(
-                    NUM_RUNNING_COMPACTIONS,
-                    "running_compactions",
-                )]),
-                // LSM structure info
-                ("rocksdb_lsm_count", vec![
-                    (NUM_LIVE_VERSIONS, "live_versions"),
-                    (CURRENT_SUPER_VERSION_NUMBER, "super_version_number"),
-                ]),
-                // Background errors
-                ("rocksdb_errors_count", vec![(
-                    BACKGROUND_ERRORS,
-                    "background_errors",
-                )]),
-                // ============= FLAGS (0/1) =============
-                ("rocksdb_flags", vec![
-                    (COMPACTION_PENDING, "compaction_pending"),
-                    (MEM_TABLE_FLUSH_PENDING, "memtable_flush_pending"),
-                    (IS_WRITE_STOPPED, "is_write_stopped"),
-                    (IS_FILE_DELETIONS_ENABLED, "is_file_deletions_enabled"),
-                ]),
-            ] {
+            for (category, properties) in ROCKSDB_STATISTICS {
                 for (prop_name, label) in properties {
                     if let Ok(Some(v)) = inner
                         .db
-                        .property_int_value_cf(&cf_state_storage(&inner.db), prop_name)
+                        .property_int_value_cf(&cf_state_storage(&inner.db), *prop_name)
                     {
-                        metrics::gauge!(category, "type" => label).set(v as f64);
+                        metrics::gauge!(category, "type" => *label).set(v as f64);
                     }
                 }
             }
