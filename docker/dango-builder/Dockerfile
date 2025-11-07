@@ -40,6 +40,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /left-curve/target/release/dango /usr/local/bin/dango
+COPY --from=builder /left-curve/dango/indexer/httpd/static /www
 
 EXPOSE 8080 26658
 
