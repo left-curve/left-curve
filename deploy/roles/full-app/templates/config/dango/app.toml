@@ -91,6 +91,9 @@ port = 8080
 # this line.
 cors_allowed_origin = "https://dango.exchange,https://dev.dango.exchange"
 
+# This will be exposed
+static_files_path = ""
+
 [metrics_httpd]
 
 # Whether to enable the HTTP server.

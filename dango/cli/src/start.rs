@@ -247,6 +247,7 @@ impl StartCmd {
             indexer_httpd_context.clone(),
             clickhouse_context.clone(),
             dango_context,
+            cfg.httpd.static_files_path.clone(),
         );
 
         hooked_indexer.start(&app.db.state_storage_with_comment(None, "hooked_indexer")?)?;

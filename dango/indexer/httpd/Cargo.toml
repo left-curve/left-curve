@@ -21,6 +21,7 @@ tracing = []
 
 [dependencies]
 actix-cors               = { workspace = true }
+actix-files              = { workspace = true }
 actix-web                = { workspace = true }
 actix-web-metrics        = { workspace = true, optional = true }
 async-graphql            = { workspace = true }

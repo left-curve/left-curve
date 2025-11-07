@@ -3407,6 +3407,7 @@ name = "dango-httpd"
 version = "0.0.0"
 dependencies = [
  "actix-cors",
+ "actix-files",
  "actix-web",
  "actix-web-metrics",
  "async-graphql",
