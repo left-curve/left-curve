@@ -135,9 +135,11 @@ impl<T> DiskDb<T> {
     where
         P: AsRef<Path>,
     {
+        let opts = new_db_options();
+
         // Note: For default and state commitment CFs, don't enable timestamping;
         // for state storage column family, enable timestamping.
-        let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
+        let db = DBWithThreadMode::open_cf_with_opts(&opts, data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
             #[cfg(feature = "ibc")]
             (CF_NAME_PREIMAGES, new_cf_options_with_ts()),
@@ -145,15 +147,138 @@ impl<T> DiskDb<T> {
             (CF_NAME_STATE_COMMITMENT, Options::default()),
         ])?;
 
+        let inner = Arc::new(DiskDbInner {
+            db,
+            pending_data: RwLock::new(None),
+        });
+
+        #[cfg(feature = "metrics")]
+        statistics(opts, inner.clone());
+
         Ok(Self {
-            inner: Arc::new(DiskDbInner {
-                db,
-                pending_data: RwLock::new(None),
-            }),
+            inner,
             cfg,
             _commitment: PhantomData,
         })
     }
+}
+
+#[cfg(feature = "metrics")]
+fn statistics(opts: Options, inner: Arc<DiskDbInner>) {
+    std::thread::spawn(move || {
+        use {
+            rocksdb::{properties::*, statistics::Histogram},
+            std::time::Duration,
+        };
+
+        loop {
+            std::thread::sleep(Duration::from_secs(5));
+
+            // ======== PROPERTIES (inner.db) ========
+            for (category, properties) in [
+                // ============= BYTES =============
+
+                // Memtable (RAM)
+                ("rocksdb_memtable_bytes", vec![
+                    (CUR_SIZE_ACTIVE_MEM_TABLE, "cur_size_active"),
+                    (CUR_SIZE_ALL_MEM_TABLES, "cur_size_all"),
+                    (SIZE_ALL_MEM_TABLES, "size_all"),
+                ]),
+                // SST / on-disk space
+                ("rocksdb_sst_bytes", vec![
+                    (LIVE_SST_FILES_SIZE, "live_sst_files_size"),
+                    (TOTAL_SST_FILES_SIZE, "total_sst_files_size"),
+                    (ESTIMATE_LIVE_DATA_SIZE, "estimate_live_data_size"),
+                ]),
+                // Compaction backlog (bytes to rewrite)
+                ("rocksdb_compaction_bytes", vec![(
+                    ESTIMATE_PENDING_COMPACTION_BYTES,
+                    "estimate_pending_compaction",
+                )]),
+                // Block cache usage
+                ("rocksdb_block_cache_bytes", vec![
+                    (BLOCK_CACHE_CAPACITY, "capacity"),
+                    (BLOCK_CACHE_USAGE, "usage"),
+                    (BLOCK_CACHE_PINNED_USAGE, "pinned_usage"),
+                ]),
+                // ============= COUNTS =============
+
+                // Memtable entries & deletes
+                ("rocksdb_memtable_count", vec![
+                    (NUM_ENTRIES_ACTIVE_MEM_TABLE, "entries_active"),
+                    (NUM_ENTRIES_IMM_MEM_TABLES, "entries_imm"),
+                    (NUM_DELETES_ACTIVE_MEM_TABLE, "deletes_active"),
+                    (NUM_DELETES_IMM_MEM_TABLES, "deletes_imm"),
+                ]),
+                // Memtable state (immutables, flushes, etc.)
+                ("rocksdb_memtable_state_count", vec![
+                    (NUM_IMMUTABLE_MEM_TABLE, "immutable"),
+                    (NUM_IMMUTABLE_MEM_TABLE_FLUSHED, "immutable_flushed"),
+                    (NUM_RUNNING_FLUSHES, "running_flushes"),
+                ]),
+                // Active compactions
+                ("rocksdb_compaction_count", vec![(
+                    NUM_RUNNING_COMPACTIONS,
+                    "running_compactions",
+                )]),
+                // LSM structure info
+                ("rocksdb_lsm_count", vec![
+                    (NUM_LIVE_VERSIONS, "live_versions"),
+                    (CURRENT_SUPER_VERSION_NUMBER, "super_version_number"),
+                ]),
+                // Background errors
+                ("rocksdb_errors_count", vec![(
+                    BACKGROUND_ERRORS,
+                    "background_errors",
+                )]),
+                // ============= FLAGS (0/1) =============
+                ("rocksdb_flags", vec![
+                    (COMPACTION_PENDING, "compaction_pending"),
+                    (MEM_TABLE_FLUSH_PENDING, "memtable_flush_pending"),
+                    (IS_WRITE_STOPPED, "is_write_stopped"),
+                    (IS_FILE_DELETIONS_ENABLED, "is_file_deletions_enabled"),
+                ]),
+            ] {
+                for (prop_name, label) in properties {
+                    if let Ok(Some(v)) = inner.db.property_int_value(prop_name) {
+                        metrics::gauge!(category, "type" => label).set(v as f64);
+                    }
+                }
+            }
+
+            // Number of SST files per LSM level (crucial for iterator performance)
+            for level in 0..7 {
+                let prop = num_files_at_level(level);
+                if let Ok(Some(v)) = inner.db.property_int_value(&prop) {
+                    metrics::gauge!(
+                        "rocksdb_lsm_count",
+                        "type" => "num_files_at_level",
+                        "level" => level.to_string(),
+                    )
+                    .set(v as f64);
+                }
+            }
+
+            // ======== STATISTICS (opts) ========
+
+            // Total number of compactions executed
+            let h = opts.get_histogram_data(Histogram::CompactionTime);
+            metrics::gauge!("rocksdb_compactions_total").set(h.count() as f64);
+            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "p50")
+                .set(h.median() as f64);
+            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "p95")
+                .set(h.p95() as f64);
+            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "p99")
+                .set(h.p99() as f64);
+            metrics::gauge!("rocksdb_compaction_latency_micros", "type" => "avg")
+                .set(h.average() as f64);
+
+            // Iterator cost (p95 in microseconds)
+            let h = opts.get_histogram_data(Histogram::DbSeek);
+            metrics::gauge!("rocksdb_latency_micros", "type" => "iter_seek_p95")
+                .set(h.p95() as f64);
+        }
+    });
 }
 
 impl<T> Clone for DiskDb<T> {
@@ -738,6 +863,7 @@ pub fn new_db_options() -> Options {
     let mut opts = Options::default();
     opts.create_if_missing(true);
     opts.create_missing_column_families(true);
+    opts.enable_statistics();
     opts
 }
 

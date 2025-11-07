@@ -8,15 +8,14 @@ DB_NAME := "grug_dev"
 default:
   @just --list
 
+set dotenv-load := true
 start-dango:
-    set -a; source .env; set +a; \
-    INDEXER__CLICKHOUSE__URL="http://localhost:8123" \
-    INDEXER__DATABASE__URL="postgres://postgres@localhost:5432/grug_dev" \
-    TENDERMINT__RPC_ADDR="http://localhost:26657" \
-    cargo run --bin dango start --home ./configs/dango
+  INDEXER__CLICKHOUSE__URL="http://localhost:8123" \
+  INDEXER__DATABASE__URL="postgres://postgres@localhost:5432/grug_dev" \
+  TENDERMINT__RPC_ADDR="http://localhost:26657" \
+  cargo run --bin dango start --home ./configs/dango
 
 start-dango-release:
-  set -a; source .env; set +a; \
   INDEXER__CLICKHOUSE__URL="http://localhost:8123" \
   INDEXER__DATABASE__URL="postgres://postgres@localhost:5432/grug_dev" \
   TENDERMINT__RPC_ADDR="http://localhost:26657" \
