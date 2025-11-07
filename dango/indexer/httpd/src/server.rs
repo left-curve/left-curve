@@ -1,11 +1,15 @@
 use {
     crate::context::Context,
+    actix_cors::Cors,
+    actix_files::Files,
     actix_web::{
-        HttpResponse,
+        App, HttpResponse, HttpServer, http,
+        middleware::{Compress, Logger},
         web::{self, ServiceConfig},
     },
     grug_httpd::routes::{graphql::graphql_route, index::index},
     indexer_httpd::routes,
+    sentry_actix::Sentry,
 };
 
 /// Custom 404 handler that serves a nice HTML page
@@ -47,7 +51,9 @@ where
 
         // Add static file serving if static_files_path is configured
         if let Some(static_path) = &dango_httpd_context.static_files_path {
-            use actix_files::Files;
+            #[cfg(feature = "tracing")]
+            tracing::info!(static_path, "Exposing static files at /static");
+
             service_config = service_config.service(
                 Files::new("/static", static_path)
                     .prefer_utf8(true)
@@ -79,15 +85,6 @@ pub async fn run_server<I>(
 where
     I: ToString + std::fmt::Display,
 {
-    use {
-        actix_cors::Cors,
-        actix_web::{
-            App, HttpServer, http,
-            middleware::{Compress, Logger},
-        },
-        sentry_actix::Sentry,
-    };
-
     let graphql_schema = crate::graphql::build_schema(dango_httpd_context.clone());
 
     #[cfg(feature = "tracing")]
