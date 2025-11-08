@@ -1844,3 +1844,183 @@ mod tests_simple {
         .unwrap();
     }
 }
+
+// ------------------------------- deadlock test -------------------------------
+
+/// Reproduction of a deadlock issue we discovered in testnet-3.
+///
+/// Assume thread 1 represents the HTTPD server, thread 2 represents the ABCI
+/// server:
+///
+/// - Thread 1 serves a query that involves iterateing over an `IndexedMap`.
+///   The iterator acquires a read-lock to the `priority_data` map, and holds
+///   onto it until the iterator itself is dropped.
+/// - Thread 2 receives a `Commit` request from CometBFT. It attempts to acquire
+///   a write-lock of `priority_data`.
+/// - The iterator in thread 1 advances. Note that in `IndexedMap`, iteration
+///   involves first reading an index key from the index map (this uses the
+///   iterator's own read-lock), and then read from the primary map. To read
+///   from the primary map, the iterator attempts to acquire another read-lock.
+///   However, since thread 2 is already waiting for a write lock, according to
+///   the fairness rule, thread 1 has to wait after thread 2. Hence, deadlock.
+#[cfg(test)]
+mod test_deadlock {
+    use {
+        super::*,
+        grug_app::SimpleCommitment,
+        grug_storage::{Index, IndexList, IndexedMap, MultiIndex},
+        std::time::Duration,
+        temp_rocksdb::TempDataDir,
+    };
+
+    const PERSONS: IndexedMap<String, String, PersonIndexes> =
+        IndexedMap::new("person", PersonIndexes {
+            race: MultiIndex::new(|_name, race| race.clone(), "person", "person__race"),
+        });
+
+    struct PersonIndexes<'a> {
+        pub race: MultiIndex<'a, String, String, String>,
+    }
+
+    impl<'a> IndexList<String, String> for PersonIndexes<'a> {
+        fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<String, String>> + '_> {
+            let v: [&dyn Index<String, String>; 1] = [&self.race];
+            Box::new(v.into_iter())
+        }
+    }
+
+    #[test]
+    fn deadlock_problem() {
+        with_timeout(run_deadlock_test, Duration::from_secs(5));
+    }
+
+    /// Ensure the execution of a function doesn't take longer than the given timeout.
+    fn with_timeout<F>(f: F, timeout: Duration)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        std::thread::spawn(move || {
+            f();
+            tx.send(()).unwrap();
+        });
+
+        rx.recv_timeout(timeout).unwrap();
+    }
+
+    fn run_deadlock_test() {
+        let path = TempDataDir::new("_grug_disk_db_deadlock_problem");
+        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
+            // Simply use 0..255 as the priority range, so ALL data in the state
+            // storage is loaded into priority data.
+            priority_range: Some(([0].into(), [255].into())),
+            ..Default::default()
+        })
+        .unwrap();
+
+        // Batch 1: write some data into the index map.
+        {
+            let storage = db.state_storage(None).unwrap();
+            let mut buffer = Buffer::new_unnamed(storage, None);
+
+            for (name, race) in [
+                ("Ulfric Stormcloak", "Nord"),
+                ("General Tullius", "Imperial"),
+                ("Kodlak Whitemane", "Nord"),
+                ("Savos Aren", "Dark Elf"),
+                ("Mercer Frey", "Breton"),
+                ("Astrid", "Nord"),
+            ] {
+                PERSONS
+                    .save(&mut buffer, name.to_string(), &race.to_string())
+                    .unwrap();
+            }
+
+            let (_, batch) = buffer.disassemble();
+            db.flush_and_commit(batch).unwrap();
+        }
+
+        // Spawn two threads:
+        // - a "read thread" that mimics the httpd server;
+        // - a "write thread" that mimics the ABCI server.
+        std::thread::scope(|s| {
+            // Create a thread to iterate through the map.
+            let read_thread = s.spawn(|| {
+                let storage = db.state_storage(None).unwrap();
+                PERSONS
+                    .idx
+                    .race
+                    .prefix("Nord".to_string())
+                    .range(&storage, None, None, Order::Ascending) // Deadlock only happens with `range` and `values`, not with `keys`.
+                    .map(|res| {
+                        // Do the iteration slowly.
+                        std::thread::sleep(Duration::from_secs(1));
+
+                        let (name, _race) = res.unwrap();
+                        name
+                    })
+                    .collect::<Vec<_>>()
+            });
+
+            // Create another thread to write a new batch.
+            let write_thread = s.spawn(|| {
+                let storage = db.state_storage(None).unwrap();
+                let mut buffer = Buffer::new_unnamed(storage, None);
+
+                for (name, race) in [
+                    ("Aela the Huntress", "Nord"),
+                    ("Urag gro-Shub", "Orc"),
+                    ("Brynjolf", "Nord"),
+                    ("Farengar Secret-Fire", "Nord"),
+                    ("Balimund", "Nord"),
+                    ("Delphine", "Breton"),
+                ] {
+                    PERSONS
+                        .save(&mut buffer, name.to_string(), &race.to_string())
+                        .unwrap();
+                }
+
+                let (_, batch) = buffer.disassemble();
+                db.flush_but_not_commit(batch).unwrap();
+
+                // Wait a second, so that we commit when the read thread is half way
+                // through the iteration.
+                std::thread::sleep(Duration::from_secs(1));
+
+                db.commit().unwrap();
+            });
+
+            let names = read_thread.join().unwrap();
+            write_thread.join().unwrap();
+
+            // Names should only include those in batch 1, without those in batch 2.
+            assert_eq!(names, ["Astrid", "Kodlak Whitemane", "Ulfric Stormcloak",]);
+        });
+
+        // Read again. The records in batch 2 should now be included.
+        {
+            let storage = db.state_storage(None).unwrap();
+            let names = PERSONS
+                .idx
+                .race
+                .prefix("Nord".to_string())
+                .range(&storage, None, None, Order::Ascending)
+                .map(|res| {
+                    let (name, _race) = res.unwrap();
+                    name
+                })
+                .collect::<Vec<_>>();
+
+            assert_eq!(names, [
+                "Aela the Huntress",
+                "Astrid",
+                "Balimund",
+                "Brynjolf",
+                "Farengar Secret-Fire",
+                "Kodlak Whitemane",
+                "Ulfric Stormcloak",
+            ]);
+        }
+    }
+}

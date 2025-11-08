@@ -30,6 +30,7 @@ tracing         = { workspace = true, optional = true }
 
 [dev-dependencies]
 grug-jmt     = { workspace = true }
+grug-storage = { workspace = true }
 hex-literal  = { workspace = true }
 proptest     = { workspace = true }
 temp-rocksdb = { workspace = true }

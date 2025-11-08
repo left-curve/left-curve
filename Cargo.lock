@@ -4795,6 +4795,7 @@ dependencies = [
  "error-backtrace",
  "grug-app",
  "grug-jmt",
+ "grug-storage",
  "grug-types",
  "hex-literal",
  "ics23",
