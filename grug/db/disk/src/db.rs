@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
     grug_app::{Commitment, Db},
-    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
+    grug_types::{Batch, Buffer, Hash256, HashExt, HexBinary, Inner, Op, Order, Record, Storage},
     ouroboros::self_referencing,
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
@@ -68,7 +68,7 @@ pub struct Config {
     /// disk.
     ///
     /// Lower bound is inclusive, upper bound is exclusive.
-    pub priority_range: Option<(Vec<u8>, Vec<u8>)>,
+    pub priority_range: Option<(HexBinary, HexBinary)>,
     /// Options regarding auto-pruning.
     pub pruning: PruningConfig,
 }
@@ -216,8 +216,8 @@ impl<T> DiskDb<T> {
             }
 
             PriorityData {
-                min,
-                max,
+                min: min.into_inner(),
+                max: max.into_inner(),
                 records: RwLock::new(records),
             }
         });
@@ -1754,7 +1754,7 @@ mod tests_simple {
 
         // Open the DB again, _with_ priority data this time.
         let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            priority_range: Some((b"000".to_vec(), b"004".to_vec())),
+            priority_range: Some((b"000".to_vec().into(), b"004".to_vec().into())),
             ..Default::default()
         })
         .unwrap();
@@ -1838,7 +1838,7 @@ mod tests_simple {
 
         // Open a brand new DB with priority data. Should succeed.
         let _db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            priority_range: Some((b"000".to_vec(), b"004".to_vec())),
+            priority_range: Some((b"000".to_vec().into(), b"004".to_vec().into())),
             ..Default::default()
         })
         .unwrap();
