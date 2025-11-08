@@ -19,7 +19,12 @@ impl GrugQuery {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        let result = app_ctx.grug_app.query_app(request, height).await?;
+        let result = app_ctx
+            .grug_app
+            .lock()
+            .await
+            .query_app(request, height)
+            .await?;
 
         #[cfg(feature = "metrics")]
         histogram!("http.grug.query_app.duration").record(start.elapsed().as_secs_f64());
@@ -40,6 +45,8 @@ impl GrugQuery {
 
         let (value, proof) = app_ctx
             .grug_app
+            .lock()
+            .await
             .query_store(key.inner(), height, prove)
             .await?;
 
@@ -63,8 +70,14 @@ impl GrugQuery {
         let start = Instant::now();
 
         let status = Status {
-            block: app_ctx.grug_app.last_finalized_block().await?.into(),
-            chain_id: app_ctx.grug_app.chain_id().await?,
+            block: app_ctx
+                .grug_app
+                .lock()
+                .await
+                .last_finalized_block()
+                .await?
+                .into(),
+            chain_id: app_ctx.grug_app.lock().await.chain_id().await?,
         };
 
         #[cfg(feature = "metrics")]
@@ -112,6 +125,6 @@ impl GrugQuery {
     ) -> Result<TxOutcome, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.simulate(tx).await?)
+        Ok(app_ctx.grug_app.lock().await.simulate(tx).await?)
     }
 }

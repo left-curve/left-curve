@@ -25,6 +25,7 @@ use {
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
+    tokio::sync::Mutex,
 };
 
 /// Configurable options for setting up a test.
@@ -244,7 +245,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_context,
-        Arc::new(suite.app.clone_without_indexer()),
+        Arc::new(Mutex::new(suite.app.clone_without_indexer())),
         consensus_client,
         indexer_path,
     );

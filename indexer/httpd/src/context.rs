@@ -4,6 +4,7 @@ use {
     indexer_sql::{EventCacheReader, indexer_path::IndexerPath, pubsub::PubSub},
     sea_orm::{ConnectOptions, Database, DatabaseConnection},
     std::sync::Arc,
+    tokio::sync::Mutex,
 };
 
 #[derive(Clone)]
@@ -20,7 +21,7 @@ pub struct Context {
 impl Context {
     pub fn new(
         ctx: indexer_sql::Context,
-        grug_app: Arc<dyn QueryApp + Send + Sync>,
+        grug_app: Arc<Mutex<dyn QueryApp + Send + Sync>>,
         consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
         indexer_path: IndexerPath,
     ) -> Self {
@@ -33,10 +34,6 @@ impl Context {
             indexer_path,
             event_cache: ctx.event_cache.as_reader(),
         }
-    }
-
-    pub fn grug_app(&self) -> &Arc<dyn QueryApp + Send + Sync> {
-        &self.base.grug_app
     }
 }
 

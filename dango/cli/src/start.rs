@@ -18,7 +18,10 @@ use {
     indexer_sql::indexer_path::IndexerPath,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::{sync::Arc, time},
-    tokio::signal::unix::{SignalKind, signal},
+    tokio::{
+        signal::unix::{SignalKind, signal},
+        sync::Mutex,
+    },
     tower::ServiceBuilder,
     tower_abci::v038::{Server, split},
 };
@@ -92,7 +95,7 @@ impl StartCmd {
         let indexer_path = sql_indexer.indexer_path.clone();
         let indexer_context = sql_indexer.context.clone();
 
-        let app = Arc::new(app);
+        let app = Arc::new(Mutex::new(app));
 
         let (hooked_indexer, _, dango_httpd_context) = self
             .setup_indexer_stack(
@@ -199,7 +202,7 @@ impl StartCmd {
         sql_indexer: indexer_sql::Indexer,
         indexer_context: indexer_sql::context::Context,
         indexer_path: IndexerPath,
-        app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
+        app: Arc<Mutex<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>>,
         tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(
         HookedIndexer,
@@ -251,7 +254,12 @@ impl StartCmd {
             cfg.httpd.static_files_path.clone(),
         );
 
-        hooked_indexer.start(&app.db.state_storage_with_comment(None, "hooked_indexer")?)?;
+        hooked_indexer.start(
+            &app.lock()
+                .await
+                .db
+                .state_storage_with_comment(None, "hooked_indexer")?,
+        )?;
 
         Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }

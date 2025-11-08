@@ -16,6 +16,8 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
     let block = app_ctx
         .base
         .grug_app
+        .lock()
+        .await
         .last_finalized_block()
         .map_err(ErrorInternalServerError)
         .await?;
