@@ -2,7 +2,6 @@ use {
     clap::Parser,
     grug_httpd::{context::Context, graphql, server},
     std::sync::Arc,
-    tokio::sync::Mutex,
 };
 
 #[derive(Parser)]
@@ -30,7 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a mock grug app for demonstration
     // In a real application, you would create an actual grug app instance
-    let context = Context::new(Arc::new(Mutex::new(MockGrugApp)));
+    let grug_app = Arc::new(MockGrugApp);
+    let context = Context::new(grug_app);
 
     println!("Starting HTTP server on {}:{}", args.ip, args.port);
 

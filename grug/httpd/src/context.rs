@@ -1,12 +1,12 @@
-use {crate::traits::QueryApp, std::sync::Arc, tokio::sync::Mutex};
+use {crate::traits::QueryApp, std::sync::Arc};
 
 #[derive(Clone)]
 pub struct Context {
-    pub grug_app: Arc<Mutex<dyn QueryApp + Send>>,
+    pub grug_app: Arc<dyn QueryApp + Send + Sync>,
 }
 
 impl Context {
-    pub fn new(grug_app: Arc<Mutex<dyn QueryApp + Send>>) -> Self {
+    pub fn new(grug_app: Arc<dyn QueryApp + Send + Sync>) -> Self {
         Self { grug_app }
     }
 }

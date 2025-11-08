@@ -108,33 +108,33 @@ where
     }
 }
 
-// #[async_trait]
-// impl<T> QueryApp for tokio::sync::Mutex<T>
-// where
-//     T: QueryApp + Send + Sync + 'static,
-// {
-//     async fn query_app(&self, raw_req: Query, height: Option<u64>) -> AppResult<QueryResponse> {
-//         self.lock().await.query_app(raw_req, height).await
-//     }
+#[async_trait]
+impl<T> QueryApp for tokio::sync::Mutex<T>
+where
+    T: QueryApp + Send + Sync + 'static,
+{
+    async fn query_app(&self, raw_req: Query, height: Option<u64>) -> AppResult<QueryResponse> {
+        self.lock().await.query_app(raw_req, height).await
+    }
 
-//     async fn query_store(
-//         &self,
-//         key: &[u8],
-//         height: Option<u64>,
-//         prove: bool,
-//     ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-//         self.lock().await.query_store(key, height, prove).await
-//     }
+    async fn query_store(
+        &self,
+        key: &[u8],
+        height: Option<u64>,
+        prove: bool,
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+        self.lock().await.query_store(key, height, prove).await
+    }
 
-//     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
-//         self.lock().await.simulate(unsigned_tx).await
-//     }
+    async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
+        self.lock().await.simulate(unsigned_tx).await
+    }
 
-//     async fn chain_id(&self) -> AppResult<String> {
-//         self.lock().await.chain_id().await
-//     }
+    async fn chain_id(&self) -> AppResult<String> {
+        self.lock().await.chain_id().await
+    }
 
-//     async fn last_finalized_block(&self) -> AppResult<BlockInfo> {
-//         self.lock().await.last_finalized_block().await
-//     }
-// }
+    async fn last_finalized_block(&self) -> AppResult<BlockInfo> {
+        self.lock().await.last_finalized_block().await
+    }
+}

@@ -26,8 +26,6 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
     // This ensures that grug is working
     let block = app_ctx
         .grug_app
-        .lock()
-        .await
         .last_finalized_block()
         .map_err(ErrorInternalServerError)
         .await?;
