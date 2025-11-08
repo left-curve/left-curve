@@ -383,14 +383,14 @@ where
         if let Some(data) = &self.inner.priority_data {
             #[cfg(feature = "tracing")]
             {
-                tracing::warn!("Attempting to acquire write lock on priority data");
+                tracing::debug!("Attempting to acquire write lock on priority data");
             }
 
             let mut records = data.records.write().expect("priority data poisoned");
 
             #[cfg(feature = "tracing")]
             {
-                tracing::warn!("Acquired write lock on priority data");
+                tracing::debug!("Acquired write lock on priority data");
             }
 
             #[cfg(feature = "metrics")]
@@ -411,7 +411,7 @@ where
 
             #[cfg(feature = "tracing")]
             {
-                tracing::warn!("Released write lock on priority data");
+                tracing::debug!("Released write lock on priority data");
             }
 
             #[cfg(feature = "metrics")]
@@ -722,7 +722,7 @@ impl StateStorage {
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 operation = "scan",
                 comment = self.comment,
                 "Attempting to acquire read lock on priority data"
@@ -733,7 +733,7 @@ impl StateStorage {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 operation = "scan",
                 comment = self.comment,
                 "Acquired read lock on priority data"
@@ -793,7 +793,7 @@ impl Storage for StateStorage {
             if data.min.as_slice() <= key && key < data.max.as_slice() {
                 #[cfg(feature = "tracing")]
                 {
-                    tracing::warn!(
+                    tracing::debug!(
                         operation = "read",
                         comment = self.comment,
                         "Attempting to acquire read lock on priority data"
@@ -804,7 +804,7 @@ impl Storage for StateStorage {
 
                 #[cfg(feature = "tracing")]
                 {
-                    tracing::warn!(
+                    tracing::debug!(
                         operation = "read",
                         comment = self.comment,
                         "Acquired read lock on priority data"
@@ -820,7 +820,7 @@ impl Storage for StateStorage {
 
                 #[cfg(feature = "tracing")]
                 {
-                    tracing::warn!(
+                    tracing::debug!(
                         operation = "read",
                         comment = self.comment,
                         "Released read lock on priority data"
@@ -953,7 +953,7 @@ impl<'a> Drop for PriorityDataIter<'a> {
     fn drop(&mut self) {
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 operation = "scan",
                 comment = self.comment,
                 "Released read lock on priority data"
