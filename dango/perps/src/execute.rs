@@ -55,6 +55,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::Withdraw { shares } => withdraw(ctx, shares),
         ExecuteMsg::BatchUpdateOrders { orders } => batch_update_orders(ctx, orders),
         ExecuteMsg::UpdatePerpsMarketParams { params } => update_perps_market_params(ctx, params),
+        ExecuteMsg::UpdateFundingRate { denom } => update_funding_rate(ctx, denom),
     }
 }
 
@@ -367,4 +368,25 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
 
     // TODO: Emit events
     Ok(())
+}
+
+fn update_funding_rate(ctx: MutableCtx, denom: Denom) -> anyhow::Result<Response> {
+    // Load the market state and params and vault state
+    let market_state = PERPS_MARKETS.load(ctx.storage, &denom)?;
+    let params = PERPS_MARKET_PARAMS.load(ctx.storage, &denom)?;
+    let vault_state = PERPS_VAULT.load(ctx.storage)?;
+
+    // Query the oracle for the price
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
+    let price = oracle_querier.query_price(&denom, None)?;
+    let vault_denom_price = oracle_querier.query_price(&vault_state.denom, None)?;
+
+    // Update the funding rate
+    let new_market_state =
+        market_state.update_funding(&params, ctx.block.timestamp, &price, &vault_denom_price)?;
+
+    // Save the new market state
+    PERPS_MARKETS.save(ctx.storage, &denom, &new_market_state)?;
+
+    Ok(Response::new())
 }

@@ -35,6 +35,12 @@ pub enum ExecuteMsg {
         /// The new parameters for the perps markets.
         params: BTreeMap<Denom, PerpsMarketParams>,
     },
+
+    /// Update the funding rate for a specific denom.
+    UpdateFundingRate {
+        /// The denom of the perps market.
+        denom: Denom,
+    },
 }
 
 #[grug::derive(Serde, QueryRequest)]
