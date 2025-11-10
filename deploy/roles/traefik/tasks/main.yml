@@ -51,10 +51,13 @@
   become: true
   become_user: root
   template:
-    src: "{{ item }}"
-    dest: "{{ traefik_dir }}"
+    src: "{{ item.src }}"
+    dest: "{{ traefik_dir }}/{{ item.dest }}"
     owner: "{{ deploy_user }}"
-  loop: ["docker-compose.yml", "traefik.yml"]
+  loop:
+    - { src: "docker-compose.yml", dest: "docker-compose.yml" }
+    - { src: "docker-compose-{{ hostname }}.yml", dest: "docker-compose-{{ hostname }}.yml" }
+    - { src: "traefik-{{ hostname }}.yml", dest: "traefik.yml" }
 
 - name: Generate templates for config
   become: true
@@ -112,8 +115,11 @@
 
 - name: Deploy all
   community.docker.docker_compose_v2:
-    recreate: always
     project_src: "{{ traefik_dir }}"
+    files:
+      - docker-compose.yml
+      - "docker-compose-{{ hostname }}.yml"
+    recreate: always
     wait: true
     wait_timeout: 300
 

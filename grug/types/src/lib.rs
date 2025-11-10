@@ -47,6 +47,7 @@ mod time;
 mod transfer;
 mod tx;
 mod unique_vec;
+mod upgrade;
 mod utils;
 
 pub use {
@@ -56,7 +57,7 @@ pub use {
     hash::*, hashers::*, imports::*, indexer::*, inner::*, jellyfish_merkle::*, json::*,
     length_bounded::*, lengthy::*, metrics::*, non_zero::*, outcome::*, query::*, response::*,
     result::*, serializers::*, shared::*, signer::*, status::*, time::*, transfer::*, tx::*,
-    unique_vec::*, utils::*,
+    unique_vec::*, upgrade::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

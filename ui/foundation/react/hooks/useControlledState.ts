@@ -8,9 +8,7 @@ export function useControlledState<T>(
   const resolvedDefaultValue =
     typeof defaultValue === "function" ? (defaultValue as () => T)() : defaultValue;
 
-  const [internalValue, setInternalValue] = useState<T>(
-    (value ?? resolvedDefaultValue) || ({} as T),
-  );
+  const [internalValue, setInternalValue] = useState<T>((value ?? resolvedDefaultValue) as T);
 
   const isControlled = value !== undefined;
 

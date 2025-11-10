@@ -85,7 +85,8 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
                         NonZero::new_unchecked(ONE),
                     },
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                    min_order_size: Uint128::ZERO,
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
                 },
             }])),
             Coins::new(),
@@ -100,6 +101,7 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 10,
@@ -241,12 +243,13 @@ fn issue_6_cannot_mint_zero_lp_tokens() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 100_000,
             },
         )
-        .should_fail_with_error("lp mint amount must be non-zero");
+        .should_fail_with_error("LP token mint amount is less than `MINIMUM_LIQUIDITY`");
 }
 
 #[test]
@@ -261,6 +264,7 @@ fn issue_10_rounding_up_in_xyk_swap_exact_amount_out() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 eth::DENOM.clone() => 100_000,
@@ -320,6 +324,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             Coins::new(),
         )
@@ -332,6 +337,7 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             &dex::ExecuteMsg::WithdrawLiquidity {
                 base_denom: eth::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             Coins::new(),
         )
@@ -625,7 +631,8 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
                         }),
                         bucket_sizes: BTreeSet::new(),
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                        min_order_size: Uint128::ZERO,
+                        min_order_size_quote: Uint128::ZERO,
+                        min_order_size_base: Uint128::ZERO,
                     },
                 }],
             },
@@ -655,6 +662,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             &dex::ExecuteMsg::ProvideLiquidity {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
             },
             coins! {
                 dango::DENOM.clone() => 5,
@@ -828,4 +836,28 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
             limit: None,
         })
         .should_succeed_and(|orders| orders.is_empty());
+}
+
+#[test]
+fn issue_233_minimum_order_size_cannot_be_circumvented_for_ask_orders() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Create an ask order of one base unit with a price equal to the minimum order size.
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::BatchUpdateOrders {
+                creates: vec![CreateOrderRequest::new_limit(
+                    dango::DENOM.clone(),
+                    usdc::DENOM.clone(),
+                    Direction::Ask,
+                    NonZero::new_unchecked(Price::new(50)),
+                    NonZero::new_unchecked(Uint128::new(1)),
+                )],
+                cancels: None,
+            },
+            coins! { dango::DENOM.clone() => 1 },
+        )
+        .should_fail();
 }

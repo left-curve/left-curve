@@ -79,6 +79,24 @@
       }
     ]
   },
+  "statusBadge": {
+    "status": "Status",
+    "websocket": "WebSocket",
+    "chain": "Chain",
+    "dex": "DEX",
+    "block": "Block",
+    "statusText": [
+      {
+        "declarations": ["input status"],
+        "selectors": ["status"],
+        "match": {
+          "status=success": "Online",
+          "status=error": "Offline",
+          "status=warning": "Warning"
+        }
+      }
+    ]
+  },
   "countdown": {
     "days": [
       {
@@ -235,7 +253,10 @@
       "gasWanted": "Gas Wanted",
       "status": "Status",
       "success": "Success",
-      "failed": "Failed"
+      "failed": "Failed",
+      "error": "Error",
+      "message": "Message",
+      "backtrace": "Backtrace"
     },
     "contracts": {
       "title": "Contract Explorer",
@@ -375,9 +396,16 @@
     "termsOfUse": "Terms of Use"
   },
   "auth": {
+    "passkey": "Passkey",
+    "wallets": "Wallets",
     "didntReceiveCode": "Didn't receive the code?",
     "enterYou": "Enter your",
-    "requetFromFaucet": "Request Funds from Faucet"
+    "requetFromFaucet": "Request Funds from Faucet",
+    "errors": {
+      "invalidVerificationCode": "Invalid verification code",
+      "userNotFound": "This email account is not bound to any account",
+      "authFailed": "Authentication error. Please try again later."
+    }
   },
   "signup": {
     "mobileModal": {
@@ -780,7 +808,8 @@
       "youSwap": "You swap",
       "rate": "Rate",
       "errors": {
-        "failure": "Swap failed"
+        "failure": "Swap failed",
+        "simulationFailed": "Not enough liquidity to fulfill the swap"
       }
     },
     "protrade": {
@@ -852,6 +881,12 @@
             }
           }
         ]
+      },
+      "searchPairTable": {
+        "name": "Name",
+        "price": "Price",
+        "24hChange": "24h Change",
+        "volume": "Volume"
       }
     },
     "errors": {

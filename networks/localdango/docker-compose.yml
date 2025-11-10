@@ -4,29 +4,6 @@ x-common-labels: &common-labels
   project: "localdango"
 
 services:
-  db:
-    image: postgres:17
-    shm_size: 1gb
-    labels:
-      <<: *common-labels
-    ports:
-      # For security reasons, postgres should only accept connections from localhost.
-      - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
-    volumes:
-      - db_data:/var/lib/postgresql/data
-      - ./configs/psql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_HOST_AUTH_METHOD=trust
-      - POSTGRES_DB=grug_dev
-    tty: true
-    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres"]
-      interval: 2s
-      timeout: 5s
-      retries: 10
-
   dango:
     image: ghcr.io/left-curve/left-curve/dango:${DANGO_TAG:-latest}
     profiles: ["dango"]
@@ -51,7 +28,7 @@ services:
       - INDEXER__DATABASE__URL=${INDEXER__DATABASE__URL:-postgres://postgres@db:5432/grug_dev}
       - INDEXER__CLICKHOUSE__URL=${INDEXER__CLICKHOUSE__URL:-http://clickhouse:8123}
       - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD:-}
-      - PYTH__ACCESS_TOKEN=${PYTH_ACCESS_TOKEN:-}
+      - PYTH__ACCESS_TOKEN=${PYTH__ACCESS_TOKEN:-}
     tty: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/up"]
@@ -66,7 +43,7 @@ services:
     ports:
       - "127.0.0.1:${DANGO_FRONTEND_PORT:-5081}:80"
     environment:
-      - INDEXER_URL=http://localhost:8080/graphql
+      - INDEXER_URL=http://localhost:8080
       - FAUCET_URL=http://localhost:8082/mint
       - QUEST_URL=http://localhost:8081/check_username
       - UP_URL=http://localhost:8080/up
@@ -111,18 +88,72 @@ services:
     environment:
       - HOME=/app
       - FAUCET_DANGO_ENDPOINT=${FAUCET_DANGO_ENDPOINT:-http://dango:8080}
+      - chain_id="dev-6"
     tty: true
     ports:
       - 127.0.0.1:${FAUCET_PORT:-8082}:8082
     command: >
       sh -c "
-      faucet --provider-url $${FAUCET_DANGO_ENDPOINT} --chain-id dev-6
+      faucet --provider-url $${FAUCET_DANGO_ENDPOINT} --chain-id $$chain_id
       "
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8082/health"]
       interval: 10s
       timeout: 5s
       retries: 3
+
+  dex-bot:
+    image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
+    pull_policy: always
+    profiles: ["dex-bot"]
+    labels:
+      <<: *common-labels
+    environment:
+      # NOTE: those are public and only used for development and testnets
+      username: ${DEX_BOT_USERNAME}
+      address: ${DEX_BOT_ADDRESS}
+      key__privatekey: ${DEX_BOT_PRIVATE_KEY}
+      http_url: ${DEX_BOT_DANGO_ENDPOINT:-http://dango:8080}
+      chain_id: "dev-6"
+      app_settings__sleep__min: 1s
+      app_settings__sleep__max: 2s
+      app_settings__size_percent__min: 0.0005
+      app_settings__size_percent__max: 0.003
+      app_settings__price_percent__min: 0.05
+      app_settings__price_percent__max: 0.2
+      app_settings__order_number__min: 1
+      app_settings__order_number__max: 5
+      app_settings__order_type: market
+      app_settings__healthcheck_file: /tmp/dango_dex_app_healthcheck
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/dango_dex_app_healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  dex-bot-init:
+    image: ghcr.io/left-curve/bots/dex:${DEX_BOT_TAG:-latest}
+    profiles: ["dex-bot"]
+    labels:
+      <<: *common-labels
+    environment:
+      address: ${DEX_BOT_ADDRESS}
+      http_url: ${DEX_BOT_DANGO_ENDPOINT:-http://dango:8080}
+      mint_amount: 1000000000
+      minter_address: ${DEX_BOT_MINTER_ADDRESS}
+      minter_username: ${DEX_BOT_MINTER_USERNAME}
+      minter_private_key: ${DEX_BOT_MINTER_PRIVATE_KEY}
+      app_settings__sleep__min: 1s
+      app_settings__sleep__max: 2s
+      app_settings__size_percent__min: 0.0005
+      app_settings__size_percent__max: 0.003
+      app_settings__price_percent__min: 0.05
+      app_settings__price_percent__max: 0.2
+      app_settings__order_number__min: 1
+      app_settings__order_number__max: 5
+      app_settings__order_type: market
+    command: sh -c "dex liquidity mint --url $$http_url $$mint_amount $$address --address $$minter_address --username $$minter_username --private-key $$minter_private_key; dex liquidity provide --url $$http_url $$mint_amount --address $$minter_address --username $$minter_username --private-key $$minter_private_key"
+    restart: "no"
 
   prometheus:
     image: prom/prometheus:latest
@@ -196,6 +227,30 @@ services:
       - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
     ports:
       - "127.0.0.1:9100:9100"
+
+  db:
+    image: postgres:17
+    shm_size: 1gb
+    labels:
+      <<: *common-labels
+    ports:
+      # For security reasons, postgres should only accept connections from localhost.
+      - 127.0.0.1:${POSTGRES_PORT:-5432}:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./configs/psql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_DB=grug_dev
+    tty: true
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 5432 -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest

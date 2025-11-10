@@ -7,7 +7,7 @@ license       = { workspace = true }
 name          = "dango-cli"
 repository    = { workspace = true }
 rust-version  = { workspace = true }
-version       = { workspace = true }
+version       = "0.1.0"
 
 [features]
 default = []
@@ -27,12 +27,13 @@ dango-indexer-clickhouse    = { workspace = true, features = ["async-graphql", "
 dango-indexer-sql           = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 dango-proposal-preparer     = { workspace = true, features = ["metrics"] }
 dango-types                 = { workspace = true }
+dango-upgrade               = { workspace = true }
 data-encoding               = { workspace = true }
 dialoguer                   = { workspace = true }
 futures                     = { workspace = true }
 grug-app                    = { workspace = true, features = ["abci", "metrics", "tracing"] }
 grug-client                 = { workspace = true }
-grug-db-disk-lite           = { workspace = true, features = ["metrics", "tracing"] }
+grug-db-disk                = { workspace = true, features = ["metrics", "serde", "tracing"] }
 grug-httpd                  = { workspace = true }
 grug-types                  = { workspace = true }
 grug-vm-rust                = { workspace = true }

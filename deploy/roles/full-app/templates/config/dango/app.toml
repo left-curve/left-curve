@@ -19,12 +19,31 @@ wasm_cache_capacity = 1000
 # Gas limit when serving query requests.
 query_gas_limit = 100000000
 
+[grug.db]
+
 # Range of database keys that will be loaded into memory for better performance.
 # Lower bound is inclusive, upper bound is exclusive.
 #priority_range = [
-#  "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f", # = b"wasm" + dex_contract_address
-#  "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740", # = b"wasm" + increment_last_byte(dex_contract_address)
+# "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f", # = b"wasm" + dex_contract_address
+# "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740", # = b"wasm" + increment_last_byte(dex_contract_address)
 #]
+
+[grug.db.pruning]
+
+# The interval of auto-pruning (i.e. perform a pruning every X versions).
+# 0 means no auto-pruning.
+prune_interval = 100
+
+# At each auto-pruning, how many recent versions to keep.
+prune_keep_recent = 25
+
+# The interval of manual compaction (i.e. perform a manual compaction
+# every X versions).
+# 0 means no manual compaction, which leaves it to RocksDB's internal
+# logic to decide when to compact. In our practical experience, in a live
+# network with a lot of read requests from RPC, RocksDB compacts infrequently
+# or not at all, resulting in performance degradation over time.
+compact_interval = 0
 
 ################################################################################
 ###                          Indexer Configuration                           ###
@@ -74,6 +93,9 @@ port = 8080
 # this line.
 cors_allowed_origin = "https://dango.exchange,https://dev.dango.exchange"
 
+# This will be exposed
+static_files_path = ""
+
 [metrics_httpd]
 
 # Whether to enable the HTTP server.
@@ -98,7 +120,7 @@ port = 9191
 [tendermint]
 
 # Tendermint RPC listening address.
-rpc_addr = "http://{{ cometbft_host }}:26657"
+rpc_addr = "http://cometbft:26657"
 
 # Tendermint ABCI listening address.
 abci_addr = "0.0.0.0:26658"
@@ -110,7 +132,7 @@ abci_addr = "0.0.0.0:26658"
 [transactions]
 
 # Chain identifier.
-chain_id = "{{ chain_id }}"
+chain_id = ""
 
 # Scaling factor to apply to simulated gas consumption.
 gas_adjustment = 1.4
@@ -151,4 +173,5 @@ endpoints = [
 
 # Pyth Lazer access token.
 # If the string is empty, Pyth Lazer oracle is disabled.
-access_token = "{{ pyth_access_token }}"
+# You can override this with PYTH__ACCESS_TOKEN environment variable
+access_token = ""

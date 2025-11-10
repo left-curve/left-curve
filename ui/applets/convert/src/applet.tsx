@@ -1,83 +1,52 @@
-import {
-  useAccount,
-  useBalances,
-  useConfig,
-  usePrices,
-  useSigningClient,
-  useConvertState,
-  useSubmitTx,
-} from "@left-curve/store";
-import { useQueryClient } from "@tanstack/react-query";
+import { useAccount, useConvertState } from "@left-curve/store";
 import { useState } from "react";
 
 import {
   Badge,
   Button,
-  CoinSelector,
   IconArrowDown,
-  Input,
   Modals,
   Skeleton,
-  useDebounce,
-  type useApp,
+  useApp,
+  useDebounceFn,
 } from "@left-curve/applets-kit";
 import HippoSvg from "@left-curve/foundation/images/characters/hippo.svg";
-import { RangeWithButtons } from "./components/RangeWithButtons";
 
-import { createContext, numberMask, twMerge, useInputs } from "@left-curve/applets-kit";
-import {
-  Decimal,
-  formatNumber,
-  formatUnits,
-  parseUnits,
-  withResolvers,
-} from "@left-curve/dango/utils";
+import { createContext, useInputs } from "@left-curve/applets-kit";
+import { Decimal, formatNumber, formatUnits, withResolvers } from "@left-curve/dango/utils";
+import { AssetInputWithRange } from "./components/AssetInputWithRange";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { PropsWithChildren } from "react";
-import type { Address } from "@left-curve/dango/types";
-import type { UseConvertStateParameters, UseSubmitTxReturnType } from "@left-curve/store";
 import type React from "react";
 
 const [ConvertProvider, useConvert] = createContext<{
   state: ReturnType<typeof useConvertState>;
-  submission: UseSubmitTxReturnType<void, Error, void, unknown>;
   controllers: ReturnType<typeof useInputs>;
-  app: ReturnType<typeof useApp>;
 }>({
   name: "ConvertContext",
 });
 
-const ConvertContainer: React.FC<
-  PropsWithChildren<UseConvertStateParameters> & { appState: ReturnType<typeof useApp> }
-> = ({ children, appState, ...parameters }) => {
-  const state = useConvertState(parameters);
-  const controllers = useInputs();
-  const { toast, settings, showModal } = appState;
-  const { account } = useAccount();
-  const { data: signingClient } = useSigningClient();
-  const queryClient = useQueryClient();
-  const { refetch: refreshBalances } = useBalances({ address: account?.address });
-  const { pair, simulation, fee, coins } = state;
+type ConvertProps = {
+  pair: { from: string; to: string };
+  onChangePair: (pair: { from: string; to: string }) => void;
+};
+
+const ConvertContainer: React.FC<PropsWithChildren<ConvertProps>> = ({
+  children,
+  ...parameters
+}) => {
+  const { toast, settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
+  const controllers = useInputs();
 
-  const submission = useSubmitTx({
-    toast: {
-      error: () =>
-        toast.error({ title: m["common.error"](), description: m["dex.convert.errors.failure"]() }),
-    },
+  const state = useConvertState({
+    ...parameters,
+    controllers,
     submission: {
-      success: m["dex.convert.convertSuccessfully"](),
-      error: m["dex.convert.errors.failure"](),
-    },
-    mutation: {
-      mutationFn: async (_, { abort }) => {
-        if (!signingClient) throw new Error("error: no signing client");
-        if (!pair) throw new Error("error: no pair");
-        if (!simulation.data) throw new Error("error: no simulation data");
-
-        const { input, output } = simulation.data;
-
+      confirm: async () => {
+        const { coins, fee } = state;
+        const { input, output } = state.simulation.data!;
         const { promise, resolve: confirmSwap, reject: rejectSwap } = withResolvers();
 
         showModal(Modals.ConfirmSwap, {
@@ -93,43 +62,39 @@ const ConvertContainer: React.FC<
           confirmSwap,
           rejectSwap,
         });
-
-        await promise.catch(abort);
-
-        await signingClient.swapExactAmountIn({
-          sender: account!.address as Address,
-          route: [{ baseDenom: pair.baseDenom, quoteDenom: pair.quoteDenom }],
-          input: {
-            denom: input.denom,
-            amount: input.amount,
-          },
+        await promise;
+      },
+      onError: (_) => {
+        toast.error({
+          title: m["common.error"](),
+          description: m["dex.convert.errors.failure"](),
         });
       },
-      onSuccess: () => {
-        controllers.reset();
-        simulation.reset();
-        refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account?.username] });
+    },
+    simulation: {
+      onError: (_) => {
+        toast.error({
+          title: m["common.error"](),
+          description: m["dex.convert.errors.simulationFailed"](),
+        });
       },
     },
   });
 
-  return (
-    <ConvertProvider value={{ app: appState, state, controllers, submission }}>
-      {children}
-    </ConvertProvider>
-  );
+  return <ConvertProvider value={{ state, controllers }}>{children}</ConvertProvider>;
 };
 
 const ConvertHeader: React.FC = () => {
   const { state } = useConvert();
-  const { quote, statistics } = state;
+  const { pairId, statistics } = state;
   const { tvl, apy, volume } = statistics.data;
+
+  const { base } = pairId;
   return (
     <div className="flex flex-col gap-3 rounded-3xl bg-surface-tertiary-rice shadow-account-card p-4 relative overflow-hidden mb-4">
       <div className="flex gap-2 items-center relative z-10">
-        <img src={quote.logoURI} alt="token" className="h-6 w-6" />
-        <p className="text-ink-secondary-700 h4-bold">{quote.symbol}</p>
+        <img src={base.logoURI} alt="token" className="h-6 w-6" />
+        <p className="text-ink-secondary-700 h4-bold">{base.symbol}</p>
         <Badge text="Stable Strategy" color="green" size="s" />
       </div>
       <div className="flex items-center justify-between gap-2 relative z-10 min-h-[22px]">
@@ -156,220 +121,68 @@ const ConvertHeader: React.FC = () => {
 };
 
 const ConvertForm: React.FC = () => {
-  const { coins } = useConfig();
-  const { account, isConnected } = useAccount();
-  const { app, state, controllers, submission } = useConvert();
-  const { settings } = app;
-  const { data: balances } = useBalances({ address: account?.address });
-  const [activeInput, setActiveInput] = useState<"base" | "quote">();
-  const { getPrice } = usePrices();
+  const { state, controllers } = useConvert();
+  const { revalidate } = controllers;
+  const [activeInput, setActiveInput] = useState<"from" | "to">();
 
-  const { isReverse, direction, base, quote, pair, pairs, changeQuote, toggleDirection } = state;
-  const { register, setValue, revalidate, inputs } = controllers;
-  const { isPending } = submission;
-  const { formatNumberOptions } = settings;
+  const { isReverse, fromCoin, toCoin, changePair, toggleDirection, submission } = state;
+
   const { simulation } = state;
 
-  const baseBalance = formatUnits(balances?.[base.denom] || 0, base.decimals);
-  const quoteBalance = formatUnits(balances?.[quote.denom] || 0, quote.decimals);
-
-  const baseAmount = inputs.base?.value || "0";
-  const quoteAmount = inputs.quote?.value || "0";
-
-  const coinPairs = Object.values(coins.byDenom).filter((c) =>
-    Object.keys(pairs.data).includes(c.denom),
-  );
-
-  useDebounce(
-    () => {
-      if ((baseAmount === "0" && quoteAmount === "0") || !activeInput || !pair) return;
-      const checkAmount =
-        activeInput === "base"
-          ? parseUnits(baseAmount, base.decimals)
-          : parseUnits(quoteAmount, quote.decimals);
-      if (Decimal(simulation.variables?.input?.amount || "0").eq(checkAmount)) return;
-      (async () => {
-        const request =
-          activeInput === "base"
-            ? {
-                amount: baseAmount,
-                input: base,
-                target: "quote",
-                output: quote,
-              }
-            : {
-                amount: quoteAmount,
-                input: quote,
-                target: "base",
-                output: base,
-              };
-
-        const { output } = await simulation.simulate({
-          pair,
-          input: {
-            amount: parseUnits(request.amount, request.input.decimals).toString(),
-            denom: request.input.denom,
-          },
-        });
-
-        if (output) {
-          setValue(request.target, formatUnits(output.amount, request.output.decimals));
-        }
-        revalidate();
-      })();
-    },
-    [baseAmount, quoteAmount, pair],
-    300,
-  );
+  const simulate = useDebounceFn(simulation.mutateAsync, 300);
 
   return (
     <form
       id="convert-form"
-      className={twMerge("flex flex-col items-center relative", {
-        "flex-col-reverse": direction === "reverse",
-      })}
+      className="flex flex-col items-center relative"
       onSubmit={(e) => {
         e.preventDefault();
         submission.mutate();
       }}
     >
-      <Input
-        isDisabled={isPending}
-        placeholder="0"
-        isLoading={activeInput !== "base" ? simulation.isPending : false}
-        onFocus={() => setActiveInput("base")}
-        {...register("base", {
-          strategy: "onChange",
-          validate: (v) => {
-            if (!isConnected || isReverse) return true;
-            if (Number(v) > Number(baseBalance)) return m["errors.validations.insufficientFunds"]();
-            return true;
-          },
-          mask: numberMask,
-        })}
-        label={isReverse ? m["dex.convert.youGet"]() : m["dex.convert.youSwap"]()}
-        classNames={{
-          base: "z-20",
-          inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
-          inputParent: "h-[34px] h3-bold",
-          input: "!h3-bold",
+      <AssetInputWithRange
+        name="from"
+        label={m["dex.convert.youSwap"]()}
+        asset={fromCoin}
+        controllers={controllers}
+        isDisabled={submission.isPending}
+        isLoading={activeInput !== "from" ? simulation.isPending : false}
+        onFocus={() => setActiveInput("from")}
+        shouldValidate={!isReverse}
+        showRange
+        showCoinSelector={isReverse}
+        onSelectCoin={changePair}
+        triggerSimulation={async (reverse) => {
+          await simulate(reverse ? "to" : "from");
+          revalidate();
         }}
-        startText="right"
-        startContent={
-          <div className="inline-flex flex-row items-center gap-3 diatype-m-regular h-[46px] rounded-md min-w-14 p-3 bg-transparent justify-start">
-            <div className="flex gap-2 items-center font-semibold">
-              <img src={base.logoURI} alt={base.symbol} className="w-8 h-8" />
-              <p>{base.symbol}</p>
-            </div>
-          </div>
-        }
-        insideBottomComponent={
-          <div className="flex flex-col w-full gap-2 pl-4">
-            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-              <div className="flex items-center gap-2">
-                <p>
-                  {formatNumber(baseBalance, formatNumberOptions)} {base.symbol}
-                </p>
-              </div>
-              <div>
-                {simulation.isPending && activeInput !== "base" ? (
-                  <Skeleton className="w-14 h-4" />
-                ) : (
-                  getPrice(baseAmount, base.denom, {
-                    format: true,
-                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
-                  })
-                )}
-              </div>
-            </div>
-            {isReverse ? null : (
-              <RangeWithButtons
-                amount={baseAmount}
-                balance={baseBalance}
-                setValue={(v) => setValue("base", v)}
-                setActiveInput={() => setActiveInput("base")}
-              />
-            )}
-          </div>
-        }
       />
-
       <button
         type="button"
-        disabled={isPending}
+        disabled={submission.isPending}
         className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5 cursor-pointer mt-4"
         onClick={() => {
           toggleDirection();
-          setActiveInput(activeInput === "base" ? "quote" : "base");
+          setActiveInput(activeInput === "from" ? "to" : "from");
         }}
       >
         <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
       </button>
-      <Input
-        isDisabled={isPending}
-        placeholder="0"
-        isLoading={activeInput !== "quote" ? simulation.isPending : false}
-        onFocus={() => setActiveInput("quote")}
-        label={isReverse ? m["dex.convert.youSwap"]() : m["dex.convert.youGet"]()}
-        {...register("quote", {
-          strategy: "onChange",
-          validate: (v) => {
-            if (!isConnected || !isReverse) return true;
-            if (Number(v) > Number(quoteBalance))
-              return m["errors.validations.insufficientFunds"]();
-            return true;
-          },
-          mask: numberMask,
-        })}
-        classNames={{
-          base: "z-20",
-          inputWrapper: "pl-0 py-3 flex-col h-auto gap-[6px] hover:bg-surface-secondary-rice",
-          inputParent: "h-[34px] h3-bold",
-          input: "!h3-bold",
+      <AssetInputWithRange
+        name="to"
+        label={m["dex.convert.youGet"]()}
+        asset={toCoin}
+        controllers={controllers}
+        isDisabled={submission.isPending}
+        isLoading={activeInput !== "to" ? simulation.isPending : false}
+        onFocus={() => setActiveInput("to")}
+        shouldValidate={isReverse}
+        showCoinSelector={!isReverse}
+        onSelectCoin={changePair}
+        triggerSimulation={async (reverse) => {
+          await simulate(reverse ? "from" : "to");
+          revalidate();
         }}
-        startText="right"
-        startContent={
-          coinPairs.length ? (
-            <CoinSelector
-              coins={Object.values(coins.byDenom).filter(
-                (c) => Object.keys(pairs.data).includes(c.denom) && c.denom !== "dango",
-              )}
-              value={quote.denom}
-              onChange={(v) => changeQuote(coins.byDenom[v].symbol)}
-            />
-          ) : (
-            <Skeleton className="w-36 h-11" />
-          )
-        }
-        insideBottomComponent={
-          <div className="flex flex-col w-full gap-2 pl-4">
-            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular">
-              <div className="flex items-center gap-2">
-                <p>
-                  {formatNumber(quoteBalance, formatNumberOptions)} {quote.symbol}
-                </p>
-              </div>
-              <div>
-                {simulation.isPending && activeInput !== "quote" ? (
-                  <Skeleton className="w-14 h-4" />
-                ) : (
-                  getPrice(quoteAmount, quote.denom, {
-                    format: true,
-                    formatOptions: { ...formatNumberOptions, maximumTotalDigits: 6 },
-                  })
-                )}
-              </div>
-            </div>
-            {isReverse ? (
-              <RangeWithButtons
-                amount={quoteAmount}
-                balance={quoteBalance}
-                setValue={(v) => setValue("quote", v)}
-                setActiveInput={() => setActiveInput("quote")}
-              />
-            ) : null}
-          </div>
-        }
       />
     </form>
   );
@@ -377,8 +190,8 @@ const ConvertForm: React.FC = () => {
 
 const ConvertDetails: React.FC = () => {
   const { isConnected } = useAccount();
-  const { app, state } = useConvert();
-  const { settings } = app;
+  const { state } = useConvert();
+  const { settings } = useApp();
   const { pair, simulation, fee, coins } = state;
   const { formatNumberOptions } = settings;
   const { data, isPending } = simulation;
@@ -429,10 +242,10 @@ const ConvertDetails: React.FC = () => {
 
 const ConvertTrigger: React.FC = () => {
   const { isConnected } = useAccount();
-  const { app, submission, state, controllers } = useConvert();
-  const { simulation } = state;
+  const { state, controllers } = useConvert();
+  const { simulation, submission } = state;
   const { isValid } = controllers;
-  const { navigate } = app;
+  const { navigate } = useApp();
 
   return isConnected ? (
     <Button

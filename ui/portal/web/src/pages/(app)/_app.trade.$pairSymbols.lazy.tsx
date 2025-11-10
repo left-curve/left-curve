@@ -7,6 +7,7 @@ import { ProTrade } from "~/components/dex/ProTrade";
 
 import type { PairId } from "@left-curve/dango/types";
 import { useLayoutEffect, useState } from "react";
+import { useHeaderHeight } from "@left-curve/applets-kit";
 
 export const Route = createLazyFileRoute("/(app)/_app/trade/$pairSymbols")({
   component: ProTradeApplet,
@@ -17,21 +18,7 @@ function ProTradeApplet() {
   const { coins } = useConfig();
   const { pairSymbols } = Route.useParams();
   const { action = "buy", order_type = "market" } = Route.useSearch();
-  const [headerHeight, setHeaderHeight] = useState(0);
-
-  useLayoutEffect(() => {
-    const headerEl = document.querySelector<HTMLElement>("header");
-    if (!headerEl) return;
-
-    setHeaderHeight(headerEl.offsetHeight);
-
-    const observer = new ResizeObserver(([entry]) => {
-      setHeaderHeight(entry.contentRect.height);
-    });
-
-    observer.observe(headerEl);
-    return () => observer.disconnect();
-  }, []);
+  const headerHeight = useHeaderHeight();
 
   const onChangePairId = ({ baseDenom, quoteDenom }: PairId) => {
     const baseSymbol = coins.byDenom[baseDenom]?.symbol;
@@ -85,7 +72,7 @@ function ProTradeApplet() {
         onChangeOrderType={onChangeOrderType}
       >
         <div className="flex flex-col flex-1">
-          <div className="flex flex-col xl:flex-row flex-1 xl:min-h-[64svh]">
+          <div className="flex flex-col xl:flex-row flex-1">
             <div className="flex flex-col flex-1 justify-end">
               <ProTrade.Header />
               <ProTrade.Chart />
@@ -94,7 +81,10 @@ function ProTradeApplet() {
           </div>
           <ProTrade.History />
         </div>
-        <div className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] bg-surface-primary-rice shadow-account-card z-20 max-h-[calc(100vh-76px)] md:sticky top-[76px]">
+        <div
+          className="hidden lg:flex pt-4 w-full lg:w-[331px] xl:[width:clamp(279px,20vw,330px)] bg-surface-primary-rice shadow-account-card z-20 md:sticky"
+          style={{ maxHeight: `calc(100vh - ${headerHeight}px)`, top: headerHeight }}
+        >
           <ProTrade.TradeMenu />
         </div>
       </ProTrade>

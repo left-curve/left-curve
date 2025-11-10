@@ -2,7 +2,10 @@ use {
     grug_app::{Indexer, IndexerResult},
     std::{
         collections::HashMap,
-        sync::{Arc, Mutex, RwLock},
+        sync::{
+            Arc, Mutex, RwLock,
+            atomic::{AtomicBool, Ordering},
+        },
         thread::sleep,
         time::Duration,
     },
@@ -12,11 +15,12 @@ use {
 pub use grug_app::IndexerError;
 
 /// A composable indexer that can own multiple indexers and coordinate between them
+#[derive(Clone)]
 pub struct HookedIndexer {
     /// List of registered indexers
     indexers: Arc<RwLock<Vec<Box<dyn Indexer + Send + Sync>>>>,
     /// Whether the indexer is currently running
-    is_running: bool,
+    is_running: Arc<AtomicBool>,
     post_indexing_threads: Arc<Mutex<HashMap<u64, bool>>>,
 }
 
@@ -24,7 +28,7 @@ impl HookedIndexer {
     pub fn new() -> Self {
         Self {
             indexers: Arc::new(RwLock::new(Vec::new())),
-            is_running: false,
+            is_running: Arc::new(AtomicBool::new(false)),
             post_indexing_threads: Arc::new(Mutex::new(HashMap::new())),
         }
     }
@@ -34,7 +38,7 @@ impl HookedIndexer {
     where
         I: Indexer + Send + Sync + 'static,
     {
-        if self.is_running {
+        if self.is_running.load(Ordering::Relaxed) {
             return Err(grug_app::IndexerError::already_running());
         }
 
@@ -47,7 +51,7 @@ impl HookedIndexer {
 
     /// Check if the indexer is running
     pub fn is_running(&self) -> bool {
-        self.is_running
+        self.is_running.load(Ordering::Relaxed)
     }
 
     /// Get the number of registered indexers
@@ -67,7 +71,7 @@ impl Default for HookedIndexer {
 
 impl Indexer for HookedIndexer {
     fn start(&mut self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
-        if self.is_running {
+        if self.is_running.load(Ordering::Relaxed) {
             return Err(grug_app::IndexerError::already_running());
         }
 
@@ -93,7 +97,7 @@ impl Indexer for HookedIndexer {
             }
         }
 
-        self.is_running = true;
+        self.is_running.store(true, Ordering::Relaxed);
 
         if !errors.is_empty() {
             return Err(grug_app::IndexerError::multiple(errors));
@@ -103,7 +107,7 @@ impl Indexer for HookedIndexer {
     }
 
     fn shutdown(&mut self) -> IndexerResult<()> {
-        if !self.is_running {
+        if !self.is_running.load(Ordering::Relaxed) {
             return Ok(()); // Already shut down
         }
 
@@ -124,7 +128,7 @@ impl Indexer for HookedIndexer {
             }
         }
 
-        self.is_running = false;
+        self.is_running.store(false, Ordering::Relaxed);
 
         if !errors.is_empty() {
             return Err(grug_app::IndexerError::multiple(errors));
@@ -138,7 +142,7 @@ impl Indexer for HookedIndexer {
         block_height: u64,
         ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
-        if !self.is_running {
+        if !self.is_running.load(Ordering::Relaxed) {
             return Err(grug_app::IndexerError::not_running());
         }
 
@@ -171,7 +175,7 @@ impl Indexer for HookedIndexer {
         block_outcome: &grug_types::BlockOutcome,
         ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
-        if !self.is_running {
+        if !self.is_running.load(Ordering::Relaxed) {
             return Err(grug_app::IndexerError::not_running());
         }
 
@@ -202,7 +206,7 @@ impl Indexer for HookedIndexer {
         querier: Arc<dyn grug_app::QuerierProvider>,
         ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
-        if !self.is_running {
+        if !self.is_running.load(Ordering::Relaxed) {
             return Err(grug_app::IndexerError::not_running());
         }
 

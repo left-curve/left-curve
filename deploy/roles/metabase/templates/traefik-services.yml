@@ -1,0 +1,13 @@
+http:
+  services:
+    metabase:
+      loadBalancer:
+        servers:
+          - url: "http://metabase:3000"
+  routers:
+    metabase:
+      rule: "Host(`metabase.dev.{{ dango_domain }}`)"
+      entryPoints:
+        - "web"
+      service: "metabase"
+

@@ -8,9 +8,9 @@ use {
     config_parser::parse_config,
     dango_genesis::GenesisCodes,
     dango_proposal_preparer::ProposalPreparer,
-    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer},
+    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_client::TendermintRpcClient,
-    grug_db_disk_lite::DiskDbLite,
+    grug_db_disk::DiskDb,
     grug_httpd::context::Context as HttpdContext,
     grug_types::GIT_COMMIT,
     grug_vm_rust::RustVm,
@@ -29,6 +29,7 @@ pub struct StartCmd;
 impl StartCmd {
     pub async fn run(self, app_dir: HomeDirectory) -> anyhow::Result<()> {
         tracing::info!("Using git commit: {GIT_COMMIT}");
+
         // Initialize metrics handler.
         // This should be done as soon as possible to capture all events.
         let metrics_handler = PrometheusBuilder::new().install_recorder()?;
@@ -39,7 +40,8 @@ impl StartCmd {
         let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Open disk DB.
-        let db = DiskDbLite::open(app_dir.data_dir(), cfg.grug.priority_range.as_ref())?;
+        let db =
+            DiskDb::<SimpleCommitment>::open_with_cfg(app_dir.data_dir(), cfg.grug.db.clone())?;
 
         // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
         let _codes = RustVm::genesis_codes();
@@ -74,7 +76,8 @@ impl StartCmd {
             NaiveProposalPreparer,
             NullIndexer,
             cfg.grug.query_gas_limit,
-            None, // currently there's no chain upgrade
+            None, // the `App` instance for use in httpd doesn't need the upgrade handler
+            env!("CARGO_PKG_VERSION"),
         );
 
         let sql_indexer = indexer_sql::IndexerBuilder::default()
@@ -89,6 +92,21 @@ impl StartCmd {
         let indexer_path = sql_indexer.indexer_path.clone();
         let indexer_context = sql_indexer.context.clone();
 
+        let app = Arc::new(app);
+
+        let (hooked_indexer, _, dango_httpd_context) = self
+            .setup_indexer_stack(
+                &cfg,
+                sql_indexer,
+                indexer_context,
+                indexer_path,
+                app.clone(),
+                &cfg.tendermint.rpc_addr,
+            )
+            .await?;
+
+        let indexer_clone = hooked_indexer.clone();
+
         // Run ABCI server, optionally with indexer and httpd server.
         match (
             cfg.indexer.enabled,
@@ -97,17 +115,6 @@ impl StartCmd {
         ) {
             (true, true, true) => {
                 // Indexer, HTTP server, and metrics server all enabled
-                let (hooked_indexer, _, dango_httpd_context) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
-
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
@@ -123,17 +130,6 @@ impl StartCmd {
             },
             (true, true, false) => {
                 // Indexer and HTTP server enabled, metrics disabled
-                let (hooked_indexer, _, dango_httpd_context) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
-
                 tokio::try_join!(
                     Self::run_dango_httpd_server(&cfg.httpd, dango_httpd_context,),
                     self.run_with_indexer(
@@ -148,17 +144,6 @@ impl StartCmd {
             },
             (true, false, true) => {
                 // Indexer and metrics enabled, HTTP server disabled
-                let (hooked_indexer, ..) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
-
                 tokio::try_join!(
                     Self::run_metrics_httpd_server(&cfg.metrics_httpd, metrics_handler),
                     self.run_with_indexer(
@@ -173,23 +158,13 @@ impl StartCmd {
             },
             (true, false, false) => {
                 // Only indexer enabled
-                let (hooked_indexer, ..) = self
-                    .setup_indexer_stack(
-                        &cfg,
-                        sql_indexer,
-                        indexer_context,
-                        indexer_path,
-                        Arc::new(app),
-                        &cfg.tendermint.rpc_addr,
-                    )
-                    .await?;
-
                 self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, hooked_indexer)
                     .await?;
             },
             (false, true, false) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics disabled
-                let httpd_context = HttpdContext::new(Arc::new(app));
+                let httpd_context = HttpdContext::new(app);
+
                 tokio::try_join!(
                     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
                     self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer)
@@ -197,7 +172,8 @@ impl StartCmd {
             },
             (false, true, true) => {
                 // No indexer, but HTTP server enabled (minimal mode), metrics enabled
-                let httpd_context = HttpdContext::new(Arc::new(app));
+                let httpd_context = HttpdContext::new(app);
+
                 tokio::try_join!(
                     Self::run_minimal_httpd_server(&cfg.httpd, httpd_context),
                     self.run_with_indexer(cfg.grug, cfg.tendermint, cfg.pyth, db, vm, NullIndexer),
@@ -211,6 +187,8 @@ impl StartCmd {
             },
         }
 
+        indexer_clone.wait_for_finish()?;
+
         Ok(())
     }
 
@@ -221,7 +199,7 @@ impl StartCmd {
         sql_indexer: indexer_sql::Indexer,
         indexer_context: indexer_sql::context::Context,
         indexer_path: IndexerPath,
-        app: Arc<App<DiskDbLite, RustVm, NaiveProposalPreparer, NullIndexer>>,
+        app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(
         HookedIndexer,
@@ -270,9 +248,10 @@ impl StartCmd {
             indexer_httpd_context.clone(),
             clickhouse_context.clone(),
             dango_context,
+            cfg.httpd.static_files_path.clone(),
         );
 
-        hooked_indexer.start(&app.db.state_storage(None)?)?;
+        hooked_indexer.start(&app.db.state_storage_with_comment(None, "hooked_indexer")?)?;
 
         Ok((hooked_indexer, indexer_httpd_context, dango_httpd_context))
     }
@@ -282,7 +261,7 @@ impl StartCmd {
         cfg: &HttpdConfig,
         context: HttpdContext,
     ) -> anyhow::Result<()> {
-        tracing::info!("Starting minimal HTTP server at {}:{}", &cfg.ip, cfg.port);
+        tracing::info!(cfg.ip, cfg.port, "Starting minimal HTTP server");
 
         grug_httpd::server::run_server(
             &cfg.ip,
@@ -346,7 +325,7 @@ impl StartCmd {
         grug_cfg: GrugConfig,
         tendermint_cfg: TendermintConfig,
         pyth_lazer_cfg: PythLazerConfig,
-        db: DiskDbLite,
+        db: DiskDb<SimpleCommitment>,
         vm: RustVm,
         indexer: ID,
     ) -> anyhow::Result<()>
@@ -359,7 +338,8 @@ impl StartCmd {
             ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
             indexer,
             grug_cfg.query_gas_limit,
-            None, // currently there's no chain upgrade
+            Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.
+            env!("CARGO_PKG_VERSION"),
         );
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);

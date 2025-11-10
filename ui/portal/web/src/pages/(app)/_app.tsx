@@ -4,7 +4,7 @@ import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
-import { QuestBannerRender } from "~/components/foundation/QuestBanner";
+import { StatusBadge } from "~/components/foundation/StatusBadge";
 import { TestnetBanner } from "~/components/foundation/TestnetBanner";
 
 import { WelcomeModal } from "~/components/modals/WelcomeModal";
@@ -31,6 +31,7 @@ export const Route = createFileRoute("/(app)/_app")({
         />
         <Header isScrolled={false} />
         <NotFound />
+        <StatusBadge />
       </main>
     );
   },
@@ -80,11 +81,11 @@ function LayoutApp() {
       <WelcomeModal />
       {!isLg ? <div id="quest-banner-mobile" /> : null}
       {!isLg ? <TestnetBanner /> : null}
-      <QuestBannerRender />
       <Header isScrolled={effectiveIsScrolled} />
       <div className="flex flex-1 items-center justify-start w-full h-full relative flex-col z-30">
         <Outlet />
       </div>
+      <StatusBadge />
     </main>
   );
 }

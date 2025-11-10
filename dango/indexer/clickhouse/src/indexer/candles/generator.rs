@@ -42,6 +42,7 @@ impl CandleGenerator {
             #[cfg(feature = "tracing")]
             tracing::error!("Failed to commit inserter for candles: {_err}");
         })?;
+
         inserter.end().await.inspect_err(|_err| {
             #[cfg(feature = "tracing")]
             tracing::error!("Failed to end inserter for candles: {_err}");

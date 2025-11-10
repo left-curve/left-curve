@@ -19,7 +19,8 @@ use {
     },
     grug::{
         Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero,
-        Message, MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
+        Message, MutableCtx, NonZero, Number, QuerierExt, Response, Uint128, UniqueVec, btree_map,
+        coins,
     },
 };
 
@@ -63,11 +64,13 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
         ExecuteMsg::ProvideLiquidity {
             base_denom,
             quote_denom,
-        } => provide_liquidity(ctx, base_denom, quote_denom),
+            minimum_output,
+        } => provide_liquidity(ctx, base_denom, quote_denom, minimum_output),
         ExecuteMsg::WithdrawLiquidity {
             base_denom,
             quote_denom,
-        } => withdraw_liquidity(ctx, base_denom, quote_denom),
+            minimum_output,
+        } => withdraw_liquidity(ctx, base_denom, quote_denom, minimum_output),
         ExecuteMsg::SwapExactAmountIn {
             route,
             minimum_output,
@@ -200,6 +203,7 @@ fn provide_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
+    minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
     // Providing liquidity is not allowed when trading is paused.
     ensure!(
@@ -240,21 +244,27 @@ fn provide_liquidity(
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // Compute the amount of LP tokens to mint.
-    let (reserve, lp_mint_amount) =
+    let (reserve, mut lp_mint_amount) =
         pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
 
-    // Ensure LP mint amount must be non-zero.
-    // Otherwise, we're vulnerable to a griefing attack, for example:
-    // - A new xyk pool is created.
-    // - Attacker adds liquidity to this pool with only one of the two assets.
-    // - Zero LP is minted to the attacker.
-    // - This leads to all subsequent additions of liquidity also have zero LP
-    //   token minted, even with non-zero assets provided.
-    // This was discovered in the Sherlock audit contest (issue #6).
-    ensure!(
-        lp_mint_amount.is_non_zero(),
-        "lp mint amount must be non-zero"
-    );
+    // Subtract minimum liquidity from the mint amount if this is the first
+    // liquidity provision.
+    // See the comment on `MINIMUM_LIQUIDITY` on why this is necessary.
+    if lp_token_supply.is_zero() {
+        lp_mint_amount
+            .checked_sub_assign(MINIMUM_LIQUIDITY)
+            .map_err(|err| {
+                anyhow!("LP token mint amount is less than `MINIMUM_LIQUIDITY`: {err}")
+            })?;
+    }
+
+    // Ensure the LP mint amount is greater than the minimum.
+    if let Some(minimum) = minimum_output {
+        ensure!(
+            lp_mint_amount >= minimum,
+            "LP mint amount is less than the minimum output: {lp_mint_amount} < {minimum}"
+        );
+    }
 
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
@@ -274,11 +284,6 @@ fn provide_liquidity(
             // If this is the first liquidity provision, mint a minimum liquidity.
             // to the contract itself and permanently lock it here. See the comment
             // on `MINIMUM_LIQUIDITY` for more details.
-            //
-            // Our implementation of this is slightly different from Uniswap's, which
-            // mints 1000 tokens less to the user, while we mint 1000 extra to
-            // the contract. Slightly different math but similarly prevents the
-            // attack.
             Some(Message::execute(
                 bank,
                 &bank::ExecuteMsg::Mint {
@@ -298,6 +303,7 @@ fn withdraw_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
+    minimum_output: Option<CoinPair>,
 ) -> anyhow::Result<Response> {
     // Withdrawing liquidity is not allowed when trading is paused.
     ensure!(
@@ -327,6 +333,19 @@ fn withdraw_liquidity(
 
     // Calculate the amount of each asset to return
     let (reserve, refunds) = pair.remove_liquidity(reserve, lp_token_supply, lp_burn_amount)?;
+
+    // If a minimum output is specified, ensure the refunds are no less than it.
+    if let Some(minimum_output) = minimum_output {
+        ensure!(
+            {
+                let first = minimum_output.first();
+                let second = minimum_output.second();
+                refunds.amount_of(first.denom)? >= *first.amount
+                    && refunds.amount_of(second.denom)? >= *second.amount
+            },
+            "withdrawn assets are less than the minimum output: {refunds:?} < {minimum_output:?}",
+        );
+    }
 
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
@@ -666,7 +685,8 @@ mod tests {
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                    min_order_size: Uint128::ZERO,
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
                 })
                 .unwrap();
         });
@@ -695,7 +715,8 @@ mod tests {
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-                    min_order_size: Uint128::ZERO,
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
                 },
             )
             .unwrap();

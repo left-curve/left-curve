@@ -60,7 +60,8 @@ fn main() -> anyhow::Result<()> {
                             }),
                             bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(1)),
-                            min_order_size: Uint128::ZERO, /* TODO: for mainnet, a minimum of $10 is sensible */
+                            min_order_size_quote: Uint128::ZERO, /* TODO: for mainnet, a minimum of $10 is sensible */
+                            min_order_size_base: Uint128::ZERO,
                         },
                     },
                     PairUpdate {
@@ -82,7 +83,8 @@ fn main() -> anyhow::Result<()> {
                                 btc_usdc::ONE_HUNDRED,
                             },
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(1)),
-                            min_order_size: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
+                            min_order_size_base: Uint128::ZERO,
                         },
                     },
                     PairUpdate {
@@ -104,7 +106,8 @@ fn main() -> anyhow::Result<()> {
                                 eth_usdc::ONE_HUNDRED,
                             },
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(1)),
-                            min_order_size: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
+                            min_order_size_base: Uint128::ZERO,
                         },
                     },
                     PairUpdate {
@@ -124,7 +127,8 @@ fn main() -> anyhow::Result<()> {
                                 sol_usdc::TEN,
                             },
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(1)),
-                            min_order_size: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
+                            min_order_size_base: Uint128::ZERO,
                         },
                     },
                 ],

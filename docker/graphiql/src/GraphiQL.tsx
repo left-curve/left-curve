@@ -3,7 +3,7 @@ import {createGraphiQLFetcher} from "@graphiql/toolkit";
 import {GraphiQL as Base} from "graphiql";
 
 export function GraphiQL({url}: { url: string }) {
-    const subscriptionUrl = url.replace(/^https?:/, "ws:");
+    const subscriptionUrl = url.replace(/^https/, 'wss').replace(/^http/, 'ws');
 
     const fetcher = createGraphiQLFetcher({
       url,

@@ -1,5 +1,4 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { IconChecked } from "./icons/IconChecked";
 import { IconClose } from "./icons/IconClose";
 
 import { useToastStore, toast as toaster } from "../providers/toast";
@@ -8,30 +7,17 @@ import { createPortal } from "react-dom";
 import type { ToastDefinition } from "@left-curve/foundation";
 import type { Prettify } from "@left-curve/dango/types";
 import { useMediaQuery } from "../hooks/useMediaQuery";
-import { IconTools } from "./icons/IconTools";
-import { IconInfo } from "./icons/IconInfo";
+import { IconToastSuccess } from "./icons/IconToastSuccess";
+import { IconToastWarning } from "./icons/IconToastWarning";
+import { IconToastError } from "./icons/IconToastError";
+import { IconToastInfo } from "./icons/IconToastInfo";
 
 const Icon = {
-  success: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-green text-primitives-green-light-100 flex items-center justify-center">
-      <IconChecked className="w-4 h-4" />
-    </div>
-  ),
-  error: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-primitives-red-light-300 text-primitives-red-light-100 flex items-center justify-center">
-      <IconClose className="w-4 h-4" />
-    </div>
-  ),
-  maintenance: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-surface-quaternary-rice text-ink-secondary-rice flex items-center justify-center">
-      <IconTools className="w-4 h-4" />
-    </div>
-  ),
-  info: (
-    <div className="min-w-7 min-h-7 w-7 h-7 rounded-full bg-fg-tertiary-blue flex items-center justify-center">
-      <IconInfo className="w-4 h-4" />
-    </div>
-  ),
+  success: <IconToastSuccess className="w-6 h-6 text-utility-success-500" />,
+  error: <IconToastError className="w-6 h-6 text-utility-error-500" />,
+  warning: <IconToastWarning className="w-6 h-6 text-utility-warning-500" />,
+  info: <IconToastInfo className="w-6 h-6 text-primitives-blue-light-500" />,
+  neutral: <IconToastInfo className="w-6 h-6 text-fg-secondary-500" />,
 };
 
 export type ToastProps = Prettify<{

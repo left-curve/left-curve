@@ -5,6 +5,7 @@
     swap_file_size_mb: '32768'
   collections:
     - community.docker
+    - community.general
   roles:
     - common
     - users

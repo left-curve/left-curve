@@ -75,12 +75,7 @@ pub async fn create_blocks(
 
     let suite_guard = suite.lock().await;
     let httpd_app = suite_guard.app.clone_without_indexer();
-    let httpd_context = Context::new(
-        context,
-        Arc::new(Mutex::new(httpd_app)),
-        client.clone(),
-        indexer_path,
-    );
+    let httpd_context = Context::new(context, Arc::new(httpd_app), client.clone(), indexer_path);
 
     Ok((httpd_context, client, accounts))
 }

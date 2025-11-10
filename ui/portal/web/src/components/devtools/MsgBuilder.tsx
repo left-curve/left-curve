@@ -207,17 +207,9 @@ const ExecuteMsg: React.FC = () => {
                               additionalProperties: true,
                             },
                             funds: {
-                              type: "array",
+                              type: "object",
                               description:
                                 "(Optional) Funds (coins) to be sent with the execution.",
-                              items: {
-                                type: "object",
-                                properties: {
-                                  denom: { type: "string" },
-                                  amount: { type: "string" },
-                                },
-                                required: ["denom", "amount"],
-                              },
                             },
                           },
                           required: ["contract", "msg"],
