@@ -1,5 +1,5 @@
 use {
-    super::{logarithm::ln_interpolated_one_to_two, *},
+    super::{logarithm::ln_dec, *},
     grug::{Dec, Duration, Fraction, Unsigned},
 };
 
@@ -30,7 +30,7 @@ pub fn half_spread(
     let one_plus_gamma_over_k = Dec::<i128, 24>::ONE.checked_add(gamma.checked_div(k)?)?;
 
     // Compute the natural logarithm of the one plus gamma over k.
-    let natural_log_of_one_plus_gamma_over_k = ln_interpolated_one_to_two(one_plus_gamma_over_k)?;
+    let natural_log_of_one_plus_gamma_over_k = ln_dec(one_plus_gamma_over_k)?;
 
     let time_horizon_as_dec = Dec::<i128, 24>::new(time_horizon.into_seconds() as i128);
 

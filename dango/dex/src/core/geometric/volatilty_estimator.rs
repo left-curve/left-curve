@@ -6,7 +6,7 @@ use {
     },
 };
 
-use crate::core::geometric::logarithm::ln_interpolated_one_to_two;
+use crate::core::geometric::logarithm::ln_dec;
 const LAST_PRICE: Map<(&Denom, &Denom), (Timestamp, Price)> = Map::new("last_price");
 pub const LAST_VOLATILITY_ESTIMATE: Map<(&Denom, &Denom), Price> =
     Map::new("last_volatility_estimate");
@@ -59,10 +59,9 @@ pub fn update_volatility_estimate(
         };
 
     // Compute the log return squared
-    let r_t_squared =
-        ln_interpolated_one_to_two(price.checked_div(last_price)?.checked_into_signed()?)?
-            .checked_pow(2)?
-            .checked_into_unsigned()?;
+    let r_t_squared = ln_dec(price.checked_div(last_price)?.checked_into_signed()?)?
+        .checked_pow(2)?
+        .checked_into_unsigned()?;
 
     // Normalise the log return to the time interval
     let r_t_squared_norm = r_t_squared.checked_div(Udec128::new(
@@ -80,4 +79,43 @@ pub fn update_volatility_estimate(
     LAST_VOLATILITY_ESTIMATE.save(storage, (base_denom, quote_denom), &vol_estimate)?;
 
     Ok(vol_estimate)
+}
+
+#[cfg(test)]
+mod tests {
+    use {super::*, grug::MockStorage};
+
+    #[test]
+    fn test_volatility_estimator_initial_conditions() {
+        let mut storage = MockStorage::new();
+        let base_denom = Denom::new_unchecked(vec!["base".to_string()]);
+        let quote_denom = Denom::new_unchecked(vec!["quote".to_string()]);
+        let price = Price::checked_from_atomics(100u128, 0).unwrap();
+        let lambda = Price::new_percent(95);
+
+        // First call should return zero and initialize storage
+        let estimate = update_volatility_estimate(
+            &mut storage,
+            Timestamp::from_seconds(0),
+            &base_denom,
+            &quote_denom,
+            price,
+            lambda,
+        )
+        .unwrap();
+
+        assert_eq!(estimate, Price::ZERO);
+
+        // Verify storage was initialized
+        let (saved_time, saved_price) = LAST_PRICE
+            .load(&storage, (&base_denom, &quote_denom))
+            .unwrap();
+        assert_eq!(saved_time, Timestamp::from_seconds(0));
+        assert_eq!(saved_price, price);
+
+        let saved_vol = LAST_VOLATILITY_ESTIMATE
+            .load(&storage, (&base_denom, &quote_denom))
+            .unwrap();
+        assert_eq!(saved_vol, Price::ZERO);
+    }
 }

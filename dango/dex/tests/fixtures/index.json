@@ -1,0 +1,11 @@
+{
+  "scenarios": [
+    "single_regime_lambda_90",
+    "single_regime_lambda_95",
+    "single_regime_lambda_99",
+    "multi_phase_lambda_90",
+    "multi_phase_lambda_95",
+    "multi_phase_lambda_99"
+  ],
+  "description": "Deterministic test data for volatility estimation"
+}
