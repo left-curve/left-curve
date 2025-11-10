@@ -13,9 +13,10 @@ use {
     dango_types::{
         DangoQuerier,
         bitcoin::{
-            BitcoinSignature, Config, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD, InboundConfirmed,
-            InboundCredential, InstantiateMsg, Network, OUTPUT_SIZE, OutboundConfirmed,
-            OutboundRequested, SIGNATURE_SIZE, Transaction, Vout, create_tx_in,
+            AddressIndex, BitcoinSignature, Config, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD,
+            InboundConfirmed, InboundCredential, InstantiateMsg, MultisigWallet, Network,
+            OUTPUT_SIZE, OutboundConfirmed, OutboundRequested, SIGNATURE_SIZE, Transaction, Vout,
+            create_tx_in,
         },
         gateway::{
             self, Remote,
@@ -36,12 +37,17 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     check_bitcoin_address(&msg.config.vault, msg.config.network)?;
 
     // Ensure the vault address matches the one derived from the pub keys.
+    let multisig_wallet = MultisigWallet::new(
+        msg.config.multisig.threshold(),
+        msg.config.multisig.pub_keys(),
+        None,
+    )?;
     ensure!(
-        msg.config.vault == msg.config.multisig.address(msg.config.network).to_string(),
+        msg.config.vault == multisig_wallet.address(msg.config.network).to_string(),
         "vault address must match the one derived from the multisig public keys;
          vault {}, derived {}",
         msg.config.vault,
-        msg.config.multisig.address(msg.config.network),
+        multisig_wallet.address(msg.config.network),
     );
 
     CONFIG.save(ctx.storage, &msg.config)?;
@@ -111,14 +117,20 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
             // Validate the signatures.
             let mut cache = SighashCache::new(tx.to_btc_transaction(cfg.network)?);
 
-            for (i, (_, amount)) in tx.inputs.iter().enumerate() {
+            for (i, (_, (amount, user_index))) in tx.inputs.iter().enumerate() {
                 let signature = signatures.get(i).unwrap();
                 // Remove the last byte, which is the sighash type.
                 let signature = Signature::from_der(&signature[..signature.len() - 1])?;
 
+                let multisig = MultisigWallet::new(
+                    cfg.multisig.threshold(),
+                    cfg.multisig.pub_keys(),
+                    *user_index,
+                )?;
+
                 let sighash = cache.p2wsh_signature_hash(
                     i,
-                    cfg.multisig.script(),
+                    multisig.script(),
                     Amount::from_sat(amount.into_inner() as u64),
                     EcdsaSighashType::All,
                 )?;
@@ -150,7 +162,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             inbound_msg.transaction_hash,
             inbound_msg.vout,
             inbound_msg.amount,
-            inbound_msg.recipient,
+            inbound_msg.address_index,
             inbound_msg.pub_key,
         ),
         ExecuteMsg::Bridge(BridgeMsg::TransferRemote { req, amount }) => {
@@ -219,17 +231,18 @@ fn observe_inbound(
     hash: Hash256,
     vout: Vout,
     amount: Uint128,
-    recipient: Option<Addr>,
+    address_index: Option<AddressIndex>,
     pub_key: HexByteArray<33>,
 ) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
 
-    // Ensure only the bridge can call this function.
+    // Ensure only the bitcoin bridge can call this function.
     ensure!(
         ctx.sender == ctx.contract,
         "you don't have the right, O you don't have the right"
     );
 
+    // Ensure the amount meets the minimum deposit requirement.
     ensure!(
         amount >= cfg.minimum_deposit,
         "minimum deposit not met: {} < {}",
@@ -237,12 +250,13 @@ fn observe_inbound(
         cfg.minimum_deposit
     );
 
+    // Ensure the UTXO has not been processed yet.
     ensure!(
         !PROCESSED_UTXOS.has(ctx.storage, (hash, vout)),
         "transaction `{hash}` already exists in UTXO set"
     );
 
-    let inbound = (hash, vout, amount, recipient);
+    let inbound = (hash, vout, amount, address_index);
     let mut voters = INBOUNDS.may_load(ctx.storage, inbound)?.unwrap_or_default();
 
     ensure!(
@@ -250,22 +264,35 @@ fn observe_inbound(
         "you've already voted for transaction `{hash}`"
     );
 
-    // If a threshold number of votes has been reached:
-    //
-    // 1. Mint synthetic Bitcoin tokens to the recipient, if presents.
-    // 2. Add the transaction to the available UTXO set.
-    // 3. Add the UTXO to the processed UTXOs set (to prevent double spending).
-    //
-    // Otherwise, simply save the voters set, then we're done.
-    // Note that, if the recipient is None, we cannot mint tokens, since
-    // it could be the change of a withdrawal transaction.
-    let (maybe_msg, maybe_event) = if voters.len() >= cfg.multisig.threshold() as usize {
+    // Check if the threshold has been reached.
+    let (maybe_msg, maybe_event) = if voters.len() < cfg.multisig.threshold() as usize {
+        // The threshold has not been reached yet, just save the voters set.
+        INBOUNDS.save(ctx.storage, inbound, &voters)?;
+
+        (None, None)
+    } else {
+        // The threshold has been reached:
+        //
+        // 1. Mint Bitcoin tokens to the recipient, if present.
+        // 2. Add the transaction to the available UTXO set.
+        // 3. Add the UTXO to the processed UTXOs set (to prevent double spending).
+        //
+        // Note that, if the recipient is None, we cannot mint tokens, since
+        // it's the change of a withdrawal transaction.
         PROCESSED_UTXOS.insert(ctx.storage, (hash, vout))?;
-        UTXOS.insert(ctx.storage, (amount, hash, vout))?;
+        UTXOS.save(ctx.storage, (amount, hash, vout), &address_index)?;
         INBOUNDS.remove(ctx.storage, inbound);
 
-        let maybe_msg = if let Some(recipient) = recipient {
+        // If there's an address index, mint the Bitcoin tokens to the user.
+        let maybe_msg = if let Some(address_index) = address_index {
             let gateway = ctx.querier.query_gateway()?;
+
+            // Load the deposit address related to the address index.
+            let (recipient, _) = ADDRESSES
+                .idx
+                .address_index
+                .load(ctx.storage, address_index)?;
+
             Some(Message::execute(
                 gateway,
                 &gateway::ExecuteMsg::ReceiveRemote {
@@ -283,14 +310,10 @@ fn observe_inbound(
             transaction_hash: hash,
             vout,
             amount,
-            recipient,
+            address_index,
         };
 
         (maybe_msg, Some(event))
-    } else {
-        INBOUNDS.save(ctx.storage, inbound, &voters)?;
-
-        (None, None)
     };
 
     Ok(Response::new()
@@ -298,11 +321,57 @@ fn observe_inbound(
         .may_add_event(maybe_event)?)
 }
 
+fn authorize_outbound(
+    ctx: MutableCtx,
+    id: u32,
+    signatures: Vec<BitcoinSignature>,
+    pub_key: HexByteArray<33>,
+) -> anyhow::Result<Response> {
+    let cfg = CONFIG.load(ctx.storage)?;
+
+    // Ensure only the bitcoin bridge can call this function.
+    ensure!(
+        ctx.sender == ctx.contract,
+        "you don't have the right, O you don't have the right"
+    );
+
+    // Add the signatures.
+    let cumulative_signatures =
+        SIGNATURES.may_update(ctx.storage, id, |cumulative_signatures| {
+            let mut cumulative_signatures = cumulative_signatures.unwrap_or_default();
+
+            if cumulative_signatures.len() >= cfg.multisig.threshold() as usize {
+                bail!("transaction `{id}` already has enough signatures");
+            }
+
+            ensure!(
+                cumulative_signatures.insert(pub_key, signatures).is_none(),
+                "you've already signed transaction `{id}`"
+            );
+
+            Ok(cumulative_signatures)
+        })?;
+
+    Ok(Response::new().may_add_event(
+        if cumulative_signatures.len() >= cfg.multisig.threshold() as usize {
+            Some(OutboundConfirmed {
+                id,
+                transaction: OUTBOUNDS.load(ctx.storage, id)?,
+                signatures: cumulative_signatures,
+            })
+        } else {
+            None
+        },
+    )?)
+}
+
 fn transfer_remote(
     ctx: MutableCtx,
     req: TransferRemoteRequest,
     amount: Uint128,
 ) -> anyhow::Result<Response> {
+    // Ensure only the gateway can call this function, that is responsable also
+    // to deduct the withdrawal fees. The amount here is the net amount to withdraw.
     ensure!(
         ctx.sender == ctx.querier.query_gateway()?,
         "only gateway can call `transfer_remote`"
@@ -317,14 +386,32 @@ fn transfer_remote(
     // Ensure the recipient address is valid.
     check_bitcoin_address(&recipient, cfg.network)?;
 
+    // TODO: remove this check?
     ensure!(
         recipient != cfg.vault,
         "cannot withdraw to the vault address"
     );
 
+    // If there is already a withdrawal to the same recipient, accumulate the amount.
     OUTBOUND_QUEUE.may_update(ctx.storage, recipient, |outbound| -> StdResult<_> {
         Ok(outbound.unwrap_or_default().checked_add(amount)?)
     })?;
+
+    Ok(Response::new())
+}
+
+fn create_deposit_address(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let (index, _) = ADDRESS_INDEX.increment(ctx.storage)?;
+
+    // Add a deposit address for the user if he hasn't already one.
+    ADDRESSES.may_update(
+        ctx.storage,
+        ctx.sender,
+        |maybe_address| match maybe_address {
+            Some(_) => bail!("you already have a deposit address"),
+            None => Ok(index),
+        },
+    )?;
 
     Ok(Response::new())
 }
@@ -361,23 +448,25 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
         }
 
         // Choose the best UTXOs for this transaction.
-        let withdraw_helper = select_best_utxos(ctx.storage, cfg.clone(), tx_output.clone())?;
+        let transaction_builder = select_best_utxos(ctx.storage, cfg.clone(), tx_output.clone())?;
 
         // If there's excess input, send the excess back to the vault.
-        let surplus_amount = withdraw_helper.surplus_amount();
+        let surplus_amount = transaction_builder.surplus_amount();
+        // TODO: should we check that the surplus amount is above the minimum deposit?
+        // If so, the fees will be higher and the tx could be faster.
         if surplus_amount > Uint128::ZERO {
             tx_output.insert(cfg.vault.clone(), surplus_amount);
         }
 
         // Delete the chosen UTXOs.
-        for ((hash, vout), amount) in &withdraw_helper.inputs {
+        for ((hash, vout), (amount, _)) in &transaction_builder.inputs {
             UTXOS.remove(ctx.storage, (*amount, *hash, *vout));
         }
 
         let (id, _) = OUTBOUND_ID.increment(ctx.storage)?;
-        let fee = withdraw_helper.fee();
+        let fee = transaction_builder.fee();
         let transaction = Transaction {
-            inputs: withdraw_helper.inputs,
+            inputs: transaction_builder.inputs,
             outputs: tx_output,
             fee,
         };
@@ -389,50 +478,6 @@ pub fn cron_execute(ctx: SudoCtx) -> anyhow::Result<Response> {
     }
 
     Ok(Response::new().add_events(events)?)
-}
-
-fn authorize_outbound(
-    ctx: MutableCtx,
-    id: u32,
-    signatures: Vec<BitcoinSignature>,
-    pub_key: HexByteArray<33>,
-) -> anyhow::Result<Response> {
-    let cfg = CONFIG.load(ctx.storage)?;
-
-    // Ensure only the bridge can call this function.
-    ensure!(
-        ctx.sender == ctx.contract,
-        "you don't have the right, O you don't have the right"
-    );
-
-    // Add the signatures.
-    let cumulative_signatures =
-        SIGNATURES.may_update(ctx.storage, id, |cumulative_signatures| {
-            let mut cumulative_signatures = cumulative_signatures.unwrap_or_default();
-
-            if cumulative_signatures.len() >= cfg.multisig.threshold() as usize {
-                bail!("transaction `{id}` already has enough signatures");
-            }
-
-            ensure!(
-                cumulative_signatures.insert(pub_key, signatures).is_none(),
-                "you've already signed transaction `{id}`"
-            );
-
-            Ok(cumulative_signatures)
-        })?;
-
-    Ok(Response::new().may_add_event(
-        if cumulative_signatures.len() >= cfg.multisig.threshold() as usize {
-            Some(OutboundConfirmed {
-                id,
-                transaction: OUTBOUNDS.load(ctx.storage, id)?,
-                signatures: cumulative_signatures,
-            })
-        } else {
-            None
-        },
-    )?)
 }
 
 /// Ensure the given Bitcoin address is valid for the specified network.
@@ -451,34 +496,18 @@ fn check_bitcoin_address(address: &str, network: Network) -> anyhow::Result<()> 
     Ok(())
 }
 
-/// Create a new deposit address for the user.
-fn create_deposit_address(ctx: MutableCtx) -> anyhow::Result<Response> {
-    let (index, _) = ADDRESS_INDEX.increment(ctx.storage)?;
-
-    // Add a deposit address for the user if he hasn't already one.
-    ADDRESSES.may_update(
-        ctx.storage,
-        ctx.sender,
-        |maybe_address| match maybe_address {
-            Some(_) => bail!("you already have a deposit address"),
-            None => Ok(index),
-        },
-    )?;
-
-    Ok(Response::new())
-}
-
 /// Select the best UTXOs to cover the withdraw amount and fee.
 fn select_best_utxos(
     storage: &mut dyn Storage,
     cfg: Config,
     outputs: BTreeMap<String, Uint128>,
-) -> anyhow::Result<WithdrawHelper> {
-    let mut withdraw_helper = WithdrawHelper::new(outputs, &cfg)?;
+) -> anyhow::Result<TransactionBuilder> {
+    let mut transaction_builder = TransactionBuilder::new(outputs, &cfg)?;
 
-    while withdraw_helper.remaining_amount() > Uint128::ZERO {
-        let remaining_amount = withdraw_helper.remaining_amount();
+    while transaction_builder.remaining_amount() > Uint128::ZERO {
+        let remaining_amount = transaction_builder.remaining_amount();
 
+        // Find the closest UTXO greater than or equal to the remaining amount.
         let maybe_bigger = {
             let mut value = None;
 
@@ -489,9 +518,9 @@ fn select_best_utxos(
                 Order::Ascending,
             ) {
                 // Ensure the input is not already used.
-                let (amount, hash, vout) = res?;
-                if !withdraw_helper.input_already_used(hash, vout) {
-                    value = Some((amount, hash, vout));
+                let ((amount, hash, vout), recipient_index) = res?;
+                if !transaction_builder.input_already_used(hash, vout) {
+                    value = Some((amount, hash, vout, recipient_index));
                     break;
                 }
             }
@@ -499,6 +528,7 @@ fn select_best_utxos(
             value
         };
 
+        // Find the closest UTXO less than the remaining amount.
         let maybe_lower = {
             let mut value = None;
             for res in UTXOS.prefix_range(
@@ -508,9 +538,9 @@ fn select_best_utxos(
                 Order::Descending,
             ) {
                 // Ensure the input is not already used.
-                let (amount, hash, vout) = res?;
-                if !withdraw_helper.input_already_used(hash, vout) {
-                    value = Some((amount, hash, vout));
+                let ((amount, hash, vout), recipient_index) = res?;
+                if !transaction_builder.input_already_used(hash, vout) {
+                    value = Some((amount, hash, vout, recipient_index));
                     break;
                 }
             }
@@ -519,8 +549,9 @@ fn select_best_utxos(
         };
 
         // Select the UTXO with the lowest delta.
-        let (amount, hash, vout) = {
-            // If the remaining amount is less than 10_000 sats, we select the bigger one.
+        let (amount, hash, vout, recipient_index) = {
+            // If the remaining amount is less than 10_000 sats, we select the bigger one, in order
+            // to avoid to iterating too much in the UTXO set.
             if let (Some(bigger), true) = (maybe_bigger, remaining_amount < Uint128::new(10_000)) {
                 bigger
             } else {
@@ -536,28 +567,30 @@ fn select_best_utxos(
                     (None, Some(lower)) => lower,
                     (None, None) => bail!(
                         "not enough UTXOs to cover the withdraw amount + fee: {} < {}",
-                        withdraw_helper.inputs_amount,
-                        withdraw_helper.withdraw_amount + withdraw_helper.fee()
+                        transaction_builder.inputs_amount,
+                        transaction_builder.withdraw_amount + transaction_builder.fee()
                     ),
                 }
             }
         };
 
         // Add the selected input to the transaction.
-        withdraw_helper.add_input(hash, vout, amount)?;
+        transaction_builder.add_input(hash, vout, amount, recipient_index)?;
     }
-    Ok(withdraw_helper)
+    Ok(transaction_builder)
 }
 
-struct WithdrawHelper {
+/// Helper struct used to build a transaction and calculate fees.
+struct TransactionBuilder {
     tx: BtcTransaction,
     signature_size_per_input: Uint128,
-    inputs: BTreeMap<(Hash256, Vout), Uint128>,
+    inputs: BTreeMap<(Hash256, Vout), (Uint128, Option<u64>)>,
     inputs_amount: Uint128,
     sats_per_vbyte: Uint128,
     withdraw_amount: Uint128,
 }
-impl WithdrawHelper {
+
+impl TransactionBuilder {
     pub fn new(outputs: BTreeMap<String, Uint128>, config: &Config) -> anyhow::Result<Self> {
         let mut withdraw_amount = Uint128::ZERO;
         for amount in outputs.values() {
@@ -584,20 +617,18 @@ impl WithdrawHelper {
         })
     }
 
-    pub fn fee(&self) -> Uint128 {
-        let signatures_size =
-            Uint128::new(self.inputs.len() as u128) * self.signature_size_per_input;
-
-        (Uint128::new(self.tx.vsize() as u128) + signatures_size + OUTPUT_SIZE)
-            * self.sats_per_vbyte
-    }
-
-    pub fn add_input(&mut self, hash: Hash256, vout: Vout, amount: Uint128) -> anyhow::Result<()> {
+    pub fn add_input(
+        &mut self,
+        hash: Hash256,
+        vout: Vout,
+        amount: Uint128,
+        recipient_index: Option<u64>,
+    ) -> anyhow::Result<()> {
         if self.input_already_used(hash, vout) {
             bail!("input `{hash}:{vout}` already exists in the transaction");
         }
 
-        self.inputs.insert((hash, vout), amount);
+        self.inputs.insert((hash, vout), (amount, recipient_index));
         self.tx.input.push(create_tx_in(&hash, vout));
         self.inputs_amount += amount;
 
@@ -609,21 +640,37 @@ impl WithdrawHelper {
         self.inputs.contains_key(&(hash, vout))
     }
 
+    /// Calculate the fee for the current transaction in satoshis.
+    pub fn fee(&self) -> Uint128 {
+        let signatures_size =
+            Uint128::new(self.inputs.len() as u128) * self.signature_size_per_input;
+
+        (Uint128::new(self.tx.vsize() as u128) + signatures_size + OUTPUT_SIZE)
+            * self.sats_per_vbyte
+    }
+
+    /// Return the total amount needed to cover the withdraw_amount + fee.
+    pub fn amounts_needed(&self) -> Uint128 {
+        self.withdraw_amount + self.fee()
+    }
+
     /// Return the remaining amount that needs to cover the withdraw_amount + fee.
     pub fn remaining_amount(&self) -> Uint128 {
-        let fee = self.fee();
+        let amount_needed = self.amounts_needed();
 
-        if self.inputs_amount >= self.withdraw_amount + fee {
+        if self.inputs_amount >= amount_needed {
             Uint128::ZERO
         } else {
-            self.withdraw_amount + fee - self.inputs_amount
+            amount_needed - self.inputs_amount
         }
     }
 
     /// Return the surplus amount that can be sent back to the vault.
     pub fn surplus_amount(&self) -> Uint128 {
-        if self.inputs_amount > self.withdraw_amount + self.fee() {
-            self.inputs_amount - (self.withdraw_amount + self.fee())
+        let amount_needed = self.amounts_needed();
+
+        if self.inputs_amount > amount_needed {
+            self.inputs_amount - amount_needed
         } else {
             Uint128::ZERO
         }

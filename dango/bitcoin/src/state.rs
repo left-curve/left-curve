@@ -1,5 +1,7 @@
 use {
-    dango_types::bitcoin::{BitcoinAddress, BitcoinSignature, Config, Transaction, Vout},
+    dango_types::bitcoin::{
+        AddressIndex, BitcoinAddress, BitcoinSignature, Config, Transaction, Vout,
+    },
     grug::{
         Addr, Counter, Hash256, HexByteArray, IndexedMap, Item, Map, Serde, Set, Uint128,
         UniqueIndex,
@@ -12,30 +14,31 @@ pub const CONFIG: Item<Config, Serde> = Item::new("config");
 /// Inbound transactions that have not received threshold number of votes.
 ///
 /// ```plain
-/// (transaction_hash, amount, recipient) => voted_guardians
+/// (transaction_hash, vout, amount, Option<address_index>) => voted_guardians
 /// ```
-pub const INBOUNDS: Map<(Hash256, Vout, Uint128, Option<Addr>), BTreeSet<HexByteArray<33>>> =
+pub const INBOUNDS: Map<(Hash256, Vout, Uint128, Option<u64>), BTreeSet<HexByteArray<33>>> =
     Map::new("inbound");
 
 pub const ADDRESSES: IndexedMap<Addr, u64, AddressIndexes> =
     IndexedMap::new("address", AddressIndexes {
-        btc_index: UniqueIndex::new(|_, id| *id, "address", "btc__id"),
+        address_index: UniqueIndex::new(|_, id| *id, "address", "address__idx"),
     });
 
-pub const ADDRESS_INDEX: Counter<u64> = Counter::new("address_id", 1, 1);
+/// For each dango address, we assign a unique index to generate different Bitcoin addresses.
+pub const ADDRESS_INDEX: Counter<u64> = Counter::new("address_index", 1, 1);
 
 /// UTXOs owned by the multisig, available to be spent for outbound transactions.
 ///
 /// ```plain
-/// (amount, transaction_hash, vout)
+/// (amount, transaction_hash, vout) => Option<address_index>
 /// ```
-pub const UTXOS: Set<(Uint128, Hash256, Vout)> = Set::new("utxo");
+pub const UTXOS: Map<(Uint128, Hash256, Vout), Option<AddressIndex>> = Map::new("utxo");
 
 /// UTXOs that have been processed by the multisig and accredited to the user.
 /// This is used to prevent double spending.
 pub const PROCESSED_UTXOS: Set<(Hash256, Vout)> = Set::new("processed_utxo");
 
-/// Outbound transactions that have not received threshold number of signatures.
+/// Outbound requests: they will be processed during the CronExecute.
 ///
 /// ```plain
 /// recipient_bitcoin_address => amount
@@ -54,5 +57,5 @@ pub const SIGNATURES: Map<u32, BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>
 
 #[grug::index_list(Addr, u64)]
 pub struct AddressIndexes<'a> {
-    pub btc_index: UniqueIndex<'a, Addr, u64, u64>,
+    pub address_index: UniqueIndex<'a, Addr, u64, u64>,
 }

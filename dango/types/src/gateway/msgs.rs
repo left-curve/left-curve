@@ -41,6 +41,7 @@ pub enum ExecuteMsg {
     /// Receive a token transfer from a remote chain.
     ///
     /// Can only be called by contracts for which has been assigned a
+    /// TODO: incomplete sentence
     ReceiveRemote {
         remote: Remote,
         amount: Uint128,

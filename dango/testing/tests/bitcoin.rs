@@ -1,6 +1,6 @@
 use {
     corepc_client::bitcoin::{
-        Amount, EcdsaSighashType, Network, Script, Transaction as BtcTransaction, hashes::Hash,
+        Amount, EcdsaSighashType, Network, Transaction as BtcTransaction, hashes::Hash,
         sighash::SighashCache,
     },
     dango_genesis::{BitcoinOption, GenesisOption},
@@ -10,10 +10,11 @@ use {
     },
     dango_types::{
         bitcoin::{
-            BitcoinSignature, Config, ExecuteMsg, InboundConfirmed, InboundCredential, InboundMsg,
-            InstantiateMsg, MultisigSettings, OutboundConfirmed, OutboundRequested,
-            QueryConfigRequest, QueryOutboundQueueRequest, QueryOutboundTransactionRequest,
-            QueryUtxosRequest, Utxo, Vout,
+            AddressIndex, BitcoinSignature, Config, ExecuteMsg, InboundConfirmed,
+            InboundCredential, InboundMsg, InstantiateMsg, MultisigSettings, MultisigWallet,
+            OutboundConfirmed, OutboundRequested, QueryAccountsIndexRequest, QueryConfigRequest,
+            QueryOutboundQueueRequest, QueryOutboundTransactionRequest, QueryUtxosRequest, Utxo,
+            Vout,
         },
         constants::btc,
         gateway::{
@@ -72,7 +73,7 @@ fn deposit_and_confirm(
     tx_hash: Hash256,
     vout: Vout,
     amount: Uint128,
-    recipient: Option<Addr>,
+    address_index: Option<u64>,
 ) {
     let val_sk1 = SigningKey::from_bytes(&guardian1::PRIVATE_KEY.into()).unwrap();
     let val_pk1 = HexByteArray::<33>::from_inner(guardian1::PUBLIC_KEY);
@@ -84,7 +85,7 @@ fn deposit_and_confirm(
         transaction_hash: tx_hash,
         vout,
         amount,
-        recipient,
+        address_index,
         pub_key: val_pk1,
     };
 
@@ -94,14 +95,14 @@ fn deposit_and_confirm(
         transaction_hash: tx_hash,
         vout,
         amount,
-        recipient,
+        address_index,
         pub_key: val_pk2,
     };
 
     deposit(suite, bitcoin_contract, msg, &val_sk2).should_succeed();
 }
 
-// Create a withdrawal request from an user.
+// Create a withdrawal request from a user.
 fn withdraw(
     suite: &mut TestSuite<NaiveProposalPreparer>,
     user: &mut TestAccount,
@@ -136,18 +137,26 @@ fn advance_ten_minutes(suite: &mut TestSuite<NaiveProposalPreparer>) -> MakeBloc
 pub fn sing_inputs(
     tx: &BtcTransaction,
     sk: &SigningKey,
-    redeem_script: &Script,
-    amounts: Vec<u64>,
+    multisig_settings: &MultisigSettings,
+    input_data: Vec<(u64, Option<AddressIndex>)>,
 ) -> Vec<HexBinary> {
     let mut cache = SighashCache::new(tx);
-    amounts
+    input_data
         .into_iter()
         .enumerate()
-        .map(|(i, amount)| {
+        .map(|(i, (amount, address_index))| {
+            // Create the correct multisig.
+            let multisig = MultisigWallet::new(
+                multisig_settings.threshold(),
+                multisig_settings.pub_keys(),
+                address_index,
+            )
+            .unwrap();
+
             let sighash = cache
                 .p2wsh_signature_hash(
                     i,
-                    redeem_script,
+                    multisig.script(),
                     Amount::from_sat(amount),
                     EcdsaSighashType::All, // To sign all inputs and outputs
                 )
@@ -161,6 +170,27 @@ pub fn sing_inputs(
             BitcoinSignature::from_inner(der_sig)
         })
         .collect::<Vec<_>>()
+}
+
+// Create a deposit address for the user.
+pub fn create_deposit_address(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    bitcoin_contract: Addr,
+    user: &mut TestAccount,
+) -> (u64, TxOutcome) {
+    // Query the next address index.
+    let index = suite
+        .query_wasm_smart(bitcoin_contract, QueryAccountsIndexRequest {})
+        .should_succeed();
+
+    let outcome = suite.execute(
+        user,
+        bitcoin_contract,
+        &ExecuteMsg::CreateDepositAddress {},
+        Coins::new(),
+    );
+
+    (index, outcome)
 }
 
 #[test]
@@ -272,11 +302,11 @@ fn authenticate() {
         transaction_hash: Hash256::from_inner([0; 32]),
         vout: 0,
         amount: Uint128::new(10_000),
-        recipient: None,
+        address_index: None,
         pub_key: HexByteArray::from_slice(&[0; 33]).unwrap(),
     });
 
-    // Ensure the tx fails if there is't exactly 1 message.
+    // Ensure the tx fails if there isn't exactly 1 message.
     {
         let msg = Message::execute(bitcoin_contract, &msg, Coins::new()).unwrap();
 
@@ -343,7 +373,7 @@ fn authenticate() {
 
 #[test]
 fn observe_inbound() {
-    let (mut suite, accounts, _, contracts, ..) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
 
     let val_sk1 = SigningKey::from_bytes(&guardian1::PRIVATE_KEY.into()).unwrap();
     let val_pk1 = HexByteArray::<33>::from_inner(guardian1::PUBLIC_KEY);
@@ -361,7 +391,7 @@ fn observe_inbound() {
             transaction_hash: Hash256::from_inner([0; 32]),
             vout: 1,
             amount: Uint128::new(100),
-            recipient: None,
+            address_index: None,
             pub_key: val_pk2,
         };
 
@@ -373,7 +403,7 @@ fn observe_inbound() {
             transaction_hash: Hash256::from_inner([0; 32]),
             vout: 1,
             amount: Uint128::new(100),
-            recipient: None,
+            address_index: None,
             pub_key: HexByteArray::<33>::from_slice(&[0; 33]).unwrap(),
         };
         deposit(&mut suite, contracts.bitcoin, msg, &val_sk1)
@@ -386,7 +416,7 @@ fn observe_inbound() {
             transaction_hash: Hash256::from_inner([0; 32]),
             vout: 1,
             amount: Uint128::new(100),
-            recipient: None,
+            address_index: None,
             pub_key: val_pk1,
         };
 
@@ -400,13 +430,16 @@ fn observe_inbound() {
             .unwrap();
     let vout = 1;
     let amount = Uint128::new(2000);
-    let recipient = *accounts.user1.address.inner();
+
+    let (address_index, outcome) =
+        create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_succeed();
 
     let msg = InboundMsg {
         transaction_hash: bitcoin_tx_hash,
         vout,
         amount,
-        recipient: Some(recipient),
+        address_index: Some(address_index),
         pub_key: val_pk1,
     };
 
@@ -423,7 +456,7 @@ fn observe_inbound() {
         transaction_hash: bitcoin_tx_hash,
         vout,
         amount,
-        recipient: Some(recipient),
+        address_index: Some(address_index),
         pub_key: val_pk2,
     };
 
@@ -441,11 +474,13 @@ fn observe_inbound() {
             transaction_hash: bitcoin_tx_hash,
             vout,
             amount,
-            recipient: Some(recipient),
+            address_index: Some(address_index),
         });
 
     // Ensure the user has received the deposit.
-    let balance = suite.query_balance(&recipient, btc::DENOM.clone()).unwrap();
+    let balance = suite
+        .query_balance(accounts.user1.address.inner(), btc::DENOM.clone())
+        .unwrap();
     assert_eq!(
         balance, amount,
         "recipient has wrong btc balance! expecting: {amount}, found: {balance}",
@@ -457,7 +492,7 @@ fn observe_inbound() {
         transaction_hash: bitcoin_tx_hash,
         vout,
         amount,
-        recipient: Some(recipient),
+        address_index: Some(address_index),
         pub_key: val_pk3,
     };
     deposit(&mut suite, contracts.bitcoin, msg.clone(), &val_sk3)
@@ -473,7 +508,7 @@ fn observe_inbound() {
             transaction_hash: tx_hash,
             vout,
             amount,
-            recipient: None,
+            address_index: None,
             pub_key: val_pk1,
         };
 
@@ -485,7 +520,7 @@ fn observe_inbound() {
             transaction_hash: tx_hash,
             vout,
             amount,
-            recipient: None,
+            address_index: None,
             pub_key: val_pk2,
         };
         deposit(&mut suite, contracts.bitcoin, msg.clone(), &val_sk2)
@@ -502,7 +537,7 @@ fn observe_inbound() {
                 transaction_hash: tx_hash,
                 vout,
                 amount,
-                recipient: None,
+                address_index: None,
             });
     }
 }
@@ -517,11 +552,28 @@ fn same_hash_different_vout() {
     let hash = Hash256::from_inner([0; 32]);
     let amount1 = Uint128::new(10_000);
     let amount2 = Uint128::new(20_000);
-    let recipient = Some(*accounts.user1.address.inner());
 
-    deposit_and_confirm(&mut suite, contracts.bitcoin, hash, 0, amount1, recipient);
+    let (address_index, outcome) =
+        create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_succeed();
 
-    deposit_and_confirm(&mut suite, contracts.bitcoin, hash, 1, amount2, recipient);
+    deposit_and_confirm(
+        &mut suite,
+        contracts.bitcoin,
+        hash,
+        0,
+        amount1,
+        Some(address_index),
+    );
+
+    deposit_and_confirm(
+        &mut suite,
+        contracts.bitcoin,
+        hash,
+        1,
+        amount2,
+        Some(address_index),
+    );
 
     // Ensure there are the 2 deposits in the utxo.
     suite
@@ -575,8 +627,8 @@ fn same_hash_different_vout() {
     assert_eq!(
         tx.inputs,
         btree_map!(
-            (hash, 0) => amount1,
-            (hash, 1) => amount2,
+            (hash, 0) => (amount1, Some(address_index)),
+            (hash, 1) => (amount2, Some(address_index)),
         )
     );
 
@@ -594,16 +646,19 @@ fn transfer_remote() {
     let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
 
     let btc_recipient = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0".to_string();
-    let user1_address = *accounts.user1.address.inner();
 
-    // Deposit 100k sats do user1
+    let (address_index, outcome) =
+        create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_succeed();
+
+    // Deposit 100k sats to user1
     deposit_and_confirm(
         &mut suite,
         contracts.bitcoin,
         Hash256::from_inner([0; 32]),
         0,
         Uint128::new(100_000),
-        Some(user1_address),
+        Some(address_index),
     );
 
     // Interact directly to the bridge (only gateway can).
@@ -762,7 +817,9 @@ fn cron_execute() {
         .unwrap()
         .vault;
 
-    let user1_address = *accounts.user1.address.inner();
+    let (address_index, outcome) =
+        create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_succeed();
 
     let withdraw_fee = suite
         .query_wasm_smart(contracts.gateway, gateway::QueryWithdrawalFeeRequest {
@@ -779,7 +836,7 @@ fn cron_execute() {
         Hash256::from_inner([0; 32]),
         0,
         Uint128::new(100_000),
-        Some(user1_address),
+        Some(address_index),
     );
 
     // Make 2 withdrawals.
@@ -837,7 +894,7 @@ fn cron_execute() {
 
     assert_eq!(
         tx.inputs,
-        btree_map!( (Hash256::from_inner([0u8; 32]), 0) => Uint128::new(100_000) )
+        btree_map!( (Hash256::from_inner([0u8; 32]), 0) => (Uint128::new(100_000), Some(address_index)) )
     );
 
     assert_eq!(
@@ -903,7 +960,9 @@ fn authorize_outbound() {
 
     suite.block_time = Duration::ZERO;
 
-    let user1_address = *accounts.user1.address.inner();
+    let config = suite
+        .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
+        .should_succeed();
 
     let sk1 = SigningKey::from_bytes(&guardian1::PRIVATE_KEY.into()).unwrap();
     let pk1 = HexByteArray::<33>::from_inner(guardian1::PUBLIC_KEY);
@@ -914,11 +973,9 @@ fn authorize_outbound() {
     let sk3 = SigningKey::from_bytes(&guardian3::PRIVATE_KEY.into()).unwrap();
     let pk3 = HexByteArray::<33>::from_inner(guardian3::PUBLIC_KEY);
 
-    let config = suite
-        .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
-        .should_succeed();
-
-    let redeem_script = config.multisig.script();
+    let (address_index, outcome) =
+        create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_succeed();
 
     // Make 2 deposits and create a withdrawal.
     let deposit_amount1 = Uint128::new(7_000);
@@ -930,7 +987,7 @@ fn authorize_outbound() {
             Hash256::from_inner([0; 32]),
             0,
             deposit_amount1,
-            Some(user1_address),
+            Some(address_index),
         );
 
         deposit_and_confirm(
@@ -939,7 +996,7 @@ fn authorize_outbound() {
             Hash256::from_inner([1; 32]),
             0,
             deposit_amount2,
-            Some(user1_address),
+            Some(address_index),
         );
 
         // Create 2 withdrawal.
@@ -961,19 +1018,19 @@ fn authorize_outbound() {
 
     let btc_transaction = outbound_tx.to_btc_transaction(config.network).unwrap();
 
-    let signatures1 = sing_inputs(&btc_transaction, &sk1, redeem_script, vec![
-        deposit_amount1.into_inner() as u64,
-        deposit_amount2.into_inner() as u64,
+    let signatures1 = sing_inputs(&btc_transaction, &sk1, &config.multisig, vec![
+        (deposit_amount1.into_inner() as u64, Some(address_index)),
+        (deposit_amount2.into_inner() as u64, Some(address_index)),
     ]);
 
-    let signatures2 = sing_inputs(&btc_transaction, &sk2, redeem_script, vec![
-        deposit_amount1.into_inner() as u64,
-        deposit_amount2.into_inner() as u64,
+    let signatures2 = sing_inputs(&btc_transaction, &sk2, &config.multisig, vec![
+        (deposit_amount1.into_inner() as u64, Some(address_index)),
+        (deposit_amount2.into_inner() as u64, Some(address_index)),
     ]);
 
-    let signatures3 = sing_inputs(&btc_transaction, &sk3, redeem_script, vec![
-        deposit_amount1.into_inner() as u64,
-        deposit_amount2.into_inner() as u64,
+    let signatures3 = sing_inputs(&btc_transaction, &sk3, &config.multisig, vec![
+        (deposit_amount1.into_inner() as u64, Some(address_index)),
+        (deposit_amount2.into_inner() as u64, Some(address_index)),
     ]);
 
     // Ensure no one can call `AuthorizeOutbound` except bitcoin bridge.
@@ -1206,7 +1263,7 @@ fn multisig_address() {
     .unwrap();
 
     let multisig =
-        MultisigSettings::new(2, NonEmpty::new(btree_set!(pk1, pk2, pk3,)).unwrap()).unwrap();
+        MultisigWallet::new(2, &NonEmpty::new(btree_set!(pk1, pk2, pk3,)).unwrap(), None).unwrap();
 
     assert_eq!(
         multisig.address(Network::Regtest).to_string(),
@@ -1224,13 +1281,23 @@ fn fee() {
     let sk2 = SigningKey::from_bytes(&guardian2::PRIVATE_KEY.into()).unwrap();
 
     let btc_recipient = "bcrt1q8qzecux6rz9aatnpjulmfrraznyqjc3crq33m0";
-    let user1_address = *accounts.user1.address.inner();
+
+    let (address_index, outcome) =
+        create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_succeed();
 
     let bitcoin_config = suite
         .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
         .unwrap();
 
-    // Create 2 deposit to user1.
+    let multisig_wallet = MultisigWallet::new(
+        bitcoin_config.multisig.threshold(),
+        bitcoin_config.multisig.pub_keys(),
+        None,
+    )
+    .unwrap();
+
+    // Create 2 deposits to user1.
     let amount1 = Uint128::new(20_000);
     deposit_and_confirm(
         &mut suite,
@@ -1238,7 +1305,7 @@ fn fee() {
         Hash256::from_inner([0; 32]),
         0,
         amount1,
-        Some(user1_address),
+        Some(address_index),
     );
 
     let amount2 = Uint128::new(30_000);
@@ -1248,7 +1315,7 @@ fn fee() {
         Hash256::from_inner([1; 32]),
         0,
         amount2,
-        Some(user1_address),
+        Some(address_index),
     );
 
     // Create a withdrawal request.
@@ -1267,14 +1334,14 @@ fn fee() {
 
     let mut btc_tx = tx.to_btc_transaction(bitcoin_config.network).unwrap();
 
-    let signature1 = sing_inputs(&btc_tx, &sk1, bitcoin_config.multisig.script(), vec![
-        amount1.into_inner() as u64,
-        amount2.into_inner() as u64,
+    let signature1 = sing_inputs(&btc_tx, &sk1, &bitcoin_config.multisig, vec![
+        (amount1.into_inner() as u64, Some(address_index)),
+        (amount2.into_inner() as u64, Some(address_index)),
     ]);
 
-    let signature2 = sing_inputs(&btc_tx, &sk2, bitcoin_config.multisig.script(), vec![
-        amount1.into_inner() as u64,
-        amount2.into_inner() as u64,
+    let signature2 = sing_inputs(&btc_tx, &sk2, &bitcoin_config.multisig, vec![
+        (amount1.into_inner() as u64, Some(address_index)),
+        (amount2.into_inner() as u64, Some(address_index)),
     ]);
 
     for i in 0..btc_tx.input.len() {
@@ -1283,7 +1350,7 @@ fn fee() {
         input.witness.push(vec![]);
         input.witness.push(&signature1[i]);
         input.witness.push(&signature2[i]);
-        input.witness.push(bitcoin_config.multisig.script());
+        input.witness.push(multisig_wallet.script());
     }
 
     // Real fee for the tx.
@@ -1315,30 +1382,35 @@ fn multiple_outbound_tx() {
 
     suite.block_time = Duration::ZERO;
 
-    let user1_address = *accounts.user1.address.inner();
-    let user2_address = *accounts.user2.address.inner();
+    let (address_index_user1, outcome) =
+        create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_succeed();
+
+    let (address_index_user2, outcome) =
+        create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user2);
+    outcome.should_succeed();
 
     let hash1 = Hash256::from_inner([0; 32]);
     let hash2 = Hash256::from_inner([1; 32]);
 
-    // Deposit 100k sats do user1
+    // Deposit 100k sats to user1
     deposit_and_confirm(
         &mut suite,
         contracts.bitcoin,
         hash1,
         0,
         Uint128::new(100_000),
-        Some(user1_address),
+        Some(address_index_user1),
     );
 
-    // Deposit 100k sats do user2
+    // Deposit 100k sats to user2
     deposit_and_confirm(
         &mut suite,
         contracts.bitcoin,
         hash2,
         0,
         Uint128::new(100_000),
-        Some(user2_address),
+        Some(address_index_user2),
     );
 
     // Create a withdrawal request for user1 and user2.
@@ -1405,7 +1477,7 @@ fn multiple_outbound_tx() {
         .should_succeed();
 
     assert_eq!(tx1.inputs, btree_map! {
-        (hash1, 0) => Uint128::new(100_000),
+        (hash1, 0) => (Uint128::new(100_000), Some(address_index_user1)),
     });
 
     assert!(tx1.outputs.contains_key(recipient1));
@@ -1415,7 +1487,7 @@ fn multiple_outbound_tx() {
         .should_succeed();
 
     assert_eq!(tx2.inputs, btree_map! {
-        (hash2, 0) => Uint128::new(100_000),
+        (hash2, 0) => (Uint128::new(100_000), Some(address_index_user2)),
     });
 
     assert!(tx2.outputs.contains_key(recipient2));
@@ -1495,4 +1567,20 @@ fn update_config() {
     assert_eq!(config.fee_rate_updater, new_fee_rate_updater);
     assert_eq!(config.minimum_deposit, new_minimum_deposit);
     assert_eq!(config.max_output_per_tx, new_max_output_per_tx);
+}
+
+#[test]
+fn deposit_address_request() {
+    let (mut suite, mut accounts, _, contracts, ..) = setup_test_naive(Default::default());
+
+    let (id1, outcome) = create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_succeed();
+
+    let (_, outcome) = create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user1);
+    outcome.should_fail_with_error("you already have a deposit address");
+
+    let (id2, outcome) = create_deposit_address(&mut suite, contracts.bitcoin, &mut accounts.user2);
+    outcome.should_succeed();
+
+    assert_eq!(id2, id1 + 1);
 }

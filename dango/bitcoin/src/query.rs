@@ -1,7 +1,9 @@
 use {
-    crate::{ADDRESSES, CONFIG, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS},
+    crate::{
+        ADDRESS_INDEX, ADDRESSES, CONFIG, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS,
+    },
     dango_types::bitcoin::{
-        BitcoinAddress, BitcoinSignature, Config, QueryMsg, Transaction, UserAddressScript, Utxo,
+        BitcoinAddress, BitcoinSignature, Config, MultisigWallet, QueryMsg, Transaction, Utxo,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order,
@@ -53,6 +55,10 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
             let res = query_deposit_address(ctx, address)?;
             res.to_json_value()
         },
+        QueryMsg::AccountsIndex {} => {
+            let res = query_accounts_index(ctx.storage)?;
+            res.to_json_value()
+        },
     }
     .map_err(Into::into)
 }
@@ -75,7 +81,7 @@ fn query_utxos(
         .range(storage, start, None, order)
         .take(limit)
         .map(|res| {
-            let (amount, transaction_hash, vout) = res?;
+            let ((amount, transaction_hash, vout), _) = res?;
             Ok(Utxo {
                 transaction_hash,
                 vout,
@@ -147,11 +153,15 @@ fn query_deposit_address(ctx: ImmutableCtx, address: Addr) -> anyhow::Result<Bit
 
     let config = CONFIG.load(ctx.storage)?;
 
-    let user_script = UserAddressScript::new(
+    let user_script = MultisigWallet::new(
         config.multisig.threshold(),
-        config.multisig.pub_keys().clone(),
-        deposit_index,
+        config.multisig.pub_keys(),
+        Some(deposit_index),
     )?;
 
     Ok(user_script.address(config.network).to_string())
+}
+
+fn query_accounts_index(storage: &dyn Storage) -> StdResult<u64> {
+    ADDRESS_INDEX.current(storage)
 }

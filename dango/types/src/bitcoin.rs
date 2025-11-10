@@ -38,12 +38,14 @@ pub type BitcoinSignature = HexBinary;
 /// The index of the output in a Bitcoin transaction.
 pub type Vout = u32;
 
-/// Multisig settings for the Bitcoin multisig wallet.
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// The index associated at a dango address for generating unique bitcoin address.
+pub type AddressIndex = u64;
+
+/// Multisig settings.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MultisigSettings {
     threshold: u8,
     pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>,
-    script: ScriptBuf,
 }
 
 impl MultisigSettings {
@@ -59,29 +61,10 @@ impl MultisigSettings {
             );
         }
 
-        // Create the script for the multisig.
-        // The redeem script is a P2WSH script is created as:
-        // threshold pubkeys num_pub_keys OP_CHECKMULTISIG
-        let mut builder = Builder::new().push_int(threshold as i64);
-
-        for pubkey in pub_keys.iter() {
-            builder = builder.push_key(&PublicKey::from_slice(pubkey)?);
-        }
-
-        builder = builder
-            .push_int(pub_keys.len() as i64)
-            .push_opcode(OP_CHECKMULTISIG);
-
         Ok(Self {
             threshold,
             pub_keys,
-            script: builder.into_script(),
         })
-    }
-
-    /// Returns the Bitcoin address of the multisig wallet.
-    pub fn address(&self, network: Network) -> Address {
-        Address::p2wsh(&self.script, network)
     }
 
     /// Returns the threshold number of signatures required to authorize a transaction.
@@ -93,23 +76,21 @@ impl MultisigSettings {
     pub fn pub_keys(&self) -> &NonEmpty<BTreeSet<HexByteArray<33>>> {
         &self.pub_keys
     }
-
-    /// Returns the script of the multisig wallet.
-    pub fn script(&self) -> &ScriptBuf {
-        &self.script
-    }
 }
 
-pub struct UserAddressScript {
+/// This represents a multisig wallet with a optional index in the witnesses script.
+/// This is used to generate unique addresses for users by appending the index and OP_DROP at
+/// the end of a standard multisig script.
+pub struct MultisigWallet {
     script: ScriptBuf,
-    index: u64,
+    index: Option<u64>,
 }
 
-impl UserAddressScript {
+impl MultisigWallet {
     pub fn new(
         threshold: u8,
-        pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>,
-        index: u64,
+        pub_keys: &NonEmpty<BTreeSet<HexByteArray<33>>>,
+        index: Option<u64>,
     ) -> anyhow::Result<Self> {
         if threshold < 1 || threshold > pub_keys.len() as u8 {
             bail!(
@@ -121,7 +102,8 @@ impl UserAddressScript {
 
         // Create the script for the multisig.
         // The redeem script is a P2WSH script is created as:
-        // threshold - pubkeys - num_pub_keys - OP_CHECKMULTISIG - index - OP_DROP
+        // threshold - pubkeys - num_pub_keys - OP_CHECKMULTISIG.
+        // To generate unique addresses per user, we append the index and OP_DROP (if provided).
         let mut builder = Builder::new().push_int(threshold as i64);
 
         for pubkey in pub_keys.iter() {
@@ -130,9 +112,12 @@ impl UserAddressScript {
 
         builder = builder
             .push_int(pub_keys.len() as i64)
-            .push_opcode(OP_CHECKMULTISIG)
-            .push_int(index as i64)
-            .push_opcode(OP_DROP);
+            .push_opcode(OP_CHECKMULTISIG);
+
+        // Append the index if provided.
+        if let Some(index) = index {
+            builder = builder.push_int(index as i64).push_opcode(OP_DROP);
+        }
 
         Ok(Self {
             script: builder.into_script(),
@@ -151,46 +136,18 @@ impl UserAddressScript {
     }
 
     /// Returns the index of the address.
-    pub fn index(&self) -> u64 {
+    pub fn index(&self) -> Option<u64> {
         self.index
     }
 }
 
 #[grug::derive(Serde)]
-struct MultisigSerde {
-    threshold: u8,
-    pub_keys: NonEmpty<BTreeSet<HexByteArray<33>>>,
-}
-
-impl Serialize for MultisigSettings {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let multisig_serde = MultisigSerde {
-            threshold: self.threshold,
-            pub_keys: self.pub_keys.clone(),
-        };
-
-        multisig_serde.serialize(serializer)
-    }
-}
-
-impl<'a> Deserialize<'a> for MultisigSettings {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'a>,
-    {
-        let multisig_serde: MultisigSerde = MultisigSerde::deserialize(deserializer)?;
-        MultisigSettings::new(multisig_serde.threshold, multisig_serde.pub_keys)
-            .map_err(serde::de::Error::custom)
-    }
-}
-
-#[grug::derive(Serde)]
 pub struct Config {
+    /// The Bitcoin network the bridge is operating on.
     pub network: Network,
+    /// The vault address where changes are accumulated.
     pub vault: BitcoinAddress,
+    /// The multisig settings.
     pub multisig: MultisigSettings,
     /// The amount of Sats for each vByte to calculate the fee.
     pub sats_per_vbyte: Uint128,
@@ -209,45 +166,53 @@ pub struct Transaction {
         serialize_with = "serialize_inputs",
         deserialize_with = "deserialize_inputs"
     )]
-    pub inputs: BTreeMap<(Hash256, Vout), Uint128>,
+    /// The inputs of the transaction. The inputs are ordered by (transaction_hash, vout) so
+    /// that the transaction can be reconstructed deterministically.
+    pub inputs: BTreeMap<(Hash256, Vout), (Uint128, Option<AddressIndex>)>,
+    /// The outputs of the transaction.
     pub outputs: BTreeMap<BitcoinAddress, Uint128>,
+    /// The fee of the transaction.
     pub fee: Uint128,
 }
 
 fn serialize_inputs<S>(
-    inputs: &BTreeMap<(Hash256, Vout), Uint128>,
+    inputs: &BTreeMap<(Hash256, Vout), (Uint128, Option<AddressIndex>)>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    let converted: BTreeMap<String, &Uint128> = inputs
+    let converted: BTreeMap<String, (&Uint128, &Option<AddressIndex>)> = inputs
         .iter()
-        .map(|((hash, vout), amount)| (format!("{hash}/{vout}"), amount))
+        .map(|((hash, vout), (amount, recipient_index))| {
+            (format!("{hash}/{vout}"), (amount, recipient_index))
+        })
         .collect();
     converted.serialize(serializer)
 }
 
 fn deserialize_inputs<'de, D>(
     deserializer: D,
-) -> Result<BTreeMap<(Hash256, Vout), Uint128>, D::Error>
+) -> Result<BTreeMap<(Hash256, Vout), (Uint128, Option<AddressIndex>)>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let map: BTreeMap<String, Uint128> = BTreeMap::deserialize(deserializer)?;
+    let map: BTreeMap<String, (Uint128, Option<AddressIndex>)> =
+        BTreeMap::deserialize(deserializer)?;
     map.into_iter()
-        .map(|(key, amount)| {
+        .map(|(key, (amount, recipient_index))| {
             let parts: Vec<&str> = key.split('/').collect();
             if parts.len() != 2 {
                 return Err(serde::de::Error::custom("invalid input key format"));
             }
             let hash = Hash256::from_str(parts[0]).map_err(serde::de::Error::custom)?;
             let vout = parts[1].parse::<Vout>().map_err(serde::de::Error::custom)?;
-            Ok(((hash, vout), amount))
+            Ok(((hash, vout), (amount, recipient_index)))
         })
         .collect()
 }
 
+/// Creates a Bitcoin transaction input from the given transaction hash and vout.
 pub fn create_tx_in(hash: &Hash256, vout: Vout) -> TxIn {
     let outpoint = OutPoint {
         txid: Txid::from_byte_array(hash.into_inner()),
@@ -309,16 +274,9 @@ pub struct InboundMsg {
     pub vout: Vout,
     /// The transaction's UTXO amount.
     pub amount: Uint128,
-    /// The recipient of the inbound transfer.
-    ///
-    /// In case of a user making a deposit, he must indicate the recipient
-    /// address in the transaction's memo. The guardian must report this
-    /// recipient.
-    ///
-    /// Other kinds of inbound transactions do not have a recipient. For
-    /// example, an outbound transaction may have an excess amount. Or, the
-    /// operator may top up the multisig's balance to cover gas cost.
-    pub recipient: Option<Addr>,
+    /// The address index of the inbound transfer, used to identify the recipient.
+    /// If `None`, the recipient is the vault.
+    pub address_index: Option<u64>,
     /// Pubkey of the guardian observing the inbound transaction.
     pub pub_key: HexByteArray<33>,
 }
@@ -427,6 +385,10 @@ pub enum QueryMsg {
     /// Query the deposit address for a user.
     #[returns(BitcoinAddress)]
     DepositAddress { address: Addr },
+
+    /// Query the next available index for generating a new Bitcoin address.
+    #[returns(u64)]
+    AccountsIndex {},
 }
 
 // ------------------------------- Events --------------------------------------
@@ -439,7 +401,7 @@ pub struct InboundConfirmed {
     pub transaction_hash: Hash256,
     pub vout: Vout,
     pub amount: Uint128,
-    pub recipient: Option<Addr>,
+    pub address_index: Option<AddressIndex>,
 }
 
 /// Event indicating an outbound transaction has been requested, pending signatures

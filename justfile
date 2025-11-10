@@ -20,8 +20,15 @@ git-clear-branches:
 install:
   cargo install --path dango/cli --locked
 
+# Start clickhouse
+start-clickhouse:
+  cd networks/localdango && \
+    if ! docker compose ps | grep -q "clickhouse"; then \
+      docker compose up -d clickhouse; \
+    fi
+
 # Run all tests
-test:
+test: start-clickhouse
   RUST_BACKTRACE=1 cargo test --all-features -- --nocapture
 
 # Run grug tests
