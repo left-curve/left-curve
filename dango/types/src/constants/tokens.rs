@@ -8,7 +8,7 @@ pub mod dango {
 
     pub static DENOM: LazyLock<Denom> = LazyLock::new(|| Denom::new_unchecked(["dango"]));
 
-    pub const DECIMAL: u8 = 6;
+    pub const DECIMAL: u32 = 6;
 }
 
 macro_rules! define_denom {
@@ -22,7 +22,7 @@ macro_rules! define_denom {
                 Denom::from_parts([crate::gateway::NAMESPACE.clone(), SUBDENOM.clone()]).unwrap()
             });
 
-            pub const DECIMAL: u8 = $decimal;
+            pub const DECIMAL: u32 = $decimal;
         }
     };
     ($($name:ident => $decimal:literal),*) => {

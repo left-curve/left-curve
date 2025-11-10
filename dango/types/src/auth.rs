@@ -19,7 +19,10 @@ pub type Nonce = u32;
     feature = "sea-orm",
     derive(sea_orm::EnumIter, sea_orm::DeriveActiveEnum)
 )]
-#[cfg_attr(feature = "sea-orm", sea_orm(rs_type = "i32", db_type = "Integer"))]
+#[cfg_attr(
+    feature = "sea-orm",
+    sea_orm(rs_type = "i16", db_type = "SmallInteger")
+)]
 pub enum KeyType {
     #[cfg_attr(feature = "sea-orm", sea_orm(num_value = 0))]
     Secp256r1,

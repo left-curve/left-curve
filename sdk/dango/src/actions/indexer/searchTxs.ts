@@ -1,8 +1,8 @@
 import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
 import { queryIndexer } from "./queryIndexer.js";
 
-import type { GraphqlPagination, GraphqlQueryResult } from "#types/graphql.js";
-import type { IndexedTransaction } from "#types/indexer.js";
+import type { GraphqlPagination, GraphqlQueryResult } from "../../types/graphql.js";
+import type { IndexedTransaction } from "../../types/indexer.js";
 
 export type SearchTxsParameters = Prettify<
   GraphqlPagination & {

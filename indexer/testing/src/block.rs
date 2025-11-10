@@ -6,14 +6,14 @@ use {
     grug_types::{BroadcastClientExt, Coins, Denom},
     grug_vm_rust::RustVm,
     indexer_httpd::context::Context,
-    indexer_sql::indexer::NonBlockingIndexer,
+    indexer_sql::indexer::Indexer as IndexerTrait,
     std::{str::FromStr, sync::Arc},
     tokio::sync::Mutex,
 };
 
 pub async fn create_block() -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, IndexerTrait>>,
     TestAccounts,
 )> {
     create_blocks(1).await
@@ -23,7 +23,7 @@ pub async fn create_blocks(
     count: usize,
 ) -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, NonBlockingIndexer>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, IndexerTrait>>,
     TestAccounts,
 )> {
     let denom = Denom::from_str("ugrug")?;
@@ -75,12 +75,7 @@ pub async fn create_blocks(
 
     let suite_guard = suite.lock().await;
     let httpd_app = suite_guard.app.clone_without_indexer();
-    let httpd_context = Context::new(
-        context,
-        Arc::new(Mutex::new(httpd_app)),
-        client.clone(),
-        indexer_path,
-    );
+    let httpd_context = Context::new(context, Arc::new(httpd_app), client.clone(), indexer_path);
 
     Ok((httpd_context, client, accounts))
 }

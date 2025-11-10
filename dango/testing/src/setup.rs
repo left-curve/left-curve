@@ -13,8 +13,8 @@ use {
         Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, Message, TendermintRpcClient,
         Uint128,
     },
-    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, Vm},
-    grug_db_disk_lite::DiskDbLite,
+    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
+    grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
     grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
@@ -37,6 +37,16 @@ pub struct TestOption {
     /// returns a list of incoming bridge transfers to be appended to the
     /// genesis state.
     pub bridge_ops: fn(&TestAccounts) -> Vec<BridgeOp>,
+    pub mocked_clickhouse: bool,
+}
+
+impl TestOption {
+    pub fn with_mocked_clickhouse(self) -> Self {
+        Self {
+            mocked_clickhouse: true,
+            ..Self::default()
+        }
+    }
 }
 
 impl Default for TestOption {
@@ -66,8 +76,8 @@ pub type TestSuiteWithIndexer<
     ID = HookedIndexer,
 > = grug::TestSuite<DB, VM, PP, ID>;
 
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
-/// `ContractWrapper` codes.
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer` with cached
+/// Pyth Lazer client, and `ContractWrapper` codes.
 ///
 /// Used for running regular tests.
 pub fn setup_test(
@@ -128,12 +138,9 @@ pub fn setup_test_naive_with_custom_genesis(
     )
 }
 
-/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
-/// `ContractWrapper` codes but with a non-blocking indexer.
-///
-/// Used for running tests that require an indexer.
-/// Synchronous wrapper for setup_test_with_indexer_async
-pub async fn setup_test_with_indexer() -> (
+pub async fn setup_test_with_indexer(
+    test_opt: TestOption,
+) -> (
     TestSuiteWithIndexer,
     TestAccounts,
     Codes<ContractWrapper>,
@@ -141,6 +148,28 @@ pub async fn setup_test_with_indexer() -> (
     MockValidatorSets,
     indexer_httpd::context::Context,
     dango_httpd::context::Context,
+    dango_indexer_clickhouse::context::Context,
+) {
+    setup_test_with_indexer_and_custom_genesis(test_opt, GenesisOption::preset_test()).await
+}
+
+/// Set up a `TestSuite` with `MemDb`, `RustVm`, `ProposalPreparer`, and
+/// `ContractWrapper` codes but with a non-blocking indexer.
+///
+/// Used for running tests that require an indexer.
+/// Synchronous wrapper for setup_test_with_indexer_async
+pub async fn setup_test_with_indexer_and_custom_genesis(
+    options: TestOption,
+    genesis_opt: GenesisOption,
+) -> (
+    TestSuiteWithIndexer,
+    TestAccounts,
+    Codes<ContractWrapper>,
+    Contracts,
+    MockValidatorSets,
+    indexer_httpd::context::Context,
+    dango_httpd::context::Context,
+    dango_indexer_clickhouse::context::Context,
 ) {
     let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
@@ -154,6 +183,8 @@ pub async fn setup_test_with_indexer() -> (
     // Create a shared runtime handler that uses the same tokio runtime
     let shared_runtime_handle =
         indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
+    let shared_runtime_handle2 =
+        indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
 
     let mut hooked_indexer = HookedIndexer::new();
 
@@ -165,12 +196,34 @@ pub async fn setup_test_with_indexer() -> (
         .expect("Failed to create separate context for dango indexer in test setup")
         .into();
 
-    let dango_indexer = dango_indexer_sql::indexer::Indexer {
-        runtime_handle: shared_runtime_handle,
-        context: dango_context.clone(),
-    };
+    let dango_indexer =
+        dango_indexer_sql::indexer::Indexer::new(shared_runtime_handle, dango_context.clone());
+
+    let mut clickhouse_context = dango_indexer_clickhouse::context::Context::new(
+        format!(
+            "http://{}:{}",
+            std::env::var("CLICKHOUSE_HOST").unwrap_or("localhost".to_string()),
+            std::env::var("CLICKHOUSE_PORT").unwrap_or("8123".to_string())
+        ),
+        std::env::var("CLICKHOUSE_DATABASE").unwrap_or("grug_dev".to_string()),
+        std::env::var("CLICKHOUSE_USER").unwrap_or("default".to_string()),
+        std::env::var("CLICKHOUSE_PASSWORD").unwrap_or("".to_string()),
+    );
+
+    if !options.mocked_clickhouse {
+        clickhouse_context = clickhouse_context.with_test_database().await.unwrap();
+    } else {
+        clickhouse_context = clickhouse_context.with_mock();
+    }
+
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
+
+    let clickhouse_indexer = dango_indexer_clickhouse::indexer::Indexer::new(
+        shared_runtime_handle2,
+        clickhouse_context.clone(),
+    );
+    hooked_indexer.add_indexer(clickhouse_indexer).unwrap();
 
     let db = MemDb::new();
     let vm = RustVm::new();
@@ -181,9 +234,11 @@ pub async fn setup_test_with_indexer() -> (
         ProposalPreparer::new_with_cache(),
         hooked_indexer,
         RustVm::genesis_codes(),
-        TestOption::default(),
-        GenesisOption::preset_test(),
+        options,
+        genesis_opt,
     );
+
+    clickhouse_context.start_cache().await.unwrap();
 
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
@@ -194,8 +249,12 @@ pub async fn setup_test_with_indexer() -> (
         indexer_path,
     );
 
-    let dango_httpd_context =
-        dango_httpd::context::Context::new(indexer_httpd_context.clone(), dango_context);
+    let dango_httpd_context = dango_httpd::context::Context::new(
+        indexer_httpd_context.clone(),
+        clickhouse_context.clone(),
+        dango_context,
+        None,
+    );
 
     (
         suite,
@@ -205,6 +264,7 @@ pub async fn setup_test_with_indexer() -> (
         validator_sets,
         indexer_httpd_context,
         dango_httpd_context,
+        clickhouse_context,
     )
 }
 
@@ -216,13 +276,13 @@ pub fn setup_benchmark_hybrid(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDbLite, HybridVm, NullIndexer>,
+    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, HybridVm, NullIndexer>,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
 ) {
-    let db = DiskDbLite::open(dir).unwrap();
+    let db = DiskDb::open(dir).unwrap();
     let codes = HybridVm::genesis_codes();
     let vm = HybridVm::new(wasm_cache_size, [
         codes.account_factory.to_bytes().hash256(),
@@ -261,13 +321,13 @@ pub fn setup_benchmark_wasm(
     dir: &TempDataDir,
     wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDbLite, WasmVm, NullIndexer>,
+    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, WasmVm, NullIndexer>,
     TestAccounts,
     Codes<Vec<u8>>,
     Contracts,
     MockValidatorSets,
 ) {
-    let db = DiskDbLite::open(dir).unwrap();
+    let db = DiskDb::open(dir).unwrap();
     let vm = WasmVm::new(wasm_cache_size);
 
     setup_suite_with_db_and_vm(
@@ -323,23 +383,23 @@ where
         let user9 = TestAccount::new_from_private_key(user9::USERNAME.clone(), user9::PRIVATE_KEY);
 
         TestAccounts {
-            owner: owner.set_address(&addresses),
-            user1: user1.set_address(&addresses),
-            user2: user2.set_address(&addresses),
-            user3: user3.set_address(&addresses),
-            user4: user4.set_address(&addresses),
-            user5: user5.set_address(&addresses),
-            user6: user6.set_address(&addresses),
-            user7: user7.set_address(&addresses),
-            user8: user8.set_address(&addresses),
-            user9: user9.set_address(&addresses),
+            owner: owner.set_address_with(&addresses),
+            user1: user1.set_address_with(&addresses),
+            user2: user2.set_address_with(&addresses),
+            user3: user3.set_address_with(&addresses),
+            user4: user4.set_address_with(&addresses),
+            user5: user5.set_address_with(&addresses),
+            user6: user6.set_address_with(&addresses),
+            user7: user7.set_address_with(&addresses),
+            user8: user8.set_address_with(&addresses),
+            user9: user9.set_address_with(&addresses),
         }
     };
 
     // Create the mock validator sets.
     // TODO: For now, we always use the preset mock. It may not match the ones
     // in the genesis state. We should generate this based on the `genesis_opt`.
-    let validator_sets = MockValidatorSets::new_preset();
+    let validator_sets = MockValidatorSets::new_preset(false);
 
     for op in (test_opt.bridge_ops)(&accounts) {
         match op.remote {
@@ -365,6 +425,7 @@ where
         vm,
         pp,
         indexer,
+        None, // TODO: support customizing upgrade handler in tests
         test_opt.chain_id,
         test_opt.block_time,
         test_opt.default_gas_limit,

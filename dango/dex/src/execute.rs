@@ -2,45 +2,75 @@ mod order_cancellation;
 mod order_creation;
 
 use {
-    crate::{MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PassiveLiquidityPool, RESERVES, core},
+    crate::{
+        MAX_ORACLE_STALENESS, MINIMUM_LIQUIDITY, PAIRS, PAUSED, RESERVES, RESTING_ORDER_BOOK,
+        core::{self, PassiveLiquidityPool},
+        cron,
+    },
     anyhow::{anyhow, ensure},
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier, bank,
         dex::{
-            CancelOrderRequest, CreateLimitOrderRequest, CreateMarketOrderRequest, ExecuteMsg,
-            InstantiateMsg, LP_NAMESPACE, NAMESPACE, PairId, PairUpdate, Swapped,
+            CallbackMsg, CancelOrderRequest, CreateOrderRequest, ExecuteMsg, InstantiateMsg,
+            LP_NAMESPACE, NAMESPACE, OwnerMsg, PairId, PairUpdate, Paused, Swapped, Unpaused,
         },
         taxman::{self, FeeType},
     },
     grug::{
-        Coin, CoinPair, Coins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero, Message,
-        MutableCtx, NonZero, QuerierExt, Response, Uint128, UniqueVec, btree_map, coins,
+        Coin, CoinPair, Coins, DecCoins, Denom, EventBuilder, GENESIS_SENDER, Inner, IsZero,
+        Message, MutableCtx, NonZero, Number, QuerierExt, Response, Uint128, UniqueVec, btree_map,
+        coins,
     },
 };
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &false)?;
     batch_update_pairs(ctx, msg.pairs)
 }
 
 #[cfg_attr(not(feature = "library"), grug::export)]
 pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
     match msg {
-        ExecuteMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
-        ExecuteMsg::BatchUpdateOrders {
-            creates_market,
-            creates_limit,
-            cancels,
-        } => batch_update_orders(ctx, creates_market, creates_limit, cancels),
+        ExecuteMsg::Owner(msg) => {
+            // Only the chain owner can call owner functions.
+            ensure!(
+                ctx.sender == ctx.querier.query_owner()?,
+                "you don't have the right, O you don't have the right"
+            );
+
+            match msg {
+                OwnerMsg::BatchUpdatePairs(updates) => batch_update_pairs(ctx, updates),
+                OwnerMsg::SetPaused(true) => pause(ctx),
+                OwnerMsg::SetPaused(false) => unpause(ctx),
+                OwnerMsg::Reset {} => reset(ctx),
+            }
+        },
+        ExecuteMsg::Callback(msg) => {
+            // Only the contract itself can call callback functions.
+            ensure!(
+                ctx.sender == ctx.contract,
+                "you don't have the right, O you don't have the right"
+            );
+
+            match msg {
+                CallbackMsg::Auction {} => cron::auction(ctx),
+            }
+        },
+        ExecuteMsg::BatchUpdateOrders { creates, cancels } => {
+            batch_update_orders(ctx, creates, cancels)
+        },
         ExecuteMsg::ProvideLiquidity {
             base_denom,
             quote_denom,
-        } => provide_liquidity(ctx, base_denom, quote_denom),
+            minimum_output,
+        } => provide_liquidity(ctx, base_denom, quote_denom, minimum_output),
         ExecuteMsg::WithdrawLiquidity {
             base_denom,
             quote_denom,
-        } => withdraw_liquidity(ctx, base_denom, quote_denom),
+            minimum_output,
+        } => withdraw_liquidity(ctx, base_denom, quote_denom, minimum_output),
         ExecuteMsg::SwapExactAmountIn {
             route,
             minimum_output,
@@ -78,14 +108,41 @@ fn batch_update_pairs(ctx: MutableCtx, updates: Vec<PairUpdate>) -> anyhow::Resu
     Ok(Response::new())
 }
 
+fn pause(ctx: MutableCtx) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &true)?;
+
+    Ok(Response::new().add_event(Paused { error: None })?)
+}
+
+fn unpause(ctx: MutableCtx) -> anyhow::Result<Response> {
+    PAUSED.save(ctx.storage, &false)?;
+
+    Ok(Response::new().add_event(Unpaused {})?)
+}
+
+fn reset(ctx: MutableCtx) -> anyhow::Result<Response> {
+    let (events, refunds) = order_cancellation::cancel_all_orders(ctx.storage, ctx.contract)?;
+
+    RESTING_ORDER_BOOK.clear(ctx.storage, None, None);
+
+    Ok(Response::new()
+        .add_events(events)?
+        .add_message(refunds.into_message()))
+}
+
 fn batch_update_orders(
     mut ctx: MutableCtx,
-    creates_market: Vec<CreateMarketOrderRequest>,
-    creates_limit: Vec<CreateLimitOrderRequest>,
+    creates: Vec<CreateOrderRequest>,
     cancels: Option<CancelOrderRequest>,
 ) -> anyhow::Result<Response> {
+    // Creating or canceling orders is not allowed when the contract is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't update orders when trading is paused"
+    );
+
     let mut deposits = Coins::new();
-    let mut refunds = Coins::new();
+    let mut refunds = DecCoins::new();
     let mut events = EventBuilder::new();
 
     match cancels {
@@ -94,6 +151,7 @@ fn batch_update_orders(
             for order_id in order_ids {
                 order_cancellation::cancel_order_from_user(
                     ctx.storage,
+                    ctx.contract,
                     ctx.sender,
                     order_id,
                     &mut events,
@@ -105,6 +163,7 @@ fn batch_update_orders(
         Some(CancelOrderRequest::All) => {
             order_cancellation::cancel_all_orders_from_user(
                 ctx.storage,
+                ctx.contract,
                 ctx.sender,
                 &mut events,
                 &mut refunds,
@@ -114,18 +173,8 @@ fn batch_update_orders(
         None => {},
     };
 
-    for order in creates_market {
-        order_creation::create_market_order(
-            ctx.storage,
-            ctx.sender,
-            order,
-            &mut events,
-            &mut deposits,
-        )?;
-    }
-
-    for order in creates_limit {
-        order_creation::create_limit_order(
+    for order in creates {
+        order_creation::create_order(
             ctx.storage,
             ctx.block.height,
             ctx.sender,
@@ -141,7 +190,7 @@ fn batch_update_orders(
     // amount that are to be refunded from the cancelled orders, and the amount
     // that the user is supposed to deposit for creating the new orders.
     ctx.funds
-        .insert_many(refunds)?
+        .insert_many(refunds.into_coins_floor())?
         .deduct_many(deposits)
         .map_err(|e| anyhow!("insufficient funds for batch updating orders: {e}"))?;
 
@@ -154,7 +203,14 @@ fn provide_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
+    minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
+    // Providing liquidity is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't provide liquidity when trading is paused"
+    );
+
     // Get the deposited funds.
     let deposit = ctx
         .funds
@@ -188,8 +244,27 @@ fn provide_liquidity(
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
 
     // Compute the amount of LP tokens to mint.
-    let (reserve, lp_mint_amount) =
+    let (reserve, mut lp_mint_amount) =
         pair.add_liquidity(&mut oracle_querier, reserve, lp_token_supply, deposit)?;
+
+    // Subtract minimum liquidity from the mint amount if this is the first
+    // liquidity provision.
+    // See the comment on `MINIMUM_LIQUIDITY` on why this is necessary.
+    if lp_token_supply.is_zero() {
+        lp_mint_amount
+            .checked_sub_assign(MINIMUM_LIQUIDITY)
+            .map_err(|err| {
+                anyhow!("LP token mint amount is less than `MINIMUM_LIQUIDITY`: {err}")
+            })?;
+    }
+
+    // Ensure the LP mint amount is greater than the minimum.
+    if let Some(minimum) = minimum_output {
+        ensure!(
+            lp_mint_amount >= minimum,
+            "LP mint amount is less than the minimum output: {lp_mint_amount} < {minimum}"
+        );
+    }
 
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
@@ -209,11 +284,6 @@ fn provide_liquidity(
             // If this is the first liquidity provision, mint a minimum liquidity.
             // to the contract itself and permanently lock it here. See the comment
             // on `MINIMUM_LIQUIDITY` for more details.
-            //
-            // Our implementation of this is slightly different from Uniswap's, which
-            // mints 1000 tokens less to the user, while we mint 1000 extra to
-            // the contract. Slightly different math but similarly prevents the
-            // attack.
             Some(Message::execute(
                 bank,
                 &bank::ExecuteMsg::Mint {
@@ -225,7 +295,6 @@ fn provide_liquidity(
         } else {
             None
         }))
-    // TODO: add event
 }
 
 /// Withdraw liquidity from a pool. The LP tokens must be sent with the message.
@@ -234,7 +303,14 @@ fn withdraw_liquidity(
     mut ctx: MutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
+    minimum_output: Option<CoinPair>,
 ) -> anyhow::Result<Response> {
+    // Withdrawing liquidity is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't withdraw liquidity when trading is paused"
+    );
+
     // Load the pair params.
     let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
 
@@ -258,6 +334,19 @@ fn withdraw_liquidity(
     // Calculate the amount of each asset to return
     let (reserve, refunds) = pair.remove_liquidity(reserve, lp_token_supply, lp_burn_amount)?;
 
+    // If a minimum output is specified, ensure the refunds are no less than it.
+    if let Some(minimum_output) = minimum_output {
+        ensure!(
+            {
+                let first = minimum_output.first();
+                let second = minimum_output.second();
+                refunds.amount_of(first.denom)? >= *first.amount
+                    && refunds.amount_of(second.denom)? >= *second.amount
+            },
+            "withdrawn assets are less than the minimum output: {refunds:?} < {minimum_output:?}",
+        );
+    }
+
     // Save the updated pool reserve.
     RESERVES.save(ctx.storage, (&base_denom, &quote_denom), &reserve)?;
 
@@ -274,7 +363,6 @@ fn withdraw_liquidity(
             )?
         })
         .add_message(Message::transfer(ctx.sender, refunds)?))
-    // TODO: add events
 }
 
 fn swap_exact_amount_in(
@@ -282,6 +370,12 @@ fn swap_exact_amount_in(
     route: UniqueVec<PairId>,
     minimum_output: Option<Uint128>,
 ) -> anyhow::Result<Response> {
+    // Swapping is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't swap when trading is paused"
+    );
+
     let input = ctx.funds.into_one_coin()?;
     let app_cfg = ctx.querier.query_dango_config()?;
 
@@ -344,6 +438,12 @@ fn swap_exact_amount_out(
     route: UniqueVec<PairId>,
     output: NonZero<Coin>,
 ) -> anyhow::Result<Response> {
+    // Swapping is not allowed when trading is paused.
+    ensure!(
+        !PAUSED.load(ctx.storage)?,
+        "can't swap when trading is paused"
+    );
+
     let app_cfg = ctx.querier.query_dango_config()?;
 
     // Create the oracle querier with max staleness.
@@ -397,29 +497,36 @@ fn swap_exact_amount_out(
 // ----------------------------------- tests -----------------------------------
 
 #[cfg(test)]
+// qlty-ignore: similar-code
 mod tests {
     use {
         super::*,
+        crate::RESTING_ORDER_BOOK,
         dango_types::{
             constants::{dango, usdc},
-            dex::{Direction, PairParams, PassiveLiquidity},
+            dex::{
+                AmountOption, PairParams, PassiveLiquidity, Price, PriceOption,
+                RestingOrderBookState, TimeInForce, Xyk,
+            },
         },
-        grug::{Addr, Bounded, MockContext, NumberConst, Udec128},
-        std::str::FromStr,
+        grug::{Addr, Bounded, MockContext, MockQuerier, NumberConst, Udec128},
+        std::{collections::BTreeSet, str::FromStr},
         test_case::test_case,
     };
 
     /// Ensure that if a user creates orders with more-than-sufficient funds, the
     /// extra funds are properly refunded.
     #[test_case(
+        None,
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![],
-            creates_limit: vec![CreateLimitOrderRequest {
+            creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
-                price: Udec128::new(2),
+                price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
+                amount: AmountOption::Bid {
+                    quote: NonZero::new_unchecked(Uint128::new(200)),
+                },
+                time_in_force: TimeInForce::GoodTilCanceled,
             }],
             cancels: None,
         },
@@ -428,14 +535,16 @@ mod tests {
         "overfunded limit bid: send 300, require 200"
     )]
     #[test_case(
+        None,
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![],
-            creates_limit: vec![CreateLimitOrderRequest {
+            creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
-                price: Udec128::new(2),
+                price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
+                amount: AmountOption::Ask {
+                    base: NonZero::new_unchecked(Uint128::new(100)),
+                },
+                time_in_force: TimeInForce::GoodTilCanceled,
             }],
             cancels: None,
         },
@@ -444,15 +553,23 @@ mod tests {
         "overfunded limit ask: send 300, require 100"
     )]
     #[test_case(
+        Some(RestingOrderBookState {
+            best_bid_price: Some(Price::new(100)),
+            best_ask_price: Some(Price::new(100)),
+            mid_price: Some(Price::new(100)),
+        }),
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![CreateMarketOrderRequest {
+            creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Bid,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
-                max_slippage: Udec128::ZERO,
+                price: PriceOption::Market {
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                },
+                amount: AmountOption::Bid {
+                    quote: NonZero::new_unchecked(Uint128::new(100)),
+                },
+                time_in_force: TimeInForce::ImmediateOrCancel,
             }],
-            creates_limit: vec![],
             cancels: None,
         },
         coins! { usdc::DENOM.clone() => 300 },
@@ -460,15 +577,23 @@ mod tests {
         "overfunded market bid: send 300, require 100"
     )]
     #[test_case(
+        Some(RestingOrderBookState {
+            best_bid_price: Some(Price::new(100)),
+            best_ask_price: Some(Price::new(100)),
+            mid_price: Some(Price::new(100)),
+        }),
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![CreateMarketOrderRequest {
+            creates: vec![CreateOrderRequest {
                 base_denom: dango::DENOM.clone(),
                 quote_denom: usdc::DENOM.clone(),
-                direction: Direction::Ask,
-                amount: NonZero::new_unchecked(Uint128::new(100)),
-                max_slippage: Udec128::ZERO,
+                price: PriceOption::Market {
+                    max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                },
+                amount: AmountOption::Ask {
+                    base: NonZero::new_unchecked(Uint128::new(100)),
+                },
+                time_in_force: TimeInForce::ImmediateOrCancel,
             }],
-            creates_limit: vec![],
             cancels: None,
         },
         coins! { dango::DENOM.clone() => 300 },
@@ -476,37 +601,54 @@ mod tests {
         "overfunded market ask: send 300, require 100"
     )]
     #[test_case(
+        Some(RestingOrderBookState {
+            best_bid_price: Some(Price::new(100)),
+            best_ask_price: Some(Price::new(100)),
+            mid_price: Some(Price::new(100)),
+        }),
         ExecuteMsg::BatchUpdateOrders {
-            creates_market: vec![
-                CreateMarketOrderRequest {
+            creates: vec![
+                // two market orders
+                CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
-                    max_slippage: Udec128::ZERO,
+                    price: PriceOption::Market {
+                        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                    },
+                    amount: AmountOption::Bid {
+                        quote: NonZero::new_unchecked(Uint128::new(100)),
+                    },
+                    time_in_force: TimeInForce::ImmediateOrCancel,
                 },
-                CreateMarketOrderRequest {
+                CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
-                    max_slippage: Udec128::ZERO,
+                    price: PriceOption::Market {
+                        max_slippage: Bounded::new_unchecked(Udec128::ZERO),
+                    },
+                    amount: AmountOption::Ask {
+                        base: NonZero::new_unchecked(Uint128::new(100)),
+                    },
+                    time_in_force: TimeInForce::ImmediateOrCancel,
                 },
-            ],
-            creates_limit: vec![
-                CreateLimitOrderRequest {
+                // two limit orders
+                CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Bid,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
-                    price: Udec128::new(2),
+                    price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
+                    amount: AmountOption::Bid {
+                        quote: NonZero::new_unchecked(Uint128::new(200)),
+                    },
+                    time_in_force: TimeInForce::GoodTilCanceled,
                 },
-                CreateLimitOrderRequest {
+                CreateOrderRequest {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usdc::DENOM.clone(),
-                    direction: Direction::Ask,
-                    amount: NonZero::new_unchecked(Uint128::new(100)),
-                    price: Udec128::new(2),
+                    price: PriceOption::Limit(NonZero::new_unchecked(Price::new(2))),
+                    amount: AmountOption::Ask {
+                        base: NonZero::new_unchecked(Uint128::new(100)),
+                    },
+                    time_in_force: TimeInForce::GoodTilCanceled,
                 },
             ],
             cancels: None,
@@ -521,9 +663,42 @@ mod tests {
         };
         "overfunded both in one tx; send 600 usdc + 600 dango, require 300 usdc + 200 dango"
     )]
-    fn overfunded_order_refund_works(msg: ExecuteMsg, funds: Coins, expected_refunds: Coins) {
+    fn overfunded_order_refund_works(
+        resting_order_book_state: Option<RestingOrderBookState>,
+        msg: ExecuteMsg,
+        funds: Coins,
+        expected_refunds: Coins,
+    ) {
         let sender = Addr::mock(1);
-        let mut ctx = MockContext::new().with_sender(sender).with_funds(funds);
+        let dex_contract = Addr::mock(2);
+
+        let querier = MockQuerier::new().with_raw_contract_storage(dex_contract, |storage| {
+            // Create the dango-usdc pair.
+            // The specific parameters don't matter. We just need the pair to exist.
+            PAIRS
+                .save(storage, (&dango::DENOM, &usdc::DENOM), &PairParams {
+                    lp_denom: Denom::from_str("lp").unwrap(),
+                    pool_type: PassiveLiquidity::Xyk(Xyk {
+                        spacing: Udec128::ONE,
+                        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                        limit: 10,
+                    }),
+                    bucket_sizes: BTreeSet::new(),
+                    swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
+                })
+                .unwrap();
+        });
+
+        let mut ctx = MockContext::new()
+            .with_contract(dex_contract)
+            .with_sender(sender)
+            .with_funds(funds)
+            .with_querier(querier);
+
+        // Set the pause state as unpaused.
+        PAUSED.save(&mut ctx.storage, &false).unwrap();
 
         // Create the dango-usdc pair.
         // The specific parameters don't matter. We just need the pair to exist.
@@ -533,13 +708,31 @@ mod tests {
                 (&dango::DENOM, &usdc::DENOM),
                 &PairParams {
                     lp_denom: Denom::from_str("lp").unwrap(),
-                    pool_type: PassiveLiquidity::Xyk {
-                        order_spacing: Udec128::ONE,
-                    },
+                    pool_type: PassiveLiquidity::Xyk(Xyk {
+                        spacing: Udec128::ONE,
+                        reserve_ratio: Bounded::new_unchecked(Udec128::ZERO),
+                        limit: 10,
+                    }),
+                    bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
+                    min_order_size_quote: Uint128::ZERO,
+                    min_order_size_base: Uint128::ZERO,
                 },
             )
             .unwrap();
+
+        // If a resting order book state is provided, set it up.
+        // This is needed if the test case involves market orders. If limit orders
+        // only then not needed.
+        if let Some(resting_order_book_state) = resting_order_book_state {
+            RESTING_ORDER_BOOK
+                .save(
+                    &mut ctx.storage,
+                    (&dango::DENOM, &usdc::DENOM),
+                    &resting_order_book_state,
+                )
+                .unwrap();
+        }
 
         // The response should contain exactly 1 message, which is the refund.
         let res = execute(ctx.as_mutable(), msg).unwrap();

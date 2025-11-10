@@ -1,10 +1,10 @@
 use crate::{
     Event, EventId, EventStatus, EvtAuthenticate, EvtBackrun, EvtConfigure, EvtCron, EvtExecute,
-    EvtFinalize, EvtGuest, EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpload,
-    EvtWithhold, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus,
-    FlatEvtAuthenticate, FlatEvtBackrun, FlatEvtCron, FlatEvtExecute, FlatEvtFinalize,
-    FlatEvtGuest, FlatEvtInstantiate, FlatEvtMigrate, FlatEvtReply, FlatEvtTransfer,
-    FlatEvtWithhold, MsgsAndBackrunEvents, SubEvent, SubEventStatus,
+    EvtFinalize, EvtGuest, EvtInstantiate, EvtMigrate, EvtReply, EvtTransfer, EvtUpgrade,
+    EvtUpload, EvtWithhold, FlatCategory, FlatCommitmentStatus, FlatEvent, FlatEventInfo,
+    FlatEventStatus, FlatEvtAuthenticate, FlatEvtBackrun, FlatEvtCron, FlatEvtExecute,
+    FlatEvtFinalize, FlatEvtGuest, FlatEvtInstantiate, FlatEvtMigrate, FlatEvtReply,
+    FlatEvtTransfer, FlatEvtWithhold, MsgsAndBackrunEvents, SubEvent, SubEventStatus,
 };
 
 pub trait Flatten {
@@ -25,6 +25,37 @@ pub trait FlattenStatus {
         commitment: FlatCommitmentStatus,
     ) -> Vec<FlatEventInfo>;
 }
+
+pub trait NaiveFlatten: Flatten + Sized {
+    fn naive_flatten(
+        self,
+        commitment: FlatCommitmentStatus,
+        status: FlatEventStatus,
+    ) -> Vec<FlatEventInfo> {
+        let mut id = EventId {
+            block: 0,
+            category: FlatCategory::Tx,
+            category_index: 0,
+            message_index: None,
+            event_index: 0,
+        };
+
+        self.flatten(
+            &EventId {
+                block: 0,
+                category: FlatCategory::Tx,
+                category_index: 0,
+                message_index: None,
+                event_index: 0,
+            },
+            &mut id,
+            commitment,
+            status,
+        )
+    }
+}
+
+impl<T> NaiveFlatten for T where T: Flatten {}
 
 // -------------------------- impl Flat for Status --------------------------
 
@@ -127,6 +158,9 @@ impl Flatten for Event {
             Event::Configure(evt_configure) => {
                 evt_configure.flatten(parent_id, next_id, commitment, status)
             },
+            Event::Upgrade(evt_upgrade) => {
+                evt_upgrade.flatten(parent_id, next_id, commitment, status)
+            },
             Event::Transfer(evt_transfer) => {
                 evt_transfer.flatten(parent_id, next_id, commitment, status)
             },
@@ -172,6 +206,24 @@ impl Flatten for EvtConfigure {
             commitment_status: commitment,
             event_status: status,
             event: FlatEvent::Configure(self),
+        }]
+    }
+}
+
+impl Flatten for EvtUpgrade {
+    fn flatten(
+        self,
+        parent_id: &EventId,
+        next_id: &mut EventId,
+        commitment: FlatCommitmentStatus,
+        status: FlatEventStatus,
+    ) -> Vec<FlatEventInfo> {
+        vec![FlatEventInfo {
+            id: next_id.clone(),
+            parent_id: parent_id.clone(),
+            commitment_status: commitment,
+            event_status: status,
+            event: FlatEvent::Upgrade(self),
         }]
     }
 }

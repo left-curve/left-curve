@@ -1,24 +1,28 @@
 use {
+    error_backtrace::Backtraceable,
     grug_app::{AppError, GasTracker, Instance, QuerierProvider, StorageProvider, Vm},
     grug_types::{Context, Hash256},
     grug_vm_rust::{RustInstance, RustVm},
     grug_vm_wasm::{WasmInstance, WasmVm},
     std::collections::HashSet,
-    thiserror::Error,
 };
 
-#[derive(Debug, Error)]
+#[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 pub enum VmError {
     #[error("RustVm error: {0}")]
-    Rust(#[from] grug_vm_rust::VmError),
+    Rust(grug_vm_rust::VmError),
 
     #[error("WasmVm error: {0}")]
-    Wasm(#[from] grug_vm_wasm::VmError),
+    Wasm(grug_vm_wasm::VmError),
 }
 
 impl From<VmError> for AppError {
     fn from(err: VmError) -> Self {
-        AppError::Vm(err.to_string())
+        AppError::Vm {
+            error: err.error(),
+            backtrace: err.backtrace(),
+        }
     }
 }
 
@@ -146,6 +150,54 @@ impl Instance for HybridInstance {
                 let res = instance.call_in_2_out_1(name, ctx, param1, param2)?;
                 Ok(res)
             },
+        }
+    }
+}
+
+#[cfg(feature = "testing")]
+mod _testing {
+    use {
+        crate::HybridVm,
+        grug_testing::TestVm,
+        grug_types::{Binary, Hash256, HashExt},
+        grug_vm_rust::RustVm,
+        std::{collections::HashSet, sync::LazyLock},
+    };
+
+    static DEFAULT_ACCOUNT_CODE: LazyLock<Binary> = LazyLock::new(RustVm::default_account_code);
+    static DEFAULT_BANK_CODE: LazyLock<Binary> = LazyLock::new(RustVm::default_bank_code);
+    static DEFAULT_TAXMAN_CODE: LazyLock<Binary> = LazyLock::new(RustVm::default_taxman_code);
+
+    impl HybridVm {
+        /// Similar to `new`, but adding the default account, bank, and taxman
+        /// from the Rust VM.
+        pub fn new_testing<T>(wasm_cache_capacity: usize, code_hashes_for_rust: T) -> Self
+        where
+            T: IntoIterator<Item = Hash256>,
+        {
+            let mut finalize = HashSet::from([
+                DEFAULT_ACCOUNT_CODE.hash256(),
+                DEFAULT_BANK_CODE.hash256(),
+                DEFAULT_TAXMAN_CODE.hash256(),
+            ]);
+
+            finalize.extend(code_hashes_for_rust);
+
+            Self::new(wasm_cache_capacity, finalize)
+        }
+    }
+
+    impl grug_testing::TestVm for HybridVm {
+        fn default_account_code() -> grug_types::Binary {
+            DEFAULT_ACCOUNT_CODE.clone()
+        }
+
+        fn default_bank_code() -> grug_types::Binary {
+            DEFAULT_BANK_CODE.clone()
+        }
+
+        fn default_taxman_code() -> grug_types::Binary {
+            DEFAULT_TAXMAN_CODE.clone()
         }
     }
 }

@@ -51,12 +51,16 @@ fn pay(ctx: MutableCtx, ty: FeeType, payments: BTreeMap<Addr, Coins>) -> anyhow:
             Ok(acc)
         })?;
 
-    ensure!(
-        ctx.funds == total,
-        "funds do not add up to the total amount of payments! funds: {}, total: {}",
-        ctx.funds,
-        total
-    );
+    for coin in total {
+        let paid = ctx.funds.amount_of(&coin.denom);
+        ensure!(
+            paid >= coin.amount,
+            "sent fund is less than declared payment! denom: {}, declared: {}, paid: {}",
+            coin.denom,
+            coin.amount,
+            paid
+        );
+    }
 
     // For now, nothing to do.
     // In the future, we will implement affiliate fees.

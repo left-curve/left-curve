@@ -1,17 +1,3 @@
-// TODO: replace with https://doc.rust-lang.org/std/ops/trait.Try.html once stabilized
-#[macro_export]
-#[doc(hidden)]
-macro_rules! unwrap_into_generic_result {
-    ($expr:expr) => {
-        match $expr {
-            Ok(val) => val,
-            Err(err) => {
-                return GenericResult::Err(err.to_string());
-            },
-        }
-    };
-}
-
 #[macro_export]
 #[doc(hidden)]
 #[rustfmt::skip]

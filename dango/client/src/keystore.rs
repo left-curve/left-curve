@@ -2,7 +2,7 @@ use {
     aes_gcm::{AeadCore, Aes256Gcm, Key, KeyInit, aead::Aead},
     bip32::{Mnemonic, PublicKey, XPrv},
     grug::{Binary, ByteArray, JsonDeExt, JsonSerExt},
-    grug_crypto::Identity256,
+    identity::Identity256,
     k256::ecdsa::{Signature, signature::DigestSigner},
     pbkdf2::pbkdf2_hmac,
     rand::{Rng, rngs::OsRng},

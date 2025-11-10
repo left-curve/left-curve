@@ -1,5 +1,8 @@
 use {
-    crate::{auth::Nonce, dex::OrdersByUserResponse},
+    crate::{
+        auth::Nonce,
+        dex::{OrderId, OrdersByUserResponse},
+    },
     grug::{Bounded, Coins, Denom, Udec128, Udec256, Uint128, ZeroExclusiveOneInclusive},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -12,7 +15,7 @@ pub type CollateralPower = Bounded<Udec128, ZeroExclusiveOneInclusive>;
 pub struct HealthData {
     pub scaled_debts: BTreeMap<Denom, Udec256>,
     pub collateral_balances: BTreeMap<Denom, Uint128>,
-    pub limit_orders: BTreeMap<u64, OrdersByUserResponse>,
+    pub limit_orders: BTreeMap<OrderId, OrdersByUserResponse>,
 }
 
 /// Output for computing a margin account's health.

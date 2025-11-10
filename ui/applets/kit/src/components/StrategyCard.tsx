@@ -1,9 +1,9 @@
 import { useConfig } from "@left-curve/store";
-import { Button } from "#components/Button.js";
+import { Button } from "../components/Button.js";
 
 import type { PairSymbols, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 type StrategyCardProps = {
   pair: PairUpdate;
@@ -66,16 +66,16 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
   const { baseDenom, quoteDenom } = pair;
   const { coins } = useConfig();
 
-  const baseCoin = coins[baseDenom];
-  const quoteCoin = coins[quoteDenom];
+  const baseCoin = coins.byDenom[baseDenom];
+  const quoteCoin = coins.byDenom[quoteDenom];
 
   return (
-    <div className="relative p-4 min-h-[21.125rem] min-w-[17.375rem] bg-rice-50 shadow-account-card rounded-xl overflow-hidden">
+    <div className="relative p-4 min-h-[21.125rem] min-w-[17.375rem] bg-surface-tertiary-rice shadow-account-card rounded-xl overflow-hidden">
       <img
         src={images[index].character}
         alt={images[index].alt}
         className={twMerge(
-          "absolute z-0 opacity-10 pointer-events-none select-none",
+          "absolute z-0 opacity-10 pointer-events-none select-none drag-none",
           images[index].className,
         )}
       />
@@ -87,13 +87,13 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
           </div>
           <div className="flex flex-col gap-1">
             <p className="exposure-h3-italic">{`${baseCoin.symbol} ${labels.party}!`}</p>
-            <p className="diatype-lg-medium text-gray-500">
+            <p className="diatype-lg-medium text-ink-tertiary-500">
               {labels.deposit}{" "}
               <span className="font-bold">
                 {baseCoin.symbol}-{quoteCoin.symbol}
               </span>
             </p>
-            <p className="diatype-lg-medium text-gray-500">
+            <p className="diatype-lg-medium text-ink-tertiary-500">
               {labels.earn} {quoteCoin.symbol}
             </p>
           </div>
@@ -107,14 +107,14 @@ export const StrategyCard: React.FC<StrategyCardProps> = ({
           >
             {labels.select}
           </Button>
-          <div className="p-2 rounded-xl bg-rice-100/80 flex items-center justify-between">
+          <div className="p-2 rounded-xl bg-outline-primary-rice flex items-center justify-between">
             <div className="flex gap-2 items-center">
-              <span className="text-gray-500 diatype-xs-medium">{labels.apy}</span>
-              <span className="text-gray-700 diatype-sm-bold">-</span>
+              <span className="text-ink-tertiary-500 diatype-xs-medium">{labels.apy}</span>
+              <span className="text-ink-secondary-700 diatype-sm-bold">-</span>
             </div>
             <div className="flex gap-2 items-center">
-              <span className="text-gray-500 diatype-xs-medium">{labels.tvl}</span>
-              <span className="text-gray-700 diatype-sm-bold">-</span>
+              <span className="text-ink-tertiary-500 diatype-xs-medium">{labels.tvl}</span>
+              <span className="text-ink-secondary-700 diatype-sm-bold">-</span>
             </div>
           </div>
         </div>

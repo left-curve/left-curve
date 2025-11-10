@@ -1,23 +1,15 @@
-import {
-  Button,
-  IconBell,
-  IconGear,
-  IconUser,
-  twMerge,
-  useMediaQuery,
-} from "@left-curve/applets-kit";
-
 import { useAccount } from "@left-curve/store";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useRef } from "react";
-import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
-import { TradeButtons } from "../dex/TradeButtons";
-import { NotificationsMenu } from "../notifications/NotificationsMenu";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useApp, useMediaQuery } from "@left-curve/applets-kit";
+
+import { Button, IconButton, IconWallet, twMerge } from "@left-curve/applets-kit";
+import { Link } from "@tanstack/react-router";
 import { AccountMenu } from "./AccountMenu";
-import { Hamburger } from "./Hamburguer";
 import { SearchMenu } from "./SearchMenu";
 import { TxIndicator } from "./TxIndicator";
+
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { TestnetBanner } from "./TestnetBanner";
 
 interface HeaderProps {
   isScrolled: boolean;
@@ -26,33 +18,34 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
   const { account, isConnected } = useAccount();
 
-  const {
-    setSidebarVisibility,
-    setNotificationMenuVisibility,
-    isNotificationMenuVisible,
-    isSidebarVisible,
-  } = useApp();
+  const { setSidebarVisibility, isSidebarVisible, isSearchBarVisible } = useApp();
   const { location } = useRouterState();
   const navigate = useNavigate();
   const { isLg } = useMediaQuery();
-  const buttonNotificationsRef = useRef<HTMLButtonElement>(null);
 
-  const linkStatus = (path: string) => (location.pathname.startsWith(path) ? "active" : "");
   const isProSwap = location.pathname.includes("trade");
+
+  const hideSearchBar = (isProSwap && !isLg) || (location.pathname === "/" && isLg);
 
   return (
     <header
       className={twMerge(
-        "fixed lg:sticky bottom-0 lg:top-0 left-0 bg-transparent z-50 w-full transition-all",
-        isScrolled ? "lg:bg-white-100 lg:shadow-account-card" : "bg-transparent shadow-none",
+        "fixed bottom-0 lg:top-0 left-0 right-0 bg-transparent z-50 transition-[background,box-shadow] w-full",
+        isScrolled
+          ? "lg:bg-surface-primary-rice lg:shadow-account-card"
+          : "bg-transparent shadow-none",
+        location.pathname === "/" ? "lg:fixed h-fit" : "lg:sticky flex flex-col items-center",
       )}
     >
-      <div className="gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
+      {isLg ? <div id="quest-banner" className="w-full" /> : null}
+      {isLg ? <TestnetBanner /> : null}
+
+      <div className="w-full gap-4 relative flex flex-wrap lg:flex-nowrap items-center justify-center xl:grid xl:grid-cols-4 max-w-[76rem] mx-auto p-4">
         <Link to="/" className="w-fit">
           <img
-            src="/favicon.svg"
+            src="/dango-logo.svg"
             alt="dango logo"
-            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-btn-shadow-gradient"
+            className="h-11 order-1 cursor-pointer hidden lg:flex rounded-full shadow-account-card select-none bg-surface-secondary-rice"
           />
         </Link>
         <div
@@ -63,61 +56,50 @@ export const Header: React.FC<HeaderProps> = ({ isScrolled }) => {
             },
           )}
         >
-          {isProSwap && !isLg ? <TradeButtons /> : <SearchMenu />}
-          <Hamburger />
-        </div>
-        <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
-          <Button
-            as={Link}
-            variant="utility"
-            size="lg"
-            to="/settings"
-            className=""
-            data-status={linkStatus("/settings")}
-          >
-            <IconGear className="w-6 h-6 text-rice-700" />
-          </Button>
-
-          {isConnected ? (
-            <TxIndicator
-              as={Button}
+          {!hideSearchBar ? <SearchMenu /> : null}
+          {isProSwap ? (
+            <div
+              id="trade-buttons"
+              className="flex gap-2 items-center justify-center w-full lg:hidden"
+            />
+          ) : null}
+          {!isSearchBarVisible ? (
+            <IconButton
+              onClick={() =>
+                isConnected ? setSidebarVisibility(true) : navigate({ to: "/signin" })
+              }
               variant="utility"
               size="lg"
-              data-status={linkStatus("/notifications")}
-              onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
+              type="button"
+              className="shadow-account-card lg:hidden"
             >
-              <Button
-                ref={buttonNotificationsRef}
-                variant="utility"
-                size="lg"
-                data-status={linkStatus("/notifications")}
-                onClick={() => setNotificationMenuVisibility(!isNotificationMenuVisible)}
-              >
-                <IconBell className="w-6 h-6 text-rice-700" />
-              </Button>
-            </TxIndicator>
+              <TxIndicator icon={<IconWallet className="w-6 h-6" />} />
+            </IconButton>
           ) : null}
+        </div>
+        <div className="hidden lg:flex gap-2 items-center justify-end order-2 lg:order-3">
           <Button
             dng-connect-button="true"
             variant="utility"
             size="lg"
             onClick={() =>
-              isConnected ? setSidebarVisibility(!isSidebarVisible) : navigate({ to: "/signin" })
+              isConnected ? setSidebarVisibility(!isSidebarVisible) : navigate({ to: "/signup" })
             }
           >
             {isConnected ? (
-              <>
-                <IconUser className="w-6 h-6" />
-                <span className="italic font-exposure font-bold">{account?.username}</span>
-              </>
+              <div className="flex items-center justify-center gap-2">
+                <TxIndicator icon={<IconWallet className="w-6 h-6" />} />
+                <span className="italic font-exposure font-bold capitalize">
+                  {account?.type} # {account?.index}
+                </span>
+              </div>
             ) : (
-              <span>{m["common.signin"]()}</span>
+              <span>{m["common.signup"]()}</span>
             )}
           </Button>
         </div>
-        <NotificationsMenu buttonRef={buttonNotificationsRef} />
       </div>
-      {isLg ? <AccountMenu.Desktop /> : <AccountMenu.Mobile />}
+      <AccountMenu />
     </header>
   );
 };

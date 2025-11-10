@@ -1,5 +1,11 @@
-import { Button, IconButton, IconClose, Skeleton, TruncateText } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
+import {
+  Button,
+  IconButton,
+  IconClose,
+  Skeleton,
+  TruncateText,
+  useApp,
+} from "@left-curve/applets-kit";
 
 import type { Address } from "@left-curve/dango/types";
 import { formatUnits } from "@left-curve/dango/utils";
@@ -7,7 +13,7 @@ import { useConfig, usePrices, usePublicClient } from "@left-curve/store";
 import { useQuery } from "@tanstack/react-query";
 
 import { forwardRef, useImperativeHandle } from "react";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 type ConfirmSendProps = {
   amount: string;
@@ -23,7 +29,7 @@ export const ConfirmSend = forwardRef(
     const { formatNumberOptions } = settings;
     const { coins } = useConfig();
     const client = usePublicClient();
-    const coin = coins[denom];
+    const coin = coins.byDenom[denom];
 
     const { data: username, isLoading } = useQuery({
       queryKey: ["username", to],
@@ -45,35 +51,37 @@ export const ConfirmSend = forwardRef(
     const humanAmount = formatUnits(amount, coin.decimals);
 
     return (
-      <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
-        <p className="text-gray-900 diatype-lg-medium w-full text-center">
+      <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-5 w-full md:max-w-[25rem]">
+        <p className="text-ink-primary-900 diatype-lg-medium w-full text-center">
           {m["modals.confirmSend.title"]()}
         </p>
         <div className=" flex flex-col gap-4">
           <div className="flex flex-col gap-2 w-full">
-            <p className="exposure-sm-italic text-gray-300">{m["modals.confirmSend.sending"]()}</p>
-            <div className="flex items-center justify-between text-gray-700 h3-bold">
+            <p className="exposure-sm-italic text-primitives-gray-light-300">
+              {m["modals.confirmSend.sending"]()}
+            </p>
+            <div className="flex items-center justify-between text-ink-secondary-700 h3-bold">
               <p>
                 {humanAmount} {coin.symbol}
               </p>
               <img src={coin.logoURI} alt={coin.denom} className="w-8 h-8" />
             </div>
-            <p className="text-gray-500 diatype-sm-regular">
+            <p className="text-ink-tertiary-500 diatype-sm-regular">
               {getPrice(humanAmount, denom, { format: true, formatOptions: formatNumberOptions })}
             </p>
           </div>
           <div className="flex flex-col gap-2 w-full">
-            <p className="exposure-sm-italic text-gray-300">{m["common.to"]()}</p>
+            <p className="exposure-sm-italic text-primitives-gray-light-300">{m["common.to"]()}</p>
             {isLoading ? (
               <Skeleton className="h-[34px] w-full max-w-36" />
             ) : (
-              <p className=" text-gray-700 h3-bold">{username}</p>
+              <p className=" text-ink-secondary-700 h3-bold">{username}</p>
             )}
-            <TruncateText className="text-gray-500 diatype-sm-regular " text={to} />
+            <TruncateText className="text-ink-tertiary-500 diatype-sm-regular " text={to} />
           </div>
           {/*  <div className="flex items-center justify-between ">
-          <p className="text-gray-500 diatype-sm-regular">Fee</p>
-          <p className="text-gray-700 diatype-sm-medium">$1.2</p>
+          <p className="text-ink-tertiary-500 diatype-sm-regular">Fee</p>
+          <p className="text-ink-secondary-700 diatype-sm-medium">$1.2</p>
         </div> */}
         </div>
         <IconButton

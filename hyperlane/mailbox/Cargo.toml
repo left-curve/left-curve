@@ -1,16 +1,13 @@
 [package]
-name          = "hyperlane-mailbox"
-version       = { workspace = true }
 authors       = { workspace = true }
-edition       = { workspace = true }
-rust-version  = { workspace = true }
-documentation = { workspace = true }
-repository    = { workspace = true }
-license       = { workspace = true }
 categories    = { workspace = true }
-
-[lib]
-crate-type = ["cdylib", "rlib"]
+documentation = { workspace = true }
+edition       = { workspace = true }
+license       = { workspace = true }
+name          = "hyperlane-mailbox"
+repository    = { workspace = true }
+rust-version  = { workspace = true }
+version       = { workspace = true }
 
 [features]
 # If enabled, Wasm exports won't be created. This allows this contract to be

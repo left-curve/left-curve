@@ -1,64 +1,59 @@
 use {
-    crate::{
-        INCOMING_ORDERS, LIMIT_ORDERS, LimitOrder, LimitOrderKey, MARKET_ORDERS, MarketOrder,
-        MarketOrderKey,
-    },
-    anyhow::{bail, ensure},
-    dango_types::dex::{Direction, OrderCanceled, OrderId, OrderKind},
+    crate::{ORDERS, OrderKey, PAIRS, liquidity_depth::decrease_liquidity_depths},
+    anyhow::ensure,
+    dango_types::dex::{Direction, Order, OrderCanceled, OrderId, TimeInForce},
     grug::{
-        Addr, Coin, Coins, EventBuilder, MultiplyFraction, Order as IterationOrder, StdResult,
-        Storage,
+        Addr, DecCoin, DecCoins, EventBuilder, Number, Order as IterationOrder, StdResult, Storage,
+        TransferBuilder,
     },
 };
+
+/// Cancel all orders from all users.
+pub(super) fn cancel_all_orders(
+    storage: &mut dyn Storage,
+    dex_addr: Addr,
+) -> anyhow::Result<(EventBuilder, TransferBuilder<DecCoins<6>>)> {
+    let mut events = EventBuilder::new();
+    let mut refunds = TransferBuilder::<DecCoins<6>>::new();
+
+    for (order_key, order) in ORDERS
+        .range(storage, None, None, IterationOrder::Ascending)
+        .collect::<StdResult<Vec<_>>>()?
+    {
+        cancel_order(
+            storage,
+            dex_addr,
+            order_key.clone(),
+            order,
+            &mut events,
+            refunds.get_mut(order.user),
+        )?;
+
+        ORDERS.remove(storage, order_key)?;
+    }
+
+    Ok((events, refunds))
+}
 
 /// Cancel all orders that belong to the given user.
 pub(super) fn cancel_all_orders_from_user(
     storage: &mut dyn Storage,
+    dex_addr: Addr,
     user: Addr,
     events: &mut EventBuilder,
-    refunds: &mut Coins,
-) -> StdResult<()> {
+    refunds: &mut DecCoins<6>,
+) -> anyhow::Result<()> {
     // Cancel maker orders, meaning limit orders that are already in the book.
-    for (order_key, order) in LIMIT_ORDERS
+    for (order_key, order) in ORDERS
         .idx
         .user
         .prefix(user)
         .range(storage, None, None, IterationOrder::Ascending)
         .collect::<StdResult<Vec<_>>>()?
     {
-        cancel_limit_order(user, order_key.clone(), order, events, refunds)?;
+        cancel_order(storage, dex_addr, order_key.clone(), order, events, refunds)?;
 
-        LIMIT_ORDERS.remove(storage, order_key)?;
-    }
-
-    // Cancel incoming limit orders.
-    for ((pair, direction, price, order_id), order) in INCOMING_ORDERS
-        .prefix(user)
-        .values(storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?
-    {
-        cancel_limit_order(
-            user,
-            (pair, direction, price, order_id),
-            order,
-            events,
-            refunds,
-        )?;
-
-        INCOMING_ORDERS.remove(storage, (user, order_id));
-    }
-
-    // Cancel market orders.
-    for (order_key, order) in MARKET_ORDERS
-        .idx
-        .user
-        .prefix(user)
-        .range(storage, None, None, IterationOrder::Ascending)
-        .collect::<StdResult<Vec<_>>>()?
-    {
-        cancel_market_order(user, order_key.clone(), order, events, refunds)?;
-
-        MARKET_ORDERS.remove(storage, order_key)?;
+        ORDERS.remove(storage, order_key)?;
     }
 
     Ok(())
@@ -69,123 +64,90 @@ pub(super) fn cancel_all_orders_from_user(
 /// Error if the order doesn't belong to the user, or if the order doesn't exist.
 pub(super) fn cancel_order_from_user(
     storage: &mut dyn Storage,
+    dex_addr: Addr,
     user: Addr,
     order_id: OrderId,
     events: &mut EventBuilder,
-    refunds: &mut Coins,
+    refunds: &mut DecCoins<6>,
 ) -> anyhow::Result<()> {
-    // We don't know whether the order is a maker order, an incoming limit order,
-    // or a market order.
-    // First we check whether it's a maker order, which is the highest probability
-    // situation.
-    if let Some((order_key, order)) = LIMIT_ORDERS.idx.order_id.may_load(storage, order_id)? {
-        ensure!(
-            order.user == user,
-            "maker order `{order_id}` does not belong to the sender",
-        );
+    let (order_key, order) = ORDERS.idx.order_id.load(storage, order_id)?;
 
-        cancel_limit_order(user, order_key.clone(), order, events, refunds)?;
+    ensure!(
+        order.user == user,
+        "limit order `{order_id}` does not belong to the sender",
+    );
 
-        LIMIT_ORDERS.remove(storage, order_key)?;
+    cancel_order(storage, dex_addr, order_key.clone(), order, events, refunds)?;
 
-        return Ok(());
-    }
-
-    // Next, we check whether it's an incoming order.
-    if let Some((order_key, order)) = INCOMING_ORDERS.may_load(storage, (user, order_id))? {
-        ensure!(
-            order.user == user,
-            "incoming order `{order_id}` does not belong to the sender"
-        );
-
-        cancel_limit_order(user, order_key, order, events, refunds)?;
-
-        INCOMING_ORDERS.remove(storage, (user, order_id));
-
-        return Ok(());
-    }
-
-    // Finally, check whether it's a market order.
-    if let Some((order_key, order)) = MARKET_ORDERS.idx.order_id.may_load(storage, order_id)? {
-        ensure!(
-            order.user == user,
-            "market order `{order_id}` does not belong to the sender"
-        );
-
-        cancel_market_order(user, order_key.clone(), order, events, refunds)?;
-
-        MARKET_ORDERS.remove(storage, order_key)?;
-
-        return Ok(());
-    }
-
-    bail!("order not found with ID `{order_id}`");
-}
-
-fn cancel_limit_order(
-    user: Addr,
-    order_key: LimitOrderKey,
-    order: LimitOrder,
-    events: &mut EventBuilder,
-    refunds: &mut Coins,
-) -> StdResult<()> {
-    let ((base_denom, quote_denom), direction, price, order_id) = order_key;
-
-    // Compute the amount of tokens to be sent back to the user.
-    let refund = match direction {
-        Direction::Bid => Coin {
-            denom: quote_denom,
-            amount: order.remaining.checked_mul_dec_floor(price)?,
-        },
-        Direction::Ask => Coin {
-            denom: base_denom,
-            amount: order.remaining,
-        },
-    };
-
-    events.push(OrderCanceled {
-        user,
-        id: order_id,
-        kind: OrderKind::Limit,
-        remaining: order.remaining,
-        refund: refund.clone(),
-    })?;
-
-    refunds.insert(refund)?;
+    ORDERS.remove(storage, order_key)?;
 
     Ok(())
 }
 
-fn cancel_market_order(
-    user: Addr,
-    order_key: MarketOrderKey,
-    order: MarketOrder,
+fn cancel_order(
+    storage: &mut dyn Storage,
+    dex_addr: Addr,
+    order_key: OrderKey,
+    order: Order,
     events: &mut EventBuilder,
-    refunds: &mut Coins,
-) -> StdResult<()> {
-    let ((base_denom, quote_denom), direction, order_id) = order_key;
+    refunds: &mut DecCoins<6>,
+) -> anyhow::Result<()> {
+    let ((base_denom, quote_denom), direction, price, order_id) = order_key;
+    let remaining_in_quote = order.remaining.checked_mul(price)?;
+
+    // If the order is GTC, decrease the liquidity depth.
+    if order.time_in_force == TimeInForce::GoodTilCanceled {
+        let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
+
+        decrease_liquidity_depths(
+            storage,
+            &base_denom,
+            &quote_denom,
+            direction,
+            price,
+            order.remaining,
+            &pair.bucket_sizes,
+        )?;
+
+        #[cfg(feature = "metrics")]
+        {
+            // We can skip the check for `TimeInForce::ImmediateOrCancel`, because
+            // the order will be proceed in the next auction and always canceled.
+            if order.amount > order.remaining.into_int_floor() {
+                metrics::counter!(crate::metrics::LABEL_ORDERS_FILLED).increment(1);
+            }
+        }
+    }
 
     // Compute the amount of tokens to be sent back to the user.
-    let refund = match direction {
-        Direction::Bid => Coin {
-            denom: quote_denom,
-            amount: order.amount,
-        },
-        Direction::Ask => Coin {
-            denom: base_denom,
-            amount: order.amount,
-        },
-    };
+    // NOTE: only do this if the order is a user order. No need to refund passive orders.
+    if order.user != dex_addr {
+        let refund = match direction {
+            Direction::Bid => DecCoin {
+                denom: quote_denom.clone(),
+                amount: remaining_in_quote,
+            },
+            Direction::Ask => DecCoin {
+                denom: base_denom.clone(),
+                amount: order.remaining,
+            },
+        };
 
-    events.push(OrderCanceled {
-        user,
-        id: order_id,
-        kind: OrderKind::Market,
-        remaining: order.amount,
-        refund: refund.clone(),
-    })?;
+        events.push(OrderCanceled {
+            user: order.user,
+            id: order_id,
+            time_in_force: order.time_in_force,
+            remaining: order.remaining,
+            refund: refund.clone(),
+            base_denom,
+            quote_denom,
+            direction,
+            price,
+            amount: order.amount,
+        })?;
 
-    refunds.insert(refund)?;
+        refunds.insert(refund)?;
+    }
 
     Ok(())
 }

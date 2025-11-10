@@ -1,9 +1,12 @@
 #[cfg(feature = "async-graphql")]
 use {
+    crate::block_to_index::BlockToIndex,
     crate::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
     },
+    crate::indexer_path::IndexerPath,
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
+    grug_types::JsonSerExt,
     grug_types::Timestamp,
 };
 use {
@@ -50,6 +53,19 @@ impl Model {
     async fn transactions(&self, ctx: &Context<'_>) -> Result<Vec<super::transactions::Model>> {
         let loader = ctx.data_unchecked::<DataLoader<BlockTransactionsDataLoader>>();
         Ok(loader.load_one(self.clone()).await?.unwrap_or_default())
+    }
+
+    async fn crons_outcomes(&self, ctx: &Context<'_>) -> Result<Vec<String>> {
+        Ok(BlockToIndex::load_from_disk_async(
+            ctx.data_unchecked::<IndexerPath>()
+                .block_path(self.block_height as u64),
+        )
+        .await?
+        .block_outcome
+        .cron_outcomes
+        .iter()
+        .map(JsonSerExt::to_json_string)
+        .collect::<Result<Vec<_>, _>>()?)
     }
 
     async fn flatten_events(&self, ctx: &Context<'_>) -> Result<Vec<super::events::Model>> {

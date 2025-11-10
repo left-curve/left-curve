@@ -1,0 +1,12 @@
+---
+dex_bot_host: "{{ ansible_play_hosts_all | first }}"
+postgres_host: "postgres"
+postgres_external_host: "127.0.0.1"
+postgres_port: 5432
+clickhouse_http_port: 8123
+clickhouse_tcp_port: 9000
+clickhouse_host: "clickhouse"
+clickhouse_external_host: "127.0.0.1"
+frontend_banner: ""
+cosign_certificate_oidc_issuer: "https://token.actions.githubusercontent.com"
+verify_signatures: true

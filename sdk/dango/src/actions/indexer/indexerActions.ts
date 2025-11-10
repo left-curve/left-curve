@@ -16,27 +16,61 @@ import {
 } from "./subscriptions/account.js";
 
 import {
+  type CandlesSubscriptionParameters,
+  type CandlesSubscriptionReturnType,
+  candlesSubscription,
+} from "./subscriptions/candles.js";
+
+import {
   type TransferSubscriptionParameters,
   type TransferSubscriptionReturnType,
   transferSubscription,
 } from "./subscriptions/transfer.js";
 
+import {
+  tradesSubscription,
+  type TradesSubscriptionParameters,
+  type TradesSubscriptionReturnType,
+} from "./subscriptions/trades.js";
+
+import {
+  queryAppSubscription,
+  type QueryAppSubscriptionParameters,
+  type QueryAppSubscriptionReturnType,
+} from "./subscriptions/queryApp.js";
+
+import {
+  eventsByAddressesSubscription,
+  type EventsByAddressesSubscriptionParameters,
+  type EventsByAddressesSubscriptionReturnType,
+} from "./subscriptions/eventsByAddresses.js";
+
 export type IndexerActions = {
-  queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
-  searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
-  blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
-  transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
   accountSubscription: (args: AccountSubscriptionParameters) => AccountSubscriptionReturnType;
+  blockSubscription: (args: BlockSubscriptionParameters) => BlockSubscriptionReturnType;
+  candlesSubscription: (args: CandlesSubscriptionParameters) => CandlesSubscriptionReturnType;
+  eventsByAddressesSubscription: (
+    args: EventsByAddressesSubscriptionParameters,
+  ) => EventsByAddressesSubscriptionReturnType;
+  searchTxs: (args: SearchTxsParameters) => SearchTxsReturnType;
+  tradesSubscription: (args: TradesSubscriptionParameters) => TradesSubscriptionReturnType;
+  transferSubscription: (args: TransferSubscriptionParameters) => TransferSubscriptionReturnType;
+  queryAppSubscription: (args: QueryAppSubscriptionParameters) => QueryAppSubscriptionReturnType;
+  queryBlock: (args?: QueryBlockParameters) => QueryBlockReturnType;
 };
 
 export function indexerActions<transport extends Transport = Transport>(
   client: Client<transport>,
 ): IndexerActions {
   return {
-    searchTxs: (args) => searchTxs(client, args),
-    queryBlock: (args) => queryBlock(client, args),
     blockSubscription: (args) => blockSubscription(client, args),
-    transferSubscription: (args) => transferSubscription(client, args),
     accountSubscription: (args) => accountSubscription(client, args),
+    candlesSubscription: (args) => candlesSubscription(client, args),
+    eventsByAddressesSubscription: (args) => eventsByAddressesSubscription(client, args),
+    searchTxs: (args) => searchTxs(client, args),
+    tradesSubscription: (args) => tradesSubscription(client, args),
+    transferSubscription: (args) => transferSubscription(client, args),
+    queryAppSubscription: (args) => queryAppSubscription(client, args),
+    queryBlock: (args) => queryBlock(client, args),
   };
 }

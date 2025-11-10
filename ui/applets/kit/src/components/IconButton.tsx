@@ -1,5 +1,6 @@
 import { type VariantProps, tv } from "tailwind-variants";
-import { forwardRefPolymorphic, twMerge } from "#utils/index.js";
+import { twMerge, forwardRefPolymorphic } from "@left-curve/foundation";
+
 import { Spinner } from "./Spinner";
 
 export interface IconButtonProps extends VariantProps<typeof buttonVariants> {
@@ -74,12 +75,12 @@ const buttonVariants = tv(
     variants: {
       variant: {
         primary:
-          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit bg-red-bean-400 hover:bg-red-bean-600 text-white-100",
+          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit bg-primitives-red-light-400 hover:bg-primitives-red-light-600 text-surface-primary-rice",
         secondary:
-          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+          "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         utility:
-          "shadow-btn-shadow-gradient transition-all duration-300 w-fit bg-rice-100 hover:bg-rice-200 text-rice-700",
-        link: "rounded-xl transition-all duration-300 w-fit bg-transparent hover:text-gray-600 text-gray-500",
+          "shadow-btn-shadow-gradient transition-all duration-300 w-fit bg-surface-quaternary-rice hover:bg-surface-quaternary-rice-hover text-ink-secondary-rice",
+        link: "rounded-xl transition-all duration-300 w-fit bg-transparent hover:text-primitives-gray-light-600 text-ink-tertiary-500",
       },
       color: {
         blue: "",
@@ -119,39 +120,41 @@ const buttonVariants = tv(
       {
         variant: "secondary",
         color: "blue",
-        class: "bg-blue-50 hover:bg-blue-100 text-blue-500",
+        class: "bg-surface-primary-blue hover:bg-surface-secondary-blue text-ink-secondary-blue",
       },
       {
         variant: "secondary",
         color: "red",
-        class: "bg-red-bean-50 hover:bg-red-bean-100 text-red-bean-500",
+        class:
+          "bg-primitives-red-light-50 hover:bg-primitives-red-light-100 text-primitives-red-light-500",
       },
       {
         variant: "secondary",
         color: "green",
-        class: "bg-green-bean-50 hover:bg-green-bean-100 text-green-bean-500",
+        class:
+          "bg-surface-button-green hover:bg-surface-button-green-hover text-surface-primary-rice",
       },
       {
         variant: "link",
         isDisabled: true,
-        class: "text-gray-200",
+        class: "text-fg-disabled",
       },
       {
         variant: "primary",
         isDisabled: true,
-        class: "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled ",
       },
       {
         variant: "secondary",
         isDisabled: true,
         class:
-          "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled  border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled  border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "utility",
         isDisabled: true,
         class:
-          "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+          "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
         variant: ["utility", "link"],

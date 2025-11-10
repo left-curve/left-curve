@@ -1,10 +1,11 @@
-import type React from "react";
+import { useControlledState } from "@left-curve/foundation";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { tv, type VariantProps } from "tailwind-variants";
-import { useControlledState } from "#hooks/useControlledState.js";
 import { type ReactNode, useRef, useState, type PropsWithChildren, useEffect } from "react";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
+
+import type React from "react";
 
 type TooltipPlacement = "top" | "bottom" | "left" | "right" | "auto";
 
@@ -96,7 +97,7 @@ export const Tooltip: React.FC<PropsWithChildren<TooltipProps>> = ({
 };
 
 export const tooltipVariants = tv({
-  base: "bg-rice-25 text-gray-700 p-2 rounded-xl shadow-account-card max-w-lg text-center min-w-[8rem] diatype-sm-regular",
+  base: "bg-surface-secondary-rice text-ink-secondary-700 p-2 rounded-xl shadow-account-card max-w-lg text-center min-w-[8rem] diatype-sm-regular",
   variants: {
     placement: {
       top: "absolute bottom-full left-1/2 !-translate-x-1/2 mb-2 z-50",

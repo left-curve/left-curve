@@ -1,17 +1,14 @@
-import { useConfig, usePrices } from "@left-curve/store";
-import { useMemo } from "react";
+import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
+import { Cell, SortHeader, Table, useApp } from "@left-curve/applets-kit";
 
-import { Cell, Table } from "@left-curve/applets-kit";
-
-import type { TableClassNames, TableColumn } from "@left-curve/applets-kit";
+import type { TableHeaderContext, TableClassNames, TableColumn } from "@left-curve/applets-kit";
 import type { PairId, PairUpdate } from "@left-curve/dango/types";
 import type React from "react";
-import type { PropsWithChildren } from "react";
-import { useApp } from "~/hooks/useApp";
+import { useMemo, type PropsWithChildren } from "react";
 
-const SearchTokenTableContainer: React.FC<PropsWithChildren> = ({ children }) => {
-  return <>{children}</>;
-};
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+
+const SearchTokenTableContainer: React.FC<PropsWithChildren> = ({ children }) => <>{children}</>;
 
 type SearchTokenTableProps = {
   classNames?: TableClassNames;
@@ -23,7 +20,7 @@ type SearchTokenTableProps = {
 
 const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   classNames,
-  data,
+  data: pairs,
   searchText,
   onChangePairId,
 }) => {
@@ -31,38 +28,80 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
   const { formatNumberOptions } = settings;
   const { coins } = useConfig();
   const { getPrice } = usePrices({ defaultFormatOptions: formatNumberOptions });
+  const { favPairs } = useFavPairs();
+
+  const data = useMemo(() => [...pairs], [pairs, favPairs]);
+
   const columns: TableColumn<PairUpdate> = [
     {
+      id: "isFavorite",
+      accessorFn: (row) =>
+        favPairs.includes(
+          `${coins.byDenom[row.baseDenom].symbol}-${coins.byDenom[row.quoteDenom].symbol}`,
+        ),
+    },
+    {
       id: "pairName",
-      header: "Name",
-      cell: ({ row }) => (
-        <Cell.PairName
-          type="Spot"
-          pairId={{ baseDenom: row.original.baseDenom, quoteDenom: row.original.quoteDenom }}
+      header: (ctx: TableHeaderContext<PairUpdate>) => (
+        <SortHeader
+          label={m["dex.protrade.searchPairTable.name"]()}
+          sorted={ctx.column.getIsSorted()}
+          toggleSort={ctx.column.toggleSorting}
         />
       ),
+      cell: ({ row }) => {
+        const pair = { baseDenom: row.original.baseDenom, quoteDenom: row.original.quoteDenom };
+        return <Cell.PairNameWithFav type="Spot" pairId={pair} />;
+      },
       filterFn: (row, _, value) => {
-        const baseCoin = coins[row.original.baseDenom];
-        const quoteCoin = coins[row.original.quoteDenom];
-
-        return baseCoin.symbol.includes(value) || quoteCoin.symbol.includes(value);
+        const v = String(value ?? "").toUpperCase();
+        const baseCoin = coins.byDenom[row.original.baseDenom];
+        const quoteCoin = coins.byDenom[row.original.quoteDenom];
+        return (
+          baseCoin.symbol.toUpperCase().includes(v) || quoteCoin.symbol.toUpperCase().includes(v)
+        );
+      },
+      accessorFn: (row) => {
+        const baseCoin = coins.byDenom[row.baseDenom];
+        const quoteCoin = coins.byDenom[row.quoteDenom];
+        return `${baseCoin.symbol}-${quoteCoin.symbol}`;
       },
     },
     {
-      header: "Price",
+      id: "price",
+      header: (ctx: TableHeaderContext<PairUpdate>) => (
+        <SortHeader
+          label={m["dex.protrade.searchPairTable.price"]()}
+          sorted={ctx.column.getIsSorted()}
+          toggleSort={ctx.column.toggleSorting}
+        />
+      ),
       cell: ({ row }) => <Cell.Text text={getPrice(1, row.original.baseDenom, { format: true })} />,
+      accessorFn: (row) => getPrice(1, row.baseDenom, { format: false }),
     },
     {
-      header: "24h Change",
-      cell: ({ row }) => <Cell.Text text="-" />,
+      id: "change24h",
+      header: (ctx: TableHeaderContext<PairUpdate>) => (
+        <SortHeader
+          label={m["dex.protrade.searchPairTable.24hChange"]()}
+          sorted={ctx.column.getIsSorted()}
+          toggleSort={ctx.column.toggleSorting}
+        />
+      ),
+      cell: () => <Cell.Text text="-" />,
     },
     {
-      header: "Volume",
-      cell: ({ row }) => <Cell.Text text="-" />,
+      id: "volume",
+      header: (ctx: TableHeaderContext<PairUpdate>) => (
+        <SortHeader
+          label={m["dex.protrade.searchPairTable.volume"]()}
+          sorted={ctx.column.getIsSorted()}
+          toggleSort={ctx.column.toggleSorting}
+        />
+      ),
+      cell: () => <Cell.Text text="-" />,
     },
   ];
-
-  const columnFilters = useMemo(() => [{ id: "pairName", value: searchText }], [searchText]);
 
   return (
     <Table
@@ -70,7 +109,12 @@ const SearchTokenSpotTable: React.FC<SearchTokenTableProps> = ({
       columns={columns}
       style="simple"
       classNames={classNames}
-      columnFilters={columnFilters}
+      initialSortState={{
+        fixed: [{ id: "isFavorite", desc: true }],
+        variable: [{ id: "pairName", desc: false }],
+      }}
+      initialColumnVisibility={{ isFavorite: false }}
+      columnFilters={[{ id: "pairName", value: searchText }]}
       onRowClick={(row) =>
         onChangePairId({
           baseDenom: row.original.baseDenom,

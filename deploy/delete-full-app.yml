@@ -1,0 +1,170 @@
+- hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+    - community.general
+  tasks:
+    - name: Log deletion start
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Starting deployment deletion"
+        facility: local0
+        priority: info
+        ident: dango
+
+    - name: Load role defaults
+      include_vars: "roles/full-app/defaults/main.yml"
+
+    - name: Delete Traefik dynamic config
+      file:
+        path: "{{ traefik_dir }}/config/{{ deployment_name }}.yml"
+        state: absent
+      become: true
+      become_user: root
+
+    - name: Check if deployment already exists
+      stat:
+        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+      register: env_file_exists
+
+    - name: Read .env values
+      shell: |
+        grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE|DELETE_POSTGRES_DATABASE_AT_MERGE|DELETE_CLICKHOUSE_DATABASE_AT_MERGE)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+        awk -F= '{print tolower($1) "=" $2}'
+      register: existing_env_variables
+      when: env_file_exists.stat.exists
+
+    - set_fact:
+        delete_postgres_database_at_merge: false
+        delete_clickhouse_database_at_merge: false
+
+    - name: Set facts from existing .env
+      set_fact:
+        "{{ item.split('=')[0] }}": "{{ item.split('=')[1] }}"
+      loop: "{{ existing_env_variables.stdout_lines }}"
+      when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0
+
+    - name: Check if deployment directory exists
+      stat:
+        path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+      register: deployment_dir
+
+    - name: Delete CNAME records
+      when: deployment_name is defined and deployment_name.startswith('pr-')
+      community.general.cloudflare_dns:
+        zone: "{{ dango_domain }}"
+        record: "{{ item }}-{{ deployment_name }}-{{ hostname }}"
+        type: CNAME
+        api_token: "{{ cloudflare_api_token }}"
+        state: absent
+      loop: ["www", "api", "faucet", "graphiql"]
+      ignore_errors: true
+
+    - name: Cleanup deployment
+      block:
+        - name: Stop and remove stack
+          community.docker.docker_compose_v2:
+            project_name: "{{ deployment_name }}"
+            project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+            state: absent
+            remove_orphans: yes
+            remove_volumes: yes
+          ignore_errors: true
+
+        - name: Remove deployment directory
+          become: true
+          become_user: root
+          file:
+            path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
+            state: absent
+
+        - name: Prune unused Docker resources
+          community.docker.docker_prune:
+            containers: yes
+            images: yes
+            networks: yes
+            volumes: yes
+            builder_cache: yes
+      when: deployment_dir.stat.exists
+
+    - name: Delete Postgres Dango production database
+      when: delete_postgres_database_at_merge
+      community.postgresql.postgresql_db:
+        name: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: absent
+
+    - name: Log Postgres deletion
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Deleted Postgres database {{ postgres_database }}"
+        facility: local0
+        priority: info
+        ident: dango
+      when: delete_postgres_database_at_merge
+
+    - name: Delete clickhouse database
+      when: delete_clickhouse_database_at_merge
+      community.clickhouse.clickhouse_db:
+        name: "{{ clickhouse_database }}"
+        state: absent
+        login_host: "{{ clickhouse_external_host }}"
+        login_port: "{{ clickhouse_tcp_port }}"
+        login_user: "{{ clickhouse_user }}"
+        login_password: "{{ clickhouse_password }}"
+
+    - name: Log ClickHouse deletion
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Deleted ClickHouse database {{ clickhouse_database }}"
+        facility: local0
+        priority: info
+        ident: dango
+      when: delete_clickhouse_database_at_merge
+
+    - set_fact:
+        pr_tunnel_name: "{{ deployment_name }}-{{ hostname }}"
+
+    - name: Fetch PR tunnel
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}&is_deleted=false"
+        method: GET
+        headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+      register: cf_list
+      failed_when: false
+      ignore_errors: true
+
+    - name: Set PR tunnel_id
+      set_fact:
+        pr_tunnel_id: "{{ (cf_list.json.result[0].id) if (cf_list.json.result|length)>0 else omit }}"
+      ignore_errors: true
+
+    - name: Delete PR tunnel (Cloudflare)
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ pr_tunnel_id }}"
+        method: DELETE
+        headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+      when: pr_tunnel_id is defined
+      ignore_errors: true
+
+    - name: Log deletion complete
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Deleted deployment"
+        facility: local0
+        priority: info
+        ident: dango
+- hosts: monitoring
+  become: true
+  become_user: "{{ deploy_user }}"
+  tags: monitoring
+  vars:
+      deployment_name: "{{ hostvars[groups['full-app'][0]]['deployment_name'] }}"
+  tasks:
+    - name: Load prometheus vars
+      include_vars: roles/prometheus/defaults/main.yml
+    - name: Remove deployment targets
+      become: true
+      become_user: root
+      shell: rm -f {{ prometheus_dir }}/targets/{{ deployment_name }}-*
+      ignore_errors: true

@@ -9,6 +9,7 @@ pub mod gateway;
 pub mod lending;
 pub mod oracle;
 mod querier;
+pub mod signer;
 pub mod taxman;
 pub mod vesting;
 pub mod warp;

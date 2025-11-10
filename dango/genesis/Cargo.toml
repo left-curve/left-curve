@@ -9,6 +9,9 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
+[features]
+metrics = ["dango-dex/metrics"]
+
 [dependencies]
 anyhow                = { workspace = true }
 dango-account-factory = { workspace = true, features = ["library"] }
@@ -16,7 +19,7 @@ dango-account-margin  = { workspace = true, features = ["library"] }
 dango-account-multi   = { workspace = true, features = ["library"] }
 dango-account-spot    = { workspace = true, features = ["library"] }
 dango-bank            = { workspace = true, features = ["library"] }
-dango-dex             = { workspace = true, features = ["library"] }
+dango-dex             = { workspace = true, features = ["library", "tracing"] }
 dango-gateway         = { workspace = true, features = ["library"] }
 dango-lending         = { workspace = true, features = ["library"] }
 dango-oracle          = { workspace = true, features = ["library"] }

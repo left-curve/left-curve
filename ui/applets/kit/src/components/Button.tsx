@@ -1,8 +1,7 @@
 import { Spinner } from "./Spinner";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "#utils/index.js";
-import { forwardRefPolymorphic } from "#utils/polymorph.js";
+import { twMerge, forwardRefPolymorphic } from "@left-curve/foundation";
 
 import type { VariantProps } from "tailwind-variants";
 
@@ -11,6 +10,7 @@ const SpinnerColor = {
   primary: "white",
   secondary: "white",
   tertiary: "white",
+  "tertiary-red": "white",
   utility: "white",
   current: "current",
 } as const;
@@ -76,9 +76,11 @@ const buttonVariants = tv(
         primary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         secondary:
-          "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+          "rounded-full shadow-btn-secondary-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
         tertiary:
           "rounded-full shadow-btn-shadow-gradient transition-all duration-300 flex items-center justify-center w-fit",
+        "tertiary-red":
+          "rounded-full [box-shadow:0px_-1px_3px_-2px_#00000012_inset,_0px_2px_3px_-1px_#FFFFFF12_inset_0px_1px_1px_-0.5px_#0000000A] transition-all duration-300 flex items-center justify-center w-fit",
         utility: " shadow-btn-shadow-gradient transition-all duration-300 w-fit",
         link: "rounded-xl transition-all duration-300 w-fit mx-1",
       },
@@ -114,49 +116,64 @@ const buttonVariants = tv(
       {
         variant: "primary",
         class:
-          "bg-red-bean-400 hover:bg-red-bean-600 text-white-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-primitives-red-light-400 hover:bg-primitives-red-light-600 text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#F575893D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "secondary",
         class:
-          "bg-blue-50 hover:bg-blue-100 text-blue-500 focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-primary-blue hover:bg-surface-secondary-blue text-ink-secondary-blue focus:[box-shadow:0px_0px_0px_3px_#E2E3F2] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "tertiary",
         class:
-          "bg-green-bean-400 hover:bg-green-bean-500 text-white-100 focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-button-green hover:bg-surface-button-green-hover text-surface-primary-rice focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+      },
+      {
+        variant: "tertiary-red",
+        class:
+          "bg-surface-primary-red hover:bg-surface-secondary-red text-ink-tertiary-red focus:[box-shadow:0px_0px_0px_3px_#BDBF5C3D] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
       },
       {
         variant: "link",
         class:
-          "bg-transparent hover:text-blue-600 text-blue-500 focus:bg-blue-50 focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
+          "bg-transparent hover:text-primitives-blue-light-600 text-ink-secondary-blue focus:bg-surface-primary-blue focus:[box-shadow:0px_0px_0px_3px_#F0F1F7]",
       },
       {
         variant: "link",
         isDisabled: true,
-        class: "text-gray-200",
+        class: "text-fg-disabled",
       },
       {
         variant: "primary",
         isDisabled: true,
-        class: "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled ",
+        class: "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled ",
       },
       {
         variant: "secondary",
         isDisabled: true,
         class:
-          "bg-blue-50 text-blue-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+          "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(0,_0,_0,_0.04)_8%,_rgba(0,_0,_0,_0.07)_100%)]",
+      },
+      {
+        variant: "tertiary",
+        isDisabled: true,
+        class: "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled ",
+      },
+      {
+        variant: "tertiary-red",
+        isDisabled: true,
+        class: "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled ",
       },
       {
         variant: "utility",
         class:
-          "bg-rice-100 hover:bg-rice-200 text-rice-700 focus:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] data-[status=active]:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+          "bg-surface-quaternary-rice hover:bg-surface-quaternary-rice-hover text-ink-secondary-rice focus:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] data-[status=active]:[box-shadow:0px_0px_0px_3px_#FFF3E1B3] border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
         variant: "utility",
         isDisabled: true,
         class:
-          "bg-gray-50 text-gray-200 shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
+          "bg-surface-disabled-gray text-fg-disabled shadow-btn-shadow-disabled border-[1px] border-solid [border-image-source:linear-gradient(180deg,_rgba(46,_37,_33,_0.06)_8%,_rgba(46,_37,_33,_0.12)_100%)]",
       },
       {
         variant: ["utility", "link"],

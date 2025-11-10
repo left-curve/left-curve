@@ -1,8 +1,5 @@
 use {
-    crate::{
-        Dec128, Dec256, Int, Int128, Int256, NumberConst, Udec128, Udec128_6, Udec128_9, Udec256,
-        Uint128, Uint256,
-    },
+    crate::{Dec, Int, NumberConst},
     bnum::types::{I256, U256},
 };
 
@@ -20,35 +17,29 @@ pub trait FixedPoint<U> {
     const TICK: Self;
 }
 
-impl FixedPoint<u128> for Udec128_6 {
-    const PRECISION: Uint128 = Uint128::new(10_u128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Uint128::ONE);
+// ------------------------------------ dec ------------------------------------
+
+impl<const S: u32> FixedPoint<u128> for Dec<u128, S> {
+    const PRECISION: Int<u128> = Int::<u128>::new(10u128.pow(S));
+    const TICK: Self = Self::raw(Int::<u128>::ONE);
 }
 
-impl FixedPoint<u128> for Udec128_9 {
-    const PRECISION: Uint128 = Uint128::new(10_u128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Uint128::ONE);
+impl<const S: u32> FixedPoint<i128> for Dec<i128, S> {
+    const PRECISION: Int<i128> = Int::<i128>::new(10i128.pow(S));
+    const TICK: Self = Self::raw(Int::<i128>::ONE);
 }
 
-impl FixedPoint<u128> for Udec128 {
-    const PRECISION: Uint128 = Uint128::new(10_u128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Uint128::ONE);
+impl<const S: u32> FixedPoint<U256> for Dec<U256, S> {
+    const PRECISION: Int<U256> = Int::<U256>::new_from_u128(10u128.pow(S));
+    const TICK: Self = Self::raw(Int::<U256>::ONE);
 }
 
-impl FixedPoint<U256> for Udec256 {
-    const PRECISION: Uint256 = Uint256::new_from_u128(10_u128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Uint256::ONE);
+impl<const S: u32> FixedPoint<I256> for Dec<I256, S> {
+    const PRECISION: Int<I256> = Int::<I256>::new_from_i128(10i128.pow(S));
+    const TICK: Self = Self::raw(Int::<I256>::ONE);
 }
 
-impl FixedPoint<i128> for Dec128 {
-    const PRECISION: Int128 = Int128::new(10_i128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Int128::ONE);
-}
-
-impl FixedPoint<I256> for Dec256 {
-    const PRECISION: Int256 = Int256::new_from_i128(10_i128.pow(Self::DECIMAL_PLACES));
-    const TICK: Self = Self::raw(Int256::ONE);
-}
+// Trait auto-impl for all decimals via `generate_decimals` macro.
 
 // ----------------------------------- tests -----------------------------------
 

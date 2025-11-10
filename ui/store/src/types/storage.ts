@@ -1,10 +1,6 @@
 import type { JsonValue } from "@left-curve/dango/types";
 
-export type AbstractStorage = {
-  getItem(key: string): string | null | undefined | Promise<string | null | undefined>;
-  setItem(key: string, value: string): void | Promise<void>;
-  removeItem(key: string): void | Promise<void>;
-};
+export type AbstractStorage = globalThis.Storage;
 
 export type CreateStorageParameters = {
   key?: string;
@@ -26,4 +22,5 @@ export type Storage<inner extends Record<string, unknown> = Record<string, unkno
     value: value,
   ): void | Promise<void>;
   removeItem(key: keyof inner): void | Promise<void>;
+  keys(): string[];
 };

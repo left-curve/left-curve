@@ -1,0 +1,160 @@
+- name: Install psycopg2 so Ansible can talk to Postgres
+  become: true
+  become_user: root
+  apt:
+    name: python3-psycopg2
+    state: present
+- block:
+    - name: Create postgres Dango DB user
+      community.postgresql.postgresql_user:
+        name: "{{ postgres_dango_user }}"
+        password: "{{ postgres_dango_password }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Create postgres Dango DB read user
+      community.postgresql.postgresql_user:
+        name: "{{ postgres_dango_read_user }}"
+        password: "{{ postgres_dango_read_password }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Create postgres Dango production database
+      community.postgresql.postgresql_db:
+        name: "{{ postgres_database }}"
+        owner: "{{ postgres_dango_user }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant psql ALL privileges on the Dango database to the Dango user
+      community.postgresql.postgresql_privs:
+        type: database
+        privs: ALL
+        roles: "{{ postgres_dango_user }}"
+        login_db: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant CONNECT on database
+      community.postgresql.postgresql_privs:
+        type: database
+        privs: CONNECT
+        objs: "{{ postgres_database }}"
+        roles: "{{ postgres_dango_read_user }}"
+        login_db: postgres
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant USAGE on schema
+      community.postgresql.postgresql_privs:
+        type: schema
+        privs: USAGE
+        objs: public
+        roles: "{{ postgres_dango_read_user }}"
+        login_db: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant SELECT on all tables
+      community.postgresql.postgresql_privs:
+        type: table
+        privs: SELECT
+        objs: ALL_IN_SCHEMA
+        schema: public
+        roles: "{{ postgres_dango_read_user }}"
+        login_db: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Grant USAGE and SELECT on sequences
+      community.postgresql.postgresql_privs:
+        type: sequence
+        privs: USAGE,SELECT
+        objs: ALL_IN_SCHEMA
+        schema: public
+        roles: "{{ postgres_dango_read_user }}"
+        login_db: "{{ postgres_database }}"
+        login_user: "{{ postgres_user }}"
+        login_password: "{{ postgres_password }}"
+        login_host: "{{ postgres_external_host }}"
+        login_port: "{{ postgres_port }}"
+        state: present
+
+    - name: Log Postgres database creation
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Created Postgres database: {{ postgres_database }} on {{ postgres_external_host }}"
+        facility: local0
+        priority: info
+        ident: dango
+  when: not deploy_includes_postgres
+
+- block:
+    - name: Create clickhouse database
+      community.clickhouse.clickhouse_db:
+        name: "{{ clickhouse_database }}"
+        state: present
+        login_host: "{{ clickhouse_external_host }}"
+        login_port: "{{ clickhouse_tcp_port }}"
+        login_user: "{{ clickhouse_user }}"
+        login_password: "{{ clickhouse_password }}"
+
+    - name: Create clickhouse dango user
+      community.clickhouse.clickhouse_user:
+        login_host: "{{ clickhouse_external_host }}"
+        login_port: "{{ clickhouse_tcp_port }}"
+        login_user: "{{ clickhouse_user }}"
+        login_password: "{{ clickhouse_password }}"
+        name: "{{ clickhouse_dango_user }}"
+        password: "{{ clickhouse_dango_password }}"
+        update_password: always
+
+    - name: Grant clickhouse database access to user
+      community.clickhouse.clickhouse_client:
+        execute: "GRANT ALL ON {{ clickhouse_database }}.* TO {{ clickhouse_dango_user }}"
+        login_host: "{{ clickhouse_external_host }}"
+        login_port: "{{ clickhouse_tcp_port }}"
+        login_user: "{{ clickhouse_user }}"
+        login_password: "{{ clickhouse_password }}"
+
+    - name: Configure dango user settings
+      community.clickhouse.clickhouse_client:
+        login_host: "{{ clickhouse_external_host }}"
+        login_port: "{{ clickhouse_tcp_port }}"
+        login_user: "{{ clickhouse_user }}"
+        login_password: "{{ clickhouse_password }}"
+        execute: >
+          ALTER USER {{ clickhouse_dango_user }}
+          SETTINGS
+            max_concurrent_queries_for_user = 0,
+            max_memory_usage = 32000000000,
+            max_memory_usage_for_user = 48000000000,
+            max_threads = 12
+
+    - name: Log ClickHouse database creation
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Created ClickHouse database: {{ clickhouse_database }} on {{ clickhouse_external_host }}"
+        facility: local0
+        priority: info
+        ident: dango
+  when: not deploy_includes_clickhouse

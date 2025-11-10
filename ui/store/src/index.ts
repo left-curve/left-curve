@@ -1,11 +1,18 @@
 export { createConfig } from "./createConfig.js";
 export { createEventBus } from "./createEventBus.js";
 
+export { WebCryptoECDH } from "./ecdh.js";
+
+export { MessageExchanger } from "./messageExchanger.js";
+
 export {
   DangoStoreContext,
   DangoStoreProvider,
+  DangoRemoteProvider,
   type DangoStoreProviderProps,
 } from "./context.js";
+
+export { requestRemote, type WindowDangoStore } from "./remote.js";
 
 export { local, devnet, testnet, http, graphql } from "@left-curve/dango";
 
@@ -90,12 +97,6 @@ export {
 } from "./hooks/useAccountInfo.js";
 
 export {
-  type UseDataChannelParamaters,
-  type UseDataChannelReturnType,
-  useDataChannel,
-} from "./hooks/useDataChannel.js";
-
-export {
   type UseSigninWithDesktopParameters,
   type UseSigninWithDesktopReturnType,
   useSigninWithDesktop,
@@ -106,6 +107,12 @@ export {
   type UseSigninReturnType,
   useSignin,
 } from "./hooks/useSignin.js";
+
+export {
+  type UseOrdersByUserParameters,
+  type UseOrdersByUserReturnType,
+  useOrdersByUser,
+} from "./hooks/useOrdersByUser.js";
 
 export {
   type UseAppConfigParameters,
@@ -130,9 +137,9 @@ export {
 } from "./hooks/useSubmitTx.js";
 
 export {
-  type UseSimpleSwapStateParameters,
-  useSimpleSwapState,
-} from "./hooks/useSimpleSwapState.js";
+  type UseConvertStateParameters,
+  useConvertState,
+} from "./hooks/useConvertState.js";
 
 export {
   type UseProTradeStateParameters,
@@ -144,9 +151,28 @@ export {
   usePoolLiquidityState,
 } from "./hooks/usePoolLiquidityState.js";
 
+export {
+  useSearchBar,
+  type UseSearchBarParameters,
+  type SearchBarResult,
+} from "./hooks/useSearchBar.js";
+
+export {
+  useActivities,
+  type ActivityRecord,
+  type Activities,
+} from "./hooks/useActivities.js";
+
+export { useFavApplets } from "./hooks/useFavApplets.js";
+export { useFavPairs } from "./hooks/useFavPairs.js";
+
 export { useSessionKey } from "./hooks/useSessionKey.js";
 
 export { useSigningClient } from "./hooks/useSigningClient.js";
+
+export { useOrderBookState, orderBookStore } from "./hooks/useOrderBookState.js";
+export { useLiquidityDepthState, liquidityDepthStore } from "./hooks/useLiquidityDepthState.js";
+export { useLiveTradesState } from "./hooks/useLiveTradesState.js";
 
 export { rehydrate } from "./rehydrate.js";
 
@@ -166,6 +192,8 @@ export { passkey } from "./connectors/passkey.js";
 export { eip1193 } from "./connectors/eip1193.js";
 export { eip6963 } from "./connectors/eip6963.js";
 export { session } from "./connectors/session.js";
+export { remote } from "./connectors/remote.js";
+export { privy } from "./connectors/privy.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                   Actions                                  */

@@ -5,7 +5,7 @@ import type {
   Signer,
   SubscriptionCallbacks,
   Transport,
-} from "#types/index.js";
+} from "../../../types/index.js";
 
 export type BlockSubscriptionParameters = SubscriptionCallbacks<{
   block: Omit<IndexedBlock, "transactions">;
@@ -29,7 +29,7 @@ export function blockSubscription<
   if (!client.subscribe) throw new Error("error: client does not support subscriptions");
 
   const query = /* GraphQL */ `
-    subscription {
+    subscription BlockSubscription {
       block {
         blockHeight
         createdAt

@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, Query,
-        QueryRequest, QueryResponse, StdError, StdResult,
+        Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, NextUpgrade,
+        PastUpgrade, Query, QueryRequest, QueryResponse, QueryStatusResponse, StdError, StdResult,
     },
     grug_math::Uint128,
     serde::{de::DeserializeOwned, ser::Serialize},
@@ -22,6 +22,10 @@ pub trait Querier {
 /// use `dyn Querier`. This trait is automatically implemented for any type that
 /// implements `Querier`.
 pub trait QuerierExt: Querier {
+    fn query_status(&self) -> StdResult<QueryStatusResponse> {
+        self.query_chain(Query::status()).map(|res| res.as_status())
+    }
+
     fn query_config(&self) -> StdResult<Config> {
         self.query_chain(Query::config()).map(|res| res.as_config())
     }
@@ -48,6 +52,20 @@ pub trait QuerierExt: Querier {
     {
         self.query_chain(Query::app_config())
             .and_then(|res| res.as_app_config().deserialize_json())
+    }
+
+    fn query_next_upgrade(&self) -> StdResult<Option<NextUpgrade>> {
+        self.query_chain(Query::next_upgrade())
+            .map(|res| res.as_next_upgrade())
+    }
+
+    fn query_past_upgrades(
+        &self,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    ) -> StdResult<BTreeMap<u64, PastUpgrade>> {
+        self.query_chain(Query::past_upgrades(start_after, limit))
+            .map(|res| res.as_past_upgrades())
     }
 
     fn query_balance(&self, address: Addr, denom: Denom) -> StdResult<Uint128> {
@@ -150,7 +168,7 @@ pub trait QuerierExt: Querier {
             std::array::from_fn(|_| {
                 iter.next()
                     .unwrap() // unwrap is safe because we've checked the length.
-                    .map_err(StdError::host)
+                    .map_err(StdError::Host)
             })
         })
     }

@@ -1,0 +1,78 @@
+- name: Create environments
+  uri:
+    url: "https://api.github.com/repos/left-curve/left-curve/environments/{{ item }}"
+    method: PUT
+    headers:
+      Authorization: "token {{ ghcr_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      wait_timer: 0
+      reviewers: []
+      deployment_branch_policy: null
+    status_code: [200, 201]
+  failed_when: false
+  loop:
+    - "dango-frontend"
+    - "dango-api"
+    - "dango-graphiql"
+    - "faucet-bot"
+
+- name: Create GitHub deployments
+  uri:
+    url: "https://api.github.com/repos/left-curve/left-curve/deployments"
+    method: POST
+    headers:
+      Authorization: "token {{ ghcr_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      ref: "{{ github_sha }}"
+      environment: "{{ item.name }}"
+      description: "{{ item.description }}"
+      auto_merge: false
+      required_contexts: []
+    status_code: [200, 201]
+  register: deployment_results
+  loop:
+    - { name: "dango-frontend", description: "Frontend", url: "https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
+    - { name: "dango-api", description: "Dango API", url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
+    - { name: "dango-graphiql", description: "GraphiQL", url: "https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
+    - { name: "faucet-bot", description: "Faucet", url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
+
+- name: Set deployment statuses
+  uri:
+    url: "https://api.github.com/repos/left-curve/left-curve/deployments/{{ item.json.id }}/statuses"
+    method: POST
+    headers:
+      Authorization: "token {{ ghcr_token }}"
+      Accept: "application/vnd.github.v3+json"
+    body_format: json
+    body:
+      state: "success"
+      target_url: "{{ deployment_results.results[ansible_loop.index0].item.url }}"
+      description: "{{ deployment_results.results[ansible_loop.index0].item.description }} ready"
+      environment_url: "{{ deployment_results.results[ansible_loop.index0].item.url }}"
+    status_code: [200, 201]
+  loop: "{{ deployment_results.results }}"
+  loop_control:
+    extended: true
+  when: deployment_results.results is defined
+
+- name: Add deployment summary to GitHub
+  when: lookup('env', 'GITHUB_STEP_SUMMARY') != ''
+  delegate_to: localhost
+  connection: local
+  become: false
+  shell: |
+    cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+    # 🚀 PR Deployment Summary ({{ hostname }})
+    | Name | Result |
+    | ---- | ------ |
+    | **Status** | ✅ |
+    | **Dango Frontend** | [https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
+    | **Dango GraphQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql) |
+    | **Dango GraphiQL** | [https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
+    | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
+    | **Deployment name** | `{{ deployment_name }}` |
+    EOF

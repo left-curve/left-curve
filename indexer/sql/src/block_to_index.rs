@@ -1,13 +1,15 @@
 #[cfg(feature = "metrics")]
-use metrics::counter;
+use {metrics::counter, std::time::Instant};
+
 use {
-    crate::{active_model::Models, entity, error},
+    crate::{active_model::Models, entity, error, event_cache::EventCacheWriter},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{Block, BlockOutcome},
+    grug_types::{Block, BlockOutcome, HttpRequestDetails},
     indexer_disk_saver::persistence::DiskPersistence,
+    itertools::Itertools,
     sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
     serde::{Deserialize, Serialize},
-    std::path::PathBuf,
+    std::{collections::HashMap, path::PathBuf},
 };
 
 /// Saves the block and its transactions in memory
@@ -15,10 +17,18 @@ use {
 pub struct BlockToIndex {
     pub block: Block,
     pub block_outcome: BlockOutcome,
+    pub http_request_details: HashMap<String, HttpRequestDetails>,
     #[serde(skip)]
     #[borsh(skip)]
     filename: PathBuf,
 }
+
+/// Maximum number of items to insert in a single `insert_many` operation.
+/// This to avoid the following psql error:
+/// PgConnection::run(): too many arguments for query
+/// See discussion here:
+/// https://www.postgresql.org/message-id/13394.1533697144%40sss.pgh.pa.us
+pub const MAX_ROWS_INSERT: usize = 2048;
 
 impl BlockToIndex {
     pub fn new(filename: PathBuf, block: Block, block_outcome: BlockOutcome) -> Self {
@@ -26,6 +36,7 @@ impl BlockToIndex {
             block,
             block_outcome,
             filename,
+            http_request_details: HashMap::new(),
         }
     }
 
@@ -33,8 +44,12 @@ impl BlockToIndex {
     pub async fn save(
         &self,
         db: DatabaseConnection,
+        event_cache: EventCacheWriter,
         #[allow(unused_variables)] indexer_id: u64,
     ) -> error::Result<()> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
         #[cfg(feature = "tracing")]
         tracing::info!(
             block_height = self.block.info.height,
@@ -42,7 +57,7 @@ impl BlockToIndex {
             "Indexing block"
         );
 
-        let models = Models::build(&self.block, &self.block_outcome)?;
+        let models = Models::build(self)?;
 
         let db = db.begin().await?;
 
@@ -54,7 +69,11 @@ impl BlockToIndex {
         let existing_block = entity::blocks::Entity::find()
             .filter(entity::blocks::Column::BlockHeight.eq(self.block.info.height))
             .one(&db)
-            .await?;
+            .await
+            .inspect_err(|_e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_e, "Failed to check if block exists");
+            })?;
 
         if existing_block.is_some() {
             return Ok(());
@@ -62,7 +81,14 @@ impl BlockToIndex {
 
         entity::blocks::Entity::insert(models.block)
             .exec_without_returning(&db)
-            .await?;
+            .await
+            .inspect_err(|_e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_e, "Failed to insert block");
+
+                #[cfg(feature = "metrics")]
+                counter!("indexer.database.errors.total").increment(1);
+            })?;
 
         #[cfg(feature = "metrics")]
         {
@@ -73,24 +99,86 @@ impl BlockToIndex {
         }
 
         if !models.transactions.is_empty() {
-            entity::transactions::Entity::insert_many(models.transactions)
+            #[cfg(feature = "tracing")]
+            let transactions_len = models.transactions.len();
+
+            for transactions in models
+                .transactions
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::transactions::Entity::insert_many(transactions)
                 .exec_without_returning(&db)
-                .await?;
+                .await.inspect_err(|_e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_e, transactions_len=transactions_len, "Failed to insert transactions");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
+                })?;
+            }
         }
 
         if !models.messages.is_empty() {
-            entity::messages::Entity::insert_many(models.messages)
+            #[cfg(feature = "tracing")]
+            let messages_len = models.messages.len();
+
+            for messages in models
+                .messages
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::messages::Entity::insert_many(messages)
                 .exec_without_returning(&db)
-                .await?;
+                .await.inspect_err(|_e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_e, messages_len=messages_len, "Failed to insert messages");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
+                })?;
+            }
         }
 
         if !models.events.is_empty() {
-            entity::events::Entity::insert_many(models.events)
+            #[cfg(feature = "tracing")]
+            let events_len = models.events.len();
+
+            for events in models
+                .events
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::events::Entity::insert_many(events)
                 .exec_without_returning(&db)
-                .await?;
+                .await
+                .inspect_err(|_e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_e, events_len=events_len, "Failed to insert events");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
+                })?;
+            }
         }
 
         db.commit().await?;
+
+        event_cache
+            .save_events(self.block.info.height, models.events_by_address)
+            .await;
+
+        #[cfg(feature = "metrics")]
+        metrics::histogram!("indexer.block_save.duration").record(start.elapsed().as_secs_f64());
 
         Ok(())
     }
@@ -124,6 +212,10 @@ impl BlockToIndex {
         let mut block_to_index: Self = DiskPersistence::new(file_path.clone(), false).load()?;
         block_to_index.filename = file_path;
         Ok(block_to_index)
+    }
+
+    pub async fn load_from_disk_async(file_path: PathBuf) -> error::Result<Self> {
+        tokio::task::spawn_blocking(move || Self::load_from_disk(file_path)).await?
     }
 
     pub fn exists(file_path: PathBuf) -> bool {
@@ -160,6 +252,7 @@ mod tests {
         };
 
         let block_outcome = BlockOutcome {
+            height: 10,
             app_hash: Hash::ZERO,
             cron_outcomes: vec![],
             tx_outcomes: vec![],

@@ -12,7 +12,7 @@ use {
 ///    key with lengths, _including_ the last one.
 /// 2. `Prefixer` does not have a `from_slice` method because not needed.
 pub trait Prefixer {
-    fn raw_prefixes(&self) -> Vec<RawKey>;
+    fn raw_prefixes(&self) -> Vec<RawKey<'_>>;
 
     fn joined_prefix(&self) -> Vec<u8> {
         let raw_prefixes = self.raw_prefixes();
@@ -24,7 +24,7 @@ impl<T> Prefixer for T
 where
     T: PrimaryKey,
 {
-    fn raw_prefixes(&self) -> Vec<RawKey> {
+    fn raw_prefixes(&self) -> Vec<RawKey<'_>> {
         self.raw_keys()
     }
 }

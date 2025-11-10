@@ -136,6 +136,10 @@ export type DexQueryMsg =
         /** The maximum number of orders to return. */
         limit?: Option<number>;
       };
+    }
+  /** Query whether the DEX is paused. */
+  | {
+      paused: Record<never, never>;
     };
 
 export type DexExecuteMsg =
@@ -168,8 +172,7 @@ export type DexExecuteMsg =
    * Create or cancel multiple limit orders in one batch. */
   | {
       batchUpdateOrders: {
-        createsMarket: CreateMarketOrderRequest[];
-        createsLimit: CreateLimitOrderRequest[];
+        creates: CreateOrderRequest[];
         cancels: Option<CancelOrderRequest>;
       };
     }
@@ -193,6 +196,14 @@ export type DexExecuteMsg =
         baseDenom: string;
         quoteDenom: string;
       };
+    }
+  | {
+      liquidityDepth: {
+        baseDenom: Denom;
+        quoteDenom: Denom;
+        bucketSize: string;
+        limit: Option<number>;
+      };
     };
 
 export type GetDexExecuteMsg<K extends KeyOfUnion<DexExecuteMsg>> = ExtractFromUnion<
@@ -212,7 +223,7 @@ export type PairSymbols = {
   quoteSymbol: string;
 };
 
-export type OrderId = number;
+export type OrderId = string;
 
 export type CoinPair = [Coin, Coin];
 
@@ -257,6 +268,16 @@ export type OrdersByUserResponse = {
   remaining: string;
 };
 
+export type LiquidityDepth = {
+  depthBase: string;
+  depthQuote: string;
+};
+
+export type LiquidityDepthResponse = {
+  bidDepth: Option<Array<[string, LiquidityDepth]>>;
+  askDepth: Option<Array<[string, LiquidityDepth]>>;
+};
+
 export const CurveInvariant = {
   XYK: "xyk",
 } as const;
@@ -270,6 +291,12 @@ export type PairParams = {
   curveInvariant: CurveInvariants;
   /**  Fee rate for instant swaps in the passive liquidity pool. */
   swapFeeRate: string;
+  /** Price buckets for the liquidity depth chart. */
+  bucketSizes: string[];
+  /** Minimum order size, defined _in the base asset_. */
+  minOrderSizeBase: string;
+  /** Minimum order size, defined _in the quote asset_. */
+  minOrderSizeQuote: string;
 };
 
 export type PairUpdate = {
@@ -280,60 +307,124 @@ export type PairUpdate = {
 
 export type CancelOrderRequest = "all" | { some: OrderId[] };
 
-export type CreateLimitOrderRequest = {
+export type CreateOrderRequest = {
   baseDenom: Denom;
   quoteDenom: Denom;
-  direction: Directions;
-  /** The amount of _base asset_ to trade.
-   *
-   * The frontend UI may allow user to choose the amount in terms of the
-   * quote asset, and convert it to the base asset amount behind the scene:
-   *
-   * ```plain
-   * base_asset_amount = floor(quote_asset_amount / price)
-   * ```
-   */
-  amount: string;
-  /** The limit price measured _in the quote asset_, i.e. how many units of
-   * quote asset is equal in value to 1 unit of base asset.
-   */
-  price: string;
+  price: PriceOption;
+  amount: AmountOption;
+  timeInForce: TimeInForceOptions;
 };
 
-export type CreateMarketOrderRequest = {
-  baseDenom: Denom;
+export type PriceOption =
+  /** The order is to have the specified limit price. */
+  | { limit: string }
+  | {
+      /**
+       * The order's limit price is to be determined by the best available price
+       * in the resting order book and the specified maximum slippage.
+       * If best available price doesn't exist (i.e. that side of the order book
+       * is empty), order creation fails.
+       */
+      market: {
+        /**
+         * - For a BUY order, suppose the best (lowest) SELL price in the
+         *   resting order book is `p_best`, the order's limit price will be
+         *   calculated as:
+         *
+         *   ```math
+         *   p_best * (1 + max_slippage)
+         *   ```
+         *
+         * - For a SELL order, suppose the best (highest) BUY price in the
+         *   resting order book is `p_best`, the order's limit price will be
+         *   calculated as:
+         *
+         *   ```math
+         *   p_best * (1 - max_slippage)
+         *   ```
+         */
+        maxSlippage: string;
+      };
+    };
+
+export type AmountOption =
+  /**
+   * To create buy (BUY) orders, the user must send a non-zero amount the
+   * quote asset. Additionally, the order's size, computed as
+   *
+   * ```math
+   * floor(quote_amount / price)
+   * ```
+   *
+   * must also be non zero.
+   */
+  | { bid: { quote: string } }
+  /** To create ask (SELL) orders, the user must send a non-zero amount the base asset. */
+  | { ask: { base: string } };
+
+export const TimeInForceOption = {
+  GoodTilCanceled: "GTC",
+  ImmediateOrCancel: "IOC",
+};
+
+export type TimeInForceOptions = (typeof TimeInForceOption)[keyof typeof TimeInForceOption];
+
+export const CandleInterval = {
+  OneSecond: "ONE_SECOND",
+  OneMinute: "ONE_MINUTE",
+  FiveMinutes: "FIVE_MINUTES",
+  FifteenMinutes: "FIFTEEN_MINUTES",
+  OneHour: "ONE_HOUR",
+  FourHours: "FOUR_HOURS",
+  OneDay: "ONE_DAY",
+  OneWeek: "ONE_WEEK",
+} as const;
+
+export const OrderType = {
+  Limit: "limit",
+  Market: "market",
+} as const;
+
+export type OrderTypes = (typeof OrderType)[keyof typeof OrderType];
+
+export type CandleIntervals = (typeof CandleInterval)[keyof typeof CandleInterval];
+
+export type Candle = {
   quoteDenom: Denom;
+  baseDenom: Denom;
+  interval: CandleIntervals;
+  blockHeight: number;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volumeBase: string;
+  volumeQuote: string;
+  timeStart: string;
+  timeStartUnix: number;
+  timeEnd: string;
+  timeEndUnix: number;
+};
+
+export type Trade = {
+  addr: Address;
+  quoteDenom: Denom;
+  baseDenom: Denom;
+  timeInForce: TimeInForceOptions;
   direction: Directions;
-  /**
-   * For BUY orders, the amount of quote asset; for SELL orders, that of the
-   * base asset.
-   */
-  amount: string;
-  /**
-   * The maximum slippage percentage.
-   *
-   * This parameter works as follow:
-   *
-   * - For a market BUY order, suppose the best (lowest) SELL price in the
-   *   resting order book is `p_best`, then the market order's _average
-   *   execution price_ can't be worse than:
-   *
-   *   ```math
-   *   p_best * (1 + max_slippage)
-   *   ```
-   *
-   * - For a market SELL order, suppose the best (highest) BUY price in the
-   *   resting order book is `p_best`, then the market order's _average
-   *   execution price_ can't be worse than:
-   *
-   *   ```math
-   *   p_best * (1 - max_slippage)
-   *   ```
-   *
-   * Market orders are _immediate or cancel_ (IOC), meaning, if there isn't
-   * enough liquidity in the resting order book to fully fill the market
-   * order under its max slippage, it's filled as much as possible, with the
-   * unfilled portion is canceled.
-   */
-  maxSlippage: string;
+  blockHeight: number;
+  createdAt: string;
+  filledBase: string;
+  filledQuote: string;
+  refundBase: string;
+  refundQuote: string;
+  feeBase: string;
+  feeQuote: string;
+  clearingPrice: string;
+};
+
+export type RestingOrderBookState = {
+  bestBidPrice: Option<string>;
+  bestAskPrice: Option<string>;
+  midPrice: Option<string>;
 };

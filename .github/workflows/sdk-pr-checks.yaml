@@ -8,22 +8,26 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    permissions:
+      packages: read
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9.0.0
+          version: 10.16.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: "pnpm"
 
       - name: Install SDK dependencies
         run: pnpm i --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Linter checks
         run: pnpm lint:sdk

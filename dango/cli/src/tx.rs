@@ -59,6 +59,17 @@ enum SubCmd {
         #[arg(long)]
         new_app_cfg: Option<String>,
     },
+    /// Schedule a chain upgrade
+    Upgrade {
+        /// Block height at which this upgrade is to be executed
+        height: u64,
+        /// Version of the dango CLI binary to use
+        cargo_version: String,
+        /// Git tag of the dango CLI binary to use
+        git_tag: Option<String>,
+        /// URL pointing to documentation explaining this upgrade
+        url: Option<String>,
+    },
     /// Send coins to the given recipient address
     Transfer {
         /// Recipient address
@@ -126,6 +137,12 @@ impl TxCmd {
                     .transpose()?;
                 Message::configure(new_cfg, new_app_cfg)?
             },
+            SubCmd::Upgrade {
+                height,
+                cargo_version,
+                git_tag,
+                url,
+            } => Message::upgrade(height, cargo_version, git_tag, url),
             SubCmd::Transfer { to, coins } => {
                 let coins = Coins::from_str(&coins)?;
                 Message::transfer(to, coins)?
@@ -177,7 +194,7 @@ impl TxCmd {
             if let Some(nonce) = self.nonce {
                 signer.with_nonce(nonce)
             } else {
-                signer.query_nonce(&client).await?
+                signer.with_query_nonce(&client).await?
             }
         };
 

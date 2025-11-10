@@ -1,4 +1,4 @@
-import { useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
+import { Modals, useApp, useInputs, useMediaQuery, useWizard } from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -6,13 +6,11 @@ import {
   useSigningClient,
   useSubmitTx,
 } from "@left-curve/store";
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { formatNumber, formatUnits, parseUnits, wait } from "@left-curve/dango/utils";
-import { m } from "~/paraglide/messages";
+import { Decimal, formatNumber, formatUnits, parseUnits } from "@left-curve/dango/utils";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import {
   Button,
@@ -23,10 +21,9 @@ import {
   ResizerContainer,
   Stepper,
 } from "@left-curve/applets-kit";
-import { ensureErrorMessage, twMerge } from "@left-curve/applets-kit";
+import { twMerge } from "@left-curve/applets-kit";
 import { AccountType } from "@left-curve/dango/types";
 import { Link } from "@tanstack/react-router";
-import { Modals } from "../modals/RootModal";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
@@ -52,7 +49,7 @@ export const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
             )}
             <span className="h2-heavy">{m["accountCreation.title"]()}</span>
           </h2>
-          <p className="text-gray-500 diatype-m-medium">
+          <p className="text-ink-tertiary-500 diatype-m-medium">
             {m["accountCreation.stepper.description"]({ step: activeStep })}
           </p>
         </div>
@@ -118,14 +115,12 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
       className={twMerge(
         "min-h-[9.125rem] w-full max-w-[22.5rem] border border-transparent text-start rounded-md overflow-hidden relative p-4 flex flex-col gap-4 transition-all shadow-account-card items-start justify-start",
         { "cursor-pointer": onClick },
-        { " border border-red-bean-400": isSelected },
+        { " border border-primitives-red-light-400": isSelected },
         {
-          "bg-[linear-gradient(98.89deg,_rgba(255,_251,_245,_0.5)_5.88%,_rgba(249,_226,_226,_0.5)_46.73%,_rgba(255,_251,_244,_0.5)_94.73%)]":
-            accountType === "spot",
+          "bg-account-card-red-2": accountType === "spot",
         },
         {
-          "bg-[linear-gradient(0deg,_#FFFCF6,_#FFFCF6),linear-gradient(98.89deg,_rgba(248,_249,_239,_0.5)_5.88%,_rgba(239,_240,_195,_0.5)_46.73%,_rgba(248,_249,_239,_0.5)_94.73%)]":
-            accountType === "margin",
+          "bg-account-card-green-2": accountType === "margin",
         },
       )}
       onClick={onClick}
@@ -133,13 +128,15 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
       <p className="capitalize exposure-m-italic">
         {m["accountCreation.accountType.title"]({ accountType })}
       </p>
-      <p className="diatype-sm-medium text-gray-500 relative max-w-[15.5rem] z-10">
+      <p className="diatype-sm-medium text-ink-tertiary-500 relative max-w-[15.5rem] z-10">
         {m["accountCreation.accountType.description"]({ accountType })}
       </p>
       <img
         src={`/images/account-creation/${accountType}.svg`}
         alt={`create-account-${accountType}`}
-        className={twMerge("absolute right-0 bottom-0", { "right-2": accountType === "margin" })}
+        className={twMerge("absolute right-0 bottom-0  drag-none select-none", {
+          "right-2": accountType === "margin",
+        })}
       />
       <IconCheckedCircle
         className={twMerge("w-5 h-5 absolute right-3 top-3 opacity-0 transition-all text-red-400", {
@@ -153,61 +150,49 @@ const AccountTypeSelector: React.FC<AccountTypeSelectorProps> = ({
 export const Deposit: React.FC = () => {
   const { previousStep, data } = useWizard<{ accountType: AccountTypes }>();
   const { register, inputs } = useInputs();
+  const navigate = useNavigate();
 
   const { value: fundsAmount, error } = inputs.amount || {};
 
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const { toast, showModal, subscriptions } = useApp();
+  const { toast, showModal, subscriptions, settings } = useApp();
   const { coins } = useConfig();
-  const { username, account, refreshAccounts, changeAccount } = useAccount();
-  const { settings } = useApp();
+  const { username, account } = useAccount();
   const { formatNumberOptions } = settings;
   const { data: signingClient } = useSigningClient();
 
-  const { data: balances = {}, refetch: refreshBalances } = useBalances({
+  const { data: balances = {} } = useBalances({
     address: account?.address,
   });
 
   const { accountType } = data;
-  const coinInfo = coins["bridge/usdc"];
+  const coinInfo = coins.byDenom["bridge/usdc"];
   const humanBalance = formatUnits(balances["bridge/usdc"] || 0, coinInfo.decimals);
 
   const { mutateAsync: send, isPending } = useSubmitTx({
     toast: {
-      error: (e) =>
-        toast.error(
-          {
-            title: m["signup.errors.couldntCompleteRequest"](),
-            description: ensureErrorMessage(e),
-          },
-          { duration: Number.POSITIVE_INFINITY },
-        ),
+      error: () =>
+        toast.error({
+          title: m["common.error"](),
+          description: m["signup.errors.couldntCompleteRequest"](),
+        }),
     },
     submission: {
       success: m["accountCreation.accountCreated"](),
       error: m["signup.errors.couldntCompleteRequest"](),
     },
     mutation: {
+      invalidateKeys: [["quests", account?.username]],
       mutationFn: async () => {
         if (!signingClient) throw new Error("error: no signing client");
+        const funds = fundsAmount || "0";
 
-        const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals);
+        const parsedAmount = parseUnits(funds, coinInfo.decimals);
 
         await signingClient.registerAccount({
           sender: account!.address,
           config: { [accountType as "spot"]: { owner: account!.username } },
-          funds: {
-            "bridge/usdc": parsedAmount.toString(),
-          },
+          ...(Decimal(funds).gt(0) ? { funds: { "bridge/usdc": parsedAmount.toString() } } : {}),
         });
-
-        await refreshAccounts?.();
-      },
-      onSuccess: async () => {
-        await refreshBalances();
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
-        navigate({ to: "/" });
       },
     },
   });
@@ -220,16 +205,14 @@ export const Deposit: React.FC = () => {
         const account = accounts.at(0)!;
         const parsedAmount = parseUnits(fundsAmount || "0", coinInfo.decimals).toString();
 
-        await wait(300);
-
         showModal(Modals.ConfirmAccount, {
+          navigate,
           amount: parsedAmount,
+          accountAddress: account.address,
           accountType: account.accountType,
           accountName: `${username} #${account.accountIndex}`,
           denom: "bridge/usdc",
         });
-
-        changeAccount?.(account.address);
       },
     });
   }, [subscriptions, username, fundsAmount, coinInfo]);
@@ -261,7 +244,7 @@ export const Deposit: React.FC = () => {
         endContent={
           <div className="flex flex-row items-center gap-1 justify-center">
             <img src={coinInfo.logoURI} className="w-5 h-5" alt={coinInfo.symbol} />
-            <span className="diatype-m-regular text-gray-500 pt-1">{coinInfo.symbol}</span>
+            <span className="diatype-m-regular text-ink-tertiary-500 pt-1">{coinInfo.symbol}</span>
           </div>
         }
         bottomComponent={

@@ -1,0 +1,42 @@
+- name: Check if current_deployment directory exists
+  when: current_deployment is defined
+  stat:
+    path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
+  register: current_deploy_path
+  changed_when: false
+  failed_when: false
+
+- name: Clean old deployment
+  when:
+    - current_deployment | default('') | length > 0
+    - current_deploy_path.stat.exists | default(false)
+  block:
+    - name: Clean up old deployment
+      community.docker.docker_compose_v2:
+        project_name: "{{ current_deployment }}"
+        project_src: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}"
+        state: absent
+        remove_orphans: yes
+        remove_volumes: yes
+      ignore_errors: true
+
+    - name: Remove deployment directory
+      become: true
+      become_user: root
+      file:
+        path: "~{{ deploy_user }}/deployments/{{ current_deployment }}"
+        state: absent
+
+    - name: Prune unused Docker resources
+      community.docker.docker_prune:
+        containers: yes
+        images: yes
+        networks: yes
+        volumes: yes
+        builder_cache: yes
+    - name: Log old deployment cleanup
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Deleted old deployment {{ current_deployment | default('unknown') }} (Postgres={{ delete_postgres_database_at_merge | default(false) }}, ClickHouse={{ delete_clickhouse_database_at_merge | default(false) }})"
+        facility: local0
+        priority: info
+        ident: dango

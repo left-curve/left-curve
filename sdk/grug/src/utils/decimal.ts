@@ -9,6 +9,7 @@ export type DecimalConstructor = {
   DP: number;
   RM: number;
   from(value: BigSource): Decimal;
+  max(...values: (string | number | Decimal)[]): Decimal;
 };
 
 Big.DP = 18;
@@ -24,9 +25,23 @@ class Decimal {
     }
   }
 
+  static max(...values: (string | number | Decimal)[]): Decimal {
+    if (values.length === 0) {
+      throw new Error("Decimal.max requires at least one argument");
+    }
+    return values.reduce((max, current) => {
+      const currentDecimal = Decimal.from(current);
+      return currentDecimal.gt(max) ? currentDecimal : max;
+    }, Decimal.from(values[0])) as Decimal;
+  }
+
   static from(value: string | number | Decimal): Decimal {
     if (value instanceof Decimal) return value;
     return new Decimal(value);
+  }
+
+  round(dp: number, rm: number): Decimal {
+    return new Decimal(this.inner.round(dp, rm as Big.RoundingMode));
   }
 
   plus(num: string | number | Decimal): Decimal {
@@ -47,6 +62,14 @@ class Decimal {
     return new Decimal(result);
   }
 
+  mulCeil(num: string | number | Decimal): Decimal {
+    const previousRm = Big.RM;
+    Big.RM = Big.roundUp;
+    const result = this.mul(num);
+    Big.RM = previousRm;
+    return result;
+  }
+
   times(num: string | number | Decimal): Decimal {
     const other = Decimal.from(num);
     const result = this.inner.times(other.inner);
@@ -55,9 +78,7 @@ class Decimal {
 
   div(num: string | number | Decimal): Decimal {
     const other = Decimal.from(num);
-    if (other.isZero()) {
-      throw new Error("Cannot divide by zero.");
-    }
+    if (other.isZero()) return new Decimal(0);
     const result = this.inner.div(other.inner);
     return new Decimal(result);
   }
@@ -126,8 +147,8 @@ class Decimal {
     return this.inner.toString();
   }
 
-  toFixed(decimalPlaces?: number): string {
-    return this.inner.toFixed(decimalPlaces);
+  toFixed(decimalPlaces?: number, rm?: number): string {
+    return this.inner.toFixed(decimalPlaces, rm as Big.RoundingMode);
   }
 
   toNumber(): number {
@@ -157,6 +178,16 @@ Object.defineProperty(DecimalFactory, "RM", {
 
 Object.defineProperty(DecimalFactory, "ZERO", {
   value: new Decimal("0"),
+  writable: false,
+});
+
+Object.defineProperty(DecimalFactory, "from", {
+  value: Decimal.from,
+  writable: false,
+});
+
+Object.defineProperty(DecimalFactory, "max", {
+  value: Decimal.max,
   writable: false,
 });
 

@@ -1,8 +1,5 @@
 use {
-    crate::{
-        Dec128, Dec256, FixedPoint, Int, Int128, Int256, Udec128, Udec128_6, Udec128_9, Udec256,
-        Uint128, Uint256,
-    },
+    crate::{Dec, FixedPoint, Int},
     bnum::types::{I256, I512, U256, U512},
 };
 
@@ -31,54 +28,52 @@ where
 
 // ------------------------------------ dec ------------------------------------
 
-impl NumberConst for Udec128_6 {
-    const MAX: Self = Self::raw(Uint128::MAX);
-    const MIN: Self = Self::raw(Uint128::MIN);
+impl<const S: u32> NumberConst for Dec<u128, S>
+where
+    Self: FixedPoint<u128>,
+{
+    const MAX: Self = Self::raw(Int::<u128>::MAX);
+    const MIN: Self = Self::raw(Int::<u128>::MIN);
     const ONE: Self = Self::raw(Self::PRECISION);
-    const TEN: Self = Self::raw(Uint128::new(10_u128.pow(Self::DECIMAL_PLACES + 1)));
-    const ZERO: Self = Self::raw(Uint128::ZERO);
+    const TEN: Self = Self::raw(Int::<u128>::new(u128::TEN.pow(Self::DECIMAL_PLACES + 1)));
+    const ZERO: Self = Self::raw(Int::<u128>::ZERO);
 }
 
-impl NumberConst for Udec128_9 {
-    const MAX: Self = Self::raw(Uint128::MAX);
-    const MIN: Self = Self::raw(Uint128::MIN);
+impl<const S: u32> NumberConst for Dec<U256, S>
+where
+    Self: FixedPoint<U256>,
+{
+    const MAX: Self = Self::raw(Int::<U256>::MAX);
+    const MIN: Self = Self::raw(Int::<U256>::MIN);
     const ONE: Self = Self::raw(Self::PRECISION);
-    const TEN: Self = Self::raw(Uint128::new(10_u128.pow(Self::DECIMAL_PLACES + 1)));
-    const ZERO: Self = Self::raw(Uint128::ZERO);
-}
-
-impl NumberConst for Udec128 {
-    const MAX: Self = Self::raw(Uint128::MAX);
-    const MIN: Self = Self::raw(Uint128::MIN);
-    const ONE: Self = Self::raw(Self::PRECISION);
-    const TEN: Self = Self::raw(Uint128::new(10_u128.pow(Self::DECIMAL_PLACES + 1)));
-    const ZERO: Self = Self::raw(Uint128::ZERO);
-}
-
-impl NumberConst for Udec256 {
-    const MAX: Self = Self::raw(Uint256::MAX);
-    const MIN: Self = Self::raw(Uint256::MIN);
-    const ONE: Self = Self::raw(Self::PRECISION);
-    const TEN: Self = Self::raw(Uint256::new_from_u128(
-        10_u128.pow(Self::DECIMAL_PLACES + 1),
+    const TEN: Self = Self::raw(Int::<U256>::new_from_u128(
+        u128::TEN.pow(Self::DECIMAL_PLACES + 1),
     ));
-    const ZERO: Self = Self::raw(Uint256::ZERO);
+    const ZERO: Self = Self::raw(Int::<U256>::ZERO);
 }
 
-impl NumberConst for Dec128 {
-    const MAX: Self = Self::raw(Int128::MAX);
-    const MIN: Self = Self::raw(Int128::MIN);
+impl<const S: u32> NumberConst for Dec<i128, S>
+where
+    Self: FixedPoint<i128>,
+{
+    const MAX: Self = Self::raw(Int::<i128>::MAX);
+    const MIN: Self = Self::raw(Int::<i128>::MIN);
     const ONE: Self = Self::raw(Self::PRECISION);
-    const TEN: Self = Self::raw(Int128::new(10_i128.pow(Self::DECIMAL_PLACES + 1)));
-    const ZERO: Self = Self::raw(Int128::ZERO);
+    const TEN: Self = Self::raw(Int::<i128>::new(i128::TEN.pow(Self::DECIMAL_PLACES + 1)));
+    const ZERO: Self = Self::raw(Int::<i128>::ZERO);
 }
 
-impl NumberConst for Dec256 {
-    const MAX: Self = Self::raw(Int256::MAX);
-    const MIN: Self = Self::raw(Int256::MIN);
+impl<const S: u32> NumberConst for Dec<I256, S>
+where
+    Self: FixedPoint<I256>,
+{
+    const MAX: Self = Self::raw(Int::<I256>::MAX);
+    const MIN: Self = Self::raw(Int::<I256>::MIN);
     const ONE: Self = Self::raw(Self::PRECISION);
-    const TEN: Self = Self::raw(Int256::new_from_i128(10_i128.pow(Self::DECIMAL_PLACES + 1)));
-    const ZERO: Self = Self::raw(Int256::ZERO);
+    const TEN: Self = Self::raw(Int::<I256>::new_from_i128(
+        i128::TEN.pow(Self::DECIMAL_PLACES + 1),
+    ));
+    const ZERO: Self = Self::raw(Int::<I256>::ZERO);
 }
 
 // ------------------------------ primitive types ------------------------------

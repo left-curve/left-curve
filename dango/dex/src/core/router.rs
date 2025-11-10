@@ -1,5 +1,6 @@
 use {
-    crate::{PAIRS, PassiveLiquidityPool, RESERVES},
+    super::PassiveLiquidityPool,
+    crate::{PAIRS, RESERVES},
     dango_oracle::OracleQuerier,
     dango_types::dex::PairId,
     grug::{

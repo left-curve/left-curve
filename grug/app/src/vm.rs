@@ -167,7 +167,8 @@ where
             .map_err(|msg| AppError::Guest {
                 address: ctx.contract,
                 name,
-                msg,
+                msg: msg.error,
+                backtrace: msg.backtrace.capture_if_empty()
             })
         },
         evt
@@ -224,7 +225,8 @@ where
             .map_err(|msg| AppError::Guest {
                 address: ctx.contract,
                 name,
-                msg,
+                msg: msg.error,
+                backtrace: msg.backtrace.capture_if_empty()
             })
         },
         evt
@@ -279,7 +281,8 @@ where
             .map_err(|msg| AppError::Guest {
                 address: ctx.contract,
                 name,
-                msg,
+                msg: msg.error,
+                backtrace: msg.backtrace.capture_if_empty()
             })
         },
         evt
@@ -341,7 +344,8 @@ where
             .map_err(|msg| AppError::Guest {
                 address: ctx.contract,
                 name,
-                msg,
+                msg: msg.error,
+                backtrace: msg.backtrace.capture_if_empty()
             })
         },
         evt

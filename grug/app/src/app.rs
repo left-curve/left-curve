@@ -7,12 +7,13 @@ use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
-        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NaiveProposalPreparer, NaiveQuerier,
-        NullIndexer, ProposalPreparer, QuerierProviderImpl, TraceOption, Vm, catch_and_push_event,
-        catch_and_update_event, do_authenticate, do_backrun, do_configure, do_cron_execute,
-        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upload,
-        do_withhold_fee, query_app_config, query_balance, query_balances, query_code, query_codes,
-        query_config, query_contract, query_contracts, query_supplies, query_supply,
+        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
+        NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
+        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
+        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
+        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
+        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
+        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
         query_wasm_raw, query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
@@ -26,6 +27,8 @@ use {
     prost::bytes::Bytes,
     std::sync::Arc,
 };
+
+pub type UpgradeHandler<VM> = fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>;
 
 /// The ABCI application.
 ///
@@ -50,17 +53,53 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
+    /// The action to take to perform a chain upgrade.
+    upgrade_handler: Option<UpgradeHandler<VM>>,
+    /// Current cargo version of the app. Used in chain upgrades.
+    cargo_version: String,
 }
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
-    pub fn new(db: DB, vm: VM, pp: PP, indexer: ID, query_gas_limit: u64) -> Self {
+    pub fn new<V>(
+        db: DB,
+        vm: VM,
+        pp: PP,
+        indexer: ID,
+        query_gas_limit: u64,
+        upgrade_handler: Option<UpgradeHandler<VM>>,
+        cargo_version: V,
+    ) -> Self
+    where
+        V: Into<String>,
+    {
+        #[cfg(feature = "metrics")]
+        {
+            crate::metrics::init_metrics();
+        }
+
         Self {
             db,
             vm,
             pp,
             indexer,
             query_gas_limit,
+            upgrade_handler,
+            cargo_version: cargo_version.into(),
         }
+    }
+}
+
+#[cfg(feature = "testing")]
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
+    pub fn set_cargo_version_and_upgrade_handler<V>(
+        &mut self,
+        cargo_version: V,
+        upgrade_handler: Option<UpgradeHandler<VM>>,
+    ) where
+        V: Into<String>,
+    {
+        self.cargo_version = cargo_version.into();
+        self.upgrade_handler = upgrade_handler;
     }
 }
 
@@ -77,6 +116,8 @@ where
             pp: self.pp.clone(),
             indexer: NullIndexer,
             query_gas_limit: self.query_gas_limit,
+            upgrade_handler: self.upgrade_handler,
+            cargo_version: self.cargo_version.clone(),
         }
     }
 }
@@ -95,15 +136,25 @@ where
         block: BlockInfo,
         genesis_state: GenesisState,
     ) -> AppResult<Hash256> {
-        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                chain_id,
+                genesis_time = block.timestamp.to_rfc3339_string(),
+                "Received InitChain request"
+            );
+        }
+
+        let mut buffer = Shared::new(Buffer::new(
+            self.db.state_storage_with_comment(None, "consensus")?,
+            None,
+            "init_chain",
+        ));
 
         // Make sure the genesis block height is zero. This is necessary to
         // ensure that block height always matches the DB version.
         if block.height != 0 {
-            return Err(AppError::IncorrectBlockHeight {
-                expect: 0,
-                actual: block.height,
-            });
+            return Err(AppError::incorrect_block_height(0, block.height));
         }
 
         // Create gas tracker for genesis.
@@ -130,7 +181,9 @@ where
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            tracing::info!(idx = _idx, "Processing genesis message");
+            {
+                tracing::info!(idx = _idx, "Processing genesis message");
+            }
 
             let output = process_msg(
                 self.vm.clone(),
@@ -145,10 +198,12 @@ where
 
             if let Err((_event, err)) = output.as_result() {
                 #[cfg(feature = "tracing")]
-                tracing::error!(
-                    result = _event.to_json_string_pretty().unwrap(),
-                    "Error during genesis message processing"
-                );
+                {
+                    tracing::error!(
+                        result = _event.to_json_string_pretty().unwrap(),
+                        "Error during genesis message processing"
+                    );
+                }
 
                 return Err(err);
             }
@@ -168,40 +223,69 @@ where
         debug_assert!(root_hash.is_some());
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
-            chain_id,
-            time = block.timestamp.to_rfc3339_string(),
-            app_hash = root_hash.as_ref().unwrap().to_string(),
-            gas_used = gas_tracker.used(),
-            "Completed genesis"
-        );
+        {
+            tracing::info!(
+                chain_id,
+                time = block.timestamp.to_rfc3339_string(),
+                app_hash = root_hash.as_ref().unwrap().to_string(),
+                gas_used = gas_tracker.used(),
+                "Completed genesis"
+            );
+        }
 
         Ok(root_hash.unwrap())
     }
 
     pub fn do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> Vec<Bytes> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                num_txs = txs.len(),
+                max_tx_bytes,
+                "Received PrepareProposal request",
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        let prepare_proposal_duration = std::time::Instant::now();
+
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unnecessary_lazy_evaluations))]
         let txs = self
             ._do_prepare_proposal(txs.clone(), max_tx_bytes)
             .unwrap_or_else(|_err| {
                 #[cfg(feature = "tracing")]
-                tracing::error!(
-                    err = _err.to_string(),
-                    "Failed to prepare proposal! Falling back to naive preparer."
-                );
+                {
+                    tracing::error!(
+                        err = _err.to_string(),
+                        "Failed to prepare proposal! Falling back to naive preparer."
+                    );
+                }
 
                 txs
             });
 
         // Call naive proposal preparer to check the `max_tx_bytes`.
-        NaiveProposalPreparer
+        let bytes = NaiveProposalPreparer
             .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
-            .unwrap()
+            .unwrap();
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(bytes = bytes.len(), "Completed PrepareProposal");
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_DURATION_PREPARE_PROPOSAL)
+                .record(prepare_proposal_duration.elapsed().as_secs_f64());
+        }
+
+        bytes
     }
 
     #[inline]
     fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
-        let storage = self.db.state_storage(None)?;
+        let storage = self.db.state_storage_with_comment(None, "consensus")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
         let querier = QuerierProviderImpl::new_boxed(
             self.vm.clone(),
@@ -224,8 +308,126 @@ where
     // 5. flush (but not commit) state changes to DB
     // 5. indexer `index_block`
     pub fn do_finalize_block(&self, block: Block) -> AppResult<BlockOutcome> {
-        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(
+                block_height = block.info.height,
+                block_time = block.info.timestamp.to_rfc3339_string(),
+                block_hash = block.info.hash.to_string(),
+                num_txs = block.txs.len(),
+                "Received FinalizeBlock request"
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        let block_duration = std::time::Instant::now();
+
+        let mut buffer = Shared::new(Buffer::new(
+            self.db.state_storage_with_comment(None, "consensus")?,
+            None,
+            "finalize",
+        ));
+
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
+
+        // Make sure the new block height is exactly the last finalized height
+        // plus one. This ensures that block height always matches the DB version.
+        if block.info.height != last_finalized_block.height + 1 {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(
+                    expect = last_finalized_block.height + 1,
+                    actual = block.info.height,
+                    "!!! WRONG BLOCK HEIGHT !!!"
+                );
+            }
+
+            return Err(AppError::incorrect_block_height(
+                last_finalized_block.height + 1,
+                block.info.height,
+            ));
+        }
+
+        // If a planned upgrade exists and the block height is reached, then run
+        // the chain upgrade logic.
+        if let Some(upgrade) = NEXT_UPGRADE.may_load(&buffer)? {
+            if block.info.height >= upgrade.height {
+                // Current node software version doesn't match the upgrade version.
+                // Exit early, halt the chain, awaiting the node operator to
+                // deploy the right version.
+                //
+                // See the equivalent code is Cosmos SDK:
+                // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
+                if self.cargo_version != upgrade.cargo_version {
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::warn!(
+                            last_finalized_height = last_finalized_block.height,
+                            current_version = self.cargo_version,
+                            upgrade_version = upgrade.cargo_version,
+                            "!!! PRE-PLANNED CHAIN HALT !!!"
+                        );
+                    }
+
+                    return Err(AppError::upgrade_incorrect_version(
+                        self.cargo_version.clone(),
+                        upgrade.cargo_version,
+                    ));
+                }
+
+                // Now the current node software version matches the upgrade version.
+                // We can proceed with the upgrade.
+                //
+                // If an action is specified in the `upgrade_handler`, then execute it.
+                // This action MUST succeed. If not, it's considered a critical
+                // error. We halt the chain, awaiting a fix.
+                if let Some(handler) = self.upgrade_handler {
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::info!(
+                            height = block.info.height,
+                            cargo_version = upgrade.cargo_version,
+                            "Performing chain upgrade"
+                        );
+                    }
+
+                    // If executing the action errors, an error is returned in the
+                    // ABCI response, which leads to a chain halt (as intended).
+                    (handler)(Box::new(buffer.clone()), self.vm.clone(), block.info).inspect_err(
+                        |_err| {
+                            #[cfg(feature = "tracing")]
+                            {
+                                tracing::error!(reason = %_err, "!!! UPGRADE FAILED !!!");
+                            }
+                        },
+                    )?;
+
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::info!(
+                            height = block.info.height,
+                            cargo_version = upgrade.cargo_version,
+                            "Completed chain upgrade"
+                        );
+                    }
+                } else {
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::info!(
+                            height = block.info.height,
+                            cargo_version = upgrade.cargo_version,
+                            "No handler specified for the chain upgrade. Skipping..."
+                        );
+                    }
+                }
+
+                // Delete the scheduled upgrade, as it's already done.
+                NEXT_UPGRADE.remove(&mut buffer);
+
+                // Save the upgrade to the logs.
+                PAST_UPGRADES.save(&mut buffer, block.info.height, &upgrade.into())?;
+            }
+        }
 
         let mut cron_outcomes = vec![];
         let mut tx_outcomes = vec![];
@@ -234,20 +436,21 @@ where
         self.indexer
             .pre_indexing(block.info.height, &mut indexer_ctx)?;
 
-        // Make sure the new block height is exactly the last finalized height
-        // plus one. This ensures that block height always matches the DB version.
-        if block.info.height != last_finalized_block.height + 1 {
-            return Err(AppError::IncorrectBlockHeight {
-                expect: last_finalized_block.height + 1,
-                actual: block.info.height,
-            });
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_TX_PER_BLOCK).record(block.txs.len() as f64);
         }
 
         // Process transactions one-by-one.
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, (tx, _)) in block.txs.clone().into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            tracing::debug!(idx = _idx, "Processing transaction");
+            {
+                tracing::info!(idx = _idx, "Processing transaction");
+            }
+
+            #[cfg(feature = "metrics")]
+            let tx_duration = std::time::Instant::now();
 
             let tx_outcome = process_tx(
                 self.vm.clone(),
@@ -257,6 +460,18 @@ where
                 AuthMode::Finalize,
                 TraceOption::LOUD,
             );
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::histogram!(crate::metrics::LABEL_DURATION_TX)
+                    .record(tx_duration.elapsed().as_secs_f64());
+
+                if tx_outcome.result.is_ok() {
+                    metrics::counter!(crate::metrics::LABEL_SUCCESSFUL_TX).increment(1);
+                } else {
+                    metrics::counter!(crate::metrics::LABEL_FAILED_TX).increment(1);
+                }
+            };
 
             tx_outcomes.push(tx_outcome);
         }
@@ -285,14 +500,16 @@ where
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, (time, contract)) in jobs.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
-            tracing::debug!(
-                idx = _idx,
-                time = time.to_rfc3339_string(),
-                contract = contract.to_string(),
-                "Performing cronjob"
-            );
+            {
+                tracing::info!(
+                    idx = _idx,
+                    time = time.to_rfc3339_string(),
+                    contract = contract.to_string(),
+                    "Performing cronjob"
+                );
+            }
 
-            let cron_buffer = Shared::new(Buffer::new(buffer.clone(), None));
+            let cron_buffer = Shared::new(Buffer::new(buffer.clone(), None, "cron"));
             let cron_gas_tracker = GasTracker::new_limitless();
             let next_time = block.info.timestamp + cfg.cronjobs[&contract];
 
@@ -346,7 +563,9 @@ where
                 .collect::<StdResult<Vec<_>>>()?
             {
                 #[cfg(feature = "tracing")]
-                tracing::info!(hash = ?hash, "Orphaned code purged");
+                {
+                    tracing::info!(hash = ?hash, "Orphaned code purged");
+                }
 
                 CODES.remove(&mut buffer, hash)?;
             }
@@ -371,14 +590,17 @@ where
         debug_assert!(app_hash.is_some());
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
-            height = block.info.height,
-            time = block.info.timestamp.to_rfc3339_string(),
-            app_hash = app_hash.as_ref().unwrap().to_string(),
-            "Finalized block"
-        );
+        {
+            tracing::info!(
+                height = block.info.height,
+                time = block.info.timestamp.to_rfc3339_string(),
+                app_hash = app_hash.as_ref().unwrap().to_string(),
+                "Finalized block"
+            );
+        }
 
         let block_outcome = BlockOutcome {
+            height: block.info.height,
             app_hash: app_hash.unwrap(),
             cron_outcomes,
             tx_outcomes,
@@ -388,19 +610,38 @@ where
         self.indexer
             .index_block(&block, &block_outcome, &mut indexer_ctx)?;
 
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_DURATION_BLOCK)
+                .record(block_duration.elapsed().as_secs_f64());
+        }
+
         Ok(block_outcome)
     }
 
     pub fn do_commit(&self) -> AppResult<()> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!("Received Commit request");
+        }
+
+        #[cfg(feature = "metrics")]
+        let commit_duration = std::time::Instant::now();
+
         self.db.commit()?;
 
         #[cfg(feature = "tracing")]
-        tracing::info!(height = self.db.latest_version(), "Committed state");
+        {
+            tracing::info!(height = self.db.latest_version(), "Committed state");
+        }
 
         if let Some(block_height) = self.db.latest_version() {
             let querier = {
-                let storage = self.db.state_storage(Some(block_height))?;
+                let storage = self
+                    .db
+                    .state_storage_with_comment(Some(block_height), "consensus")?;
                 let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+
                 Arc::new(QuerierProviderImpl::new(
                     self.vm.clone(),
                     Box::new(storage),
@@ -411,7 +652,19 @@ where
 
             let mut indexer_ctx = crate::IndexerContext::new();
             self.indexer
-                .post_indexing(block_height, querier, &mut indexer_ctx)?;
+                .post_indexing(block_height, querier, &mut indexer_ctx)
+                .inspect_err(|_err| {
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::error!(err = %_err, "Error in `post_indexing`");
+                    }
+                })?;
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(crate::metrics::LABEL_DURATION_COMMIT)
+                .record(commit_duration.elapsed().as_secs_f64());
         }
 
         Ok(())
@@ -423,7 +676,11 @@ where
     //   tokens to cover the tx fee;
     // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<CheckTxOutcome> {
-        let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None));
+        let buffer = Shared::new(Buffer::new(
+            self.db.state_storage_with_comment(None, "check_tx")?,
+            None,
+            "check_tx",
+        ));
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
         let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
@@ -441,11 +698,7 @@ where
         );
 
         if let Err((_, err)) = events.withhold.as_result() {
-            return Ok(new_check_tx_outcome(
-                gas_tracker,
-                Err(err.to_string()),
-                events,
-            ));
+            return Ok(new_check_tx_outcome(gas_tracker, Err(err.clone()), events));
         }
 
         events.authenticate = do_authenticate(
@@ -460,7 +713,7 @@ where
         .into_commitment_status();
 
         let result = if let Err((_, err)) = events.authenticate.as_result() {
-            Err(err.to_string())
+            Err(err.clone())
         } else {
             Ok(())
         };
@@ -493,7 +746,7 @@ where
         if prove {
             // We can't do Merkle proof for smart queries. Only raw store query
             // can be Merkle proved.
-            return Err(AppError::ProofNotSupported);
+            return Err(AppError::proof_not_supported());
         }
 
         let version = if height == 0 {
@@ -505,7 +758,7 @@ where
         };
 
         // Use the state storage at the given version to perform the query.
-        let storage = self.db.state_storage(version)?;
+        let storage = self.db.state_storage_with_comment(version, "query_app")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         process_query(
@@ -543,7 +796,10 @@ where
             None
         };
 
-        let value = self.db.state_storage(version)?.read(key);
+        let value = self
+            .db
+            .state_storage_with_comment(version, "query_store")?
+            .read(key);
 
         Ok((value, proof))
     }
@@ -554,17 +810,21 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<TxOutcome> {
-        let buffer = Buffer::new(self.db.state_storage(None)?, None);
+        let buffer = Buffer::new(
+            self.db.state_storage_with_comment(None, "simulate")?,
+            None,
+            "simulate",
+        );
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // We can't "prove" a gas simulation
         if prove {
-            return Err(AppError::ProofNotSupported);
+            return Err(AppError::proof_not_supported());
         }
 
         // We can't simulate gas at a block height
         if height != 0 && height != block.height {
-            return Err(AppError::PastHeightNotSupported);
+            return Err(AppError::past_height_not_supported());
         }
 
         // Create a `Tx` from the unsigned transaction.
@@ -640,10 +900,12 @@ where
                     // handle this - halt the chain, or ignore? Here we choose
                     // to ignore.
                     #[cfg(feature = "tracing")]
-                    tracing::error!(
-                        raw_tx = BASE64.encode(raw_tx.as_ref()),
-                        "Failed to deserialize transaction! Ignoring it..."
-                    );
+                    {
+                        tracing::error!(
+                            raw_tx = BASE64.encode(raw_tx.as_ref()),
+                            "Failed to deserialize transaction! Ignoring it..."
+                        );
+                    }
 
                     None
                 }
@@ -705,8 +967,8 @@ where
     //
     // The 1st layer is for fee handling; the 2nd is for tx authentication and
     // processing of the messages.
-    let fee_buffer = Shared::new(Buffer::new(storage.clone(), None));
-    let msg_buffer = Shared::new(Buffer::new(fee_buffer.clone(), None));
+    let fee_buffer = Shared::new(Buffer::new(storage.clone(), None, "fee"));
+    let msg_buffer = Shared::new(Buffer::new(fee_buffer.clone(), None, "msg"));
 
     // Record the events emitted during the processing of this transaction.
 
@@ -733,7 +995,7 @@ where
     );
 
     if let Some(err) = events.withhold.maybe_error() {
-        let err = err.to_string();
+        let err = err.clone();
         return new_tx_outcome(gas_tracker, events, Err(err));
     }
 
@@ -765,7 +1027,7 @@ where
     let request_backrun = match events.authenticate.as_result() {
         Err((_, err)) => {
             drop(msg_buffer);
-            let err = err.to_string();
+            let err = err.clone();
             return process_finalize_fee(
                 vm,
                 fee_buffer,
@@ -811,7 +1073,7 @@ where
     match events.msgs_and_backrun.maybe_error() {
         Some(err) => {
             drop(msg_buffer);
-            let err = err.to_string();
+            let err = err.clone();
             return process_finalize_fee(
                 vm,
                 fee_buffer,
@@ -874,7 +1136,9 @@ where
     #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
     for (_idx, msg) in tx.msgs.iter().enumerate() {
         #[cfg(feature = "tracing")]
-        tracing::debug!(idx = _idx, "Processing message");
+        {
+            tracing::info!(idx = _idx, "Processing message");
+        }
 
         catch_and_push_event! {
             process_msg(
@@ -947,10 +1211,10 @@ where
             new_tx_outcome(gas_tracker, events, result)
         },
         CommitmentStatus::Failed { error, .. } => {
-            let err = error.to_string();
-            let events = events.finalize_fails(evt_finalize, "idk");
+            let error = error.clone();
+            let events = events.finalize_fails(evt_finalize, &error);
             drop(buffer);
-            new_tx_outcome(gas_tracker, events, Err(err))
+            new_tx_outcome(gas_tracker, events, Err(error))
         },
         CommitmentStatus::NotReached | CommitmentStatus::Reverted { .. } => {
             unreachable!("`EventResult::as_committment` can only return `Committed` or `Failed`");
@@ -972,10 +1236,19 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
+    #[cfg(feature = "metrics")]
+    {
+        metrics::counter!(crate::metrics::LABEL_PROCESSED_MSGS).increment(1);
+    }
+
     match msg {
         Message::Configure(msg) => {
             let res = do_configure(&mut storage, block, sender, msg, trace_opt);
             res.map(Event::Configure)
+        },
+        Message::Upgrade(msg) => {
+            let res = do_upgrade(&mut storage, gas_tracker, block, sender, msg, trace_opt);
+            res.map(Event::Upgrade)
         },
         Message::Transfer(msg) => {
             let res = do_transfer(
@@ -1049,7 +1322,16 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
+    #[cfg(feature = "metrics")]
+    {
+        metrics::counter!(crate::metrics::LABEL_PROCESSED_QUERIES).increment(1);
+    }
+
     match req {
+        Query::Status(_req) => {
+            let res = query_status(&storage, gas_tracker)?;
+            Ok(QueryResponse::Status(res))
+        },
         Query::Config(_req) => {
             let res = query_config(&storage, gas_tracker)?;
             Ok(QueryResponse::Config(res))
@@ -1057,6 +1339,14 @@ where
         Query::AppConfig(_req) => {
             let res = query_app_config(&storage, gas_tracker)?;
             Ok(QueryResponse::AppConfig(res))
+        },
+        Query::NextUpgrade(_req) => {
+            let res = query_next_upgrade(&storage, gas_tracker)?;
+            Ok(QueryResponse::NextUpgrade(res))
+        },
+        Query::PastUpgrades(req) => {
+            let res = query_past_upgrades(&storage, gas_tracker, req)?;
+            Ok(QueryResponse::PastUpgrades(res))
         },
         Query::Balance(req) => {
             let res = query_balance(vm, storage, gas_tracker, block, query_depth, req)?;
@@ -1146,11 +1436,13 @@ pub(crate) fn schedule_cronjob(
     next_time: Timestamp,
 ) -> StdResult<()> {
     #[cfg(feature = "tracing")]
-    tracing::info!(
-        time = next_time.to_rfc3339_string(),
-        contract = contract.to_string(),
-        "Scheduled cronjob"
-    );
+    {
+        tracing::info!(
+            time = next_time.to_rfc3339_string(),
+            contract = contract.to_string(),
+            "Scheduled cronjob"
+        );
+    }
 
     NEXT_CRONJOBS.insert(storage, (next_time, contract))
 }

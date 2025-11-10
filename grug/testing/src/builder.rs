@@ -1,6 +1,8 @@
 use {
     crate::{TestAccount, TestAccounts, TestSuite, TestVm, tracing::setup_tracing_subscriber},
-    grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer},
+    grug_app::{
+        AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, ProposalPreparer, UpgradeHandler,
+    },
     grug_db_memory::MemDb,
     grug_math::Udec128,
     grug_types::{
@@ -53,6 +55,7 @@ pub struct TestBuilder<
     vm: VM,
     pp: PP,
     indexer: ID,
+    upgrade_handler: Option<UpgradeHandler<VM>>,
     // Consensus parameters
     tracing_level: Option<Level>,
     chain_id: Option<String>,
@@ -151,6 +154,7 @@ where
             vm,
             pp,
             indexer,
+            upgrade_handler: None,
             tracing_level: Some(DEFAULT_TRACING_LEVEL),
             chain_id: None,
             genesis_time: None,
@@ -179,9 +183,14 @@ where
     VM: TestVm + Clone,
     AppError: From<VM::Error>,
 {
-    // Setting this to `None` means no tracing.
+    /// Setting this to `None` means no tracing.
     pub fn set_tracing_level(mut self, level: Option<Level>) -> Self {
         self.tracing_level = level;
+        self
+    }
+
+    pub fn set_upgrade_handler(mut self, upgrade_handler: Option<UpgradeHandler<VM>>) -> Self {
+        self.upgrade_handler = upgrade_handler;
         self
     }
 
@@ -278,6 +287,7 @@ where
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -344,6 +354,7 @@ where
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -395,6 +406,7 @@ where
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -471,6 +483,7 @@ where
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -511,6 +524,7 @@ impl<DB, VM, PP, ID, M1, M2, M3>
             vm: self.vm,
             pp: self.pp,
             indexer: self.indexer,
+            upgrade_handler: self.upgrade_handler,
             tracing_level: self.tracing_level,
             chain_id: self.chain_id,
             genesis_time: self.genesis_time,
@@ -658,6 +672,7 @@ where
             self.vm,
             self.pp,
             self.indexer,
+            self.upgrade_handler,
             chain_id,
             block_time,
             default_gas_limit,

@@ -1,22 +1,21 @@
 import { useAccount, useConnectors, useSigningClient, useSubmitTx } from "@left-curve/store";
-import { useQueryClient } from "@tanstack/react-query";
 import { forwardRef } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { IconButton, IconClose, IconKey } from "@left-curve/applets-kit";
+import { ExpandOptions, IconButton, IconClose, IconKey, useApp } from "@left-curve/applets-kit";
 import { AuthOptions } from "../auth/AuthOptions";
+import { PasskeyCredential } from "../auth/PasskeyCredential";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const AddKeyModal = forwardRef((_props, _ref) => {
   const connectors = useConnectors();
   const { account } = useAccount();
   const { data: signingClient } = useSigningClient();
-  const queryClient = useQueryClient();
   const { hideModal } = useApp();
 
   const { mutateAsync: addKey, isPending } = useSubmitTx({
     mutation: {
+      invalidateKeys: [["user_keys"], ["quests", account?.username]],
       mutationFn: async (connectorId: string) => {
         const connector = connectors.find((c) => c.id === connectorId);
         if (!connector) throw new Error("Connector not found");
@@ -32,16 +31,12 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
           },
         });
       },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["user_keys"] });
-        queryClient.invalidateQueries({ queryKey: ["quests", account] });
-        hideModal();
-      },
+      onSuccess: () => hideModal(),
     },
   });
 
   return (
-    <div className="flex flex-col bg-white-100 rounded-xl relative">
+    <div className="flex flex-col bg-surface-primary-rice rounded-xl relative">
       <IconButton
         className="hidden md:block absolute right-2 top-2"
         variant="link"
@@ -50,19 +45,28 @@ export const AddKeyModal = forwardRef((_props, _ref) => {
         <IconClose />
       </IconButton>
       <div className="p-4 flex flex-col gap-4">
-        <div className="w-12 h-12 rounded-full bg-green-bean-100 flex items-center justify-center text-green-bean-600">
+        <div className="w-12 h-12 rounded-full bg-surface-secondary-green flex items-center justify-center text-primitives-green-light-600">
           <IconKey />
         </div>
         <div className="flex flex-col gap-2">
-          <h3 className="h4-bold">{m["settings.keyManagement.management.add.title"]()}</h3>
-          <p className="text-gray-500 diatype-m-regular">
+          <h3 className="h4-bold text-ink-primary-900">
+            {m["settings.keyManagement.management.add.title"]()}
+          </h3>
+          <p className="text-ink-tertiary-500 diatype-m-regular">
             {m["settings.keyManagement.management.add.description"]()}
           </p>
         </div>
       </div>
-      <span className="w-full h-[1px] bg-gray-100 my-2" />
-      <div className="p-4">
-        <AuthOptions mode="signin" action={addKey} isPending={isPending} />
+      <span className="w-full h-[1px] bg-outline-secondary-gray my-2" />
+      <div className="flex flex-col gap-4 w-full p-4">
+        <PasskeyCredential
+          label={m["auth.passkey"]()}
+          onAuth={() => addKey("passkey")}
+          variant="primary"
+        />
+        <ExpandOptions showOptionText={m["auth.wallets"]()} showLine>
+          <AuthOptions action={addKey} isPending={isPending} />
+        </ExpandOptions>
       </div>
     </div>
   );

@@ -231,6 +231,7 @@ fn no_sql_index_error_after_restart() {
         hash: Hash::ZERO,
     };
     let block_outcome = BlockOutcome {
+        height: 1,
         app_hash: Hash::ZERO,
         cron_outcomes: vec![],
         tx_outcomes: vec![],
@@ -300,9 +301,8 @@ pub mod replier {
     use {
         grug_storage::Set,
         grug_types::{
-            Coins, Empty, GenericResult, ImmutableCtx, Json, JsonSerExt, Message, MutableCtx,
-            Order, QueryRequest, ReplyOn, Response, StdError, StdResult, SubMessage, SubMsgResult,
-            SudoCtx,
+            Coins, Empty, ImmutableCtx, Json, JsonSerExt, Message, MutableCtx, Order, QueryRequest,
+            ReplyOn, Response, StdError, StdResult, SubMessage, SubMsgResult, SudoCtx,
         },
         serde::{Deserialize, Serialize},
     };
@@ -413,8 +413,8 @@ pub mod replier {
 
     pub fn reply(ctx: SudoCtx, msg: ReplyMsg, res: SubMsgResult) -> StdResult<Response> {
         let msg = match (res, msg) {
-            (GenericResult::Err(_), ReplyMsg::Fail(execute_msg))
-            | (GenericResult::Ok(_), ReplyMsg::Ok(execute_msg)) => execute_msg,
+            (Result::Err(_), ReplyMsg::Fail(execute_msg))
+            | (Result::Ok(_), ReplyMsg::Ok(execute_msg)) => execute_msg,
             _ => panic!("invalid reply"),
         };
 

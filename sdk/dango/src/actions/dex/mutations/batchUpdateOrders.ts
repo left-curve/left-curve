@@ -1,23 +1,22 @@
 import { getAppConfig } from "@left-curve/sdk";
 import { getAction } from "@left-curve/sdk/actions";
-import { execute } from "#actions/app/index.js";
+import { execute } from "../../app/mutations/execute.js";
 
 import type { Address, Coins, Json, Prettify, Transport } from "@left-curve/sdk/types";
-import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
+import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 
-import type { AppConfig } from "#types/app.js";
-import type { DangoClient } from "#types/clients.js";
-import type { GetDexExecuteMsg } from "#types/dex.js";
-import type { Signer } from "#types/signer.js";
-import type { TypedDataParameter } from "#types/typedData.js";
+import type { AppConfig } from "../../../types/app.js";
+import type { DangoClient } from "../../../types/clients.js";
+import type { GetDexExecuteMsg } from "../../../types/dex.js";
+import type { Signer } from "../../../types/signer.js";
+import type { TypedDataParameter } from "../../../types/typedData.js";
 
 type ActionMsg = GetDexExecuteMsg<"batchUpdateOrders">;
 
 export type BatchUpdateOrdersParameters = Prettify<{
   sender: Address;
   funds?: Coins;
-  createsLimit?: ActionMsg["batchUpdateOrders"]["createsLimit"];
-  createsMarket?: ActionMsg["batchUpdateOrders"]["createsMarket"];
+  creates?: ActionMsg["batchUpdateOrders"]["creates"];
   cancels?: ActionMsg["batchUpdateOrders"]["cancels"];
 }>;
 
@@ -27,7 +26,7 @@ export async function batchUpdateOrders<transport extends Transport>(
   client: DangoClient<transport, Signer>,
   parameters: BatchUpdateOrdersParameters,
 ): BatchUpdateOrdersReturnType {
-  const { createsLimit = [], createsMarket = [], cancels, funds, sender } = parameters;
+  const { creates = [], cancels, funds, sender } = parameters;
 
   const getAppConfigAction = getAction(client, getAppConfig, "getAppConfig");
 
@@ -35,18 +34,20 @@ export async function batchUpdateOrders<transport extends Transport>(
 
   const msg = {
     batchUpdateOrders: {
-      createsLimit,
-      createsMarket,
+      creates,
       cancels,
     },
   };
+
+  const [order] = creates;
+  const isLimit = Object.hasOwn(order?.price || {}, "limit");
+  const isBuy = Object.hasOwn(order?.amount || {}, "bid");
 
   const typedData: TypedDataParameter = {
     type: [{ name: "batch_update_orders", type: "BatchUpdateOrders" }],
     extraTypes: {
       BatchUpdateOrders: [
-        { name: "creates_market", type: "CreatesMarket[]" },
-        { name: "creates_limit", type: "CreatesLimit[]" },
+        { name: "creates", type: "CreateOrder[]" },
         ...(cancels
           ? [
               cancels === "all"
@@ -55,21 +56,22 @@ export async function batchUpdateOrders<transport extends Transport>(
             ]
           : []),
       ],
-      CreatesMarket: [
+      CreateOrder: [
         { name: "base_denom", type: "string" },
         { name: "quote_denom", type: "string" },
-        { name: "direction", type: "string" },
-        { name: "amount", type: "string" },
-        { name: "max_slippage", type: "string" },
+        { name: "amount", type: "AmountOption" },
+        { name: "price", type: "PriceOption" },
+        { name: "time_in_force", type: "string" },
       ],
-      CreatesLimit: [
-        { name: "base_denom", type: "string" },
-        { name: "quote_denom", type: "string" },
-        { name: "direction", type: "string" },
-        { name: "amount", type: "string" },
-        { name: "price", type: "string" },
+      AmountOption: [isBuy ? { name: "bid", type: "Bid" } : { name: "ask", type: "Ask" }],
+      ...(isBuy
+        ? { Bid: [{ name: "quote", type: "string" }] }
+        : { Ask: [{ name: "base", type: "string" }] }),
+      PriceOption: [
+        isLimit ? { name: "limit", type: "string" } : { name: "market", type: "Market" },
       ],
-      ...(cancels && cancels !== "all" ? { CancelSome: [{ name: "some", type: "uint64[]" }] } : {}),
+      Market: [{ name: "max_slippage", type: "string" }],
+      ...(cancels && cancels !== "all" ? { CancelSome: [{ name: "some", type: "string[]" }] } : {}),
     },
   };
 

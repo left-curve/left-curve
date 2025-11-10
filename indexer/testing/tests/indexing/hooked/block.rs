@@ -227,6 +227,7 @@ async fn no_sql_index_error_after_restart() {
         hash: Hash::ZERO,
     };
     let block_outcome = BlockOutcome {
+        height: 1,
         app_hash: Hash::ZERO,
         cron_outcomes: vec![],
         tx_outcomes: vec![],

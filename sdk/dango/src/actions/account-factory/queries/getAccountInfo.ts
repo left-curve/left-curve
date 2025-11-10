@@ -1,7 +1,7 @@
 import { getAction, getAppConfig, queryWasmSmart } from "@left-curve/sdk/actions";
 
 import type { Address, Chain, Client, Signer, Transport } from "@left-curve/sdk/types";
-import type { Account, AccountInfo, AccountTypes, AppConfig } from "#types/index.js";
+import type { Account, AccountInfo, AccountTypes, AppConfig } from "../../../types/index.js";
 
 export type GetAccountInfoParameters = {
   address: Address;

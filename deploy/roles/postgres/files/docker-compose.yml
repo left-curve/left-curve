@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: "postgres:${PSQL_VERSION}"
+    restart: unless-stopped
+    container_name: "${CONTAINER_NAME}"
+    hostname: "${CONTAINER_NAME}"
+    networks:
+      - postgres
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_INITDB_ARGS: "-c include=/etc/postgresql/postgresql.conf"
+    ports:
+      - "${TAILSCALE_IP}:${HOST_PORT}:5432"
+      - "127.0.0.1:${HOST_PORT}:5432"
+    volumes:
+      - "${DATA_DIR}:/var/lib/postgresql/data"
+      - "${CONFIG_DIR}/postgresql.conf:/etc/postgresql/postgresql.conf:ro"
+      - "${CONFIG_DIR}/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -q"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    restart: unless-stopped
+    networks:
+      - postgres
+    environment:
+      DATA_SOURCE_URI: "${CONTAINER_NAME}:5432/postgres?sslmode=disable"
+      DATA_SOURCE_USER: "${POSTGRES_USER}"
+      DATA_SOURCE_PASS: "${POSTGRES_PASSWORD}"
+    ports:
+      - "${TAILSCALE_IP}:9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9187/metrics >/dev/null 2>&1 || exit 1"]
+      interval: 2s
+      timeout: 10s
+      retries: 10
+
+networks:
+  postgres:
+    external: true

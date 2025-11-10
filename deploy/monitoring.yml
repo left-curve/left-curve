@@ -1,0 +1,16 @@
+- hosts: monitoring
+  become: true
+  become_user: "{{ deploy_user }}"
+  vars:
+    loki_url: "http://loki:3100"
+  pre_tasks:
+    - name: Create monitoring network
+      community.docker.docker_network:
+        name: monitoring
+        state: present
+  roles:
+    - prometheus
+    - loki
+    - promtail
+    - node-exporter
+    - grafana

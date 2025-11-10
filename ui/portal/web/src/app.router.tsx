@@ -2,15 +2,15 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 
 import { useAccount, useConfig, usePublicClient } from "@left-curve/store";
 
-import { Spinner } from "@left-curve/applets-kit";
+import { Spinner, useTheme, type UseThemeReturnType } from "@left-curve/applets-kit";
+
+import { routeTree } from "./app.pages";
 
 import type {
   UseAccountReturnType,
   UseConfigReturnType,
   UsePublicClientReturnType,
 } from "@left-curve/store";
-
-import { routeTree } from "./app.pages";
 
 export const router = createRouter({
   routeTree,
@@ -35,12 +35,14 @@ export interface RouterContext {
   client: UsePublicClientReturnType;
   account: UseAccountReturnType;
   config: UseConfigReturnType;
+  theme: UseThemeReturnType;
 }
 
 export const AppRouter: React.FC = () => {
   const account = useAccount();
   const config = useConfig();
   const client = usePublicClient();
+  const theme = useTheme();
 
-  return <RouterProvider router={router} context={{ account, config, client }} />;
+  return <RouterProvider router={router} context={{ account, config, client, theme }} />;
 };

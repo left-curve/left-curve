@@ -1,0 +1,405 @@
+/** biome-ignore-all lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
+@import "./chartIQ.css";
+
+:root {
+  /* Surface (Background) */
+  --color-surface-primary-gray: theme('colors.primitives.gray.light.25');
+  --color-surface-primary-blue: theme('colors.primitives.blue.light.50');
+  --color-surface-primary-green: theme('colors.primitives.green.light.50');
+  --color-surface-primary-red: theme('colors.primitives.red.light.50');
+  --color-surface-primary-rice: theme('colors.primitives.white.light.100');
+
+  --color-surface-secondary-blue: theme('colors.primitives.blue.light.100');
+  --color-surface-secondary-green: theme('colors.primitives.green.light.100');
+  --color-surface-secondary-red: theme('colors.primitives.red.light.100');
+  --color-surface-secondary-rice: theme('colors.primitives.rice.light.25');
+
+  --color-surface-tertiary-gray: theme('colors.primitives.gray.light.100');
+  --color-surface-tertiary-green: theme('colors.primitives.green.light.200');
+  --color-surface-tertiary-rice: theme('colors.primitives.rice.light.50');
+
+  --color-surface-quaternary-gray: theme('colors.primitives.gray.light.200');
+  --color-surface-quaternary-green: theme('colors.primitives.green.light.300');
+  --color-surface-quaternary-rice: theme('colors.primitives.rice.light.100');
+  --color-surface-quaternary-rice-hover: theme('colors.primitives.rice.light.200');
+
+  --color-surface-disabled-gray: theme('colors.primitives.gray.light.50');
+
+  --color-surface-section-green: theme('colors.primitives.green.light.50');
+  --color-surface-section-red: theme('colors.primitives.red.light.50');
+
+  --color-surface-button-green: theme('colors.primitives.green.light.400');
+  --color-surface-button-green-hover: theme('colors.primitives.green.light.500');
+
+  --color-surface-playground: #FFF;
+
+
+  /* outline (Border) */
+  --color-outline-primary-gray: theme('colors.primitives.gray.light.200');
+  --color-outline-primary-blue: theme('colors.primitives.blue.light.500');
+  --color-outline-primary-green: theme('colors.primitives.green.light.300');
+  --color-outline-primary-red: theme('colors.primitives.red.light.300');
+  --color-outline-primary-rice: theme('colors.primitives.rice.light.300');
+
+  --color-outline-secondary-gray: theme('colors.primitives.gray.light.100');
+  --color-outline-secondary-green: theme('colors.primitives.green.light.200');
+  --color-outline-secondary-red: theme('colors.primitives.red.light.200');
+  --color-outline-secondary-rice: theme('colors.primitives.rice.light.200');
+
+  --color-outline-tertiary-blue: theme('colors.primitives.blue.light.200');
+  --color-outline-tertiary-rice: theme('colors.primitives.rice.light.100');
+
+
+  /* fg (Foreground) */
+  --color-fg-primary-700: theme('colors.primitives.gray.light.700');
+  --color-fg-primary-blue: theme('colors.primitives.blue.light.800');
+  --color-fg-primary-green: theme('colors.primitives.green.light.700');
+  --color-fg-primary-red: theme('colors.primitives.red.light.700');
+  --color-fg-primary-rice: theme('colors.primitives.rice.light.700');
+
+  --color-fg-secondary-500: theme('colors.primitives.gray.light.500');
+  --color-fg-secondary-blue: theme('colors.primitives.blue.light.500');
+  --color-fg-secondary-green: theme('colors.primitives.green.light.500');
+  --color-fg-secondary-red: theme('colors.primitives.red.light.500');
+  --color-fg-secondary-rice: theme('colors.primitives.rice.light.500');
+
+  --color-fg-tertiary-400: theme('colors.primitives.gray.light.400');
+  --color-fg-tertiary-blue: theme('colors.primitives.blue.light.200');
+  --color-fg-tertiary-rice: theme('colors.primitives.rice.light.300');
+
+  --color-fg-quaternary-rice: theme('colors.primitives.rice.light.100');
+
+  --color-fg-logo: theme('colors.primitives.gray.light.900');
+
+  --color-fg-disabled: theme('colors.primitives.gray.light.300');
+
+
+  /* Ink (Text) */
+  --color-ink-primary-900: theme('colors.primitives.gray.light.900');
+  --color-ink-primary-blue: theme('colors.primitives.blue.light.800');
+  --color-ink-primary-green: theme('colors.primitives.green.light.700');
+  --color-ink-primary-red: theme('colors.primitives.red.light.800');
+  --color-ink-primary-rice: theme('colors.primitives.rice.light.800');
+
+  --color-ink-secondary-700: theme('colors.primitives.gray.light.700');
+  --color-ink-secondary-blue: theme('colors.primitives.blue.light.500');
+  --color-ink-secondary-green: theme('colors.primitives.green.light.500');
+  --color-ink-secondary-red: theme('colors.primitives.red.light.500');
+  --color-ink-secondary-rice: theme('colors.primitives.rice.light.700');
+
+  --color-ink-tertiary-500: theme('colors.primitives.gray.light.500');
+  --color-ink-tertiary-green: theme('colors.primitives.green.light.400');
+  --color-ink-tertiary-red: theme('colors.primitives.red.light.400');
+
+  --color-ink-quaternary-200: theme('colors.primitives.gray.light.200');
+
+  --color-ink-placeholder-400: theme('colors.primitives.gray.light.400');
+
+  --color-ink-disabled-300: theme('colors.primitives.gray.light.300');
+  --color-ink-disabled-blue: theme('colors.primitives.rice.light.200');
+
+  /* Utility */
+  --color-utility-error-25: theme('colors.primitives.error.25');
+  --color-utility-error-50: theme('colors.primitives.error.50');
+  --color-utility-error-100: theme('colors.primitives.error.100');
+  --color-utility-error-200: theme('colors.primitives.error.200');
+  --color-utility-error-300: theme('colors.primitives.error.300');
+  --color-utility-error-400: theme('colors.primitives.error.400');
+  --color-utility-error-500: theme('colors.primitives.error.500');
+  --color-utility-error-600: theme('colors.primitives.error.600');
+  --color-utility-error-700: theme('colors.primitives.error.700');
+  --color-utility-error-800: theme('colors.primitives.error.800');
+  --color-utility-error-900: theme('colors.primitives.error.900');
+  --color-utility-error-950: theme('colors.primitives.error.950');
+
+  --color-utility-gray-25: theme('colors.primitives.gray.light.25');
+  --color-utility-gray-50: theme('colors.primitives.gray.light.50');
+  --color-utility-gray-100: theme('colors.primitives.gray.light.100');
+  --color-utility-gray-200: theme('colors.primitives.gray.light.200');
+  --color-utility-gray-300: theme('colors.primitives.gray.light.300');
+  --color-utility-gray-400: theme('colors.primitives.gray.light.400');
+  --color-utility-gray-500: theme('colors.primitives.gray.light.500');
+  --color-utility-gray-600: theme('colors.primitives.gray.light.600');
+  --color-utility-gray-700: theme('colors.primitives.gray.light.700');
+  --color-utility-gray-800: theme('colors.primitives.gray.light.800');
+  --color-utility-gray-900: theme('colors.primitives.gray.light.900');
+  --color-utility-gray-950: theme('colors.primitives.gray.light.950');
+
+  --color-utility-success-25: theme('colors.primitives.success.25');
+  --color-utility-success-50: theme('colors.primitives.success.50');
+  --color-utility-success-100: theme('colors.primitives.success.100');
+  --color-utility-success-200: theme('colors.primitives.success.200');
+  --color-utility-success-300: theme('colors.primitives.success.300');
+  --color-utility-success-400: theme('colors.primitives.success.400');
+  --color-utility-success-500: theme('colors.primitives.success.500');
+  --color-utility-success-600: theme('colors.primitives.success.600');
+  --color-utility-success-700: theme('colors.primitives.success.700');
+  --color-utility-success-800: theme('colors.primitives.success.800');
+  --color-utility-success-900: theme('colors.primitives.success.900');
+  --color-utility-success-950: theme('colors.primitives.success.950');
+
+  --color-utility-warning-25: theme('colors.primitives.warning.25');
+  --color-utility-warning-50: theme('colors.primitives.warning.50');
+  --color-utility-warning-100: theme('colors.primitives.warning.100');
+  --color-utility-warning-200: theme('colors.primitives.warning.200');
+  --color-utility-warning-300: theme('colors.primitives.warning.300');
+  --color-utility-warning-400: theme('colors.primitives.warning.400');
+  --color-utility-warning-500: theme('colors.primitives.warning.500');
+  --color-utility-warning-600: theme('colors.primitives.warning.600');
+  --color-utility-warning-700: theme('colors.primitives.warning.700');
+  --color-utility-warning-800: theme('colors.primitives.warning.800');
+  --color-utility-warning-900: theme('colors.primitives.warning.900');
+  --color-utility-warning-950: theme('colors.primitives.warning.950');
+
+  /* Status */
+  --color-status-fail: #E71818;
+  --color-status-success: #25B12A;
+
+
+  /* Shadows & gradients */
+  --shadow-card: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5);
+  --shadow-btn-shadow-gradient: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
+  --shadow-btn-secondary-shadow-gradient: 0px 2px 4px rgba(171, 158, 138, 0.4), 0px -1px 2px rgba(241, 219, 186, 0.5), inset 0px 3px 6px -2px rgba(255, 255, 255, 0.64), inset 0px 0px 8px -2px rgba(255, 255, 255, 0.48);
+
+  --chartiq-filter: brightness(0) saturate(72%) invert(35%) sepia(25%) saturate(1469%) hue-rotate(332deg) brightness(78%) contrast(89%);
+
+  --color-bg-card-blue: linear-gradient(98.89deg, #F6F6FB 18.66%, #DDDCEE 46.73%, #F6F6FB 86%);
+  --color-bg-card-rice: linear-gradient(98.89deg, #fff5e6 18.66%, #fce5c4 46.73%, #fff5e6 86%);
+  --color-bg-card-red: linear-gradient(98.89deg, #FFFBF5 5.88%, #F9E2E2 46.73%, #FFFBF4 94.73%);
+  --color-bg-card-red-2: linear-gradient(0deg, #FFFBF5, #FFFBF5), linear-gradient(98.89deg, rgba(255, 251, 245, 0.2) 5.88%, rgba(249, 212, 214, 0.2) 46.73%, rgba(255, 251, 244, 0.2) 94.73%);
+  --color-bg-card-green: linear-gradient(98.89deg, #F8F9EF 5.88%, #EFF0C3 46.73%, #F8F9EF 94.73%);
+  --color-bg-card-green-2: linear-gradient(0deg, #F8F9EF, #F8F9EF), linear-gradient(98.89deg, rgba(248, 249, 239, 0.05) 5.88%, rgba(235, 236, 183, 0.05) 46.73%, rgba(248, 249, 239, 0.05) 94.73%);
+}
+
+.dark {
+  /* Surface (Background) */
+  --color-surface-primary-gray: theme('colors.primitives.rice.dark.950');
+  --color-surface-primary-blue: theme('colors.primitives.blue.dark.800');
+  --color-surface-primary-green: theme('colors.primitives.green.dark.950');
+  --color-surface-primary-red: theme('colors.primitives.red.dark.800');
+  --color-surface-primary-rice: theme('colors.primitives.gray.dark.950');
+
+  --color-surface-secondary-blue: theme('colors.primitives.blue.dark.700');
+  --color-surface-secondary-green: theme('colors.primitives.green.dark.900');
+  --color-surface-secondary-red: theme('colors.primitives.red.dark.700');
+  --color-surface-secondary-rice: theme('colors.primitives.gray.dark.900');
+
+  --color-surface-tertiary-gray: theme('colors.primitives.gray.dark.800');
+  --color-surface-tertiary-green: theme('colors.primitives.green.dark.800');
+  --color-surface-tertiary-rice: theme('colors.primitives.gray.dark.800');
+
+  --color-surface-quaternary-gray: theme('colors.primitives.gray.dark.900');
+  --color-surface-quaternary-green: theme('colors.primitives.green.dark.700');
+  --color-surface-quaternary-rice: theme('colors.primitives.rice.dark.800');
+  --color-surface-quaternary-rice-hover: theme('colors.primitives.rice.dark.700');
+
+  --color-surface-disabled-gray: theme('colors.primitives.gray.dark.900');
+
+  --color-surface-section-green: theme('colors.primitives.green.dark.700');
+  --color-surface-section-red: theme('colors.primitives.red.dark.600');
+
+  --color-surface-button-green: theme('colors.primitives.green.light.300');
+  --color-surface-button-green-hover: theme('colors.primitives.green.light.400');
+
+  --color-surface-playground: #1e1e1e;
+
+
+  /* outline (Border) */
+  --color-outline-primary-gray: theme('colors.primitives.gray.dark.700');
+  --color-outline-primary-blue: theme('colors.primitives.blue.dark.500');
+  --color-outline-primary-green: theme('colors.primitives.green.dark.600');
+  --color-outline-primary-red: theme('colors.primitives.red.dark.600');
+  --color-outline-primary-rice: theme('colors.primitives.rice.dark.700');
+
+  --color-outline-secondary-gray: theme('colors.primitives.gray.dark.800');
+  --color-outline-secondary-green: theme('colors.primitives.green.dark.700');
+  --color-outline-secondary-red: theme('colors.primitives.red.dark.700');
+  --color-outline-secondary-rice: theme('colors.primitives.rice.dark.800');
+
+  --color-outline-tertiary-blue: theme('colors.primitives.blue.dark.700');
+  --color-outline-tertiary-rice: theme('colors.primitives.rice.dark.900');
+
+
+  /* fg (Foreground) */
+  --color-fg-primary-700: theme('colors.primitives.rice.light.25');
+  --color-fg-primary-blue: theme('colors.primitives.blue.dark.50');
+  --color-fg-primary-green: theme('colors.primitives.green.dark.50');
+  --color-fg-primary-red: theme('colors.primitives.red.light.300');
+  --color-fg-primary-rice: theme('colors.primitives.rice.light.300');
+
+  --color-fg-secondary-500: theme('colors.primitives.gray.dark.200');
+  --color-fg-secondary-blue: theme('colors.primitives.blue.light.300');
+  --color-fg-secondary-green: theme('colors.primitives.green.dark.200');
+  --color-fg-secondary-red: theme('colors.primitives.red.light.500');
+  --color-fg-secondary-rice: theme('colors.primitives.rice.light.100');
+
+  --color-fg-tertiary-400: theme('colors.primitives.gray.dark.300');
+  --color-fg-tertiary-blue: theme('colors.primitives.blue.dark.600');
+  --color-fg-tertiary-rice: theme('colors.primitives.rice.dark.600');
+
+  --color-fg-quaternary-rice: theme('colors.primitives.rice.dark.800');
+
+  --color-fg-logo: theme('colors.primitives.white.light.100');
+
+  --color-fg-disabled: theme('colors.primitives.gray.dark.400');
+
+
+  /* Ink (Text) */
+  --color-ink-primary-900: theme('colors.primitives.white.light.100');
+  --color-ink-primary-blue: theme('colors.primitives.blue.light.50');
+  --color-ink-primary-green: theme('colors.primitives.green.dark.50');
+  --color-ink-primary-red: theme('colors.primitives.red.light.50');
+  --color-ink-primary-rice: theme('colors.primitives.rice.light.200');
+
+  --color-ink-secondary-700: theme('colors.primitives.rice.light.25');
+  --color-ink-secondary-blue: theme('colors.primitives.blue.light.300');
+  --color-ink-secondary-green: theme('colors.primitives.green.dark.200');
+  --color-ink-secondary-red: theme('colors.primitives.red.light.100');
+  --color-ink-secondary-rice: theme('colors.primitives.rice.light.300');
+
+  --color-ink-tertiary-500: theme('colors.primitives.gray.dark.200');
+  --color-ink-tertiary-green: theme('colors.primitives.green.dark.300');
+  --color-ink-tertiary-red: theme('colors.primitives.red.light.200');
+
+  --color-ink-quaternary-200: theme('colors.primitives.gray.dark.500');
+
+  --color-ink-placeholder-400: theme('colors.primitives.gray.dark.300');
+
+  --color-ink-disabled-300: theme('colors.primitives.gray.dark.400');
+  --color-ink-disabled-blue: theme('colors.primitives.blue.dark.900');
+
+    /* Utility */
+  --color-utility-error-25: theme('colors.primitives.error.950');
+  --color-utility-error-50: theme('colors.primitives.error.900');
+  --color-utility-error-100: theme('colors.primitives.error.800');
+  --color-utility-error-200: theme('colors.primitives.error.700');
+  --color-utility-error-300: theme('colors.primitives.error.600');
+  --color-utility-error-400: theme('colors.primitives.error.500');
+  --color-utility-error-500: theme('colors.primitives.error.400');
+  --color-utility-error-600: theme('colors.primitives.error.300');
+  --color-utility-error-700: theme('colors.primitives.error.200');
+  --color-utility-error-800: theme('colors.primitives.error.100');
+  --color-utility-error-900: theme('colors.primitives.error.50');
+  --color-utility-error-950: theme('colors.primitives.error.25');
+
+  --color-utility-gray-25: theme('colors.primitives.gray.dark.950');
+  --color-utility-gray-50: theme('colors.primitives.gray.dark.900');
+  --color-utility-gray-100: theme('colors.primitives.gray.dark.800');
+  --color-utility-gray-200: theme('colors.primitives.gray.dark.700');
+  --color-utility-gray-300: theme('colors.primitives.gray.dark.600');
+  --color-utility-gray-400: theme('colors.primitives.gray.dark.500');
+  --color-utility-gray-500: theme('colors.primitives.gray.dark.400');
+  --color-utility-gray-600: theme('colors.primitives.gray.dark.300');
+  --color-utility-gray-700: theme('colors.primitives.gray.dark.200');
+  --color-utility-gray-800: theme('colors.primitives.gray.dark.100');
+  --color-utility-gray-900: theme('colors.primitives.gray.dark.50');
+  --color-utility-gray-950: theme('colors.primitives.gray.dark.25');
+
+  --color-utility-success-25: theme('colors.primitives.success.950');
+  --color-utility-success-50: theme('colors.primitives.success.900');
+  --color-utility-success-100: theme('colors.primitives.success.800');
+  --color-utility-success-200: theme('colors.primitives.success.700');
+  --color-utility-success-300: theme('colors.primitives.success.600');
+  --color-utility-success-400: theme('colors.primitives.success.500');
+  --color-utility-success-500: theme('colors.primitives.success.400');
+  --color-utility-success-600: theme('colors.primitives.success.300');
+  --color-utility-success-700: theme('colors.primitives.success.200');
+  --color-utility-success-800: theme('colors.primitives.success.100');
+  --color-utility-success-900: theme('colors.primitives.success.50');
+  --color-utility-success-950: theme('colors.primitives.success.25');
+
+  --color-utility-warning-25: theme('colors.primitives.warning.950');
+  --color-utility-warning-50: theme('colors.primitives.warning.900');
+  --color-utility-warning-100: theme('colors.primitives.warning.800');
+  --color-utility-warning-200: theme('colors.primitives.warning.700');
+  --color-utility-warning-300: theme('colors.primitives.warning.600');
+  --color-utility-warning-400: theme('colors.primitives.warning.500');
+  --color-utility-warning-500: theme('colors.primitives.warning.400');
+  --color-utility-warning-600: theme('colors.primitives.warning.300');
+  --color-utility-warning-700: theme('colors.primitives.warning.200');
+  --color-utility-warning-800: theme('colors.primitives.warning.100');
+  --color-utility-warning-900: theme('colors.primitives.warning.50');
+  --color-utility-warning-950: theme('colors.primitives.warning.25');
+
+  /* Status */
+  --color-status-fail: #FF6B6B;
+  --color-status-success: #66C86A;
+
+
+  /* Shadows & gradients */
+
+  --shadow-card: 0px 1px 6px rgba(25, 25, 24, 0.4), 0px 4px 13px rgba(25, 25, 24, 0.5);
+  --shadow-btn-shadow-gradient: 0px 0px 8px -2px #FFFFFF7A inset, 0px 3px 6px -2px #FFFFFFA3 inset, 0px 4px 6px 0px #0000000A, 0px 4px 6px 0px #0000000A;
+  --shadow-btn-secondary-shadow-gradient: 0px -1px 3px -2px #00000012 inset, 0px 2px 3px -1px #FFFFFF12 inset, 0px 1px 1px -0.5px #0000000A;
+
+  --chartiq-filter: brightness(0) saturate(1710%) invert(35%) sepia(20%) saturate(1000%) hue-rotate(360deg) brightness(235%) contrast(89%);
+
+  --color-bg-card-blue: linear-gradient(98.89deg, #373634 18.66%, #6E6D77 46.73%, #373634 86%);
+  --color-bg-card-rice: linear-gradient(98.89deg, #383633 18.66%, #615A51 46.73%, #383633 86%);
+  --color-bg-card-red: linear-gradient(98.89deg, #494443 11.21%, #584D4E 46.73%, #322F2F 88.96%);
+  --color-bg-card-red-2: linear-gradient(0deg, #494443, #494443), linear-gradient(98.89deg, rgba(73, 68, 67, 0.2) 5.88%, rgba(88, 77, 78, 0.2) 46.73%, rgba(50, 47, 47, 0.2) 94.73%);
+  --color-bg-card-green: linear-gradient(98.89deg, #373634 18.76%, #666654 46.73%, #373634 87.62%);
+  --color-bg-card-green-2: linear-gradient(0deg, #373634, #373634), linear-gradient(98.89deg, rgba(55, 54, 52, 0.05) 5.88%, rgba(102, 102, 84, 0.05) 46.73%, rgba(55, 54, 52, 0.05) 94.73%);
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: scroll;
+  min-height: 100svh;
+  background: var(--color-surface-primary-rice);
+}
+
+#root {
+  font-family: 'ABCDiatypeRounded', sans-serif;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media screen and (min-width: 768px) {
+  .header {
+    width: 100%;
+  }
+}
+
+[cmdk-group-heading] {
+  @apply diatype-sm-medium text-ink-tertiary-500;
+  padding: 0 11px;
+}
+
+.react-json-view .variable-value div {
+  color: theme("colors.primitives.white.light.100") !important;
+}
+
+.fp-overflow {
+  width: 100%;
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+   width: 6px;
+  background: transparent;
+  border-radius: 99999px;
+}
+
+::-webkit-scrollbar-thumb {
+   width: 6px;
+  border-radius: 99999px;
+  background: var(--color-outline-secondary-gray);
+}
+
+::selection {
+  background: var(--color-surface-secondary-red);
+  color: var(--color-ink-primary-900);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-secondary-gray);
+}

@@ -165,6 +165,7 @@ impl BlockClient for TendermintRpcClient {
         };
 
         Ok(BlockOutcome {
+            height: response.height.into(),
             app_hash: Hash256::from_inner(response.app_hash.as_bytes().try_into()?),
             tx_outcomes: response
                 .txs_results

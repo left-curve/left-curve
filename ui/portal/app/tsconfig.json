@@ -1,6 +1,27 @@
 {
-  "extends": "expo/tsconfig.base",
+  "extends": ["expo/tsconfig.base"],
   "compilerOptions": {
-    "strict": true
-  }
+    "strict": true,
+    "paths": {
+      "~/assets/*": ["./assets/*"],
+      "~/paraglide/*": ["./.paraglide/*"],
+      "~/constants": ["./constants.config.ts"],
+      "~/storage": ["./storage.config.ts"],
+      "~/store": ["./store.config.ts"],
+      "~/*": ["./src/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts", "../../foundation/tailwind/config.ts"],
+  "exclude": ["node_modules"],
+  "references": [
+    {
+      "path": "../../foundation"
+    },
+    {
+      "path": "../../../sdk/dango"
+    },
+    {
+      "path": "../../store"
+    }
+  ]
 }

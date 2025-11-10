@@ -220,7 +220,7 @@ where
     A: Api,
     Q: Querier,
 {
-    pub fn as_immutable(&self) -> ImmutableCtx {
+    pub fn as_immutable(&self) -> ImmutableCtx<'_> {
         ImmutableCtx {
             storage:  &self.storage,
             api:      &self.api,
@@ -231,7 +231,7 @@ where
         }
     }
 
-    pub fn as_sudo(&mut self) -> SudoCtx {
+    pub fn as_sudo(&mut self) -> SudoCtx<'_> {
         SudoCtx {
             storage:  &mut self.storage,
             api:      &self.api,
@@ -249,7 +249,7 @@ where
     A: Api,
     Q: Querier,
 {
-    pub fn as_mutable(&mut self) -> MutableCtx {
+    pub fn as_mutable(&mut self) -> MutableCtx<'_> {
         MutableCtx {
             api:      &self.api,
             querier:  QuerierWrapper::new(&self.querier),
@@ -269,7 +269,7 @@ where
     A: Api,
     Q: Querier,
 {
-    pub fn as_auth(&mut self) -> AuthCtx {
+    pub fn as_auth(&mut self) -> AuthCtx<'_> {
         AuthCtx {
             api:      &self.api,
             querier:  QuerierWrapper::new(&self.querier),

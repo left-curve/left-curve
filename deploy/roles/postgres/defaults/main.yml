@@ -2,6 +2,8 @@
 psql_version: "17"
 db_user: "postgres"
 db_password: "{{ lookup('env','DB_PASSWORD') }}"
-data_dir: "/home/{{ deploy_user }}/psql/data"
+deploy_dir: "/home/{{ deploy_user }}/psql"
+data_dir: "{{ deploy_dir }}/data"
+config_dir: "{{ deploy_dir }}/config"
 host_port: 5432
 container_name: "postgres"

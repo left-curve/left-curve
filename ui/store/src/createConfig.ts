@@ -2,7 +2,7 @@ import { persist, subscribeWithSelector } from "zustand/middleware";
 import { createStore } from "zustand/vanilla";
 
 import { createPublicClient } from "@left-curve/dango";
-import { uid } from "@left-curve/dango/utils";
+import { plainObject, uid } from "@left-curve/dango/utils";
 
 import pkgJson from "../package.json" with { type: "json" };
 import { eip6963 } from "./connectors/eip6963.js";
@@ -17,6 +17,7 @@ import type {
   AppConfig,
   Client,
   Denom,
+  Flatten,
   Hex,
   PairUpdate,
   PublicClient,
@@ -43,6 +44,7 @@ export function createConfig<
         typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
     }),
     ssr,
+    onError,
     ...rest
   } = parameters;
 
@@ -53,7 +55,14 @@ export function createConfig<
   const mipd =
     typeof window !== "undefined" && multiInjectedProviderDiscovery ? createMipdStore() : undefined;
 
-  const coins = createStore(() => rest.coins);
+  const coins = createStore(() => ({
+    byDenom: rest.coins || {},
+    bySymbol: Object.values(rest.coins || {}).reduce((acc, coin) => {
+      acc[coin.symbol] = coin;
+      return acc;
+    }, Object.create({})),
+  }));
+
   const connectors = createStore(() => {
     const collection = [];
     const rdnsSet = new Set<string>();
@@ -112,7 +121,7 @@ export function createConfig<
 
   let _appConfig:
     | ({
-        addresses: AppConfig["addresses"] & Record<Address, string>;
+        addresses: Flatten<AppConfig["addresses"]> & Record<Address, string>;
         accountFactory: { codeHashes: Record<AccountTypes, Hex> };
         pairs: Record<Denom, PairUpdate>;
       } & Omit<AppConfig, "addresses">)
@@ -127,11 +136,13 @@ export function createConfig<
       client.getPairs(),
     ]);
 
+    const addresses = plainObject(appConfig.addresses) as Flatten<AppConfig["addresses"]>;
+
     _appConfig = {
       ...appConfig,
       addresses: {
-        ...appConfig.addresses,
-        ...invertObject(appConfig.addresses),
+        ...addresses,
+        ...invertObject(addresses),
       },
       accountFactory: { codeHashes },
       pairs: pairs.reduce((acc, pair) => {
@@ -230,7 +241,7 @@ export function createConfig<
     });
   }
 
-  const sbStore = subscriptionsStore(getClient() as PublicClient);
+  const sbStore = subscriptionsStore(getClient() as PublicClient, onError);
 
   //////////////////////////////////////////////////////////////////////////////
   // Emitter listeners
@@ -327,15 +338,16 @@ export function createConfig<
 
   function getCoinInfo(denom: Denom): AnyCoin {
     const allCoins = coins.getState()!;
-    if (!denom.includes("dex")) return allCoins[denom];
+    if (!denom.includes("dex")) return allCoins.byDenom[denom];
     const [_, __, baseDenom, quoteDenom] = denom.split("/");
-    const coinsArray = Object.values(allCoins);
+    const coinsArray = Object.values(allCoins.byDenom);
     const baseCoin = coinsArray.find((x) => x.denom.includes(baseDenom))!;
     const quoteCoin = coinsArray.find((x) => x.denom.includes(quoteDenom))!;
 
     return {
       type: "lp",
-      symbol: `${baseCoin.symbol}-${quoteCoin.symbol}`,
+      symbol: `${baseCoin.symbol}-${quoteCoin.symbol} LP`,
+      name: `${baseCoin.symbol}-${quoteCoin.symbol} Liquidity Shares`,
       denom,
       decimals: 0,
       base: baseCoin,
@@ -345,7 +357,8 @@ export function createConfig<
 
   return {
     get coins() {
-      return coins.getState() ?? {};
+      const state = coins.getState() ?? { byDenom: {}, bySymbol: {} };
+      return state;
     },
     get subscriptions() {
       return sbStore;
@@ -360,6 +373,10 @@ export function createConfig<
     getCoinInfo,
     getAppConfig,
     getClient,
+    captureError(error: unknown) {
+      if (onError) onError(error);
+      else console.error(error);
+    },
     get state() {
       return store.getState();
     },

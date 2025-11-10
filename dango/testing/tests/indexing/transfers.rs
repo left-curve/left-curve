@@ -1,6 +1,6 @@
 use {
     assertor::*,
-    dango_testing::setup_test_with_indexer,
+    dango_testing::{TestOption, setup_test_with_indexer},
     dango_types::{
         account::single,
         account_factory::{self, AccountParams},
@@ -13,8 +13,8 @@ use {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_transfer_events() -> anyhow::Result<()> {
-    let (mut suite, mut accounts, _, contracts, _, _, dango_context) =
-        setup_test_with_indexer().await;
+    let (mut suite, mut accounts, _, contracts, _, _, dango_context, _) =
+        setup_test_with_indexer(TestOption::default()).await;
 
     // Copied from benchmarks.rs
     let msgs = vec![

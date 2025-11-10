@@ -1,7 +1,8 @@
 use {
     crate::{Variables, broadcast_tx_sync, query_app, query_store, search_tx, simulate},
-    anyhow::{anyhow, bail},
+    anyhow::{anyhow, bail, ensure},
     async_trait::async_trait,
+    error_backtrace::BacktracedError,
     graphql_client::{GraphQLQuery, Response},
     grug_types::{
         Addr, Binary, Block, BlockClient, BlockOutcome, BorshDeExt, BroadcastClient,
@@ -9,33 +10,31 @@ use {
         Query, QueryClient, QueryResponse, SearchTxClient, SearchTxOutcome, Tx, TxOutcome,
         UnsignedTx,
     },
+    reqwest::IntoUrl,
     serde::Serialize,
-    std::{fmt::Display, str::FromStr},
+    std::str::FromStr,
+    url::Url,
 };
 
 #[derive(Debug, Clone)]
 pub struct HttpClient {
     inner: reqwest::Client,
-    endpoint: String,
+    url: Url,
 }
 
 impl HttpClient {
-    pub fn new(endpoint: &str) -> Self {
-        Self {
+    pub fn new<U>(url: U) -> Result<Self, anyhow::Error>
+    where
+        U: IntoUrl,
+    {
+        Ok(Self {
             inner: reqwest::Client::new(),
-            endpoint: endpoint.to_string(),
-        }
+            url: url.into_url()?,
+        })
     }
 
-    async fn get<P>(&self, path: P) -> Result<reqwest::Response, anyhow::Error>
-    where
-        P: Display,
-    {
-        Ok(self
-            .inner
-            .get(format!("{}/{}", self.endpoint, path))
-            .send()
-            .await?)
+    async fn get(&self, path: &str) -> Result<reqwest::Response, anyhow::Error> {
+        error_for_status(self.inner.get(self.url.join(path)?).send().await?).await
     }
 
     async fn post_graphql<V>(
@@ -48,12 +47,14 @@ impl HttpClient {
             std::fmt::Debug,
     {
         let query = V::Query::build_query(variables);
-        let response = self
-            .inner
-            .post(format!("{}/graphql", self.endpoint))
-            .json(&query)
-            .send()
-            .await?;
+        let response = error_for_status(
+            self.inner
+                .post(self.url.join("graphql")?)
+                .json(&query)
+                .send()
+                .await?,
+        )
+        .await?;
 
         #[cfg(feature = "tracing")]
         {
@@ -135,8 +136,8 @@ impl BlockClient for HttpClient {
 
     async fn query_block(&self, height: Option<u64>) -> Result<Block, Self::Error> {
         let path = match height {
-            Some(height) => format!("api/block/info/{height}"),
-            None => "api/block/info".to_string(),
+            Some(height) => format!("block/info/{height}"),
+            None => "block/info".to_string(),
         };
 
         Ok(self.get(&path).await?.json().await?)
@@ -144,8 +145,8 @@ impl BlockClient for HttpClient {
 
     async fn query_block_outcome(&self, height: Option<u64>) -> Result<BlockOutcome, Self::Error> {
         let path = match height {
-            Some(height) => format!("api/block/result/{height}"),
-            None => "api/block/result".to_string(),
+            Some(height) => format!("block/result/{height}"),
+            None => "block/result".to_string(),
         };
 
         Ok(self.get(&path).await?.json().await?)
@@ -173,7 +174,7 @@ impl SearchTxClient for HttpClient {
     type Error = anyhow::Error;
 
     async fn search_tx(&self, hash: Hash256) -> Result<SearchTxOutcome, Self::Error> {
-        let response = self
+        let mut response = self
             .post_graphql(search_tx::Variables {
                 hash: hash.to_string(),
             })
@@ -181,7 +182,9 @@ impl SearchTxClient for HttpClient {
             .transactions
             .nodes;
 
-        let res = response.first().ok_or(anyhow!("no tx found"))?;
+        let res = response.pop().ok_or(anyhow!("tx not found: {hash}"))?;
+
+        ensure!(response.is_empty(), "multiple txs found for hash: {hash}");
 
         let msgs = res
             .messages
@@ -208,7 +211,14 @@ impl SearchTxClient for HttpClient {
                 result: if res.has_succeeded {
                     GenericResult::Ok(())
                 } else {
-                    GenericResult::Err(res.error_message.clone().unwrap_or_default())
+                    GenericResult::Err(
+                        res.error_message
+                            .map(|e| e.deserialize_json())
+                            .transpose()?
+                            .unwrap_or_else(|| {
+                                BacktracedError::new_without_bt("error not found!".to_string())
+                            }),
+                    )
                 },
                 events: res
                     .nested_events
@@ -217,5 +227,13 @@ impl SearchTxClient for HttpClient {
                     .deserialize_json()?,
             },
         })
+    }
+}
+
+async fn error_for_status(response: reqwest::Response) -> Result<reqwest::Response, anyhow::Error> {
+    if let Err(e) = response.error_for_status_ref() {
+        bail!("{}: {}", e, response.text().await?)
+    } else {
+        Ok(response)
     }
 }

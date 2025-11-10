@@ -11,6 +11,15 @@ pub struct Config {
     pub sentry: SentryConfig,
     pub log_level: String,
     pub log_format: LogFormat,
+    pub pyth: PythLazerConfig,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct ClickhouseConfig {
+    pub url: String,
+    pub database: String,
+    pub user: String,
+    pub password: String,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -25,6 +34,7 @@ pub enum LogFormat {
 pub struct GrugConfig {
     pub wasm_cache_capacity: usize,
     pub query_gas_limit: u64,
+    pub db: grug_db_disk::Config,
 }
 
 impl Default for GrugConfig {
@@ -32,6 +42,7 @@ impl Default for GrugConfig {
         Self {
             wasm_cache_capacity: 1000,
             query_gas_limit: 100_000_000,
+            db: Default::default(),
         }
     }
 }
@@ -50,6 +61,7 @@ pub struct IndexerConfig {
     pub enabled: bool,
     pub keep_blocks: bool,
     pub database: IndexerDatabaseConfig,
+    pub clickhouse: ClickhouseConfig,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -73,6 +85,7 @@ pub struct HttpdConfig {
     pub ip: String,
     pub port: u16,
     pub cors_allowed_origin: Option<String>,
+    pub static_files_path: Option<String>,
 }
 
 impl Default for HttpdConfig {
@@ -82,6 +95,7 @@ impl Default for HttpdConfig {
             ip: "127.0.0.1".to_string(),
             port: 0,
             cors_allowed_origin: None,
+            static_files_path: None,
         }
     }
 }
@@ -114,4 +128,10 @@ impl Default for TransactionsConfig {
             gas_adjustment: 1.4,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct PythLazerConfig {
+    pub endpoints: Vec<String>,
+    pub access_token: String,
 }

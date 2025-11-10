@@ -1,0 +1,28 @@
+# Quick redeploy for existing deployments
+- name: Deploy with new image tag
+  community.docker.docker_compose_v2:
+    project_name: "{{ deployment_name }}"
+    project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    recreate: always
+    pull: always
+  retries: 3
+  delay: 5
+  register: deploy_result
+  ignore_errors: yes
+
+- name: Get all container logs on failure
+  command: docker compose -p {{ deployment_name }} logs --tail=100
+  args:
+    chdir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+  when: deploy_result.failed
+  register: all_logs
+
+- name: Show all logs
+  debug:
+    var: all_logs.stdout_lines
+  when: deploy_result.failed
+
+- name: Fail with context
+  fail:
+    msg: "Deployment failed. See container logs above."
+  when: deploy_result.failed

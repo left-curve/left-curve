@@ -17,8 +17,10 @@ function PoolApplet() {
     const { coins } = config;
     navigate({
       to: "/earn/pool/$pairSymbols",
-      params: { pairSymbols: `${coins[pair.baseDenom].symbol}-${coins[pair.quoteDenom].symbol}` },
-      replace: false,
+      params: {
+        pairSymbols: `${coins.byDenom[pair.baseDenom].symbol}-${coins.byDenom[pair.quoteDenom].symbol}`,
+      },
+      replace: true,
       search: { action },
     });
   };

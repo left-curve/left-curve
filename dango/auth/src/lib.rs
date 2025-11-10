@@ -223,8 +223,7 @@ pub fn verify_nonce_and_signature(
             if let Some(expiry) = metadata.expiry {
                 ensure!(
                     expiry > ctx.block.timestamp,
-                    "transaction expired at {:?}",
-                    expiry
+                    "transaction expired at {expiry:?}"
                 );
             }
 

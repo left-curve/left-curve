@@ -5,6 +5,7 @@ import type { Coin, Coins, Denom } from "./coins.js";
 import type { Base64, Hex, Json, JsonValue } from "./encoding.js";
 
 export type QueryRequest =
+  | { status: QueryStatusRequest }
   | { config: QueryConfigRequest }
   | { appConfig: QueryAppConfigRequest }
   | { appConfigs: QueryAppConfigsRequest }
@@ -19,6 +20,8 @@ export type QueryRequest =
   | { wasmRaw: QueryWasmRawRequest }
   | { wasmSmart: QueryWasmSmartRequest }
   | { multi: QueryRequest[] };
+
+export type QueryStatusRequest = Record<never, never>;
 
 export type QueryConfigRequest = Record<never, never>;
 
@@ -78,6 +81,7 @@ export type QueryContractRequest = {
 };
 
 export type QueryResponse =
+  | { status: StatusResponse }
   | { config: ChainConfigResponse }
   | { appConfig: AppConfigResponse }
   | { balance: Coin }
@@ -91,6 +95,11 @@ export type QueryResponse =
   | { wasmRaw: WasmRawResponse }
   | { wasmSmart: WasmSmartResponse }
   | { multi: QueryResponse[] };
+
+export type StatusResponse = {
+  chainId: string;
+  lastFinalizedBlock: BlockInfo;
+};
 
 export type CodeResponse = Code;
 

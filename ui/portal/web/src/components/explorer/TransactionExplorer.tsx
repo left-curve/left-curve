@@ -13,7 +13,7 @@ import {
 } from "@left-curve/applets-kit";
 import { HeaderExplorer } from "./HeaderExplorer";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { IndexedTransaction } from "@left-curve/dango/types";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -65,13 +65,14 @@ const Details: React.FC = () => {
 
   const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
     tx;
+
   return (
-    <div className="flex flex-col gap-4 rounded-xl p-4 bg-rice-25 shadow-account-card text-gray-700 diatype-sm-medium relative overflow-hidden">
-      <h1 className="h4-bold">{m["explorer.txs.txDetails"]()}</h1>
+    <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-ink-secondary-700 diatype-sm-medium relative overflow-hidden">
+      <h1 className="h4-bold text-ink-primary-900">{m["explorer.txs.txDetails"]()}</h1>
 
       <div className="grid grid-cols-1 gap-3 md:gap-2">
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.txHash"]()}
           </p>
           <p className="break-all whitespace-normal">
@@ -83,7 +84,7 @@ const Details: React.FC = () => {
           </p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.sender"]()}
           </p>
           <AddressVisualizer
@@ -94,13 +95,13 @@ const Details: React.FC = () => {
           />
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.time"]()}
           </p>
           <p className="break-all whitespace-normal">{new Date(createdAt).toLocaleString()}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.block"]()}
           </p>
           <button
@@ -113,25 +114,25 @@ const Details: React.FC = () => {
           </button>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.index"]()}
           </p>
           <p>{transactionIdx}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.gasUsed"]()}
           </p>
           <p>{gasUsed}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.gasWanted"]()}
           </p>
           <p>{gasWanted}</p>
         </div>
         <div className="flex md:items-center gap-1 flex-col md:flex-row">
-          <p className="diatype-sm-medium text-gray-500 md:min-w-[8rem]">
+          <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
             {m["explorer.txs.status"]()}
           </p>
           <div>
@@ -146,7 +147,7 @@ const Details: React.FC = () => {
       <img
         src="/images/emojis/detailed/map-explorer.svg"
         alt="map-emoji"
-        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute bottom-[-1rem] right-[2rem] mix-blend-multiply hidden md:block"
+        className="w-[16.25rem] h-[16.25rem] opacity-40 absolute bottom-[-1rem] right-[2rem] hidden md:block"
       />
     </div>
   );
@@ -157,32 +158,74 @@ const Messages: React.FC = () => {
 
   if (!tx) return null;
 
-  const { nestedEvents, messages } = tx;
+  const { nestedEvents, messages, errorMessage } = tx;
+
+  const { error, backtrace } = (() => {
+    if (!errorMessage) return { error: undefined, backtrace: undefined };
+    try {
+      const parsed = JSON.parse(errorMessage);
+      return { error: parsed.error, backtrace: parsed.backtrace };
+    } catch {
+      return { error: undefined, backtrace: undefined };
+    }
+  })();
+
+  const shouldShowErrorAccordion = errorMessage && (error || backtrace);
 
   return (
     <div className="flex flex-col w-full gap-6">
-      <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
-        <p className="h4-bold">{m["explorer.txs.messages"]()}</p>
+      {shouldShowErrorAccordion && (
+        <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
+          <p className="h4-bold text-ink-primary-900">{m["explorer.txs.error"]()}</p>
+          {error && (
+            <AccordionItem
+              key={"error-message"}
+              text={m["explorer.txs.message"]()}
+              classNames={{ text: "capitalize", menu: "overflow-visible" }}
+              defaultExpanded={false}
+            >
+              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
+                <JsonVisualizer json={{ error }} collapsed={1} />
+              </div>
+            </AccordionItem>
+          )}
+          {backtrace && (
+            <AccordionItem
+              key={"error-backtrace"}
+              text={m["explorer.txs.backtrace"]()}
+              classNames={{ text: "capitalize", menu: "overflow-visible" }}
+            >
+              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
+                <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+                  {backtrace.replace(/ (\d+):/g, "\n$1:")}
+                </pre>
+              </div>
+            </AccordionItem>
+          )}
+        </div>
+      )}
+      <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
+        <p className="h4-bold text-ink-primary-900">{m["explorer.txs.messages"]()}</p>
         {messages.map(({ data, methodName, orderIdx }) => {
           const message = data[methodName];
           return (
             <AccordionItem
               key={orderIdx}
               text={methodName}
-              classNames={{ text: "capitalize" }}
+              classNames={{ text: "capitalize", menu: "overflow-visible" }}
               defaultExpanded
             >
-              <div className="p-4 bg-gray-700 shadow-account-card  rounded-md text-white-100">
-                <JsonVisualizer json={JSON.stringify(message)} collapsed={1} />
+              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
+                <JsonVisualizer json={message} collapsed={1} />
               </div>
             </AccordionItem>
           );
         })}
       </div>
-      <div className="w-full shadow-account-card bg-rice-25 rounded-xl p-4 flex flex-col gap-4">
-        <p className="h4-bold">{m["explorer.txs.events"]()}</p>
-        <div className="p-4 bg-gray-700 shadow-account-card  rounded-md">
-          <JsonVisualizer json={nestedEvents} collapsed={1} />
+      <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
+        <p className="h4-bold text-ink-primary-900">{m["explorer.txs.events"]()}</p>
+        <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md">
+          <JsonVisualizer string={nestedEvents} collapsed={1} />
         </div>
       </div>
     </div>
@@ -197,9 +240,11 @@ const NotFound: React.FC = () => {
   return (
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
-        <div className="flex flex-col gap-2 items-center border border-red-bean-50">
-          <h3 className="exposure-m-italic text-gray-700">{m["explorer.txs.notFound.title"]()}</h3>
-          <p className="diatype-m-medium max-w-[42.5rem] text-center text-gray-500 ">
+        <div className="flex flex-col gap-2 items-center">
+          <h3 className="exposure-m-italic text-ink-secondary-700">
+            {m["explorer.txs.notFound.title"]()}
+          </h3>
+          <p className="diatype-m-medium max-w-[42.5rem] text-center text-ink-tertiary-500 ">
             {m["explorer.txs.notFound.pre"]()}
             <span className="break-all overflow-hidden underline"> {txHash}</span>{" "}
             {m["explorer.txs.notFound.description"]()}

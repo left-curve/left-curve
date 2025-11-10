@@ -1,0 +1,11 @@
+- hosts: all
+  become: true
+  become_user: "{{ deploy_user }}"
+  pre_tasks:
+    - name: Create monitoring network
+      community.docker.docker_network:
+        name: monitoring
+        state: present
+  roles:
+    - node-exporter
+    - promtail

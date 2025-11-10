@@ -1,14 +1,16 @@
 use {
     crate::{
-        Context, bail,
+        Context, EventCache, bail,
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    grug_app::{Indexer, LAST_FINALIZED_BLOCK},
-    grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
+    grug_app::{Indexer as IndexerTrait, LAST_FINALIZED_BLOCK},
+    grug_types::{
+        Block, BlockOutcome, Defined, HttpRequestDetails, MaybeDefined, Storage, Undefined,
+    },
     sea_orm::DatabaseConnection,
     std::{
         collections::HashMap,
@@ -33,6 +35,7 @@ pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>> {
     indexer_path: P,
     keep_blocks: bool,
     pubsub: PubSubType,
+    event_cache_window: usize,
 }
 
 impl Default for IndexerBuilder {
@@ -44,6 +47,7 @@ impl Default for IndexerBuilder {
             indexer_path: Undefined::default(),
             keep_blocks: false,
             pubsub: PubSubType::Memory,
+            event_cache_window: 100,
         }
     }
 }
@@ -57,6 +61,7 @@ impl IndexerBuilder<Defined<String>> {
             db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 }
@@ -73,6 +78,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 
@@ -90,6 +96,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 
@@ -101,6 +108,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 }
@@ -114,6 +122,7 @@ impl<DB, P> IndexerBuilder<DB, P> {
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             pubsub: PubSubType::Postgres,
+            event_cache_window: self.event_cache_window,
         }
     }
 }
@@ -134,6 +143,19 @@ where
             indexer_path: self.indexer_path,
             keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
+        }
+    }
+
+    pub fn with_event_cache_window(self, event_cache_window: usize) -> Self {
+        Self {
+            handle: self.handle,
+            db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
+            indexer_path: self.indexer_path,
+            keep_blocks: self.keep_blocks,
+            pubsub: self.pubsub,
+            event_cache_window,
         }
     }
 
@@ -149,6 +171,8 @@ where
             db: db.clone(),
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
+            event_cache: EventCache::new(self.event_cache_window),
+            transaction_hash_details: Default::default(),
         };
 
         match self.pubsub {
@@ -156,7 +180,7 @@ where
                 if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
                     let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
 
-                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()).await?);
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
 
                 Ok::<(), IndexerError>(())
@@ -167,7 +191,7 @@ where
         Ok(context)
     }
 
-    pub fn build(self) -> error::Result<NonBlockingIndexer> {
+    pub fn build(self) -> error::Result<Indexer> {
         let db = match self.db_url.maybe_into_inner() {
             Some(url) => self.handle.block_on(async {
                 Context::connect_db_with_url(&url, self.db_max_connections).await
@@ -192,6 +216,8 @@ where
             db: db.clone(),
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
+            event_cache: EventCache::new(self.event_cache_window),
+            transaction_hash_details: Default::default(),
         };
 
         match self.pubsub {
@@ -199,7 +225,7 @@ where
                 if let DatabaseConnection::SqlxPostgresPoolConnection(_) = db {
                     let pool: &sqlx::PgPool = db.get_postgres_connection_pool();
 
-                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone()).await?);
+                    context.pubsub = Arc::new(PostgresPubSub::new(pool.clone(), "blocks").await?);
                 }
 
                 Ok::<(), IndexerError>(())
@@ -207,7 +233,7 @@ where
             PubSubType::Memory => {},
         }
 
-        Ok(NonBlockingIndexer {
+        Ok(Indexer {
             indexer_path,
             context,
             handle: self.handle,
@@ -234,7 +260,7 @@ static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 ///
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
-pub struct NonBlockingIndexer {
+pub struct Indexer {
     pub indexer_path: IndexerPath,
     pub context: Context,
     pub handle: RuntimeHandler,
@@ -248,7 +274,7 @@ pub struct NonBlockingIndexer {
     id: u64,
 }
 
-impl NonBlockingIndexer {
+impl Indexer {
     /// Look in memory for a block to be indexed, or create a new one
     fn find_or_create<F, R>(
         &self,
@@ -261,11 +287,10 @@ impl NonBlockingIndexer {
         F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
     {
         let mut blocks = self.blocks.lock().expect("can't lock blocks");
-        let block_to_index = blocks.entry(block.info.height).or_insert(BlockToIndex::new(
-            block_filename,
-            block.clone(),
-            block_outcome.clone(),
-        ));
+
+        let block_to_index = blocks.entry(block.info.height).or_insert_with(|| {
+            BlockToIndex::new(block_filename, block.clone(), block_outcome.clone())
+        });
 
         block_to_index.block_outcome = block_outcome.clone();
 
@@ -312,7 +337,7 @@ impl NonBlockingIndexer {
 
 // ------------------------------- DB Related ----------------------------------
 
-impl NonBlockingIndexer {
+impl Indexer {
     /// Index all previous blocks not yet indexed.
     fn index_previous_unindexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
         let last_indexed_block_height = self.handle.block_on(async {
@@ -332,12 +357,13 @@ impl NonBlockingIndexer {
         for block_height in next_block_height..=latest_block_height {
             let block_filename = self.indexer_path.block_path(block_height);
 
-            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone()).unwrap_or_else(|_err| {
+            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone())
+                .unwrap_or_else(|_err| {
                     #[cfg(feature = "tracing")]
                     tracing::error!(error = %_err, block_height, "Can't load block from disk");
 
                     panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
-            });
+                });
 
             #[cfg(feature = "tracing")]
             tracing::info!(
@@ -346,9 +372,16 @@ impl NonBlockingIndexer {
                 "`index_previous_unindexed_blocks` started"
             );
 
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.previous_blocks.processed.total").increment(1);
+
             self.handle.block_on(async {
                 block_to_index
-                    .save(self.context.db.clone(), self.id)
+                    .save(
+                        self.context.db.clone(),
+                        self.context.event_cache.clone(),
+                        self.id,
+                    )
                     .await?;
 
                 Ok::<(), error::IndexerError>(())
@@ -357,7 +390,12 @@ impl NonBlockingIndexer {
             if !self.keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, block_filename = %block_filename.display(), "Can't delete block from disk");
+                    tracing::error!(
+                        error = %_err,
+                        block_height,
+                        block_filename = %block_filename.display(),
+                        "Can't delete block from disk"
+                    );
                 }
             }
 
@@ -373,7 +411,7 @@ impl NonBlockingIndexer {
     }
 }
 
-impl Indexer for NonBlockingIndexer {
+impl IndexerTrait for Indexer {
     fn start(&mut self, storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
@@ -430,7 +468,7 @@ impl Indexer for NonBlockingIndexer {
             if !blocks.is_empty() {
                 tracing::warn!(
                     indexer_id = self.id,
-                    "Some blocks are still being indexed, maybe non_blocking_indexer `post_indexing` wasn't called by the main app?"
+                    "Some blocks are still being indexed. Maybe `non_blocking_indexer` `post_indexing` wasn't called by the main app?"
                 );
             }
         }
@@ -444,7 +482,7 @@ impl Indexer for NonBlockingIndexer {
         _ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         Ok(())
@@ -457,7 +495,7 @@ impl Indexer for NonBlockingIndexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         #[cfg(feature = "tracing")]
@@ -469,10 +507,37 @@ impl Indexer for NonBlockingIndexer {
 
         let block_filename = self.indexer_path.block_path(block.info.height);
 
+        let mut http_request_details: HashMap<String, HttpRequestDetails> = HashMap::new();
+
+        let mut transaction_hash_details = self
+            .context
+            .transaction_hash_details
+            .lock()
+            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?;
+        http_request_details.extend(block.txs.iter().filter_map(|tx| {
+            let tx_hash = tx.1.to_string();
+            transaction_hash_details
+                .remove(&tx_hash)
+                .map(|details| (tx_hash, details))
+        }));
+
+        transaction_hash_details.clean();
+
+        #[cfg(feature = "metrics")]
+        metrics::gauge!("indexer.http_request_details.total")
+            .set(transaction_hash_details.len() as f64);
+
+        drop(transaction_hash_details);
+
         Ok(
             self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
                 #[cfg(feature = "tracing")]
                 tracing::debug!(block_height = block.info.height, "`index_block` started");
+
+                #[cfg(feature = "http-request-details")]
+                {
+                    block_to_index.http_request_details = http_request_details;
+                }
 
                 ctx.insert(block_to_index.clone());
 
@@ -498,7 +563,7 @@ impl Indexer for NonBlockingIndexer {
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             Self::remove_or_fail(self.blocks.clone(), &block_height)?;
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         #[cfg(feature = "tracing")]
@@ -514,52 +579,108 @@ impl Indexer for NonBlockingIndexer {
 
         let id = self.id;
 
+        // TODO: remove this once we extracted the caching to its own crate
         ctx.insert(block_to_index.clone());
+
         ctx.insert(context.pubsub.clone());
+        ctx.insert(block_to_index.block.clone());
+        ctx.insert(block_to_index.block_outcome.clone());
 
         let handle = self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
-            tracing::debug!(block_height, indexer_id = id, "`post_indexing` async work started");
-
-            let block_height = block_to_index.block.info.height;
+            tracing::debug!(
+                block_height,
+                indexer_id = id,
+                "`post_indexing` async work started"
+            );
 
             #[allow(clippy::map_identity)]
-            if let Err(_err) = block_to_index.save(context.db.clone(), id).await {
+            if let Err(_err) = block_to_index
+                .save(context.db.clone(), context.event_cache.clone(), id)
+                .await
+            {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %_err, indexer_id = id, block_height, "Can't save to db in `post_indexing`");
+                tracing::error!(
+                    err = %_err,
+                    indexer_id = id,
+                    block_height,
+                    "Can't save to db in `post_indexing`"
+                );
+
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.errors.save.total").increment(1);
+
                 return Ok(());
             }
+
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.blocks.processed.total").increment(1);
 
             if !keep_blocks {
                 if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't delete block from disk in post_indexing");
+                    tracing::error!(
+                        error = %_err,
+                        block_filename = %block_filename.display(),
+                        "Can't delete block from disk in post_indexing"
+                    );
+
                     return Ok(());
                 }
+
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.blocks.deleted.total").increment(1);
             } else {
                 // compress takes CPU, so we do it in a spawned blocking task
                 if let Err(_err) = tokio::task::spawn_blocking(move || {
                     if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
                         #[cfg(feature = "tracing")]
-                        tracing::error!(error = %_err, block_filename = %block_filename.display(), "can't compress block on disk in post_indexing");
+                        tracing::error!(
+                            error = %_err,
+                            block_filename = %block_filename.display(),
+                            "Can't compress block on disk in post_indexing"
+                        );
                     }
-                }).await {
+                })
+                .await
+                {
                     #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, "spawn_blocking error compressing block file");
+                    tracing::error!(error = %_err, "`spawn_blocking` error compressing block file");
                 }
+
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.blocks.compressed.total").increment(1);
             }
 
             if let Err(_err) = Self::remove_or_fail(blocks, &block_height) {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %_err, indexer_id = id, block_height, "Can't remove block in `post_indexing`");
+                tracing::error!(
+                    err = %_err,
+                    indexer_id = id,
+                    block_height,
+                    "Can't remove block in `post_indexing`"
+                );
+
                 return Ok(());
             }
 
-            if let Err(_err) = context.pubsub.publish_block_minted(block_height).await {
+            if let Err(_err) = context.pubsub.publish(block_height).await {
                 #[cfg(feature = "tracing")]
-                tracing::error!(err = %_err, indexer_id = id, block_height, "Can't publish block minted in `post_indexing`");
+                tracing::error!(
+                    err = %_err,
+                    indexer_id = id,
+                    block_height,
+                    "Can't publish block minted in `post_indexing`"
+                );
+
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.errors.pubsub.total").increment(1);
+
                 return Ok(());
             }
+
+            #[cfg(feature = "metrics")]
+            metrics::counter!("indexer.pubsub.published.total").increment(1);
 
             #[cfg(feature = "tracing")]
             tracing::info!(block_height, indexer_id = id, "`post_indexing` finished");
@@ -569,7 +690,7 @@ impl Indexer for NonBlockingIndexer {
 
         self.handle
             .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::Database(e.to_string()))??;
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
 
         Ok(())
     }
@@ -580,7 +701,7 @@ impl Indexer for NonBlockingIndexer {
             if self
                 .blocks
                 .lock()
-                .map_err(|_| grug_app::IndexerError::MutexPoisoned)?
+                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
                 .is_empty()
             {
                 break;
@@ -603,7 +724,7 @@ impl Indexer for NonBlockingIndexer {
     }
 }
 
-impl Drop for NonBlockingIndexer {
+impl Drop for Indexer {
     fn drop(&mut self) {
         // If the DatabaseTransactions are left open (not committed) its `Drop` implementation
         // expects a Tokio context. We must call `commit` manually on it within our Tokio
@@ -721,7 +842,7 @@ mod tests {
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let mut indexer: NonBlockingIndexer = IndexerBuilder::default()
+        let mut indexer: Indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
             .build()?;
@@ -739,7 +860,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn build_without_hooks() -> anyhow::Result<()> {
-        let mut indexer: NonBlockingIndexer = IndexerBuilder::default()
+        let mut indexer: Indexer = IndexerBuilder::default()
             .with_memory_database()
             .with_tmpdir()
             .build()?;

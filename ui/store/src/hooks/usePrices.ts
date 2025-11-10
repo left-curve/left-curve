@@ -27,15 +27,15 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     refetchInterval = 60 * 1000 * 5,
     formatter = formatNumber,
     defaultFormatOptions = {
-      maximumFractionDigits: 2,
-      minFractionDigits: 2,
+      maximumTotalDigits: 5,
+      minimumTotalDigits: 2,
       language: navigator.language,
       mask: 1,
     },
   } = parameters;
   const config = useConfig();
 
-  const coins = parameters.coins || config.coins;
+  const coins = parameters.coins || config.coins.byDenom;
 
   function getPrice<T extends boolean = false>(
     amount: number | string,
@@ -63,11 +63,10 @@ export function usePrices(parameters: UsePricesParameters = {}) {
     const fromPrice = getPrice(fromAmount, fromDenom);
     const targetPrice = getPrice(1, targetDenom);
 
-    const targetAmount = Decimal(fromPrice).div(targetPrice).toNumber();
+    const targetAmount = Decimal(fromPrice).div(targetPrice).toFixed();
+
     return (
-      parse
-        ? parseUnits(targetAmount.toString(), coins[targetDenom].decimals).toString()
-        : targetAmount
+      parse ? parseUnits(targetAmount, coins[targetDenom].decimals).toString() : targetAmount
     ) as T extends false ? number : string;
   }
 

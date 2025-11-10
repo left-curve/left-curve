@@ -7,15 +7,25 @@ import {
 } from "@tanstack/react-table";
 
 import { tv } from "tailwind-variants";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
-import { Fragment } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { Skeleton } from "./Skeleton";
 
 import type React from "react";
-import type { ColumnDef, ColumnFiltersState, Row, Updater } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  ColumnFiltersState,
+  Row,
+  SortingState,
+  Updater,
+  HeaderContext,
+  CellContext,
+} from "@tanstack/react-table";
 import type { VariantProps } from "tailwind-variants";
 export type TableColumn<T> = ColumnDef<T>[];
+export type TableHeaderContext<T> = HeaderContext<T, unknown>;
+export type TableCellContext<T> = CellContext<T, unknown>;
 export type { ColumnFiltersState };
 
 export type TableClassNames = {
@@ -31,6 +41,8 @@ interface TableProps<T> extends VariantProps<typeof tabsVariants> {
   columns: TableColumn<T>;
   data: T[];
   columnFilters?: ColumnFiltersState;
+  initialSortState?: { fixed: SortingState; variable: SortingState };
+  initialColumnVisibility?: Record<string, boolean>;
   onColumnFiltersChange?: (updater: Updater<ColumnFiltersState>) => void;
   onRowClick?: (row: Row<T>) => void;
   classNames?: TableClassNames;
@@ -51,14 +63,41 @@ export const Table = <T,>({
   onRowClick,
   isLoading = false,
   emptyComponent,
+  initialSortState = { fixed: [], variable: [] },
+  initialColumnVisibility = {},
   skeletonType = "row",
 }: TableProps<T>) => {
+  const [sorting, setSorting] = useState<SortingState>([
+    ...initialSortState.fixed,
+    ...initialSortState.variable,
+  ]);
+  const [columnVisibility, onColumnVisibilityChange] = useState(initialColumnVisibility);
+
+  const onSortingChange = useCallback(
+    (newSorting: Updater<SortingState>) => {
+      setSorting((currentSorting) => {
+        const updatedSorting =
+          typeof newSorting === "function" ? newSorting(currentSorting) : newSorting;
+
+        const fixedSorting = initialSortState.fixed;
+        const variableSorting = updatedSorting.filter(
+          (sort) => !fixedSorting.find((fixed) => fixed.id === sort.id),
+        );
+        return [...fixedSorting, ...variableSorting];
+      });
+    },
+    [initialSortState.fixed],
+  );
+
   const table = useReactTable<T>({
     data,
     columns,
-    state: { columnFilters },
+    state: { columnFilters, sorting, columnVisibility },
     enableFilters: true,
+    enableSorting: true,
+    onSortingChange,
     onColumnFiltersChange,
+    onColumnVisibilityChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -68,7 +107,7 @@ export const Table = <T,>({
     style,
   });
 
-  const { rows } = table.getRowModel();
+  const { rows } = table.getSortedRowModel();
 
   const showemptyComponent = !isLoading && rows.length === 0 && emptyComponent;
   const showTableRows = !isLoading && rows.length > 0;
@@ -82,7 +121,7 @@ export const Table = <T,>({
           "scrollbar-none w-full min-w-fit whitespace-nowrap overflow-hidden relative overflow-x-scroll ",
         )}
       >
-        <thead>
+        <thead className="sticky top-0 z-10">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
@@ -160,7 +199,7 @@ export const Table = <T,>({
 
 const tabsVariants = tv({
   slots: {
-    base: "grid rounded-xl w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
+    base: "grid rounded-xxs w-full max-w-[calc(100vw-2rem)] overflow-x-scroll scrollbar-none",
     header: "whitespace-nowrap",
     cell: "",
     row: "",
@@ -168,17 +207,17 @@ const tabsVariants = tv({
   variants: {
     style: {
       default: {
-        base: "bg-rice-25 shadow-account-card px-4 pt-4 gap-4",
+        base: "bg-surface-secondary-rice shadow-account-card px-4 pt-4 gap-4",
         header:
-          "p-4 last:text-end bg-green-bean-100 text-gray-500 first:rounded-l-xl diatype-xs-bold last:justify-end last:rounded-r-xl text-start",
+          "p-4 last:text-end bg-surface-secondary-green text-ink-tertiary-500 first:rounded-l-xxs diatype-xs-bold last:justify-end last:rounded-r-xxs text-start",
         cell: "px-4 py-2 diatype-sm-medium first:pl-4 last:pr-4 last:justify-end last:text-end text-start",
-        row: "border-b border-gray-100 last:border-b-0",
+        row: "border-b border-outline-secondary-gray last:border-b-0",
       },
       simple: {
-        base: "text-gray-500 border-separate gap-2",
-        header: "p-2 text-gray-500 diatype-xs-regular last:text-end text-start",
-        cell: "px-2 last:text-end diatype-xs-medium first:rounded-l-xl last:rounded-r-xl group-hover:bg-rice-50",
-        row: "rounded-xl group",
+        base: "text-ink-tertiary-500 border-separate gap-2",
+        header: "p-2 text-ink-tertiary-500 diatype-xs-regular last:text-end text-start",
+        cell: "px-2 py-1 last:text-end diatype-xs-medium first:rounded-l-xxs last:rounded-r-xxs group-hover:bg-surface-tertiary-rice",
+        row: "rounded-xxs group",
       },
     },
   },

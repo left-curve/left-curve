@@ -1,20 +1,27 @@
-use {grug_app::AppError, grug_types::StdError, thiserror::Error};
+use {error_backtrace::Backtraceable, grug_app::AppError, grug_types::StdError};
 
-#[derive(Debug, Error)]
+#[error_backtrace::backtrace]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum DbError {
     #[error(transparent)]
-    Std(#[from] StdError),
+    Std(StdError),
 
     #[error("cannot flush when changeset is already set")]
     ChangeSetAlreadySet,
 
     #[error("cannot commit when changeset is not yet set")]
     ChangeSetNotSet,
+
+    #[error("requested version ({requested}) does not equal the DB version ({db_version})")]
+    IncorrectVersion { db_version: u64, requested: u64 },
 }
 
 impl From<DbError> for AppError {
     fn from(err: DbError) -> Self {
-        AppError::Db(err.to_string())
+        AppError::Db {
+            error: err.error(),
+            backtrace: err.backtrace(),
+        }
     }
 }
 

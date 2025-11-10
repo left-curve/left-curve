@@ -2,7 +2,7 @@ use {
     crate::{StdError, StdResult},
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
-    std::collections::BTreeMap,
+    std::{collections::BTreeMap, fmt},
 };
 
 /// A shorthand for an owned KV pair.
@@ -62,6 +62,21 @@ pub enum Order {
     Descending = 2,
 }
 
+impl Order {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Order::Ascending => "ascending",
+            Order::Descending => "descending",
+        }
+    }
+}
+
+impl fmt::Display for Order {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 // We need to convert Order into a primitive type such as `i32` so that it can
 // be passed over FFI.
 impl From<Order> for i32 {
@@ -79,7 +94,7 @@ impl TryFrom<i32> for Order {
             2 => Ok(Order::Descending),
             _ => {
                 let reason = format!("must be 1 (asc) or 2 (desc), found {value}");
-                Err(StdError::deserialize::<Self, _>("index", reason))
+                Err(StdError::deserialize::<Self, _, _>("index", reason, value))
             },
         }
     }

@@ -45,7 +45,7 @@ impl Coin {
     }
 
     /// Return an immutable reference to the coin.
-    pub fn as_ref(&self) -> CoinRef {
+    pub fn as_ref(&self) -> CoinRef<'_> {
         CoinRef {
             denom: &self.denom,
             amount: &self.amount,
@@ -53,7 +53,7 @@ impl Coin {
     }
 
     /// Return a mutable reference to the coin.
-    pub fn as_mut(&mut self) -> CoinRefMut {
+    pub fn as_mut(&mut self) -> CoinRefMut<'_> {
         CoinRefMut {
             denom: &self.denom,
             amount: &mut self.amount,

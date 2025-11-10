@@ -1,0 +1,29 @@
+- name: Ensure node-exporter dir exists
+  file:
+    path: "{{ node_exporter_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "{{ playbook_dir }}/roles/node-exporter/templates/docker-compose.yml", dest: "{{ node_exporter_dir }}/docker-compose.yml" }
+
+- name: Ensure monitoring network exists
+  community.docker.docker_network:
+    name: "monitoring"
+
+- name: Launch Node Exporter
+  community.docker.docker_compose_v2:
+    project_src: "{{ node_exporter_dir }}"
+    pull: missing
+    state: present
+    recreate: always
+
+

@@ -22,7 +22,7 @@ export const IconSun: React.FC<React.SVGAttributes<HTMLOrSVGElement>> = ({ ...pr
         >
           <path fill="#fff" d="M24 0H0v24h24z" />
         </mask>
-        <g fill="#ACA9A7" mask="url(#mask0_1177_41779)">
+        <g fill="currentColor" mask="url(#mask0_1177_41779)">
           <path d="M15.536 8.464a5 5 0 1 1-7.071 7.072 5 5 0 0 1 7.07-7.072" />
           <path
             fillRule="evenodd"

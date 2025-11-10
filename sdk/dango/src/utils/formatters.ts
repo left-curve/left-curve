@@ -1,39 +1,11 @@
-export type CurrencyFormatterOptions = {
-  currency: string;
-  language: string;
-  maxFractionDigits?: number;
-  minFractionDigits?: number;
-};
-
-/**
- * Format a currency with the given options.
- * @param amount The amount to format.
- * @param options The formatting options.
- * @param options.currency The currency code. Ex: "USD".
- * @param options.language The language to use. Ex: "en-US".
- * @param options.maxFractionDigits The maximum number of fraction digits.
- * @param options.minFractionDigits The minimum number of fraction digits.
- * @returns The formatted currency.
- */
-export function formatCurrency(amount: number | bigint, options: CurrencyFormatterOptions) {
-  const { currency, language, minFractionDigits = 2, maxFractionDigits = 2 } = options;
-  return new Intl.NumberFormat(language, {
-    currency,
-    style: "currency",
-    notation: "compact",
-    minimumFractionDigits: minFractionDigits,
-    maximumFractionDigits: maxFractionDigits,
-    currencyDisplay: "narrowSymbol",
-  }).format(amount);
-}
+import { Decimal } from "@left-curve/sdk/utils";
 
 export type FormatNumberOptions = {
   language: string;
   currency?: string;
-  style?: "decimal" | "percent" | "currency";
-  notation?: "standard" | "scientific" | "engineering" | "compact";
-  maxFractionDigits?: number;
-  minFractionDigits?: number;
+  style?: "decimal" | "currency";
+  minimumTotalDigits?: number;
+  maximumTotalDigits?: number;
   mask: keyof typeof formatNumberMask;
 };
 
@@ -77,43 +49,66 @@ const formatNumberMask = {
  * @param options The formatting options.
  * @param options.currency The currency code. Ex: "USD".
  * @param options.language The language to use. Ex: "en-US".
- * @param options.maxFractionDigits The maximum number of fraction digits.
- * @param options.minFractionDigits The minimum number of fraction digits.
+ * @param options.maximumTotalDigits The maximum number of total digits.
+ * @param options.minimumTotalDigits The minimum number of total digits.
+ * @param options.mask The mask to use. Ex: 1 for "1,234.00", 2 for "1.234,00", 3 for "1234,00", 4 for "1 234,00".
  * @returns The formatted number.
  */
-export function formatNumber(_amount_: number | bigint | string, options: FormatNumberOptions) {
-  const {
-    language,
-    currency,
-    maxFractionDigits = 2,
-    minFractionDigits = 2,
-    notation = "standard",
-    mask = 1,
-  } = options;
-  const amount = typeof _amount_ === "string" ? Number(_amount_) : _amount_;
+export function formatNumber(_amount_: number | string, options: FormatNumberOptions) {
+  const { language, currency, maximumTotalDigits = 20, minimumTotalDigits = 0, mask = 1 } = options;
+
+  const amount = Decimal(_amount_);
 
   const currencyOptions = currency
     ? ({
         currency,
         currencyDisplay: "narrowSymbol",
-        notation: "compact",
         style: "currency",
       } as const)
-    : {};
+    : ({
+        style: "decimal",
+      } as const);
 
-  return new Intl.NumberFormat(language, {
-    notation,
-    // @ts-ignore: For some reason roundingMode is not in the type definition but it is supported.
-    roundingMode: "floor",
-    minimumFractionDigits: minFractionDigits,
-    maximumFractionDigits: maxFractionDigits,
-    useGrouping: formatNumberMask[mask].useGrouping,
+  const intlOptions: Intl.NumberFormatOptions = {
     ...currencyOptions,
-  })
-    .formatToParts(amount)
+    useGrouping: formatNumberMask[mask].useGrouping,
+  };
+
+  const absAmount = amount.abs();
+
+  const integerPart = absAmount.round(0, 0);
+  const integerDigits = integerPart.isZero() ? 1 : integerPart.toFixed(0).length;
+
+  const threshold = Decimal(1).div(Decimal(10).pow(maximumTotalDigits - 1));
+
+  if (absAmount.gt(0) && absAmount.lt(threshold)) {
+    const thresholdFormatter = new Intl.NumberFormat(language, {
+      maximumFractionDigits: maximumTotalDigits - 1,
+    });
+    return `< ${thresholdFormatter.format(threshold.toNumber())}`;
+  }
+
+  if (integerDigits > maximumTotalDigits) {
+    intlOptions.notation = "compact";
+    intlOptions.maximumFractionDigits = maximumTotalDigits;
+  } else {
+    intlOptions.maximumFractionDigits = maximumTotalDigits - integerDigits;
+  }
+
+  if (minimumTotalDigits) {
+    intlOptions.minimumFractionDigits = Math.min(
+      minimumTotalDigits,
+      intlOptions.maximumFractionDigits,
+    );
+  }
+
+  return new Intl.NumberFormat(language, intlOptions)
+    .formatToParts(amount.toNumber())
     .map((part) => {
       const partType =
-        formatNumberMask[mask].format[part.type as keyof (typeof formatNumberMask)[3]["format"]];
+        formatNumberMask[mask].format[
+          part.type as keyof (typeof formatNumberMask)[keyof typeof formatNumberMask]["format"]
+        ];
       return partType || part.value;
     })
     .join("");
@@ -125,65 +120,18 @@ export function formatNumber(_amount_: number | bigint | string, options: Format
  * @param decimals The number of decimals to divide the number by.
  * @returns The formatted number.
  */
-export function formatUnits(value: bigint | number | string, decimals: number): string {
-  let display = typeof value === "string" ? value : value.toString();
-
-  const negative = display.startsWith("-");
-  if (negative) display = display.slice(1);
-
-  display = display.padStart(decimals, "0");
-
-  let [integer, fraction] = [
-    display.slice(0, display.length - decimals),
-    display.slice(display.length - decimals),
-  ];
-  fraction = fraction.replace(/(0+)$/, "");
-  return `${negative ? "-" : ""}${integer || "0"}${fraction ? `.${fraction}` : ""}`;
+export function formatUnits(value: number | string, decimals: number): string {
+  return Decimal(value.toString()).div(Decimal(10).pow(decimals)).toFixed();
 }
 
 /**
  * Parses a string representation of a number with a given number of decimals.
  * @param value The string representation of the number.
  * @param decimals The number of decimals to divide the number by.
+ * @param dp Whether to use decimal places or not. If true, it will return the number with decimal places, otherwise it will return the number without decimal places.
  * @returns The parsed number.
  */
-export function parseUnits(value: string, decimals: number) {
-  if (!/^(-?)([0-9]*)\.?([0-9]*)$/.test(value)) {
-    throw new Error(`Number \`${value}\` is not a valid decimal number.`);
-  }
-
-  let [integer, fraction = "0"] = value.split(".");
-
-  const negative = integer.startsWith("-");
-  if (negative) integer = integer.slice(1);
-
-  // trim trailing zeros.
-  fraction = fraction.replace(/(0+)$/, "");
-
-  // round off if the fraction is larger than the number of decimals.
-  if (decimals === 0) {
-    if (Math.round(Number(`.${fraction}`)) === 1) integer = `${BigInt(integer) + BigInt(1)}`;
-    fraction = "";
-  } else if (fraction.length > decimals) {
-    const [left, unit, right] = [
-      fraction.slice(0, decimals - 1),
-      fraction.slice(decimals - 1, decimals),
-      fraction.slice(decimals),
-    ];
-
-    const rounded = Math.round(Number(`${unit}.${right}`));
-    if (rounded > 9) fraction = `${BigInt(left) + BigInt(1)}0`.padStart(left.length + 1, "0");
-    else fraction = `${left}${rounded}`;
-
-    if (fraction.length > decimals) {
-      fraction = fraction.slice(1);
-      integer = `${BigInt(integer) + BigInt(1)}`;
-    }
-
-    fraction = fraction.slice(0, decimals);
-  } else {
-    fraction = fraction.padEnd(decimals, "0");
-  }
-
-  return BigInt(`${negative ? "-" : ""}${integer}${fraction}`);
+export function parseUnits(value: string, decimals: number, dp?: boolean): string {
+  const result = Decimal(value).times(Decimal(10).pow(decimals));
+  return dp ? result.toFixed() : result.toFixed(0);
 }

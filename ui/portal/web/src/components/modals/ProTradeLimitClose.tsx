@@ -1,5 +1,4 @@
-import { Button, IconButton, IconClose, Input, Range } from "@left-curve/applets-kit";
-import { useApp } from "~/hooks/useApp";
+import { Button, IconButton, IconClose, Input, Range, useApp } from "@left-curve/applets-kit";
 
 import { forwardRef } from "react";
 
@@ -7,10 +6,10 @@ export const ProTradeLimitClose = forwardRef(() => {
   const { hideModal } = useApp();
 
   return (
-    <div className="flex flex-col bg-white-100 md:border border-gray-100 pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[25rem]">
+    <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray pt-0 md:pt-6 rounded-xl relative p-4 md:p-6 gap-6 w-full md:max-w-[25rem]">
       <div className="flex flex-col gap-2">
-        <h2 className="text-gray-900 h4-bold w-full">Limit close</h2>
-        <p className="text-gray-500 diatype-sm-regular">
+        <h2 className="text-ink-primary-900 h4-bold w-full">Limit close</h2>
+        <p className="text-ink-tertiary-500 diatype-sm-regular">
           This will send an order to close your position at the limit price
         </p>
       </div>
@@ -25,7 +24,7 @@ export const ProTradeLimitClose = forwardRef(() => {
               type="button"
               variant="secondary"
               size="xs"
-              className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+              className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
             >
               Mid
             </Button>

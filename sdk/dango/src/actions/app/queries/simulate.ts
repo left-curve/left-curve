@@ -6,12 +6,12 @@ import {
   snakeCaseJsonSerialization,
 } from "@left-curve/sdk/encoding";
 import { serialize } from "@left-curve/sdk/encoding";
-import { queryIndexer } from "#actions/indexer/queryIndexer.js";
+import { queryIndexer } from "../../indexer/queryIndexer.js";
 
 import type { SimulateParameters, SimulateReturnType } from "@left-curve/sdk";
 import type { Client, SimulateResponse, Transport } from "@left-curve/sdk/types";
-import type { Chain } from "#types/chain.js";
-import type { Signer } from "#types/signer.js";
+import type { Chain } from "../../../types/chain.js";
+import type { Signer } from "../../../types/signer.js";
 
 /**
  * Simulate a transaction.

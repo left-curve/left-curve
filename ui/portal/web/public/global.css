@@ -1,39 +1,21 @@
+@import "@left-curve/foundation/tailwind/global.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  overflow-x: hidden;
-  overflow-y: scroll;
-  min-height: 100svh;
-  scrollbar-gutter: stable;
-  background: theme("colors.white.100");
-}
-
-#root {
-  font-family: 'ABCDiatypeRounded', sans-serif;
-  background: theme("colors.white.100");
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-.header {
-  width: 200%;
-  mask: url("./images/header-mask.svg") no-repeat bottom center / 115%;
-}
-
-@media screen and (min-width: 768px) {
-  .header {
-    width: 100%;
-  }
-}
-
-
 @layer utilities {
+
   @media (min-height: 1000px) and (min-width: 1280px) {
     div.custom-width {
       width: calc(720px + (100vh - 1000px) * 0.8);
     }
   }
+
+  input:is(:-webkit-autofill, :autofill) {
+    /* biome-ignore lint/correctness/noUnknownFunction: theme() is required for dynamic Tailwind color */
+    -webkit-text-fill-color: theme('colors.ink.secondary.700') !important;
+  }
+
 
   .qr-container {
     display: flex;
@@ -44,17 +26,9 @@ body {
 
   .max-h-available {
     max-height: 100vh;
+    /* biome-ignore lint/suspicious/noDuplicateProperties: Adding browser-specific properties */
     max-height: -moz-available;
     max-height: -webkit-fill-available;
     max-height: -webkit-stretch;
   }
-}
-
-[cmdk-group-heading] {
-  @apply diatype-sm-medium text-gray-500;
-  padding: 0 11px;
-}
-
-.react-json-view .variable-value div {
-  color: theme("colors.white.100") !important;
 }

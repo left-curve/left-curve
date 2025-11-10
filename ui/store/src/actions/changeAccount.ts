@@ -1,4 +1,4 @@
-import type { Account, Address } from "@left-curve/dango/types";
+import type { Address } from "@left-curve/dango/types";
 import type { UID } from "@left-curve/dango/types";
 
 import type { Config } from "../types/store.js";
