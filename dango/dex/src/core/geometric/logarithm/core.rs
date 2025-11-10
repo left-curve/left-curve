@@ -1,6 +1,5 @@
 use grug::{
-    Dec, Dec128, Inner, Int128, MathError, MultiplyFraction, Number, NumberConst, PrevNumber,
-    Unsigned,
+    Dec, Inner, Int128, MathError, MultiplyFraction, Number, NumberConst, PrevNumber, Unsigned,
 };
 
 use crate::core::geometric::logarithm::{
@@ -87,19 +86,6 @@ fn _log2_interpolated_one_to_two<const S: u32>(x: Dec<i128, S>) -> anyhow::Resul
     Ok(result)
 }
 
-pub fn ln_interpolated_one_to_two<const S: u32>(x: Dec<i128, S>) -> anyhow::Result<Dec<i128, S>> {
-    if x < Dec::<i128, S>::ONE || x >= Dec::<i128, S>::new_percent(200) {
-        anyhow::bail!("input must be in the range [1, 2). got {}", x);
-    }
-
-    // Use logarithm conversion formula: ln(x) = log2(x) * ln(2)
-    // Since ONE_OVER_NATURAL_LOG_OF_TWO = 1/ln(2), we divide by it to get ln(2)
-    let log2_x = _log2_interpolated_one_to_two(x)?;
-    let ln_of_two = NATURAL_LOG_OF_TWO::to_decimal_value::<S>()?.checked_into_signed()?;
-
-    Ok(log2_x.checked_mul(ln_of_two)?)
-}
-
 /// Computes the base-2 logarithm of an i128 value
 ///
 /// This implementation splits the calculation into integer and fractional parts:
@@ -115,20 +101,20 @@ pub fn ln_interpolated_one_to_two<const S: u32>(x: Dec<i128, S>) -> anyhow::Resu
 /// ## Outputs
 /// * `Ok(Dec128)` - The base-2 logarithm of x
 /// * `Err` - If x is not positive or numerical error occurs
-pub fn log2_i128(x: i128) -> anyhow::Result<Dec128> {
+pub fn log2_i128<const S: u32>(x: i128) -> anyhow::Result<Dec<i128, S>> {
     // Ensure input is positive
     anyhow::ensure!(x > 0, "Logarithm is only defined for positive numbers");
 
     // Special case for x = 1
     if x == 1 {
-        return Ok(Dec128::ZERO);
+        return Ok(Dec::<i128, S>::ZERO);
     }
 
     // Get the integer part of log2(x)
     let i = x
         .checked_ilog2()
         .ok_or_else(|| anyhow::anyhow!("ilog2 failed"))?;
-    let i_dec = Dec128::new(i as i128);
+    let i_dec = Dec::<i128, S>::new(i as i128);
 
     // If x is a perfect power of 2, we're done
     if x == (2i128 << (i - 1)) {
@@ -139,7 +125,7 @@ pub fn log2_i128(x: i128) -> anyhow::Result<Dec128> {
     let two_to_i = 2i128
         .checked_pow(i)
         .ok_or_else(|| anyhow::anyhow!("pow failed"))?;
-    let normalized = Dec128::checked_from_ratio(Int128::new(x), Int128::new(two_to_i))?;
+    let normalized = Dec::<i128, S>::checked_from_ratio(Int128::new(x), Int128::new(two_to_i))?;
 
     // Now we need to find f where 2^f = normalized
     let f = _log2_interpolated_one_to_two(normalized)?;
@@ -148,9 +134,46 @@ pub fn log2_i128(x: i128) -> anyhow::Result<Dec128> {
     Ok(i_dec.checked_add(f)?)
 }
 
+/// Computes the base-2 logarithm of a Dec value
+///
+/// This implementation uses the fact that log2(m/(10^n)) = log2(m) - n*log2(10).
+///
+/// ## Inputs
+/// * `x` - The Dec value to compute the logarithm of (must be positive)
+///
+/// ## Outputs
+/// * `Ok(Dec<i128, S>)` - The base-2 logarithm of x
+/// * `Err` - If x is not positive or numerical error occurs
+fn log2_dec<const S: u32>(x: Dec<i128, S>) -> anyhow::Result<Dec<i128, S>> {
+    let n = Dec::<i128, S>::new(Dec::<i128, S>::DECIMAL_PLACES as i128);
+
+    let log2_of_m = log2_i128(x.into_inner())?;
+
+    let log2_of_ten = _u64_to_dec128::<S>(LOG2_OF_TEN)?;
+
+    Ok(log2_of_m.checked_sub(n.checked_mul(log2_of_ten)?)?)
+}
+
+/// Computes the natural logarithm (ln) of any positive Dec value
+///
+/// This function uses the fact that ln(x) = log2(x) * ln(2).
+///
+/// ## Inputs
+/// * `x` - The Dec value to compute the natural logarithm of (must be positive)
+///
+/// ## Outputs
+/// * `Ok(Dec<i128, S>)` - The natural logarithm of x
+/// * `Err` - If x is not positive or numerical error occurs
+pub fn ln_dec<const S: u32>(x: Dec<i128, S>) -> anyhow::Result<Dec<i128, S>> {
+    // ln(x) = log2(x) * ln(2)
+    let log2_x = log2_dec(x)?;
+    let ln_of_two = NATURAL_LOG_OF_TWO::to_decimal_value::<S>()?.checked_into_signed()?;
+    Ok(log2_x.checked_mul(ln_of_two)?)
+}
+
 #[cfg(test)]
 mod tests {
-    use {super::*, std::str::FromStr, test_case::test_case};
+    use {super::*, grug::Dec128, std::str::FromStr, test_case::test_case};
 
     #[test_case(
         1i128
@@ -247,10 +270,97 @@ mod tests {
         => Dec128::raw(Int128::new(693647198106155077))  // ln(1.999), within interpolation precision
         ; "ln_1_999_corrected"
     )]
-    fn test_ln_interpolated_one_to_two(x: Dec128) -> Dec128 {
-        ln_interpolated_one_to_two::<24>(x.convert_precision::<24>().unwrap())
+    fn test_ln_dec(x: Dec128) -> Dec128 {
+        ln_dec::<24>(x.convert_precision::<24>().unwrap())
             .unwrap()
             .convert_precision()
             .unwrap()
+    }
+
+    // Tests for log2_dec
+    #[test_case(
+        Dec128::ONE
+        => Dec128::ZERO
+        ; "log2_dec_of_1"
+    )]
+    #[test_case(
+        Dec128::new(2)
+        => Dec128::ONE
+        ; "log2_dec_of_2"
+    )]
+    #[test_case(
+        Dec128::new(4)
+        => Dec128::new(2)
+        ; "log2_dec_of_4"
+    )]
+    #[test_case(
+        Dec128::new(8)
+        => Dec128::new(3)
+        ; "log2_dec_of_8"
+    )]
+    #[test_case(
+        Dec128::new(10)
+        => Dec128::from_str("3.321928094887362348").unwrap()
+        ; "log2_dec_of_10"
+    )]
+    #[test_case(
+        Dec128::new(100)
+        => Dec128::from_str("6.643856189774724696").unwrap()
+        ; "log2_dec_of_100"
+    )]
+    #[test_case(
+        Dec128::new(1000)
+        => Dec128::from_str("9.965784284662087043").unwrap()
+        ; "log2_dec_of_1000"
+    )]
+    #[test_case(
+        Dec128::from_str("0.5").unwrap()
+        => Dec128::from_str("-1").unwrap()
+        ; "log2_dec_of_0_5"
+    )]
+    #[test_case(
+        Dec128::from_str("0.25").unwrap()
+        => Dec128::from_str("-2").unwrap()
+        ; "log2_dec_of_0_25"
+    )]
+    #[test_case(
+        Dec128::from_str("0.125").unwrap()
+        => Dec128::from_str("-3").unwrap()
+        ; "log2_dec_of_0_125"
+    )]
+    #[test_case(
+        Dec128::from_str("1.5").unwrap()
+        => Dec128::from_str("0.584962500721156181").unwrap()
+        ; "log2_dec_of_1_5"
+    )]
+    #[test_case(
+        Dec128::from_str("3.14159").unwrap()
+        => Dec128::from_str("1.651496129472318643").unwrap()
+        ; "log2_dec_of_pi"
+    )]
+    #[test_case(
+        Dec128::from_str("0.1").unwrap()
+        => Dec128::from_str("-3.321928094887362348").unwrap()
+        ; "log2_dec_of_0_1"
+    )]
+    #[test_case(
+        Dec128::from_str("0.01").unwrap()
+        => Dec128::from_str("-6.643856189774724696").unwrap()
+        ; "log2_dec_of_0_01"
+    )]
+    fn test_log2_dec(x: Dec128) -> Dec128 {
+        log2_dec(x).unwrap()
+    }
+
+    #[test]
+    fn test_log2_dec_zero_fails() {
+        let result = log2_dec(Dec128::ZERO);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_log2_dec_negative_fails() {
+        let result = log2_dec(Dec128::from_str("-1").unwrap());
+        assert!(result.is_err());
     }
 }

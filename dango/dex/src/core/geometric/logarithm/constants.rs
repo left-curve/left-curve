@@ -18,3 +18,9 @@ impl UnsignedDecimalConstant for NATURAL_LOG_OF_TWO {
     const DECIMAL_PLACES: u32 = 24;
     const INNER_VALUE: u128 = 693147180559945309417232;
 }
+
+pub struct NaturalLogOfTen {}
+impl UnsignedDecimalConstant for NaturalLogOfTen {
+    const DECIMAL_PLACES: u32 = 24;
+    const INNER_VALUE: u128 = 2302585092994045684017991;
+}
