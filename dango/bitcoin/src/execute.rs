@@ -370,7 +370,7 @@ fn transfer_remote(
     req: TransferRemoteRequest,
     amount: Uint128,
 ) -> anyhow::Result<Response> {
-    // Ensure only the gateway can call this function, that is responsable also
+    // Ensure only the gateway can call this function, that is responsible also
     // to deduct the withdrawal fees. The amount here is the net amount to withdraw.
     ensure!(
         ctx.sender == ctx.querier.query_gateway()?,
