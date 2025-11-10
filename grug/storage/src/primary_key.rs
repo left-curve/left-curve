@@ -144,9 +144,10 @@ impl PrimaryKey for bool {
         match bytes {
             [0] => Ok(false),
             [1] => Ok(true),
-            _ => Err(StdError::deserialize::<Self::Output, _>(
+            _ => Err(StdError::deserialize::<Self::Output, _, Binary>(
                 "key",
                 format!("unknown bytes `{bytes:?}` for boolean key, expecting 0 or 1"),
+                bytes.into(),
             )),
         }
     }
