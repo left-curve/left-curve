@@ -561,6 +561,7 @@ impl Storage for StateCommitment {
     }
 }
 
+#[cfg(feature = "tracing")]
 impl Drop for StateCommitment {
     fn drop(&mut self) {
         tracing::debug!(comment = "commitment", "Released read-lock on data");
