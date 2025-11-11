@@ -9,6 +9,7 @@ import {
 import {
   useAccount,
   useAppConfig,
+  useBalances,
   usePublicClient,
   useSigningClient,
   useSubmitTx,
@@ -152,6 +153,7 @@ const ExecuteMsg: React.FC = () => {
   const { currentTab } = useMsgBuilder();
   const { data: signingClient } = useSigningClient();
   const { isConnected, account } = useAccount();
+  const { data: balances = {} } = useBalances({ address: account?.address });
   const [executeMsg, setExecuteMsg] = useState<string>("");
   const { theme } = useTheme();
 
@@ -203,6 +205,15 @@ const ExecuteMsg: React.FC = () => {
                               type: "object",
                               description:
                                 "(Optional) Funds (coins) to be sent with the execution.",
+                              properties: Object.fromEntries(
+                                Object.entries(balances).map(([denom, balance]) => [
+                                  denom,
+                                  {
+                                    type: "string",
+                                    description: `Available balance: ${balance}`,
+                                  },
+                                ]),
+                              ),
                             },
                           },
                           required: ["contract", "msg"],
