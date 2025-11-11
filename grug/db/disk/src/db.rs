@@ -1,23 +1,12 @@
 #[cfg(feature = "metrics")]
 use grug_types::MetricsIterExt;
 use {
-    crate::{DbError, DbResult, U64Comparator, U64Timestamp},
+    crate::{DbError, DbResult},
     grug_app::{Commitment, Db},
-    grug_types::{
-        Batch, Buffer, Hash256, HashExt, HexBinary, Inner, Op, Order, Record, Shared, Storage,
-    },
-    ouroboros::self_referencing,
-    rocksdb::{
-        BoundColumnFamily, ColumnFamily, DB, DBWithThreadMode, IteratorMode, MultiThreaded,
-        Options, ReadOptions, WriteBatch,
-    },
-    std::{
-        collections::BTreeMap,
-        marker::PhantomData,
-        ops::Bound,
-        path::Path,
-        sync::{Arc, RwLock, RwLockReadGuard},
-    },
+    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Shared, Storage},
+    parking_lot::{ArcRwLockReadGuard, RawRwLock},
+    rocksdb::{ColumnFamily, DB, IteratorMode, Options, ReadOptions, WriteBatch},
+    std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
 };
 
 /// We use three column families (CFs) for storing data.
@@ -113,8 +102,19 @@ struct PendingData {
 }
 
 impl<T> DiskDb<T> {
-    /// Create a DiskDb instance by opening a physical RocksDB instance.ound is exclusive.
-    pub fn open<P, B>(data_dir: P, priority_range: Option<(B, B)>) -> DbResult<Self>
+    /// Create a DiskDb instance by opening a physical RocksDB instance.
+    pub fn open<P>(data_dir: P) -> DbResult<Self>
+    where
+        P: AsRef<Path>,
+    {
+        Self::open_with_priority(data_dir, None::<(&[u8], &[u8])>)
+    }
+
+    /// Create a DiskDb instance by opening a physical RocksDB instance,
+    /// optionally with a priority range. Recrods within the range will be
+    /// loaded into memory for better performance. The range's lower bound is
+    /// inclusive, the upper bound is exclusive.
+    pub fn open_with_priority<P, B>(data_dir: P, priority_range: Option<(B, B)>) -> DbResult<Self>
     where
         P: AsRef<Path>,
         B: AsRef<[u8]>,
@@ -145,7 +145,7 @@ impl<T> DiskDb<T> {
             // it means the DB is new, then we default the priority data to an
             // empty B-tree map.
             let cf = cf_state_storage(&db);
-            let opts = new_read_options(None, Some(min.as_ref()), Some(max.as_ref()));
+            let opts = new_read_options(Some(min.as_ref()), Some(max.as_ref()));
             let records = db
                 .iterator_cf_opt(&cf, opts, IteratorMode::Start)
                 .map(|item| {
@@ -203,9 +203,7 @@ where
 
     fn state_commitment(&self) -> StateCommitment {
         StateCommitment {
-            inner: Arc::new(StateCommitmentInner::new(self.data.clone(), |data| {
-                data.read_access()
-            })),
+            data: Arc::new(self.data.static_read_access()),
         }
     }
 
@@ -218,26 +216,20 @@ where
         )]
         comment: &'static str,
     ) -> DbResult<StateStorage> {
-        // Read the latest version.
-        // If it doesn't exist, this means not even a single batch has been
-        // written yet (e.g. during `InitChain`). In this case just use zero.
-        let latest_version = self.latest_version().unwrap_or(0);
-
         // If version is unspecified, use the latest version. Otherwise, make
         // sure it's no newer than the latest version.
-        let version = match version {
-            Some(version) => {
-                if version != latest_version {
-                    return Err(DbError::incorret_version(version, latest_version));
-                }
-                version
-            },
-            None => latest_version,
-        };
+        if let Some(version) = version {
+            // Read the latest version.
+            // If it doesn't exist, this means not even a single batch has been
+            // written yet (e.g. during `InitChain`). In this case just use zero.
+            let latest_version = self.latest_version().unwrap_or(0);
+            if version != latest_version {
+                return Err(DbError::incorret_version(version, latest_version));
+            }
+        }
 
         Ok(StateStorage {
-            data: self.data.clone(),
-            version,
+            data: Arc::new(self.data.static_read_access()),
             #[cfg(any(feature = "tracing", feature = "metrics"))]
             comment,
         })
@@ -451,27 +443,16 @@ where
 
 // ----------------------------- state commitment ------------------------------
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct StateCommitment {
-    inner: Arc<StateCommitmentInner>,
-}
-
-#[self_referencing]
-#[derive(Debug)]
-pub struct StateCommitmentInner {
-    data: Shared<Data>,
-    #[borrows(data)]
-    #[covariant]
-    guard: RwLockReadGuard<'this, Data>,
+    data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
 }
 
 impl Storage for StateCommitment {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.inner.with_guard(|data| {
-            let cf = cf_state_commitment(&data.db);
-            data.db.get_cf(&cf, key).unwrap_or_else(|err| {
-                panic!("failed to read from state commitment: {err}");
-            })
+        let cf = cf_state_commitment(&self.data.db);
+        self.data.db.get_cf(&cf, key).unwrap_or_else(|err| {
+            panic!("failed to read from state commitment: {err}");
         })
     }
 
@@ -481,15 +462,12 @@ impl Storage for StateCommitment {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        self.inner.with_guard(|data| {
-
-        })
-        let opts = new_read_options(None, min, max);
+        let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .inner
+            .data
             .db
-            .iterator_cf_opt(&cf_state_commitment(&self.inner.db), opts, mode)
+            .iterator_cf_opt(&cf_state_commitment(&self.data.db), opts, mode)
             .map(|item| {
                 let (k, v) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state commitment: {err}");
@@ -505,12 +483,12 @@ impl Storage for StateCommitment {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(None, min, max);
+        let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .inner
+            .data
             .db
-            .iterator_cf_opt(&cf_state_commitment(&self.inner.db), opts, mode)
+            .iterator_cf_opt(&cf_state_commitment(&self.data.db), opts, mode)
             .map(|item| {
                 let (k, _) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state commitment: {err}");
@@ -526,12 +504,12 @@ impl Storage for StateCommitment {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(None, min, max);
+        let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .inner
+            .data
             .db
-            .iterator_cf_opt(&cf_state_commitment(&self.inner.db), opts, mode)
+            .iterator_cf_opt(&cf_state_commitment(&self.data.db), opts, mode)
             .map(|item| {
                 let (_, v) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state commitment: {err}");
@@ -558,8 +536,7 @@ impl Storage for StateCommitment {
 
 #[derive(Clone, Debug)]
 pub struct StateStorage {
-    data: Shared<Data>,
-    version: u64,
+    data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
     #[cfg(any(feature = "tracing", feature = "metrics"))]
     comment: &'static str,
 }
@@ -575,66 +552,18 @@ impl StateStorage {
         // within the priority range, then create a priority iterator.
         // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
         // are both exclusive.
-        if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
+        if let (Some(data), Some(min), Some(max)) = (&self.data.priority_data, min, max) {
             if data.min.as_slice() <= min && max <= data.max.as_slice() {
-                return self.create_priority_iterator(data, min, max, order);
+                return data.records.scan(Some(min), Some(max), order);
             }
         }
 
-        self.create_non_priority_iterator(min, max, order)
-    }
-
-    fn create_priority_iterator<'a>(
-        &'a self,
-        data: &'a PriorityData,
-        min: &[u8],
-        max: &[u8],
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        #[cfg(feature = "tracing")]
-        {
-            tracing::debug!(
-                operation = "scan",
-                comment = self.comment,
-                "Attempting to acquire read lock on priority data"
-            );
-        }
-
-        let records = data.records.read().expect("priority data poisoned");
-
-        #[cfg(feature = "tracing")]
-        {
-            tracing::debug!(
-                operation = "scan",
-                comment = self.comment,
-                "Acquired read lock on priority data"
-            );
-        }
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
-        }
-
-        Box::new(PriorityDataIter {
-            inner: PriorityDataIterInner::new(records, |g| g.scan(Some(min), Some(max), order)),
-            #[cfg(feature = "tracing")]
-            comment: self.comment,
-        })
-    }
-
-    fn create_non_priority_iterator<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let opts = new_read_options(Some(self.version), min, max);
+        let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .inner
+            .data
             .db
-            .iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode)
+            .iterator_cf_opt(&cf_state_storage(&self.data.db), opts, mode)
             .map(|item| {
                 let (k, v) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state storage: {err}");
@@ -660,58 +589,17 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the disk.
         // Note: `min` is inclusive, while `max` is exclusive.
-        if let Some(data) = &self.inner.priority_data {
+        if let Some(data) = &self.data.priority_data {
             if data.min.as_slice() <= key && key < data.max.as_slice() {
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::debug!(
-                        operation = "read",
-                        comment = self.comment,
-                        "Attempting to acquire read lock on priority data"
-                    );
-                }
-
-                let records = data.records.read().expect("priority data poisoned");
-
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::debug!(
-                        operation = "read",
-                        comment = self.comment,
-                        "Acquired read lock on priority data"
-                    );
-                }
-
-                #[cfg(feature = "metrics")]
-                {
-                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
-                }
-
-                let value = records.get(key).cloned();
-
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::debug!(
-                        operation = "read",
-                        comment = self.comment,
-                        "Released read lock on priority data"
-                    );
-                }
-
-                #[cfg(feature = "metrics")]
-                {
-                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
-                }
-
-                return value;
+                return data.records.get(key).cloned();
             }
         }
 
-        let opts = new_read_options(Some(self.version), None, None);
+        let opts = new_read_options(None, None);
         let value = self
-            .inner
+            .data
             .db
-            .get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts)
+            .get_cf_opt(&cf_state_storage(&self.data.db), key, &opts)
             .unwrap_or_else(|err| {
                 panic!("failed to read from state storage: {err}");
             });
@@ -798,46 +686,6 @@ impl Storage for StateStorage {
     }
 }
 
-struct PriorityDataIter<'a> {
-    inner: PriorityDataIterInner<'a>,
-    #[cfg(feature = "tracing")]
-    comment: &'static str,
-}
-
-#[self_referencing]
-struct PriorityDataIterInner<'a> {
-    guard: RwLockReadGuard<'a, BTreeMap<Vec<u8>, Vec<u8>>>,
-    #[borrows(guard)]
-    #[covariant]
-    inner: Box<dyn Iterator<Item = Record> + 'this>,
-}
-
-impl<'a> Iterator for PriorityDataIter<'a> {
-    type Item = Record;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.with_inner_mut(|iter| iter.next())
-    }
-}
-
-impl<'a> Drop for PriorityDataIter<'a> {
-    fn drop(&mut self) {
-        #[cfg(feature = "tracing")]
-        {
-            tracing::debug!(
-                operation = "scan",
-                comment = self.comment,
-                "Released read lock on priority data"
-            );
-        }
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
-        }
-    }
-}
-
 // ---------------------------------- helpers ----------------------------------
 
 #[inline]
@@ -858,28 +706,11 @@ pub fn new_db_options() -> Options {
     opts
 }
 
-pub fn new_cf_options_with_ts() -> Options {
-    let mut opts = Options::default();
-    // Must use a timestamp-enabled comparator
-    opts.set_comparator_with_ts(
-        U64Comparator::NAME,
-        U64Timestamp::SIZE,
-        Box::new(U64Comparator::compare),
-        Box::new(U64Comparator::compare_ts),
-        Box::new(U64Comparator::compare_without_ts),
-    );
-    opts
-}
-
 pub(crate) fn new_read_options(
-    version: Option<u64>,
     iterate_lower_bound: Option<&[u8]>,
     iterate_upper_bound: Option<&[u8]>,
 ) -> ReadOptions {
     let mut opts = ReadOptions::default();
-    if let Some(version) = version {
-        opts.set_timestamp(U64Timestamp::from(version));
-    }
     if let Some(bound) = iterate_lower_bound {
         opts.set_iterate_lower_bound(bound);
     }
@@ -1078,68 +909,91 @@ mod tests_jmt {
         let path = TempDataDir::new("_grug_disk_db_works");
         let db = DiskDb::<MerkleTree>::open(&path).unwrap();
 
-        // Write a batch. The very first batch have version 0.
-        let batch = Batch::from([
-            (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
-            (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
-            (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
-            (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
-        ]);
-        let (version, root_hash) = db.flush_and_commit(batch).unwrap();
-        assert_eq!(version, 0);
-        assert_eq!(root_hash, Some(v0::ROOT_HASH));
+        // Version 0
+        {
+            // Write a batch.
+            let batch = Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
+                (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
+                (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
+                (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
+            ]);
+            let (version, root_hash) = db.flush_and_commit(batch).unwrap();
+            assert_eq!(version, 0);
+            assert_eq!(root_hash, Some(v0::ROOT_HASH));
 
-        // Write another batch with version = 1.
-        let batch = Batch::from([
-            (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
-            (b"joe".to_vec(), Op::Delete),
-            (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
-        ]);
-        let (version, root_hash) = db.flush_and_commit(batch).unwrap();
-        assert_eq!(version, 1);
-        assert_eq!(root_hash, Some(v1::ROOT_HASH));
+            // Read single records.
+            for (key, value) in [
+                ("donald", Some("trump")),
+                ("jake", Some("shepherd")),
+                ("joe", Some("biden")),
+                ("larry", Some("engineer")),
+                ("pumpkin", None),
+            ] {
+                let found_value = db
+                    .state_storage(Some(0))
+                    .unwrap()
+                    .read(key.as_bytes())
+                    .map(|bz| String::from_utf8(bz).unwrap());
+                assert_eq!(found_value.as_deref(), value);
+            }
 
-        // Try query values at the two versions, respectively, from state storage.
-        for (version, key, value) in [
-            (0, "donald", Some("trump")),
-            (0, "jake", Some("shepherd")),
-            (0, "joe", Some("biden")),
-            (0, "larry", Some("engineer")),
-            (0, "pumpkin", None),
-            (1, "donald", Some("duck")),
-            (1, "jake", Some("shepherd")),
-            (1, "joe", None),
-            (1, "larry", Some("engineer")),
-            (1, "pumpkin", Some("cat")),
-        ] {
-            let found_value = db
-                .state_storage(Some(version))
-                .unwrap()
-                .read(key.as_bytes())
-                .map(|bz| String::from_utf8(bz).unwrap());
-            assert_eq!(found_value.as_deref(), value);
-        }
-
-        // Try iterating at the two versions, respectively.
-        for (version, items) in [
-            (0, [
-                ("donald", "trump"),
-                ("jake", "shepherd"),
-                ("joe", "biden"),
-                ("larry", "engineer"),
-            ]),
-            (1, [
-                ("donald", "duck"),
-                ("jake", "shepherd"),
-                ("larry", "engineer"),
-                ("pumpkin", "cat"),
-            ]),
-        ] {
+            // Iterator records.
             for ((found_key, found_value), (key, value)) in db
                 .state_storage(Some(version))
                 .unwrap()
                 .scan(None, None, Order::Ascending)
-                .zip(items)
+                .zip([
+                    ("donald", "trump"),
+                    ("jake", "shepherd"),
+                    ("joe", "biden"),
+                    ("larry", "engineer"),
+                ])
+            {
+                assert_eq!(found_key, key.as_bytes());
+                assert_eq!(found_value, value.as_bytes());
+            }
+        }
+
+        // Version 1
+        {
+            // Write a batch.
+            let batch = Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
+                (b"joe".to_vec(), Op::Delete),
+                (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
+            ]);
+            let (version, root_hash) = db.flush_and_commit(batch).unwrap();
+            assert_eq!(version, 1);
+            assert_eq!(root_hash, Some(v1::ROOT_HASH));
+
+            // Read single records.
+            for (key, value) in [
+                ("donald", Some("duck")),
+                ("jake", Some("shepherd")),
+                ("joe", None),
+                ("larry", Some("engineer")),
+                ("pumpkin", Some("cat")),
+            ] {
+                let found_value = db
+                    .state_storage(Some(1))
+                    .unwrap()
+                    .read(key.as_bytes())
+                    .map(|bz| String::from_utf8(bz).unwrap());
+                assert_eq!(found_value.as_deref(), value);
+            }
+
+            // Iterator records.
+            for ((found_key, found_value), (key, value)) in db
+                .state_storage(Some(version))
+                .unwrap()
+                .scan(None, None, Order::Ascending)
+                .zip([
+                    ("donald", "duck"),
+                    ("jake", "shepherd"),
+                    ("larry", "engineer"),
+                    ("pumpkin", "cat"),
+                ])
             {
                 assert_eq!(found_key, key.as_bytes());
                 assert_eq!(found_value, value.as_bytes());
@@ -1293,7 +1147,7 @@ mod tests_jmt {
             // Request state storage. Should fail with `DbError::VersionTooOld`.
             assert!(db.state_storage(Some(version)).is_err_and(|err| {
                 err.to_string()
-                    .contains("older than the oldest available version (3)")
+                    .contains("doesn't equal the current version (4)")
             }));
 
             // Prove a key. Should fail when attempting to load the root node of
@@ -1304,11 +1158,12 @@ mod tests_jmt {
             }));
         }
 
-        // Doing the same under versions 3, which haven't been pruned, should work.
+        // State storage doesn't exist for version 3, because we only keep the
+        // latest version, but proving at version 3 should work.
         // Proof doesn't work for version 4 though, because the tree is empty.
         // We can't proof anything if the tree is empty...
         {
-            assert!(db.state_storage(Some(3)).is_ok());
+            assert!(db.state_storage(Some(3)).is_err());
             assert!(db.prove(b"a", Some(3)).is_ok());
         }
 
@@ -1316,7 +1171,7 @@ mod tests_jmt {
         {
             assert!(db.state_storage(Some(5)).is_err_and(|err| {
                 err.to_string()
-                    .contains("newer than the latest version (4)")
+                    .contains("doesn't equal the current version (4)")
             }));
 
             assert!(db.prove(b"a", Some(5)).is_err_and(|err| {
@@ -1331,12 +1186,7 @@ mod tests_jmt {
 
 #[cfg(test)]
 mod tests_simple {
-    use {
-        super::*,
-        grug_app::SimpleCommitment,
-        grug_types::{ResultExt, btree_map, hash},
-        temp_rocksdb::TempDataDir,
-    };
+    use {super::*, grug_app::SimpleCommitment, grug_types::hash, temp_rocksdb::TempDataDir};
 
     // sha256(6 | donald | 1 | 5 | trump | 4 | jake | 1 | 8 | shepherd | 3 | joe | 1 | 5 | biden | 5 | larry | 1 | 8 | engineer)
     // = sha256(0006646f6e616c640100057472756d7000046a616b65010008736865706865726400036a6f65010005626964656e00056c61727279010008656e67696e656572)
@@ -1409,146 +1259,6 @@ mod tests_simple {
     }
 
     #[test]
-    fn prune_works() {
-        let path = TempDataDir::new("_grug_disk_db_lite_pruning_works");
-        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
-
-        for batch in [
-            // v0
-            Batch::from([(b"0".to_vec(), Op::Insert(b"0".to_vec()))]),
-            // v1
-            Batch::from([(b"1".to_vec(), Op::Insert(b"1".to_vec()))]),
-            // v2
-            Batch::from([(b"2".to_vec(), Op::Insert(b"2".to_vec()))]),
-            // v3
-            Batch::from([(b"3".to_vec(), Op::Insert(b"3".to_vec()))]),
-            // v4
-            Batch::from([(b"4".to_vec(), Op::Insert(b"4".to_vec()))]),
-        ] {
-            db.flush_and_commit(batch).unwrap();
-        }
-
-        let current_version = db.latest_version();
-        assert_eq!(current_version, Some(4));
-
-        let storage = db.state_storage(current_version).unwrap();
-        assert_eq!(storage.read(b"2"), Some(b"2".to_vec()));
-        assert_eq!(storage.read(b"4"), Some(b"4".to_vec()));
-
-        db.flush_and_commit(Batch::from([(b"2".to_vec(), Op::Insert(b"22".to_vec()))]))
-            .unwrap();
-
-        assert_eq!(
-            db.state_storage(Some(5)).unwrap().read(b"2"),
-            Some(b"22".to_vec())
-        );
-
-        assert_eq!(
-            db.state_storage(None).unwrap().read(b"2"),
-            Some(b"22".to_vec())
-        );
-
-        // Prune the db at 3, which is exclusive (3 becomes the oldest version)
-        // and force an immediate compaction.
-        db.prune(3).unwrap();
-        db.compact();
-
-        assert_eq!(
-            db.state_storage(Some(4)).unwrap().read(b"2"),
-            Some(b"2".to_vec())
-        );
-
-        assert_eq!(
-            db.state_storage(Some(3)).unwrap().read(b"2"),
-            Some(b"2".to_vec())
-        );
-
-        // Try to read at version = 2. We return an error trying create a storage at a pruned version.
-        // This is not ensuring that we really pruned the db, but that we saved the correct oldest version.
-        db.state_storage(Some(2)).should_fail_with_error(
-            "requested version (2) is older than the oldest available version (3)",
-        );
-
-        // Ensure that the prune really pruned the db.
-        db.inner
-            .db
-            .get_cf_opt(
-                &cf_state_storage(&db.inner.db),
-                b"2",
-                &new_read_options(Some(2), None, None),
-            )
-            .should_fail_with_error(
-                "Invalid argument: Read timestamp:  is smaller than full_history_ts_low",
-            );
-    }
-
-    #[test]
-    fn auto_pruning_and_manual_compaction_works() {
-        const KEY: &[u8] = b"data";
-
-        let path = TempDataDir::new("_grug_disk_db_auto_prune_works");
-        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            pruning: PruningConfig {
-                prune_interval: 2,
-                prune_keep_recent: 2,
-                compact_interval: 2,
-            },
-            ..Default::default()
-        })
-        .unwrap();
-
-        // Write four batches of versions 0, 1, 2, 3.
-        for version in 0..=3 {
-            db.flush_and_commit(btree_map! {
-                KEY.to_vec() => Op::Insert(vec![version]),
-            })
-            .unwrap();
-        }
-
-        // No pruning should have happened at this point. Oldest version should
-        // not have been set (it's only set the first time a pruning is performed),
-        // and we should be able to read the historical values.
-        assert_eq!(db.oldest_version(), None);
-        for version in 0..=3 {
-            assert_eq!(
-                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
-                vec![version as u8]
-            );
-        }
-
-        // Write a batch of version 4.
-        db.flush_and_commit(btree_map! {
-            KEY.to_vec() => Op::Insert(vec![4]),
-        })
-        .unwrap();
-
-        // A pruning should have happened. with `up_to_version` = 4 - 2 = 2
-        // (exclusive, meaning version 0 & 1 are gone, version 2 is kept).
-        assert_eq!(db.oldest_version(), Some(2));
-        for version in 0..=1 {
-            db.state_storage(Some(version))
-                .should_fail_with_error(DbError::version_too_old(version, 2));
-
-            db.inner
-                .db
-                .get_cf_opt(
-                    &cf_state_storage(&db.inner.db),
-                    KEY,
-                    &new_read_options(Some(version), None, None),
-                )
-                .should_fail_with_error(
-                    "Invalid argument: Read timestamp:  is smaller than full_history_ts_low",
-                );
-        }
-        for version in 2..=4 {
-            assert_eq!(
-                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
-                vec![version as u8]
-            );
-        }
-    }
-
-    #[test]
     fn priority_data() {
         let path = TempDataDir::new("_grug_disk_db_priority_data");
 
@@ -1565,13 +1275,12 @@ mod tests_simple {
         .unwrap();
 
         // Enusre rockdb max is exclusive.
-        {
+        db.data.read_with(|data| {
             assert_eq!(
-                db.inner
-                    .db
+                data.db
                     .iterator_cf_opt(
-                        &cf_state_storage(&db.inner.db),
-                        new_read_options(Some(0), Some(b"000"), Some(b"004")),
+                        &cf_state_storage(&data.db),
+                        new_read_options(Some(b"000"), Some(b"004")),
                         IteratorMode::Start,
                     )
                     .map(|res| {
@@ -1588,11 +1297,10 @@ mod tests_simple {
             );
 
             assert_eq!(
-                db.inner
-                    .db
+                data.db
                     .iterator_cf_opt(
-                        &cf_state_storage(&db.inner.db),
-                        new_read_options(Some(0), Some(b"000"), Some(b"005")),
+                        &cf_state_storage(&data.db),
+                        new_read_options(Some(b"000"), Some(b"005")),
                         IteratorMode::Start,
                     )
                     .map(|res| {
@@ -1608,56 +1316,46 @@ mod tests_simple {
                     (b"004".to_vec(), b"004".to_vec()),
                 ]
             );
-        }
+        });
 
         drop(db);
 
         // Open the DB again, _with_ priority data this time.
-        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            priority_range: Some((b"000".to_vec().into(), b"004".to_vec().into())),
-            ..Default::default()
-        })
-        .unwrap();
+        let db =
+            DiskDb::<SimpleCommitment>::open_with_priority(&path, Some((b"000", b"004"))).unwrap();
 
         // In order to test the priorty data, we manually delete a key from the db.
         // This is not something that should happen in a normal use case but allows
         // us to test the priority data.
         // Remove the `002` key from the db.
-        {
+        db.data.write_with(|data| {
             assert_eq!(
-                db.inner
-                    .db
+                data.db
                     .get_cf_opt(
-                        &cf_state_storage(&db.inner.db),
+                        &cf_state_storage(&data.db),
                         b"002",
-                        &new_read_options(Some(0), None, None)
+                        &new_read_options(None, None)
                     )
                     .unwrap()
                     .unwrap(),
                 b"002"
             );
 
-            db.inner
-                .db
-                .delete_cf_with_ts(
-                    &cf_state_storage(&db.inner.db),
-                    b"002",
-                    U64Timestamp::from(0),
-                )
+            data.db
+                .delete_cf(&cf_state_storage(&data.db), b"002")
                 .unwrap();
 
             assert!(
-                db.inner
-                    .db
+                data.db
                     .get_cf_opt(
-                        &cf_state_storage(&db.inner.db),
+                        &cf_state_storage(&data.db),
                         b"002",
-                        &new_read_options(Some(0), None, None)
+                        &new_read_options(None, None)
                     )
                     .unwrap()
                     .is_none()
             );
-        }
+        });
 
         let storage = db.state_storage(None).unwrap();
 
@@ -1697,11 +1395,8 @@ mod tests_simple {
         let path = TempDataDir::new("_grug_disk_db_priority_data_new_db");
 
         // Open a brand new DB with priority data. Should succeed.
-        let _db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            priority_range: Some((b"000".to_vec().into(), b"004".to_vec().into())),
-            ..Default::default()
-        })
-        .unwrap();
+        let _db =
+            DiskDb::<SimpleCommitment>::open_with_priority(&path, Some((b"000", b"004"))).unwrap();
     }
 }
 
@@ -1771,12 +1466,10 @@ mod test_deadlock {
 
     fn run_deadlock_test() {
         let path = TempDataDir::new("_grug_disk_db_deadlock_problem");
-        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            // Simply use 0..255 as the priority range, so ALL data in the state
-            // storage is loaded into priority data.
-            priority_range: Some(([0].into(), [255].into())),
-            ..Default::default()
-        })
+        let db = DiskDb::<SimpleCommitment>::open_with_priority(
+            &path,
+            Some(([0], [255])), // Simply use 0..255 as the priority range, so ALL data in the state storage is loaded into priority data.
+        )
         .unwrap();
 
         // Batch 1: write some data into the index map.

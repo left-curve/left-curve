@@ -19,31 +19,12 @@ wasm_cache_capacity = 1000
 # Gas limit when serving query requests.
 query_gas_limit = 100000000
 
-[grug.db]
-
 # Range of database keys that will be loaded into memory for better performance.
 # Lower bound is inclusive, upper bound is exclusive.
 #priority_range = [
-# "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f", # = b"wasm" + dex_contract_address
-# "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740", # = b"wasm" + increment_last_byte(dex_contract_address)
+#  "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e73f", # = b"wasm" + dex_contract_address
+#  "7761736d8dd37b7e12d36bbe1c00ce9f0c341bfe1712e740", # = b"wasm" + increment_last_byte(dex_contract_address)
 #]
-
-[grug.db.pruning]
-
-# The interval of auto-pruning (i.e. perform a pruning every X versions).
-# 0 means no auto-pruning.
-prune_interval = 100
-
-# At each auto-pruning, how many recent versions to keep.
-prune_keep_recent = 25
-
-# The interval of manual compaction (i.e. perform a manual compaction
-# every X versions).
-# 0 means no manual compaction, which leaves it to RocksDB's internal
-# logic to decide when to compact. In our practical experience, in a live
-# network with a lot of read requests from RPC, RocksDB compacts infrequently
-# or not at all, resulting in performance degradation over time.
-compact_interval = 0
 
 ################################################################################
 ###                          Indexer Configuration                           ###

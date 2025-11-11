@@ -11,17 +11,6 @@ use {
 pub enum DbCmd {
     /// Print the database version
     Version,
-    /// Execute a database compaction
-    Compact,
-    /// Prune the database
-    Prune {
-        /// Delete historical states up to this height (exclusive)
-        up_to_version: u64,
-
-        /// Force an immediate database compaction following the pruning
-        #[arg(long)]
-        compact: bool,
-    },
     /// Delete the entire database
     Reset {
         /// Skip confirmation
@@ -45,22 +34,6 @@ impl DbCmd {
 
                 println!("Latest version: {:?}", db.latest_version());
                 println!("Oldest version: {:?}", db.oldest_version());
-            },
-            DbCmd::Compact => {
-                let db = DiskDb::<SimpleCommitment>::open(dir.data_dir())?;
-                db.compact();
-            },
-            DbCmd::Prune {
-                up_to_version,
-                compact,
-            } => {
-                let db = DiskDb::<SimpleCommitment>::open(dir.data_dir())?;
-
-                db.prune(up_to_version)?;
-
-                if compact {
-                    db.compact();
-                }
             },
             DbCmd::Reset { yes } => {
                 if !yes {

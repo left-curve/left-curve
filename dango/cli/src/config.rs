@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    grug_types::HexBinary,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -34,7 +37,7 @@ pub enum LogFormat {
 pub struct GrugConfig {
     pub wasm_cache_capacity: usize,
     pub query_gas_limit: u64,
-    pub db: grug_db_disk::Config,
+    pub priority_range: Option<(HexBinary, HexBinary)>,
 }
 
 impl Default for GrugConfig {
@@ -42,7 +45,7 @@ impl Default for GrugConfig {
         Self {
             wasm_cache_capacity: 1000,
             query_gas_limit: 100_000_000,
-            db: Default::default(),
+            priority_range: None,
         }
     }
 }
