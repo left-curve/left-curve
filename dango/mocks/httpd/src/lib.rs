@@ -130,7 +130,7 @@ where
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_context.clone(),
-        Arc::new(Mutex::new(app)),
+        Arc::new(app),
         Arc::new(mock_client),
         indexer_path,
     );
