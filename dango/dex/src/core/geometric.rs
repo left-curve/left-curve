@@ -259,20 +259,20 @@ pub fn reflect_curve(
         gamma,
         time_horizon,
         k,
+        base_inventory_target_percentage,
         ..
     } = params.avellaneda_stoikov_params;
 
     // Use the Avellaneda-Stoikov model to compute the optimal reservation price and half-spread.
     let reservation_price = avellaneda_stoikov::reservation_price(
-        marginal_price.checked_into_signed()?,
+        marginal_price,
         base_reserve,
-        sigma_squared
-            .convert_precision::<24>()?
-            .checked_into_signed()?,
-        gamma.convert_precision::<24>()?.checked_into_signed()?,
+        quote_reserve,
+        base_inventory_target_percentage,
+        sigma_squared,
+        gamma,
         time_horizon,
-    )?
-    .checked_into_unsigned()?;
+    )?;
 
     let half_spread = avellaneda_stoikov::half_spread(
         k.checked_into_signed()?,
@@ -454,6 +454,7 @@ mod tests {
                     time_horizon: Duration::from_seconds(0),
                     k: Price::ONE,
                     lambda: Price::ZERO,
+                    base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
                 },
             },
             Bounded::new(Udec128::from_str("0.00005").unwrap()).unwrap(),

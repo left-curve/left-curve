@@ -82,6 +82,7 @@ async fn main() -> anyhow::Result<()> {
                                         time_horizon: grug::Duration::from_seconds(0),
                                         k: Dec::ONE,
                                         lambda: Dec::ZERO,
+                                        base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
                                     },
                                 }),
                                 bucket_sizes: btree_set! {
@@ -114,6 +115,7 @@ async fn main() -> anyhow::Result<()> {
                                         time_horizon: grug::Duration::from_seconds(0),
                                         k: Dec::ONE,
                                         lambda: Dec::ZERO,
+                                        base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
                                     },
                                 }),
                                 bucket_sizes: btree_set! {
@@ -146,6 +148,7 @@ async fn main() -> anyhow::Result<()> {
                                         time_horizon: grug::Duration::from_seconds(0),
                                         k: Dec::ONE,
                                         lambda: Dec::ZERO,
+                                        base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
                                     },
                                 }),
                                 bucket_sizes: btree_set! {

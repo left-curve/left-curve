@@ -1327,6 +1327,7 @@ mod tests {
                             time_horizon: Duration::from_seconds(0),
                             k: Price::ONE,
                             lambda: Price::ZERO,
+                            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
                         },
                     }),
                     bucket_sizes: BTreeSet::new(),

@@ -62,6 +62,10 @@ fn main() -> anyhow::Result<()> {
                                     time_horizon: Duration::from_seconds(0),
                                     k: Dec::from_str("1.0").unwrap(),
                                     lambda: Dec::from_str("1.0").unwrap(),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
                                 },
                             }),
                             bucket_sizes: BTreeSet::new(), /* TODO: determine appropriate price buckets based on expected dango token price */
@@ -84,6 +88,10 @@ fn main() -> anyhow::Result<()> {
                                     time_horizon: Duration::from_seconds(0),
                                     k: Dec::from_str("1.0").unwrap(),
                                     lambda: Dec::from_str("1.0").unwrap(),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
                                 },
                             }),
                             bucket_sizes: btree_set! {
@@ -113,6 +121,10 @@ fn main() -> anyhow::Result<()> {
                                     time_horizon: Duration::from_seconds(0),
                                     k: Dec::from_str("1.0").unwrap(),
                                     lambda: Dec::from_str("1.0").unwrap(),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
                                 },
                             }),
                             bucket_sizes: btree_set! {
@@ -142,6 +154,10 @@ fn main() -> anyhow::Result<()> {
                                     time_horizon: Duration::from_seconds(0),
                                     k: Dec::from_str("1.0").unwrap(),
                                     lambda: Dec::from_str("1.0").unwrap(),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
                                 },
                             }),
                             bucket_sizes: btree_set! {

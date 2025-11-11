@@ -103,6 +103,8 @@ pub struct AvellanedaStoikovParams {
     /// where vol_estimate_t is the volatility estimate at time t, and vol_estimate_{t-1} is the
     /// volatility estimate at time t-1 and r_t is the log return at time t.
     pub lambda: Dec<u128, 24>,
+    /// The target inventory percentage of the base asset.
+    pub base_inventory_target_percentage: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 }
 
 /// Updates to a trading pair's parameters.

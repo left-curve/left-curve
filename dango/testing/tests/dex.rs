@@ -1287,6 +1287,7 @@ fn only_owner_can_create_passive_pool() {
             time_horizon: Duration::from_seconds(0),
             k: Dec::from_str("1.0").unwrap(),
             lambda: Dec::from_str("1.0").unwrap(),
+            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
         },
     }),
     vec![
@@ -1311,6 +1312,7 @@ fn only_owner_can_create_passive_pool() {
             time_horizon: Duration::from_seconds(0),
             k: Dec::from_str("1.0").unwrap(),
             lambda: Dec::from_str("1.0").unwrap(),
+            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
         },
     }),
     vec![
@@ -1335,6 +1337,7 @@ fn only_owner_can_create_passive_pool() {
             time_horizon: Duration::from_seconds(0),
             k: Dec::from_str("1.0").unwrap(),
             lambda: Dec::from_str("1.0").unwrap(),
+            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
         },
     }),
     vec![
@@ -1359,6 +1362,7 @@ fn only_owner_can_create_passive_pool() {
             time_horizon: Duration::from_seconds(0),
             k: Dec::from_str("1.0").unwrap(),
             lambda: Dec::from_str("1.0").unwrap(),
+            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
         },
     }),
     vec![
@@ -1531,6 +1535,10 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                                     time_horizon: Duration::from_seconds(0),
                                     k: Dec::from_str("1.0").unwrap(),
                                     lambda: Dec::from_str("1.0").unwrap(),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
                                 },
                             }),
                             min_order_size_quote: Uint128::ZERO,
@@ -2492,6 +2500,10 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                                     time_horizon: Duration::from_seconds(0),
                                     k: Dec::from_str("1.0").unwrap(),
                                     lambda: Dec::from_str("1.0").unwrap(),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
                                 },
                             }),
                             min_order_size_quote: Uint128::ZERO,
@@ -6038,6 +6050,16 @@ fn refund_left_over_market_bid() {
                             spacing: Udec128::new_percent(1),
                             ratio: Bounded::new_unchecked(Udec128::new(1)),
                             limit: 1,
+                            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                gamma: Dec::from_str("1.0").unwrap(),
+                                time_horizon: Duration::from_seconds(0),
+                                k: Dec::from_str("1.0").unwrap(),
+                                lambda: Dec::from_str("1.0").unwrap(),
+                                base_inventory_target_percentage: Bounded::new(
+                                    Udec128::new_percent(50),
+                                )
+                                .unwrap(),
+                            },
                         }),
                         bucket_sizes: BTreeSet::new(),
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
@@ -6221,6 +6243,16 @@ fn refund_left_over_market_ask() {
                             spacing: Udec128::new_percent(1),
                             ratio: Bounded::new_unchecked(Udec128::new(1)),
                             limit: 1,
+                            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                gamma: Dec::from_str("1.0").unwrap(),
+                                time_horizon: Duration::from_seconds(0),
+                                k: Dec::from_str("1.0").unwrap(),
+                                lambda: Dec::from_str("1.0").unwrap(),
+                                base_inventory_target_percentage: Bounded::new(
+                                    Udec128::new_percent(50),
+                                )
+                                .unwrap(),
+                            },
                         }),
                         bucket_sizes: BTreeSet::new(),
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
