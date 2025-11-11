@@ -3,7 +3,7 @@ use {
         query_response::QueryResponseWithBlockHeight, status::Status, store::Store,
     },
     async_graphql::*,
-    grug_types::{Binary, Inner, TxOutcome},
+    grug_types::{Binary, Inner, QueryResponse, TxOutcome},
     std::str::FromStr,
 };
 #[cfg(feature = "metrics")]
@@ -84,10 +84,12 @@ impl GrugQuery {
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Request as JSON")] request: grug_types::Query,
         height: Option<u64>,
-    ) -> Result<QueryResponseWithBlockHeight, Error> {
+    ) -> Result<QueryResponse, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Self::_query_app(app_ctx, request, height).await
+        Self::_query_app(app_ctx, request, height)
+            .await
+            .map(|res| res.response)
     }
 
     async fn query_store(
