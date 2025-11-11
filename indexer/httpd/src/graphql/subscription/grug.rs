@@ -112,14 +112,12 @@ impl GrugSubscription {
                     futures::future::ready(result)
                 })
                 .filter_map(|opt_height| async move { opt_height })
-                .then(move |block_height| {
+                .then(move |_block_height| {
                     #[cfg(feature = "metrics")]
                     let _guard = gauge_guard.clone();
                     let key = key.clone();
 
-                    async move {
-                        GrugQuery::_query_store(&app_ctx.base, key, Some(block_height), prove).await
-                    }
+                    async move { GrugQuery::_query_store(&app_ctx.base, key, None, prove).await }
                 }),
         ))
     }
