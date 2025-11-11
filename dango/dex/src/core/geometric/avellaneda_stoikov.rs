@@ -1,5 +1,5 @@
 use {
-    super::{logarithm::ln_dec, *},
+    super::{math::ln_dec, *},
     grug::{Dec, Duration, Fraction},
 };
 

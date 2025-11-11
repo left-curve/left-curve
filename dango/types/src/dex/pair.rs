@@ -93,16 +93,23 @@ pub struct AvellanedaStoikovParams {
     ///
     /// TODO: add link to docs on how to configure k.
     pub k: Dec<u128, 24>,
-    /// The decay rate used for the smoothing of the volatility estimate.
+    /// The half life of the weight of each sample in the volatility estimate.
     ///
     /// The volatility estimate is smoothed using an exponential moving average, where the
     /// volatility estimate is updated as follows:
     ///
-    /// vol_estimate_t = lambda * vol_estimate_{t-1} + (1 - lambda) * r_t^2
+    /// vol_estimate_t = alpha * vol_estimate_{t-1}^2 + (1 - alpha) * r_t^2
     ///
     /// where vol_estimate_t is the volatility estimate at time t, and vol_estimate_{t-1} is the
     /// volatility estimate at time t-1 and r_t is the log return at time t.
-    pub lambda: Dec<u128, 24>,
+    ///
+    /// alpha is calculated as follows:
+    ///
+    /// alpha_i = 1 - e^(-ln(2) * dt_i / half_life)
+    ///
+    /// where dt_i is the time difference between the current and previous sample in milliseconds.
+    /// So half_life sets the rate at which the weight of each sample decays.
+    pub half_life: Duration,
     /// The target inventory percentage of the base asset.
     pub base_inventory_target_percentage: Bounded<Udec128, ZeroExclusiveOneExclusive>,
 }

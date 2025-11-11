@@ -11,7 +11,7 @@ use {
 };
 
 mod avellaneda_stoikov;
-mod logarithm;
+mod math;
 pub mod volatilty_estimator;
 
 /// When adding liquidity for the first time into an empty pool, we determine
@@ -445,7 +445,7 @@ mod tests {
                     gamma: Dec::from_str("0.000000000000205900103095").unwrap(),  // e^(0.00005 * 0.000000004118) - 1, so half_spread/price ≈ 0.00005
                     time_horizon: Duration::from_seconds(0),
                     k: Price::ONE,
-                    lambda: Price::ZERO,
+                    half_life: Duration::from_seconds(30),
                     base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
                 },
             },

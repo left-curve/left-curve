@@ -1286,7 +1286,7 @@ fn only_owner_can_create_passive_pool() {
             gamma: Dec::from_str("1.0").unwrap(),
             time_horizon: Duration::from_seconds(0),
             k: Dec::from_str("1.0").unwrap(),
-            lambda: Dec::from_str("1.0").unwrap(),
+            half_life: Duration::from_seconds(30),
             base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
         },
     }),
@@ -1311,7 +1311,7 @@ fn only_owner_can_create_passive_pool() {
             gamma: Dec::from_str("1.0").unwrap(),
             time_horizon: Duration::from_seconds(0),
             k: Dec::from_str("1.0").unwrap(),
-            lambda: Dec::from_str("1.0").unwrap(),
+            half_life: Duration::from_seconds(30),
             base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
         },
     }),
@@ -1336,7 +1336,7 @@ fn only_owner_can_create_passive_pool() {
             gamma: Dec::from_str("1.0").unwrap(),
             time_horizon: Duration::from_seconds(0),
             k: Dec::from_str("1.0").unwrap(),
-            lambda: Dec::from_str("1.0").unwrap(),
+            half_life: Duration::from_seconds(30),
             base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
         },
     }),
@@ -1361,7 +1361,7 @@ fn only_owner_can_create_passive_pool() {
             gamma: Dec::from_str("1.0").unwrap(),
             time_horizon: Duration::from_seconds(0),
             k: Dec::from_str("1.0").unwrap(),
-            lambda: Dec::from_str("1.0").unwrap(),
+            half_life: Duration::from_seconds(30),
             base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
         },
     }),
@@ -1534,7 +1534,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                                     gamma: Dec::from_str("1.0").unwrap(),
                                     time_horizon: Duration::from_seconds(0),
                                     k: Dec::from_str("1.0").unwrap(),
-                                    lambda: Dec::from_str("1.0").unwrap(),
+                                    half_life: Duration::from_seconds(30),
                                     base_inventory_target_percentage: Bounded::new(
                                         Udec128::new_percent(50),
                                     )
@@ -2499,7 +2499,7 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                                     gamma: Dec::from_str("1.0").unwrap(),
                                     time_horizon: Duration::from_seconds(0),
                                     k: Dec::from_str("1.0").unwrap(),
-                                    lambda: Dec::from_str("1.0").unwrap(),
+                                    half_life: Duration::from_seconds(30),
                                     base_inventory_target_percentage: Bounded::new(
                                         Udec128::new_percent(50),
                                     )
@@ -6054,7 +6054,7 @@ fn refund_left_over_market_bid() {
                                 gamma: Dec::from_str("1.0").unwrap(),
                                 time_horizon: Duration::from_seconds(0),
                                 k: Dec::from_str("1.0").unwrap(),
-                                lambda: Dec::from_str("1.0").unwrap(),
+                                half_life: Duration::from_seconds(30),
                                 base_inventory_target_percentage: Bounded::new(
                                     Udec128::new_percent(50),
                                 )
@@ -6247,7 +6247,7 @@ fn refund_left_over_market_ask() {
                                 gamma: Dec::from_str("1.0").unwrap(),
                                 time_horizon: Duration::from_seconds(0),
                                 k: Dec::from_str("1.0").unwrap(),
-                                lambda: Dec::from_str("1.0").unwrap(),
+                                half_life: Duration::from_seconds(30),
                                 base_inventory_target_percentage: Bounded::new(
                                     Udec128::new_percent(50),
                                 )

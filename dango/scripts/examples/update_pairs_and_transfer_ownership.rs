@@ -2,11 +2,13 @@ use {
     dango_client::SingleSigner,
     dango_types::{
         constants::{btc, btc_usdc, dango, eth, eth_usdc, sol, sol_usdc, usdc},
-        dex::{self, AvellanedaStoikovParams, Geometric, PairParams, PairUpdate, PassiveLiquidity, Xyk},
+        dex::{
+            self, AvellanedaStoikovParams, Geometric, PairParams, PairUpdate, PassiveLiquidity, Xyk,
+        },
     },
     grug::{
-        Addr, Bounded, BroadcastClientExt, Coins, Dec, Denom, GasOption, JsonSerExt, Message, NonEmpty,
-        NumberConst, QueryClientExt, SearchTxClient, Udec128, Uint128, addr, btree_set,
+        Addr, Bounded, BroadcastClientExt, Coins, Dec, Denom, GasOption, JsonSerExt, Message,
+        NonEmpty, NumberConst, QueryClientExt, SearchTxClient, Udec128, Uint128, addr, btree_set,
     },
     grug_app::GAS_COSTS,
     hex_literal::hex,
@@ -81,8 +83,11 @@ async fn main() -> anyhow::Result<()> {
                                         gamma: Dec::from_str("0.003").unwrap(),
                                         time_horizon: grug::Duration::from_seconds(0),
                                         k: Dec::ONE,
-                                        lambda: Dec::ZERO,
-                                        base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+                                        half_life: grug::Duration::from_seconds(30),
+                                        base_inventory_target_percentage: Bounded::new(
+                                            Udec128::new_percent(50),
+                                        )
+                                        .unwrap(),
                                     },
                                 }),
                                 bucket_sizes: btree_set! {
@@ -114,8 +119,11 @@ async fn main() -> anyhow::Result<()> {
                                         gamma: Dec::from_str("0.000000000012").unwrap(),
                                         time_horizon: grug::Duration::from_seconds(0),
                                         k: Dec::ONE,
-                                        lambda: Dec::ZERO,
-                                        base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+                                        half_life: grug::Duration::from_seconds(30),
+                                        base_inventory_target_percentage: Bounded::new(
+                                            Udec128::new_percent(50),
+                                        )
+                                        .unwrap(),
                                     },
                                 }),
                                 bucket_sizes: btree_set! {
@@ -147,8 +155,11 @@ async fn main() -> anyhow::Result<()> {
                                         gamma: Dec::from_str("0.0000006").unwrap(),
                                         time_horizon: grug::Duration::from_seconds(0),
                                         k: Dec::ONE,
-                                        lambda: Dec::ZERO,
-                                        base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+                                        half_life: grug::Duration::from_seconds(30),
+                                        base_inventory_target_percentage: Bounded::new(
+                                            Udec128::new_percent(50),
+                                        )
+                                        .unwrap(),
                                     },
                                 }),
                                 bucket_sizes: btree_set! {

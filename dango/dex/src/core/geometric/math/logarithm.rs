@@ -2,7 +2,7 @@ use grug::{
     Dec, Inner, Int128, MathError, MultiplyFraction, Number, NumberConst, PrevNumber, Unsigned,
 };
 
-use crate::core::geometric::logarithm::{
+use crate::core::geometric::math::{
     constants::*,
     lut::{LOG2_LUT_ONE_TO_TWO, TABLE_SIZE},
 };

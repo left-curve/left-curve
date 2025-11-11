@@ -593,7 +593,7 @@ mod tests {
                 gamma: Price::from_str("0.010050167084168058").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -718,7 +718,7 @@ mod tests {
                     gamma: Price::from_str("0.010050167084168057").unwrap(), /* e^0.01 - 1, so ln(1+gamma) = 0.01 */
                     time_horizon: Duration::from_seconds(0),
                     k: Price::ONE,
-                    lambda: Price::ZERO,
+                    half_life: Duration::from_seconds(30),
                     base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50))
                         .unwrap(),
                 },
@@ -797,7 +797,7 @@ mod tests {
                 gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -835,7 +835,7 @@ mod tests {
                 gamma: Price::from_str("0.010050167084168057").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -873,7 +873,7 @@ mod tests {
                 gamma: Price::from_str("0.020201340026755865").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -911,7 +911,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -949,7 +949,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -987,7 +987,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1025,7 +1025,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1063,7 +1063,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1149,7 +1149,7 @@ mod tests {
                 gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1187,7 +1187,7 @@ mod tests {
                 gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1225,7 +1225,7 @@ mod tests {
                 gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1263,7 +1263,7 @@ mod tests {
                 gamma: Price::from_str("0.0100501670841").unwrap(),  // e^0.01 - 1, so ln(1+gamma) = 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1301,7 +1301,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1339,7 +1339,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1377,7 +1377,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1415,7 +1415,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),
@@ -1453,7 +1453,7 @@ mod tests {
                 gamma: Price::from_str("0.02020134002674").unwrap(),  // e^(0.01 * 2.0) - 1, so half_spread/price ≈ 0.01
                 time_horizon: Duration::from_seconds(0),
                 k: Price::ONE,
-                lambda: Price::ZERO,
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         }),

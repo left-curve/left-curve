@@ -88,8 +88,11 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
                             gamma: Dec::from_str("0.8221").unwrap(),
                             time_horizon: Duration::from_seconds(0),
                             k: Dec::ONE,
-                            lambda: Dec::ZERO,
-                            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+                            half_life: Duration::from_seconds(30),
+                            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(
+                                50,
+                            ))
+                            .unwrap(),
                         },
                     }),
                     bucket_sizes: btree_set! {
@@ -649,8 +652,11 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
                                 gamma: Dec::from_str("0.8221").unwrap(),
                                 time_horizon: Duration::from_seconds(0),
                                 k: Dec::ONE,
-                                lambda: Dec::ZERO,
-                                base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+                                half_life: Duration::from_seconds(30),
+                                base_inventory_target_percentage: Bounded::new(
+                                    Udec128::new_percent(50),
+                                )
+                                .unwrap(),
                             },
                         }),
                         bucket_sizes: BTreeSet::new(),

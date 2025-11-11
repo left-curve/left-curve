@@ -707,7 +707,7 @@ fn pool_type() -> impl Strategy<Value = PassiveLiquidity> {
                 gamma: Dec::from_str("1.0").unwrap(),
                 time_horizon: Duration::from_seconds(0),
                 k: Dec::from_str("1.0").unwrap(),
-                lambda: Dec::from_str("1.0").unwrap(),
+                half_life: Duration::from_seconds(30),
                 base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
             },
         })),

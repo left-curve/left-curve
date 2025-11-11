@@ -5,7 +5,6 @@
 /// 1. Deterministic - same results every time
 /// 2. Verifiable - Python reference implementation produces expected values
 /// 3. Reproducible - can regenerate fixtures if algorithm changes
-
 mod volatility_fixtures;
 
 use {
@@ -15,10 +14,15 @@ use {
 };
 
 /// Helper to compare two Price values with a relative tolerance
-fn assert_price_approx_eq(actual: dango_types::dex::Price, expected: dango_types::dex::Price, tolerance: f64, message: &str) {
+fn assert_price_approx_eq(
+    actual: dango_types::dex::Price,
+    expected: dango_types::dex::Price,
+    tolerance: f64,
+    message: &str,
+) {
     let actual_f64 = actual.0.into_inner() as f64 / 1e24;
     let expected_f64 = expected.0.into_inner() as f64 / 1e24;
-    
+
     // Handle zero case
     if expected_f64.abs() < 1e-20 {
         assert!(
@@ -29,7 +33,7 @@ fn assert_price_approx_eq(actual: dango_types::dex::Price, expected: dango_types
         );
         return;
     }
-    
+
     let relative_error = ((actual_f64 - expected_f64) / expected_f64).abs();
     assert!(
         relative_error < tolerance,
@@ -83,11 +87,15 @@ fn run_deterministic_test(scenario: &TestScenario, tolerance: f64) {
     let mut storage = MockStorage::new();
     let base_denom = Denom::new_unchecked(vec!["base".to_string()]);
     let quote_denom = Denom::new_unchecked(vec!["quote".to_string()]);
-    let lambda = scenario.get_lambda();
+    let half_life = scenario.get_half_life();
 
     println!("\nRunning scenario: {}", scenario.name);
     println!("Description: {}", scenario.description);
-    println!("Lambda: {}", lambda);
+    println!(
+        "Half-life: {}ms ({} seconds)",
+        half_life.into_millis(),
+        half_life.into_seconds()
+    );
     println!("Price path length: {}", scenario.price_path.len());
 
     let mut max_error = 0.0f64;
@@ -113,7 +121,7 @@ fn run_deterministic_test(scenario: &TestScenario, tolerance: f64) {
             &base_denom,
             &quote_denom,
             price,
-            lambda,
+            half_life,
         )
         .expect("Failed to update volatility estimate");
 
@@ -165,9 +173,12 @@ fn run_deterministic_test(scenario: &TestScenario, tolerance: f64) {
     println!("\n=== Test Summary for {} ===", scenario.name);
     println!("Total steps: {}", scenario.price_path.len());
     println!("Average relative error: {:.6}", avg_error);
-    println!("Maximum relative error: {:.6} at step {}", max_error, max_error_at);
+    println!(
+        "Maximum relative error: {:.6} at step {}",
+        max_error, max_error_at
+    );
     println!("Tolerance: {:.6}", tolerance);
-    
+
     assert!(
         max_error < tolerance,
         "Maximum error {} exceeds tolerance {}",
@@ -184,15 +195,19 @@ fn test_all_scenarios_available() {
 
     // Verify each scenario has valid data
     for scenario in scenarios {
-        assert!(!scenario.price_path.is_empty(), "Price path should not be empty");
+        assert!(
+            !scenario.price_path.is_empty(),
+            "Price path should not be empty"
+        );
         assert_eq!(
             scenario.price_path.len(),
             scenario.expected_estimates.len(),
             "Price path and estimates should have same length"
         );
-        
+
         // Verify values are parseable
         let _lambda = scenario.get_lambda();
+        let _half_life = scenario.get_half_life();
         let _first_price = scenario.price_path[0].get_price();
         let _first_estimate = scenario.expected_estimates[0].get_estimate();
     }
@@ -202,7 +217,7 @@ fn test_all_scenarios_available() {
 fn test_fixture_consistency() {
     // Load a scenario and verify internal consistency
     let scenario = TestScenario::load("single_regime_lambda_90");
-    
+
     // Verify timestamps are sequential
     for i in 1..scenario.price_path.len() {
         let prev_time = scenario.price_path[i - 1].timestamp;
@@ -217,19 +232,20 @@ fn test_fixture_consistency() {
             "Time steps should be consistent"
         );
     }
-    
+
     // Verify price path and estimates are aligned
-    for (price_point, estimate) in scenario.price_path.iter().zip(scenario.expected_estimates.iter()) {
+    for (price_point, estimate) in scenario
+        .price_path
+        .iter()
+        .zip(scenario.expected_estimates.iter())
+    {
         assert_eq!(
-            price_point.timestamp,
-            estimate.timestamp,
+            price_point.timestamp, estimate.timestamp,
             "Price and estimate timestamps should match"
         );
         assert_eq!(
-            price_point.price,
-            estimate.price,
+            price_point.price, estimate.price,
             "Price values should match between price_path and expected_estimates"
         );
     }
 }
-

@@ -1,19 +1,20 @@
 use {
+    crate::core::geometric::math::{NATURAL_LOG_OF_TWO, UnsignedDecimalConstant, e_pow},
     dango_types::dex::Price,
     grug::{
-        Denom, Exponentiate, Map, Number, NumberConst, Signed, Storage, Timestamp, Udec128,
-        Unsigned,
+        Dec128, Denom, Duration, Exponentiate, Map, Number, NumberConst, Signed, Storage,
+        Timestamp, Udec128, Unsigned,
     },
 };
 
-use crate::core::geometric::logarithm::ln_dec;
+use crate::core::geometric::math::ln_dec;
 const LAST_PRICE: Map<(&Denom, &Denom), (Timestamp, Price)> = Map::new("last_price");
 pub const LAST_VOLATILITY_ESTIMATE: Map<(&Denom, &Denom), Price> =
     Map::new("last_volatility_estimate");
 
 /// Updates the volatility estimate using an exponential moving average:
 ///
-/// vol_estimate_t = lambda * vol_estimate_{t-1}^2 + (1 - lambda) * r_t^2
+/// vol_estimate_t = alpha * vol_estimate_{t-1}^2 + (1 - alpha) * r_t^2
 ///
 /// where vol_estimate_t is the volatility estimate at time t, and vol_estimate_{t-1} is the
 /// volatility estimate at time t-1 and r_t is the log return at time t.
@@ -25,7 +26,7 @@ pub const LAST_VOLATILITY_ESTIMATE: Map<(&Denom, &Denom), Price> =
 /// * `storage` - The storage to save the last price and volatility estimate.
 /// * `pair_id` - The pair id for which to update the volatility estimate.
 /// * `price` - The latest price for the pair.
-/// * `lambda` - The decay rate used for the smoothing of the volatility estimate.
+/// * `half_life` - The half life of the weight of each sample in the volatility estimate.
 ///
 /// # Returns
 ///
@@ -36,7 +37,7 @@ pub fn update_volatility_estimate(
     base_denom: &Denom,
     quote_denom: &Denom,
     price: Price,
-    lambda: Price,
+    half_life: Duration,
 ) -> anyhow::Result<Price> {
     let (last_timestamp, last_price) = match LAST_PRICE
         .may_load(storage, (base_denom, quote_denom))?
@@ -63,14 +64,21 @@ pub fn update_volatility_estimate(
         .checked_pow(2)?
         .checked_into_unsigned()?;
 
-    // Normalise the log return to the time interval
-    let r_t_squared_norm = r_t_squared.checked_div(Udec128::new(
-        block_time.checked_sub(last_timestamp)?.into_seconds(),
-    ))?;
+    // Compute the time diff since the last update in milliseconds
+    let time_diff_ms = block_time.checked_sub(last_timestamp)?.into_millis();
 
-    let vol_estimate = lambda.checked_mul(prev_squared_vol)?.checked_add(
+    // Normalise the log return to the time interval
+    let r_t_squared_norm = r_t_squared.checked_div(Udec128::new(time_diff_ms))?;
+
+    // Calculate the decay rate for the sample based on the time diff
+    let ln_of_two = NATURAL_LOG_OF_TWO::to_decimal_value::<24>()?;
+    let alpha = Price::ONE.checked_sub(Price::ONE.checked_div(e_pow(
+        Price::checked_from_ratio(time_diff_ms, half_life.into_millis())?.checked_mul(ln_of_two)?,
+    )?)?)?;
+
+    let vol_estimate = alpha.checked_mul(prev_squared_vol)?.checked_add(
         Price::ONE
-            .checked_sub(lambda)?
+            .checked_sub(alpha)?
             .checked_mul(r_t_squared_norm)?,
     )?;
 
@@ -91,7 +99,6 @@ mod tests {
         let base_denom = Denom::new_unchecked(vec!["base".to_string()]);
         let quote_denom = Denom::new_unchecked(vec!["quote".to_string()]);
         let price = Price::checked_from_atomics(100u128, 0).unwrap();
-        let lambda = Price::new_percent(95);
 
         // First call should return zero and initialize storage
         let estimate = update_volatility_estimate(
@@ -100,7 +107,7 @@ mod tests {
             &base_denom,
             &quote_denom,
             price,
-            lambda,
+            Duration::from_seconds(15),
         )
         .unwrap();
 
