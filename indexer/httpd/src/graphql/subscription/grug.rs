@@ -5,7 +5,7 @@ use {
         query::grug::GrugQuery,
         types::{status::Status, store::Store},
     },
-    grug_types::{Query, QueryResponse, StdResult},
+    grug_types::QueryResponse,
 };
 #[cfg(feature = "metrics")]
 use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
