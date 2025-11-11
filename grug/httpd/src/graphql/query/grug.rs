@@ -1,7 +1,9 @@
 use {
-    crate::graphql::types::{status::Status, store::Store},
+    crate::graphql::types::{
+        query_response::QueryResponseWithBlockHeight, status::Status, store::Store,
+    },
     async_graphql::*,
-    grug_types::{Binary, Inner, QueryResponse, TxOutcome},
+    grug_types::{Binary, Inner, TxOutcome},
     std::str::FromStr,
 };
 #[cfg(feature = "metrics")]
@@ -15,16 +17,16 @@ impl GrugQuery {
         app_ctx: &crate::context::Context,
         request: grug_types::Query,
         height: Option<u64>,
-    ) -> Result<QueryResponse, Error> {
+    ) -> Result<QueryResponseWithBlockHeight, Error> {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        let result = app_ctx.grug_app.query_app(request, height).await?;
+        let (response, height) = app_ctx.grug_app.query_app(request, height).await?;
 
         #[cfg(feature = "metrics")]
         histogram!("http.grug.query_app.duration").record(start.elapsed().as_secs_f64());
 
-        Ok(result)
+        Ok(QueryResponseWithBlockHeight { response, height })
     }
 
     pub async fn _query_store(
@@ -38,7 +40,7 @@ impl GrugQuery {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        let (value, proof) = app_ctx
+        let (value, proof, height) = app_ctx
             .grug_app
             .query_store(key.inner(), height, prove)
             .await?;
@@ -55,6 +57,7 @@ impl GrugQuery {
         Ok(Store {
             value,
             proof: proof.map(|proof| Binary::from(proof).to_string()),
+            height,
         })
     }
 
@@ -81,7 +84,7 @@ impl GrugQuery {
         ctx: &async_graphql::Context<'_>,
         #[graphql(desc = "Request as JSON")] request: grug_types::Query,
         height: Option<u64>,
-    ) -> Result<QueryResponse, Error> {
+    ) -> Result<QueryResponseWithBlockHeight, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
         Self::_query_app(app_ctx, request, height).await

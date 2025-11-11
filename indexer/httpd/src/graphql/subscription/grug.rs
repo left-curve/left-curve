@@ -3,21 +3,14 @@ use {
     futures_util::stream::{StreamExt, once},
     grug_httpd::graphql::{
         query::grug::GrugQuery,
-        types::{status::Status, store::Store},
+        types::{query_response::QueryResponseWithBlockHeight, status::Status, store::Store},
     },
-    grug_types::QueryResponse,
 };
 #[cfg(feature = "metrics")]
 use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
 
 #[derive(Default)]
 pub struct GrugSubscription;
-
-#[derive(SimpleObject)]
-pub struct QueryResponseWithBlockHeight {
-    pub response: QueryResponse,
-    pub block_height: u64,
-}
 
 #[Subscription]
 impl GrugSubscription {
@@ -41,21 +34,14 @@ impl GrugSubscription {
         ));
 
         let stream = app_ctx.pubsub.subscribe().await?;
-        let latest_block_height = app_ctx.base.grug_app.last_finalized_block().await?.height;
-        let initial_response =
-            GrugQuery::_query_app(&app_ctx.base, request.clone(), Some(latest_block_height)).await;
+        let initial_response = GrugQuery::_query_app(&app_ctx.base, request.clone(), None).await?;
+        let latest_block_height = initial_response.height;
 
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
-            let block_height = latest_block_height;
 
-            async move {
-                initial_response.map(|response| QueryResponseWithBlockHeight {
-                    response,
-                    block_height,
-                })
-            }
+            async move { Ok(initial_response) }
         })
         .chain(
             stream
@@ -71,19 +57,12 @@ impl GrugSubscription {
                     futures::future::ready(result)
                 })
                 .filter_map(|opt_height| async move { opt_height })
-                .then(move |block_height| {
+                .then(move |_block_height| {
                     #[cfg(feature = "metrics")]
                     let _guard = gauge_guard.clone();
                     let request = request.clone();
 
-                    async move {
-                        GrugQuery::_query_app(&app_ctx.base, request, Some(block_height))
-                            .await
-                            .map(|response| QueryResponseWithBlockHeight {
-                                response,
-                                block_height,
-                            })
-                    }
+                    async move { GrugQuery::_query_app(&app_ctx.base, request, None).await }
                 }),
         ))
     }
@@ -110,14 +89,14 @@ impl GrugSubscription {
 
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response =
-            GrugQuery::_query_store(&app_ctx.base, key.clone(), None, prove).await;
-        let latest_block_height = app_ctx.base.grug_app.last_finalized_block().await?.height;
+            GrugQuery::_query_store(&app_ctx.base, key.clone(), None, prove).await?;
+        let latest_block_height = initial_response.height;
 
         Ok(once({
             #[cfg(feature = "metrics")]
             let _guard = gauge_guard.clone();
 
-            async { initial_response }
+            async { Ok(initial_response) }
         })
         .chain(
             stream
