@@ -5020,6 +5020,7 @@ dependencies = [
  "hex-literal",
  "metrics",
  "ouroboros",
+ "parking_lot",
  "paste",
  "prost",
  "ripemd",
