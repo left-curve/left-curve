@@ -154,7 +154,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               isLoading={submission.isPending}
               onClick={() => submission.mutateAsync()}
             >
-              {m["dex.protrade.spot.triggerAction"]({ action })}
+              {m["dex.protrade.spot.triggerAction"]({ action })} {baseCoin.symbol}
             </Button>
           ) : (
             <Button
@@ -207,43 +207,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             </p>
           </div>
         </div>
-        {/*  <span className="w-full h-[1px] bg-outline-secondary-gray" />
-        <div className="px-4 flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <p className="diatype-xs-bold">Account Equity</p>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Spot</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Perps</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <p className="diatype-xs-bold">Perp Overview</p>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Balance</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Unrealized PNL</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Cross Margin Ratio</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">0.00%</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Maintenance</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Cross Account Leverage</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">0.00x</p>
-            </div>
-          </div>
-        </div> */}
       </div>
     </div>
   );
