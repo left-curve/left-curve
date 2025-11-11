@@ -17,9 +17,8 @@ use {
     indexer_hooked::HookedIndexer,
     indexer_sql::indexer_path::IndexerPath,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
-    std::{sync::Arc, time},
+    std::sync::Arc,
     tokio::signal::unix::{SignalKind, signal},
-    tower::ServiceBuilder,
     tower_abci::v038::{Server, split},
 };
 
