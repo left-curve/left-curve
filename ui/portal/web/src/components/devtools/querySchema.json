@@ -92,7 +92,7 @@
         "multi": {
           "type": "array",
           "items": {
-            "$ref": "#/QueryRequest"
+            "$ref": "#"
           }
         }
       },
