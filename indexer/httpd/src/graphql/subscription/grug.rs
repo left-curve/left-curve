@@ -35,7 +35,7 @@ impl GrugSubscription {
 
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response = GrugQuery::_query_app(&app_ctx.base, request.clone(), None).await?;
-        let latest_block_height = initial_response.height;
+        let latest_block_height = initial_response.block_height;
 
         Ok(once({
             #[cfg(feature = "metrics")]
@@ -90,7 +90,7 @@ impl GrugSubscription {
         let stream = app_ctx.pubsub.subscribe().await?;
         let initial_response =
             GrugQuery::_query_store(&app_ctx.base, key.clone(), None, prove).await?;
-        let latest_block_height = initial_response.height;
+        let latest_block_height = initial_response.block_height;
 
         Ok(once({
             #[cfg(feature = "metrics")]

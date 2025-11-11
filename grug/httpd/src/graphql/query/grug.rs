@@ -21,12 +21,15 @@ impl GrugQuery {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        let (response, height) = app_ctx.grug_app.query_app(request, height).await?;
+        let (response, block_height) = app_ctx.grug_app.query_app(request, height).await?;
 
         #[cfg(feature = "metrics")]
         histogram!("http.grug.query_app.duration").record(start.elapsed().as_secs_f64());
 
-        Ok(QueryResponseWithBlockHeight { response, height })
+        Ok(QueryResponseWithBlockHeight {
+            response,
+            block_height,
+        })
     }
 
     pub async fn _query_store(
@@ -40,7 +43,7 @@ impl GrugQuery {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        let (value, proof, height) = app_ctx
+        let (value, proof, block_height) = app_ctx
             .grug_app
             .query_store(key.inner(), height, prove)
             .await?;
@@ -57,7 +60,7 @@ impl GrugQuery {
         Ok(Store {
             value,
             proof: proof.map(|proof| Binary::from(proof).to_string()),
-            height,
+            block_height,
         })
     }
 

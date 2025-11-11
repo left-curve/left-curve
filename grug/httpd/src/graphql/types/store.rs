@@ -6,6 +6,6 @@ pub struct Store {
     pub value: String,
     /// The base64 encoded proof
     pub proof: Option<String>,
-    /// The block height
-    pub height: u64,
+    /// The block height at which this query was performed at
+    pub block_height: u64,
 }

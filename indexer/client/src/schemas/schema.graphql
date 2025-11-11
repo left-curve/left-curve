@@ -614,7 +614,7 @@ type Query {
 
 type QueryResponseWithBlockHeight {
 	response: JSON!
-	height: Int!
+	blockHeight: Int!
 }
 
 type Status {
@@ -632,9 +632,9 @@ type Store {
 	"""
 	proof: String
 	"""
-	The block height
+	The block height at which this query was performed at
 	"""
-	height: Int!
+	blockHeight: Int!
 }
 
 type Subscription {
