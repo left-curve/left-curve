@@ -210,11 +210,7 @@ where
     fn state_storage_with_comment(
         &self,
         version: Option<u64>,
-        #[cfg_attr(
-            not(any(feature = "tracing", feature = "metrics")),
-            allow(unused_variables)
-        )]
-        comment: &'static str,
+        #[cfg_attr(not(feature = "metrics"), allow(unused_variables))] comment: &'static str,
     ) -> DbResult<StateStorage> {
         // If version is unspecified, use the latest version. Otherwise, make
         // sure it's no newer than the latest version.
@@ -230,7 +226,7 @@ where
 
         Ok(StateStorage {
             data: Arc::new(self.data.static_read_access()),
-            #[cfg(any(feature = "tracing", feature = "metrics"))]
+            #[cfg(feature = "metrics")]
             comment,
         })
     }
@@ -537,7 +533,7 @@ impl Storage for StateCommitment {
 #[derive(Clone, Debug)]
 pub struct StateStorage {
     data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
-    #[cfg(any(feature = "tracing", feature = "metrics"))]
+    #[cfg(feature = "metrics")]
     comment: &'static str,
 }
 
