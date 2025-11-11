@@ -91,7 +91,11 @@ where
     ID: Indexer + Send + Sync + 'static,
     App<DB, VM, PP, ID>: QueryApp,
 {
-    async fn query_app(&self, raw_req: Query, height: Option<u64>) -> AppResult<QueryResponse> {
+    async fn query_app(
+        &self,
+        raw_req: Query,
+        height: Option<u64>,
+    ) -> AppResult<(QueryResponse, u64)> {
         self.app.query_app(raw_req, height).await
     }
 
@@ -100,7 +104,7 @@ where
         key: &[u8],
         height: Option<u64>,
         prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
         self.app.query_store(key, height, prove).await
     }
 
