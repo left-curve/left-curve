@@ -345,12 +345,12 @@ impl StartCmd {
         let (consensus, mempool, snapshot, info) = split::service(app, 1);
 
         let mempool = ServiceBuilder::new()
-            .load_shed()
+            // .load_shed() // don't load_shed, it will make CometBFT crash. https://github.com/namada-net/namada/blob/v101.1.4/crates/node/src/lib.rs#L751
             .buffer(100)
             .service(mempool);
 
         let info = ServiceBuilder::new()
-            .load_shed()
+            // .load_shed() // don't load_shed, it will make tower-abci crash. https://github.com/namada-net/namada/blob/v101.1.4/crates/node/src/lib.rs#L752
             .buffer(100)
             .rate_limit(50, time::Duration::from_secs(1))
             .service(info);
