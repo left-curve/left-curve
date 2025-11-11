@@ -14,18 +14,18 @@ use {
             usdc,
         },
         dex::{
-            self, AmountOption, CreateOrderRequest, Direction, ExecuteMsg, Geometric,
-            LiquidityDepth, OrderId, OrdersByPairResponse, OrdersByUserResponse, PairParams,
-            PairUpdate, PassiveLiquidity, Price, PriceOption, QueryPairRequest, SwapRoute,
-            TimeInForce,
+            self, AmountOption, AvellanedaStoikovParams, CreateOrderRequest, Direction, ExecuteMsg,
+            Geometric, LiquidityDepth, OrderId, OrdersByPairResponse, OrdersByUserResponse,
+            PairParams, PairUpdate, PassiveLiquidity, Price, PriceOption, QueryPairRequest,
+            SwapRoute, TimeInForce,
         },
         gateway::Remote,
         oracle::{self, PriceSource},
     },
     grug::{
-        BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, NonZero, Number, NumberConst,
-        QuerierExt, ResultExt, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map,
-        btree_set, coins,
+        BalanceChange, Bounded, Coin, CoinPair, Coins, Dec, Denom, Duration, Inner, NonZero,
+        Number, NumberConst, QuerierExt, ResultExt, Timestamp, Udec128, Udec128_6, Uint128,
+        UniqueVec, btree_map, btree_set, coins,
     },
     grug_types::Addressable,
     hyperlane_types::constants::ethereum,
@@ -51,12 +51,12 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
                 dango::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::new(200),
-                    precision: 0,
+                    precision: dango::DECIMAL as u8,  // Should match token decimals
                     timestamp: Timestamp::from_nanos(u128::MAX), // use max timestamp so the oracle price isn't rejected for being too old
                 },
                 usdc::DENOM.clone() => PriceSource::Fixed {
                     humanized_price: Udec128::ONE,
-                    precision: 6,
+                    precision: usdc::DECIMAL as u8,  // Should match token decimals
                     timestamp: Timestamp::from_nanos(u128::MAX),
                 }
             }),
@@ -79,6 +79,17 @@ fn liquidity_depth_from_passive_pool_decreased_properly_when_order_filled() {
                         spacing: Udec128::ONE,
                         ratio: Bounded::new_unchecked(Udec128::ONE),
                         limit: 1,
+                        avellaneda_stoikov_params: AvellanedaStoikovParams {
+                            // For DANGO/USDC with oracle_price = 200, swap_fee_rate = 0.003:
+                            // We want half_spread/reservation_price = 0.003
+                            // half_spread = ln(1 + gamma), reservation_price = 200
+                            // So ln(1 + gamma) = 0.003 * 200 = 0.6
+                            // gamma = e^0.6 - 1 ≈ 0.8221
+                            gamma: Dec::from_str("0.8221").unwrap(),
+                            time_horizon: Duration::from_seconds(0),
+                            k: Dec::ONE,
+                            lambda: Dec::ZERO,
+                        },
                     }),
                     bucket_sizes: btree_set! {
                         NonZero::new_unchecked(ONE_TENTH),
@@ -628,6 +639,17 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
                             spacing: Udec128::new_percent(1),
                             ratio: Bounded::new_unchecked(Udec128::new(1)),
                             limit: 1,
+                            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                // For DANGO/USDC with oracle_price = 200, swap_fee_rate = 0.003:
+                                // We want half_spread/reservation_price = 0.003
+                                // half_spread = ln(1 + gamma), reservation_price = 200
+                                // So ln(1 + gamma) = 0.003 * 200 = 0.6
+                                // gamma = e^0.6 - 1 ≈ 0.8221
+                                gamma: Dec::from_str("0.8221").unwrap(),
+                                time_horizon: Duration::from_seconds(0),
+                                k: Dec::ONE,
+                                lambda: Dec::ZERO,
+                            },
                         }),
                         bucket_sizes: BTreeSet::new(),
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),

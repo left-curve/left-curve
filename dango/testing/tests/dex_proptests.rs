@@ -4,15 +4,15 @@ use {
     dango_types::{
         constants::{dango, dango_usdc, eth, eth_usdc, sol, sol_usdc, usdc},
         dex::{
-            self, CreateOrderRequest, Direction, Geometric, PairId, PairParams, PairUpdate,
-            PassiveLiquidity, Price, SwapRoute, Xyk,
+            self, AvellanedaStoikovParams, CreateOrderRequest, Direction, Geometric, PairId,
+            PairParams, PairUpdate, PassiveLiquidity, Price, SwapRoute, Xyk,
         },
         gateway::Remote,
     },
     grug::{
-        Addressable, BlockOutcome, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero,
-        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt,
-        ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
+        Addressable, BlockOutcome, Bounded, Coin, Coins, Dec, Dec128_24, Denom, Duration, Inner,
+        IsZero, MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst,
+        QuerierExt, ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
         ZeroInclusiveOneExclusive, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
@@ -703,6 +703,12 @@ fn pool_type() -> impl Strategy<Value = PassiveLiquidity> {
             ratio: Bounded::new(Udec128::new_percent(50)).unwrap(),
             spacing: Udec128::new_percent(50),
             limit: 10,
+            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                gamma: Dec::from_str("1.0").unwrap(),
+                time_horizon: Duration::from_seconds(0),
+                k: Dec::from_str("1.0").unwrap(),
+                lambda: Dec::from_str("1.0").unwrap(),
+            },
         })),
     ]
 }

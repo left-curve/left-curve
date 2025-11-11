@@ -3,8 +3,8 @@ use {
         MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, NEXT_ORDER_ID, ORDERS, PAIRS, PAUSED, RESERVES,
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{
-            FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders, match_orders,
-            mean::safe_arithmetic_mean,
+            FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders,
+            geometric::volatilty_estimator, match_orders, mean::safe_arithmetic_mean,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
@@ -14,8 +14,9 @@ use {
         DangoQuerier,
         account_factory::Username,
         dex::{
-            CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
-            Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
+            CallbackMsg, Direction, ExecuteMsg, Geometric, Order, OrderCanceled, OrderFilled,
+            OrdersMatched, PassiveLiquidity, Paused, Price, ReplyMsg, RestingOrderBookState,
+            TimeInForce,
         },
         taxman::{self, FeeType},
     },
@@ -129,7 +130,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
     for (denoms, pair) in pairs {
         clear_orders_of_pair(
             ctx.storage,
-            ctx.block.height,
+            ctx.block,
             app_cfg.addresses.dex,
             &mut oracle_querier,
             &mut account_querier,
@@ -207,7 +208,7 @@ pub(crate) fn auction(ctx: MutableCtx) -> anyhow::Result<Response> {
 
 fn clear_orders_of_pair(
     storage: &mut dyn Storage,
-    current_block_height: u64,
+    block_info: grug::BlockInfo,
     dex_addr: Addr,
     oracle_querier: &mut OracleQuerier,
     account_querier: &mut AccountQuerier,
@@ -226,6 +227,9 @@ fn clear_orders_of_pair(
     #[cfg(feature = "metrics")]
     let mut now = std::time::Instant::now();
 
+    // Load the pair parameters.
+    let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
+
     // --------------------- 1. Update passive pool orders ---------------------
 
     // Generate updated passive orders and insert them into the book.
@@ -234,8 +238,8 @@ fn clear_orders_of_pair(
     // orders. The admin should set proper parameters so that the pool doesn't
     // generate too many orders.
     if let Some(reserve) = RESERVES.may_load(storage, (&base_denom, &quote_denom))? {
-        let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
-        match pair.reflect_curve(
+        match pair.clone().reflect_curve(
+            storage,
             oracle_querier,
             base_denom.clone(),
             quote_denom.clone(),
@@ -451,6 +455,22 @@ fn clear_orders_of_pair(
             None => safe_arithmetic_mean(lower_price, upper_price)?,
         };
 
+        // Update the volatility estimate using the new clearing price if the pool is a geometric pool.
+        if let PassiveLiquidity::Geometric(Geometric {
+            avellaneda_stoikov_params,
+            ..
+        }) = pair.pool_type
+        {
+            volatilty_estimator::update_volatility_estimate(
+                storage,
+                block_info.timestamp,
+                &base_denom,
+                &quote_denom,
+                clearing_price,
+                avellaneda_stoikov_params.lambda,
+            )?;
+        }
+
         events.push(OrdersMatched {
             base_denom: base_denom.clone(),
             quote_denom: quote_denom.clone(),
@@ -463,7 +483,7 @@ fn clear_orders_of_pair(
             asks,
             clearing_price,
             volume,
-            current_block_height,
+            block_info.height,
             maker_fee_rate,
             taker_fee_rate,
         ))
@@ -1076,10 +1096,12 @@ mod tests {
         dango_types::{
             config::{AppAddresses, AppConfig},
             constants::{dango, usdc},
-            dex::{Geometric, OrderId, PairParams, PassiveLiquidity, Price},
+            dex::{
+                AvellanedaStoikovParams, Geometric, OrderId, PairParams, PassiveLiquidity, Price,
+            },
             oracle::PriceSource,
         },
-        grug::{Bounded, MockContext, MockQuerier, Timestamp, Uint128},
+        grug::{Bounded, Duration, MockContext, MockQuerier, Timestamp, Uint128},
         std::str::FromStr,
         test_case::test_case,
     };
@@ -1300,6 +1322,12 @@ mod tests {
                         spacing: Udec128::ZERO,
                         ratio: Bounded::new_unchecked(Udec128::ONE),
                         limit: 10,
+                        avellaneda_stoikov_params: AvellanedaStoikovParams {
+                            gamma: Price::from_str("0.001000500166708").unwrap(),  // e^0.001 - 1, so ln(1+gamma) ≈ 0.001
+                            time_horizon: Duration::from_seconds(0),
+                            k: Price::ONE,
+                            lambda: Price::ZERO,
+                        },
                     }),
                     bucket_sizes: BTreeSet::new(),
                     swap_fee_rate: Bounded::new_unchecked(Udec128::from_str("0.001").unwrap()),
