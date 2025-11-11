@@ -217,6 +217,28 @@ fn ask_exact_amount_out(
     bail!("not enough liquidity to fulfill the swap! remaining amount: {remaining_ask_in_quote}")
 }
 
+/// Compute the price of the base asset denominated in the quote asset.
+///
+/// Note that we aren't computing the price in the human units, but in their
+/// base units. In other words, we don't want to know how many BTC is per USDC;
+/// we want to know how many sat (1e-8 BTC) is per 1e-6 USDC.
+pub fn compute_marginal_price(
+    oracle_querier: &mut OracleQuerier,
+    base_denom: &Denom,
+    quote_denom: &Denom,
+) -> anyhow::Result<Price> {
+    const PRECISION: Uint128 = Uint128::new(1_000_000);
+
+    let base_price: Price = oracle_querier
+        .query_price(base_denom, None)?
+        .value_of_unit_amount(PRECISION)?;
+    let quote_price: Price = oracle_querier
+        .query_price(quote_denom, None)?
+        .value_of_unit_amount(PRECISION)?;
+
+    Ok(base_price.checked_div(quote_price)?)
+}
+
 /// Implementation of the Avellaneda-Stoikov model to compute the optimal reservation price and half-spread.
 pub fn reflect_curve(
     storage: &dyn Storage,
@@ -231,24 +253,8 @@ pub fn reflect_curve(
     Box<dyn Iterator<Item = (Price, Uint128)>>,
     Box<dyn Iterator<Item = (Price, Uint128)>>,
 )> {
-    // Compute the price of the base asset denominated in the quote asset.
-    // We will place orders above and below this price.
-    //
-    // Note that we aren't computing the price in the human units, but in their
-    // base units. In other words, we don't want to know how many BTC is per USDC;
-    // we want to know how many sat (1e-8 BTC) is per 1e-6 USDC.
-    let marginal_price = {
-        const PRECISION: Uint128 = Uint128::new(1_000_000);
-
-        let base_price: Price = oracle_querier
-            .query_price(base_denom, None)?
-            .value_of_unit_amount(PRECISION)?;
-        let quote_price: Price = oracle_querier
-            .query_price(quote_denom, None)?
-            .value_of_unit_amount(PRECISION)?;
-
-        base_price.checked_div(quote_price)?
-    };
+    // Compute the marginal price. We will place orders above and below this price.
+    let marginal_price = compute_marginal_price(oracle_querier, base_denom, quote_denom)?;
 
     // Load the estimated squared volatility, default to ZERO if not initialized
     let sigma_squared = LAST_VOLATILITY_ESTIMATE

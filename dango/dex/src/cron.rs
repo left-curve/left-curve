@@ -4,7 +4,9 @@ use {
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders,
-            geometric::volatilty_estimator, match_orders, mean::safe_arithmetic_mean,
+            geometric::{self, volatilty_estimator},
+            match_orders,
+            mean::safe_arithmetic_mean,
         },
         liquidity_depth::{decrease_liquidity_depths, increase_liquidity_depths},
     },
@@ -24,7 +26,7 @@ use {
         Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
         MetricsIterExt, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
         Order as IterationOrder, PrimaryKey, Response, StdError, StdResult, Storage, SubMessage,
-        SubMsgResult, SudoCtx, Timestamp, TransferBuilder, Udec128, Udec128_6,
+        SubMsgResult, SudoCtx, Timestamp, TransferBuilder, Udec128, Udec128_6, Uint128,
     },
     std::collections::{BTreeMap, BTreeSet, HashMap, hash_map::Entry},
 };
@@ -230,7 +232,28 @@ fn clear_orders_of_pair(
     // Load the pair parameters.
     let pair = PAIRS.load(storage, (&base_denom, &quote_denom))?;
 
-    // --------------------- 1. Update passive pool orders ---------------------
+    // ---------------------- 1. Update the volatility estimate ----------------------
+    if let PassiveLiquidity::Geometric(Geometric {
+        avellaneda_stoikov_params,
+        ..
+    }) = &pair.pool_type
+    {
+        // Get the new marginal price from the oracle.
+        let marginal_price =
+            geometric::compute_marginal_price(oracle_querier, &base_denom, &quote_denom)?;
+
+        // Update the volatility estimate.
+        volatilty_estimator::update_volatility_estimate(
+            storage,
+            block_info.timestamp,
+            &base_denom,
+            &quote_denom,
+            marginal_price,
+            avellaneda_stoikov_params.half_life,
+        )?;
+    }
+
+    // --------------------- 2. Update passive pool orders ---------------------
 
     // Generate updated passive orders and insert them into the book.
     //
@@ -348,7 +371,7 @@ fn clear_orders_of_pair(
         now = std::time::Instant::now();
     }
 
-    // ----------------------- 2. Perform order matching -----------------------
+    // ----------------------- 3. Perform order matching -----------------------
 
     // Create iterators over orders.
     //
@@ -423,7 +446,7 @@ fn clear_orders_of_pair(
         now = std::time::Instant::now();
     }
 
-    // ----------------------- 3. Perform order filling ------------------------
+    // ----------------------- 4. Perform order filling ------------------------
 
     // If matching orders were found, then we need to fill the orders. All orders
     // are filled at the clearing price.
@@ -454,22 +477,6 @@ fn clear_orders_of_pair(
             // which handles this case.
             None => safe_arithmetic_mean(lower_price, upper_price)?,
         };
-
-        // Update the volatility estimate using the new clearing price if the pool is a geometric pool.
-        if let PassiveLiquidity::Geometric(Geometric {
-            avellaneda_stoikov_params,
-            ..
-        }) = pair.pool_type
-        {
-            volatilty_estimator::update_volatility_estimate(
-                storage,
-                block_info.timestamp,
-                &base_denom,
-                &quote_denom,
-                clearing_price,
-                avellaneda_stoikov_params.half_life,
-            )?;
-        }
 
         events.push(OrdersMatched {
             base_denom: base_denom.clone(),
@@ -739,7 +746,7 @@ fn clear_orders_of_pair(
         now = std::time::Instant::now();
     }
 
-    // ------------------------- 4. Cancel IOC orders --------------------------
+    // ------------------------- 5. Cancel IOC orders --------------------------
 
     for order in ORDERS
         .idx
@@ -788,7 +795,7 @@ fn clear_orders_of_pair(
         now = std::time::Instant::now();
     }
 
-    // ----------------- 5. Save the resting order book state ------------------
+    // ----------------- 6. Save the resting order book state ------------------
 
     // Find the best bid and ask prices that remains after all the previous steps.
     let best_bid_price = ORDERS
