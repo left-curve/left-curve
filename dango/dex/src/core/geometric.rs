@@ -8,6 +8,7 @@ use {
     },
     std::{cmp, iter},
 };
+mod logarithm;
 
 /// When adding liquidity for the first time into an empty pool, we determine
 /// how many LP tokens to mint based on the USD value of the deposit.
