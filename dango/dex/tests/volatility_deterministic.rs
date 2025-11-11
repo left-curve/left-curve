@@ -141,11 +141,11 @@ fn run_deterministic_test(scenario: &TestScenario, tolerance: f64) {
             }
 
             // Print periodic progress
-            if i % 50 == 0 {
+            if i % 500 == 0 {
                 println!(
-                    "Step {}: timestamp={}s, price={}, estimate={}, expected={}, error={:.6}",
+                    "Step {}: timestamp={}ms, price={}, estimate={}, expected={}, error={:.6}",
                     i,
-                    timestamp.into_seconds(),
+                    timestamp.into_millis(),
                     price,
                     actual_estimate,
                     expected_estimate,
@@ -159,7 +159,7 @@ fn run_deterministic_test(scenario: &TestScenario, tolerance: f64) {
             actual_estimate,
             expected_estimate,
             tolerance,
-            &format!("Step {} at timestamp {}s", i, timestamp.into_seconds()),
+            &format!("Step {} at timestamp {}ms", i, timestamp.into_millis()),
         );
     }
 
@@ -189,9 +189,9 @@ fn run_deterministic_test(scenario: &TestScenario, tolerance: f64) {
 
 #[test]
 fn test_all_scenarios_available() {
-    // Verify that all expected fixtures are loadable
+    // Verify that all expected fixtures are loadable (6 fixed + 9 variable dt)
     let scenarios = TestScenario::load_all();
-    assert_eq!(scenarios.len(), 6, "Expected 6 test scenarios");
+    assert_eq!(scenarios.len(), 15, "Expected 15 test scenarios");
 
     // Verify each scenario has valid data
     for scenario in scenarios {
@@ -225,10 +225,14 @@ fn test_fixture_consistency() {
             curr_time > prev_time,
             "Timestamps should be strictly increasing"
         );
+        // For fixed interval tests, verify time steps are consistent (in milliseconds)
+        // time_step_seconds is stored as integer (e.g., 0.2 stored as int would be 0,
+        // but in the JSON it should be 0.2). Check for 200ms steps.
+        let expected_time_step_ms = 200u128;
         assert_eq!(
             curr_time - prev_time,
-            scenario.time_step_seconds as u128,
-            "Time steps should be consistent"
+            expected_time_step_ms,
+            "Time steps should be consistent at 200ms (in milliseconds)"
         );
     }
 

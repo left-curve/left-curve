@@ -17,7 +17,7 @@ pub struct PricePoint {
 
 impl PricePoint {
     pub fn get_timestamp(&self) -> Timestamp {
-        Timestamp::from_seconds(self.timestamp)
+        Timestamp::from_millis(self.timestamp)
     }
 
     pub fn get_price(&self) -> Price {
@@ -36,7 +36,7 @@ pub struct VolatilityEstimate {
 
 impl VolatilityEstimate {
     pub fn get_timestamp(&self) -> Timestamp {
-        Timestamp::from_seconds(self.timestamp)
+        Timestamp::from_millis(self.timestamp)
     }
 
     pub fn get_estimate(&self) -> Price {
@@ -58,7 +58,7 @@ pub struct TestScenario {
     pub description: String,
     pub initial_price: String,
     pub volatility: f64,
-    pub time_step_seconds: u64,
+    pub time_step_seconds: f64,
     pub half_life_seconds: u64,
     pub price_path: Vec<PricePoint>,
     pub expected_estimates: Vec<VolatilityEstimate>,
@@ -95,6 +95,15 @@ impl TestScenario {
             Self::load("multi_phase_halflife_1s"),
             Self::load("multi_phase_halflife_5s"),
             Self::load("multi_phase_halflife_15s"),
+            Self::load("variable_dt_200ms_low_variance"),
+            Self::load("variable_dt_200ms_med_variance"),
+            Self::load("variable_dt_200ms_high_variance"),
+            Self::load("variable_dt_600ms_low_variance"),
+            Self::load("variable_dt_600ms_med_variance"),
+            Self::load("variable_dt_600ms_high_variance"),
+            Self::load("variable_dt_1000ms_low_variance"),
+            Self::load("variable_dt_1000ms_med_variance"),
+            Self::load("variable_dt_1000ms_high_variance"),
         ]
     }
 }
@@ -105,9 +114,9 @@ mod tests {
 
     #[test]
     fn test_load_fixtures() {
-        // Test that all fixtures can be loaded
+        // Test that all fixtures can be loaded (6 fixed + 9 variable dt)
         let scenarios = TestScenario::load_all();
-        assert_eq!(scenarios.len(), 6);
+        assert_eq!(scenarios.len(), 15);
 
         // Verify structure of first scenario
         let scenario = &scenarios[0];
@@ -135,10 +144,10 @@ mod tests {
 
         assert_eq!(scenario.name, "single_regime_halflife_1s");
         assert_eq!(scenario.volatility, 0.2);
-        assert_eq!(scenario.time_step_seconds, 1);
+        assert_eq!(scenario.time_step_seconds, 0.2);
         assert_eq!(scenario.half_life_seconds, 1);
-        assert_eq!(scenario.price_path.len(), 150);
-        assert_eq!(scenario.expected_estimates.len(), 150);
+        assert_eq!(scenario.price_path.len(), 18000);
+        assert_eq!(scenario.expected_estimates.len(), 18000);
     }
 
     #[test]
@@ -147,7 +156,7 @@ mod tests {
 
         assert_eq!(scenario.name, "multi_phase_halflife_5s");
         assert_eq!(scenario.half_life_seconds, 5);
-        assert_eq!(scenario.price_path.len(), 448);
-        assert_eq!(scenario.expected_estimates.len(), 448);
+        assert_eq!(scenario.price_path.len(), 17998);
+        assert_eq!(scenario.expected_estimates.len(), 17998);
     }
 }

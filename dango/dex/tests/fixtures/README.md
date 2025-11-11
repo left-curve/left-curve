@@ -23,35 +23,30 @@ This approach ensures consistent behavior even with unpredictable sample rates, 
 
 ## Why Deterministic Tests?
 
-Previously, tests used random price paths which led to:
-
-1. **Non-deterministic results** - tests could pass or fail randomly
-2. **Hard to debug** - couldn't reproduce specific failures
-3. **Unclear expectations** - no reference implementation to verify correctness
-
-This framework solves these issues by:
-
-1. **Generating deterministic price paths** using a fixed random seed
-2. **Computing expected results** using a Python reference implementation
-3. **Storing fixtures** as JSON files that Rust tests load
+We want to test the volatility estimation algorithm for different parameters, which requires random price paths, but we need the tests
+to be reproducible.
 
 ## Files
 
 - `generate_volatility_test_data.py` - Python script that generates all fixtures
-- `*.json` - Individual test scenario fixtures
-- `index.json` - Index of all available scenarios
+- `*.json` - Individual test scenario fixtures. These are all generated and MUST NOT BE EDITED MANUALLY.
+- `index.json` - Index of all available scenarios. This is also generated and MUST NOT BE EDITED MANUALLY.
+
+## Time Units
+
+All timestamps in the fixtures are in **milliseconds** to match blockchain block times. The Rust code measures time intervals in milliseconds and normalizes volatility accordingly (volatility per millisecond).
 
 ## Test Scenarios
 
 ### Single Regime Tests
 
-Tests with a single volatility regime (20% volatility):
+Tests with a single volatility regime (20% annualized volatility, properly scaled to millisecond intervals):
 
 - `single_regime_halflife_1s.json` - half-life = 1 second (fast adaptation)
 - `single_regime_halflife_5s.json` - half-life = 5 seconds (medium adaptation)
 - `single_regime_halflife_15s.json` - half-life = 15 seconds (slow adaptation)
 
-Each contains 150 price points with 1 second intervals.
+Each contains 18,000 price points with 200ms intervals (1 hour of data).
 
 ### Multi-Phase Tests
 
@@ -61,11 +56,33 @@ Tests with changing volatility regimes (20% → 40% → 20%):
 - `multi_phase_halflife_5s.json` - half-life = 5 seconds
 - `multi_phase_halflife_15s.json` - half-life = 15 seconds
 
-Each contains 448 price points across three phases of 150 steps each.
+Each contains 17,998 price points across three phases of 6,000 steps each.
+
+### Variable Time Interval Tests
+
+Tests with inconsistent time intervals (normally distributed) to simulate unpredictable block times. This is to test the time-adaptive alpha feature. All use a 5-second half-life and 18,000 samples (1 hour of data):
+
+**200ms mean block time:**
+
+- `variable_dt_200ms_low_variance.json` - std = 20ms (10% CV)
+- `variable_dt_200ms_med_variance.json` - std = 50ms (25% CV)
+- `variable_dt_200ms_high_variance.json` - std = 100ms (50% CV)
+
+**600ms mean block time:**
+
+- `variable_dt_600ms_low_variance.json` - std = 60ms (10% CV)
+- `variable_dt_600ms_med_variance.json` - std = 150ms (25% CV)
+- `variable_dt_600ms_high_variance.json` - std = 300ms (50% CV)
+
+**1000ms mean block time:**
+
+- `variable_dt_1000ms_low_variance.json` - std = 100ms (10% CV)
+- `variable_dt_1000ms_med_variance.json` - std = 250ms (25% CV)
+- `variable_dt_1000ms_high_variance.json` - std = 500ms (50% CV)
 
 ## Regenerating Fixtures
 
-If you modify the volatility estimation algorithm or want to add new test scenarios:
+You MUST modify the Python script and regenerate the fixtures if you make any changes to the volatility estimation algorithm in the Rust code. If you want to add more test scenarios, you can edit the Python script and regenerate the fixtures.
 
 ```bash
 # From the repository root
