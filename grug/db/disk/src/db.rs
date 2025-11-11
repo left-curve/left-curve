@@ -1618,7 +1618,7 @@ mod test_deadlock {
             write_thread.join().unwrap();
 
             // Names should only include those in batch 1, without those in batch 2.
-            assert_eq!(names, ["Astrid", "Kodlak Whitemane", "Ulfric Stormcloak",]);
+            assert_eq!(names, ["Astrid", "Kodlak Whitemane", "Ulfric Stormcloak"]);
         });
 
         // Read again. The records in batch 2 should now be included.
