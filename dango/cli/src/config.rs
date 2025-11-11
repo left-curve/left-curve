@@ -1,7 +1,4 @@
-use {
-    grug_types::HexBinary,
-    serde::{Deserialize, Serialize},
-};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -37,7 +34,7 @@ pub enum LogFormat {
 pub struct GrugConfig {
     pub wasm_cache_capacity: usize,
     pub query_gas_limit: u64,
-    pub priority_range: Option<(HexBinary, HexBinary)>,
+    pub db: grug_db_disk::Config,
 }
 
 impl Default for GrugConfig {
@@ -45,7 +42,7 @@ impl Default for GrugConfig {
         Self {
             wasm_cache_capacity: 1000,
             query_gas_limit: 100_000_000,
-            priority_range: None,
+            db: Default::default(),
         }
     }
 }
@@ -88,6 +85,7 @@ pub struct HttpdConfig {
     pub ip: String,
     pub port: u16,
     pub cors_allowed_origin: Option<String>,
+    pub static_files_path: Option<String>,
 }
 
 impl Default for HttpdConfig {
@@ -97,6 +95,7 @@ impl Default for HttpdConfig {
             ip: "127.0.0.1".to_string(),
             port: 0,
             cors_allowed_origin: None,
+            static_files_path: None,
         }
     }
 }

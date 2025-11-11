@@ -129,7 +129,7 @@ where
 }
 
 #[self_referencing]
-pub struct SharedIter<'a, S> {
+struct SharedIter<'a, S> {
     guard: RwLockReadGuard<'a, S>,
     #[borrows(guard)]
     #[covariant]

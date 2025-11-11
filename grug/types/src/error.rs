@@ -123,12 +123,13 @@ pub enum StdError {
         reason: String,
     },
 
-    #[error("failed to deserialize! codec: {codec}, type: {ty}, reason: {reason}")]
+    #[error("failed to deserialize! codec: {codec}, type: {ty}, reason: {reason}, raw: {raw}")]
     #[backtrace(private_constructor)]
     Deserialize {
         codec: &'static str,
         ty: &'static str,
         reason: String,
+        raw: String,
     },
 }
 
@@ -193,11 +194,12 @@ impl StdError {
         Self::_serialize(codec, type_name::<T>(), reason.to_string())
     }
 
-    pub fn deserialize<T, R>(codec: &'static str, reason: R) -> Self
+    pub fn deserialize<T, R, B>(codec: &'static str, reason: R, raw: B) -> Self
     where
         R: ToString,
+        B: ToString,
     {
-        Self::_deserialize(codec, type_name::<T>(), reason.to_string())
+        Self::_deserialize(codec, type_name::<T>(), reason.to_string(), raw.to_string())
     }
 }
 

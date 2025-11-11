@@ -1,0 +1,70 @@
+- set_fact:
+    pr_tunnel_name: "pr-{{ github_pr_number }}-{{ hostname }}"
+
+# find
+- uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ pr_tunnel_name }}&is_deleted=false"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: list_resp
+
+# create if missing
+- name: Create tunnel if missing
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cloudflare_api_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: { name: "{{ pr_tunnel_name }}", config_src: "cloudflare" }
+  register: create_resp
+  when: (list_resp.json.result | length) == 0
+
+# set tunnel_id
+- name: Set tunnel_id with existing tunnel
+  set_fact:
+    pr_tunnel_id: >-
+      {{ (list_resp.json.result[0].id
+          if (list_resp.json.result | length) > 0
+          else create_resp.json.result.id) }}
+
+- name: Show existing tunnel_id
+  debug:
+    var: pr_tunnel_id
+
+# fetch token
+- name: Fetch tunnel token
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ pr_tunnel_id }}/token"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: token_resp
+
+# set token (string or object-safe)
+- name: Set pr_tunnel_token from fetched tunnel token
+  set_fact:
+    pr_tunnel_token: >-
+      {{ token_resp.json.result
+         if (token_resp.json.result is string)
+         else token_resp.json.result.token }}
+
+# derive id from token if you didn’t keep pr_tunnel_id
+- name: Set token_id from tunnel_token
+  set_fact:
+    pr_tunnel_id: "{{ (pr_tunnel_token | b64decode | from_json).t }}"
+  when: pr_tunnel_id is not defined
+
+- debug:
+    var: pr_tunnel_id
+
+- name: Ensure per-host CNAME → tunnel
+  community.general.cloudflare_dns:
+    zone: "{{ dango_domain }}"
+    record: "{{ item }}-{{ dango_network }}-{{ hostname }}"
+    type: CNAME
+    value: "{{ pr_tunnel_id }}.cfargotunnel.com"
+    proxied: true
+    state: present
+    api_token: "{{ cloudflare_api_token }}"
+  loop: ["graphiql", "www", "api", "faucet"]

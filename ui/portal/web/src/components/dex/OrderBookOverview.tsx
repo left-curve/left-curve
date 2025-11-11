@@ -196,7 +196,7 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
               "grid grid-cols-3 diatype-xs-medium text-ink-secondary-700 w-full cursor-pointer group relative"
             }
           >
-            <p
+            <div
               className={twMerge(
                 "z-10",
                 trade.direction === Direction.Buy
@@ -212,13 +212,13 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
                 )}
                 formatOptions={{ minimumTotalDigits: 8 }}
               />
-            </p>
-            <p className="text-center z-10 flex gap-1 justify-center">
+            </div>
+            <div className="text-center z-10 flex gap-1 justify-center">
               <FormattedNumber
                 number={calculateTradeSize(trade, baseCoin.decimals).toFixed()}
                 formatOptions={{ maximumTotalDigits: 5, minimumTotalDigits: 5 }}
               />
-            </p>
+            </div>
 
             <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
               <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>

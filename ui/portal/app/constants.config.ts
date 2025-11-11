@@ -2,7 +2,7 @@ import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { AppletMetadata } from "@left-curve/store/types";
 
-export const WEBRTC_URI = "wss://webrtc.dango.exchange";
+export const WS_URI = "wss://webrtc.dango.exchange";
 
 const translations = m as unknown as Record<string, () => string>;
 export const APPLETS: Record<string, AppletMetadata> = Object.keys(translations)
