@@ -4818,6 +4818,7 @@ dependencies = [
  "grug-app",
  "grug-types",
  "ouroboros",
+ "parking_lot",
  "thiserror 2.0.12",
 ]
 

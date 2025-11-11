@@ -5,7 +5,8 @@ use {
         Batch, Buffer, Hash256, HashExt, MockStorage, Op, Order, Record, Shared, Storage,
     },
     ouroboros::self_referencing,
-    std::{collections::BTreeMap, marker::PhantomData, sync::RwLockReadGuard},
+    parking_lot::RwLockReadGuard,
+    std::{collections::BTreeMap, marker::PhantomData},
 };
 #[cfg(feature = "snapshot")]
 use {
