@@ -1,0 +1,230 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryRequest",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": { "status": { "$ref": "#/$defs/QueryStatusRequest" } },
+      "required": ["status"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "config": { "$ref": "#/$defs/QueryConfigRequest" } },
+      "required": ["config"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "appConfig": { "$ref": "#/$defs/QueryAppConfigRequest" } },
+      "required": ["appConfig"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "appConfigs": { "$ref": "#/$defs/QueryAppConfigsRequest" } },
+      "required": ["appConfigs"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "balance": { "$ref": "#/$defs/QueryBalanceRequest" } },
+      "required": ["balance"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "balances": { "$ref": "#/$defs/QueryBalancesRequest" } },
+      "required": ["balances"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "supply": { "$ref": "#/$defs/QuerySupplyRequest" } },
+      "required": ["supply"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "supplies": { "$ref": "#/$defs/QuerySuppliesRequest" } },
+      "required": ["supplies"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "code": { "$ref": "#/$defs/QueryCodeRequest" } },
+      "required": ["code"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "codes": { "$ref": "#/$defs/QueryCodesRequest" } },
+      "required": ["codes"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "contract": { "$ref": "#/$defs/QueryContractRequest" } },
+      "required": ["contract"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "contracts": { "$ref": "#/$defs/QueryContractsRequest" } },
+      "required": ["contracts"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "wasmRaw": { "$ref": "#/$defs/QueryWasmRawRequest" } },
+      "required": ["wasmRaw"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": { "wasmSmart": { "$ref": "#/$defs/QueryWasmSmartRequest" } },
+      "required": ["wasmSmart"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "multi": {
+          "type": "array",
+          "items": {
+            "$ref": "#/QueryRequest"
+          }
+        }
+      },
+      "required": ["multi"],
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "Address": {
+      "type": "string",
+      "description": "A blockchain address (e.g., 0x...)."
+    },
+    "Denom": {
+      "type": "string",
+      "description": "A token identifier (e.g., 'bridge/usdc')."
+    },
+    "Hex": {
+      "type": "string",
+      "description": "A hexadecimal string."
+    },
+    "Base64": {
+      "type": "string",
+      "description": "A Base64 encoded string."
+    },
+    "Json": {
+      "type": "object",
+      "description": "A generic JSON object.",
+      "additionalProperties": true
+    },
+    "QueryStatusRequest": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "QueryConfigRequest": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "QueryAppConfigRequest": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "QueryAppConfigsRequest": {
+      "type": "object",
+      "properties": {
+        "startAfter": { "type": "string" },
+        "limit": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "QueryBalanceRequest": {
+      "type": "object",
+      "properties": {
+        "address": { "$ref": "#/$defs/Address" },
+        "denom": { "$ref": "#/$defs/Denom" }
+      },
+      "required": ["address", "denom"],
+      "additionalProperties": false
+    },
+    "QueryBalancesRequest": {
+      "type": "object",
+      "properties": {
+        "address": { "$ref": "#/$defs/Address" },
+        "startAfter": { "$ref": "#/$defs/Denom" },
+        "limit": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["address"],
+      "additionalProperties": false
+    },
+    "QuerySupplyRequest": {
+      "type": "object",
+      "properties": {
+        "denom": { "$ref": "#/$defs/Denom" }
+      },
+      "required": ["denom"],
+      "additionalProperties": false
+    },
+    "QuerySuppliesRequest": {
+      "type": "object",
+      "properties": {
+        "startAfter": { "$ref": "#/$defs/Denom" },
+        "limit": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "QueryCodeRequest": {
+      "type": "object",
+      "properties": {
+        "hash": { "$ref": "#/$defs/Hex" }
+      },
+      "required": ["hash"],
+      "additionalProperties": false
+    },
+    "QueryCodesRequest": {
+      "type": "object",
+      "properties": {
+        "startAfter": { "type": "string" },
+        "limit": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "QueryWasmRawRequest": {
+      "type": "object",
+      "properties": {
+        "contract": { "$ref": "#/$defs/Address" },
+        "key": { "$ref": "#/$defs/Base64" }
+      },
+      "required": ["contract", "key"],
+      "additionalProperties": false
+    },
+    "QueryWasmSmartRequest": {
+      "type": "object",
+      "properties": {
+        "contract": { "$ref": "#/$defs/Address" },
+        "msg": { "$ref": "#/$defs/Json" }
+      },
+      "required": ["contract", "msg"],
+      "additionalProperties": false
+    },
+    "QueryContractsRequest": {
+      "type": "object",
+      "properties": {
+        "startAfter": { "$ref": "#/$defs/Address" },
+        "limit": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "QueryContractRequest": {
+      "type": "object",
+      "properties": {
+        "address": { "$ref": "#/$defs/Address" }
+      },
+      "required": ["address"]
+    }
+  }
+}
