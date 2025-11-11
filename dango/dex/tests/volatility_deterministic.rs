@@ -47,38 +47,38 @@ fn assert_price_approx_eq(
 }
 
 #[test]
-fn test_single_regime_lambda_90() {
-    let scenario = TestScenario::load("single_regime_lambda_90");
+fn test_single_regime_halflife_1s() {
+    let scenario = TestScenario::load("single_regime_halflife_1s");
     run_deterministic_test(&scenario, 0.02); // 2% tolerance
 }
 
 #[test]
-fn test_single_regime_lambda_95() {
-    let scenario = TestScenario::load("single_regime_lambda_95");
+fn test_single_regime_halflife_5s() {
+    let scenario = TestScenario::load("single_regime_halflife_5s");
     run_deterministic_test(&scenario, 0.02); // 2% tolerance
 }
 
 #[test]
-fn test_single_regime_lambda_99() {
-    let scenario = TestScenario::load("single_regime_lambda_99");
+fn test_single_regime_halflife_15s() {
+    let scenario = TestScenario::load("single_regime_halflife_15s");
     run_deterministic_test(&scenario, 0.02); // 2% tolerance
 }
 
 #[test]
-fn test_multi_phase_lambda_90() {
-    let scenario = TestScenario::load("multi_phase_lambda_90");
+fn test_multi_phase_halflife_1s() {
+    let scenario = TestScenario::load("multi_phase_halflife_1s");
     run_deterministic_test(&scenario, 0.02); // 2% tolerance
 }
 
 #[test]
-fn test_multi_phase_lambda_95() {
-    let scenario = TestScenario::load("multi_phase_lambda_95");
+fn test_multi_phase_halflife_5s() {
+    let scenario = TestScenario::load("multi_phase_halflife_5s");
     run_deterministic_test(&scenario, 0.02); // 2% tolerance
 }
 
 #[test]
-fn test_multi_phase_lambda_99() {
-    let scenario = TestScenario::load("multi_phase_lambda_99");
+fn test_multi_phase_halflife_15s() {
+    let scenario = TestScenario::load("multi_phase_halflife_15s");
     run_deterministic_test(&scenario, 0.02); // 2% tolerance
 }
 
@@ -206,7 +206,6 @@ fn test_all_scenarios_available() {
         );
 
         // Verify values are parseable
-        let _lambda = scenario.get_lambda();
         let _half_life = scenario.get_half_life();
         let _first_price = scenario.price_path[0].get_price();
         let _first_estimate = scenario.expected_estimates[0].get_estimate();
@@ -216,7 +215,7 @@ fn test_all_scenarios_available() {
 #[test]
 fn test_fixture_consistency() {
     // Load a scenario and verify internal consistency
-    let scenario = TestScenario::load("single_regime_lambda_90");
+    let scenario = TestScenario::load("single_regime_halflife_1s");
 
     // Verify timestamps are sequential
     for i in 1..scenario.price_path.len() {

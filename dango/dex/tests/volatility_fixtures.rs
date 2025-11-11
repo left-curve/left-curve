@@ -59,38 +59,14 @@ pub struct TestScenario {
     pub initial_price: String,
     pub volatility: f64,
     pub time_step_seconds: u64,
-    pub lambda_value: String,
+    pub half_life_seconds: u64,
     pub price_path: Vec<PricePoint>,
     pub expected_estimates: Vec<VolatilityEstimate>,
 }
 
 impl TestScenario {
-    pub fn get_lambda(&self) -> Price {
-        Price::raw(Int(
-            u128::from_str(&self.lambda_value).expect("Invalid lambda string")
-        ))
-    }
-
-    /// Convert lambda to half_life based on the relationship:
-    /// In the Python fixtures: vol_t = lambda * vol_{t-1} + (1 - lambda) * r_t^2
-    /// In the Rust code: vol_t = alpha * vol_{t-1} + (1 - alpha) * r_t^2
-    /// where alpha = 1 - exp(-ln(2) * dt / half_life)
-    ///
-    /// Therefore: lambda = alpha = 1 - exp(-ln(2) * dt / half_life)
-    /// Solving for half_life: half_life = -ln(2) * dt / ln(1 - lambda)
-    ///
-    /// For the test fixtures, dt is the time_step_seconds.
     pub fn get_half_life(&self) -> Duration {
-        let lambda = self.get_lambda();
-        let lambda_f64 = lambda.0.0 as f64 / 1e24;
-
-        // Calculate half_life in milliseconds: -ln(2) * dt_ms / ln(1 - lambda)
-        let ln_2 = 0.693147180559945309417232121458;
-        let ln_one_minus_lambda = (1.0 - lambda_f64).ln();
-        let dt_ms = (self.time_step_seconds as f64) * 1000.0; // Convert to milliseconds
-        let half_life_ms = (-ln_2 * dt_ms / ln_one_minus_lambda).round() as u128;
-
-        Duration::from_millis(half_life_ms)
+        Duration::from_seconds(self.half_life_seconds as u128)
     }
 
     pub fn load(name: &str) -> Self {
@@ -113,12 +89,12 @@ impl TestScenario {
     /// Load all available test scenarios
     pub fn load_all() -> Vec<Self> {
         vec![
-            Self::load("single_regime_lambda_90"),
-            Self::load("single_regime_lambda_95"),
-            Self::load("single_regime_lambda_99"),
-            Self::load("multi_phase_lambda_90"),
-            Self::load("multi_phase_lambda_95"),
-            Self::load("multi_phase_lambda_99"),
+            Self::load("single_regime_halflife_1s"),
+            Self::load("single_regime_halflife_5s"),
+            Self::load("single_regime_halflife_15s"),
+            Self::load("multi_phase_halflife_1s"),
+            Self::load("multi_phase_halflife_5s"),
+            Self::load("multi_phase_halflife_15s"),
         ]
     }
 }
@@ -135,18 +111,16 @@ mod tests {
 
         // Verify structure of first scenario
         let scenario = &scenarios[0];
-        assert_eq!(scenario.name, "single_regime_lambda_90");
+        assert_eq!(scenario.name, "single_regime_halflife_1s");
         assert!(!scenario.price_path.is_empty());
         assert_eq!(scenario.price_path.len(), scenario.expected_estimates.len());
 
         // Verify we can parse the values
         let first_price = scenario.price_path[0].get_price();
-        let lambda = scenario.get_lambda();
         let half_life = scenario.get_half_life();
         let first_estimate = scenario.expected_estimates[0].get_estimate();
 
         println!("First price: {}", first_price);
-        println!("Lambda: {}", lambda);
         println!(
             "Half-life: {}ms ({} seconds)",
             half_life.into_millis(),
@@ -156,21 +130,23 @@ mod tests {
     }
 
     #[test]
-    fn test_single_regime_lambda_90() {
-        let scenario = TestScenario::load("single_regime_lambda_90");
+    fn test_single_regime_halflife_1s() {
+        let scenario = TestScenario::load("single_regime_halflife_1s");
 
-        assert_eq!(scenario.name, "single_regime_lambda_90");
+        assert_eq!(scenario.name, "single_regime_halflife_1s");
         assert_eq!(scenario.volatility, 0.2);
         assert_eq!(scenario.time_step_seconds, 1);
+        assert_eq!(scenario.half_life_seconds, 1);
         assert_eq!(scenario.price_path.len(), 150);
         assert_eq!(scenario.expected_estimates.len(), 150);
     }
 
     #[test]
-    fn test_multi_phase_lambda_95() {
-        let scenario = TestScenario::load("multi_phase_lambda_95");
+    fn test_multi_phase_halflife_5s() {
+        let scenario = TestScenario::load("multi_phase_halflife_5s");
 
-        assert_eq!(scenario.name, "multi_phase_lambda_95");
+        assert_eq!(scenario.name, "multi_phase_halflife_5s");
+        assert_eq!(scenario.half_life_seconds, 5);
         assert_eq!(scenario.price_path.len(), 448);
         assert_eq!(scenario.expected_estimates.len(), 448);
     }

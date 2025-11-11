@@ -1,5 +1,6 @@
 use grug::{
-    Dec, Exponentiate, Inner, MathResult, MultiplyFraction, Number, NumberConst, Signed, Unsigned,
+    Dec, Decimal, Exponentiate, FixedPoint, Inner, IsZero, MathResult, MultiplyFraction, Number,
+    NumberConst, Sign, Signed, Unsigned,
 };
 
 use crate::core::geometric::math::{NATURAL_LOG_OF_TWO, UnsignedDecimalConstant};
@@ -56,8 +57,8 @@ fn _pade_approximant_of_e_to_r<const S: u32>(r: Dec<i128, S>) -> MathResult<Dec<
 
 /// Rounds a decimal number to the nearest integer.
 pub fn round<const S: u32>(x: Dec<u128, S>) -> MathResult<Dec<u128, S>> {
-    let floored = x.checked_mul_dec_floor(Dec::<u128, S>::ONE)?;
-    let ceiled = x.checked_mul_dec_ceil(Dec::<u128, S>::ONE)?;
+    let floored = x.checked_floor()?;
+    let ceiled = x.checked_ceil()?;
 
     if x.checked_sub(floored)? < Dec::<u128, S>::checked_from_ratio(1, 2)? {
         Ok(floored)
@@ -269,5 +270,37 @@ mod tests {
         let result = e_pow(dec18("10")).unwrap();
         let expected = dec18("22026.465794806718");
         assert_approx_eq(result, expected, 1000);
+    }
+
+    #[test]
+    fn test_e_pow_small_exponent_24_decimals() {
+        // Regression test for bug where e_pow returned 1.0 for small exponents with 24 decimal places
+        // This value comes from the volatility estimator: ln(2) * dt / half_life = 0.693... * 1000 / 5000
+        use std::str::FromStr;
+
+        let x = Dec::<u128, 24>::from_str("0.138629436111989061883446").unwrap();
+        let result = e_pow(x).unwrap();
+
+        // e^0.1386... ≈ 1.1487
+        let expected = Dec::<u128, 24>::from_str("1.148698354997035").unwrap();
+
+        // Check result is close to expected (within 0.1% tolerance)
+        let diff = if result > expected {
+            result.checked_sub(expected).unwrap()
+        } else {
+            expected.checked_sub(result).unwrap()
+        };
+        let tolerance = expected
+            .checked_mul_dec(Dec::<u128, 24>::checked_from_ratio(1000, 1_000_000).unwrap())
+            .unwrap();
+
+        assert!(
+            diff <= tolerance,
+            "e_pow returned {}, expected {}, diff {} exceeds tolerance {}",
+            result,
+            expected,
+            diff,
+            tolerance
+        );
     }
 }

@@ -4,25 +4,33 @@ This directory contains deterministic test fixtures for the volatility estimatio
 
 ## Overview
 
-The volatility estimator uses an exponential weighted moving average (EWMA) to track price volatility:
+The volatility estimator uses an exponential weighted moving average (EWMA) with time-adaptive alpha to track price volatility:
 
 ```
-vol_estimate_t = λ × vol_estimate_{t-1} + (1 - λ) × r_t²
+alpha(dt) = 1 - exp(-ln(2) × dt / half_life)
+vol_estimate_t = alpha × vol_estimate_{t-1} + (1 - alpha) × r_t²
 ```
 
 where:
+
 - `vol_estimate_t` is the squared volatility estimate at time t
-- `λ` is the decay parameter (smoothing factor)
-- `r_t` is the log return normalized by the time interval: `(ln(price_t / price_{t-1}))² / Δt`
+- `alpha(dt)` is the time-adaptive decay parameter that adjusts to the actual time interval
+- `half_life` is the half-life parameter (in seconds) that controls the EWMA's memory
+- `dt` is the actual time interval since the last update
+- `r_t` is the log return normalized by the time interval: `(ln(price_t / price_{t-1}))² / dt`
+
+This approach ensures consistent behavior even with unpredictable sample rates, as alpha adapts to the actual time between observations.
 
 ## Why Deterministic Tests?
 
 Previously, tests used random price paths which led to:
+
 1. **Non-deterministic results** - tests could pass or fail randomly
 2. **Hard to debug** - couldn't reproduce specific failures
 3. **Unclear expectations** - no reference implementation to verify correctness
 
 This framework solves these issues by:
+
 1. **Generating deterministic price paths** using a fixed random seed
 2. **Computing expected results** using a Python reference implementation
 3. **Storing fixtures** as JSON files that Rust tests load
@@ -36,18 +44,22 @@ This framework solves these issues by:
 ## Test Scenarios
 
 ### Single Regime Tests
+
 Tests with a single volatility regime (20% volatility):
-- `single_regime_lambda_90.json` - λ = 0.9 (faster convergence)
-- `single_regime_lambda_95.json` - λ = 0.95 (medium convergence)  
-- `single_regime_lambda_99.json` - λ = 0.99 (slower convergence)
+
+- `single_regime_halflife_1s.json` - half-life = 1 second (fast adaptation)
+- `single_regime_halflife_5s.json` - half-life = 5 seconds (medium adaptation)
+- `single_regime_halflife_15s.json` - half-life = 15 seconds (slow adaptation)
 
 Each contains 150 price points with 1 second intervals.
 
 ### Multi-Phase Tests
+
 Tests with changing volatility regimes (20% → 40% → 20%):
-- `multi_phase_lambda_90.json` - λ = 0.9
-- `multi_phase_lambda_95.json` - λ = 0.95
-- `multi_phase_lambda_99.json` - λ = 0.99
+
+- `multi_phase_halflife_1s.json` - half-life = 1 second
+- `multi_phase_halflife_5s.json` - half-life = 5 seconds
+- `multi_phase_halflife_15s.json` - half-life = 15 seconds
 
 Each contains 448 price points across three phases of 150 steps each.
 
@@ -61,6 +73,7 @@ python3 dango/dex/tests/fixtures/generate_volatility_test_data.py
 ```
 
 Or using uv:
+
 ```bash
 uv run python dango/dex/tests/fixtures/generate_volatility_test_data.py
 ```
@@ -74,7 +87,7 @@ This will regenerate all fixture files.
 cargo test --package dango-dex --test volatility_deterministic
 
 # Run a specific test
-cargo test --package dango-dex --test volatility_deterministic test_single_regime_lambda_90
+cargo test --package dango-dex --test volatility_deterministic test_single_regime_halflife_1s
 
 # Run with output
 cargo test --package dango-dex --test volatility_deterministic -- --nocapture
@@ -106,8 +119,9 @@ This ensures exact matching between Python-generated expectations and Rust calcu
 ## Verification
 
 The Python implementation mirrors the Rust algorithm exactly:
+
 - Same EWMA formula
-- Same log return calculation  
+- Same log return calculation
 - Same time normalization
 - Same precision (24 decimals)
 
@@ -116,8 +130,8 @@ This allows us to verify that the Rust implementation matches the mathematical s
 ## Test Results
 
 All tests should pass with near-zero relative error (<0.000001). The tests verify:
+
 1. **Correctness** - Estimates match Python reference implementation
 2. **Convergence** - Estimates converge to target volatility over time
 3. **Adaptation** - Estimates adapt when volatility changes
 4. **Consistency** - Results are identical on every run
-

@@ -14,10 +14,11 @@ pub const LAST_VOLATILITY_ESTIMATE: Map<(&Denom, &Denom), Price> =
 
 /// Updates the volatility estimate using an exponential moving average:
 ///
-/// vol_estimate_t = alpha * vol_estimate_{t-1}^2 + (1 - alpha) * r_t^2
+/// vol_estimate_t = (1 - alpha) * vol_estimate_{t-1}^2 + alpha * r_t^2
 ///
-/// where vol_estimate_t is the volatility estimate at time t, and vol_estimate_{t-1} is the
-/// volatility estimate at time t-1 and r_t is the log return at time t.
+/// where vol_estimate_t is the volatility estimate at time t, vol_estimate_{t-1} is the
+/// volatility estimate at time t-1, r_t is the log return at time t, and alpha is the
+/// time-adaptive decay factor that increases with dt/half_life.
 ///
 /// This function also saves the last price and squared volatility estimate to storage.
 ///
@@ -71,16 +72,18 @@ pub fn update_volatility_estimate(
     let r_t_squared_norm = r_t_squared.checked_div(Udec128::new(time_diff_ms))?;
 
     // Calculate the decay rate for the sample based on the time diff
+    // alpha = 1 - exp(-ln(2) * dt / half_life) = 1 - 1/exp(ln(2) * dt / half_life)
     let ln_of_two = NATURAL_LOG_OF_TWO::to_decimal_value::<24>()?;
     let alpha = Price::ONE.checked_sub(Price::ONE.checked_div(e_pow(
         Price::checked_from_ratio(time_diff_ms, half_life.into_millis())?.checked_mul(ln_of_two)?,
     )?)?)?;
 
-    let vol_estimate = alpha.checked_mul(prev_squared_vol)?.checked_add(
-        Price::ONE
-            .checked_sub(alpha)?
-            .checked_mul(r_t_squared_norm)?,
-    )?;
+    // Calculate the volatility estimate as
+    // vol_estimate_t = (1 - alpha) * vol_estimate_{t-1}^2 + alpha * r_t^2
+    let one_minus_alpha = Price::ONE.checked_sub(alpha)?;
+    let term1 = one_minus_alpha.checked_mul(prev_squared_vol)?;
+    let term2 = alpha.checked_mul(r_t_squared_norm)?;
+    let vol_estimate = term1.checked_add(term2)?;
 
     // Save the last price and squared volatility estimate to storage
     LAST_PRICE.save(storage, (base_denom, quote_denom), &(block_time, price))?;

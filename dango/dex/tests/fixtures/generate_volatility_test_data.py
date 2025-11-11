@@ -5,8 +5,13 @@ Generate deterministic test data for volatility estimation tests.
 This script:
 1. Generates price paths using geometric Brownian motion with a fixed seed
 2. Implements the same volatility estimation algorithm as the Rust code
-3. Generates expected volatility estimates for multiple lambda values
+3. Generates expected volatility estimates for multiple half-life values
 4. Saves the data as JSON fixtures that Rust tests can load
+
+The algorithm uses a time-adaptive EWMA where alpha adjusts to the actual
+time interval between observations:
+    alpha(dt) = 1 - exp(-ln(2) * dt / half_life)
+    vol_estimate_t = (1 - alpha) * vol_estimate_{t-1} + alpha * r_t^2
 """
 
 import json
@@ -43,13 +48,13 @@ class TestScenario:
     initial_price: str
     volatility: float  # The true volatility used to generate prices
     time_step_seconds: int
-    lambda_value: str  # As high-precision string
+    half_life_seconds: int  # Half-life parameter for EWMA
     price_path: List[PricePoint]
     expected_estimates: List[VolatilityEstimate]
 
 
 class HighPrecisionNumber:
-    """Handle numbers with 24 decimal places to match Rust's Udec128."""
+    """Handle numbers with 24 decimal places to match the dex::Price type."""
 
     PRECISION = 24
     SCALE = 10**PRECISION
@@ -143,19 +148,24 @@ def generate_price_path(
 
 
 def compute_volatility_estimates(
-    price_path: List[Tuple[int, str]], lambda_value: float
+    price_path: List[Tuple[int, str]], half_life_seconds: int
 ) -> List[Tuple[int, str, str]]:
     """
     Compute volatility estimates for a given price path.
 
-    This implements the same algorithm as the Rust code:
-    vol_estimate_t = lambda * vol_estimate_{t-1} + (1 - lambda) * r_t^2
+    This implements the same algorithm as the Rust code with time-adaptive alpha:
 
-    where r_t is the log return normalized by time interval.
+    1. Measure the true interval: dt = now_timestamp - prev_timestamp
+    2. Scale each squared return to "per-millisecond" units: v_i = (ln P_i - ln P_{i-1})^2 / dt_ms
+    3. Use an EWMA whose α adapts to the interval:
+       alpha(dt) = 1 - exp(-ln(2) * dt_ms / half_life_ms)
+    4. Update: sigma2 = (1 - alpha) * sigma2 + alpha * v_i
+       This gives weight alpha to the NEW observation and (1-alpha) to the OLD value,
+       correctly implementing half-life semantics.
 
     Args:
         price_path: List of (timestamp, price_string) tuples
-        lambda_value: Decay parameter for exponential moving average
+        half_life_seconds: Half-life parameter for EWMA in seconds
 
     Returns:
         List of (timestamp, estimate_string, price_string) tuples
@@ -164,8 +174,6 @@ def compute_volatility_estimates(
         return []
 
     estimates = []
-    lambda_str = HighPrecisionNumber.from_float(lambda_value)
-    one_minus_lambda_str = HighPrecisionNumber.from_float(1.0 - lambda_value)
 
     # First observation: estimate is zero
     prev_time, prev_price = price_path[0]
@@ -174,25 +182,37 @@ def compute_volatility_estimates(
 
     # Process remaining observations
     for curr_time, curr_price in price_path[1:]:
-        # Compute log return: ln(price_t / price_{t-1})
+        # 1. Measure the true interval (in seconds, then convert to milliseconds)
+        dt_seconds = curr_time - prev_time
+        dt_ms = dt_seconds * 1000  # Convert to milliseconds to match Rust code
+
+        # 2. Compute log return: ln(price_t / price_{t-1})
         price_ratio = HighPrecisionNumber.to_float(
             curr_price
         ) / HighPrecisionNumber.to_float(prev_price)
         log_return = math.log(price_ratio)
 
-        # Square the log return
-        r_t_squared = log_return**2
-
-        # Normalize by time interval
-        time_delta = curr_time - prev_time
-        r_t_squared_norm = r_t_squared / time_delta
+        # Square the log return and normalize by time interval in milliseconds
+        # This matches the Rust code which divides by time_diff_ms
+        r_t_squared_norm = (log_return**2) / dt_ms
 
         # Convert to high-precision string
         r_t_squared_norm_str = HighPrecisionNumber.from_float(r_t_squared_norm)
 
-        # Update estimate: lambda * vol_{t-1} + (1 - lambda) * r_t^2
-        term1 = HighPrecisionNumber.multiply(lambda_str, prev_squared_vol)
-        term2 = HighPrecisionNumber.multiply(one_minus_lambda_str, r_t_squared_norm_str)
+        # 3. Calculate alpha that adapts to the time interval
+        # alpha(dt) = 1 - exp(-ln(2) * dt_ms / half_life_ms)
+        # Use the exact same ln(2) value as the Rust code (24 decimal places)
+        ln_2 = 0.693147180559945309417232  # From NATURAL_LOG_OF_TWO constant in Rust
+        half_life_ms = half_life_seconds * 1000
+        alpha = 1.0 - math.exp(-ln_2 * dt_ms / half_life_ms)
+        alpha_str = HighPrecisionNumber.from_float(alpha)
+        one_minus_alpha_str = HighPrecisionNumber.from_float(1.0 - alpha)
+
+        # 4. Update estimate: (1 - alpha) * vol_{t-1} + alpha * r_t^2
+        # This gives weight alpha to NEW observation, (1-alpha) to OLD value
+        # which correctly implements half-life semantics
+        term1 = HighPrecisionNumber.multiply(one_minus_alpha_str, prev_squared_vol)
+        term2 = HighPrecisionNumber.multiply(alpha_str, r_t_squared_norm_str)
         vol_estimate = HighPrecisionNumber.add(term1, term2)
 
         estimates.append((curr_time, vol_estimate, curr_price))
@@ -210,7 +230,7 @@ def generate_test_scenarios() -> List[TestScenario]:
 
     scenarios = []
 
-    # Scenario 1: Single volatility regime with lambda=0.9
+    # Scenario 1: Single volatility regime with different half-life values
     initial_price = 100.0
     volatility1 = 0.2  # 20% volatility per second
     time_step = 1  # 1 second per step
@@ -220,17 +240,21 @@ def generate_test_scenarios() -> List[TestScenario]:
         initial_price, volatility1, num_samples, time_step, seed=42
     )
 
-    for lambda_val, lambda_name in [(0.9, "90"), (0.95, "95"), (0.99, "99")]:
-        estimates = compute_volatility_estimates(price_path, lambda_val)
+    # Test with different half-life values:
+    # - 1s: fast adaptation (similar to old lambda ≈ 0.59)
+    # - 5s: medium adaptation (similar to old lambda ≈ 0.87)
+    # - 15s: slow adaptation (similar to old lambda ≈ 0.95)
+    for half_life, name_suffix in [(1, "1s"), (5, "5s"), (15, "15s")]:
+        estimates = compute_volatility_estimates(price_path, half_life)
 
         scenarios.append(
             TestScenario(
-                name=f"single_regime_lambda_{lambda_name}",
-                description=f"Single volatility regime (20%) with lambda={lambda_val}",
+                name=f"single_regime_halflife_{name_suffix}",
+                description=f"Single volatility regime (20%) with half-life={half_life}s",
                 initial_price=HighPrecisionNumber.from_float(initial_price),
                 volatility=volatility1,
                 time_step_seconds=time_step,
-                lambda_value=HighPrecisionNumber.from_float(lambda_val),
+                half_life_seconds=half_life,
                 price_path=[PricePoint(timestamp=t, price=p) for t, p in price_path],
                 expected_estimates=[
                     VolatilityEstimate(timestamp=t, estimate=e, price=p)
@@ -263,17 +287,17 @@ def generate_test_scenarios() -> List[TestScenario]:
     # Combine all phases
     multi_phase_path = phase1_prices + phase2_prices + phase3_prices
 
-    for lambda_val, lambda_name in [(0.9, "90"), (0.95, "95"), (0.99, "99")]:
-        estimates = compute_volatility_estimates(multi_phase_path, lambda_val)
+    for half_life, name_suffix in [(1, "1s"), (5, "5s"), (15, "15s")]:
+        estimates = compute_volatility_estimates(multi_phase_path, half_life)
 
         scenarios.append(
             TestScenario(
-                name=f"multi_phase_lambda_{lambda_name}",
-                description=f"Three-phase volatility (20%->40%->20%) with lambda={lambda_val}",
+                name=f"multi_phase_halflife_{name_suffix}",
+                description=f"Three-phase volatility (20%->40%->20%) with half-life={half_life}s",
                 initial_price=HighPrecisionNumber.from_float(initial_price),
                 volatility=0.2,  # Initial volatility
                 time_step_seconds=time_step,
-                lambda_value=HighPrecisionNumber.from_float(lambda_val),
+                half_life_seconds=half_life,
                 price_path=[
                     PricePoint(timestamp=t, price=p) for t, p in multi_phase_path
                 ],
