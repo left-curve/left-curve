@@ -1,6 +1,6 @@
 use {
     crate::{
-        Context, EventCache, bail,
+        Context, EventCache, EventCacheWriter, bail,
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
@@ -9,7 +9,8 @@ use {
     },
     grug_app::{Indexer as IndexerTrait, LAST_FINALIZED_BLOCK},
     grug_types::{
-        Block, BlockOutcome, Defined, HttpRequestDetails, MaybeDefined, Storage, Undefined,
+        Block, BlockAndBlockOutcomeWithHttpDetails, BlockOutcome, Defined, HttpRequestDetails,
+        MaybeDefined, Storage, Undefined,
     },
     sea_orm::DatabaseConnection,
     std::{
@@ -28,12 +29,10 @@ use {
 
 // ------------------------------- IndexerBuilder ------------------------------
 
-pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>> {
+pub struct IndexerBuilder<DB = Undefined<String>> {
     handle: RuntimeHandler,
     db_url: DB,
     db_max_connections: u32,
-    indexer_path: P,
-    keep_blocks: bool,
     pubsub: PubSubType,
     event_cache_window: usize,
 }
@@ -44,8 +43,6 @@ impl Default for IndexerBuilder {
             handle: RuntimeHandler::default(),
             db_url: Undefined::default(),
             db_max_connections: 10,
-            indexer_path: Undefined::default(),
-            keep_blocks: false,
             pubsub: PubSubType::Memory,
             event_cache_window: 100,
         }
@@ -56,104 +53,79 @@ impl IndexerBuilder<Defined<String>> {
     pub fn with_database_max_connections(self, db_max_connections: u32) -> Self {
         IndexerBuilder {
             handle: self.handle,
-            indexer_path: self.indexer_path,
             db_url: self.db_url,
             db_max_connections,
-            keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
             event_cache_window: self.event_cache_window,
         }
     }
 }
 
-impl<P> IndexerBuilder<Undefined<String>, P> {
-    pub fn with_database_url<URL>(self, db_url: URL) -> IndexerBuilder<Defined<String>, P>
+impl IndexerBuilder<Undefined<String>> {
+    pub fn with_database_url<URL>(self, db_url: URL) -> IndexerBuilder<Defined<String>>
     where
         URL: ToString,
     {
         IndexerBuilder {
             handle: self.handle,
-            indexer_path: self.indexer_path,
             db_url: Defined::new(db_url.to_string()),
             db_max_connections: self.db_max_connections,
-            keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
             event_cache_window: self.event_cache_window,
         }
     }
 
-    pub fn with_memory_database(self) -> IndexerBuilder<Defined<String>, P> {
+    pub fn with_memory_database(self) -> IndexerBuilder<Defined<String>> {
         self.with_database_url("sqlite::memory:")
     }
 }
 
-impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
-    pub fn with_tmpdir(self) -> IndexerBuilder<DB, Defined<IndexerPath>> {
-        IndexerBuilder {
-            handle: self.handle,
-            indexer_path: Defined::new(IndexerPath::default()),
-            db_url: self.db_url,
-            db_max_connections: self.db_max_connections,
-            keep_blocks: self.keep_blocks,
-            pubsub: self.pubsub,
-            event_cache_window: self.event_cache_window,
-        }
-    }
+// impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
+//     pub fn with_tmpdir(self) -> IndexerBuilder<DB, Defined<IndexerPath>> {
+//         IndexerBuilder {
+//             handle: self.handle,
+//             indexer_path: Defined::new(IndexerPath::default()),
+//             db_url: self.db_url,
+//             db_max_connections: self.db_max_connections,
+//             pubsub: self.pubsub,
+//             event_cache_window: self.event_cache_window,
+//         }
+//     }
 
-    pub fn with_dir(self, dir: PathBuf) -> IndexerBuilder<DB, Defined<IndexerPath>> {
-        IndexerBuilder {
-            handle: self.handle,
-            indexer_path: Defined::new(IndexerPath::Dir(dir)),
-            db_url: self.db_url,
-            db_max_connections: self.db_max_connections,
-            keep_blocks: self.keep_blocks,
-            pubsub: self.pubsub,
-            event_cache_window: self.event_cache_window,
-        }
-    }
-}
+//     pub fn with_dir(self, dir: PathBuf) -> IndexerBuilder<DB, Defined<IndexerPath>> {
+//         IndexerBuilder {
+//             handle: self.handle,
+//             indexer_path: Defined::new(IndexerPath::Dir(dir)),
+//             db_url: self.db_url,
+//             db_max_connections: self.db_max_connections,
+//             keep_blocks: self.keep_blocks,
+//             pubsub: self.pubsub,
+//             event_cache_window: self.event_cache_window,
+//         }
+//     }
+// }
 
-impl<DB, P> IndexerBuilder<DB, P> {
-    pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB, P> {
+impl<DB> IndexerBuilder<DB> {
+    pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB> {
         IndexerBuilder {
             handle: self.handle,
             db_url: self.db_url,
             db_max_connections: self.db_max_connections,
-            indexer_path: self.indexer_path,
-            keep_blocks: self.keep_blocks,
             pubsub: PubSubType::Postgres,
             event_cache_window: self.event_cache_window,
         }
     }
 }
 
-impl<DB, P> IndexerBuilder<DB, P>
+impl<DB> IndexerBuilder<DB>
 where
     DB: MaybeDefined<String>,
-    P: MaybeDefined<IndexerPath>,
 {
-    /// If true, the block/block_outcome used by the indexer will be kept on disk after being
-    /// indexed. This is useful for reruning the indexer since genesis if code is changing, and
-    /// we'll want to run at least one node with this enabled and sync those on S3.
-    pub fn with_keep_blocks(self, keep_blocks: bool) -> Self {
-        Self {
-            handle: self.handle,
-            db_url: self.db_url,
-            db_max_connections: self.db_max_connections,
-            indexer_path: self.indexer_path,
-            keep_blocks,
-            pubsub: self.pubsub,
-            event_cache_window: self.event_cache_window,
-        }
-    }
-
     pub fn with_event_cache_window(self, event_cache_window: usize) -> Self {
         Self {
             handle: self.handle,
             db_url: self.db_url,
             db_max_connections: self.db_max_connections,
-            indexer_path: self.indexer_path,
-            keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
             event_cache_window,
         }
@@ -172,7 +144,6 @@ where
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
-            transaction_hash_details: Default::default(),
         };
 
         match self.pubsub {
@@ -202,22 +173,11 @@ where
         // Generate unique ID
         let id = INDEXER_COUNTER.fetch_add(1, Ordering::SeqCst);
 
-        let indexer_path = self.indexer_path.maybe_into_inner().unwrap_or_default();
-        indexer_path.create_dirs_if_needed()?;
-
-        #[cfg(feature = "tracing")]
-        tracing::info!(
-            indexer_id = id,
-            indexer_path = %indexer_path.blocks_path().display(),
-            "Created indexer path"
-        );
-
         let mut context = Context {
             db: db.clone(),
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
             event_cache: EventCache::new(self.event_cache_window),
-            transaction_hash_details: Default::default(),
         };
 
         match self.pubsub {
@@ -234,13 +194,11 @@ where
         }
 
         Ok(Indexer {
-            indexer_path,
             context,
             handle: self.handle,
-            blocks: Default::default(),
             indexing: false,
-            keep_blocks: self.keep_blocks,
             id,
+            indexing_blocks: Default::default(),
         })
     }
 }
@@ -261,78 +219,15 @@ static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 /// Decided to do different and prepare the data in memory in `blocks` to inject all data in a single Tokio
 /// spawned task
 pub struct Indexer {
-    pub indexer_path: IndexerPath,
     pub context: Context,
     pub handle: RuntimeHandler,
-    blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
     // NOTE: this could be Arc<AtomicBool> because if this Indexer is cloned all instances should
     // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
-    keep_blocks: bool,
+    indexing_blocks: Arc<Mutex<HashMap<u64, bool>>>,
     // Add unique ID field, used for debugging and tracing
     id: u64,
-}
-
-impl Indexer {
-    /// Look in memory for a block to be indexed, or create a new one
-    fn find_or_create<F, R>(
-        &self,
-        block_filename: PathBuf,
-        block: &Block,
-        block_outcome: &BlockOutcome,
-        action: F,
-    ) -> error::Result<R>
-    where
-        F: FnOnce(&mut BlockToIndex) -> error::Result<R>,
-    {
-        let mut blocks = self.blocks.lock().expect("can't lock blocks");
-
-        let block_to_index = blocks.entry(block.info.height).or_insert_with(|| {
-            BlockToIndex::new(block_filename, block.clone(), block_outcome.clone())
-        });
-
-        block_to_index.block_outcome = block_outcome.clone();
-
-        action(block_to_index)
-    }
-
-    /// Look in memory for a block to be indexed, or fail if not found
-    fn find_or_fail(&self, block_height: u64) -> error::Result<BlockToIndex> {
-        let blocks = self.blocks.lock().expect("can't lock blocks");
-
-        let block_to_index = match blocks.get(&block_height) {
-            Some(block_to_index) => block_to_index,
-            None => {
-                bail!("Block {} not found", block_height);
-            },
-        };
-
-        Ok(block_to_index.clone())
-    }
-
-    /// Look in memory for a block to be removed, or fail if not found
-    pub fn remove_or_fail(
-        blocks: Arc<Mutex<HashMap<u64, BlockToIndex>>>,
-        block_height: &u64,
-    ) -> error::Result<BlockToIndex> {
-        let mut blocks = blocks.lock().expect("can't lock blocks");
-        let block_to_index = match blocks.remove_entry(block_height) {
-            Some(block) => block,
-            None => {
-                bail!("block {block_height} not found");
-            },
-        };
-
-        #[cfg(feature = "tracing")]
-        tracing::debug!(
-            block_height = block_height,
-            blocks_len = blocks.len(),
-            "`remove_or_fail` called"
-        );
-
-        Ok(block_to_index.1)
-    }
 }
 
 // ------------------------------- DB Related ----------------------------------
@@ -409,9 +304,28 @@ impl Indexer {
 
         Ok(())
     }
+
+    pub fn save_block(
+        db: DatabaseConnection,
+        event_cache: EventCacheWriter,
+        block: BlockAndBlockOutcomeWithHttpDetails,
+    ) -> error::Result<()> {
+        Ok(())
+    }
 }
 
 impl IndexerTrait for Indexer {
+    fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+        let last_indexed_block_height = self
+            .handle
+            .block_on(async {
+                entity::blocks::Entity::find_last_block_height(&self.context.db).await
+            })
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+
+        Ok(last_indexed_block_height.map(|h| h as u64))
+    }
+
     fn start(&mut self, storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
@@ -455,7 +369,12 @@ impl IndexerTrait for Indexer {
         // NOTE: This is to allow the indexer to commit all db transactions since this is done
         // async. It just loops quickly making sure no indexing blocks are remaining.
         for _ in 0..10 {
-            if self.blocks.lock().expect("can't lock blocks").is_empty() {
+            if self
+                .indexing_blocks
+                .lock()
+                .expect("can't lock indexing_blocks")
+                .is_empty()
+            {
                 break;
             }
 
@@ -464,7 +383,10 @@ impl IndexerTrait for Indexer {
 
         #[cfg(feature = "tracing")]
         {
-            let blocks = self.blocks.lock().expect("can't lock blocks");
+            let blocks = self
+                .indexing_blocks
+                .lock()
+                .expect("can't lock indexing_blocks");
             if !blocks.is_empty() {
                 tracing::warn!(
                     indexer_id = self.id,
@@ -490,69 +412,15 @@ impl IndexerTrait for Indexer {
 
     fn index_block(
         &self,
-        block: &Block,
-        block_outcome: &BlockOutcome,
-        ctx: &mut grug_app::IndexerContext,
+        _block: &Block,
+        _block_outcome: &BlockOutcome,
+        _ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             return Err(grug_app::IndexerError::not_running());
         }
 
-        #[cfg(feature = "tracing")]
-        tracing::debug!(
-            block_height = block.info.height,
-            indexer_id = self.id,
-            "`index_block` called"
-        );
-
-        let block_filename = self.indexer_path.block_path(block.info.height);
-
-        let mut http_request_details: HashMap<String, HttpRequestDetails> = HashMap::new();
-
-        let mut transaction_hash_details = self
-            .context
-            .transaction_hash_details
-            .lock()
-            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?;
-        http_request_details.extend(block.txs.iter().filter_map(|tx| {
-            let tx_hash = tx.1.to_string();
-            transaction_hash_details
-                .remove(&tx_hash)
-                .map(|details| (tx_hash, details))
-        }));
-
-        transaction_hash_details.clean();
-
-        #[cfg(feature = "metrics")]
-        metrics::gauge!("indexer.http_request_details.total")
-            .set(transaction_hash_details.len() as f64);
-
-        drop(transaction_hash_details);
-
-        Ok(
-            self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
-                #[cfg(feature = "tracing")]
-                tracing::debug!(block_height = block.info.height, "`index_block` started");
-
-                #[cfg(feature = "http-request-details")]
-                {
-                    block_to_index.http_request_details = http_request_details;
-                }
-
-                ctx.insert(block_to_index.clone());
-
-                block_to_index.save_to_disk()?;
-
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    block_height = block.info.height,
-                    indexer_id = self.id,
-                    "`index_block` finished"
-                );
-
-                Ok(())
-            })?,
-        )
+        Ok(())
     }
 
     fn post_indexing(
@@ -562,29 +430,33 @@ impl IndexerTrait for Indexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            Self::remove_or_fail(self.blocks.clone(), &block_height)?;
             return Err(grug_app::IndexerError::not_running());
         }
 
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` called");
 
+        self.indexing_blocks
+            .lock()
+            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
+            .insert(block_height, true);
+
         let context = self.context.clone();
-        let block_to_index = self.find_or_fail(block_height)?;
-        let blocks = self.blocks.clone();
-        let keep_blocks = self.keep_blocks;
-        let block_filename = self
-            .indexer_path
-            .block_path(block_to_index.block.info.height);
+        // let block_to_index = self.find_or_fail(block_height)?;
+        // let blocks = self.blocks.clone();
+        // let keep_blocks = self.keep_blocks;
+        // let block_filename = self
+        //     .indexer_path
+        //     .block_path(block_to_index.block.info.height);
 
         let id = self.id;
 
         // TODO: remove this once we extracted the caching to its own crate
-        ctx.insert(block_to_index.clone());
+        // ctx.insert(block_to_index.clone());
 
-        ctx.insert(context.pubsub.clone());
-        ctx.insert(block_to_index.block.clone());
-        ctx.insert(block_to_index.block_outcome.clone());
+        // ctx.insert(context.pubsub.clone());
+        // ctx.insert(block_to_index.block.clone());
+        // ctx.insert(block_to_index.block_outcome.clone());
 
         let handle = self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
@@ -595,9 +467,8 @@ impl IndexerTrait for Indexer {
             );
 
             #[allow(clippy::map_identity)]
-            if let Err(_err) = block_to_index
-                .save(context.db.clone(), context.event_cache.clone(), id)
-                .await
+            if let Err(_err) =
+                Self::save_block(context.db.clone(), context.event_cache.clone(), id).await
             {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
@@ -652,18 +523,6 @@ impl IndexerTrait for Indexer {
                 metrics::counter!("indexer.blocks.compressed.total").increment(1);
             }
 
-            if let Err(_err) = Self::remove_or_fail(blocks, &block_height) {
-                #[cfg(feature = "tracing")]
-                tracing::error!(
-                    err = %_err,
-                    indexer_id = id,
-                    block_height,
-                    "Can't remove block in `post_indexing`"
-                );
-
-                return Ok(());
-            }
-
             if let Err(_err) = context.pubsub.publish(block_height).await {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
@@ -699,7 +558,7 @@ impl IndexerTrait for Indexer {
     fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
         for _ in 0..100 {
             if self
-                .blocks
+                .indexing_blocks
                 .lock()
                 .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
                 .is_empty()
@@ -710,7 +569,10 @@ impl IndexerTrait for Indexer {
             sleep(Duration::from_millis(100));
         }
 
-        let blocks = self.blocks.lock().expect("can't lock blocks");
+        let blocks = self
+            .indexing_blocks
+            .lock()
+            .expect("can't lock indexing_blocks");
         if !blocks.is_empty() {
             #[cfg(feature = "tracing")]
             tracing::warn!(
@@ -842,10 +704,7 @@ mod tests {
     /// context.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn should_start() -> anyhow::Result<()> {
-        let mut indexer: Indexer = IndexerBuilder::default()
-            .with_memory_database()
-            .with_tmpdir()
-            .build()?;
+        let mut indexer: Indexer = IndexerBuilder::default().with_memory_database().build()?;
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);
@@ -860,10 +719,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn build_without_hooks() -> anyhow::Result<()> {
-        let mut indexer: Indexer = IndexerBuilder::default()
-            .with_memory_database()
-            .with_tmpdir()
-            .build()?;
+        let mut indexer: Indexer = IndexerBuilder::default().with_memory_database().build()?;
         let storage = MockStorage::new();
 
         assert!(!indexer.indexing);

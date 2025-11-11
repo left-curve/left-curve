@@ -11,6 +11,15 @@ pub enum IndexerPath {
     Dir(PathBuf),
 }
 
+impl From<IndexerPath> for indexer_cache::IndexerPath {
+    fn from(value: IndexerPath) -> Self {
+        match value {
+            IndexerPath::TempDir(tmpdir) => indexer_cache::IndexerPath::TempDir(tmpdir),
+            IndexerPath::Dir(dir) => indexer_cache::IndexerPath::Dir(dir),
+        }
+    }
+}
+
 impl Default for IndexerPath {
     fn default() -> Self {
         Self::TempDir(Arc::new(tempfile::tempdir().expect("can't get a tempdir")))

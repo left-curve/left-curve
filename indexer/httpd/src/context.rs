@@ -9,6 +9,7 @@ use {
 #[derive(Clone)]
 pub struct Context {
     pub sql_context: indexer_sql::Context,
+    pub indexer_cache_context: indexer_cache::Context,
     pub base: BaseContext,
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
@@ -19,12 +20,14 @@ pub struct Context {
 
 impl Context {
     pub fn new(
+        indexer_cache_context: indexer_cache::Context,
         ctx: indexer_sql::Context,
         grug_app: Arc<dyn QueryApp + Send + Sync>,
         consensus_client: Arc<dyn ConsensusClient + Send + Sync>,
         indexer_path: IndexerPath,
     ) -> Self {
         Self {
+            indexer_cache_context,
             sql_context: ctx.clone(),
             base: BaseContext::new(grug_app),
             db: ctx.db,

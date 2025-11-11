@@ -17,7 +17,6 @@ pub struct Context {
     pub db: DatabaseConnection,
     pub pubsub: Arc<dyn PubSub<u64> + Send + Sync>,
     pub event_cache: EventCacheWriter,
-    pub transaction_hash_details: Arc<Mutex<HttpRequestDetailsCache>>,
 }
 
 impl std::fmt::Debug for Context {
@@ -26,7 +25,6 @@ impl std::fmt::Debug for Context {
             .field("db", &self.db)
             .field("pubsub", &"<PubSub trait object>")
             .field("event_cache", &"<EventCacheWriter>")
-            .field("transaction_hash_details", &self.transaction_hash_details)
             .finish()
     }
 }
@@ -56,7 +54,6 @@ impl Context {
             db: self.db.clone(),
             pubsub: new_pubsub,
             event_cache: self.event_cache.clone(),
-            transaction_hash_details: Arc::new(Mutex::new(HttpRequestDetailsCache::default())),
         })
     }
 

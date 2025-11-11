@@ -13,14 +13,16 @@ version       = { workspace = true }
 path = "src/lib.rs"
 
 [features]
-metrics = ["dep:metrics"]
-tracing = ["dep:tracing"]
+http-request-details = []
+metrics              = ["dep:metrics"]
+tracing              = ["dep:tracing"]
 
 [dependencies]
 anyhow             = { workspace = true }
 async-stream       = { workspace = true }
 async-trait        = { workspace = true }
 borsh              = { workspace = true }
+error-backtrace    = { workspace = true }
 futures            = { workspace = true }
 grug-app           = { workspace = true }
 grug-types         = { workspace = true, features = ["chrono", "sea-orm"] }

@@ -37,6 +37,9 @@ pub async fn create_blocks(
     let context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
+    let indexer_cache = indexer_cache::Cache::new(indexer_path.clone().into());
+    let indexer_cache_context = indexer_cache.context.clone();
+
     let (suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
         .add_account("sender", Coins::one(denom.clone(), 30_000)?)
@@ -75,7 +78,13 @@ pub async fn create_blocks(
 
     let suite_guard = suite.lock().await;
     let httpd_app = suite_guard.app.clone_without_indexer();
-    let httpd_context = Context::new(context, Arc::new(httpd_app), client.clone(), indexer_path);
+    let httpd_context = Context::new(
+        indexer_cache_context,
+        context,
+        Arc::new(httpd_app),
+        client.clone(),
+        indexer_path,
+    );
 
     Ok((httpd_context, client, accounts))
 }

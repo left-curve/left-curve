@@ -1,5 +1,6 @@
 use {
-    grug_types::HttpRequestDetails,
+    super::http_request_details::HttpRequestDetails,
+    crate::Hash256,
     std::{
         collections::HashMap,
         ops::{Deref, DerefMut},
@@ -10,12 +11,12 @@ use {
 /// Stores transactions hash to HttpRequestDetails mapping, with a cleaning
 /// mechanism to avoid unbounded memory growth
 #[derive(Debug)]
-pub struct HttpRequestDetailsCache {
-    map: HashMap<String, HttpRequestDetails>,
+pub struct TransactionsHttpdRequest {
+    map: HashMap<Hash256, HttpRequestDetails>,
     max_items: usize,
 }
 
-impl Default for HttpRequestDetailsCache {
+impl Default for TransactionsHttpdRequest {
     fn default() -> Self {
         Self {
             map: HashMap::new(),
@@ -24,21 +25,21 @@ impl Default for HttpRequestDetailsCache {
     }
 }
 
-impl Deref for HttpRequestDetailsCache {
-    type Target = HashMap<String, HttpRequestDetails>;
+impl Deref for TransactionsHttpdRequest {
+    type Target = HashMap<Hash256, HttpRequestDetails>;
 
     fn deref(&self) -> &Self::Target {
         &self.map
     }
 }
 
-impl DerefMut for HttpRequestDetailsCache {
+impl DerefMut for TransactionsHttpdRequest {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.map
     }
 }
 
-impl HttpRequestDetailsCache {
+impl TransactionsHttpdRequest {
     /// Remove old entries, and increase the max_items if needed so it doesn't
     /// keep cleaning for each request
     pub fn clean(&mut self) {

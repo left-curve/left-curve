@@ -80,6 +80,9 @@ where
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
 
+    let indexer_cache = indexer_cache::Cache::new(indexer_path.clone().into());
+    let indexer_cache_context = indexer_cache.context.clone();
+
     let mut hooked_indexer = HookedIndexer::new();
 
     // Create a separate context for dango indexer (shares DB but has independent pubsub)
@@ -101,6 +104,7 @@ where
 
     let indexer_context_callback = indexer.context.clone();
 
+    hooked_indexer.add_indexer(indexer_cache).unwrap();
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
@@ -129,6 +133,7 @@ where
     let app = suite.lock().await.app.clone_without_indexer();
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
+        indexer_cache_context,
         indexer_context.clone(),
         Arc::new(app),
         Arc::new(mock_client),

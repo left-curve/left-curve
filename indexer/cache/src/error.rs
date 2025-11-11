@@ -1,48 +1,100 @@
-use {grug_app::AppError, grug_types::StdError, thiserror::Error};
+use {grug_app::AppError, grug_types::StdError};
 
-#[derive(Debug, Error)]
+#[error_backtrace::backtrace]
+#[derive(Debug, thiserror::Error)]
 pub enum IndexerError {
     #[error("anyhow error: {0}")]
-    Anyhow(#[from] anyhow::Error),
+    Anyhow(anyhow::Error),
 
     #[error("join error: {0}")]
-    Join(#[from] tokio::task::JoinError),
+    #[backtrace(new)]
+    Join(tokio::task::JoinError),
 
-    #[error("indexing error: {0}")]
-    Indexing(String),
+    #[error("indexing error: {error}")]
+    Indexing { error: String },
 
-    #[error("mutex poison error: {0}")]
-    Poison(String),
+    #[error("mutex poison error: {error}")]
+    Poison { error: String },
 
-    #[error("runtime error: {0}")]
-    Runtime(String),
-
-    #[error(transparent)]
-    TryFromInt(#[from] std::num::TryFromIntError),
+    #[error("runtime error: {error}")]
+    Runtime { error: String },
 
     #[error(transparent)]
-    App(#[from] AppError),
+    #[backtrace(new)]
+    TryFromInt(std::num::TryFromIntError),
 
     #[error(transparent)]
-    Std(#[from] StdError),
+    App(AppError),
 
     #[error(transparent)]
-    Io(#[from] std::io::Error),
+    Std(StdError),
 
     #[error(transparent)]
-    Persist(#[from] tempfile::PersistError),
+    #[backtrace(new)]
+    Io(std::io::Error),
 
     #[error(transparent)]
-    Persistence(#[from] indexer_disk_saver::error::Error),
+    #[backtrace(new)]
+    Persist(tempfile::PersistError),
 
     #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
+    Persistence(indexer_disk_saver::error::Error),
+
+    #[error("hooks error: {error}")]
+    Hooks { error: String },
+
+    #[error(transparent)]
+    #[backtrace(new)]
+    SerdeJson(serde_json::Error),
 
     #[error("parse error: {0}")]
-    Parse(#[from] std::num::ParseIntError),
+    #[backtrace(new)]
+    Parse(std::num::ParseIntError),
 }
 
 pub type Result<T> = core::result::Result<T, IndexerError>;
+
+macro_rules! parse_error {
+    ($variant:ident, $e:expr) => {
+        grug_app::IndexerError::$variant {
+            error: $e.to_string(),
+            backtrace: $e.backtrace,
+        }
+    };
+    ($variant:ident, $e:expr, $bt:expr) => {
+        grug_app::IndexerError::$variant {
+            error: $e.to_string(),
+            backtrace: $bt,
+        }
+    };
+}
+
+impl From<IndexerError> for grug_app::IndexerError {
+    fn from(err: IndexerError) -> Self {
+        match err {
+            IndexerError::Anyhow(e) => parse_error!(Generic, e),
+            IndexerError::Join(e) => parse_error!(Generic, e),
+            IndexerError::Indexing { error, backtrace } => parse_error!(Generic, error, backtrace),
+            IndexerError::Poison { error, backtrace } => parse_error!(Generic, error, backtrace),
+            IndexerError::Runtime { error, backtrace } => parse_error!(Generic, error, backtrace),
+            IndexerError::TryFromInt(e) => parse_error!(Generic, e),
+            IndexerError::App(be) => {
+                // For App errors, just wrap as generic since it's already processed
+                grug_app::IndexerError::Generic {
+                    error: "nested app error".to_string(),
+                    backtrace: be.backtrace,
+                }
+            },
+            IndexerError::Std(e) => parse_error!(Generic, e),
+            IndexerError::Io(e) => parse_error!(Io, e),
+            IndexerError::Persist(e) => parse_error!(Io, e),
+            IndexerError::Persistence(e) => parse_error!(Storage, e),
+            IndexerError::Hooks { error, backtrace } => parse_error!(Hook, error, backtrace),
+            IndexerError::SerdeJson(e) => parse_error!(Serialization, e),
+            IndexerError::Parse(e) => parse_error!(Generic, e),
+        }
+    }
+}
 
 #[macro_export]
 macro_rules! bail {

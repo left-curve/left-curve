@@ -103,4 +103,8 @@ pub trait Indexer {
     fn wait_for_finish(&self) -> IndexerResult<()> {
         Ok(())
     }
+
+    fn last_indexed_block_height(&self) -> IndexerResult<Option<u64>> {
+        Ok(None)
+    }
 }

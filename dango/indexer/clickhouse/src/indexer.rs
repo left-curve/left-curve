@@ -32,6 +32,12 @@ impl Indexer {
 }
 
 impl grug_app::Indexer for Indexer {
+    fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+        todo!(
+            "Implement last_indexed_block_height for indexer, looking at the last cached block from Clickhouse"
+        )
+    }
+
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "testing")]
         if self.context.is_mocked() {

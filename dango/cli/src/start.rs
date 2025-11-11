@@ -208,6 +208,9 @@ impl StartCmd {
     )> {
         let mut hooked_indexer = HookedIndexer::new();
 
+        let indexer_cache = indexer_cache::Cache::new(indexer_path.clone().into());
+        let indexer_cache_context = indexer_cache.context.clone();
+
         // Create a separate context for dango indexer (shares DB but has independent pubsub)
         let dango_context: dango_indexer_sql::context::Context = sql_indexer
             .context
@@ -233,11 +236,13 @@ impl StartCmd {
             clickhouse_context.clone(),
         );
 
+        hooked_indexer.add_indexer(indexer_cache)?;
         hooked_indexer.add_indexer(sql_indexer)?;
         hooked_indexer.add_indexer(dango_indexer)?;
         hooked_indexer.add_indexer(clickhouse_indexer)?;
 
         let indexer_httpd_context = indexer_httpd::context::Context::new(
+            indexer_cache_context,
             indexer_context,
             app.clone(),
             Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
