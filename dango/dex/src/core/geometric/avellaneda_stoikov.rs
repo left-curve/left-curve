@@ -44,18 +44,19 @@ pub fn reservation_price(
 }
 
 pub fn half_spread(
-    k: Dec<i128, 24>,
-    gamma: Dec<i128, 24>,
-    sigma_squared: Dec<i128, 24>,
+    k: Price,
+    gamma: Price,
+    sigma_squared: Price,
     time_horizon: Duration,
-) -> anyhow::Result<Dec<i128, 24>> {
+) -> anyhow::Result<Price> {
     let one_over_k = k.checked_inv()?;
-    let one_plus_gamma_over_k = Dec::<i128, 24>::ONE.checked_add(gamma.checked_div(k)?)?;
+    let one_plus_gamma_over_k = Price::ONE.checked_add(gamma.checked_div(k)?)?;
 
     // Compute the natural logarithm of the one plus gamma over k.
-    let natural_log_of_one_plus_gamma_over_k = ln_dec(one_plus_gamma_over_k)?;
+    let natural_log_of_one_plus_gamma_over_k =
+        ln_dec(one_plus_gamma_over_k.checked_into_signed()?)?.checked_into_unsigned()?;
 
-    let time_horizon_as_dec = Dec::<i128, 24>::new(time_horizon.into_seconds() as i128);
+    let time_horizon_as_dec = Price::new(time_horizon.into_seconds());
 
     Ok(one_over_k
         .checked_mul(natural_log_of_one_plus_gamma_over_k)?

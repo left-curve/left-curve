@@ -274,15 +274,7 @@ pub fn reflect_curve(
         time_horizon,
     )?;
 
-    let half_spread = avellaneda_stoikov::half_spread(
-        k.checked_into_signed()?,
-        gamma.convert_precision::<24>()?.checked_into_signed()?,
-        sigma_squared
-            .convert_precision::<24>()?
-            .checked_into_signed()?,
-        time_horizon,
-    )?
-    .checked_into_unsigned()?;
+    let half_spread = avellaneda_stoikov::half_spread(k, gamma, sigma_squared, time_horizon)?;
 
     println!("half_spread: {half_spread}");
     println!("reservation_price: {reservation_price}");
