@@ -7,6 +7,7 @@ use {
     grug_types::GIT_COMMIT,
     indexer_sql::entity,
     sea_orm::{EntityTrait, Order, QueryOrder},
+    std::env::var,
 };
 
 #[get("/up")]
@@ -35,6 +36,7 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
         is_running,
         indexed_block_height,
         git_commit: GIT_COMMIT,
+        chain_id: var("CHAIN_ID").unwrap_or_default().as_str(),
     }))
 }
 

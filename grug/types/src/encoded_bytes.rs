@@ -243,9 +243,10 @@ where
 
     fn from_str(s: &str) -> StdResult<Self> {
         if !s.starts_with(E::PREFIX) {
-            return Err(StdError::deserialize::<Self, _>(
+            return Err(StdError::deserialize::<Self, _, _>(
                 E::NAME,
                 format!("missing prefix: expecting `{}`", E::PREFIX),
+                s,
             ));
         }
 

@@ -1,0 +1,13 @@
+services:
+  dex-bot:
+    depends_on:
+      dango:
+        condition: service_healthy
+      cometbft:
+        condition: service_healthy
+  dex-bot-init:
+    depends_on:
+      dango:
+        condition: service_healthy
+      dex-bot:
+        condition: service_started

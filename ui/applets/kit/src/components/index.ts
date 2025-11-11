@@ -9,7 +9,14 @@ export { Spinner } from "./Spinner";
 export { QRCode } from "./QRCode";
 export { Select } from "./Select";
 export { TruncateText } from "./TruncateText";
-export { Table, type TableColumn, type TableClassNames, type ColumnFiltersState } from "./Table";
+export {
+  Table,
+  type TableColumn,
+  type TableClassNames,
+  type ColumnFiltersState,
+  type TableHeaderContext,
+  type TableCellContext,
+} from "./Table";
 export { Cell } from "./Cell";
 export { Tabs, Tab } from "./Tabs";
 export { Input } from "./Input";
@@ -38,6 +45,11 @@ export { Radio } from "./RadioGroup";
 export { Toast, Toaster } from "./Toast";
 export { PairAssets } from "./PairAssets";
 export { Marquee } from "./Marquee";
+export { SortHeader } from "./SortHeader";
+export { FormattedNumber } from "./FormattedNumber";
+export { Dot } from "./Dot";
+export { CurrentBlock } from "./CurrentBlock";
+export { QRCodeReader } from "./QRCodeReader";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -51,6 +63,8 @@ export { IconChevronRight } from "./icons/IconChevronRight";
 export { IconChevronLeftCarousel } from "./icons/IconChevronLeftCarousel";
 export { IconChevronLeft } from "./icons/IconChevronLeft";
 export { IconChevronDown } from "./icons/IconChevronDown";
+export { IconChevronUpFill } from "./icons/IconChevronUpFill";
+export { IconChevronUpDown } from "./icons/IconChevronUpDown";
 export { IconGear } from "./icons/IconGear";
 export { IconTrash } from "./icons/IconTrash";
 export { IconAddCross } from "./icons/IconAddCross";
@@ -98,3 +112,7 @@ export { IconTools } from "./icons/IconTools";
 export { IconApple } from "./icons/IconApple";
 export { IconGoogle } from "./icons/IconGoogle";
 export { IconEmail } from "./icons/IconEmail";
+export { IconToastSuccess } from "./icons/IconToastSuccess";
+export { IconToastInfo } from "./icons/IconToastInfo";
+export { IconToastError } from "./icons/IconToastError";
+export { IconToastWarning } from "./icons/IconToastWarning";

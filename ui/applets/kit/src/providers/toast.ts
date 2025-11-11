@@ -51,8 +51,11 @@ export const toast = {
   success(message: ToastMessage, options?: ToastOptions) {
     return this.getState().add("success", message, options);
   },
-  maintenance(message: ToastMessage, options?: ToastOptions) {
-    return this.getState().add("maintenance", message, options);
+  warning(message: ToastMessage, options?: ToastOptions) {
+    return this.getState().add("warning", message, options);
+  },
+  neutral(message: ToastMessage, options?: ToastOptions) {
+    return this.getState().add("neutral", message, options);
   },
   dismiss(id: string) {
     this.getState().remove(id);

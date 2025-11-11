@@ -17,6 +17,7 @@
 # Unorganized notes
 
 - [Bounded values](notes/bounded-values.md)
+- [Chain upgrades](notes/chain-upgrades.md)
 - [Exports](notes/exports.md)
 - [Extension traits](notes/extension-traits.md)
 - [Gas](notes/gas.md)

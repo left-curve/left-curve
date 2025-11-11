@@ -93,7 +93,6 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
           </button>
 
           <motion.div
-            layout="size"
             className={listboxWrapper({
               className: classNames?.listboxWrapper,
             })}

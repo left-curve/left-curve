@@ -3,7 +3,7 @@ use async_graphql::{InputValueError, InputValueResult, Scalar, ScalarType, Value
 use {
     crate::{
         Addr, Binary, Coins, Config, Hash256, HashExt, Json, JsonSerExt, LengthBounded, MaxLength,
-        NonEmpty, StdError, StdResult, btree_map,
+        NextUpgrade, NonEmpty, StdError, StdResult, btree_map,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     serde::{Deserialize, Serialize},
@@ -116,6 +116,8 @@ impl ScalarType for UnsignedTx {
 pub enum Message {
     /// Update the chain- and app-level configurations.
     Configure(MsgConfigure),
+    /// Schedule a chain upgrade at a future block.
+    Upgrade(MsgUpgrade),
     /// Send coins to the given recipient address.
     Transfer(MsgTransfer),
     /// Upload a Wasm binary code and store it in the chain's state.
@@ -138,6 +140,26 @@ impl Message {
             new_app_cfg: new_app_cfg.map(|t| t.to_json_value()).transpose()?,
         }
         .into())
+    }
+
+    pub fn upgrade<T, U, V>(
+        height: u64,
+        cargo_version: T,
+        git_tag: Option<U>,
+        url: Option<V>,
+    ) -> Self
+    where
+        T: Into<String>,
+        U: Into<String>,
+        V: Into<String>,
+    {
+        MsgUpgrade {
+            height,
+            cargo_version: cargo_version.into(),
+            git_tag: git_tag.map(Into::into),
+            url: url.map(Into::into),
+        }
+        .into()
     }
 
     pub fn transfer<C>(to: Addr, coins: C) -> StdResult<Self>
@@ -231,6 +253,8 @@ pub struct MsgConfigure {
     pub new_app_cfg: Option<Json>,
 }
 
+pub type MsgUpgrade = NextUpgrade;
+
 // recipient => coins
 pub type MsgTransfer = BTreeMap<Addr, Coins>;
 
@@ -285,6 +309,7 @@ macro_rules! impl_into_message {
 
 impl_into_message! {
     Configure   => MsgConfigure,
+    Upgrade     => MsgUpgrade,
     Transfer    => MsgTransfer,
     Upload      => MsgUpload,
     Instantiate => MsgInstantiate,

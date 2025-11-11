@@ -37,7 +37,7 @@ export type UseProTradeStateParameters = {
 
 export function useProTradeState(parameters: UseProTradeStateParameters) {
   const {
-    m,
+    m: _,
     controllers,
     pairId,
     onChangePairId,
@@ -154,7 +154,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
       }));
     },
     initialData: [],
-    refetchInterval: 1000 * 10,
   });
 
   const history = useQueryWithPagination({
@@ -221,14 +220,6 @@ export function useProTradeState(parameters: UseProTradeStateParameters) {
         const { baseDenom, quoteDenom } = pairId;
 
         const parsedQuoteAmount = parseUnits(amount.quote, quoteCoin.decimals);
-
-        if (Decimal(parsedQuoteAmount).lt(pair.params.minOrderSize))
-          throw new Error(
-            m["dex.errors.minimumOrderSize"]({
-              minOrderSize: formatUnits(pair.params.minOrderSize, quoteCoin.decimals),
-              symbol: quoteCoin.symbol,
-            }),
-          );
 
         const parsedAmount = isBase
           ? parseUnits(amount.base, baseCoin.decimals)

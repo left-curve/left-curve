@@ -3,7 +3,7 @@ import type { Renderable } from "./react";
 
 export type ToastDefinition = {
   id: string;
-  type: "info" | "success" | "error" | "maintenance";
+  type: "info" | "success" | "error" | "neutral" | "warning";
   title: ValueOrFunction<Renderable, ToastDefinition>;
   description: ValueOrFunction<Renderable, ToastDefinition>;
   duration?: number;
@@ -17,10 +17,11 @@ export type ToastMessage = Pick<ToastDefinition, "title" | "description">;
 export type ToastHandler = (message: ToastMessage, options?: ToastOptions) => string;
 
 export type ToastController = {
-  info: ToastHandler;
   success: ToastHandler;
   error: ToastHandler;
-  maintenance: ToastHandler;
+  info: ToastHandler;
+  neutral: ToastHandler;
+  warning: ToastHandler;
   dismiss: (id: string) => void;
 };
 

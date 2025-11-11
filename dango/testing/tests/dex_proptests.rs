@@ -445,6 +445,7 @@ impl DexAction {
                     &dex::ExecuteMsg::ProvideLiquidity {
                         base_denom: base_denom.clone(),
                         quote_denom: quote_denom.clone(),
+                        minimum_output: None,
                     },
                     funds.clone(),
                 )
@@ -496,6 +497,7 @@ impl DexAction {
                     &dex::ExecuteMsg::WithdrawLiquidity {
                         base_denom: base_denom.clone(),
                         quote_denom: quote_denom.clone(),
+                        minimum_output: None,
                     },
                     Coins::one(pair.lp_denom.clone(), lp_token_amount).unwrap(),
                 )
@@ -1088,7 +1090,8 @@ fn test_dex_actions(
                             pool_type: pool_type.clone(),
                             bucket_sizes: bucket_sizes.get(pair).unwrap().clone(),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
-                            min_order_size: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
+                            min_order_size_base: Uint128::ZERO,
                         },
                     })
                     .collect(),

@@ -11,6 +11,9 @@ pub enum DbError {
 
     #[error("cannot commit when changeset is not yet set")]
     ChangeSetNotSet,
+
+    #[error("requested version ({requested}) does not equal the DB version ({db_version})")]
+    IncorrectVersion { db_version: u64, requested: u64 },
 }
 
 impl From<DbError> for AppError {

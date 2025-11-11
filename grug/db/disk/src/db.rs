@@ -1,31 +1,39 @@
+#[cfg(feature = "metrics")]
+use grug_types::MetricsIterExt;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use {
     crate::{DbError, DbResult, U64Comparator, U64Timestamp},
-    grug_app::{Db, PrunableDb},
-    grug_jmt::MerkleTree,
-    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Proof, Record, Storage},
+    grug_app::{Commitment, Db},
+    grug_types::{Batch, Buffer, Hash256, HashExt, HexBinary, Inner, Op, Order, Record, Storage},
+    ouroboros::self_referencing,
     rocksdb::{
         BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
         WriteBatch,
     },
     std::{
+        collections::BTreeMap,
+        marker::PhantomData,
+        ops::Bound,
         path::Path,
-        sync::{Arc, RwLock},
+        sync::{Arc, RwLock, RwLockReadGuard},
     },
 };
 
 /// We use three column families (CFs) for storing data.
 /// The default family is used for metadata. Currently the only metadata we have
 /// is the latest version.
-const CF_NAME_DEFAULT: &str = "default";
+pub const CF_NAME_DEFAULT: &str = "default";
 
 /// The preimage column family maps key hashes to raw keys. This is necessary
 /// for generating ICS-23 compatible Merkle proofs.
-const CF_NAME_PREIMAGES: &str = "preimages";
+#[cfg(feature = "ibc")]
+pub const CF_NAME_PREIMAGES: &str = "preimages";
 
 /// The state commitment (SC) family stores Merkle tree nodes, which hold hashed
 /// key-value pair data. We use this CF for deriving the Merkle root hash for the
 /// state (used in consensus) and generating Merkle proofs (used in light clients).
-const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
+pub const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 
 /// The state storage (SS) family stores raw, prehash key-value pair data.
 /// When performing normal read/write/remove/scan interactions, we use this CF.
@@ -37,16 +45,50 @@ const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 /// Unfortunately the Rust API for RocksDB does not support timestamping,
 /// we have to add it in. Our fork is here, under the `0.21.0-cw` branch:
 /// https://github.com/left-curve/rust-rocksdb/tree/v0.21.0-cw
-const CF_NAME_STATE_STORAGE: &str = "state_storage";
+pub const CF_NAME_STATE_STORAGE: &str = "state_storage";
 
 /// Storage key for the latest version.
-const LATEST_VERSION_KEY: &[u8] = b"latest_version";
+pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 
 /// Storage key for the oldest version.
-const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
+pub const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
 
-/// Jellyfish Merkle tree (JMT) using default namespaces.
-pub(crate) const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
+#[cfg(feature = "metrics")]
+pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
+
+#[cfg(feature = "metrics")]
+pub const PRIORITY_DATA_LOCK_COUNT_LABEL: &str = "grug.db.disk.priority_data_lock_count";
+
+/// Configurations related to the disk DB.
+#[derive(Default, Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Config {
+    /// Records in this range will be loaded into memory. Reading and iterating
+    /// within this range will be done entirely in memory, without accessing the
+    /// disk.
+    ///
+    /// Lower bound is inclusive, upper bound is exclusive.
+    pub priority_range: Option<(HexBinary, HexBinary)>,
+    /// Options regarding auto-pruning.
+    pub pruning: PruningConfig,
+}
+
+#[derive(Default, Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct PruningConfig {
+    /// The interval of auto-pruning (i.e. perform a pruning every X versions).
+    /// 0 means no auto-pruning.
+    pub prune_interval: u64,
+    /// At each auto-pruning, how many recent versions to keep.
+    pub prune_keep_recent: u64,
+    /// The interval of manual compaction (i.e. perform a manual compaction
+    /// every X versions).
+    /// 0 means no manual compaction, which leaves it to RocksDB's internal
+    /// logic to decide when to compact. In our practical experience, in a live
+    /// network with a lot of read requests from RPC, RocksDB compacts infrequently
+    /// or not at all, resulting in performance degradation over time.
+    pub compact_interval: u64,
+}
 
 /// The base storage primitive.
 ///
@@ -75,27 +117,48 @@ pub(crate) const MERKLE_TREE: MerkleTree = MerkleTree::new_default();
 /// it's just because we're having here is sort of a quick hack and we don't
 /// have time to look into those advanced features yet. We will keep experimenting
 /// and maybe our implementation will converge with Sei's some time later.
-pub struct DiskDb {
+pub struct DiskDb<T> {
     pub(crate) inner: Arc<DiskDbInner>,
+    prune: PruningConfig,
+    _commitment: PhantomData<T>,
 }
 
+#[derive(Debug)]
 pub(crate) struct DiskDbInner {
     pub db: DBWithThreadMode<MultiThreaded>,
     // Data that are ready to be persisted to the physical database.
     // Ideally we want to just use a `rocksdb::WriteBatch` here, but it's not
     // thread-safe.
     pending_data: RwLock<Option<PendingData>>,
+    priority_data: Option<PriorityData>,
 }
 
+#[derive(Debug)]
 pub(crate) struct PendingData {
     version: u64,
     state_commitment: Batch,
     state_storage: Batch,
 }
 
-impl DiskDb {
-    /// Create a DiskDb instance by opening a physical RocksDB instance.
+#[derive(Debug)]
+struct PriorityData {
+    min: Vec<u8>, // inclusive
+    max: Vec<u8>, // exclusive
+    records: RwLock<BTreeMap<Vec<u8>, Vec<u8>>>,
+}
+
+impl<T> DiskDb<T> {
+    /// Create a DiskDb instance by opening a physical RocksDB instance, using
+    /// the default configurations.
     pub fn open<P>(data_dir: P) -> DbResult<Self>
+    where
+        P: AsRef<Path>,
+    {
+        Self::open_with_cfg(data_dir, Config::default())
+    }
+
+    /// Create a DiskDb instance by opening a physical RocksDB instance.
+    pub fn open_with_cfg<P>(data_dir: P, cfg: Config) -> DbResult<Self>
     where
         P: AsRef<Path>,
     {
@@ -103,31 +166,90 @@ impl DiskDb {
         // for state storage column family, enable timestamping.
         let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
+            #[cfg(feature = "ibc")]
             (CF_NAME_PREIMAGES, new_cf_options_with_ts()),
             (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
             (CF_NAME_STATE_COMMITMENT, Options::default()),
         ])?;
 
+        // If `priority_range` is specified, load the data in that range into memory.
+        let priority_data = cfg.priority_range.map(|(min, max)| {
+            #[cfg(feature = "tracing")]
+            let mut size = 0;
+
+            // On a brand new database, where the `state_storage` column family
+            // is completely empty, with no data ever written into it yet, the
+            // iterator fails with:
+            //
+            // > Invalid argument: cannot call this method on column family
+            //   state_storage that enables timestamp
+            //
+            // Therefore, we check whether the `latest_version` exists, If not,
+            // it means the DB is new, then we default the priority data to an
+            // empty B-tree map.
+            let records = if let Some(latest_version) = read_version(&db, LATEST_VERSION_KEY) {
+                db.iterator_cf_opt(
+                    &cf_state_storage(&db),
+                    new_read_options(Some(latest_version), Some(min.as_ref()), Some(max.as_ref())),
+                    IteratorMode::Start,
+                )
+                .map(|item| {
+                    let (k, v) = item.unwrap_or_else(|err| {
+                        panic!("failed to load record for priority data: {err}");
+                    });
+
+                    #[cfg(feature = "tracing")]
+                    {
+                        size += k.len() + v.len();
+                    }
+
+                    (k.to_vec(), v.to_vec())
+                })
+                .collect::<BTreeMap<_, _>>()
+            } else {
+                BTreeMap::new()
+            };
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::info!(num_records = records.len(), size, "Loaded priority data");
+            }
+
+            PriorityData {
+                min: min.into_inner(),
+                max: max.into_inner(),
+                records: RwLock::new(records),
+            }
+        });
+
         Ok(Self {
             inner: Arc::new(DiskDbInner {
                 db,
                 pending_data: RwLock::new(None),
+                priority_data,
             }),
+            prune: cfg.pruning,
+            _commitment: PhantomData,
         })
     }
 }
 
-impl Clone for DiskDb {
+impl<T> Clone for DiskDb<T> {
     fn clone(&self) -> Self {
         Self {
             inner: Arc::clone(&self.inner),
+            prune: self.prune,
+            _commitment: PhantomData,
         }
     }
 }
 
-impl Db for DiskDb {
+impl<T> Db for DiskDb<T>
+where
+    T: Commitment,
+{
     type Error = DbError;
-    type Proof = Proof;
+    type Proof = T::Proof;
     type StateCommitment = StateCommitment;
     type StateStorage = StateStorage;
 
@@ -137,7 +259,15 @@ impl Db for DiskDb {
         }
     }
 
-    fn state_storage(&self, version: Option<u64>) -> DbResult<StateStorage> {
+    fn state_storage_with_comment(
+        &self,
+        version: Option<u64>,
+        #[cfg_attr(
+            not(any(feature = "tracing", feature = "metrics")),
+            allow(unused_variables)
+        )]
+        comment: &'static str,
+    ) -> DbResult<StateStorage> {
         // Read the latest version.
         // If it doesn't exist, this means not even a single batch has been
         // written yet (e.g. during `InitChain`). In this case just use zero.
@@ -167,38 +297,33 @@ impl Db for DiskDb {
         Ok(StateStorage {
             inner: Arc::clone(&self.inner),
             version,
+            #[cfg(any(feature = "tracing", feature = "metrics"))]
+            comment,
         })
     }
 
     fn latest_version(&self) -> Option<u64> {
-        let cf = cf_default(&self.inner.db);
-        let bytes = self
-            .inner
-            .db
-            .get_cf(&cf, LATEST_VERSION_KEY)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from default column family: {err}");
-            })?;
-        let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
-            panic!(
-                "latest version is of incorrect byte length: {}",
-                bytes.len()
-            );
-        });
-        Some(u64::from_le_bytes(array))
+        read_version(&self.inner.db, LATEST_VERSION_KEY)
+    }
+
+    fn oldest_version(&self) -> Option<u64> {
+        read_version(&self.inner.db, OLDEST_VERSION_KEY)
     }
 
     fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash256>> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        Ok(MERKLE_TREE.root_hash(&self.state_commitment(), version)?)
+        Ok(T::root_hash(&self.state_commitment(), version)?)
     }
 
-    fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Proof> {
+    fn prove(&self, key: &[u8], version: Option<u64>) -> DbResult<Self::Proof> {
         let version = version.unwrap_or_else(|| self.latest_version().unwrap_or(0));
-        Ok(MERKLE_TREE.prove(&self.state_commitment(), key.hash256(), version)?)
+        Ok(T::prove(&self.state_commitment(), key.hash256(), version)?)
     }
 
     fn flush_but_not_commit(&self, batch: Batch) -> DbResult<(u64, Option<Hash256>)> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         // A write batch must not already exist. If it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
@@ -222,10 +347,10 @@ impl Db for DiskDb {
         let mut buffer = Buffer::new(
             self.state_commitment(),
             None,
-            "disk_db_state_commitment_flush_but_not_commit",
+            "disk_db/state_commitment/flush_but_not_commit",
         );
 
-        let root_hash = MERKLE_TREE.apply_raw(&mut buffer, old_version, new_version, &batch)?;
+        let root_hash = T::apply(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
         *(self.inner.pending_data.write()?) = Some(PendingData {
@@ -234,16 +359,68 @@ impl Db for DiskDb {
             state_storage: batch,
         });
 
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "flush_but_not_commit")
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         Ok((new_version, root_hash))
     }
 
     fn commit(&self) -> DbResult<()> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let pending = self
             .inner
             .pending_data
             .write()?
             .take()
             .ok_or(DbError::pending_data_not_set())?;
+
+        // If priority data exists, apply the change set to it.
+        if let Some(data) = &self.inner.priority_data {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!("Attempting to acquire write lock on priority data");
+            }
+
+            let mut records = data.records.write().expect("priority data poisoned");
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!("Acquired write lock on priority data");
+            }
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "write").increment(1);
+            }
+
+            for (k, op) in pending.state_storage.range::<[u8], _>((
+                Bound::Included(data.min.as_slice()),
+                Bound::Excluded(data.max.as_slice()),
+            )) {
+                if let Op::Insert(v) = op {
+                    records.insert(k.clone(), v.clone());
+                } else {
+                    records.remove(k);
+                }
+            }
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!("Released write lock on priority data");
+            }
+
+            #[cfg(feature = "metrics")]
+            {
+                metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "write").decrement(1);
+            }
+        }
+
+        // Now, prepare the write batch that will be written to RocksDB.
         let mut batch = WriteBatch::default();
         let ts = U64Timestamp::from(pending.version);
 
@@ -263,12 +440,16 @@ impl Db for DiskDb {
 
         // Writes in preimages (note: don't forget timestamping, and deleting
         // key hashes that are deleted in state storage - see Zellic audut).
-        let cf = cf_preimages(&self.inner.db);
-        for (key, op) in &pending.state_storage {
-            if let Op::Insert(_) = op {
-                batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
-            } else {
-                batch.delete_cf_with_ts(&cf, key.hash256(), ts);
+        // This is only necessary if the `ibc` feature is enabled.
+        #[cfg(feature = "ibc")]
+        {
+            let cf = cf_preimages(&self.inner.db);
+            for (key, op) in &pending.state_storage {
+                if let Op::Insert(_) = op {
+                    batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
+                } else {
+                    batch.delete_cf_with_ts(&cf, key.hash256(), ts);
+                }
             }
         }
 
@@ -282,30 +463,42 @@ impl Db for DiskDb {
             }
         }
 
-        Ok(self.inner.db.write(batch)?)
-    }
-}
+        self.inner.db.write(batch)?;
 
-impl PrunableDb for DiskDb {
-    fn oldest_version(&self) -> Option<u64> {
-        let cf = cf_default(&self.inner.db);
-        let bytes = self
-            .inner
-            .db
-            .get_cf(&cf, OLDEST_VERSION_KEY)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from default column family: {err}");
-            })?;
-        let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
-            panic!(
-                "oldest version is of incorrect byte length: {}",
-                bytes.len()
-            );
-        });
-        Some(u64::from_le_bytes(array))
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "commit")
+                .record(duration.elapsed().as_secs_f64());
+        }
+
+        // Perform auto-pruning if the configured interval is reached.
+        if self.prune.prune_interval != 0
+            && pending.version % self.prune.prune_interval == 0
+            && pending.version > self.prune.prune_keep_recent
+        {
+            self.prune(pending.version - self.prune.prune_keep_recent)?;
+        }
+
+        // Perform manual compaction if the configured interval is reached.
+        if self.prune.compact_interval != 0
+            && pending.version % self.prune.compact_interval == 0
+            && pending.version > self.prune.compact_interval
+        {
+            self.compact();
+        }
+
+        Ok(())
     }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!(up_to_version, "Pruning database");
+        }
+
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
         let ts = U64Timestamp::from(up_to_version);
 
         // Prune state storage.
@@ -321,17 +514,20 @@ impl PrunableDb for DiskDb {
         self.inner.db.increase_full_history_ts_low(&cf, ts)?;
 
         // Same for preimages.
-        let cf = cf_preimages(&self.inner.db);
-        self.inner.db.increase_full_history_ts_low(&cf, ts)?;
+        #[cfg(feature = "ibc")]
+        {
+            let cf = cf_preimages(&self.inner.db);
+            self.inner.db.increase_full_history_ts_low(&cf, ts)?;
+        }
 
         // Prune state commitment.
         let mut buffer = Buffer::new(
             self.state_commitment(),
             None,
-            "disk_db_state_commitment_prune",
+            "disk_db/state_commitment/prune",
         );
 
-        MERKLE_TREE.prune(&mut buffer, up_to_version)?;
+        T::prune(&mut buffer, up_to_version)?;
 
         let (_, pending) = buffer.disassemble();
         let mut batch = WriteBatch::default();
@@ -348,22 +544,57 @@ impl PrunableDb for DiskDb {
         let cf = cf_default(&self.inner.db);
         batch.put_cf(&cf, OLDEST_VERSION_KEY, up_to_version.to_le_bytes());
 
-        Ok(self.inner.db.write(batch)?)
+        self.inner.db.write(batch)?;
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "prune")
+                .record(duration.elapsed().as_secs_f64());
+        }
+
+        Ok(())
+    }
+}
+
+impl<T> DiskDb<T> {
+    /// Force an immediate compaction of the timestamped column families.
+    pub fn compact(&self) {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::info!("Compacting database");
+        }
+
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        self.inner.db.compact_range_cf(
+            &cf_state_storage(&self.inner.db),
+            None::<&[u8]>,
+            None::<&[u8]>,
+        );
+
+        #[cfg(feature = "ibc")]
+        {
+            self.inner.db.compact_range_cf(
+                &cf_preimages(&self.inner.db),
+                None::<&[u8]>,
+                None::<&[u8]>,
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "compact")
+                .record(duration.elapsed().as_secs_f64());
+        }
     }
 }
 
 // ----------------------------- state commitment ------------------------------
 
+#[derive(Clone, Debug)]
 pub struct StateCommitment {
     inner: Arc<DiskDbInner>,
-}
-
-impl Clone for StateCommitment {
-    fn clone(&self) -> Self {
-        Self {
-            inner: Arc::clone(&self.inner),
-        }
-    }
 }
 
 impl Storage for StateCommitment {
@@ -454,24 +685,74 @@ impl Storage for StateCommitment {
 
 // ------------------------------- state storage -------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StateStorage {
     inner: Arc<DiskDbInner>,
     version: u64,
+    #[cfg(any(feature = "tracing", feature = "metrics"))]
+    comment: &'static str,
 }
 
-impl Storage for StateStorage {
-    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        let opts = new_read_options(Some(self.version), None, None);
-        self.inner
-            .db
-            .get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from state storage: {err}");
-            })
+impl StateStorage {
+    fn create_iterator<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        // If priority data exists, and the iterator range completely falls
+        // within the priority range, then create a priority iterator.
+        // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
+        // are both exclusive.
+        if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
+            if data.min.as_slice() <= min && max <= data.max.as_slice() {
+                return self.create_priority_iterator(data, min, max, order);
+            }
+        }
+
+        self.create_non_priority_iterator(min, max, order)
     }
 
-    fn scan<'a>(
+    fn create_priority_iterator<'a>(
+        &'a self,
+        data: &'a PriorityData,
+        min: &[u8],
+        max: &[u8],
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                operation = "scan",
+                comment = self.comment,
+                "Attempting to acquire read lock on priority data"
+            );
+        }
+
+        let records = data.records.read().expect("priority data poisoned");
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                operation = "scan",
+                comment = self.comment,
+                "Acquired read lock on priority data"
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
+        }
+
+        Box::new(PriorityDataIter {
+            inner: PriorityDataIterInner::new(records, |g| g.scan(Some(min), Some(max), order)),
+            #[cfg(feature = "tracing")]
+            comment: self.comment,
+        })
+    }
+
+    fn create_non_priority_iterator<'a>(
         &'a self,
         min: Option<&[u8]>,
         max: Option<&[u8]>,
@@ -489,7 +770,108 @@ impl Storage for StateStorage {
                 });
                 (k.to_vec(), v.to_vec())
             });
+
+        #[cfg(feature = "metrics")]
+        let iter = iter.with_metrics(DISK_DB_LABEL, [
+            ("operation", "next"),
+            ("comment", self.comment),
+        ]);
+
         Box::new(iter)
+    }
+}
+
+impl Storage for StateStorage {
+    fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        // If the key falls in the priority data range, read the value from
+        // priority data, without accessing the disk.
+        // Note: `min` is inclusive, while `max` is exclusive.
+        if let Some(data) = &self.inner.priority_data {
+            if data.min.as_slice() <= key && key < data.max.as_slice() {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!(
+                        operation = "read",
+                        comment = self.comment,
+                        "Attempting to acquire read lock on priority data"
+                    );
+                }
+
+                let records = data.records.read().expect("priority data poisoned");
+
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!(
+                        operation = "read",
+                        comment = self.comment,
+                        "Acquired read lock on priority data"
+                    );
+                }
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
+                }
+
+                let value = records.get(key).cloned();
+
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::debug!(
+                        operation = "read",
+                        comment = self.comment,
+                        "Released read lock on priority data"
+                    );
+                }
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
+                }
+
+                return value;
+            }
+        }
+
+        let opts = new_read_options(Some(self.version), None, None);
+        let value = self
+            .inner
+            .db
+            .get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts)
+            .unwrap_or_else(|err| {
+                panic!("failed to read from state storage: {err}");
+            });
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "read", "comment" => self.comment)
+                .record(duration.elapsed().as_secs_f64());
+        }
+
+        value
+    }
+
+    fn scan<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let iter = self.create_iterator(min, max, order);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan", "comment" => self.comment)
+                .record(duration.elapsed().as_secs_f64());
+        }
+
+        iter
     }
 
     fn scan_keys<'a>(
@@ -498,18 +880,17 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(Some(self.version), min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode)
-            .map(|item| {
-                let (k, _) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in state storage: {err}");
-                });
-                k.to_vec()
-            });
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let iter = self.create_iterator(min, max, order).map(|(k, _)| k);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_keys", "comment" => self.comment)
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         Box::new(iter)
     }
 
@@ -519,18 +900,17 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(Some(self.version), min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode)
-            .map(|item| {
-                let (_, v) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in state storage: {err}");
-                });
-                v.to_vec()
-            });
+        #[cfg(feature = "metrics")]
+        let duration = std::time::Instant::now();
+
+        let iter = self.create_iterator(min, max, order).map(|(_, v)| v);
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_values", "comment" => self.comment)
+                .record(duration.elapsed().as_secs_f64());
+        }
+
         Box::new(iter)
     }
 
@@ -547,6 +927,46 @@ impl Storage for StateStorage {
     }
 }
 
+struct PriorityDataIter<'a> {
+    inner: PriorityDataIterInner<'a>,
+    #[cfg(feature = "tracing")]
+    comment: &'static str,
+}
+
+#[self_referencing]
+struct PriorityDataIterInner<'a> {
+    guard: RwLockReadGuard<'a, BTreeMap<Vec<u8>, Vec<u8>>>,
+    #[borrows(guard)]
+    #[covariant]
+    inner: Box<dyn Iterator<Item = Record> + 'this>,
+}
+
+impl<'a> Iterator for PriorityDataIter<'a> {
+    type Item = Record;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.with_inner_mut(|iter| iter.next())
+    }
+}
+
+impl<'a> Drop for PriorityDataIter<'a> {
+    fn drop(&mut self) {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                operation = "scan",
+                comment = self.comment,
+                "Released read lock on priority data"
+            );
+        }
+
+        #[cfg(feature = "metrics")]
+        {
+            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
+        }
+    }
+}
+
 // ---------------------------------- helpers ----------------------------------
 
 #[inline]
@@ -560,14 +980,14 @@ fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
 // TODO: rocksdb tuning? see:
 // https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/opts.go#L29-L65
 // https://github.com/turbofish-org/merk/blob/develop/src/merk/mod.rs#L84-L102
-fn new_db_options() -> Options {
+pub fn new_db_options() -> Options {
     let mut opts = Options::default();
     opts.create_if_missing(true);
     opts.create_missing_column_families(true);
     opts
 }
 
-fn new_cf_options_with_ts() -> Options {
+pub fn new_cf_options_with_ts() -> Options {
     let mut opts = Options::default();
     // Must use a timestamp-enabled comparator
     opts.set_comparator_with_ts(
@@ -598,38 +1018,50 @@ pub(crate) fn new_read_options(
     opts
 }
 
-fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_DEFAULT).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }
 
+#[cfg(feature = "ibc")]
 pub(crate) fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }
 
-fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_STATE_STORAGE).unwrap_or_else(|| {
         panic!("failed to find state storage column family");
     })
 }
 
-fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
     db.cf_handle(CF_NAME_STATE_COMMITMENT).unwrap_or_else(|| {
         panic!("failed to find state commitment column family");
     })
 }
 
-// ----------------------------------- test ------------------------------------
+pub fn read_version(db: &DBWithThreadMode<MultiThreaded>, k: &[u8]) -> Option<u64> {
+    let cf = cf_default(db);
+    let bytes = db.get_cf(&cf, k).unwrap_or_else(|err| {
+        panic!("failed to read from default column family: {err}");
+    })?;
+    let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
+        panic!("version is of incorrect byte length: {}", bytes.len());
+    });
+    Some(u64::from_le_bytes(array))
+}
+
+// ------------------------ tests using JMT commitment -------------------------
 
 #[cfg(test)]
-mod tests {
+mod tests_jmt {
     use {
         crate::DiskDb,
-        grug_app::{Db, PrunableDb},
-        grug_jmt::verify_proof,
+        grug_app::Db,
+        grug_jmt::{MerkleTree, verify_proof},
         grug_types::{
             Batch, Hash256, HashExt, MembershipProof, NonMembershipProof, Op, Order, Proof,
             ProofNode, Storage,
@@ -784,7 +1216,7 @@ mod tests {
     #[test]
     fn disk_db_works() {
         let path = TempDataDir::new("_grug_disk_db_works");
-        let db = DiskDb::open(&path).unwrap();
+        let db = DiskDb::<MerkleTree>::open(&path).unwrap();
 
         // Write a batch. The very first batch have version 0.
         let batch = Batch::from([
@@ -969,7 +1401,7 @@ mod tests {
     #[test]
     fn disk_db_pruning_works() {
         let path = TempDataDir::new("_grug_disk_db_pruning_works");
-        let db = DiskDb::open(&path).unwrap();
+        let db = DiskDb::<MerkleTree>::open(&path).unwrap();
 
         // Apply a few batches. Same test data as used in the JMT test.
         for batch in [
@@ -1032,5 +1464,383 @@ mod tests {
                     .contains("data not found! type: grug_jmt::node::Node")
             }));
         }
+    }
+}
+
+// ----------------------- tests using simple commitment -----------------------
+
+#[cfg(test)]
+mod tests_simple {
+    use {
+        super::*,
+        grug_app::SimpleCommitment,
+        grug_types::{ResultExt, btree_map, hash},
+        temp_rocksdb::TempDataDir,
+    };
+
+    // sha256(6 | donald | 1 | 5 | trump | 4 | jake | 1 | 8 | shepherd | 3 | joe | 1 | 5 | biden | 5 | larry | 1 | 8 | engineer)
+    // = sha256(0006646f6e616c640100057472756d7000046a616b65010008736865706865726400036a6f65010005626964656e00056c61727279010008656e67696e656572)
+    const V0_HASH: Hash256 =
+        hash!("be33ce9316ee2af84f037db3a9d6d01bd2e61557ae7859d4d02138b08e6cc9f9");
+
+    // sha256(6 | donald | 1 | 4 | duck | 3 | joe | 0 | 7 | pumpkin | 1 | 3 | cat)
+    // = sha256(0006646f6e616c640100046475636b00036a6f6500000770756d706b696e010003636174)
+    const V1_HASH: Hash256 =
+        hash!("27fc5226bce75bd7750366ee3ddcf35f2d8daafb9f8e14f855f673e1e6fcb021");
+
+    #[test]
+    fn disk_db_lite_works() {
+        let path = TempDataDir::new("_grug_disk_db_lite_works");
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        // Write a 1st batch.
+        {
+            let batch = Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
+                (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
+                (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
+                (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
+            ]);
+            let (version, root_hash) = db.flush_and_commit(batch).unwrap();
+            assert_eq!(version, 0);
+            assert_eq!(root_hash, Some(V0_HASH));
+
+            for (k, v) in [
+                ("donald", Some("trump")),
+                ("jake", Some("shepherd")),
+                ("joe", Some("biden")),
+                ("larry", Some("engineer")),
+            ] {
+                let found_value = db
+                    .state_storage(Some(version))
+                    .unwrap()
+                    .read(k.as_bytes())
+                    .map(|v| String::from_utf8(v).unwrap());
+                assert_eq!(found_value.as_deref(), v);
+            }
+        }
+
+        // Write a 2nd batch.
+        {
+            let batch = Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
+                (b"joe".to_vec(), Op::Delete),
+                (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
+            ]);
+            let (version, root_hash) = db.flush_and_commit(batch).unwrap();
+            assert_eq!(version, 1);
+            assert_eq!(root_hash, Some(V1_HASH));
+
+            for (k, v) in [
+                ("donald", Some("duck")),
+                ("jake", Some("shepherd")),
+                ("joe", None),
+                ("larry", Some("engineer")),
+                ("pumpkin", Some("cat")),
+            ] {
+                let found_value = db
+                    .state_storage(Some(version))
+                    .unwrap()
+                    .read(k.as_bytes())
+                    .map(|v| String::from_utf8(v).unwrap());
+                assert_eq!(found_value.as_deref(), v);
+            }
+        }
+    }
+
+    #[test]
+    fn prune_works() {
+        let path = TempDataDir::new("_grug_disk_db_lite_pruning_works");
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        for batch in [
+            // v0
+            Batch::from([(b"0".to_vec(), Op::Insert(b"0".to_vec()))]),
+            // v1
+            Batch::from([(b"1".to_vec(), Op::Insert(b"1".to_vec()))]),
+            // v2
+            Batch::from([(b"2".to_vec(), Op::Insert(b"2".to_vec()))]),
+            // v3
+            Batch::from([(b"3".to_vec(), Op::Insert(b"3".to_vec()))]),
+            // v4
+            Batch::from([(b"4".to_vec(), Op::Insert(b"4".to_vec()))]),
+        ] {
+            db.flush_and_commit(batch).unwrap();
+        }
+
+        let current_version = db.latest_version();
+        assert_eq!(current_version, Some(4));
+
+        let storage = db.state_storage(current_version).unwrap();
+        assert_eq!(storage.read(b"2"), Some(b"2".to_vec()));
+        assert_eq!(storage.read(b"4"), Some(b"4".to_vec()));
+
+        db.flush_and_commit(Batch::from([(b"2".to_vec(), Op::Insert(b"22".to_vec()))]))
+            .unwrap();
+
+        assert_eq!(
+            db.state_storage(Some(5)).unwrap().read(b"2"),
+            Some(b"22".to_vec())
+        );
+
+        assert_eq!(
+            db.state_storage(None).unwrap().read(b"2"),
+            Some(b"22".to_vec())
+        );
+
+        // Prune the db at 3, which is exclusive (3 becomes the oldest version)
+        // and force an immediate compaction.
+        db.prune(3).unwrap();
+        db.compact();
+
+        assert_eq!(
+            db.state_storage(Some(4)).unwrap().read(b"2"),
+            Some(b"2".to_vec())
+        );
+
+        assert_eq!(
+            db.state_storage(Some(3)).unwrap().read(b"2"),
+            Some(b"2".to_vec())
+        );
+
+        // Try to read at version = 2. We return an error trying create a storage at a pruned version.
+        // This is not ensuring that we really pruned the db, but that we saved the correct oldest version.
+        db.state_storage(Some(2)).should_fail_with_error(
+            "requested version (2) is older than the oldest available version (3)",
+        );
+
+        // Ensure that the prune really pruned the db.
+        db.inner
+            .db
+            .get_cf_opt(
+                &cf_state_storage(&db.inner.db),
+                b"2",
+                &new_read_options(Some(2), None, None),
+            )
+            .should_fail_with_error(
+                "Invalid argument: Read timestamp:  is smaller than full_history_ts_low",
+            );
+    }
+
+    #[test]
+    fn auto_pruning_and_manual_compaction_works() {
+        const KEY: &[u8] = b"data";
+
+        let path = TempDataDir::new("_grug_disk_db_auto_prune_works");
+        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
+            pruning: PruningConfig {
+                prune_interval: 2,
+                prune_keep_recent: 2,
+                compact_interval: 2,
+            },
+            ..Default::default()
+        })
+        .unwrap();
+
+        // Write four batches of versions 0, 1, 2, 3.
+        for version in 0..=3 {
+            db.flush_and_commit(btree_map! {
+                KEY.to_vec() => Op::Insert(vec![version]),
+            })
+            .unwrap();
+        }
+
+        // No pruning should have happened at this point. Oldest version should
+        // not have been set (it's only set the first time a pruning is performed),
+        // and we should be able to read the historical values.
+        assert_eq!(db.oldest_version(), None);
+        for version in 0..=3 {
+            assert_eq!(
+                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
+                vec![version as u8]
+            );
+        }
+
+        // Write a batch of version 4.
+        db.flush_and_commit(btree_map! {
+            KEY.to_vec() => Op::Insert(vec![4]),
+        })
+        .unwrap();
+
+        // A pruning should have happened. with `up_to_version` = 4 - 2 = 2
+        // (exclusive, meaning version 0 & 1 are gone, version 2 is kept).
+        assert_eq!(db.oldest_version(), Some(2));
+        for version in 0..=1 {
+            db.state_storage(Some(version))
+                .should_fail_with_error(DbError::version_too_old(version, 2));
+
+            db.inner
+                .db
+                .get_cf_opt(
+                    &cf_state_storage(&db.inner.db),
+                    KEY,
+                    &new_read_options(Some(version), None, None),
+                )
+                .should_fail_with_error(
+                    "Invalid argument: Read timestamp:  is smaller than full_history_ts_low",
+                );
+        }
+        for version in 2..=4 {
+            assert_eq!(
+                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
+                vec![version as u8]
+            );
+        }
+    }
+
+    #[test]
+    fn priority_data() {
+        let path = TempDataDir::new("_grug_disk_db_priority_data");
+
+        // First, open the DB _without_ priority data, and write some records.
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        db.flush_and_commit(Batch::from([
+            (b"000".to_vec(), Op::Insert(b"000".to_vec())),
+            (b"001".to_vec(), Op::Insert(b"001".to_vec())),
+            (b"002".to_vec(), Op::Insert(b"002".to_vec())),
+            (b"003".to_vec(), Op::Insert(b"003".to_vec())),
+            (b"004".to_vec(), Op::Insert(b"004".to_vec())),
+        ]))
+        .unwrap();
+
+        // Enusre rockdb max is exclusive.
+        {
+            assert_eq!(
+                db.inner
+                    .db
+                    .iterator_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        new_read_options(Some(0), Some(b"000"), Some(b"004")),
+                        IteratorMode::Start,
+                    )
+                    .map(|res| {
+                        let (k, v) = res.unwrap();
+                        (k.to_vec(), v.to_vec())
+                    })
+                    .collect::<Vec<_>>(),
+                [
+                    (b"000".to_vec(), b"000".to_vec()),
+                    (b"001".to_vec(), b"001".to_vec()),
+                    (b"002".to_vec(), b"002".to_vec()),
+                    (b"003".to_vec(), b"003".to_vec()),
+                ]
+            );
+
+            assert_eq!(
+                db.inner
+                    .db
+                    .iterator_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        new_read_options(Some(0), Some(b"000"), Some(b"005")),
+                        IteratorMode::Start,
+                    )
+                    .map(|res| {
+                        let (k, v) = res.unwrap();
+                        (k.to_vec(), v.to_vec())
+                    })
+                    .collect::<Vec<_>>(),
+                [
+                    (b"000".to_vec(), b"000".to_vec()),
+                    (b"001".to_vec(), b"001".to_vec()),
+                    (b"002".to_vec(), b"002".to_vec()),
+                    (b"003".to_vec(), b"003".to_vec()),
+                    (b"004".to_vec(), b"004".to_vec()),
+                ]
+            );
+        }
+
+        drop(db);
+
+        // Open the DB again, _with_ priority data this time.
+        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
+            priority_range: Some((b"000".to_vec().into(), b"004".to_vec().into())),
+            ..Default::default()
+        })
+        .unwrap();
+
+        // In order to test the priorty data, we manually delete a key from the db.
+        // This is not something that should happen in a normal use case but allows
+        // us to test the priority data.
+        // Remove the `002` key from the db.
+        {
+            assert_eq!(
+                db.inner
+                    .db
+                    .get_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        b"002",
+                        &new_read_options(Some(0), None, None)
+                    )
+                    .unwrap()
+                    .unwrap(),
+                b"002"
+            );
+
+            db.inner
+                .db
+                .delete_cf_with_ts(
+                    &cf_state_storage(&db.inner.db),
+                    b"002",
+                    U64Timestamp::from(0),
+                )
+                .unwrap();
+
+            assert!(
+                db.inner
+                    .db
+                    .get_cf_opt(
+                        &cf_state_storage(&db.inner.db),
+                        b"002",
+                        &new_read_options(Some(0), None, None)
+                    )
+                    .unwrap()
+                    .is_none()
+            );
+        }
+
+        let storage = db.state_storage(None).unwrap();
+
+        // We should be able to read `002` from the priority data.
+        // This proves we're accessing it from priority data (as expected), not
+        // from the underlying rocksdb.
+        assert_eq!(storage.read(b"002").unwrap(), b"002");
+
+        // Iterate over the a range included in the priority data
+        assert_eq!(
+            storage
+                .scan_values(Some(b"001"), Some(b"003"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            [b"001", b"002"]
+        );
+
+        // Iterate over the exact range of the priority data
+        assert_eq!(
+            storage
+                .scan_values(Some(b"000"), Some(b"004"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            [b"000", b"001", b"002", b"003"]
+        );
+
+        // Iterate over a range that exceeds the priority data.
+        // Data are loaded from disk, key `002` should not be found.
+        assert_eq!(
+            storage
+                .scan_values(Some(b"000"), Some(b"005"), Order::Ascending)
+                .collect::<Vec<_>>(),
+            [b"000", b"001", b"003", b"004"]
+        );
+    }
+
+    #[test]
+    fn priority_data_new_db() {
+        let path = TempDataDir::new("_grug_disk_db_priority_data_new_db");
+
+        // Open a brand new DB with priority data. Should succeed.
+        let _db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
+            priority_range: Some((b"000".to_vec().into(), b"004".to_vec().into())),
+            ..Default::default()
+        })
+        .unwrap();
     }
 }

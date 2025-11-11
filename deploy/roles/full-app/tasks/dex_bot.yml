@@ -27,29 +27,56 @@
         provide_liquidity_command: "dex liquidity provide --url http://dango:8080/ {{ dango.dex_bot.liquidity_amount }} --address {{ dango.dex_bot.minter_address }} --username {{ dango.dex_bot.minter_username }} --private-key {{ dango.dex_bot.minter_private_key }}"
 
     - debug:
-        msg: "Calling: {{ provide_liquidity_command }} ; {{ mint_command }}"
+        msg: "Calling: {{ provide_liquidity_command }} && {{ mint_command }}"
 
-    - name: Run both liquidity commands in sequence
-      community.docker.docker_compose_v2_exec:
-        project_name: "{{ deployment_name }}"
-        project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
-        service: dex-bot
-        command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
-        tty: yes
+    # This fails when dex-bot wasn't started
+    # - name: Run both liquidity commands in sequence
+    #   community.docker.docker_compose_v2_exec:
+    #     project_name: "{{ deployment_name }}"
+    #     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    #     service: dex-bot
+    #     command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
+    #     tty: yes
+    #   register: liquidity_result
+    #   retries: 3
+    #   delay: 5
+
+    - name: Run both liquidity commands and capture output
+      shell: |
+        docker run --rm \
+          --name {{ deployment_name }}-dex-bot-liquidity \
+          --network {{ deployment_name }}_default \
+          --env-file {{ deployment_dir }}/.env \
+          -e http_url=http://dango:8080 \
+          -e chain_id={{ chain_id }} \
+          -e app_settings__sleep__min=1s \
+          -e app_settings__sleep__max=2s \
+          -e app_settings__size_percent__min=0.0005 \
+          -e app_settings__size_percent__max=0.003 \
+          -e app_settings__price_percent__min=0.05 \
+          -e app_settings__price_percent__max=0.2 \
+          -e app_settings__order_number__min=1 \
+          -e app_settings__order_number__max=5 \
+          -e app_settings__order_type=market \
+          ghcr.io/left-curve/bots/dex:{{ dex_bot_tag }} \
+          bash -lc '{{ provide_liquidity_command }} && {{ mint_command }}'
       register: liquidity_result
+      ignore_errors: true
       retries: 3
       delay: 5
-      run_once: true
+      failed_when: false
 
-    - name: Show stdout
+    - name: Show liquidity command output
       debug:
-        var: liquidity_result.stdout
-      run_once: true
+        msg: |
+          Status: {{ 'SUCCESS ✅' if liquidity_result.rc == 0 else 'FAILED ❌' }}
+          Exit Code: {{ liquidity_result.rc }}
 
-    - name: Show stderr
-      debug:
-        var: liquidity_result.stderr
-      run_once: true
+          === STDOUT ===
+          {{ liquidity_result.stdout }}
+
+          === STDERR ===
+          {{ liquidity_result.stderr }}
 
     - name: Query balances
       community.docker.docker_compose_v2_exec:
@@ -60,12 +87,8 @@
         tty: yes
       loop: [ "{{ dango.dex_bot.address }}", "{{ dango.dex_bot.dex_address }}" ]
       register: balances_raw
-      run_once: true
-      delegate_to: "{{ dex_bot_host }}"
 
     - name: Pretty output
-      run_once: true
-      delegate_to: "{{ dex_bot_host }}"
       vars:
         report: |-
           {%- for r in balances_raw.results -%}
@@ -84,3 +107,8 @@
   file:
     path: "{{ deployment_dir }}/bot_liquidity_setup_done"
     state: touch
+  when:
+    - liquidity_result is defined
+    - liquidity_result is succeeded
+  run_once: true
+  delegate_to: "{{ dex_bot_host }}"

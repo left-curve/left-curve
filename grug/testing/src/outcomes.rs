@@ -84,6 +84,7 @@ impl ResultExt for UploadAndInstantiateOutcome {
     }
 }
 
+#[derive(Debug)]
 pub struct MakeBlockOutcome {
     pub txs: Vec<(Tx, Hash256)>,
     pub block_outcome: BlockOutcome,

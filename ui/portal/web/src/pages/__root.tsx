@@ -1,18 +1,12 @@
-import {
-  HeadContent,
-  Outlet,
-  createRootRouteWithContext,
-  useNavigate,
-  useRouterState,
-} from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useAccount, useActivities, useSessionKey } from "@left-curve/store";
 
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
 
 import * as Sentry from "@sentry/react";
-import { Modals, Spinner, twMerge, useApp, useTheme } from "@left-curve/applets-kit";
+import { Modals, twMerge, useApp, useTheme } from "@left-curve/applets-kit";
 import { createPortal } from "react-dom";
 
 import type { RouterContext } from "~/app.router";
@@ -30,27 +24,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     }
   },
   component: () => {
-    const navigate = useNavigate();
-    const { location } = useRouterState();
     const { modal, settings, showModal } = useApp();
-    const [isReady, setIsReady] = useState(false);
-
-    useEffect(() => {
-      if (location.pathname === "/maintenance") navigate({ to: "/" });
-      (async () => {
-        try {
-          // Check chain is up
-          const response = await fetch(window.dango.urls.upUrl);
-          if (!response.ok) throw new Error("request failed");
-          const { is_running } = await response.json();
-          if (!is_running) navigate({ to: "/maintenance" });
-        } catch (_) {
-          navigate({ to: "/maintenance" });
-        } finally {
-          setIsReady(true);
-        }
-      })();
-    }, []);
 
     // Track user errors
     const { username, connector, account, isConnected } = useAccount();
@@ -93,13 +67,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         clearInterval(intervalId);
       };
     }, [session, modal, settings.useSessionKey, connector, isConnected]);
-
-    if (!isReady)
-      return (
-        <div className="flex h-screen w-screen items-center justify-center">
-          <Spinner size="lg" color="pink" />
-        </div>
-      );
 
     return (
       <>

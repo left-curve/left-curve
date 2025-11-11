@@ -16,10 +16,9 @@ use {
     itertools::Itertools,
     std::{
         collections::{HashMap, HashSet},
-        time::{Duration, Instant},
+        time::Instant,
     },
     strum::IntoEnumIterator,
-    tokio::time::sleep,
 };
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -427,54 +426,30 @@ impl CandleCache {
 
                     async move {
                         let mut candles;
-                        let start = Instant::now();
 
-                        loop {
-                            if start.elapsed() > Duration::from_secs(2) {
+                        let query_builder = CandleQueryBuilder::new(
+                            key.interval,
+                            key.base_denom.clone(),
+                            key.quote_denom.clone(),
+                        )
+                        .with_limit(MAX_ITEMS);
+
+                        candles = query_builder.fetch_all(clickhouse_client).await?.candles;
+
+                        if let Some(candle) = candles.first() {
+                            if candle.max_block_height < highest_block_height {
                                 #[cfg(feature = "tracing")]
-                                tracing::warn!(
-                                    "Timeout while preloading candles for {}-{}",
-                                    key.base_denom,
-                                    key.quote_denom
-                                );
-
-                                return Err(IndexerError::candle_timeout());
+                                tracing::error!(
+                                    %candle.max_block_height,
+                                    %highest_block_height,
+                                    %key.base_denom,
+                                    %key.quote_denom,
+                                    %key.interval,
+                                    "Candle is older than latest price, process was not properly shutdown before.",);
                             }
-
-                            let query_builder = CandleQueryBuilder::new(
-                                key.interval,
-                                key.base_denom.clone(),
-                                key.quote_denom.clone(),
-                            )
-                            .with_limit(MAX_ITEMS);
-
-                            candles = query_builder.fetch_all(clickhouse_client).await?.candles;
-
-                            if let Some(candle) = candles.first() {
-                                if candle.max_block_height < highest_block_height {
-                                    #[cfg(feature = "tracing")]
-                                    tracing::warn!(
-                                        %candle.max_block_height,
-                                        %highest_block_height,
-                                        %key.base_denom,
-                                        %key.quote_denom,
-                                        %key.interval,
-                                        "Candle is older than latest price");
-
-                                    // `candle` are built async in clickhouse, and this means they're
-                                    // not synced to the latest block yet.
-                                    // This won't happen in production, `preload_pairs` is called at start
-                                    // but during tests, it can happen.
-                                    sleep(Duration::from_millis(100)).await;
-
-                                    continue;
-                                }
-                            }
-
-                            candles.reverse(); // Most recent first -> most recent last
-
-                            break;
                         }
+
+                        candles.reverse(); // Most recent first -> most recent last
 
                         Ok::<_, IndexerError>((key, candles))
                     }
@@ -497,6 +472,9 @@ impl CandleCache {
                 },
             }
         }
+
+        #[cfg(feature = "tracing")]
+        tracing::info!("Preloaded all candles");
 
         self.update_metrics();
 

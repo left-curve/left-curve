@@ -1,7 +1,6 @@
 import {
   ensureErrorMessage,
   IconWallet,
-  Modals,
   useApp,
   useInputs,
   useMediaQuery,
@@ -53,8 +52,6 @@ import type { EIP1193Provider } from "@left-curve/store/types";
 import type React from "react";
 
 const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const { showModal } = useApp();
-  const { chain } = useConfig();
   const { activeStep, previousStep, data } = useWizard<{
     username: string;
     email: string;
@@ -66,10 +63,6 @@ const Container: React.FC<React.PropsWithChildren> = ({ children }) => {
 
   useEffect(() => {
     if (isConnected) navigate({ to: "/" });
-  }, []);
-
-  useEffect(() => {
-    if (chain.name === "Dango") showModal(Modals.SignupReminder);
   }, []);
 
   return (
@@ -277,7 +270,10 @@ const Credential: React.FC = () => {
 
       <div className="flex flex-col items-center w-full gap-4">
         <SocialCredential onAuth={() => createCredential("privy")} signup />
-        <PasskeyCredential onAuth={() => createCredential("passkey")} action="signup" />
+        <PasskeyCredential
+          onAuth={() => createCredential("passkey")}
+          label={m["common.signWithPasskey"]({ action: "signup" })}
+        />
 
         {isMd ? (
           <Button variant="secondary" fullWidth onClick={() => setData({ view: "wallets" })}>

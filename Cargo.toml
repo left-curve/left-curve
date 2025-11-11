@@ -24,15 +24,14 @@ members = [
   "dango/taxman",
   "dango/testing",
   "dango/types",
+  "dango/upgrade",
   "dango/vesting",
   "dango/warp",
   "grug/app",
   "grug/client",
   "grug/crypto",
   "grug/db/disk",
-  "grug/db/disk-lite",
   "grug/db/memory",
-  "grug/db/memory-lite",
   "grug/ffi",
   "grug/httpd",
   "grug/jellyfish-merkle",
@@ -226,6 +225,7 @@ dango-scripts               = { path = "dango/scripts" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
 dango-types                 = { path = "dango/types" }
+dango-upgrade               = { path = "dango/upgrade" }
 dango-vesting               = { path = "dango/vesting" }
 dango-warp                  = { path = "dango/warp" }
 grug                        = { path = "grug/std" }
@@ -234,9 +234,7 @@ grug-auth                   = { path = "grug/auth" }
 grug-client                 = { path = "grug/client" }
 grug-crypto                 = { path = "grug/crypto" }
 grug-db-disk                = { path = "grug/db/disk" }
-grug-db-disk-lite           = { path = "grug/db/disk-lite" }
 grug-db-memory              = { path = "grug/db/memory" }
-grug-db-memory-lite         = { path = "grug/db/memory-lite" }
 grug-ffi                    = { path = "grug/ffi" }
 grug-httpd                  = { path = "grug/httpd" }
 grug-jmt                    = { path = "grug/jellyfish-merkle" }

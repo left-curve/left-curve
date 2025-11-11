@@ -1,7 +1,7 @@
 /**
  * Takes a string and encodes it to a Uint8Array
  */
-export function encodeUtf8(str: string): Uint8Array {
+export function encodeUtf8(str: string) {
   return new TextEncoder().encode(str);
 }
 
@@ -12,7 +12,7 @@ export function encodeUtf8(str: string): Uint8Array {
  * is used to substitude invalid encodings.
  * By default lossy mode is off and invalid data will lead to exceptions.
  */
-export function decodeUtf8(data: Uint8Array, lossy = false): string {
+export function decodeUtf8(data: AllowSharedBufferSource, lossy = false): string {
   const fatal = !lossy;
   return new TextDecoder("utf-8", { fatal }).decode(data);
 }

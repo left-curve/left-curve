@@ -7,13 +7,14 @@ use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
-        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NaiveProposalPreparer, NaiveQuerier,
-        NullIndexer, ProposalPreparer, QuerierProviderImpl, TraceOption, UpgradeHandler, Vm,
-        catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun, do_configure,
-        do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer,
-        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
-        query_codes, query_config, query_contract, query_contracts, query_status, query_supplies,
-        query_supply, query_wasm_raw, query_wasm_scan, query_wasm_smart,
+        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
+        NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
+        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
+        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
+        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
+        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
+        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
+        query_wasm_raw, query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
@@ -26,6 +27,8 @@ use {
     prost::bytes::Bytes,
     std::sync::Arc,
 };
+
+pub type UpgradeHandler<VM> = fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>;
 
 /// The ABCI application.
 ///
@@ -50,18 +53,25 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     /// Related config in CosmWasm:
     /// <https://github.com/CosmWasm/wasmd/blob/v0.51.0/x/wasm/types/types.go#L322-L323>
     query_gas_limit: u64,
-    upgrade_handler: Arc<Option<UpgradeHandler<VM>>>,
+    /// The action to take to perform a chain upgrade.
+    upgrade_handler: Option<UpgradeHandler<VM>>,
+    /// Current cargo version of the app. Used in chain upgrades.
+    cargo_version: String,
 }
 
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
-    pub fn new(
+    pub fn new<V>(
         db: DB,
         vm: VM,
         pp: PP,
         indexer: ID,
         query_gas_limit: u64,
         upgrade_handler: Option<UpgradeHandler<VM>>,
-    ) -> Self {
+        cargo_version: V,
+    ) -> Self
+    where
+        V: Into<String>,
+    {
         #[cfg(feature = "metrics")]
         {
             crate::metrics::init_metrics();
@@ -73,8 +83,23 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             pp,
             indexer,
             query_gas_limit,
-            upgrade_handler: Arc::new(upgrade_handler),
+            upgrade_handler,
+            cargo_version: cargo_version.into(),
         }
+    }
+}
+
+#[cfg(feature = "testing")]
+impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
+    pub fn set_cargo_version_and_upgrade_handler<V>(
+        &mut self,
+        cargo_version: V,
+        upgrade_handler: Option<UpgradeHandler<VM>>,
+    ) where
+        V: Into<String>,
+    {
+        self.cargo_version = cargo_version.into();
+        self.upgrade_handler = upgrade_handler;
     }
 }
 
@@ -91,7 +116,8 @@ where
             pp: self.pp.clone(),
             indexer: NullIndexer,
             query_gas_limit: self.query_gas_limit,
-            upgrade_handler: Arc::clone(&self.upgrade_handler),
+            upgrade_handler: self.upgrade_handler,
+            cargo_version: self.cargo_version.clone(),
         }
     }
 }
@@ -120,7 +146,7 @@ where
         }
 
         let mut buffer = Shared::new(Buffer::new(
-            self.db.state_storage(None)?,
+            self.db.state_storage_with_comment(None, "consensus")?,
             None,
             "init_chain",
         ));
@@ -259,7 +285,7 @@ where
 
     #[inline]
     fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
-        let storage = self.db.state_storage(None)?;
+        let storage = self.db.state_storage_with_comment(None, "consensus")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
         let querier = QuerierProviderImpl::new_boxed(
             self.vm.clone(),
@@ -287,6 +313,7 @@ where
             tracing::info!(
                 block_height = block.info.height,
                 block_time = block.info.timestamp.to_rfc3339_string(),
+                block_hash = block.info.hash.to_string(),
                 num_txs = block.txs.len(),
                 "Received FinalizeBlock request"
             );
@@ -295,41 +322,110 @@ where
         #[cfg(feature = "metrics")]
         let block_duration = std::time::Instant::now();
 
-        let mut buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None, "finalize"));
+        let mut buffer = Shared::new(Buffer::new(
+            self.db.state_storage_with_comment(None, "consensus")?,
+            None,
+            "finalize",
+        ));
+
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // Make sure the new block height is exactly the last finalized height
         // plus one. This ensures that block height always matches the DB version.
         if block.info.height != last_finalized_block.height + 1 {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::error!(
+                    expect = last_finalized_block.height + 1,
+                    actual = block.info.height,
+                    "!!! WRONG BLOCK HEIGHT !!!"
+                );
+            }
+
             return Err(AppError::incorrect_block_height(
                 last_finalized_block.height + 1,
                 block.info.height,
             ));
         }
 
-        // If an upgrade handler exists, and we're at the scheduled block height,
-        // then run the upgrade action.
-        //
-        // The action MUST succeed. It failing is considered a fatal error, and
-        // we panic.
-        if let Some(upgrade_handler) = self.upgrade_handler.as_ref() {
-            if upgrade_handler.height == block.info.height {
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::info!(
-                        height = upgrade_handler.height,
-                        description = upgrade_handler.description.unwrap_or(""),
-                        "Performing chain upgrade"
-                    );
+        // If a planned upgrade exists and the block height is reached, then run
+        // the chain upgrade logic.
+        if let Some(upgrade) = NEXT_UPGRADE.may_load(&buffer)? {
+            if block.info.height >= upgrade.height {
+                // Current node software version doesn't match the upgrade version.
+                // Exit early, halt the chain, awaiting the node operator to
+                // deploy the right version.
+                //
+                // See the equivalent code is Cosmos SDK:
+                // https://github.com/cosmos/cosmos-sdk/blob/v0.53.4/baseapp/abci.go#L708-L710
+                if self.cargo_version != upgrade.cargo_version {
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::warn!(
+                            last_finalized_height = last_finalized_block.height,
+                            current_version = self.cargo_version,
+                            upgrade_version = upgrade.cargo_version,
+                            "!!! PRE-PLANNED CHAIN HALT !!!"
+                        );
+                    }
+
+                    return Err(AppError::upgrade_incorrect_version(
+                        self.cargo_version.clone(),
+                        upgrade.cargo_version,
+                    ));
                 }
 
-                (upgrade_handler.action)(Box::new(buffer.clone()), self.vm.clone(), block.info)
-                    .unwrap_or_else(|err| {
-                        panic!(
-                            "upgrade failed! height: {}, reason: {}",
-                            upgrade_handler.height, err
+                // Now the current node software version matches the upgrade version.
+                // We can proceed with the upgrade.
+                //
+                // If an action is specified in the `upgrade_handler`, then execute it.
+                // This action MUST succeed. If not, it's considered a critical
+                // error. We halt the chain, awaiting a fix.
+                if let Some(handler) = self.upgrade_handler {
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::info!(
+                            height = block.info.height,
+                            cargo_version = upgrade.cargo_version,
+                            "Performing chain upgrade"
                         );
-                    });
+                    }
+
+                    // If executing the action errors, an error is returned in the
+                    // ABCI response, which leads to a chain halt (as intended).
+                    (handler)(Box::new(buffer.clone()), self.vm.clone(), block.info).inspect_err(
+                        |_err| {
+                            #[cfg(feature = "tracing")]
+                            {
+                                tracing::error!(reason = %_err, "!!! UPGRADE FAILED !!!");
+                            }
+                        },
+                    )?;
+
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::info!(
+                            height = block.info.height,
+                            cargo_version = upgrade.cargo_version,
+                            "Completed chain upgrade"
+                        );
+                    }
+                } else {
+                    #[cfg(feature = "tracing")]
+                    {
+                        tracing::info!(
+                            height = block.info.height,
+                            cargo_version = upgrade.cargo_version,
+                            "No handler specified for the chain upgrade. Skipping..."
+                        );
+                    }
+                }
+
+                // Delete the scheduled upgrade, as it's already done.
+                NEXT_UPGRADE.remove(&mut buffer);
+
+                // Save the upgrade to the logs.
+                PAST_UPGRADES.save(&mut buffer, block.info.height, &upgrade.into())?;
             }
         }
 
@@ -541,8 +637,11 @@ where
 
         if let Some(block_height) = self.db.latest_version() {
             let querier = {
-                let storage = self.db.state_storage(Some(block_height))?;
+                let storage = self
+                    .db
+                    .state_storage_with_comment(Some(block_height), "consensus")?;
                 let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+
                 Arc::new(QuerierProviderImpl::new(
                     self.vm.clone(),
                     Box::new(storage),
@@ -577,7 +676,11 @@ where
     //   tokens to cover the tx fee;
     // 2. `authenticate`, where the sender account authenticates the transaction.
     pub fn do_check_tx(&self, tx: Tx) -> AppResult<CheckTxOutcome> {
-        let buffer = Shared::new(Buffer::new(self.db.state_storage(None)?, None, "check_tx"));
+        let buffer = Shared::new(Buffer::new(
+            self.db.state_storage_with_comment(None, "check_tx")?,
+            None,
+            "check_tx",
+        ));
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
         let gas_tracker = GasTracker::new_limited(tx.gas_limit);
 
@@ -655,7 +758,7 @@ where
         };
 
         // Use the state storage at the given version to perform the query.
-        let storage = self.db.state_storage(version)?;
+        let storage = self.db.state_storage_with_comment(version, "query_app")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         process_query(
@@ -693,7 +796,10 @@ where
             None
         };
 
-        let value = self.db.state_storage(version)?.read(key);
+        let value = self
+            .db
+            .state_storage_with_comment(version, "query_store")?
+            .read(key);
 
         Ok((value, proof))
     }
@@ -704,7 +810,11 @@ where
         height: u64,
         prove: bool,
     ) -> AppResult<TxOutcome> {
-        let buffer = Buffer::new(self.db.state_storage(None)?, None, "simulate");
+        let buffer = Buffer::new(
+            self.db.state_storage_with_comment(None, "simulate")?,
+            None,
+            "simulate",
+        );
         let block = LAST_FINALIZED_BLOCK.load(&buffer)?;
 
         // We can't "prove" a gas simulation
@@ -1136,6 +1246,10 @@ where
             let res = do_configure(&mut storage, block, sender, msg, trace_opt);
             res.map(Event::Configure)
         },
+        Message::Upgrade(msg) => {
+            let res = do_upgrade(&mut storage, gas_tracker, block, sender, msg, trace_opt);
+            res.map(Event::Upgrade)
+        },
         Message::Transfer(msg) => {
             let res = do_transfer(
                 vm,
@@ -1225,6 +1339,14 @@ where
         Query::AppConfig(_req) => {
             let res = query_app_config(&storage, gas_tracker)?;
             Ok(QueryResponse::AppConfig(res))
+        },
+        Query::NextUpgrade(_req) => {
+            let res = query_next_upgrade(&storage, gas_tracker)?;
+            Ok(QueryResponse::NextUpgrade(res))
+        },
+        Query::PastUpgrades(req) => {
+            let res = query_past_upgrades(&storage, gas_tracker, req)?;
+            Ok(QueryResponse::PastUpgrades(res))
         },
         Query::Balance(req) => {
             let res = query_balance(vm, storage, gas_tracker, block, query_depth, req)?;

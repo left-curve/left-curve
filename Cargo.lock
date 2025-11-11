@@ -3374,7 +3374,7 @@ dependencies = [
 
 [[package]]
 name = "dango-cli"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "bip32",
@@ -3389,12 +3389,13 @@ dependencies = [
  "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-types",
+ "dango-upgrade",
  "data-encoding",
  "dialoguer",
  "futures",
  "grug-app",
  "grug-client",
- "grug-db-disk-lite",
+ "grug-db-disk",
  "grug-httpd",
  "grug-types",
  "grug-vm-rust",
@@ -3496,6 +3497,7 @@ name = "dango-httpd"
 version = "0.0.0"
 dependencies = [
  "actix-cors",
+ "actix-files",
  "actix-web",
  "actix-web-metrics",
  "async-graphql",
@@ -3677,8 +3679,8 @@ dependencies = [
  "dango-types",
  "grug",
  "grug-app",
- "grug-db-disk-lite",
- "grug-db-memory-lite",
+ "grug-db-disk",
+ "grug-db-memory",
  "grug-vm-rust",
  "hex",
  "hex-literal",
@@ -3735,8 +3737,8 @@ dependencies = [
  "grug",
  "grug-app",
  "grug-client",
- "grug-db-disk-lite",
- "grug-db-memory-lite",
+ "grug-db-disk",
+ "grug-db-memory",
  "grug-testing",
  "grug-types",
  "grug-vm-hybrid",
@@ -3788,6 +3790,17 @@ dependencies = [
  "sea-orm",
  "serde",
  "sha2 0.10.9",
+]
+
+[[package]]
+name = "dango-upgrade"
+version = "0.0.0"
+dependencies = [
+ "dango-dex",
+ "dango-types",
+ "grug",
+ "grug-app",
+ "tracing",
 ]
 
 [[package]]
@@ -4825,6 +4838,7 @@ dependencies = [
  "ics23",
  "metrics",
  "prost",
+ "sha2 0.10.9",
  "tendermint",
  "thiserror 2.0.12",
  "tower",
@@ -4877,25 +4891,12 @@ dependencies = [
  "grug-types",
  "hex-literal",
  "ics23",
- "proptest",
- "rocksdb",
- "temp-rocksdb",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "grug-db-disk-lite"
-version = "0.0.0"
-dependencies = [
- "error-backtrace",
- "grug-app",
- "grug-types",
  "metrics",
  "ouroboros",
+ "proptest",
  "rocksdb",
- "sha2 0.10.9",
+ "serde",
  "temp-rocksdb",
- "tempfile",
  "thiserror 2.0.12",
  "tracing",
 ]
@@ -4904,23 +4905,12 @@ dependencies = [
 name = "grug-db-memory"
 version = "0.0.0"
 dependencies = [
- "error-backtrace",
- "grug-app",
- "grug-jmt",
- "grug-types",
- "thiserror 2.0.12",
-]
-
-[[package]]
-name = "grug-db-memory-lite"
-version = "0.0.0"
-dependencies = [
  "anyhow",
  "borsh",
  "error-backtrace",
  "grug-app",
  "grug-types",
- "sha2 0.10.9",
+ "ouroboros",
  "thiserror 2.0.12",
 ]
 
@@ -4979,6 +4969,7 @@ name = "grug-jmt"
 version = "0.0.0"
 dependencies = [
  "borsh",
+ "grug-app",
  "grug-storage",
  "grug-types",
  "hex-literal",

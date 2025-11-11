@@ -1,33 +1,15 @@
 services:
   traefik:
     image: traefik:v3.5
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     ports:
       - "80:80"
       - "443:443"
       # traefik dashboard
       - "{{ tailscale_ip }}:8888:8888"
-      # devnet
-      - "8080:8080"
-      - "8081:8081"
-      - "8082:8082"
-      - "26656:26656"
-      - "{{ tailscale_ip }}:26657:26657"
-      - "{{ tailscale_ip }}:26658:26658"
-      - "{{ tailscale_ip }}:26660:26660"
-      - "{{ tailscale_ip }}:8083:8083"
-      - "{{ tailscale_ip }}:8084:8084"
-      - "{{ tailscale_ip }}:8085:8085"
-      # mainnet
-      - "8050:8050"
-      - "8051:8051"
-      - "8052:8052"
-      - "36656:36656"
-      - "{{ tailscale_ip }}:36657:36657"
-      - "{{ tailscale_ip }}:36658:36658"
-      - "{{ tailscale_ip }}:36660:36660"
-      - "{{ tailscale_ip }}:8053:8053"
-      - "{{ tailscale_ip }}:8054:8054"
-      - "{{ tailscale_ip }}:8055:8055"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - "{{ traefik_dir }}/config:/config:ro"
@@ -35,7 +17,6 @@ services:
       - "{{ traefik_dir }}/letsencrypt:/letsencrypt:ro"
     networks:
       - traefik
-      - monitoring
     healthcheck:
       test: ["CMD", "traefik", "healthcheck", "--ping", "--entrypoints.traefik.address=:8888"]
       interval: 10s
@@ -47,5 +28,3 @@ networks:
   traefik:
     driver: bridge
     name: traefik
-  monitoring:
-    external: true

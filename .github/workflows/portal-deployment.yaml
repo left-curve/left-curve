@@ -62,7 +62,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG_ENVIRONMENT: ${{ github.ref_name == 'ui/testnet' && 'test' || github.ref_name == 'ui/release' && 'prod' || 'dev' }}
-          PUBLIC_WEBRTC_URI: ${{ secrets.PUBLIC_WEBRTC_URI }}
+          PUBLIC_WS_URI: ${{ vars.WS_URI }}
           PUBLIC_FP: ${{vars.FULLPAGE_KEY_BASE64 }}
           PUBLIC_SENTRY_DSN: ${{ vars.SENTRY_PORTAL_WEB_DSN }}
           PUBLIC_SENTRY_ENVIRONMENT: ${{ github.ref_name == 'ui/release' && 'production' || github.ref_name == 'ui/testnet' && 'test' || github.ref_name == 'main' && 'dev' }}
