@@ -71,7 +71,7 @@ pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 /// and maybe our implementation will converge with Sei's some time later.
 pub struct DiskDb<T> {
     /// Data in the database.
-    data: Shared<Data>,
+    pub(crate) data: Shared<Data>,
     /// Data staged to, but not yet, be committed to the database.
     pending: Shared<Option<PendingData>>,
     /// The commitment scheme.
@@ -79,9 +79,9 @@ pub struct DiskDb<T> {
 }
 
 #[derive(Debug)]
-struct Data {
+pub(crate) struct Data {
     /// Represents an on-disk RocksDB instance.
-    db: DB,
+    pub(crate) db: DB,
     /// Portion of the state storage that is critical to the chain's performance,
     /// loaded into memory. Reading these data doesn't need to touch the disk.
     priority_data: Option<PriorityData>,
