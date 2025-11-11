@@ -44,6 +44,24 @@
       loop: "{{ existing_env_variables.stdout_lines }}"
       when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0
 
+    - name: Set string facts from existing .env
+      set_fact:
+        "{{ key }}": "{{ value }}"
+      loop: "{{ existing_env_variables.stdout_lines }}"
+      vars:
+        key: "{{ item.split('=')[0] }}"
+        value: "{{ item.split('=')[1] }}"
+      when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0 and key not in ['delete_postgres_database_at_merge', 'delete_clickhouse_database_at_merge']
+
+    - name: Set boolean facts from existing .env
+      set_fact:
+        "{{ key }}": "{{ value | bool }}"
+      loop: "{{ existing_env_variables.stdout_lines }}"
+      vars:
+        key: "{{ item.split('=')[0] }}"
+        value: "{{ item.split('=')[1] }}"
+      when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0 and key in ['delete_postgres_database_at_merge', 'delete_clickhouse_database_at_merge']
+
     - name: Check if deployment directory exists
       stat:
         path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
