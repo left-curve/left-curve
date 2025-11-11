@@ -320,6 +320,11 @@ impl StartCmd {
             })
     }
 
+    /// Reference:
+    /// - Namada:
+    ///   https://github.com/namada-net/namada/blob/v101.1.4/crates/node/src/lib.rs#L737-L774
+    /// - Penumbra:
+    ///   https://github.com/penumbra-zone/penumbra/blob/dafaa19109fd06b67cb294a097bad803ade4ac7c/crates/core/app/src/server.rs#L47-L73
     async fn run_with_indexer<ID>(
         self,
         grug_cfg: GrugConfig,
@@ -344,24 +349,15 @@ impl StartCmd {
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);
 
-        let mempool = ServiceBuilder::new()
-            // .load_shed() // don't load_shed, it will make CometBFT crash. https://github.com/namada-net/namada/blob/v101.1.4/crates/node/src/lib.rs#L751
-            .buffer(100)
-            .service(mempool);
-
-        let info = ServiceBuilder::new()
-            // .load_shed() // don't load_shed, it will make tower-abci crash. https://github.com/namada-net/namada/blob/v101.1.4/crates/node/src/lib.rs#L752
-            .buffer(100)
-            .rate_limit(50, time::Duration::from_secs(1))
-            .service(info);
-
         let abci_server = Server::builder()
             .consensus(consensus)
             .snapshot(snapshot)
             .mempool(mempool)
             .info(info)
             .finish()
-            .unwrap(); // this fails if one of consensus|snapshot|mempool|info is None
+            // Safety: the consensus, snapshot, mempool, and info services have all been provided
+            // to the builder above.
+            .expect("all components of abci have been provided");
 
         // Listen for SIGINT and SIGTERM signals.
         // SIGINT is received when user presses Ctrl-C.
