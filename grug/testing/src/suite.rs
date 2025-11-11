@@ -714,7 +714,7 @@ where
 {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         self.app
-            .do_query_app(req, 0, false)
+            .do_query_app(req, None, false)
             .map_err(|err| StdError::Host(err.into_generic_backtraced_error()))
     }
 }

@@ -742,66 +742,84 @@ where
         Ok((version, root_hash))
     }
 
-    pub fn do_query_app(&self, req: Query, height: u64, prove: bool) -> AppResult<QueryResponse> {
+    pub fn do_query_app(
+        &self,
+        req: Query,
+        height: Option<u64>,
+        prove: bool,
+    ) -> AppResult<QueryResponse> {
+        let (res, _height) = self.do_query_app_with_height(req, height, prove)?;
+        Ok(res)
+    }
+
+    /// Return the query response, as well as the block height this query was
+    /// performed at.
+    pub fn do_query_app_with_height(
+        &self,
+        req: Query,
+        height: Option<u64>,
+        prove: bool,
+    ) -> AppResult<(QueryResponse, u64)> {
         if prove {
             // We can't do Merkle proof for smart queries. Only raw store query
             // can be Merkle proved.
             return Err(AppError::proof_not_supported());
         }
 
-        let version = if height == 0 {
-            // Height being zero means unspecified (Protobuf doesn't have a null
-            // type) in which case we use the latest version.
-            None
-        } else {
-            Some(height)
-        };
-
         // Use the state storage at the given version to perform the query.
-        let storage = self.db.state_storage_with_comment(version, "query_app")?;
+        let storage = self.db.state_storage_with_comment(height, "query_app")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
-        process_query(
+        let res = process_query(
             self.vm.clone(),
             Box::new(storage),
             GasTracker::new_limited(self.query_gas_limit),
             block,
             0,
             req,
-        )
+        )?;
+
+        Ok((res, block.height))
+    }
+
+    pub fn do_query_store(
+        &self,
+        key: &[u8],
+        height: Option<u64>,
+        prove: bool,
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+        let (value, proof, _height) = self.do_query_store_with_height(key, height, prove)?;
+        Ok((value, proof))
     }
 
     /// Performs a raw query of the app's underlying key-value store.
     ///
     /// Returns:
     /// - the value corresponding to the given key; `None` if the key doesn't exist;
-    /// - the Merkle proof; `None` if a proof is not requested (`prove` is false).
-    pub fn do_query_store(
+    /// - the Merkle proof; `None` if a proof is not requested (`prove` is false);
+    /// - the block height at which this query was performed at.
+    pub fn do_query_store_with_height(
         &self,
         key: &[u8],
-        height: u64,
+        height: Option<u64>,
         prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        let version = if height == 0 {
-            // Height being zero means unspecified (Protobuf doesn't have a null
-            // type) in which case we use the latest version.
-            None
-        } else {
-            Some(height)
-        };
-
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
         let proof = if prove {
-            Some(self.db.prove(key, version)?.to_borsh_vec()?)
+            Some(self.db.prove(key, height)?.to_borsh_vec()?)
         } else {
             None
         };
 
         let value = self
             .db
-            .state_storage_with_comment(version, "query_store")?
+            .state_storage_with_comment(height, "query_store")?
             .read(key);
 
-        Ok((value, proof))
+        Ok((
+            value,
+            proof,
+            height.unwrap_or_else(|| self.db.latest_version().unwrap_or(0)),
+        ))
     }
 
     pub fn do_simulate(
@@ -939,10 +957,35 @@ where
     }
 
     pub fn do_query_app_raw(&self, raw_req: &[u8], height: u64, prove: bool) -> AppResult<Vec<u8>> {
+        let height = if height == 0 {
+            // Height being zero means unspecified (Protobuf doesn't have a null
+            // type) in which case we use the latest version.
+            None
+        } else {
+            Some(height)
+        };
+
         let req = raw_req.deserialize_json()?;
         let res = self.do_query_app(req, height, prove)?;
 
         Ok(res.to_json_vec()?)
+    }
+
+    pub fn do_query_store_raw(
+        &self,
+        key: &[u8],
+        height: u64,
+        prove: bool,
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+        let height = if height == 0 {
+            // Height being zero means unspecified (Protobuf doesn't have a null
+            // type) in which case we use the latest version.
+            None
+        } else {
+            Some(height)
+        };
+
+        self.do_query_store(key, height, prove)
     }
 }
 

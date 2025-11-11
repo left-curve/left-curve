@@ -41,7 +41,7 @@ where
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
     async fn query_app(&self, raw_req: Query, height: Option<u64>) -> AppResult<QueryResponse> {
-        Ok(self.do_query_app(raw_req, height.unwrap_or(0), false)?)
+        Ok(self.do_query_app(raw_req, height, false)?)
     }
 
     async fn query_store(
@@ -50,7 +50,7 @@ where
         height: Option<u64>,
         prove: bool,
     ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        self.do_query_store(key, height.unwrap_or(0), prove)
+        self.do_query_store(key, height, prove)
     }
 
     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
