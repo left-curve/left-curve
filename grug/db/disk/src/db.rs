@@ -202,15 +202,17 @@ where
     type StateStorage = StateStorage;
 
     fn state_commitment(&self) -> StateCommitment {
-        StateCommitment {
-            data: Arc::new(self.data.static_read_access()),
-        }
+        StateCommitment::new(&self.data)
     }
 
     fn state_storage_with_comment(
         &self,
         version: Option<u64>,
-        #[cfg_attr(not(feature = "metrics"), allow(unused_variables))] comment: &'static str,
+        #[cfg_attr(
+            not(any(feature = "tracing", feature = "metrics")),
+            allow(unused_variables)
+        )]
+        comment: &'static str,
     ) -> DbResult<StateStorage> {
         // If version is unspecified, use the latest version. Otherwise, make
         // sure it's no newer than the latest version.
@@ -224,11 +226,7 @@ where
             }
         }
 
-        Ok(StateStorage {
-            data: Arc::new(self.data.static_read_access()),
-            #[cfg(feature = "metrics")]
-            comment,
-        })
+        Ok(StateStorage::new(&self.data, comment))
     }
 
     fn latest_version(&self) -> Option<u64> {
@@ -322,7 +320,17 @@ where
             .take()
             .ok_or(DbError::pending_data_not_set())?;
 
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(commit = "commit", "Acquiring write-lock on data");
+        }
+
         self.data.write_with(|mut data| {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!(commit = "commit", "Acquired write-lock on data");
+            }
+
             // If priority data exists, apply the change set to it.
             if let Some(priority) = &mut data.priority_data {
                 for (k, op) in pending.state_storage.range::<[u8], _>((
@@ -383,6 +391,11 @@ where
             data.db.write(batch)
         })?;
 
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(commit = "commit", "Released write-lock on data");
+        }
+
         #[cfg(feature = "metrics")]
         {
             metrics::histogram!(DISK_DB_LABEL, "operation" => "commit")
@@ -442,6 +455,26 @@ where
 #[derive(Debug, Clone)]
 pub struct StateCommitment {
     data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
+}
+
+impl StateCommitment {
+    fn new(data: &Shared<Data>) -> Self {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(comment = "commitment", "Acquiring read-lock on data");
+        }
+
+        let data = data.static_read_access();
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(comment = "commitment", "Acquired read-lock on data");
+        }
+
+        Self {
+            data: Arc::new(data),
+        }
+    }
 }
 
 impl Storage for StateCommitment {
@@ -528,16 +561,49 @@ impl Storage for StateCommitment {
     }
 }
 
+impl Drop for StateCommitment {
+    fn drop(&mut self) {
+        tracing::debug!(comment = "commitment", "Released read-lock on data");
+    }
+}
+
 // ------------------------------- state storage -------------------------------
 
 #[derive(Clone, Debug)]
 pub struct StateStorage {
     data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
-    #[cfg(feature = "metrics")]
+    #[cfg(any(feature = "tracing", feature = "metrics"))]
     comment: &'static str,
 }
 
 impl StateStorage {
+    fn new(
+        data: &Shared<Data>,
+        #[cfg_attr(
+            not(any(feature = "tracing", feature = "metrics")),
+            allow(unused_variables)
+        )]
+        comment: &'static str,
+    ) -> Self {
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(comment, "Acquiring read-lock on data");
+        }
+
+        let data = data.static_read_access();
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(comment, "Acquired read-lock on data");
+        }
+
+        Self {
+            data: Arc::new(data),
+            #[cfg(any(feature = "tracing", feature = "metrics"))]
+            comment,
+        }
+    }
+
     fn create_iterator<'a>(
         &'a self,
         min: Option<&[u8]>,
@@ -679,6 +745,13 @@ impl Storage for StateStorage {
 
     fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
         unreachable!("write function called on read-only storage");
+    }
+}
+
+#[cfg(feature = "tracing")]
+impl Drop for StateStorage {
+    fn drop(&mut self) {
+        tracing::debug!(comment = self.comment, "Released read-lock on data");
     }
 }
 
