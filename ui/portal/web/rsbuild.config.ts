@@ -43,18 +43,18 @@ const chain = {
 
 const urls = {
   local: {
-    faucetUrl: "http://localhost:8082",
-    questUrl: "http://localhost:8081",
+    faucetUrl: "http://localhost:8082/mint",
+    questUrl: "http://localhost:8081/check_username",
     upUrl: "http://localhost:8080/up",
   },
   dev: {
-    faucetUrl: "https://faucet-devnet-ovh2.dango.zone",
-    questUrl: "https://quest-bot-devnet.dango.zone",
+    faucetUrl: "https://faucet-devnet-ovh2.dango.zone/mint",
+    questUrl: "https://quest-bot-devnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
   },
   test: {
-    faucetUrl: "https://faucet-testnet-ovh2.dango.zone",
-    questUrl: "https://quest-bot-testnet.dango.zone",
+    faucetUrl: "https://faucet-testnet-ovh2.dango.zone/mint",
+    questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
   },
 }[environment]!;
