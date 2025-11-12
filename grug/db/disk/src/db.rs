@@ -111,7 +111,7 @@ impl<T> DiskDb<T> {
     }
 
     /// Create a DiskDb instance by opening a physical RocksDB instance,
-    /// optionally with a priority range. Recrods within the range will be
+    /// optionally with a priority range. Records within the range will be
     /// loaded into memory for better performance. The range's lower bound is
     /// inclusive, the upper bound is exclusive.
     pub fn open_with_priority<P, B>(data_dir: P, priority_range: Option<(B, B)>) -> DbResult<Self>
