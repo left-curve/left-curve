@@ -26,14 +26,6 @@ pub const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 
 /// The state storage (SS) family stores raw, prehash key-value pair data.
 /// When performing normal read/write/remove/scan interactions, we use this CF.
-///
-/// It also utilize RocksDB's timestamping feature to provide historical state
-/// access, necessary for archive nodes:
-/// https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
-///
-/// Unfortunately the Rust API for RocksDB does not support timestamping,
-/// we have to add it in. Our fork is here, under the `0.21.0-cw` branch:
-/// https://github.com/left-curve/rust-rocksdb/tree/v0.21.0-cw
 pub const CF_NAME_STATE_STORAGE: &str = "state_storage";
 
 /// Storage key for the latest version.
@@ -119,8 +111,6 @@ impl<T> DiskDb<T> {
         P: AsRef<Path>,
         B: AsRef<[u8]>,
     {
-        // Note: For default and state commitment CFs, don't enable timestamping;
-        // for state storage column family, enable timestamping.
         let db = DB::open_cf(&new_db_options(), data_dir, [
             CF_NAME_DEFAULT,
             #[cfg(feature = "ibc")]
@@ -134,16 +124,6 @@ impl<T> DiskDb<T> {
             #[cfg(feature = "tracing")]
             let mut size = 0;
 
-            // On a brand new database, where the `state_storage` column family
-            // is completely empty, with no data ever written into it yet, the
-            // iterator fails with:
-            //
-            // > Invalid argument: cannot call this method on column family
-            //   state_storage that enables timestamp
-            //
-            // Therefore, we check whether the `latest_version` exists, If not,
-            // it means the DB is new, then we default the priority data to an
-            // empty B-tree map.
             let cf = cf_state_storage(&db);
             let opts = new_read_options(Some(min.as_ref()), Some(max.as_ref()));
             let records = db
