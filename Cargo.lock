@@ -3304,14 +3304,11 @@ dependencies = [
  "data-encoding",
  "dialoguer",
  "futures",
- "grug-app 0.0.0",
- "grug-app 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
+ "grug-app",
  "grug-client",
- "grug-db-disk 0.0.0",
- "grug-db-disk 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
+ "grug-db-disk",
  "grug-httpd",
- "grug-types 0.0.0",
- "grug-types 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
+ "grug-types",
  "grug-vm-rust",
  "hex",
  "home",
@@ -3322,7 +3319,6 @@ dependencies = [
  "pyth-client",
  "pyth-types",
  "rand 0.8.5",
- "rocksdb",
  "sentry",
  "serde",
  "tendermint",
@@ -3346,7 +3342,7 @@ dependencies = [
  "dango-auth",
  "dango-types",
  "grug",
- "identity 0.0.0",
+ "identity",
  "k256",
  "pbkdf2",
  "rand 0.8.5",
@@ -3450,12 +3446,12 @@ dependencies = [
  "chrono",
  "clickhouse",
  "dango-types",
- "error-backtrace 0.0.0",
+ "error-backtrace",
  "futures",
  "grug",
- "grug-app 0.0.0",
+ "grug-app",
  "grug-httpd",
- "grug-types 0.0.0",
+ "grug-types",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
@@ -3485,11 +3481,11 @@ dependencies = [
  "borsh",
  "dango-indexer-sql-migration",
  "dango-types",
- "error-backtrace 0.0.0",
+ "error-backtrace",
  "grug",
- "grug-app 0.0.0",
- "grug-math 0.0.0",
- "grug-types 0.0.0",
+ "grug-app",
+ "grug-math",
+ "grug-types",
  "indexer-disk-saver",
  "indexer-sql",
  "itertools 0.14.0",
@@ -3535,11 +3531,11 @@ dependencies = [
  "dango-indexer-sql",
  "dango-proposal-preparer",
  "dango-testing",
- "grug-app 0.0.0",
+ "grug-app",
  "grug-db-memory",
  "grug-httpd",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "grug-vm-rust",
  "hyperlane-testing",
  "indexer-hooked",
@@ -3569,7 +3565,7 @@ dependencies = [
  "anyhow",
  "dango-types",
  "grug",
- "grug-app 0.0.0",
+ "grug-app",
  "metrics",
  "prost",
  "pyth-client",
@@ -3592,8 +3588,8 @@ dependencies = [
  "dango-testing",
  "dango-types",
  "grug",
- "grug-app 0.0.0",
- "grug-db-disk 0.0.0",
+ "grug-app",
+ "grug-db-disk",
  "grug-db-memory",
  "grug-vm-rust",
  "hex",
@@ -3647,12 +3643,12 @@ dependencies = [
  "digest 0.10.7",
  "eth-utils",
  "grug",
- "grug-app 0.0.0",
+ "grug-app",
  "grug-client",
- "grug-db-disk 0.0.0",
+ "grug-db-disk",
  "grug-db-memory",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
@@ -3661,7 +3657,7 @@ dependencies = [
  "home",
  "hyperlane-testing",
  "hyperlane-types",
- "identity 0.0.0",
+ "identity",
  "indexer-client",
  "indexer-disk-saver",
  "indexer-hooked",
@@ -3710,7 +3706,7 @@ dependencies = [
  "dango-dex",
  "dango-types",
  "grug",
- "grug-app 0.0.0",
+ "grug-app",
  "tracing",
 ]
 
@@ -3961,11 +3957,6 @@ name = "dyn-event"
 version = "0.0.0"
 
 [[package]]
-name = "dyn-event"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
-
-[[package]]
 name = "dynasm"
 version = "1.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4163,36 +4154,15 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "borsh",
- "error-backtrace 0.0.0",
- "error-backtrace-derive 0.0.0",
+ "error-backtrace",
+ "error-backtrace-derive",
  "serde",
  "thiserror 2.0.12",
 ]
 
 [[package]]
-name = "error-backtrace"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
-dependencies = [
- "anyhow",
- "borsh",
- "error-backtrace-derive 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "serde",
-]
-
-[[package]]
 name = "error-backtrace-derive"
 version = "0.0.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.101",
-]
-
-[[package]]
-name = "error-backtrace-derive"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4214,7 +4184,7 @@ dependencies = [
 name = "eth-utils"
 version = "0.0.0"
 dependencies = [
- "identity 0.0.0",
+ "identity",
  "k256",
  "sha3",
 ]
@@ -4752,10 +4722,10 @@ dependencies = [
  "grug-client",
  "grug-ffi",
  "grug-macros",
- "grug-math 0.0.0",
- "grug-storage 0.0.0",
+ "grug-math",
+ "grug-storage",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "serde",
  "serde_json",
  "serde_with",
@@ -4767,10 +4737,10 @@ version = "0.0.0"
 dependencies = [
  "borsh",
  "data-encoding",
- "dyn-event 0.0.0",
- "error-backtrace 0.0.0",
- "grug-storage 0.0.0",
- "grug-types 0.0.0",
+ "dyn-event",
+ "error-backtrace",
+ "grug-storage",
+ "grug-types",
  "http 1.3.1",
  "ics23",
  "metrics",
@@ -4784,28 +4754,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-app"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
-dependencies = [
- "borsh",
- "dyn-event 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "error-backtrace 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "grug-storage 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "grug-types 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "http 1.3.1",
- "prost",
- "sha2 0.10.9",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "grug-client"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "grug-types 0.0.0",
+ "grug-types",
  "serde",
  "tendermint",
  "tendermint-rpc",
@@ -4822,7 +4776,7 @@ dependencies = [
  "ed25519-dalek",
  "hex",
  "hex-literal",
- "identity 0.0.0",
+ "identity",
  "k256",
  "p256",
  "rand 0.8.5",
@@ -4835,32 +4789,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-crypto"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
-dependencies = [
- "blake2",
- "blake3",
- "digest 0.10.7",
- "ed25519-dalek",
- "identity 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "k256",
- "p256",
- "sha2 0.10.9",
- "sha3",
- "signature",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "grug-db-disk"
 version = "0.0.0"
 dependencies = [
- "error-backtrace 0.0.0",
- "grug-app 0.0.0",
+ "error-backtrace",
+ "grug-app",
  "grug-jmt",
- "grug-storage 0.0.0",
- "grug-types 0.0.0",
+ "grug-storage",
+ "grug-types",
  "hex-literal",
  "ics23",
  "metrics",
@@ -4873,27 +4809,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-db-disk"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
-dependencies = [
- "error-backtrace 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "grug-app 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "grug-types 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "ouroboros",
- "rocksdb",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "grug-db-memory"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "borsh",
- "error-backtrace 0.0.0",
- "grug-app 0.0.0",
- "grug-types 0.0.0",
+ "error-backtrace",
+ "grug-app",
+ "grug-types",
  "ouroboros",
  "parking_lot",
  "thiserror 2.0.12",
@@ -4904,8 +4827,8 @@ name = "grug-ffi"
 version = "0.0.0"
 dependencies = [
  "borsh",
- "error-backtrace 0.0.0",
- "grug-types 0.0.0",
+ "error-backtrace",
+ "grug-types",
  "serde",
 ]
 
@@ -4927,9 +4850,9 @@ dependencies = [
  "chrono",
  "clap",
  "futures-util",
- "grug-app 0.0.0",
+ "grug-app",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "metrics",
  "metrics-exporter-prometheus",
  "num_cpus",
@@ -4954,9 +4877,9 @@ name = "grug-jmt"
 version = "0.0.0"
 dependencies = [
  "borsh",
- "grug-app 0.0.0",
- "grug-storage 0.0.0",
- "grug-types 0.0.0",
+ "grug-app",
+ "grug-storage",
+ "grug-types",
  "hex-literal",
  "ics23",
  "proptest",
@@ -4980,7 +4903,7 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh",
- "error-backtrace 0.0.0",
+ "error-backtrace",
  "paste",
  "proptest",
  "serde",
@@ -4990,26 +4913,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-math"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
-dependencies = [
- "bnum",
- "borsh",
- "error-backtrace 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "paste",
- "serde",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "grug-mock-account"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug-ffi",
- "grug-storage 0.0.0",
- "grug-types 0.0.0",
+ "grug-storage",
+ "grug-types",
  "serde",
  "sha2 0.10.9",
 ]
@@ -5020,9 +4930,9 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "grug-ffi",
- "grug-math 0.0.0",
- "grug-storage 0.0.0",
- "grug-types 0.0.0",
+ "grug-math",
+ "grug-storage",
+ "grug-types",
  "serde",
 ]
 
@@ -5033,10 +4943,10 @@ dependencies = [
  "anyhow",
  "borsh",
  "grug-ffi",
- "grug-math 0.0.0",
+ "grug-math",
  "grug-mock-bank",
- "grug-storage 0.0.0",
- "grug-types 0.0.0",
+ "grug-storage",
+ "grug-types",
  "serde",
 ]
 
@@ -5046,32 +4956,19 @@ version = "0.0.0"
 dependencies = [
  "bnum",
  "borsh",
- "error-backtrace 0.0.0",
- "grug-math 0.0.0",
- "grug-types 0.0.0",
+ "error-backtrace",
+ "grug-math",
+ "grug-types",
  "prost",
  "serde",
  "test-case",
 ]
 
 [[package]]
-name = "grug-storage"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
-dependencies = [
- "bnum",
- "borsh",
- "grug-math 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "grug-types 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "prost",
- "serde",
-]
-
-[[package]]
 name = "grug-tester"
 version = "0.0.0"
 dependencies = [
- "error-backtrace 0.0.0",
+ "error-backtrace",
  "grug",
 ]
 
@@ -5082,17 +4979,17 @@ dependencies = [
  "anyhow",
  "async-trait",
  "borsh",
- "error-backtrace 0.0.0",
- "grug-app 0.0.0",
+ "error-backtrace",
+ "grug-app",
  "grug-db-memory",
- "grug-math 0.0.0",
+ "grug-math",
  "grug-mock-account",
  "grug-mock-bank",
  "grug-mock-taxman",
- "grug-storage 0.0.0",
- "grug-types 0.0.0",
+ "grug-storage",
+ "grug-types",
  "grug-vm-rust",
- "identity 0.0.0",
+ "identity",
  "k256",
  "prost",
  "rand 0.8.5",
@@ -5118,9 +5015,9 @@ dependencies = [
  "data-encoding",
  "digest 0.10.7",
  "dyn-clone",
- "error-backtrace 0.0.0",
- "grug-crypto 0.0.0",
- "grug-math 0.0.0",
+ "error-backtrace",
+ "grug-crypto",
+ "grug-math",
  "hex-literal",
  "metrics",
  "ouroboros",
@@ -5143,45 +5040,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "grug-types"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
-dependencies = [
- "async-trait",
- "bnum",
- "borsh",
- "data-encoding",
- "digest 0.10.7",
- "dyn-clone",
- "error-backtrace 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "grug-crypto 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "grug-math 0.0.0 (git+https://github.com/left-curve/left-curve?rev=54dbcf9)",
- "hex-literal",
- "ouroboros",
- "paste",
- "prost",
- "ripemd",
- "serde",
- "serde_json",
- "serde_with",
- "sha2 0.10.9",
- "sha3",
- "strum 0.27.1",
- "strum_macros 0.27.1",
- "thiserror 2.0.12",
-]
-
-[[package]]
 name = "grug-vm-hybrid"
 version = "0.0.0"
 dependencies = [
- "error-backtrace 0.0.0",
- "grug-app 0.0.0",
+ "error-backtrace",
+ "grug-app",
  "grug-db-memory",
- "grug-math 0.0.0",
+ "grug-math",
  "grug-tester",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "grug-vm-hybrid",
  "grug-vm-rust",
  "grug-vm-wasm",
@@ -5194,12 +5062,12 @@ name = "grug-vm-rust"
 version = "0.0.0"
 dependencies = [
  "elsa",
- "error-backtrace 0.0.0",
- "grug-app 0.0.0",
- "grug-crypto 0.0.0",
- "grug-math 0.0.0",
+ "error-backtrace",
+ "grug-app",
+ "grug-crypto",
+ "grug-math",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "serde",
  "test-case",
  "thiserror 2.0.12",
@@ -5213,17 +5081,17 @@ dependencies = [
  "criterion",
  "data-encoding",
  "ed25519-dalek",
- "error-backtrace 0.0.0",
- "grug-app 0.0.0",
- "grug-crypto 0.0.0",
+ "error-backtrace",
+ "grug-app",
+ "grug-crypto",
  "grug-db-memory",
- "grug-math 0.0.0",
+ "grug-math",
  "grug-mock-bank",
  "grug-tester",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "grug-vm-wasm",
- "identity 0.0.0",
+ "identity",
  "k256",
  "p256",
  "rand 0.8.5",
@@ -5683,7 +5551,7 @@ dependencies = [
  "grug",
  "hex-literal",
  "hyperlane-types",
- "identity 0.0.0",
+ "identity",
  "k256",
  "rand 0.8.5",
  "test-case",
@@ -5706,7 +5574,7 @@ dependencies = [
  "grug",
  "hex-literal",
  "hyperlane-types",
- "identity 0.0.0",
+ "identity",
  "k256",
  "rand 0.8.5",
 ]
@@ -5876,14 +5744,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "identity"
-version = "0.0.0"
-source = "git+https://github.com/left-curve/left-curve?rev=54dbcf9#54dbcf97de7d58c21f94e4815d58fb1d299210ea"
-dependencies = [
- "digest 0.10.7",
-]
-
-[[package]]
 name = "idna"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5948,11 +5808,11 @@ dependencies = [
  "dango-mock-httpd",
  "dango-testing",
  "dango-types",
- "error-backtrace 0.0.0",
+ "error-backtrace",
  "graphql_client",
  "grug",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "indexer-testing",
  "paste",
  "reqwest 0.12.23",
@@ -5971,12 +5831,12 @@ dependencies = [
  "anyhow",
  "assertor",
  "borsh",
- "error-backtrace 0.0.0",
+ "error-backtrace",
  "glob",
  "grug",
- "grug-app 0.0.0",
- "grug-math 0.0.0",
- "grug-types 0.0.0",
+ "grug-app",
+ "grug-math",
+ "grug-types",
  "indexer-sql-migration",
  "lzma-rs",
  "sea-orm",
@@ -6001,8 +5861,8 @@ dependencies = [
  "async-trait",
  "borsh",
  "futures",
- "grug-app 0.0.0",
- "grug-types 0.0.0",
+ "grug-app",
+ "grug-types",
  "http 1.3.1",
  "indexer-disk-saver",
  "indexer-sql-migration",
@@ -6040,13 +5900,13 @@ dependencies = [
  "base64 0.22.1",
  "chrono",
  "clap",
- "error-backtrace 0.0.0",
+ "error-backtrace",
  "futures",
  "futures-util",
- "grug-app 0.0.0",
+ "grug-app",
  "grug-httpd",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "indexer-sql",
  "indexer-sql-migration",
  "itertools 0.14.0",
@@ -6080,11 +5940,11 @@ dependencies = [
  "async-stream",
  "async-trait",
  "borsh",
- "error-backtrace 0.0.0",
+ "error-backtrace",
  "futures",
- "grug-app 0.0.0",
+ "grug-app",
  "grug-macros",
- "grug-types 0.0.0",
+ "grug-types",
  "indexer-disk-saver",
  "indexer-hooked",
  "indexer-sql-migration",
@@ -6135,12 +5995,12 @@ dependencies = [
  "dango-types",
  "futures-util",
  "grug",
- "grug-app 0.0.0",
+ "grug-app",
  "grug-db-memory",
  "grug-httpd",
- "grug-storage 0.0.0",
+ "grug-storage",
  "grug-testing",
- "grug-types 0.0.0",
+ "grug-types",
  "grug-vm-rust",
  "indexer-client",
  "indexer-hooked",
