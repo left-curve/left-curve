@@ -363,7 +363,7 @@ where
             }
 
             // Writes in preimages (note: don't forget to delete key hashes that
-            // are deleted in state storage - see Zellic audut).
+            // are deleted in state storage - see Zellic audit).
             // This is only necessary if the `ibc` feature is enabled.
             #[cfg(feature = "ibc")]
             {
