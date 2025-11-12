@@ -1,7 +1,7 @@
 use std::path::Path;
 
 pub fn migrate_db(path: &Path) -> anyhow::Result<()> {
-    // If the DB deson't exist, or if it exists but is empty, do nothing.
+    // If the DB doesn't exist, or if it exists but is empty, do nothing.
     // If it exists but isn't a directory, error.
     if !path.exists() || path.read_dir()?.next().is_none() {
         tracing::info!(
