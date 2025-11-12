@@ -33,7 +33,7 @@ dialoguer                   = { workspace = true }
 futures                     = { workspace = true }
 grug-app                    = { workspace = true, features = ["abci", "metrics", "tracing"] }
 grug-client                 = { workspace = true }
-grug-db-disk                = { workspace = true, features = ["metrics", "serde", "tracing"] }
+grug-db-disk                = { workspace = true, features = ["metrics", "tracing"] }
 grug-httpd                  = { workspace = true }
 grug-types                  = { workspace = true }
 grug-vm-rust                = { workspace = true }
@@ -55,6 +55,13 @@ tower                       = { workspace = true, features = ["full"] }
 tower-abci                  = { workspace = true }
 tracing                     = { workspace = true }
 tracing-subscriber          = { workspace = true }
+
+# Used only by the one-off DB migration.
+# FIXME: delete
+grug-app-old     = { package = "grug-app", git = "https://github.com/left-curve/left-curve", rev = "54dbcf9" }
+grug-db-disk-old = { package = "grug-db-disk", git = "https://github.com/left-curve/left-curve", rev = "54dbcf9" }
+grug-types-old   = { package = "grug-types", git = "https://github.com/left-curve/left-curve", rev = "54dbcf9" }
+rocksdb          = { workspace = true }
 
 [[bin]]
 name = "dango"
