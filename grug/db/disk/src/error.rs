@@ -17,7 +17,7 @@ pub enum DbError {
     PendingDataNotSet,
 
     #[error("requested version ({requested}) doesn't equal the current version ({current})")]
-    IncorretVersion { requested: u64, current: u64 },
+    IncorrectVersion { requested: u64, current: u64 },
 }
 
 impl From<DbError> for AppError {

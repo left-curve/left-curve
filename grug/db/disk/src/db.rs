@@ -222,7 +222,7 @@ where
             // written yet (e.g. during `InitChain`). In this case just use zero.
             let latest_version = self.latest_version().unwrap_or(0);
             if version != latest_version {
-                return Err(DbError::incorret_version(version, latest_version));
+                return Err(DbError::incorrect_version(version, latest_version));
             }
         }
 
