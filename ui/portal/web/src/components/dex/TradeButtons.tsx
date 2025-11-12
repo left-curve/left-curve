@@ -24,7 +24,7 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
   const { setTradeBarVisibility } = useApp();
   const { isConnected } = useAccount();
 
-  const { changeAction } = state;
+  const { changeAction, baseCoin } = state;
 
   const container = usePortalTarget("#trade-buttons");
 
@@ -53,7 +53,7 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
                       changeAction("buy");
                     }}
                   >
-                    {m["proSwap.buy"]()}
+                    {m["proSwap.buy"]()} {baseCoin.symbol}
                   </Button>
                   <Button
                     className="h-[44px]"
@@ -63,12 +63,12 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
                       changeAction("sell");
                     }}
                   >
-                    {m["proSwap.sell"]()}
+                    {m["proSwap.sell"]()} {baseCoin.symbol}
                   </Button>
                 </div>
               ) : (
                 <Button className="flex-1 h-[44px]" onClick={() => navigate({ to: "/signin" })}>
-                  Connect
+                  {m["common.connect"]()}
                 </Button>
               )}
             </div>,
