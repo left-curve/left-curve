@@ -1,5 +1,6 @@
 mod config;
 mod db;
+pub mod db_migration;
 mod home_directory;
 mod indexer;
 mod keys;

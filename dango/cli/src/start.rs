@@ -38,6 +38,10 @@ impl StartCmd {
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
 
+        // A one-off special database migration.
+        // FIXME: delete after the migration is done.
+        crate::db_migration::migrate_db(&app_dir.data_dir())?;
+
         // Open disk DB.
         let db = DiskDb::<SimpleCommitment>::open_with_priority(
             app_dir.data_dir(),
