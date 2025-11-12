@@ -123,7 +123,7 @@ const ConvertHeader: React.FC = () => {
 const ConvertForm: React.FC = () => {
   const { state, controllers } = useConvert();
   const { revalidate } = controllers;
-  const [activeInput, setActiveInput] = useState<"from" | "to">();
+  const [activeInput, setActiveInput] = useState<"from" | "to">("from");
 
   const { isReverse, fromCoin, toCoin, changePair, toggleDirection, submission } = state;
 
@@ -163,7 +163,7 @@ const ConvertForm: React.FC = () => {
         className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5 cursor-pointer mt-4"
         onClick={async () => {
           toggleDirection();
-          await simulate(activeInput as "from" | "to");
+          await simulate(activeInput);
           revalidate();
         }}
       >
