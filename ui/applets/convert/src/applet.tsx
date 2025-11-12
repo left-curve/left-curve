@@ -161,9 +161,10 @@ const ConvertForm: React.FC = () => {
         type="button"
         disabled={submission.isPending}
         className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5 cursor-pointer mt-4"
-        onClick={() => {
+        onClick={async () => {
           toggleDirection();
-          setActiveInput(activeInput === "from" ? "to" : "from");
+          await simulate(activeInput as "from" | "to");
+          revalidate();
         }}
       >
         <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
