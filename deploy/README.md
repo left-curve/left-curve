@@ -39,6 +39,11 @@ This shows you have the right password:
 2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
 ```
 
+Make also sure you have ssh-agent and added your key with ssh-add before
+running ansible-playbook, else you'll get `Permission denied (publickey)`.
+
+You must rerun `ssh-add` after you rebooted.
+
 ## Manual Cosign Verification
 
 Run this after deployments if you need to validate an image digest manually:
