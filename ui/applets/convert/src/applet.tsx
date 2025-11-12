@@ -148,7 +148,7 @@ const ConvertForm: React.FC = () => {
         isDisabled={submission.isPending}
         isLoading={activeInput !== "from" ? simulation.isPending : false}
         onFocus={() => setActiveInput("from")}
-        shouldValidate={!isReverse}
+        shouldValidate
         showRange
         showCoinSelector={isReverse}
         onSelectCoin={changePair}
@@ -176,7 +176,6 @@ const ConvertForm: React.FC = () => {
         isDisabled={submission.isPending}
         isLoading={activeInput !== "to" ? simulation.isPending : false}
         onFocus={() => setActiveInput("to")}
-        shouldValidate={isReverse}
         showCoinSelector={!isReverse}
         onSelectCoin={changePair}
         triggerSimulation={async (reverse) => {
