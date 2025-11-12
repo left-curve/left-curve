@@ -80,7 +80,7 @@ pub fn migrate_db(path: &Path) -> anyhow::Result<()> {
     }
 
     // Write state storage.
-    let cf = grug_db_disk::cf_state_commitment(&db);
+    let cf = grug_db_disk::cf_state_storage(&db);
     for (k, v) in state_storage {
         batch.put_cf(cf, k, v);
     }
