@@ -13,6 +13,8 @@ export { Badge } from "./Badge";
 export { AccountCard } from "../AccountMenu/AccountCard";
 export { TextCopy } from "./TextCopy";
 export { Tabs } from "./Tabs";
+export { PairAssets } from "./PairAssets";
+export { Activities } from "./activities/Activities";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -32,3 +34,8 @@ export { IconClose } from "./icons/IconClose";
 export { IconChevronDownFill } from "./icons/IconChevronDownFill";
 export { IconCopyCheck } from "./icons/IconCopyCheck";
 export { IconCopyNoCheck } from "./icons/IconCopyNoCheck";
+export { IconNewAccount } from "./icons/IconNewAccount";
+export { IconMarketOrder } from "./icons/IconMarketOrder";
+export { IconLimitOrder } from "./icons/IconLimitOrder";
+export { IconSent } from "./icons/IconSent";
+export { IconReceived } from "./icons/IconReceived";
