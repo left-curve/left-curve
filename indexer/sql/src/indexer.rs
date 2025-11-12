@@ -1,8 +1,14 @@
+#[cfg(feature = "metrics")]
+use metrics::counter;
+use sea_orm::TransactionTrait;
+#[cfg(feature = "metrics")]
+use std::time::Instant;
+
 use {
     crate::{
-        Context, EventCache, EventCacheWriter, bail,
-        block_to_index::BlockToIndex,
-        entity,
+        Context, EventCache, EventCacheWriter,
+        active_model::Models,
+        bail, entity,
         error::{self, IndexerError},
         indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
@@ -12,7 +18,8 @@ use {
         Block, BlockAndBlockOutcomeWithHttpDetails, BlockOutcome, Defined, HttpRequestDetails,
         MaybeDefined, Storage, Undefined,
     },
-    sea_orm::DatabaseConnection,
+    itertools::Itertools,
+    sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter},
     std::{
         collections::HashMap,
         future::Future,
@@ -79,31 +86,6 @@ impl IndexerBuilder<Undefined<String>> {
         self.with_database_url("sqlite::memory:")
     }
 }
-
-// impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
-//     pub fn with_tmpdir(self) -> IndexerBuilder<DB, Defined<IndexerPath>> {
-//         IndexerBuilder {
-//             handle: self.handle,
-//             indexer_path: Defined::new(IndexerPath::default()),
-//             db_url: self.db_url,
-//             db_max_connections: self.db_max_connections,
-//             pubsub: self.pubsub,
-//             event_cache_window: self.event_cache_window,
-//         }
-//     }
-
-//     pub fn with_dir(self, dir: PathBuf) -> IndexerBuilder<DB, Defined<IndexerPath>> {
-//         IndexerBuilder {
-//             handle: self.handle,
-//             indexer_path: Defined::new(IndexerPath::Dir(dir)),
-//             db_url: self.db_url,
-//             db_max_connections: self.db_max_connections,
-//             keep_blocks: self.keep_blocks,
-//             pubsub: self.pubsub,
-//             event_cache_window: self.event_cache_window,
-//         }
-//     }
-// }
 
 impl<DB> IndexerBuilder<DB> {
     pub fn with_sqlx_pubsub(self) -> IndexerBuilder<DB> {
@@ -198,7 +180,6 @@ where
             handle: self.handle,
             indexing: false,
             id,
-            indexing_blocks: Default::default(),
         })
     }
 }
@@ -225,12 +206,17 @@ pub struct Indexer {
     // be stopping when the program is stopped, but then it adds a lot of boilerplate. So far, code
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
-    indexing_blocks: Arc<Mutex<HashMap<u64, bool>>>,
     // Add unique ID field, used for debugging and tracing
     id: u64,
 }
 
 // ------------------------------- DB Related ----------------------------------
+/// Maximum number of items to insert in a single `insert_many` operation.
+/// This to avoid the following psql error:
+/// PgConnection::run(): too many arguments for query
+/// See discussion here:
+/// https://www.postgresql.org/message-id/13394.1533697144%40sss.pgh.pa.us
+pub const MAX_ROWS_INSERT: usize = 2048;
 
 impl Indexer {
     /// Index all previous blocks not yet indexed.
@@ -282,18 +268,6 @@ impl Indexer {
                 Ok::<(), error::IndexerError>(())
             })?;
 
-            if !self.keep_blocks {
-                if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(
-                        error = %_err,
-                        block_height,
-                        block_filename = %block_filename.display(),
-                        "Can't delete block from disk"
-                    );
-                }
-            }
-
             #[cfg(feature = "tracing")]
             tracing::info!(
                 block_height,
@@ -305,11 +279,142 @@ impl Indexer {
         Ok(())
     }
 
-    pub fn save_block(
+    async fn save_block(
         db: DatabaseConnection,
         event_cache: EventCacheWriter,
         block: BlockAndBlockOutcomeWithHttpDetails,
     ) -> error::Result<()> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(block_height = block.block.info.height, "Saving block");
+
+        let models = Models::build(&block)?;
+
+        let db = db.begin().await?;
+
+        // I check if the block already exists, if so it means we can skip the
+        // whole block, transactions, messages and events since those are created
+        // within a single DB transaction.
+        // This scenario could happen if the process has crashed after block was
+        // indexed but before the tmp_file was removed.
+        let existing_block = entity::blocks::Entity::find()
+            .filter(entity::blocks::Column::BlockHeight.eq(block.block.info.height))
+            .one(&db)
+            .await
+            .inspect_err(|_e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_e, "Failed to check if block exists");
+            })?;
+
+        if existing_block.is_some() {
+            return Ok(());
+        }
+
+        entity::blocks::Entity::insert(models.block)
+            .exec_without_returning(&db)
+            .await
+            .inspect_err(|_e| {
+                #[cfg(feature = "tracing")]
+                tracing::error!(err = %_e, "Failed to insert block");
+
+                #[cfg(feature = "metrics")]
+                counter!("indexer.database.errors.total").increment(1);
+            })?;
+
+        #[cfg(feature = "metrics")]
+        {
+            use metrics::counter;
+
+            counter!("indexer.blocks.total").increment(1);
+            counter!("indexer.transactions.total").increment(models.transactions.len() as u64);
+            counter!("indexer.messages.total").increment(models.messages.len() as u64);
+            counter!("indexer.events.total").increment(models.events.len() as u64);
+        }
+
+        if !models.transactions.is_empty() {
+            #[cfg(feature = "tracing")]
+            let transactions_len = models.transactions.len();
+
+            for transactions in models
+                .transactions
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::transactions::Entity::insert_many(transactions)
+                .exec_without_returning(&db)
+                .await.inspect_err(|_e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_e, transactions_len=transactions_len, "Failed to insert transactions");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
+                })?;
+            }
+        }
+
+        if !models.messages.is_empty() {
+            #[cfg(feature = "tracing")]
+            let messages_len = models.messages.len();
+
+            for messages in models
+                .messages
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::messages::Entity::insert_many(messages)
+                .exec_without_returning(&db)
+                .await.inspect_err(|_e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_e, messages_len=messages_len, "Failed to insert messages");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
+                })?;
+            }
+        }
+
+        if !models.events.is_empty() {
+            #[cfg(feature = "tracing")]
+            let events_len = models.events.len();
+
+            for events in models
+                .events
+                .into_iter()
+                .chunks(MAX_ROWS_INSERT)
+                .into_iter()
+                .map(|c| c.collect())
+                .collect::<Vec<Vec<_>>>()
+            {
+                entity::events::Entity::insert_many(events)
+                .exec_without_returning(&db)
+                .await
+                .inspect_err(|_e| {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(err = %_e, events_len=events_len, "Failed to insert events");
+
+                    #[cfg(feature = "metrics")]
+                    counter!("indexer.database.errors.total").increment(1);
+                })?;
+            }
+        }
+
+        db.commit().await?;
+
+        event_cache
+            .save_events(block.block.info.height, models.events_by_address)
+            .await;
+
+        #[cfg(feature = "metrics")]
+        metrics::histogram!("indexer.block_save.duration").record(start.elapsed().as_secs_f64());
+
         Ok(())
     }
 }
@@ -366,35 +471,6 @@ impl IndexerTrait for Indexer {
 
         self.indexing = false;
 
-        // NOTE: This is to allow the indexer to commit all db transactions since this is done
-        // async. It just loops quickly making sure no indexing blocks are remaining.
-        for _ in 0..10 {
-            if self
-                .indexing_blocks
-                .lock()
-                .expect("can't lock indexing_blocks")
-                .is_empty()
-            {
-                break;
-            }
-
-            sleep(Duration::from_millis(10));
-        }
-
-        #[cfg(feature = "tracing")]
-        {
-            let blocks = self
-                .indexing_blocks
-                .lock()
-                .expect("can't lock indexing_blocks");
-            if !blocks.is_empty() {
-                tracing::warn!(
-                    indexer_id = self.id,
-                    "Some blocks are still being indexed. Maybe `non_blocking_indexer` `post_indexing` wasn't called by the main app?"
-                );
-            }
-        }
-
         Ok(())
     }
 
@@ -403,10 +479,6 @@ impl IndexerTrait for Indexer {
         _block_height: u64,
         _ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
-        if !self.indexing {
-            return Err(grug_app::IndexerError::not_running());
-        }
-
         Ok(())
     }
 
@@ -416,10 +488,6 @@ impl IndexerTrait for Indexer {
         _block_outcome: &BlockOutcome,
         _ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
-        if !self.indexing {
-            return Err(grug_app::IndexerError::not_running());
-        }
-
         Ok(())
     }
 
@@ -436,12 +504,15 @@ impl IndexerTrait for Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` called");
 
-        self.indexing_blocks
-            .lock()
-            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
-            .insert(block_height, true);
-
         let context = self.context.clone();
+
+        let block = ctx
+            .get::<BlockAndBlockOutcomeWithHttpDetails>()
+            .ok_or(grug_app::IndexerError::hook(
+                "BlockAndBlockOutcomeWithHttpDetails not found".to_string(),
+            ))?
+            .clone();
+
         // let block_to_index = self.find_or_fail(block_height)?;
         // let blocks = self.blocks.clone();
         // let keep_blocks = self.keep_blocks;
@@ -458,6 +529,8 @@ impl IndexerTrait for Indexer {
         // ctx.insert(block_to_index.block.clone());
         // ctx.insert(block_to_index.block_outcome.clone());
 
+        // This is only to run within the async context, but we're waiting for
+        // the completion of this task synchronously right after spawning it.
         let handle = self.handle.spawn(async move {
             #[cfg(feature = "tracing")]
             tracing::debug!(
@@ -468,7 +541,7 @@ impl IndexerTrait for Indexer {
 
             #[allow(clippy::map_identity)]
             if let Err(_err) =
-                Self::save_block(context.db.clone(), context.event_cache.clone(), id).await
+                Self::save_block(context.db.clone(), context.event_cache.clone(), block).await
             {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
@@ -487,41 +560,41 @@ impl IndexerTrait for Indexer {
             #[cfg(feature = "metrics")]
             metrics::counter!("indexer.blocks.processed.total").increment(1);
 
-            if !keep_blocks {
-                if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(
-                        error = %_err,
-                        block_filename = %block_filename.display(),
-                        "Can't delete block from disk in post_indexing"
-                    );
+            // if !keep_blocks {
+            //     if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
+            //         #[cfg(feature = "tracing")]
+            //         tracing::error!(
+            //             error = %_err,
+            //             block_filename = %block_filename.display(),
+            //             "Can't delete block from disk in post_indexing"
+            //         );
 
-                    return Ok(());
-                }
+            //         return Ok(());
+            //     }
 
-                #[cfg(feature = "metrics")]
-                metrics::counter!("indexer.blocks.deleted.total").increment(1);
-            } else {
-                // compress takes CPU, so we do it in a spawned blocking task
-                if let Err(_err) = tokio::task::spawn_blocking(move || {
-                    if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
-                        #[cfg(feature = "tracing")]
-                        tracing::error!(
-                            error = %_err,
-                            block_filename = %block_filename.display(),
-                            "Can't compress block on disk in post_indexing"
-                        );
-                    }
-                })
-                .await
-                {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, "`spawn_blocking` error compressing block file");
-                }
+            //     #[cfg(feature = "metrics")]
+            //     metrics::counter!("indexer.blocks.deleted.total").increment(1);
+            // } else {
+            //     // compress takes CPU, so we do it in a spawned blocking task
+            //     if let Err(_err) = tokio::task::spawn_blocking(move || {
+            //         if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
+            //             #[cfg(feature = "tracing")]
+            //             tracing::error!(
+            //                 error = %_err,
+            //                 block_filename = %block_filename.display(),
+            //                 "Can't compress block on disk in post_indexing"
+            //             );
+            //         }
+            //     })
+            //     .await
+            //     {
+            //         #[cfg(feature = "tracing")]
+            //         tracing::error!(error = %_err, "`spawn_blocking` error compressing block file");
+            //     }
 
-                #[cfg(feature = "metrics")]
-                metrics::counter!("indexer.blocks.compressed.total").increment(1);
-            }
+            //     #[cfg(feature = "metrics")]
+            //     metrics::counter!("indexer.blocks.compressed.total").increment(1);
+            // }
 
             if let Err(_err) = context.pubsub.publish(block_height).await {
                 #[cfg(feature = "tracing")]
@@ -556,32 +629,6 @@ impl IndexerTrait for Indexer {
 
     /// Wait for all blocks to be indexed
     fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
-        for _ in 0..100 {
-            if self
-                .indexing_blocks
-                .lock()
-                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
-                .is_empty()
-            {
-                break;
-            }
-
-            sleep(Duration::from_millis(100));
-        }
-
-        let blocks = self
-            .indexing_blocks
-            .lock()
-            .expect("can't lock indexing_blocks");
-        if !blocks.is_empty() {
-            #[cfg(feature = "tracing")]
-            tracing::warn!(
-                "Indexer `wait_for_finish` ended, still has {} blocks: {:?}",
-                blocks.len(),
-                blocks.keys()
-            );
-        }
-
         Ok(())
     }
 }

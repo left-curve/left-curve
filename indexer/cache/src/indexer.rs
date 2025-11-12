@@ -95,7 +95,7 @@ impl grug_app::Indexer for Cache {
 
         cache_file.save_to_disk()?;
 
-        ctx.insert(cache_file.clone());
+        ctx.insert(cache_file.data.clone());
 
         Ok(())
     }

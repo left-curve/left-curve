@@ -1,5 +1,5 @@
 use {
-    crate::{block_to_index::BlockToIndex, entity, error::Result},
+    crate::{entity, error::Result},
     grug_types::{
         Addr, Block, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventId, Extractable,
         FlatCategory, FlatEventInfo, FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
