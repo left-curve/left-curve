@@ -56,13 +56,6 @@ tower-abci                  = { workspace = true }
 tracing                     = { workspace = true }
 tracing-subscriber          = { workspace = true }
 
-# Used only by the one-off DB migration.
-# FIXME: delete
-grug-app-old     = { package = "grug-app", git = "https://github.com/left-curve/left-curve", rev = "54dbcf9" }
-grug-db-disk-old = { package = "grug-db-disk", git = "https://github.com/left-curve/left-curve", rev = "54dbcf9" }
-grug-types-old   = { package = "grug-types", git = "https://github.com/left-curve/left-curve", rev = "54dbcf9" }
-rocksdb          = { workspace = true }
-
 [[bin]]
 name = "dango"
 path = "src/main.rs"
