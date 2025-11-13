@@ -14,8 +14,8 @@ use {
         },
     },
     grug::{
-        Coins, Dec128, Denom, Duration, Int128, Message, NumberConst, QuerierExt, ResultExt, Sign,
-        Signed, Timestamp, Udec128, Uint128, btree_map, coins,
+        BalanceChange, Coins, Dec128, Denom, Duration, Inner, Int128, Message, NumberConst,
+        QuerierExt, ResultExt, Sign, Signed, Timestamp, Udec128, Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,
@@ -457,6 +457,16 @@ fn vault_pnl_works() {
 
     let mut margin_account = perps_test_setup(&mut suite, &mut accounts, &contracts);
 
+    // Deposit into vault
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            coins! { usdc::DENOM.clone() => 100_000_000 },
+        )
+        .should_succeed();
+
     // Open position
     suite
         .execute(
@@ -693,6 +703,25 @@ fn vault_pnl_works() {
         .get(&dango::DENOM.clone())
         .unwrap();
 
+    // Ensure the account's unrealized pnl is correct
+    assert_eq!(
+        margin_account_1_position.unrealized_pnl.fees,
+        Int128::new(-198_000)
+    );
+    assert_eq!(
+        margin_account_1_position.unrealized_pnl.price_pnl,
+        Int128::new(-2_000_000)
+    );
+    assert_eq!(
+        margin_account_1_position.unrealized_pnl.funding_pnl,
+        Int128::new(-27_000_015)
+    );
+    let margin_account_1_total_unrealized_pnl =
+        margin_account_1_position.unrealized_pnl.total().unwrap();
+
+    // Record the user's balance
+    suite.balances().record(&margin_account);
+
     // Close first position
     suite
         .execute(
@@ -701,9 +730,12 @@ fn vault_pnl_works() {
             &perps::ExecuteMsg::BatchUpdateOrders {
                 orders: btree_map! { dango::DENOM.clone() => Int128::new(-100_000_000) },
             },
-            coins! { usdc::DENOM.clone() => margin_account_1_position.unrealized_pnl.fees.unsigned_abs() },
+            coins! { usdc::DENOM.clone() => margin_account_1_total_unrealized_pnl.unsigned_abs() },
         )
         .should_succeed();
+
+    // Ensure the user's balance is updated
+    suite.balances().should_change(&margin_account, btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(margin_account_1_total_unrealized_pnl.unsigned_abs().into_inner()) });
 
     // Ensure the perps positions are updated
     suite
@@ -768,6 +800,25 @@ fn vault_pnl_works() {
         .get(&dango::DENOM.clone())
         .unwrap();
 
+    // Ensure the account's unrealized pnl is correct
+    assert_eq!(
+        margin_account_2_position.unrealized_pnl.fees,
+        Int128::new(-198_000)
+    );
+    assert_eq!(
+        margin_account_2_position.unrealized_pnl.price_pnl,
+        Int128::new(2_000_000)
+    );
+    assert_eq!(
+        margin_account_2_position.unrealized_pnl.funding_pnl,
+        Int128::new(54_000_020)
+    );
+    let margin_account_2_total_unrealized_pnl =
+        margin_account_2_position.unrealized_pnl.total().unwrap();
+
+    // Record the user's balance
+    suite.balances().record(&margin_account_2);
+
     // Close second position
     suite
         .execute(
@@ -776,9 +827,12 @@ fn vault_pnl_works() {
             &perps::ExecuteMsg::BatchUpdateOrders {
                 orders: btree_map! { dango::DENOM.clone() => Int128::new(100_000_000) },
             },
-            coins! { usdc::DENOM.clone() => margin_account_2_position.unrealized_pnl.fees.unsigned_abs() },
+            Coins::new(),
         )
         .should_succeed();
+
+    // Ensure the user's balance is updated
+    suite.balances().should_change(&margin_account_2, btree_map! { usdc::DENOM.clone() => BalanceChange::Increased(margin_account_2_total_unrealized_pnl.unsigned_abs().into_inner()) });
 
     // Ensure the perps positions are updated
     suite

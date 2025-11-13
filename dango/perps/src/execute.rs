@@ -218,13 +218,39 @@ fn batch_update_orders(
     );
 
     // For each order, modify the position
+    let mut account_unrealized_pnl = Pnl::default();
     for (denom, amount) in orders {
-        modify_position(&mut ctx, denom, amount)?;
+        let position_unrealized_pnl = modify_position(&mut ctx, denom, amount)?;
+        account_unrealized_pnl = account_unrealized_pnl.add(&position_unrealized_pnl)?;
     }
+
+    // Load the vault denom
+    let vault_denom = PERPS_VAULT.load(ctx.storage)?.denom;
+
+    // Ensure any negative trader PnL is sent to the vault and send any positive trader PnL to the user
+    let account_total_unrealized_pnl = account_unrealized_pnl.total()?;
+    let maybe_send_msg = if account_total_unrealized_pnl.is_negative() {
+        let sent_vault_denom = ctx.funds.as_one_coin_of_denom(&vault_denom)?;
+        ensure!(
+            sent_vault_denom.amount == &account_total_unrealized_pnl.unsigned_abs(),
+            "incorrect fee amount sent. sent: {}, expected: {}",
+            sent_vault_denom.amount,
+            account_total_unrealized_pnl.unsigned_abs()
+        );
+        None
+    } else {
+        Some(Message::transfer(
+            ctx.sender,
+            Coins::one(
+                vault_denom.clone(),
+                account_total_unrealized_pnl.unsigned_abs(),
+            )?,
+        )?)
+    };
 
     // TODO: Emit events
 
-    Ok(Response::new())
+    Ok(Response::new().may_add_message(maybe_send_msg))
 }
 
 /// Modifies a position by the given amount.
@@ -233,8 +259,8 @@ fn batch_update_orders(
 /// - `ctx`: The mutable context.
 /// - `denom`: The denom of the market.
 /// - `amount`: The amount to modify the position by. Positive for long,
-/// negative for short.Size is in market denom units.
-fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow::Result<()> {
+///   negative for short.Size is in market denom units.
+fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow::Result<Pnl> {
     let params = PERPS_MARKET_PARAMS.load(ctx.storage, &denom)?;
     let market_state = PERPS_MARKETS.load(ctx.storage, &denom)?;
     let vault_state = PERPS_VAULT.load(ctx.storage)?;
@@ -297,16 +323,6 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
         &market_state,
         &params,
     )?;
-    let fee_in_vault_denom = position_unrealized_pnl.fees.unsigned_abs();
-
-    // Ensure the fee is sent
-    let sent_fee = ctx.funds.as_one_coin_of_denom(&vault_state.denom)?;
-    ensure!(
-        sent_fee.amount == &fee_in_vault_denom,
-        "incorrect fee amount sent. sent: {}, expected: {}",
-        sent_fee.amount,
-        fee_in_vault_denom
-    );
 
     // Validate position size against OI limits
     if amount.is_positive() {
@@ -354,7 +370,7 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
     // Update the vault state
     PERPS_VAULT.save(ctx.storage, &PerpsVaultState {
         realized_pnl: vault_state.realized_pnl.add(&market_realized_pnl)?,
-        ..vault_state
+        ..vault_state.clone()
     })?;
 
     // Store the new position
@@ -364,10 +380,9 @@ fn modify_position(ctx: &mut MutableCtx, denom: Denom, amount: Int128) -> anyhow
         PERPS_POSITIONS.save(ctx.storage, (&ctx.sender, &denom), &new_pos)?;
     }
 
-    // TODO: Ensure any negative trader PnL is sent to the vault and send any positive trader PnL to the user
-
     // TODO: Emit events
-    Ok(())
+
+    Ok(position_unrealized_pnl)
 }
 
 fn update_funding_rate(ctx: MutableCtx, denom: Denom) -> anyhow::Result<Response> {
