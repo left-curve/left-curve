@@ -469,7 +469,7 @@ where
 
 // ----------------------------- state commitment ------------------------------
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct StateCommitment {
     data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
     #[cfg(feature = "tracing")]
@@ -595,6 +595,27 @@ impl Storage for StateCommitment {
     }
 }
 
+// Custom cloning logic when tracing is enabled: generate a new UUID for the new instance.
+#[cfg(feature = "tracing")]
+impl Clone for StateCommitment {
+    fn clone(&self) -> Self {
+        let uuid = Uuid::new_v4().to_string();
+
+        tracing::warn!(
+            kind = "read",
+            from = self.uuid,
+            to = uuid,
+            comment = "state_commitment",
+            "Lock cloned"
+        );
+
+        Self {
+            data: Arc::clone(&self.data),
+            uuid,
+        }
+    }
+}
+
 #[cfg(feature = "tracing")]
 impl Drop for StateCommitment {
     fn drop(&mut self) {
@@ -609,7 +630,7 @@ impl Drop for StateCommitment {
 
 // ------------------------------- state storage -------------------------------
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct StateStorage {
     data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
     #[cfg(feature = "tracing")]
@@ -792,6 +813,28 @@ impl Storage for StateStorage {
 
     fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
         unreachable!("write function called on read-only storage");
+    }
+}
+
+// Custom cloning logic when tracing is enabled: generate a new UUID for the new instance.
+#[cfg(feature = "tracing")]
+impl Clone for StateStorage {
+    fn clone(&self) -> Self {
+        let uuid = Uuid::new_v4().to_string();
+
+        tracing::warn!(
+            kind = "read",
+            from = self.uuid,
+            to = uuid,
+            comment = self.comment,
+            "Lock cloned"
+        );
+
+        Self {
+            data: Arc::clone(&self.data),
+            uuid,
+            comment: self.comment,
+        }
     }
 }
 
