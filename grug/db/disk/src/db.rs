@@ -302,13 +302,13 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!(commit = "commit", "Acquiring write-lock on data");
+            tracing::warn!(commit = "commit", "Acquiring write-lock on data");
         }
 
         self.data.write_with(|mut data| {
             #[cfg(feature = "tracing")]
             {
-                tracing::debug!(commit = "commit", "Acquired write-lock on data");
+                tracing::warn!(commit = "commit", "Acquired write-lock on data");
             }
 
             // If priority data exists, apply the change set to it.
@@ -373,7 +373,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!(commit = "commit", "Released write-lock on data");
+            tracing::warn!(commit = "commit", "Released write-lock on data");
         }
 
         #[cfg(feature = "metrics")]
@@ -441,14 +441,14 @@ impl StateCommitment {
     fn new(data: &Shared<Data>) -> Self {
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!(comment = "commitment", "Acquiring read-lock on data");
+            tracing::warn!(comment = "state_commitment", "Acquiring read-lock on data");
         }
 
         let data = data.static_read_access();
 
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!(comment = "commitment", "Acquired read-lock on data");
+            tracing::warn!(comment = "state_commitment", "Acquired read-lock on data");
         }
 
         Self {
@@ -544,7 +544,7 @@ impl Storage for StateCommitment {
 #[cfg(feature = "tracing")]
 impl Drop for StateCommitment {
     fn drop(&mut self) {
-        tracing::debug!(comment = "commitment", "Released read-lock on data");
+        tracing::warn!(comment = "state_commitment", "Released read-lock on data");
     }
 }
 
@@ -568,14 +568,14 @@ impl StateStorage {
     ) -> Self {
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!(comment, "Acquiring read-lock on data");
+            tracing::warn!(comment, "Acquiring read-lock on data");
         }
 
         let data = data.static_read_access();
 
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!(comment, "Acquired read-lock on data");
+            tracing::warn!(comment, "Acquired read-lock on data");
         }
 
         Self {
@@ -732,7 +732,7 @@ impl Storage for StateStorage {
 #[cfg(feature = "tracing")]
 impl Drop for StateStorage {
     fn drop(&mut self) {
-        tracing::debug!(comment = self.comment, "Released read-lock on data");
+        tracing::warn!(comment = self.comment, "Released read-lock on data");
     }
 }
 
