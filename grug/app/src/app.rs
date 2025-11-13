@@ -25,7 +25,6 @@ use {
         StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
-    std::sync::Arc,
 };
 
 pub type UpgradeHandler<VM> = fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>;
@@ -637,21 +636,13 @@ where
             tracing::info!(height = version, "Committed state");
         }
 
-        let querier = {
-            let storage = self.db.state_storage_with_comment(None, "post_indexing")?;
-            let block = LAST_FINALIZED_BLOCK.load(&storage)?;
-
-            Arc::new(QuerierProviderImpl::new(
-                self.vm.clone(),
-                Box::new(storage),
-                GasTracker::new_limitless(),
-                block,
-            )) as Arc<dyn crate::QuerierProvider>
-        };
+        let storage = self.db.state_storage_with_comment(None, "post_indexing")?;
+        let cfg = CONFIG.load(&storage)?;
+        let app_cfg = APP_CONFIG.load(&storage)?;
 
         let mut indexer_ctx = crate::IndexerContext::new();
         self.indexer
-            .post_indexing(version, querier, &mut indexer_ctx)
+            .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
             .inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 {
