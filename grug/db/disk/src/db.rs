@@ -470,6 +470,7 @@ where
 // ----------------------------- state commitment ------------------------------
 
 #[derive(Debug)]
+#[cfg_attr(not(feature = "tracing"), derive(Clone))]
 pub struct StateCommitment {
     data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
     #[cfg(feature = "tracing")]
@@ -631,6 +632,7 @@ impl Drop for StateCommitment {
 // ------------------------------- state storage -------------------------------
 
 #[derive(Debug)]
+#[cfg_attr(not(feature = "tracing"), derive(Clone))]
 pub struct StateStorage {
     data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
     #[cfg(feature = "tracing")]
