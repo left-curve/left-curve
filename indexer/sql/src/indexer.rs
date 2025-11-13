@@ -9,7 +9,8 @@ use {
     },
     grug_app::{Indexer as IndexerTrait, LAST_FINALIZED_BLOCK},
     grug_types::{
-        Block, BlockOutcome, Defined, HttpRequestDetails, MaybeDefined, Storage, Undefined,
+        Block, BlockOutcome, Config, Defined, HttpRequestDetails, Json, MaybeDefined, Storage,
+        Undefined,
     },
     sea_orm::DatabaseConnection,
     std::{
@@ -558,7 +559,8 @@ impl IndexerTrait for Indexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        _querier: Arc<dyn grug_app::QuerierProvider>,
+        _cfg: Config,
+        _app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
