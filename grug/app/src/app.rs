@@ -630,38 +630,34 @@ where
         #[cfg(feature = "metrics")]
         let commit_duration = std::time::Instant::now();
 
-        self.db.commit()?;
+        let version = self.db.commit()?;
 
         #[cfg(feature = "tracing")]
         {
-            tracing::info!(height = self.db.latest_version(), "Committed state");
+            tracing::info!(height = version, "Committed state");
         }
 
-        if let Some(block_height) = self.db.latest_version() {
-            let querier = {
-                let storage = self
-                    .db
-                    .state_storage_with_comment(Some(block_height), "post_indexing")?;
-                let block = LAST_FINALIZED_BLOCK.load(&storage)?;
+        let querier = {
+            let storage = self.db.state_storage_with_comment(None, "post_indexing")?;
+            let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
-                Arc::new(QuerierProviderImpl::new(
-                    self.vm.clone(),
-                    Box::new(storage),
-                    GasTracker::new_limitless(),
-                    block,
-                )) as Arc<dyn crate::QuerierProvider>
-            };
+            Arc::new(QuerierProviderImpl::new(
+                self.vm.clone(),
+                Box::new(storage),
+                GasTracker::new_limitless(),
+                block,
+            )) as Arc<dyn crate::QuerierProvider>
+        };
 
-            let mut indexer_ctx = crate::IndexerContext::new();
-            self.indexer
-                .post_indexing(block_height, querier, &mut indexer_ctx)
-                .inspect_err(|_err| {
-                    #[cfg(feature = "tracing")]
-                    {
-                        tracing::error!(err = %_err, "Error in `post_indexing`");
-                    }
-                })?;
-        }
+        let mut indexer_ctx = crate::IndexerContext::new();
+        self.indexer
+            .post_indexing(version, querier, &mut indexer_ctx)
+            .inspect_err(|_err| {
+                #[cfg(feature = "tracing")]
+                {
+                    tracing::error!(err = %_err, "Error in `post_indexing`");
+                }
+            })?;
 
         #[cfg(feature = "metrics")]
         {

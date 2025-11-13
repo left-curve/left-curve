@@ -218,7 +218,7 @@ where
         Ok((version, root_hash))
     }
 
-    fn commit(&self) -> DbResult<()> {
+    fn commit(&self) -> DbResult<u64> {
         self.inner.write_with(|mut inner| {
             let changeset = inner
                 .changeset
@@ -246,7 +246,7 @@ where
                 }
             }
 
-            Ok(())
+            Ok(changeset.version)
         })
     }
 

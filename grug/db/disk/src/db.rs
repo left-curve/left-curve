@@ -325,7 +325,7 @@ where
         Ok((new_version, root_hash))
     }
 
-    fn commit(&self) -> DbResult<()> {
+    fn commit(&self) -> DbResult<u64> {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
@@ -417,7 +417,7 @@ where
                 .record(duration.elapsed().as_secs_f64());
         }
 
-        Ok(())
+        Ok(pending.version)
     }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
