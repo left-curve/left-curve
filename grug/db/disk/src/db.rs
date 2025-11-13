@@ -1,5 +1,7 @@
 #[cfg(feature = "metrics")]
 use grug_types::MetricsIterExt;
+#[cfg(feature = "tracing")]
+use uuid::Uuid;
 use {
     crate::{DbError, DbResult},
     grug_app::{Commitment, Db},
@@ -210,7 +212,30 @@ where
     }
 
     fn latest_version(&self) -> Option<u64> {
-        self.data.read_with(|inner| {
+        #[cfg(feature = "tracing")]
+        let uuid = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::warn!(
+                kind = "read",
+                uuid,
+                commit = "latest_version",
+                "Locking data"
+            );
+        }
+
+        let latest_version = self.data.read_with(|inner| {
+            #[cfg(feature = "tracing")]
+            {
+                tracing::warn!(
+                    kind = "read",
+                    uuid,
+                    commit = "latest_version",
+                    "Locked data"
+                );
+            }
+
             let bytes = inner
                 .db
                 .get_cf(&cf_default(&inner.db), LATEST_VERSION_KEY)
@@ -223,7 +248,19 @@ where
                 });
 
             Some(u64::from_le_bytes(bytes))
-        })
+        });
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::warn!(
+                kind = "read",
+                uuid,
+                commit = "latest_version",
+                "Unlocked data"
+            );
+        }
+
+        latest_version
     }
 
     fn oldest_version(&self) -> Option<u64> {
@@ -302,13 +339,13 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(commit = "commit", "Acquiring write-lock on data");
+            tracing::warn!(kind = "write", commit = "commit", "Locking data");
         }
 
         self.data.write_with(|mut data| {
             #[cfg(feature = "tracing")]
             {
-                tracing::warn!(commit = "commit", "Acquired write-lock on data");
+                tracing::warn!(kind = "write", commit = "commit", "Locked data");
             }
 
             // If priority data exists, apply the change set to it.
@@ -373,7 +410,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(commit = "commit", "Released write-lock on data");
+            tracing::warn!(kind = "write", commit = "commit", "Unlocked data");
         }
 
         #[cfg(feature = "metrics")]
@@ -435,24 +472,41 @@ where
 #[derive(Debug, Clone)]
 pub struct StateCommitment {
     data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
+    #[cfg(feature = "tracing")]
+    uuid: String,
 }
 
 impl StateCommitment {
     fn new(data: &Shared<Data>) -> Self {
         #[cfg(feature = "tracing")]
+        let uuid = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "tracing")]
         {
-            tracing::warn!(comment = "state_commitment", "Acquiring read-lock on data");
+            tracing::warn!(
+                kind = "read",
+                uuid,
+                comment = "state_commitment",
+                "Locking data"
+            );
         }
 
         let data = data.static_read_access();
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(comment = "state_commitment", "Acquired read-lock on data");
+            tracing::warn!(
+                kind = "read",
+                uuid,
+                comment = "state_commitment",
+                "Locked data"
+            );
         }
 
         Self {
             data: Arc::new(data),
+            #[cfg(feature = "tracing")]
+            uuid,
         }
     }
 }
@@ -544,7 +598,12 @@ impl Storage for StateCommitment {
 #[cfg(feature = "tracing")]
 impl Drop for StateCommitment {
     fn drop(&mut self) {
-        tracing::warn!(comment = "state_commitment", "Released read-lock on data");
+        tracing::warn!(
+            kind = "read",
+            uuid = self.uuid,
+            comment = "state_commitment",
+            "Unlocked data"
+        );
     }
 }
 
@@ -553,6 +612,8 @@ impl Drop for StateCommitment {
 #[derive(Clone, Debug)]
 pub struct StateStorage {
     data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
+    #[cfg(feature = "tracing")]
+    uuid: String,
     #[cfg(any(feature = "tracing", feature = "metrics"))]
     comment: &'static str,
 }
@@ -567,19 +628,24 @@ impl StateStorage {
         comment: &'static str,
     ) -> Self {
         #[cfg(feature = "tracing")]
+        let uuid = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "tracing")]
         {
-            tracing::warn!(comment, "Acquiring read-lock on data");
+            tracing::warn!(kind = "read", uuid, comment, "Locking data");
         }
 
         let data = data.static_read_access();
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(comment, "Acquired read-lock on data");
+            tracing::warn!(kind = "read", uuid, comment, "Locked data");
         }
 
         Self {
             data: Arc::new(data),
+            #[cfg(feature = "tracing")]
+            uuid,
             #[cfg(any(feature = "tracing", feature = "metrics"))]
             comment,
         }
@@ -732,7 +798,12 @@ impl Storage for StateStorage {
 #[cfg(feature = "tracing")]
 impl Drop for StateStorage {
     fn drop(&mut self) {
-        tracing::warn!(comment = self.comment, "Released read-lock on data");
+        tracing::warn!(
+            kind = "read",
+            uuid = self.uuid,
+            comment = self.comment,
+            "Unlocked data"
+        );
     }
 }
 
