@@ -470,7 +470,7 @@ where
 
 #[derive(Debug)]
 pub struct StateCommitment {
-    guard: ArcRwLockReadGuard<RawRwLock, Data>,
+    guard: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
     #[cfg(feature = "tracing")]
     uuid: String,
 }
@@ -503,16 +503,50 @@ impl StateCommitment {
         }
 
         Self {
-            guard,
+            guard: Arc::new(guard),
             #[cfg(feature = "tracing")]
             uuid,
         }
     }
 }
 
+// When cloning, instead of acquiring a new read-lock, we create a new shared
+// reference to the same read-lock. The idea is that there should be only one
+// lock through the entire lifetime of this `StateCommitment`.
 impl Clone for StateCommitment {
     fn clone(&self) -> Self {
-        Self::new(ArcRwLockReadGuard::rwlock(&self.guard))
+        #[cfg(feature = "tracing")]
+        let uuid = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::warn!(
+                kind = "read",
+                comment = "state_commitment",
+                strong_count = Arc::strong_count(&self.guard),
+                uuid,
+                "Lock cloned"
+            );
+        }
+
+        Self {
+            guard: Arc::clone(&self.guard),
+            #[cfg(feature = "tracing")]
+            uuid,
+        }
+    }
+}
+
+#[cfg(feature = "tracing")]
+impl Drop for StateCommitment {
+    fn drop(&mut self) {
+        tracing::warn!(
+            kind = "read",
+            comment = "state_commitment",
+            strong_count = Arc::strong_count(&self.guard),
+            uuid = self.uuid,
+            "Lock clone dropped"
+        );
     }
 }
 
@@ -600,23 +634,11 @@ impl Storage for StateCommitment {
     }
 }
 
-#[cfg(feature = "tracing")]
-impl Drop for StateCommitment {
-    fn drop(&mut self) {
-        tracing::warn!(
-            kind = "read",
-            comment = "state_commitment",
-            uuid = self.uuid,
-            "Unlocked data"
-        );
-    }
-}
-
 // ------------------------------- state storage -------------------------------
 
 #[derive(Debug)]
 pub struct StateStorage {
-    guard: ArcRwLockReadGuard<RawRwLock, Data>,
+    guard: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
     comment: &'static str,
     #[cfg(feature = "tracing")]
     uuid: String,
@@ -640,55 +662,52 @@ impl StateStorage {
         }
 
         Self {
-            guard,
+            guard: Arc::new(guard),
             comment,
             #[cfg(feature = "tracing")]
             uuid,
         }
     }
+}
 
-    fn create_iterator<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        // If priority data exists, and the iterator range completely falls
-        // within the priority range, then create a priority iterator.
-        // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
-        // are both exclusive.
-        if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max) {
-            if data.min.as_slice() <= min && max <= data.max.as_slice() {
-                return data.records.scan(Some(min), Some(max), order);
-            }
+// When cloning, instead of acquiring a new read-lock, we create a new shared
+// reference to the same read-lock. The idea is that there should be only one
+// lock through the entire lifetime of this `StateStorage`.
+impl Clone for StateStorage {
+    fn clone(&self) -> Self {
+        #[cfg(feature = "tracing")]
+        let uuid = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::warn!(
+                kind = "read",
+                comment = self.comment,
+                strong_count = Arc::strong_count(&self.guard),
+                uuid,
+                "Lock cloned"
+            );
         }
 
-        let opts = new_read_options(min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self
-            .guard
-            .db
-            .iterator_cf_opt(&cf_state_storage(&self.guard.db), opts, mode)
-            .map(|item| {
-                let (k, v) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in state storage: {err}");
-                });
-                (k.to_vec(), v.to_vec())
-            });
-
-        #[cfg(feature = "metrics")]
-        let iter = iter.with_metrics(DISK_DB_LABEL, [
-            ("operation", "next"),
-            ("comment", self.comment),
-        ]);
-
-        Box::new(iter)
+        Self {
+            guard: Arc::clone(&self.guard),
+            comment: self.comment,
+            #[cfg(feature = "tracing")]
+            uuid,
+        }
     }
 }
 
-impl Clone for StateStorage {
-    fn clone(&self) -> Self {
-        Self::new(ArcRwLockReadGuard::rwlock(&self.guard), self.comment)
+#[cfg(feature = "tracing")]
+impl Drop for StateStorage {
+    fn drop(&mut self) {
+        tracing::warn!(
+            kind = "read",
+            comment = self.comment,
+            strong_count = Arc::strong_count(&self.guard),
+            uuid = self.uuid,
+            "Lock clone dropped"
+        );
     }
 }
 
@@ -797,15 +816,43 @@ impl Storage for StateStorage {
     }
 }
 
-#[cfg(feature = "tracing")]
-impl Drop for StateStorage {
-    fn drop(&mut self) {
-        tracing::warn!(
-            kind = "read",
-            comment = self.comment,
-            uuid = self.uuid,
-            "Unlocked data"
-        );
+impl StateStorage {
+    fn create_iterator<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+        // If priority data exists, and the iterator range completely falls
+        // within the priority range, then create a priority iterator.
+        // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
+        // are both exclusive.
+        if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max) {
+            if data.min.as_slice() <= min && max <= data.max.as_slice() {
+                return data.records.scan(Some(min), Some(max), order);
+            }
+        }
+
+        let opts = new_read_options(min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .guard
+            .db
+            .iterator_cf_opt(&cf_state_storage(&self.guard.db), opts, mode)
+            .map(|item| {
+                let (k, v) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state storage: {err}");
+                });
+                (k.to_vec(), v.to_vec())
+            });
+
+        #[cfg(feature = "metrics")]
+        let iter = iter.with_metrics(DISK_DB_LABEL, [
+            ("operation", "next"),
+            ("comment", self.comment),
+        ]);
+
+        Box::new(iter)
     }
 }
 
