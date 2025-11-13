@@ -70,7 +70,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
     m,
     controllers,
     pairId,
-    bucketRecords: isLg ? 11 : 16,
+    bucketRecords: isLg ? 10 : 16,
     onChangePairId,
     action,
     onChangeAction,
