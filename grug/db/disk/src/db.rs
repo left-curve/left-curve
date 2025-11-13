@@ -220,7 +220,7 @@ where
             tracing::warn!(
                 kind = "read",
                 uuid,
-                commit = "latest_version",
+                comment = "latest_version",
                 "Locking data"
             );
         }
@@ -231,7 +231,7 @@ where
                 tracing::warn!(
                     kind = "read",
                     uuid,
-                    commit = "latest_version",
+                    comment = "latest_version",
                     "Locked data"
                 );
             }
@@ -255,7 +255,7 @@ where
             tracing::warn!(
                 kind = "read",
                 uuid,
-                commit = "latest_version",
+                comment = "latest_version",
                 "Unlocked data"
             );
         }
@@ -339,13 +339,13 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "write", commit = "commit", "Locking data");
+            tracing::warn!(kind = "write", comment = "commit", "Locking data");
         }
 
         self.data.write_with(|mut data| {
             #[cfg(feature = "tracing")]
             {
-                tracing::warn!(kind = "write", commit = "commit", "Locked data");
+                tracing::warn!(kind = "write", comment = "commit", "Locked data");
             }
 
             // If priority data exists, apply the change set to it.
@@ -410,7 +410,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "write", commit = "commit", "Unlocked data");
+            tracing::warn!(kind = "write", comment = "commit", "Unlocked data");
         }
 
         #[cfg(feature = "metrics")]
