@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   CoinSelector,
+  FormattedNumber,
   IconButton,
   IconChevronDownFill,
   IconUser,
@@ -121,6 +122,22 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               value={sizeCoin.denom}
               coins={[baseCoin, quoteCoin]}
             />
+          }
+          insideBottomComponent={
+            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular pl-4">
+              <div className="flex items-center gap-2">
+                <FormattedNumber number={availableCoin.amount} />
+                <Button
+                  type="button"
+                  variant="tertiary-red"
+                  size="xs"
+                  className="py-[2px] px-[6px] cursor-pointer"
+                  onClick={() => setValue("size", maxSizeAmount.toString())}
+                >
+                  {m["common.max"]()}
+                </Button>
+              </div>
+            </div>
           }
         />
         <Range
