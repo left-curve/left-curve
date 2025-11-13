@@ -606,8 +606,9 @@ impl Clone for StateCommitment {
             kind = "read",
             from = self.uuid,
             to = uuid,
+            strong_count = Arc::strong_count(&self.data),
             comment = "state_commitment",
-            "Lock cloned"
+            "Cloned lock"
         );
 
         Self {
@@ -623,8 +624,9 @@ impl Drop for StateCommitment {
         tracing::warn!(
             kind = "read",
             uuid = self.uuid,
+            strong_count = Arc::strong_count(&self.data),
             comment = "state_commitment",
-            "Unlocked data"
+            "Clone of lock dropped"
         );
     }
 }
@@ -828,8 +830,9 @@ impl Clone for StateStorage {
             kind = "read",
             from = self.uuid,
             to = uuid,
+            strong_count = Arc::strong_count(&self.data),
             comment = self.comment,
-            "Lock cloned"
+            "Cloned lock"
         );
 
         Self {
@@ -846,8 +849,9 @@ impl Drop for StateStorage {
         tracing::warn!(
             kind = "read",
             uuid = self.uuid,
+            strong_count = Arc::strong_count(&self.data),
             comment = self.comment,
-            "Unlocked data"
+            "Clone of lock dropped"
         );
     }
 }
