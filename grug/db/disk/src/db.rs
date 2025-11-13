@@ -607,7 +607,7 @@ impl Drop for StateCommitment {
             kind = "read",
             comment = "state_commitment",
             uuid = self.uuid,
-            "Clone of lock dropped"
+            "Unlocked data"
         );
     }
 }
@@ -802,9 +802,9 @@ impl Drop for StateStorage {
     fn drop(&mut self) {
         tracing::warn!(
             kind = "read",
-            uuid = self.uuid,
             comment = self.comment,
-            "Clone of lock dropped"
+            uuid = self.uuid,
+            "Unlocked data"
         );
     }
 }
