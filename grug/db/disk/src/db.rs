@@ -5,10 +5,10 @@ use uuid::Uuid;
 use {
     crate::{DbError, DbResult},
     grug_app::{Commitment, Db},
-    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Shared, Storage},
-    parking_lot::{ArcRwLockReadGuard, RawRwLock},
+    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
+    parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
     rocksdb::{ColumnFamily, DB, IteratorMode, Options, ReadOptions, WriteBatch},
-    std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path},
+    std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
 };
 
 /// We use three column families (CFs) for storing data.
@@ -65,9 +65,9 @@ pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 /// and maybe our implementation will converge with Sei's some time later.
 pub struct DiskDb<T> {
     /// Data in the database.
-    pub(crate) data: Shared<Data>,
+    pub(crate) data: Arc<RwLock<Data>>,
     /// Data staged to, but not yet, be committed to the database.
-    pending: Shared<Option<PendingData>>,
+    pending: Arc<RwLock<Option<PendingData>>>,
     /// The commitment scheme.
     _commitment: PhantomData<T>,
 }
@@ -157,8 +157,8 @@ impl<T> DiskDb<T> {
         });
 
         Ok(Self {
-            data: Shared::new(Data { db, priority_data }),
-            pending: Shared::new(None),
+            data: Arc::new(RwLock::new(Data { db, priority_data })),
+            pending: Arc::new(RwLock::new(None)),
             _commitment: PhantomData,
         })
     }
@@ -221,7 +221,9 @@ where
             );
         }
 
-        let latest_version = self.data.read_with(|inner| {
+        let latest_version = {
+            let data = self.data.read();
+
             #[cfg(feature = "tracing")]
             {
                 tracing::warn!(
@@ -232,9 +234,9 @@ where
                 );
             }
 
-            let bytes = inner
+            let bytes = data
                 .db
-                .get_cf(&cf_default(&inner.db), LATEST_VERSION_KEY)
+                .get_cf(&cf_default(&data.db), LATEST_VERSION_KEY)
                 .unwrap_or_else(|err| {
                     panic!("failed to read latest version from default column family: {err}");
                 })?
@@ -244,7 +246,7 @@ where
                 });
 
             Some(u64::from_le_bytes(bytes))
-        });
+        };
 
         #[cfg(feature = "tracing")]
         {
@@ -282,7 +284,7 @@ where
         // A write batch must not already exist. If it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
-        if self.pending.read_access().is_some() {
+        if self.pending.read().is_some() {
             return Err(DbError::pending_data_already_set());
         }
 
@@ -308,7 +310,7 @@ where
         let root_hash = T::apply(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
-        *(self.pending.write_access()) = Some(PendingData {
+        *(self.pending.write()) = Some(PendingData {
             version: new_version,
             state_commitment: pending,
             state_storage: batch,
@@ -329,7 +331,7 @@ where
 
         let pending = self
             .pending
-            .write_access()
+            .write()
             .take()
             .ok_or(DbError::pending_data_not_set())?;
 
@@ -338,71 +340,71 @@ where
             tracing::warn!(kind = "write", comment = "commit", "Locking data");
         }
 
-        self.data.write_with(|mut data| {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::warn!(kind = "write", comment = "commit", "Locked data");
-            }
+        let mut data = self.data.write();
 
-            // If priority data exists, apply the change set to it.
-            if let Some(priority) = &mut data.priority_data {
-                for (k, op) in pending.state_storage.range::<[u8], _>((
-                    Bound::Included(priority.min.as_slice()),
-                    Bound::Excluded(priority.max.as_slice()),
-                )) {
-                    if let Op::Insert(v) = op {
-                        priority.records.insert(k.clone(), v.clone());
-                    } else {
-                        priority.records.remove(k);
-                    }
-                }
-            }
+        #[cfg(feature = "tracing")]
+        {
+            tracing::warn!(kind = "write", comment = "commit", "Locked data");
+        }
 
-            // Now, prepare the write batch that will be written to RocksDB.
-            let mut batch = WriteBatch::default();
-
-            // Set the new version (note: use little endian)
-            let cf = cf_default(&data.db);
-            batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
-
-            // Writes in state commitment
-            let cf = cf_state_commitment(&data.db);
-            for (key, op) in pending.state_commitment {
-                if let Op::Insert(value) = op {
-                    batch.put_cf(&cf, key, value);
+        // If priority data exists, apply the change set to it.
+        if let Some(priority) = &mut data.priority_data {
+            for (k, op) in pending.state_storage.range::<[u8], _>((
+                Bound::Included(priority.min.as_slice()),
+                Bound::Excluded(priority.max.as_slice()),
+            )) {
+                if let Op::Insert(v) = op {
+                    priority.records.insert(k.clone(), v.clone());
                 } else {
-                    batch.delete_cf(&cf, key);
+                    priority.records.remove(k);
                 }
             }
+        }
 
-            // Writes in preimages (note: don't forget to delete key hashes that
-            // are deleted in state storage - see Zellic audit).
-            // This is only necessary if the `ibc` feature is enabled.
-            #[cfg(feature = "ibc")]
-            {
-                let cf = cf_preimages(&data.db);
-                for (key, op) in &pending.state_storage {
-                    let key_hash = key.hash256();
-                    if let Op::Insert(_) = op {
-                        batch.put_cf(&cf, key_hash, key);
-                    } else {
-                        batch.delete_cf(&cf, key_hash);
-                    }
-                }
+        // Now, prepare the write batch that will be written to RocksDB.
+        let mut batch = WriteBatch::default();
+
+        // Set the new version (note: use little endian)
+        let cf = cf_default(&data.db);
+        batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
+
+        // Writes in state commitment
+        let cf = cf_state_commitment(&data.db);
+        for (key, op) in pending.state_commitment {
+            if let Op::Insert(value) = op {
+                batch.put_cf(&cf, key, value);
+            } else {
+                batch.delete_cf(&cf, key);
             }
+        }
 
-            // Writes in state storage
-            let cf = cf_state_storage(&data.db);
-            for (key, op) in pending.state_storage {
-                if let Op::Insert(value) = op {
-                    batch.put_cf(&cf, key, value);
+        // Writes in preimages (note: don't forget to delete key hashes that
+        // are deleted in state storage - see Zellic audit).
+        // This is only necessary if the `ibc` feature is enabled.
+        #[cfg(feature = "ibc")]
+        {
+            let cf = cf_preimages(&data.db);
+            for (key, op) in &pending.state_storage {
+                let key_hash = key.hash256();
+                if let Op::Insert(_) = op {
+                    batch.put_cf(&cf, key_hash, key);
                 } else {
-                    batch.delete_cf(&cf, key);
+                    batch.delete_cf(&cf, key_hash);
                 }
             }
+        }
 
-            data.db.write(batch)
-        })?;
+        // Writes in state storage
+        let cf = cf_state_storage(&data.db);
+        for (key, op) in pending.state_storage {
+            if let Op::Insert(value) = op {
+                batch.put_cf(&cf, key, value);
+            } else {
+                batch.delete_cf(&cf, key);
+            }
+        }
+
+        data.db.write(batch)?;
 
         #[cfg(feature = "tracing")]
         {
@@ -437,9 +439,10 @@ where
         T::prune(&mut buffer, up_to_version)?;
 
         let (_, pending) = buffer.disassemble();
+        let mut batch = WriteBatch::default();
 
-        self.data.write_with(|data| {
-            let mut batch = WriteBatch::default();
+        {
+            let data = self.data.write();
 
             let cf = cf_state_commitment(&data.db);
             for (key, op) in pending {
@@ -450,8 +453,8 @@ where
                 }
             }
 
-            data.db.write(batch)
-        })?;
+            data.db.write(batch)?;
+        }
 
         #[cfg(feature = "metrics")]
         {
@@ -467,14 +470,13 @@ where
 
 #[derive(Debug)]
 pub struct StateCommitment {
-    data: Shared<Data>,
     guard: ArcRwLockReadGuard<RawRwLock, Data>,
     #[cfg(feature = "tracing")]
     uuid: String,
 }
 
 impl StateCommitment {
-    fn new(data: &Shared<Data>) -> Self {
+    fn new(data: &Arc<RwLock<Data>>) -> Self {
         #[cfg(feature = "tracing")]
         let uuid = Uuid::new_v4().to_string();
 
@@ -488,7 +490,7 @@ impl StateCommitment {
             );
         }
 
-        let guard = data.static_read_access();
+        let guard = data.read_arc();
 
         #[cfg(feature = "tracing")]
         {
@@ -501,7 +503,6 @@ impl StateCommitment {
         }
 
         Self {
-            data: data.clone(),
             guard,
             #[cfg(feature = "tracing")]
             uuid,
@@ -511,7 +512,7 @@ impl StateCommitment {
 
 impl Clone for StateCommitment {
     fn clone(&self) -> Self {
-        Self::new(&self.data)
+        Self::new(ArcRwLockReadGuard::rwlock(&self.guard))
     }
 }
 
@@ -615,7 +616,6 @@ impl Drop for StateCommitment {
 
 #[derive(Debug)]
 pub struct StateStorage {
-    data: Shared<Data>,
     guard: ArcRwLockReadGuard<RawRwLock, Data>,
     comment: &'static str,
     #[cfg(feature = "tracing")]
@@ -623,7 +623,7 @@ pub struct StateStorage {
 }
 
 impl StateStorage {
-    fn new(data: &Shared<Data>, comment: &'static str) -> Self {
+    fn new(data: &Arc<RwLock<Data>>, comment: &'static str) -> Self {
         #[cfg(feature = "tracing")]
         let uuid = Uuid::new_v4().to_string();
 
@@ -632,7 +632,7 @@ impl StateStorage {
             tracing::warn!(kind = "read", uuid, comment, "Locking data");
         }
 
-        let guard = data.static_read_access();
+        let guard = data.read_arc();
 
         #[cfg(feature = "tracing")]
         {
@@ -640,7 +640,6 @@ impl StateStorage {
         }
 
         Self {
-            data: data.clone(),
             guard,
             comment,
             #[cfg(feature = "tracing")]
@@ -689,7 +688,7 @@ impl StateStorage {
 
 impl Clone for StateStorage {
     fn clone(&self) -> Self {
-        Self::new(&self.data, self.comment)
+        Self::new(ArcRwLockReadGuard::rwlock(&self.guard), self.comment)
     }
 }
 
@@ -1399,7 +1398,9 @@ mod tests_simple {
         .unwrap();
 
         // Enusre rockdb max is exclusive.
-        db.data.read_with(|data| {
+        {
+            let data = db.data.read();
+
             assert_eq!(
                 data.db
                     .iterator_cf_opt(
@@ -1440,7 +1441,7 @@ mod tests_simple {
                     (b"004".to_vec(), b"004".to_vec()),
                 ]
             );
-        });
+        }
 
         drop(db);
 
@@ -1452,7 +1453,9 @@ mod tests_simple {
         // This is not something that should happen in a normal use case but allows
         // us to test the priority data.
         // Remove the `002` key from the db.
-        db.data.write_with(|data| {
+        {
+            let data = db.data.read();
+
             assert_eq!(
                 data.db
                     .get_cf_opt(
@@ -1479,7 +1482,7 @@ mod tests_simple {
                     .unwrap()
                     .is_none()
             );
-        });
+        }
 
         let storage = db.state_storage(None).unwrap();
 

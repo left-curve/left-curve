@@ -45,7 +45,7 @@ impl IbcDb for DiskDb<MerkleTree> {
             // We simply look up the state storage to find the left and right
             // neighbors, and generate existence proof of them.
             None => {
-                let data = self.data.read_access();
+                let data = self.data.read();
                 let cf = cf_preimages(&data.db);
                 let key_hash = key.hash256();
 
