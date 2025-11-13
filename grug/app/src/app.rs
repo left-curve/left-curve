@@ -146,7 +146,7 @@ where
         }
 
         let mut buffer = Shared::new(Buffer::new(
-            self.db.state_storage_with_comment(None, "consensus")?,
+            self.db.state_storage_with_comment(None, "init_chain")?,
             None,
             "init_chain",
         ));
@@ -285,7 +285,9 @@ where
 
     #[inline]
     fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
-        let storage = self.db.state_storage_with_comment(None, "consensus")?;
+        let storage = self
+            .db
+            .state_storage_with_comment(None, "prepare_proposal")?;
         let block = LAST_FINALIZED_BLOCK.load(&storage)?;
         let querier = QuerierProviderImpl::new_boxed(
             self.vm.clone(),
@@ -323,7 +325,7 @@ where
         let block_duration = std::time::Instant::now();
 
         let mut buffer = Shared::new(Buffer::new(
-            self.db.state_storage_with_comment(None, "consensus")?,
+            self.db.state_storage_with_comment(None, "finalize_block")?,
             None,
             "finalize",
         ));
@@ -639,7 +641,7 @@ where
             let querier = {
                 let storage = self
                     .db
-                    .state_storage_with_comment(Some(block_height), "consensus")?;
+                    .state_storage_with_comment(Some(block_height), "post_indexing")?;
                 let block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
                 Arc::new(QuerierProviderImpl::new(
