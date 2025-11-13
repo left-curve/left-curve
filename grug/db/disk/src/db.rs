@@ -524,7 +524,8 @@ impl Clone for StateCommitment {
                 kind = "read",
                 comment = "state_commitment",
                 strong_count = Arc::strong_count(&self.guard),
-                uuid,
+                from = self.uuid,
+                to = uuid,
                 "Lock cloned"
             );
         }
@@ -684,7 +685,8 @@ impl Clone for StateStorage {
                 kind = "read",
                 comment = self.comment,
                 strong_count = Arc::strong_count(&self.guard),
-                uuid,
+                from = self.uuid,
+                to = uuid,
                 "Lock cloned"
             );
         }
