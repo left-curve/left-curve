@@ -8,7 +8,7 @@ use {
     grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Shared, Storage},
     parking_lot::{ArcRwLockReadGuard, RawRwLock},
     rocksdb::{ColumnFamily, DB, IteratorMode, Options, ReadOptions, WriteBatch},
-    std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
+    std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path},
 };
 
 /// We use three column families (CFs) for storing data.
@@ -190,10 +190,6 @@ where
     fn state_storage_with_comment(
         &self,
         version: Option<u64>,
-        #[cfg_attr(
-            not(any(feature = "tracing", feature = "metrics")),
-            allow(unused_variables)
-        )]
         comment: &'static str,
     ) -> DbResult<StateStorage> {
         // If version is unspecified, use the latest version. Otherwise, make
@@ -470,9 +466,9 @@ where
 // ----------------------------- state commitment ------------------------------
 
 #[derive(Debug)]
-#[cfg_attr(not(feature = "tracing"), derive(Clone))]
 pub struct StateCommitment {
-    data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
+    data: Shared<Data>,
+    guard: ArcRwLockReadGuard<RawRwLock, Data>,
     #[cfg(feature = "tracing")]
     uuid: String,
 }
@@ -486,36 +482,43 @@ impl StateCommitment {
         {
             tracing::warn!(
                 kind = "read",
-                uuid,
                 comment = "state_commitment",
+                uuid,
                 "Locking data"
             );
         }
 
-        let data = data.static_read_access();
+        let guard = data.static_read_access();
 
         #[cfg(feature = "tracing")]
         {
             tracing::warn!(
                 kind = "read",
-                uuid,
                 comment = "state_commitment",
+                uuid,
                 "Locked data"
             );
         }
 
         Self {
-            data: Arc::new(data),
+            data: data.clone(),
+            guard,
             #[cfg(feature = "tracing")]
             uuid,
         }
     }
 }
 
+impl Clone for StateCommitment {
+    fn clone(&self) -> Self {
+        Self::new(&self.data)
+    }
+}
+
 impl Storage for StateCommitment {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        let cf = cf_state_commitment(&self.data.db);
-        self.data.db.get_cf(&cf, key).unwrap_or_else(|err| {
+        let cf = cf_state_commitment(&self.guard.db);
+        self.guard.db.get_cf(&cf, key).unwrap_or_else(|err| {
             panic!("failed to read from state commitment: {err}");
         })
     }
@@ -529,9 +532,9 @@ impl Storage for StateCommitment {
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .data
+            .guard
             .db
-            .iterator_cf_opt(&cf_state_commitment(&self.data.db), opts, mode)
+            .iterator_cf_opt(&cf_state_commitment(&self.guard.db), opts, mode)
             .map(|item| {
                 let (k, v) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state commitment: {err}");
@@ -550,9 +553,9 @@ impl Storage for StateCommitment {
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .data
+            .guard
             .db
-            .iterator_cf_opt(&cf_state_commitment(&self.data.db), opts, mode)
+            .iterator_cf_opt(&cf_state_commitment(&self.guard.db), opts, mode)
             .map(|item| {
                 let (k, _) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state commitment: {err}");
@@ -571,9 +574,9 @@ impl Storage for StateCommitment {
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .data
+            .guard
             .db
-            .iterator_cf_opt(&cf_state_commitment(&self.data.db), opts, mode)
+            .iterator_cf_opt(&cf_state_commitment(&self.guard.db), opts, mode)
             .map(|item| {
                 let (_, v) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state commitment: {err}");
@@ -596,36 +599,13 @@ impl Storage for StateCommitment {
     }
 }
 
-// Custom cloning logic when tracing is enabled: generate a new UUID for the new instance.
-#[cfg(feature = "tracing")]
-impl Clone for StateCommitment {
-    fn clone(&self) -> Self {
-        let uuid = Uuid::new_v4().to_string();
-
-        tracing::warn!(
-            kind = "read",
-            from = self.uuid,
-            to = uuid,
-            strong_count = Arc::strong_count(&self.data),
-            comment = "state_commitment",
-            "Cloned lock"
-        );
-
-        Self {
-            data: Arc::clone(&self.data),
-            uuid,
-        }
-    }
-}
-
 #[cfg(feature = "tracing")]
 impl Drop for StateCommitment {
     fn drop(&mut self) {
         tracing::warn!(
             kind = "read",
-            uuid = self.uuid,
-            strong_count = Arc::strong_count(&self.data),
             comment = "state_commitment",
+            uuid = self.uuid,
             "Clone of lock dropped"
         );
     }
@@ -634,24 +614,16 @@ impl Drop for StateCommitment {
 // ------------------------------- state storage -------------------------------
 
 #[derive(Debug)]
-#[cfg_attr(not(feature = "tracing"), derive(Clone))]
 pub struct StateStorage {
-    data: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
+    data: Shared<Data>,
+    guard: ArcRwLockReadGuard<RawRwLock, Data>,
+    comment: &'static str,
     #[cfg(feature = "tracing")]
     uuid: String,
-    #[cfg(any(feature = "tracing", feature = "metrics"))]
-    comment: &'static str,
 }
 
 impl StateStorage {
-    fn new(
-        data: &Shared<Data>,
-        #[cfg_attr(
-            not(any(feature = "tracing", feature = "metrics")),
-            allow(unused_variables)
-        )]
-        comment: &'static str,
-    ) -> Self {
+    fn new(data: &Shared<Data>, comment: &'static str) -> Self {
         #[cfg(feature = "tracing")]
         let uuid = Uuid::new_v4().to_string();
 
@@ -660,7 +632,7 @@ impl StateStorage {
             tracing::warn!(kind = "read", uuid, comment, "Locking data");
         }
 
-        let data = data.static_read_access();
+        let guard = data.static_read_access();
 
         #[cfg(feature = "tracing")]
         {
@@ -668,11 +640,11 @@ impl StateStorage {
         }
 
         Self {
-            data: Arc::new(data),
+            data: data.clone(),
+            guard,
+            comment,
             #[cfg(feature = "tracing")]
             uuid,
-            #[cfg(any(feature = "tracing", feature = "metrics"))]
-            comment,
         }
     }
 
@@ -686,7 +658,7 @@ impl StateStorage {
         // within the priority range, then create a priority iterator.
         // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
         // are both exclusive.
-        if let (Some(data), Some(min), Some(max)) = (&self.data.priority_data, min, max) {
+        if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max) {
             if data.min.as_slice() <= min && max <= data.max.as_slice() {
                 return data.records.scan(Some(min), Some(max), order);
             }
@@ -695,9 +667,9 @@ impl StateStorage {
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .data
+            .guard
             .db
-            .iterator_cf_opt(&cf_state_storage(&self.data.db), opts, mode)
+            .iterator_cf_opt(&cf_state_storage(&self.guard.db), opts, mode)
             .map(|item| {
                 let (k, v) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state storage: {err}");
@@ -715,6 +687,12 @@ impl StateStorage {
     }
 }
 
+impl Clone for StateStorage {
+    fn clone(&self) -> Self {
+        Self::new(&self.data, self.comment)
+    }
+}
+
 impl Storage for StateStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
         #[cfg(feature = "metrics")]
@@ -723,7 +701,7 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the disk.
         // Note: `min` is inclusive, while `max` is exclusive.
-        if let Some(data) = &self.data.priority_data {
+        if let Some(data) = &self.guard.priority_data {
             if data.min.as_slice() <= key && key < data.max.as_slice() {
                 return data.records.get(key).cloned();
             }
@@ -731,9 +709,9 @@ impl Storage for StateStorage {
 
         let opts = new_read_options(None, None);
         let value = self
-            .data
+            .guard
             .db
-            .get_cf_opt(&cf_state_storage(&self.data.db), key, &opts)
+            .get_cf_opt(&cf_state_storage(&self.guard.db), key, &opts)
             .unwrap_or_else(|err| {
                 panic!("failed to read from state storage: {err}");
             });
@@ -820,36 +798,12 @@ impl Storage for StateStorage {
     }
 }
 
-// Custom cloning logic when tracing is enabled: generate a new UUID for the new instance.
-#[cfg(feature = "tracing")]
-impl Clone for StateStorage {
-    fn clone(&self) -> Self {
-        let uuid = Uuid::new_v4().to_string();
-
-        tracing::warn!(
-            kind = "read",
-            from = self.uuid,
-            to = uuid,
-            strong_count = Arc::strong_count(&self.data),
-            comment = self.comment,
-            "Cloned lock"
-        );
-
-        Self {
-            data: Arc::clone(&self.data),
-            uuid,
-            comment: self.comment,
-        }
-    }
-}
-
 #[cfg(feature = "tracing")]
 impl Drop for StateStorage {
     fn drop(&mut self) {
         tracing::warn!(
             kind = "read",
             uuid = self.uuid,
-            strong_count = Arc::strong_count(&self.data),
             comment = self.comment,
             "Clone of lock dropped"
         );
