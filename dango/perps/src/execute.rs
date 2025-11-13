@@ -15,7 +15,8 @@ use {
     },
     grug::{
         Coins, Dec128, Denom, Int128, IsZero, Message, MutableCtx, Number, NumberConst, Order,
-        QuerierExt, Response, Sign, Signed, StdError, StorageQuerier, Udec128, Uint128, Unsigned,
+        QuerierExt, Response, Sign, Signed, StdError, StdResult, StorageQuerier, Udec128, Uint128,
+        Unsigned,
     },
     std::collections::{BTreeMap, HashMap},
 };
@@ -121,7 +122,9 @@ fn deposit(ctx: MutableCtx) -> anyhow::Result<Response> {
     })?;
 
     // Store the deposit
-    PERPS_VAULT_DEPOSITS.save(ctx.storage, &ctx.sender, &shares)?;
+    PERPS_VAULT_DEPOSITS.may_update(ctx.storage, &ctx.sender, |maybe_deposit| -> StdResult<_> {
+        Ok(maybe_deposit.unwrap_or(Uint128::ZERO).checked_add(shares)?)
+    })?;
 
     Ok(Response::new())
 }

@@ -166,25 +166,41 @@ fn deposit_works() {
     // Register prices
     register_fixed_prices(&mut suite, &mut accounts, &contracts);
 
-    // Deposit 123 USDC
+    // Record the user's and vault's balance
+    suite.balances().record(&accounts.user1);
+    suite.balances().record(&contracts.perps);
+
+    let deposit_amount = 123;
+
+    // Deposit USDC
     suite
         .execute(
             &mut accounts.user1,
             contracts.perps,
             &perps::ExecuteMsg::Deposit {},
             coins! {
-                usdc::DENOM.clone() => 123,
+                usdc::DENOM.clone() => deposit_amount,
             },
         )
         .should_succeed();
+
+    // Ensure the user's and vault's balance are updated
+    suite.balances().should_change(
+        &accounts.user1,
+        btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(deposit_amount) },
+    );
+    suite.balances().should_change(
+        &contracts.perps,
+        btree_map! { usdc::DENOM.clone() => BalanceChange::Increased(deposit_amount) },
+    );
 
     // Ensure the perps vault state is updated
     suite
         .query_wasm_smart(contracts.perps, QueryPerpsVaultStateRequest {})
         .should_succeed_and_equal(PerpsVaultState {
             denom: usdc::DENOM.clone(),
-            deposits: Uint128::from(123),
-            shares: Uint128::from(123) * INITIAL_SHARES_PER_TOKEN,
+            deposits: Uint128::from(deposit_amount),
+            shares: Uint128::from(deposit_amount) * INITIAL_SHARES_PER_TOKEN,
             realized_pnl: Default::default(),
         });
 
@@ -193,7 +209,48 @@ fn deposit_works() {
         .query_wasm_smart(contracts.perps, QueryVaultSharesForUserRequest {
             address: accounts.user1.address.into_inner(),
         })
-        .should_succeed_and_equal(Uint128::from(123) * INITIAL_SHARES_PER_TOKEN);
+        .should_succeed_and_equal(Uint128::from(deposit_amount) * INITIAL_SHARES_PER_TOKEN);
+
+    // Record the user's and vault's balance
+    suite.balances().record(&accounts.user1);
+    suite.balances().record(&contracts.perps);
+
+    // Deposit again from same user
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Deposit {},
+            coins! { usdc::DENOM.clone() => deposit_amount },
+        )
+        .should_succeed();
+
+    // Ensure the user's and vault's balance are updated
+    suite.balances().should_change(
+        &accounts.user1,
+        btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(deposit_amount) },
+    );
+    suite.balances().should_change(
+        &contracts.perps,
+        btree_map! { usdc::DENOM.clone() => BalanceChange::Increased(deposit_amount) },
+    );
+
+    // Ensure the perps vault state is updated
+    suite
+        .query_wasm_smart(contracts.perps, QueryPerpsVaultStateRequest {})
+        .should_succeed_and_equal(PerpsVaultState {
+            denom: usdc::DENOM.clone(),
+            deposits: Uint128::from(deposit_amount * 2),
+            shares: Uint128::from(deposit_amount * 2) * INITIAL_SHARES_PER_TOKEN,
+            realized_pnl: Default::default(),
+        });
+
+    // Ensure the user's deposit is updated
+    suite
+        .query_wasm_smart(contracts.perps, QueryVaultSharesForUserRequest {
+            address: accounts.user1.address.into_inner(),
+        })
+        .should_succeed_and_equal(Uint128::from(deposit_amount * 2) * INITIAL_SHARES_PER_TOKEN);
 }
 
 #[test]
@@ -230,6 +287,10 @@ fn withdraw_works() {
         })
         .should_succeed_and_equal(Uint128::from(123) * INITIAL_SHARES_PER_TOKEN);
 
+    // Record the user's and vault's balance
+    suite.balances().record(&accounts.user1);
+    suite.balances().record(&contracts.perps);
+
     // Withdraw 100 USDC
     suite
         .execute(
@@ -241,6 +302,16 @@ fn withdraw_works() {
             Coins::new(),
         )
         .should_succeed();
+
+    // Ensure the user's and vault's balance are updated
+    suite.balances().should_change(
+        &accounts.user1,
+        btree_map! { usdc::DENOM.clone() => BalanceChange::Increased(100) },
+    );
+    suite.balances().should_change(
+        &contracts.perps,
+        btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(100) },
+    );
 
     // Ensure the perps vault state is updated
     suite
@@ -258,6 +329,49 @@ fn withdraw_works() {
             address: accounts.user1.address.into_inner(),
         })
         .should_succeed_and_equal(Uint128::from(23) * INITIAL_SHARES_PER_TOKEN);
+
+    // Record the user's and vault's balance
+    suite.balances().record(&accounts.user1);
+    suite.balances().record(&contracts.perps);
+
+    // Withdraw again from same user
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.perps,
+            &perps::ExecuteMsg::Withdraw {
+                shares: Uint128::from(23) * INITIAL_SHARES_PER_TOKEN,
+            },
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Ensure the user's and vault's balance are updated
+    suite.balances().should_change(
+        &accounts.user1,
+        btree_map! { usdc::DENOM.clone() => BalanceChange::Increased(23) },
+    );
+    suite.balances().should_change(
+        &contracts.perps,
+        btree_map! { usdc::DENOM.clone() => BalanceChange::Decreased(23) },
+    );
+
+    // Ensure the perps vault state is updated
+    suite
+        .query_wasm_smart(contracts.perps, QueryPerpsVaultStateRequest {})
+        .should_succeed_and_equal(PerpsVaultState {
+            denom: usdc::DENOM.clone(),
+            deposits: Uint128::ZERO,
+            shares: Uint128::ZERO,
+            realized_pnl: Default::default(),
+        });
+
+    // Ensure the user's deposit is updated
+    suite
+        .query_wasm_smart(contracts.perps, QueryVaultSharesForUserRequest {
+            address: accounts.user1.address.into_inner(),
+        })
+        .should_succeed_and_equal(Uint128::ZERO);
 }
 
 #[test]
