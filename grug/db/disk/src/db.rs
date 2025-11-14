@@ -213,7 +213,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 uuid,
                 comment = "latest_version",
@@ -226,7 +226,7 @@ where
 
             #[cfg(feature = "tracing")]
             {
-                tracing::warn!(
+                tracing::debug!(
                     kind = "read",
                     uuid,
                     comment = "latest_version",
@@ -250,7 +250,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 uuid,
                 comment = "latest_version",
@@ -337,14 +337,14 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "write", comment = "commit", "Locking data");
+            tracing::debug!(kind = "write", comment = "commit", "Locking data");
         }
 
         let mut data = self.data.write();
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "write", comment = "commit", "Locked data");
+            tracing::debug!(kind = "write", comment = "commit", "Locked data");
         }
 
         // If priority data exists, apply the change set to it.
@@ -408,7 +408,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "write", comment = "commit", "Unlocked data");
+            tracing::debug!(kind = "write", comment = "commit", "Unlocked data");
         }
 
         #[cfg(feature = "metrics")]
@@ -482,7 +482,7 @@ impl StateCommitment {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 comment = "state_commitment",
                 uuid,
@@ -494,7 +494,7 @@ impl StateCommitment {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 comment = "state_commitment",
                 uuid,
@@ -520,7 +520,7 @@ impl Clone for StateCommitment {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 comment = "state_commitment",
                 strong_count = Arc::strong_count(&self.guard),
@@ -541,7 +541,7 @@ impl Clone for StateCommitment {
 #[cfg(feature = "tracing")]
 impl Drop for StateCommitment {
     fn drop(&mut self) {
-        tracing::warn!(
+        tracing::debug!(
             kind = "read",
             comment = "state_commitment",
             strong_count = Arc::strong_count(&self.guard),
@@ -652,14 +652,14 @@ impl StateStorage {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "read", uuid, comment, "Locking data");
+            tracing::debug!(kind = "read", uuid, comment, "Locking data");
         }
 
         let guard = data.read_arc();
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "read", uuid, comment, "Locked data");
+            tracing::debug!(kind = "read", uuid, comment, "Locked data");
         }
 
         Self {
@@ -681,7 +681,7 @@ impl Clone for StateStorage {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 comment = self.comment,
                 strong_count = Arc::strong_count(&self.guard),
@@ -703,7 +703,7 @@ impl Clone for StateStorage {
 #[cfg(feature = "tracing")]
 impl Drop for StateStorage {
     fn drop(&mut self) {
-        tracing::warn!(
+        tracing::debug!(
             kind = "read",
             comment = self.comment,
             strong_count = Arc::strong_count(&self.guard),
