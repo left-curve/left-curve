@@ -1,7 +1,6 @@
 use {
     crate::{
         event_cache::EventCacheWriter,
-        http_request_details::HttpRequestDetailsCache,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSub},
     },
     indexer_sql_migration::{Migrator, MigratorTrait},
@@ -9,7 +8,7 @@ use {
         ConnectOptions, ConnectionTrait, Database, DatabaseConnection,
         sqlx::{self},
     },
-    std::sync::{Arc, Mutex},
+    std::sync::Arc,
 };
 
 #[derive(Clone)]

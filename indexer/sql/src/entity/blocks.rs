@@ -3,13 +3,13 @@ use {
     crate::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
     },
-    crate::indexer_path::IndexerPath,
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
     grug_types::JsonSerExt,
     grug_types::Timestamp,
+    indexer_cache::{IndexerPath, cache_file::CacheFile},
 };
+
 use {
-    indexer_cache::cache_file::CacheFile,
     sea_orm::{QueryOrder, entity::prelude::*},
     serde::{Deserialize, Serialize},
 };

@@ -8,28 +8,20 @@ use {
     crate::{
         Context, EventCache, EventCacheWriter,
         active_model::Models,
-        bail, entity,
+        entity,
         error::{self, IndexerError},
-        indexer_path::IndexerPath,
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
-    grug_app::{Indexer as IndexerTrait, LAST_FINALIZED_BLOCK},
-    grug_types::{
-        Block, BlockAndBlockOutcomeWithHttpDetails, BlockOutcome, Defined, HttpRequestDetails,
-        MaybeDefined, Storage, Undefined,
-    },
+    grug_app::Indexer as IndexerTrait,
+    grug_types::{BlockAndBlockOutcomeWithHttpDetails, Defined, MaybeDefined, Storage, Undefined},
     itertools::Itertools,
     sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter},
     std::{
-        collections::HashMap,
         future::Future,
-        path::PathBuf,
         sync::{
-            Arc, Mutex,
+            Arc,
             atomic::{AtomicU64, Ordering},
         },
-        thread::sleep,
-        time::Duration,
     },
     tokio::runtime::{Builder, Handle, Runtime},
 };
@@ -219,66 +211,6 @@ pub struct Indexer {
 pub const MAX_ROWS_INSERT: usize = 2048;
 
 impl Indexer {
-    /// Index all previous blocks not yet indexed.
-    fn index_previous_unindexed_blocks(&self, latest_block_height: u64) -> error::Result<()> {
-        let last_indexed_block_height = self.handle.block_on(async {
-            entity::blocks::Entity::find_last_block_height(&self.context.db).await
-        })?;
-
-        let last_indexed_block_height = match last_indexed_block_height {
-            Some(height) => height as u64,
-            None => 0, // happens when you index since genesis
-        };
-
-        let next_block_height = last_indexed_block_height + 1;
-        if latest_block_height > next_block_height {
-            return Ok(());
-        }
-
-        for block_height in next_block_height..=latest_block_height {
-            let block_filename = self.indexer_path.block_path(block_height);
-
-            let block_to_index = BlockToIndex::load_from_disk(block_filename.clone())
-                .unwrap_or_else(|_err| {
-                    #[cfg(feature = "tracing")]
-                    tracing::error!(error = %_err, block_height, "Can't load block from disk");
-
-                    panic!("can't load block from disk, can't continue as you'd be missing indexed blocks");
-                });
-
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height,
-                indexer_id = self.id,
-                "`index_previous_unindexed_blocks` started"
-            );
-
-            #[cfg(feature = "metrics")]
-            metrics::counter!("indexer.previous_blocks.processed.total").increment(1);
-
-            self.handle.block_on(async {
-                block_to_index
-                    .save(
-                        self.context.db.clone(),
-                        self.context.event_cache.clone(),
-                        self.id,
-                    )
-                    .await?;
-
-                Ok::<(), error::IndexerError>(())
-            })?;
-
-            #[cfg(feature = "tracing")]
-            tracing::info!(
-                block_height,
-                indexer_id = self.id,
-                "`index_previous_unindexed_blocks` ended"
-            );
-        }
-
-        Ok(())
-    }
-
     async fn save_block(
         db: DatabaseConnection,
         event_cache: EventCacheWriter,
@@ -431,7 +363,7 @@ impl IndexerTrait for Indexer {
         Ok(last_indexed_block_height.map(|h| h as u64))
     }
 
-    fn start(&mut self, storage: &dyn Storage) -> grug_app::IndexerResult<()> {
+    fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
 
@@ -440,23 +372,6 @@ impl IndexerTrait for Indexer {
 
             Ok::<(), error::IndexerError>(())
         })?;
-
-        match LAST_FINALIZED_BLOCK.load(storage) {
-            Err(_err) => {
-                // This happens when the chain starts at genesis
-                #[cfg(feature = "tracing")]
-                tracing::warn!(error = %_err, "No `LAST_FINALIZED_BLOCK` found");
-            },
-            Ok(block) => {
-                #[cfg(feature = "tracing")]
-                tracing::warn!(
-                    block_height = block.height,
-                    "Start called, found a previous block"
-                );
-
-                self.index_previous_unindexed_blocks(block.height)?;
-            },
-        }
 
         self.indexing = true;
 
@@ -471,23 +386,6 @@ impl IndexerTrait for Indexer {
 
         self.indexing = false;
 
-        Ok(())
-    }
-
-    fn pre_indexing(
-        &self,
-        _block_height: u64,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
-        Ok(())
-    }
-
-    fn index_block(
-        &self,
-        _block: &Block,
-        _block_outcome: &BlockOutcome,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
         Ok(())
     }
 
@@ -529,106 +427,97 @@ impl IndexerTrait for Indexer {
         // ctx.insert(block_to_index.block.clone());
         // ctx.insert(block_to_index.block_outcome.clone());
 
-        // This is only to run within the async context, but we're waiting for
-        // the completion of this task synchronously right after spawning it.
-        let handle = self.handle.spawn(async move {
-            #[cfg(feature = "tracing")]
-            tracing::debug!(
-                block_height,
-                indexer_id = id,
-                "`post_indexing` async work started"
-            );
-
-            #[allow(clippy::map_identity)]
-            if let Err(_err) =
-                Self::save_block(context.db.clone(), context.event_cache.clone(), block).await
-            {
-                #[cfg(feature = "tracing")]
-                tracing::error!(
-                    err = %_err,
-                    indexer_id = id,
-                    block_height,
-                    "Can't save to db in `post_indexing`"
-                );
-
-                #[cfg(feature = "metrics")]
-                metrics::counter!("indexer.errors.save.total").increment(1);
-
-                return Ok(());
-            }
-
-            #[cfg(feature = "metrics")]
-            metrics::counter!("indexer.blocks.processed.total").increment(1);
-
-            // if !keep_blocks {
-            //     if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
-            //         #[cfg(feature = "tracing")]
-            //         tracing::error!(
-            //             error = %_err,
-            //             block_filename = %block_filename.display(),
-            //             "Can't delete block from disk in post_indexing"
-            //         );
-
-            //         return Ok(());
-            //     }
-
-            //     #[cfg(feature = "metrics")]
-            //     metrics::counter!("indexer.blocks.deleted.total").increment(1);
-            // } else {
-            //     // compress takes CPU, so we do it in a spawned blocking task
-            //     if let Err(_err) = tokio::task::spawn_blocking(move || {
-            //         if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
-            //             #[cfg(feature = "tracing")]
-            //             tracing::error!(
-            //                 error = %_err,
-            //                 block_filename = %block_filename.display(),
-            //                 "Can't compress block on disk in post_indexing"
-            //             );
-            //         }
-            //     })
-            //     .await
-            //     {
-            //         #[cfg(feature = "tracing")]
-            //         tracing::error!(error = %_err, "`spawn_blocking` error compressing block file");
-            //     }
-
-            //     #[cfg(feature = "metrics")]
-            //     metrics::counter!("indexer.blocks.compressed.total").increment(1);
-            // }
-
-            if let Err(_err) = context.pubsub.publish(block_height).await {
-                #[cfg(feature = "tracing")]
-                tracing::error!(
-                    err = %_err,
-                    indexer_id = id,
-                    block_height,
-                    "Can't publish block minted in `post_indexing`"
-                );
-
-                #[cfg(feature = "metrics")]
-                metrics::counter!("indexer.errors.pubsub.total").increment(1);
-
-                return Ok(());
-            }
-
-            #[cfg(feature = "metrics")]
-            metrics::counter!("indexer.pubsub.published.total").increment(1);
-
-            #[cfg(feature = "tracing")]
-            tracing::info!(block_height, indexer_id = id, "`post_indexing` finished");
-
-            Ok::<(), grug_app::IndexerError>(())
-        });
-
         self.handle
-            .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
+            .block_on(async move {
+                #[cfg(feature = "tracing")]
+                tracing::debug!(
+                    block_height,
+                    indexer_id = id,
+                    "`post_indexing` async work started"
+                );
 
-        Ok(())
-    }
+                #[allow(clippy::map_identity)]
+                if let Err(_err) =
+                    Self::save_block(context.db.clone(), context.event_cache.clone(), block).await
+                {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(
+                        err = %_err,
+                        indexer_id = id,
+                        block_height,
+                        "Can't save to db in `post_indexing`"
+                    );
 
-    /// Wait for all blocks to be indexed
-    fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!("indexer.errors.save.total").increment(1);
+
+                    return Ok(());
+                }
+
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.blocks.processed.total").increment(1);
+
+                // if !keep_blocks {
+                //     if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
+                //         #[cfg(feature = "tracing")]
+                //         tracing::error!(
+                //             error = %_err,
+                //             block_filename = %block_filename.display(),
+                //             "Can't delete block from disk in post_indexing"
+                //         );
+
+                //         return Ok(());
+                //     }
+
+                //     #[cfg(feature = "metrics")]
+                //     metrics::counter!("indexer.blocks.deleted.total").increment(1);
+                // } else {
+                //     // compress takes CPU, so we do it in a spawned blocking task
+                //     if let Err(_err) = tokio::task::spawn_blocking(move || {
+                //         if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
+                //             #[cfg(feature = "tracing")]
+                //             tracing::error!(
+                //                 error = %_err,
+                //                 block_filename = %block_filename.display(),
+                //                 "Can't compress block on disk in post_indexing"
+                //             );
+                //         }
+                //     })
+                //     .await
+                //     {
+                //         #[cfg(feature = "tracing")]
+                //         tracing::error!(error = %_err, "`spawn_blocking` error compressing block file");
+                //     }
+
+                //     #[cfg(feature = "metrics")]
+                //     metrics::counter!("indexer.blocks.compressed.total").increment(1);
+                // }
+
+                if let Err(_err) = context.pubsub.publish(block_height).await {
+                    #[cfg(feature = "tracing")]
+                    tracing::error!(
+                        err = %_err,
+                        indexer_id = id,
+                        block_height,
+                        "Can't publish block minted in `post_indexing`"
+                    );
+
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!("indexer.errors.pubsub.total").increment(1);
+
+                    return Ok(());
+                }
+
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.pubsub.published.total").increment(1);
+
+                #[cfg(feature = "tracing")]
+                tracing::info!(block_height, indexer_id = id, "`post_indexing` finished");
+
+                Ok::<(), grug_app::IndexerError>(())
+            })
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))?;
+
         Ok(())
     }
 }

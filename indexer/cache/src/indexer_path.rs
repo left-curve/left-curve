@@ -18,6 +18,10 @@ impl Default for IndexerPath {
 }
 
 impl IndexerPath {
+    pub fn new_with_tempdir() -> Self {
+        Self::TempDir(Arc::new(tempfile::tempdir().expect("can't get a tempdir")))
+    }
+
     /// Will be used when storing blocks long term to allow reindexing
     pub fn blocks_path(&self) -> PathBuf {
         match self {

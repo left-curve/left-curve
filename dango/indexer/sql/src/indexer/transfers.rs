@@ -1,7 +1,7 @@
 use {
     crate::{entity, error::Error},
     grug_types::{FlatCommitmentStatus, FlatEvent, FlatEventStatus, FlatEvtTransfer},
-    indexer_sql::{block_to_index::MAX_ROWS_INSERT, entity as main_entity},
+    indexer_sql::{entity as main_entity, indexer::MAX_ROWS_INSERT},
     itertools::Itertools,
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait},
     std::collections::HashMap,

@@ -2,7 +2,7 @@ use {
     crate::{config::Config, home_directory::HomeDirectory},
     clap::{Parser, Subcommand},
     config_parser::parse_config,
-    indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
+    indexer_cache::{IndexerPath, cache_file::CacheFile},
     metrics_exporter_prometheus::PrometheusBuilder,
     tokio::task::JoinSet,
 };
@@ -46,10 +46,10 @@ impl IndexerCmd {
             SubCmd::Block { height } => {
                 let indexer_path = IndexerPath::Dir(app_dir.indexer_dir());
                 let block_filename = indexer_path.block_path(height);
-                let block_to_index = BlockToIndex::load_from_disk(block_filename)?;
+                let block_to_index = CacheFile::load_from_disk(block_filename)?;
 
-                println!("Block: {:#?}", block_to_index.block);
-                println!("Block Outcome: {:#?}", block_to_index.block_outcome);
+                println!("Block: {:#?}", block_to_index.data.block);
+                println!("Block Outcome: {:#?}", block_to_index.data.block_outcome);
             },
             SubCmd::Blocks { start, end } => {
                 let indexer_path = IndexerPath::Dir(app_dir.indexer_dir());
@@ -62,8 +62,7 @@ impl IndexerCmd {
                         let block_filename = indexer_path.block_path(block);
 
                         tokio::task::spawn_blocking(move || {
-                            let block_to_index = match BlockToIndex::load_from_disk(block_filename)
-                            {
+                            let block_to_index = match CacheFile::load_from_disk(block_filename) {
                                 Ok(block_to_index) => block_to_index,
                                 Err(err) => {
                                     println!("Error loading block {block}: {err}");
@@ -71,8 +70,8 @@ impl IndexerCmd {
                                 },
                             };
 
-                            println!("Block: {:#?}", block_to_index.block);
-                            println!("Block Outcome: {:#?}", block_to_index.block_outcome);
+                            println!("Block: {:#?}", block_to_index.data.block);
+                            println!("Block Outcome: {:#?}", block_to_index.data.block_outcome);
                         });
                     });
                 }
@@ -95,8 +94,7 @@ impl IndexerCmd {
                         let block_filename = indexer_path.block_path(block);
 
                         tokio::task::spawn_blocking(move || {
-                            let block_to_index = match BlockToIndex::load_from_disk(block_filename)
-                            {
+                            let block_to_index = match CacheFile::load_from_disk(block_filename) {
                                 Ok(block_to_index) => block_to_index,
                                 Err(err) => {
                                     eprintln!("Error loading block {block}: {err}");
@@ -104,8 +102,8 @@ impl IndexerCmd {
                                 },
                             };
 
-                            let block_text = format!("{:#?}", block_to_index.block);
-                            let block_results = format!("{:#?}", block_to_index.block_outcome);
+                            let block_text = format!("{:#?}", block_to_index.data.block);
+                            let block_results = format!("{:#?}", block_to_index.data.block_outcome);
 
                             if block_text.contains(&text) || block_results.contains(&text) {
                                 println!("Found in block {block}:");
@@ -147,10 +145,8 @@ impl IndexerCmd {
                 let cfg: Config = parse_config(app_dir.config_file())?;
 
                 let sql_indexer = indexer_sql::IndexerBuilder::default()
-                    .with_keep_blocks(cfg.indexer.keep_blocks)
                     .with_database_url(&cfg.indexer.database.url)
                     .with_database_max_connections(cfg.indexer.database.max_connections)
-                    .with_dir(app_dir.indexer_dir())
                     .with_sqlx_pubsub()
                     .build()
                     .map_err(|err| anyhow::anyhow!("failed to build indexer: {err:?}"))?;

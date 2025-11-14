@@ -91,7 +91,6 @@ async fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
     let indexer = indexer_sql::IndexerBuilder::default()
-        .with_keep_blocks(true)
         .with_memory_database()
         .build()
         .expect("Can't create indexer");
@@ -535,7 +534,6 @@ fn index_block_events() {
 fn blocks_on_disk_compressed() {
     let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
-        .with_keep_blocks(true)
         .build()
         .expect("Can't create indexer");
 

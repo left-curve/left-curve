@@ -21,7 +21,9 @@ use {
     grug_vm_wasm::WasmVm,
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
+    indexer_cache::IndexerPath,
     indexer_hooked::HookedIndexer,
+    proptest::sample::Index,
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,
@@ -178,7 +180,6 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         .unwrap();
 
     let indexer_context = indexer.context.clone();
-    let indexer_path = indexer.indexer_path.clone();
 
     // Create a shared runtime handler that uses the same tokio runtime
     let shared_runtime_handle =
@@ -188,7 +189,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let mut hooked_indexer = HookedIndexer::new();
 
-    let indexer_cache = indexer_cache::Cache::new(indexer_path.clone().into());
+    let indexer_cache = indexer_cache::Cache::new(IndexerPath::new_with_tempdir());
     let indexer_cache_context = indexer_cache.context.clone();
 
     // Create a separate context for dango indexer (shares DB but has independent pubsub)
@@ -250,7 +251,6 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
         consensus_client,
-        indexer_path,
     );
 
     let dango_httpd_context = dango_httpd::context::Context::new(

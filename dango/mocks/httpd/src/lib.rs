@@ -71,11 +71,7 @@ where
             .with_database_max_connections(1)
     };
 
-    let indexer = indexer
-        .with_keep_blocks(keep_blocks)
-        .with_sqlx_pubsub()
-        .with_tmpdir()
-        .build()?;
+    let indexer = indexer.with_sqlx_pubsub().with_tmpdir().build()?;
 
     let indexer_context = indexer.context.clone();
     let indexer_path = indexer.indexer_path.clone();
@@ -137,7 +133,6 @@ where
         indexer_context.clone(),
         Arc::new(app),
         Arc::new(mock_client),
-        indexer_path,
     );
 
     let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(

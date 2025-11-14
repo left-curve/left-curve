@@ -6,10 +6,10 @@ use {
             AccountParams, AccountRegistered, KeyDisowned, KeyOwned, UserRegistered,
         },
     },
-    grug::{EventName, Inner, JsonDeExt},
+    grug::{BlockAndBlockOutcomeWithHttpDetails, EventName, Inner, JsonDeExt},
     grug_app::QuerierProvider,
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
-    indexer_sql::block_to_index::{BlockToIndex, MAX_ROWS_INSERT},
+    indexer_sql::indexer::MAX_ROWS_INSERT,
     itertools::Itertools,
     sea_orm::{
         ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait,
@@ -26,7 +26,7 @@ use {
 
 pub(crate) async fn save_accounts(
     context: &crate::context::Context,
-    block: &BlockToIndex,
+    block: &BlockAndBlockOutcomeWithHttpDetails,
     querier: &dyn QuerierProvider,
 ) -> Result<(), Error> {
     #[cfg(feature = "metrics")]

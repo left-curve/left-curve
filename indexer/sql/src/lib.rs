@@ -6,9 +6,7 @@ pub mod dataloaders;
 pub mod entity;
 pub mod error;
 mod event_cache;
-mod http_request_details;
 pub mod indexer;
-pub mod indexer_path;
 #[cfg(feature = "metrics")]
 pub mod metrics;
 pub mod pubsub;

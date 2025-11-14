@@ -5,6 +5,7 @@ use {
     grug_testing::{MockClient, TestAccounts, TestBuilder},
     grug_types::{BroadcastClientExt, Coins, Denom},
     grug_vm_rust::RustVm,
+    indexer_cache::IndexerPath,
     indexer_httpd::context::Context,
     indexer_sql::indexer::Indexer as IndexerTrait,
     std::{str::FromStr, sync::Arc},
@@ -31,13 +32,11 @@ pub async fn create_blocks(
     let indexer = indexer_sql::IndexerBuilder::default()
         .with_memory_database()
         .with_database_max_connections(1)
-        .with_keep_blocks(true)
         .build()?;
 
     let context = indexer.context.clone();
-    let indexer_path = indexer.indexer_path.clone();
 
-    let indexer_cache = indexer_cache::Cache::new(indexer_path.clone().into());
+    let indexer_cache = indexer_cache::Cache::new(IndexerPath::new_with_tempdir());
     let indexer_cache_context = indexer_cache.context.clone();
 
     let (suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
@@ -83,7 +82,6 @@ pub async fn create_blocks(
         context,
         Arc::new(httpd_app),
         client.clone(),
-        indexer_path,
     );
 
     Ok((httpd_context, client, accounts))

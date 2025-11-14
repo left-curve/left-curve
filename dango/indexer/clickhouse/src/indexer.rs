@@ -126,23 +126,6 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
-    fn pre_indexing(
-        &self,
-        _block_height: u64,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
-        Ok(())
-    }
-
-    fn index_block(
-        &self,
-        _block: &grug_types::Block,
-        _block_outcome: &grug_types::BlockOutcome,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
-        Ok(())
-    }
-
     fn post_indexing(
         &self,
         #[allow(unused_variables)] block_height: u64,
