@@ -1,7 +1,10 @@
 use {
-    crate::Data,
+    crate::{
+        CF_NAME_DEFAULT, CF_NAME_STATE_COMMITMENT, CF_NAME_STATE_STORAGE, Data, cf_default,
+        cf_state_commitment, cf_state_storage,
+    },
     parking_lot::RwLock,
-    rocksdb::{ColumnFamily, DB, Options, properties::*, statistics::Histogram},
+    rocksdb::{Options, properties::*, statistics::Histogram},
     std::{
         sync::{
             Arc,
@@ -86,9 +89,6 @@ impl StatisticsWorker {
         let stop_clone = stop.clone();
 
         let handle = thread::spawn(move || {
-            let cfs_names =
-                get_cfs_names(&inner.read().db).expect("failed to get column family names");
-
             // `interval` defines how often metrics should be emitted (every 5 seconds).
             // `poll_sleep` is a short sleep used inside the loop to periodically check
             // whether the worker has been asked to stop.
@@ -98,7 +98,6 @@ impl StatisticsWorker {
             // would block up to that duration (e.g. 5 seconds). By using a small
             // `poll_sleep`, the thread becomes responsive to shutdown requests and exits
             // within a few milliseconds, while still emitting metrics at the correct rate.
-
             let poll_sleep = Duration::from_millis(50);
             let interval = Duration::from_secs(5);
             let mut last_run = Instant::now();
@@ -111,17 +110,18 @@ impl StatisticsWorker {
 
                 let guard = inner.read();
 
-                for (cf, cf_name) in cfs(&guard.db, &cfs_names) {
+                for (cf_name, cf) in [
+                    (CF_NAME_DEFAULT, cf_default(&guard.db)),
+                    (CF_NAME_STATE_COMMITMENT, cf_state_commitment(&guard.db)),
+                    (CF_NAME_STATE_STORAGE, cf_state_storage(&guard.db)),
+                ] {
                     // ======== PROPERTIES (inner.db) ========
-
-                    let cf =
-                        cf.unwrap_or_else(|| panic!("failed to find column family: {cf_name}"));
 
                     for (category, properties) in ROCKSDB_STATISTICS {
                         for (prop_name, label) in properties {
                             if let Ok(Some(v)) = guard.db.property_int_value_cf(cf, *prop_name) {
-                                metrics::gauge!(category, "type" => *label, "cf" => cf_name.clone())
-                                        .set(v as f64);
+                                metrics::gauge!(category, "type" => *label, "cf" => cf_name)
+                                    .set(v as f64);
                             }
                         }
                     }
@@ -134,7 +134,7 @@ impl StatisticsWorker {
                                 "rocksdb_lsm_count",
                                 "type" => "num_files_at_level",
                                 "level" => level.to_string(),
-                                "cf" => cf_name.clone(),
+                                "cf" => cf_name,
                             )
                             .set(v as f64);
                         }
@@ -165,15 +165,4 @@ impl Drop for StatisticsWorker {
             let _ = handle.join();
         }
     }
-}
-
-fn cfs<'a>(
-    db: &'a DB,
-    cfs_names: &'a [String],
-) -> impl Iterator<Item = (Option<&'a ColumnFamily>, &'a String)> {
-    cfs_names.iter().map(|name| (db.cf_handle(name), name))
-}
-
-fn get_cfs_names(db: &DB) -> Result<Vec<String>, rocksdb::Error> {
-    DB::list_cf(&Options::default(), db.path())
 }
