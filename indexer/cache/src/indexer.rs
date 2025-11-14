@@ -89,15 +89,14 @@ impl grug_app::Indexer for Cache {
             // which we lost since if we are not going through the httpd.
             let cache_file = CacheFile::load_from_disk(file_path)?;
 
-            ctx.insert(cache_file.data.clone());
-
             self.blocks
                 .lock()
                 .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
-                .insert(block.info.height, cache_file.data);
+                .insert(block.info.height, cache_file.data.clone());
+
+            ctx.insert(cache_file.data);
         } else {
-            let mut cache_file =
-                CacheFile::new(file_path.clone(), block.clone(), block_outcome.clone());
+            let mut cache_file = CacheFile::new(file_path, block.clone(), block_outcome.clone());
 
             #[cfg(feature = "http-request-details")]
             {
@@ -105,19 +104,13 @@ impl grug_app::Indexer for Cache {
             }
             cache_file.save_to_disk()?;
 
-            ctx.insert(cache_file.data.clone());
-
             self.blocks
                 .lock()
                 .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
-                .insert(block.info.height, cache_file.data);
-        }
+                .insert(block.info.height, cache_file.data.clone());
 
-        #[cfg(feature = "tracing")]
-        tracing::info!(
-            block_height = block.info.height,
-            "Added block data to indexer context",
-        );
+            ctx.insert(cache_file.data);
+        }
 
         Ok(())
     }
@@ -136,8 +129,7 @@ impl grug_app::Indexer for Cache {
             .remove(&block_height)
         else {
             return Err(grug_app::IndexerError::hook(format!(
-                "Block data for height {} not found in cache indexer",
-                block_height
+                "Block data for height {block_height} not found in cache indexer",
             )));
         };
 
