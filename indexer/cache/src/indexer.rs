@@ -37,6 +37,7 @@ impl Cache {
 
     /// Set HTTP request details for transactions in the given block, those details
     /// are previously stored in the context by the httpd
+    #[allow(dead_code)]
     fn set_http_request_details(
         &self,
         block: &grug_types::Block,
@@ -128,6 +129,7 @@ impl grug_app::Indexer for Cache {
                 "Block will be saved to disk",
             );
 
+            #[allow(unused_mut)]
             let mut cache_file = CacheFile::new(file_path, block.clone(), block_outcome.clone());
 
             #[cfg(feature = "http-request-details")]
