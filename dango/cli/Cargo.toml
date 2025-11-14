@@ -11,7 +11,7 @@ version       = "0.1.0"
 
 [features]
 default = []
-testing = ["pyth-client", "pyth-types", "tokio-stream"]
+testing = ["pyth-client", "tokio-stream"]
 
 [dependencies]
 anyhow                      = { workspace = true }
@@ -44,7 +44,7 @@ indexer-httpd               = { workspace = true, features = ["metrics", "tracin
 indexer-sql                 = { workspace = true, features = ["async-graphql", "http-request-details", "metrics", "tracing"] }
 metrics-exporter-prometheus = { workspace = true }
 pyth-client                 = { workspace = true, optional = true }
-pyth-types                  = { workspace = true, optional = true }
+pyth-types                  = { workspace = true }
 rand                        = { workspace = true }
 sentry                      = { workspace = true }
 serde                       = { workspace = true }

@@ -2,12 +2,11 @@ use {
     grug_app::{AppError, NaiveProposalPreparer, ProposalPreparer},
     grug_testing::TestBuilder,
     grug_types::{
-        Addr, Coins, Empty, Json, JsonSerExt, Message, NonEmpty, QuerierExt, QuerierWrapper,
-        ResultExt, StdError, Tx, btree_map,
+        Addr, Coins, Empty, Json, JsonSerExt, Message, NonEmpty, QuerierExt, ResultExt, StdError,
+        Tx, btree_map,
     },
     grug_vm_rust::ContractBuilder,
     prost::bytes::Bytes,
-    std::str::FromStr,
     thiserror::Error,
 };
 
@@ -95,22 +94,21 @@ impl From<CoingeckoPriceFeederError> for AppError {
     }
 }
 
-struct CoingeckoPriceFeeder;
+struct CoingeckoPriceFeeder {
+    pub oracle: Option<Addr>,
+}
 
 impl ProposalPreparer for CoingeckoPriceFeeder {
     type Error = CoingeckoPriceFeederError;
 
     fn prepare_proposal(
         &self,
-        querier: QuerierWrapper,
         mut txs: Vec<Bytes>,
         max_tx_bytes: usize,
     ) -> Result<Vec<Bytes>, Self::Error> {
         // Check whether the oracle address in app config has been set.
         // If not, then we skip.
-        if let Some(oracle) = querier.query_app_config::<Json>()?.as_str() {
-            let oracle = Addr::from_str(oracle)?;
-
+        if let Some(oracle) = self.oracle {
             // Query the prices of a few coins from Coingecko.
             let prices = {
                 // Use the following to query from Coingecko.
@@ -160,14 +158,14 @@ impl ProposalPreparer for CoingeckoPriceFeeder {
 
         // Use the naive preparer to trim the txs to under the max bytes.
         Ok(NaiveProposalPreparer
-            .prepare_proposal(querier, txs, max_tx_bytes)
+            .prepare_proposal(txs, max_tx_bytes)
             .unwrap())
     }
 }
 
 #[test]
 fn prepare_proposal_works() {
-    let (mut suite, mut accounts) = TestBuilder::new_with_pp(CoingeckoPriceFeeder)
+    let (mut suite, mut accounts) = TestBuilder::new_with_pp(CoingeckoPriceFeeder { oracle: None })
         .add_account("larry", Coins::new())
         .set_owner("larry")
         .build();
@@ -192,13 +190,11 @@ fn prepare_proposal_works() {
         .should_succeed()
         .address;
 
-    // Set oracle contract address as app config.
-    suite
-        .configure(&mut accounts["larry"], None, Some(oracle))
-        .should_succeed();
+    // Inform the proposal preparer of the oracle address.
+    suite.app.pp.oracle = Some(oracle);
 
     // At this point, the feeder shouldn't have fed any price yet, because the
-    // oracle address wasn't set in app config.
+    // oracle address wasn't set in the proposal preparer.
     suite
         .query_wasm_smart(oracle, mock_oracle::QueryPricesRequest {})
         .should_succeed_and(|prices| prices.is_empty());

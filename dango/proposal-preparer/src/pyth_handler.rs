@@ -1,6 +1,5 @@
 use {
-    dango_types::oracle::{PriceSource, QueryPriceSourcesRequest},
-    grug::{Addr, Lengthy, NonEmpty, QuerierExt, QuerierWrapper, Shared, StdResult},
+    grug::{Lengthy, NonEmpty, Shared},
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
     reqwest::IntoUrl,
@@ -28,19 +27,23 @@ where
     P: PythClientTrait,
 {
     client: P,
+    ids: NonEmpty<Vec<PythLazerSubscriptionDetails>>,
     shared_vaas: Shared<Option<PriceUpdate>>,
-    current_ids: Vec<PythLazerSubscriptionDetails>,
     stoppable_thread: Option<(Arc<AtomicBool>, thread::JoinHandle<()>)>,
 }
 
 impl PythHandler<PythClient> {
-    pub fn new<V, U, T>(endpoints: NonEmpty<V>, access_token: T) -> PythHandler<PythClient>
+    pub fn new<V, U, T>(
+        endpoints: NonEmpty<V>,
+        access_token: T,
+        ids: NonEmpty<Vec<PythLazerSubscriptionDetails>>,
+    ) -> PythHandler<PythClient>
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
-        Self::new_with_client(PythClient::new(endpoints, access_token).unwrap())
+        Self::new_with_client(PythClient::new(endpoints, access_token).unwrap(), ids)
     }
 }
 
@@ -48,25 +51,29 @@ impl PythHandler<PythClientCache> {
     pub fn new_with_cache<V, U, T>(
         endpoints: NonEmpty<V>,
         access_token: T,
+        ids: NonEmpty<Vec<PythLazerSubscriptionDetails>>,
     ) -> PythHandler<PythClientCache>
     where
         V: IntoIterator<Item = U> + Lengthy,
         U: IntoUrl,
         T: ToString,
     {
-        Self::new_with_client(PythClientCache::new(endpoints, access_token).unwrap())
+        Self::new_with_client(PythClientCache::new(endpoints, access_token).unwrap(), ids)
     }
 }
 
 impl<P> PythHandler<P>
 where
-    P: PythClientTrait + QueryPythId,
+    P: PythClientTrait,
 {
-    fn new_with_client(client: P) -> PythHandler<P> {
+    fn new_with_client(
+        client: P,
+        ids: NonEmpty<Vec<PythLazerSubscriptionDetails>>,
+    ) -> PythHandler<P> {
         Self {
             client,
+            ids,
             shared_vaas: Shared::new(None),
-            current_ids: vec![],
             stoppable_thread: None,
         }
     }
@@ -89,15 +96,13 @@ where
 
 impl<P> PythHandler<P>
 where
-    P: PythClientTrait + QueryPythId + Send + 'static,
+    P: PythClientTrait + Send + 'static,
     P::Error: Debug,
 {
-    fn connect_stream<I>(&mut self, ids: NonEmpty<I>)
-    where
-        I: IntoIterator<Item = PythLazerSubscriptionDetails> + Lengthy + Send + Clone + 'static,
-    {
+    pub fn connect_stream(&mut self) {
         self.close_stream();
 
+        let ids = self.ids.clone();
         let shared_data = self.shared_vaas.clone();
         let keep_running = Arc::new(AtomicBool::new(true));
         let mut client = self.client.clone();
@@ -114,7 +119,7 @@ where
                     },
                 };
 
-                rt.block_on(async {
+                rt.block_on(async move {
                     let mut attempts = 0;
 
                     // Try to create the stream, retrying up to CONNECT_ATTEMPTS times if it fails.
@@ -160,88 +165,4 @@ where
             }),
         ));
     }
-
-    pub fn update_stream(&mut self, querier: QuerierWrapper, oracle: Addr) -> StdResult<()> {
-        // Retrieve the Pyth ids from the Oracle contract.
-        let pyth_ids = self.client.pyth_ids(querier, oracle)?;
-
-        // Load the state of streaming.
-        let is_stream_running = if let Some((keep_running, _)) = self.stoppable_thread.as_ref() {
-            keep_running.load(Ordering::Acquire)
-        } else {
-            false
-        };
-
-        // If stream is closed and there are no PythIds, we can return early.
-        if !is_stream_running && pyth_ids.is_empty() {
-            return Ok(());
-        }
-
-        // If the stream is running and the PythIds are the same, we can return early.
-        if is_stream_running && self.current_ids == pyth_ids {
-            return Ok(());
-        }
-
-        // The PythIds have changed or the streaming is closed unexpectedly.
-        self.current_ids = pyth_ids.clone();
-
-        self.close_stream();
-
-        if let Ok(pyth_ids) = NonEmpty::new(pyth_ids) {
-            self.connect_stream(pyth_ids);
-        }
-
-        Ok(())
-    }
-}
-
-pub trait QueryPythId: PythClientTrait {
-    fn pyth_ids(
-        &self,
-        querier: QuerierWrapper,
-        oracle: Addr,
-    ) -> StdResult<Vec<PythLazerSubscriptionDetails>>;
-}
-
-impl QueryPythId for PythClient {
-    /// Retrieve the Pyth ids from the Oracle contract.
-    fn pyth_ids(
-        &self,
-        querier: QuerierWrapper,
-        oracle: Addr,
-    ) -> StdResult<Vec<PythLazerSubscriptionDetails>> {
-        pyth_ids_lazer(querier, oracle)
-    }
-}
-
-impl QueryPythId for PythClientCache {
-    fn pyth_ids(
-        &self,
-        querier: QuerierWrapper,
-        oracle: Addr,
-    ) -> StdResult<Vec<PythLazerSubscriptionDetails>> {
-        pyth_ids_lazer(querier, oracle)
-    }
-}
-
-fn pyth_ids_lazer(
-    querier: QuerierWrapper,
-    oracle: Addr,
-) -> StdResult<Vec<PythLazerSubscriptionDetails>> {
-    let new_ids = querier
-        .query_wasm_smart(oracle, QueryPriceSourcesRequest {
-            start_after: None,
-            limit: Some(u32::MAX),
-        })?
-        .into_values()
-        .filter_map(|price_source| {
-            if let PriceSource::Pyth { id, channel, .. } = price_source {
-                Some(PythLazerSubscriptionDetails { id, channel })
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>();
-
-    Ok(new_ids)
 }

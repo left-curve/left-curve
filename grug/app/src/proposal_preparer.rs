@@ -2,7 +2,7 @@
 use tracing::info;
 use {
     crate::{AppError, ProposalPreparer},
-    grug_types::{Querier, QuerierWrapper, Query, QueryResponse, StdResult},
+    grug_types::{Querier, Query, QueryResponse, StdResult},
     prost::bytes::Bytes,
     std::{
         convert::Infallible,
@@ -23,7 +23,6 @@ impl ProposalPreparer for NaiveProposalPreparer {
 
     fn prepare_proposal(
         &self,
-        _querier: QuerierWrapper,
         mut txs: Vec<Bytes>,
         max_tx_bytes: usize,
     ) -> Result<Vec<Bytes>, Self::Error> {

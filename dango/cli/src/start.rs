@@ -338,10 +338,17 @@ impl StartCmd {
     where
         ID: Indexer + Send + 'static,
     {
+        let pp = ProposalPreparer::new(
+            pyth_lazer_cfg.oracle,
+            pyth_lazer_cfg.endpoints,
+            pyth_lazer_cfg.access_token,
+            pyth_lazer_cfg.ids,
+        );
+
         let app = App::new(
             db,
             vm,
-            ProposalPreparer::new(pyth_lazer_cfg.endpoints, pyth_lazer_cfg.access_token),
+            pp,
             indexer,
             grug_cfg.query_gas_limit,
             Some(dango_upgrade::do_upgrade), // Important: set the upgrade handler.

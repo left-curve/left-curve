@@ -1,5 +1,6 @@
 use {
-    grug_types::HexBinary,
+    grug_types::{Addr, HexBinary},
+    pyth_types::PythLazerSubscriptionDetails,
     serde::{Deserialize, Serialize},
 };
 
@@ -135,6 +136,8 @@ impl Default for TransactionsConfig {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct PythLazerConfig {
+    pub oracle: Option<Addr>,
     pub endpoints: Vec<String>,
     pub access_token: String,
+    pub ids: Vec<PythLazerSubscriptionDetails>,
 }

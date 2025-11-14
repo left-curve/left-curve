@@ -8,21 +8,21 @@ use {
     crate::{
         APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
         Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
-        NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
-        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
-        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
-        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
-        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
-        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart,
+        NullIndexer, PAST_UPGRADES, ProposalPreparer, TraceOption, Vm, catch_and_push_event,
+        catch_and_update_event, do_authenticate, do_backrun, do_configure, do_cron_execute,
+        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upgrade,
+        do_upload, do_withhold_fee, query_app_config, query_balance, query_balances, query_code,
+        query_codes, query_config, query_contract, query_contracts, query_next_upgrade,
+        query_past_upgrades, query_status, query_supplies, query_supply, query_wasm_raw,
+        query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, Buffer, CheckTxEvents,
         CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, EventStatus,
         GENESIS_SENDER, GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
-        MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse, Shared,
-        StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
+        MsgsAndBackrunEvents, Order, Permission, Query, QueryResponse, Shared, StdResult, Storage,
+        Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
 };
@@ -37,7 +37,7 @@ pub type UpgradeHandler<VM> = fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<(
 pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     pub db: DB,
     vm: VM,
-    pp: PP,
+    pub pp: PP,
     pub indexer: ID,
     /// The gas limit when serving ABCI `Query` calls.
     ///
@@ -250,7 +250,8 @@ where
 
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unnecessary_lazy_evaluations))]
         let txs = self
-            ._do_prepare_proposal(txs.clone(), max_tx_bytes)
+            .pp
+            .prepare_proposal(txs.clone(), max_tx_bytes)
             .unwrap_or_else(|_err| {
                 #[cfg(feature = "tracing")]
                 {
@@ -264,13 +265,13 @@ where
             });
 
         // Call naive proposal preparer to check the `max_tx_bytes`.
-        let bytes = NaiveProposalPreparer
-            .prepare_proposal(QuerierWrapper::new(&NaiveQuerier), txs, max_tx_bytes)
-            .unwrap();
+        let txs = NaiveProposalPreparer
+            .prepare_proposal(txs, max_tx_bytes)
+            .unwrap(); // unwrap is safe because `NaiveProposalPreparer` is infallible.
 
         #[cfg(feature = "tracing")]
         {
-            tracing::info!(bytes = bytes.len(), "Completed PrepareProposal");
+            tracing::info!(num_txs = txs.len(), "Completed PrepareProposal");
         }
 
         #[cfg(feature = "metrics")]
@@ -279,25 +280,7 @@ where
                 .record(prepare_proposal_duration.elapsed().as_secs_f64());
         }
 
-        bytes
-    }
-
-    #[inline]
-    fn _do_prepare_proposal(&self, txs: Vec<Bytes>, max_tx_bytes: usize) -> AppResult<Vec<Bytes>> {
-        let storage = self
-            .db
-            .state_storage_with_comment(None, "prepare_proposal")?;
-        let block = LAST_FINALIZED_BLOCK.load(&storage)?;
-        let querier = QuerierProviderImpl::new_boxed(
-            self.vm.clone(),
-            Box::new(storage),
-            GasTracker::new_limitless(),
-            block,
-        );
-
-        Ok(self
-            .pp
-            .prepare_proposal(QuerierWrapper::new(&querier), txs, max_tx_bytes)?)
+        txs
     }
 
     // Finalize a block by performing the following actions in order:

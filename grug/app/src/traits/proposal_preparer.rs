@@ -1,4 +1,4 @@
-use {grug_types::QuerierWrapper, prost::bytes::Bytes};
+use prost::bytes::Bytes;
 
 /// Represents a worker that processes the ABCI++ `PrepareProposal` request.
 pub trait ProposalPreparer {
@@ -10,7 +10,6 @@ pub trait ProposalPreparer {
     /// on the state of the chain.
     fn prepare_proposal(
         &self,
-        querier: QuerierWrapper,
         txs: Vec<Bytes>,
         max_tx_bytes: usize,
     ) -> Result<Vec<Bytes>, Self::Error>;
