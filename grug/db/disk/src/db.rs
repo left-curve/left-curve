@@ -163,7 +163,7 @@ impl<T> DiskDb<T> {
         let data = Arc::new(RwLock::new(Data { db, priority_data }));
 
         #[cfg(feature = "metrics")]
-        let handle = statistics::StatisticsWorker::run(opts, data.clone());
+        let handle = statistics::StatisticsWorker::run(opts, Arc::clone(&data));
 
         Ok(Self {
             data,
@@ -178,11 +178,11 @@ impl<T> DiskDb<T> {
 impl<T> Clone for DiskDb<T> {
     fn clone(&self) -> Self {
         Self {
-            data: self.data.clone(),
-            pending: self.pending.clone(),
+            data: Arc::clone(&self.data),
+            pending: Arc::clone(&self.pending),
             _commitment: PhantomData,
             #[cfg(feature = "metrics")]
-            _statistics: self._statistics.clone(),
+            _statistics: Arc::clone(&self._statistics),
         }
     }
 }
