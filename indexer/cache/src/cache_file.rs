@@ -9,6 +9,7 @@ use {
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq)]
 pub struct CacheFile {
+    #[serde(flatten)]
     pub data: BlockAndBlockOutcomeWithHttpDetails,
     #[serde(skip)]
     #[borsh(skip)]
@@ -21,7 +22,7 @@ impl CacheFile {
             data: BlockAndBlockOutcomeWithHttpDetails {
                 block,
                 block_outcome,
-                transactions_http_request_details: HashMap::new(),
+                http_request_details: HashMap::new(),
             },
             filename,
         }

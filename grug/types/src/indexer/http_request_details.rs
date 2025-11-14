@@ -34,5 +34,5 @@ impl HttpRequestDetails {
 pub struct BlockAndBlockOutcomeWithHttpDetails {
     pub block: Block,
     pub block_outcome: BlockOutcome,
-    pub transactions_http_request_details: HashMap<Hash256, HttpRequestDetails>,
+    pub http_request_details: HashMap<Hash256, HttpRequestDetails>,
 }

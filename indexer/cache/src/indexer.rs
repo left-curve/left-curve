@@ -85,8 +85,7 @@ impl grug_app::Indexer for Cache {
 
             #[cfg(feature = "http-request-details")]
             {
-                cache_file.data.transactions_http_request_details =
-                    self.set_http_request_details(block)?;
+                cache_file.data.http_request_details = self.set_http_request_details(block)?;
             }
             cache_file.save_to_disk()?;
 

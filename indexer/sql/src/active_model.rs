@@ -94,7 +94,7 @@ impl Models {
                 #[cfg(feature = "http-request-details")]
                 {
                     new_transaction.http_request_details = Set(block_to_index
-                        .transactions_http_request_details
+                        .http_request_details
                         .get(tx_hash)
                         .and_then(|d| d.to_json_value().ok())
                         .map(|v| v.into_inner()));
