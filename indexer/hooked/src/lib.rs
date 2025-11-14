@@ -97,30 +97,32 @@ impl HookedIndexer {
                     .map(|indexer| indexer.last_indexed_block_height().ok().flatten())
                     .collect::<Vec<_>>();
 
-                let min_height = min_heights.iter().flatten().min().cloned();
+                let min_height = min_heights
+                    .iter()
+                    .flatten()
+                    .min()
+                    .cloned()
+                    .unwrap_or_default();
 
-                let Some(min_height) = min_height else {
+                if min_height >= block.height {
                     #[cfg(feature = "tracing")]
-                    tracing::warn!("No indexer has indexed any block yet, skipping reindex_until");
+                    tracing::info!(
+                        block_height = block.height,
+                        "No reindexing needed, all indexers are up to date",
+                    );
                     return Ok(());
-                };
+                }
 
                 let mut errors = Vec::new();
 
                 // 2. We run all indexers to reindex until the last finalized block, like it would
                 // have happened during normal operation but calling a different method.
-                for block_height in min_height..=block.height {
+                for block_height in (min_height + 1)..=block.height {
                     let mut ctx = grug_app::IndexerContext::new();
-                    for (i, indexer) in &mut indexers.iter_mut().enumerate() {
-                        if let Some(min) = min_heights[i] {
-                            if block_height <= min {
-                                continue;
-                            }
-                        }
-
+                    for indexer in &mut indexers.iter_mut() {
                         if let Err(err) = indexer.pre_indexing(block_height, &mut ctx) {
                             #[cfg(feature = "tracing")]
-                            tracing::error!("Error in start calling reindex_until: {:?}", err);
+                            tracing::error!("Error in start calling reindex: {:?}", err);
                             errors.push(err.to_string());
                         }
                     }
@@ -131,13 +133,7 @@ impl HookedIndexer {
 
                     // I recreate a context like it would when we index a block normally
                     let mut ctx = grug_app::IndexerContext::new();
-                    for (i, indexer) in &mut indexers.iter_mut().enumerate() {
-                        if let Some(min) = min_heights[i] {
-                            if block_height <= min {
-                                continue;
-                            }
-                        }
-
+                    for indexer in &mut indexers.iter_mut() {
                         if let Err(err) = indexer.post_indexing(
                             block_height,
                             cfg.clone(),
@@ -145,7 +141,7 @@ impl HookedIndexer {
                             &mut ctx,
                         ) {
                             #[cfg(feature = "tracing")]
-                            tracing::error!("Error in start calling reindex_until: {:?}", err);
+                            tracing::error!("Error in start calling reindex: {:?}", err);
                             errors.push(err.to_string());
                         }
                     }
@@ -212,6 +208,8 @@ impl Indexer for HookedIndexer {
         if !self.is_running.load(Ordering::Relaxed) {
             return Ok(()); // Already shut down
         }
+
+        self.wait_for_finish()?;
 
         // Call shutdown on all indexers in reverse order
         let mut errors = Vec::new();

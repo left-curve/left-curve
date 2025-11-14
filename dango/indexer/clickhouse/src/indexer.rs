@@ -34,9 +34,8 @@ impl Indexer {
 
 impl grug_app::Indexer for Indexer {
     fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
-        todo!(
-            "Implement last_indexed_block_height for indexer, looking at the last cached block from Clickhouse"
-        )
+        // "Implement last_indexed_block_height for indexer
+        Ok(None)
     }
 
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
@@ -46,10 +45,11 @@ impl grug_app::Indexer for Indexer {
             tracing::info!("Clickhouse indexer is mocked");
             return Ok(());
         }
+
         #[cfg(feature = "tracing")]
         tracing::info!("Clickhouse indexer started");
 
-        let handle = self.runtime_handler.spawn({
+        self.runtime_handler.block_on({
             let clickhouse_client = self.context.clickhouse_client().clone();
             async move {
                 for migration in crate::migrations::candle_builder::migrations()
@@ -75,11 +75,7 @@ impl grug_app::Indexer for Indexer {
 
                 Ok::<(), grug_app::IndexerError>(())
             }
-        });
-
-        self.runtime_handler
-            .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
+        })?;
 
         self.indexing = true;
 

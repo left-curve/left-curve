@@ -73,6 +73,28 @@ impl grug_app::Indexer for Cache {
         Ok(())
     }
 
+    fn pre_indexing(
+        &self,
+        block_height: u64,
+        ctx: &mut grug_app::IndexerContext,
+    ) -> grug_app::IndexerResult<()> {
+        let file_path = self.context.indexer_path.block_path(block_height);
+
+        // This is used when reindexing existing blocks, since `index_block` won't be called.
+        if CacheFile::exists(file_path.clone()) {
+            let cache_file = CacheFile::load_from_disk(file_path)?;
+
+            self.blocks
+                .lock()
+                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
+                .insert(block_height, cache_file.data.clone());
+
+            ctx.insert(cache_file.data);
+        }
+
+        Ok(())
+    }
+
     fn index_block(
         &self,
         block: &grug_types::Block,
@@ -99,6 +121,13 @@ impl grug_app::Indexer for Cache {
 
             ctx.insert(cache_file.data);
         } else {
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                block_height = block.info.height,
+                file_path = ?file_path,
+                "Block will be saved to disk",
+            );
+
             let mut cache_file = CacheFile::new(file_path, block.clone(), block_outcome.clone());
 
             #[cfg(feature = "http-request-details")]
@@ -137,12 +166,18 @@ impl grug_app::Indexer for Cache {
         };
 
         #[cfg(feature = "tracing")]
-        tracing::info!(
+        tracing::debug!(
             block_height,
             "Added block data to indexer context in post_indexing",
         );
 
         ctx.insert(data);
+
+        let file_path = self.context.indexer_path.block_path(block_height);
+
+        if CacheFile::exists(file_path.clone()) {
+            CacheFile::compress_file(file_path)?;
+        }
 
         Ok(())
     }

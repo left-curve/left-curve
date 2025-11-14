@@ -79,6 +79,7 @@ impl IndexerBuilder<Undefined<String>> {
 
     pub fn with_memory_database(self) -> IndexerBuilder<Defined<String>> {
         self.with_database_url("sqlite::memory:")
+            .with_database_max_connections(1)
     }
 }
 

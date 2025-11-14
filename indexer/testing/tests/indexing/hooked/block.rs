@@ -245,6 +245,8 @@ async fn no_sql_index_error_after_restart() {
         .save_to_disk()
         .expect("Can't save block on disk");
 
+    tracing::info!("Starting indexer again");
+
     // 3. Start the indexer
     suite
         .app
