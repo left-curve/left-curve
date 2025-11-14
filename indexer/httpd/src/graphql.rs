@@ -22,7 +22,6 @@ pub mod mutation;
 pub mod query;
 pub mod subscription;
 pub mod telemetry;
-pub mod types;
 
 pub(crate) type AppSchema = Schema<query::Query, mutation::Mutation, subscription::Subscription>;
 

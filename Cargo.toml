@@ -151,6 +151,7 @@ num-format                  = "0.4"
 num_cpus                    = "1"
 ouroboros                   = "0.18"
 p256                        = "0.13"
+parking_lot                 = { version = "0.12", features = ["arc_lock", "send_guard"] }
 paste                       = "1"
 pbkdf2                      = "0.12"
 proc-macro2                 = "1"

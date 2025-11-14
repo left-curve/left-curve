@@ -1,5 +1,6 @@
 use {
     grug_app::{Indexer, IndexerResult, LAST_FINALIZED_BLOCK},
+    grug_types::{Config, Json},
     std::{
         collections::HashMap,
         sync::{
@@ -274,7 +275,8 @@ impl Indexer for HookedIndexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        querier: Arc<dyn grug_app::QuerierProvider>,
+        cfg: Config,
+        app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
@@ -307,7 +309,9 @@ impl Indexer for HookedIndexer {
                 })?
                 .iter()
             {
-                if let Err(err) = indexer.post_indexing(block_height, querier.clone(), &mut ctx) {
+                if let Err(err) =
+                    indexer.post_indexing(block_height, cfg.clone(), app_cfg.clone(), &mut ctx)
+                {
                     #[cfg(feature = "tracing")]
                     tracing::error!(
                         indexer = indexer.name(),
@@ -441,7 +445,8 @@ mod tests {
         fn post_indexing(
             &self,
             _block_height: u64,
-            _querier: Arc<dyn grug_app::QuerierProvider>,
+            _cfg: Config,
+            _app_cfg: Json,
             _ctx: &mut grug_app::IndexerContext,
         ) -> IndexerResult<()> {
             self.record_call("post_indexing");

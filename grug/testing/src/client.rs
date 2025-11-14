@@ -129,7 +129,7 @@ where
             .lock()
             .await
             .app
-            .do_query_app(query, height.unwrap_or(0), false)?)
+            .do_query_app(query, height, false)?)
     }
 
     async fn query_store(
@@ -138,12 +138,12 @@ where
         height: Option<u64>,
         prove: bool,
     ) -> Result<(Option<Binary>, Option<Self::Proof>), Self::Error> {
-        let (value, proof) =
-            self.suite
-                .lock()
-                .await
-                .app
-                .do_query_store(&key, height.unwrap_or(0), prove)?;
+        let (value, proof) = self
+            .suite
+            .lock()
+            .await
+            .app
+            .do_query_store(&key, height, prove)?;
 
         let value = value.map(Binary::from_inner);
         let proof = proof.map(|p| p.deserialize_borsh()).transpose()?;

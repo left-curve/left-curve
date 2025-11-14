@@ -106,13 +106,4 @@ impl grug_app::Indexer for Cache {
 
         Ok(Some((cache_file.data.block, cache_file.data.block_outcome)))
     }
-
-    fn post_indexing(
-        &self,
-        _block_height: u64,
-        _querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
-        Ok(())
-    }
 }

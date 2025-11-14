@@ -9,7 +9,7 @@ use {
     serde::Deserialize,
 };
 
-pub const MAX_ITEMS: usize = 150;
+pub const MAX_ITEMS: usize = 650;
 
 #[derive(Debug, Clone)]
 pub struct CandleResult {

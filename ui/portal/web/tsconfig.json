@@ -6,8 +6,7 @@
       "~/constants": ["./constants.config.ts"],
       "~/mock": ["./mockData.ts"],
       "~/store": ["./store.config.ts"],
-      "~/datafeed": ["./datafeed.config.ts"],
-      "~/chartiq": ["./.chartiq.config.ts"]
+      "~/datafeed": ["./datafeed.config.ts"]
     },
     "noEmit": true
   },

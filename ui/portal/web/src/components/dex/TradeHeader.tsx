@@ -30,9 +30,9 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
   }, [isLg]);
 
   return (
-    <div className="flex bg-surface-tertiary-rice lg:gap-8 px-4 py-3 flex-col lg:flex-row w-full lg:justify-between shadow-account-card z-20 lg:z-10">
+    <div className="flex bg-surface-primary-rice lg:gap-8 px-4 py-3 flex-col lg:flex-row w-full lg:justify-between shadow-account-card z-20 lg:z-10">
       <div className="flex gap-8 items-center justify-between lg:items-start w-full lg:w-auto">
-        <div className="flex lg:flex-col gap-[2px]">
+        <div className="flex lg:flex-col gap-1">
           <SearchToken pairId={pairId} onChangePairId={onChangePairId} />
           <div className="lg:pl-8">
             <Badge text="Spot" color="blue" size="s" />
@@ -61,20 +61,21 @@ export const TradeHeader: React.FC<TradeHeaderProps> = ({ state }) => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: isLg ? 0 : 0.3, ease: "easeInOut" }}
-            className="gap-2 lg:gap-5 grid grid-cols-1 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
+            className="gap-2 lg:gap-5 grid grid-cols-3 lg:flex lg:flex-wrap lg:items-center overflow-hidden"
           >
+            <span className="h-[1px] w-full bg-outline-tertiary-rice col-span-3 lg:hidden mt-2" />
             <HeaderPrice pairId={pairId} />
-            <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
+            <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
               <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.24hChange"]()}
               </p>
-              <p className="diatype-sm-bold w-full text-center">-</p>
+              <p className="diatype-sm-bold text-center">-</p>
             </div>
-            <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start">
+            <div className="flex gap-1 flex-col items-start lg:min-w-[4rem]">
               <p className="diatype-xs-medium text-ink-tertiary-500">
                 {m["dex.protrade.spot.volume"]()}
               </p>
-              <p className="diatype-sm-bold w-full text-center">-</p>
+              <p className="diatype-sm-bold text-center">-</p>
             </div>
           </motion.div>
         ) : null}
@@ -97,7 +98,7 @@ const HeaderPrice: React.FC<HeaderPriceProps> = ({ pairId }) => {
   const currentPrice = orderBookStore((s) => s.currentPrice);
 
   return (
-    <div className="items-center flex gap-1 flex-row lg:flex-col min-w-[4rem] lg:items-start pt-8 lg:pt-0">
+    <div className="flex gap-1 flex-col lg:min-w-[4rem] items-start">
       <p className="diatype-xs-medium text-ink-tertiary-500">{m["dex.protrade.history.price"]()}</p>
       <p
         className={twMerge(

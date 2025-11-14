@@ -33,7 +33,7 @@ dialoguer                   = { workspace = true }
 futures                     = { workspace = true }
 grug-app                    = { workspace = true, features = ["abci", "metrics", "tracing"] }
 grug-client                 = { workspace = true }
-grug-db-disk                = { workspace = true, features = ["metrics", "serde", "tracing"] }
+grug-db-disk                = { workspace = true, features = ["metrics", "tracing"] }
 grug-httpd                  = { workspace = true }
 grug-types                  = { workspace = true }
 grug-vm-rust                = { workspace = true }

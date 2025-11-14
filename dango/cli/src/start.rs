@@ -17,9 +17,8 @@ use {
     indexer_cache::IndexerPath,
     indexer_hooked::HookedIndexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
-    std::{sync::Arc, time},
+    std::sync::Arc,
     tokio::signal::unix::{SignalKind, signal},
-    tower::ServiceBuilder,
     tower_abci::v038::{Server, split},
 };
 
@@ -40,8 +39,10 @@ impl StartCmd {
         let cfg: Config = parse_config(app_dir.config_file())?;
 
         // Open disk DB.
-        let db =
-            DiskDb::<SimpleCommitment>::open_with_cfg(app_dir.data_dir(), cfg.grug.db.clone())?;
+        let db = DiskDb::<SimpleCommitment>::open_with_priority(
+            app_dir.data_dir(),
+            cfg.grug.priority_range.clone(),
+        )?;
 
         // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
         let _codes = RustVm::genesis_codes();
@@ -311,6 +312,11 @@ impl StartCmd {
             })
     }
 
+    /// Reference:
+    /// - Namada:
+    ///   https://github.com/namada-net/namada/blob/v101.1.4/crates/node/src/lib.rs#L737-L774
+    /// - Penumbra:
+    ///   https://github.com/penumbra-zone/penumbra/blob/dafaa19109fd06b67cb294a097bad803ade4ac7c/crates/core/app/src/server.rs#L47-L73
     async fn run_with_indexer<ID>(
         self,
         grug_cfg: GrugConfig,
@@ -335,24 +341,15 @@ impl StartCmd {
 
         let (consensus, mempool, snapshot, info) = split::service(app, 1);
 
-        let mempool = ServiceBuilder::new()
-            .load_shed()
-            .buffer(100)
-            .service(mempool);
-
-        let info = ServiceBuilder::new()
-            .load_shed()
-            .buffer(100)
-            .rate_limit(50, time::Duration::from_secs(1))
-            .service(info);
-
         let abci_server = Server::builder()
             .consensus(consensus)
             .snapshot(snapshot)
             .mempool(mempool)
             .info(info)
             .finish()
-            .unwrap(); // this fails if one of consensus|snapshot|mempool|info is None
+            // Safety: the consensus, snapshot, mempool, and info services have all been provided
+            // to the builder above.
+            .expect("all components of abci have been provided");
 
         // Listen for SIGINT and SIGTERM signals.
         // SIGINT is received when user presses Ctrl-C.

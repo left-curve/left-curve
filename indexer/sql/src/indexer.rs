@@ -13,7 +13,10 @@ use {
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
     grug_app::Indexer as IndexerTrait,
-    grug_types::{BlockAndBlockOutcomeWithHttpDetails, Defined, MaybeDefined, Storage, Undefined},
+    grug_types::{
+        BlockAndBlockOutcomeWithHttpDetails, Config, Defined, Json, MaybeDefined, Storage,
+        Undefined,
+    },
     itertools::Itertools,
     sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter},
     std::{
@@ -392,7 +395,8 @@ impl IndexerTrait for Indexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        _querier: Arc<dyn grug_app::QuerierProvider>,
+        _cfg: Config,
+        _app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
