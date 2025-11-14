@@ -20,7 +20,6 @@ async fn main() -> Result<(), Error> {
             ..Preset::preset_test()
         },
         GenesisOption::preset_test(),
-        true,
         None,
     )
     .await

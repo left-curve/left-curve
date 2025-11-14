@@ -23,7 +23,6 @@ use {
     hyperlane_types::{Addr32, mailbox},
     indexer_cache::IndexerPath,
     indexer_hooked::HookedIndexer,
-    proptest::sample::Index,
     pyth_client::PythClientCache,
     std::sync::Arc,
     temp_rocksdb::TempDataDir,

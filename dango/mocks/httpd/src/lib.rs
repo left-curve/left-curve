@@ -8,6 +8,7 @@ use {
     grug_testing::MockClient,
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
+    indexer_cache::IndexerPath,
     indexer_hooked::HookedIndexer,
     std::{net::TcpListener, sync::Arc, time::Duration},
     tokio::{net::TcpStream, sync::Mutex},
@@ -25,7 +26,6 @@ pub async fn run(
     cors_allowed_origin: Option<String>,
     test_opt: TestOption,
     genesis_opt: GenesisOption,
-    keep_blocks: bool,
     database_url: Option<String>,
 ) -> Result<(), Error> {
     run_with_callback(
@@ -34,7 +34,6 @@ pub async fn run(
         cors_allowed_origin,
         test_opt,
         genesis_opt,
-        keep_blocks,
         database_url,
         |_, _, _, _, _| {},
     )
@@ -47,7 +46,6 @@ pub async fn run_with_callback<C>(
     cors_allowed_origin: Option<String>,
     test_opt: TestOption,
     genesis_opt: GenesisOption,
-    keep_blocks: bool,
     database_url: Option<String>,
     callback: C,
 ) -> Result<(), Error>
@@ -71,12 +69,11 @@ where
             .with_database_max_connections(1)
     };
 
-    let indexer = indexer.with_sqlx_pubsub().with_tmpdir().build()?;
+    let indexer = indexer.with_sqlx_pubsub().build()?;
 
     let indexer_context = indexer.context.clone();
-    let indexer_path = indexer.indexer_path.clone();
 
-    let indexer_cache = indexer_cache::Cache::new(indexer_path.clone().into());
+    let indexer_cache = indexer_cache::Cache::new(IndexerPath::new_with_tempdir());
     let indexer_cache_context = indexer_cache.context.clone();
 
     let mut hooked_indexer = HookedIndexer::new();
