@@ -84,11 +84,11 @@ impl HookedIndexer {
                     .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?;
 
                 let cfg = CONFIG.load(storage).map_err(|e| {
-                    grug_app::IndexerError::storage(format!("Failed to load CONFIG: {}", e))
+                    grug_app::IndexerError::storage(format!("Failed to load CONFIG: {e}"))
                 })?;
 
                 let app_cfg = APP_CONFIG.load(storage).map_err(|e| {
-                    grug_app::IndexerError::storage(format!("Failed to load APP_CONFIG: {}", e))
+                    grug_app::IndexerError::storage(format!("Failed to load APP_CONFIG: {e}"))
                 })?;
 
                 // 1. We get the lowest last indexed block height among all indexers,
