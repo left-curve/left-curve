@@ -12,7 +12,6 @@ use {
     grug::{
         Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
-        setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_testing::{
@@ -21,13 +20,10 @@ use {
     },
     std::sync::Arc,
     tokio::sync::{Mutex, mpsc},
-    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_all_trades() -> anyhow::Result<()> {
-    setup_tracing_subscriber(Level::INFO);
-
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
