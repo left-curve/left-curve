@@ -1090,6 +1090,9 @@ jobs:
           cd networks/localdango
           cp env-example .env
           docker compose --profile dango --profile dex-bot --profile faucet -f docker-compose.dango.yml -f docker-compose.yml down -v
+
+          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml pull
+
           docker compose --profile dango --profile dex-bot --profile faucet -f docker-compose.dango.yml -f docker-compose.yml up -d --wait || {
             # Use this if other services fail
             # docker compose logs
