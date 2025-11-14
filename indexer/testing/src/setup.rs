@@ -8,7 +8,7 @@ pub fn create_hooked_indexer() -> (HookedIndexer, indexer_sql::Context, indexer_
 
     let sql_indexer_context = sql_indexer.context.clone();
 
-    let cache_indexer = indexer_cache::Cache::new(indexer_cache::IndexerPath::new_with_tempdir());
+    let cache_indexer = indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = cache_indexer.context.clone();
 
     let mut hooked_indexer = HookedIndexer::new();

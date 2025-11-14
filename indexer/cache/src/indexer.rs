@@ -3,6 +3,7 @@ use {
     grug_types::{BlockAndBlockOutcomeWithHttpDetails, Hash256, HttpRequestDetails},
     std::{
         collections::HashMap,
+        path::PathBuf,
         sync::{Arc, Mutex},
     },
 };
@@ -14,20 +15,22 @@ pub struct Cache {
 }
 
 impl Cache {
-    pub fn new(indexer_path: IndexerPath) -> Self {
-        let context = Context {
-            indexer_path,
-            ..Default::default()
-        };
+    pub fn new_with_tempdir() -> Self {
         Self {
-            context,
+            context: Context {
+                indexer_path: IndexerPath::new_with_tempdir(),
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
 
-    pub fn with_context(context: Context) -> Self {
+    pub fn new_with_dir(directory: PathBuf) -> Self {
         Self {
-            context,
+            context: Context {
+                indexer_path: IndexerPath::new_with_dir(directory),
+                ..Default::default()
+            },
             ..Default::default()
         }
     }

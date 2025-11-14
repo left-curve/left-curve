@@ -14,7 +14,6 @@ use {
     grug_httpd::context::Context as HttpdContext,
     grug_types::GIT_COMMIT,
     grug_vm_rust::RustVm,
-    indexer_cache::IndexerPath,
     indexer_hooked::HookedIndexer,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::sync::Arc,
@@ -188,7 +187,7 @@ impl StartCmd {
     )> {
         let mut hooked_indexer = HookedIndexer::new();
 
-        let indexer_cache = indexer_cache::Cache::new(IndexerPath::Dir(app_dir.indexer_dir()));
+        let indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
         let indexer_cache_context = indexer_cache.context.clone();
 
         let sql_indexer = indexer_sql::IndexerBuilder::default()

@@ -21,7 +21,6 @@ use {
     grug_vm_wasm::WasmVm,
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
-    indexer_cache::IndexerPath,
     indexer_hooked::HookedIndexer,
     pyth_client::PythClientCache,
     std::sync::Arc,
@@ -188,7 +187,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
 
     let mut hooked_indexer = HookedIndexer::new();
 
-    let indexer_cache = indexer_cache::Cache::new(IndexerPath::new_with_tempdir());
+    let indexer_cache = indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = indexer_cache.context.clone();
 
     // Create a separate context for dango indexer (shares DB but has independent pubsub)

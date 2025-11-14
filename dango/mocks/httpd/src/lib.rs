@@ -8,7 +8,6 @@ use {
     grug_testing::MockClient,
     grug_vm_rust::{ContractWrapper, RustVm},
     hyperlane_testing::MockValidatorSets,
-    indexer_cache::IndexerPath,
     indexer_hooked::HookedIndexer,
     std::{net::TcpListener, sync::Arc, time::Duration},
     tokio::{net::TcpStream, sync::Mutex},
@@ -73,7 +72,7 @@ where
 
     let indexer_context = indexer.context.clone();
 
-    let indexer_cache = indexer_cache::Cache::new(IndexerPath::new_with_tempdir());
+    let indexer_cache = indexer_cache::Cache::new_with_tempdir();
     let indexer_cache_context = indexer_cache.context.clone();
 
     let mut hooked_indexer = HookedIndexer::new();

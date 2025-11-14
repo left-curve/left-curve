@@ -22,6 +22,10 @@ impl IndexerPath {
         Self::TempDir(Arc::new(tempfile::tempdir().expect("can't get a tempdir")))
     }
 
+    pub fn new_with_dir(directory: PathBuf) -> Self {
+        Self::Dir(directory)
+    }
+
     /// Will be used when storing blocks long term to allow reindexing
     pub fn blocks_path(&self) -> PathBuf {
         match self {
