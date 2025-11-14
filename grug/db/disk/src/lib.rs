@@ -5,4 +5,6 @@ mod ics23;
 #[cfg(feature = "metrics")]
 mod statistics;
 
-pub use {db::*, error::*, statistics::*};
+#[cfg(feature = "metrics")]
+pub use statistics::*;
+pub use {db::*, error::*};

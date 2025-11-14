@@ -1,9 +1,9 @@
-#[cfg(feature = "metrics")]
-use grug_types::MetricsIterExt;
 #[cfg(feature = "tracing")]
 use uuid::Uuid;
+#[cfg(feature = "metrics")]
+use {crate::statistics, grug_types::MetricsIterExt};
 use {
-    crate::{DbError, DbResult, statistics},
+    crate::{DbError, DbResult},
     grug_app::{Commitment, Db},
     grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
