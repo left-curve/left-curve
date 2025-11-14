@@ -331,15 +331,11 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
                     let response: PaginatedResponse<serde_json::Value> =
                         call_paginated_graphql(app, request_body.clone()).await?;
 
-                    println!("Received trades: {:#?}", response);
-
                     received_trades = response
                         .edges
                         .into_iter()
                         .map(|e| e.node)
                         .collect::<Vec<_>>();
-
-                    println!("Received trades: {:#?}", received_trades);
                 }
 
                 let expected_candle = serde_json::json!([

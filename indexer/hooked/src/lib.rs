@@ -102,19 +102,26 @@ impl HookedIndexer {
                 // have happened during normal operation but calling a different method.
                 for block_height in min_height..=block.height {
                     let mut ctx = grug_app::IndexerContext::new();
-
                     for indexer in &mut indexers.iter_mut() {
                         if let Err(err) = indexer.pre_indexing(block_height, &mut ctx) {
                             #[cfg(feature = "tracing")]
                             tracing::error!("Error in start calling reindex_until: {:?}", err);
                             errors.push(err.to_string());
                         }
+                    }
 
-                        // if let Err(err) = indexer.post_indexing(block_height, &mut ctx) {
-                        //     #[cfg(feature = "tracing")]
-                        //     tracing::error!("Error in start calling reindex_until: {:?}", err);
-                        //     errors.push(err.to_string());
-                        // }
+                    // NOTE: I skip `index_block` here because we don't have the actual block data and
+                    // it's only used to store data on disk, which we already have.
+                    // In the future this can be an issue if an indexer relies on `index_block`
+
+                    // I recreate a context like it would when we index a block normally
+                    let mut ctx = grug_app::IndexerContext::new();
+                    for indexer in &mut indexers.iter_mut() {
+                        if let Err(err) = indexer.post_indexing(block_height, &mut ctx) {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!("Error in start calling reindex_until: {:?}", err);
+                            errors.push(err.to_string());
+                        }
                     }
 
                     if !errors.is_empty() {
