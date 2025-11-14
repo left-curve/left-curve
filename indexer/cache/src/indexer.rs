@@ -94,15 +94,4 @@ impl grug_app::Indexer for Cache {
 
         Ok(())
     }
-
-    fn pre_reindex(
-        &self,
-        block_height: u64,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<Option<(grug_types::Block, grug_types::BlockOutcome)>> {
-        let cache_file =
-            CacheFile::load_from_disk(self.context.indexer_path.block_path(block_height))?;
-
-        Ok(Some((cache_file.data.block, cache_file.data.block_outcome)))
-    }
 }

@@ -24,6 +24,7 @@ grug-db-memory = { workspace = true, features = ["snapshot"] }
 grug-vm-rust   = { workspace = true }
 hex            = { workspace = true }
 hex-literal    = { workspace = true }
+indexer-cache  = { workspace = true }
 indexer-client = { workspace = true }
 indexer-sql    = { workspace = true }
 num-format     = { workspace = true }

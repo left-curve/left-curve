@@ -78,15 +78,6 @@ pub trait Indexer {
         Ok(())
     }
 
-    /// Called when reindexing blocks, allowing to load missing data
-    fn pre_reindex(
-        &self,
-        _block_height: u64,
-        _ctx: &mut IndexerContext,
-    ) -> IndexerResult<Option<(Block, BlockOutcome)>> {
-        Ok(None)
-    }
-
     /// Called when indexing a block, allowing to create a new DB transaction
     fn pre_indexing(&self, _block_height: u64, _ctx: &mut IndexerContext) -> IndexerResult<()> {
         Ok(())

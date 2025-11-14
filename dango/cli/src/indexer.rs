@@ -48,8 +48,8 @@ impl IndexerCmd {
                 let block_filename = indexer_path.block_path(height);
                 let block_to_index = CacheFile::load_from_disk(block_filename)?;
 
-                println!("Block: {:#?}", block_to_index.data.block);
-                println!("Block Outcome: {:#?}", block_to_index.data.block_outcome);
+                println!("Block: {:#?}", block_to_index.block);
+                println!("Block Outcome: {:#?}", block_to_index.block_outcome);
             },
             SubCmd::Blocks { start, end } => {
                 let indexer_path = IndexerPath::Dir(app_dir.indexer_dir());
@@ -70,8 +70,8 @@ impl IndexerCmd {
                                 },
                             };
 
-                            println!("Block: {:#?}", block_to_index.data.block);
-                            println!("Block Outcome: {:#?}", block_to_index.data.block_outcome);
+                            println!("Block: {:#?}", block_to_index.block);
+                            println!("Block Outcome: {:#?}", block_to_index.block_outcome);
                         });
                     });
                 }
@@ -102,8 +102,8 @@ impl IndexerCmd {
                                 },
                             };
 
-                            let block_text = format!("{:#?}", block_to_index.data.block);
-                            let block_results = format!("{:#?}", block_to_index.data.block_outcome);
+                            let block_text = format!("{:#?}", block_to_index.block);
+                            let block_results = format!("{:#?}", block_to_index.block_outcome);
 
                             if block_text.contains(&text) || block_results.contains(&text) {
                                 println!("Found in block {block}:");

@@ -4,7 +4,11 @@ use {
     grug_types::{Block, BlockAndBlockOutcomeWithHttpDetails, BlockOutcome},
     indexer_disk_saver::persistence::DiskPersistence,
     serde::{Deserialize, Serialize},
-    std::{collections::HashMap, path::PathBuf},
+    std::{
+        collections::HashMap,
+        ops::{Deref, DerefMut},
+        path::PathBuf,
+    },
 };
 
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq)]
@@ -14,6 +18,20 @@ pub struct CacheFile {
     #[serde(skip)]
     #[borsh(skip)]
     filename: PathBuf,
+}
+
+impl Deref for CacheFile {
+    type Target = BlockAndBlockOutcomeWithHttpDetails;
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
+}
+
+impl DerefMut for CacheFile {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
+    }
 }
 
 impl CacheFile {
