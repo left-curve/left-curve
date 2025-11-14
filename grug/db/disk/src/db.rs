@@ -71,7 +71,7 @@ pub struct DiskDb<T> {
     /// The commitment scheme.
     _commitment: PhantomData<T>,
     #[cfg(feature = "metrics")]
-    _statistics: Arc<_statistics::StatisticsWorker>,
+    _statistics: Arc<statistics::StatisticsWorker>,
 }
 
 #[derive(Debug)]
@@ -162,7 +162,7 @@ impl<T> DiskDb<T> {
         let data = Arc::new(RwLock::new(Data { db, priority_data }));
 
         #[cfg(feature = "metrics")]
-        let handle = _statistics::StatisticsWorker::run(opts, data.clone());
+        let handle = statistics::StatisticsWorker::run(opts, data.clone());
 
         Ok(Self {
             data,
@@ -932,7 +932,7 @@ pub fn cf_state_commitment(db: &DB) -> &ColumnFamily {
 // ---------------------------------- statistics ----------------------------------
 
 #[cfg(feature = "metrics")]
-mod _statistics {
+mod statistics {
 
     use {
         super::*,
@@ -1031,13 +1031,13 @@ mod _statistics {
                 // `poll_sleep`, the thread becomes responsive to shutdown requests and exits
                 // within a few milliseconds, while still emitting metrics at the correct rate.
 
-                let pool_sleep = Duration::from_millis(50);
+                let poll_sleep = Duration::from_millis(50);
                 let interval = Duration::from_secs(5);
                 let mut last_run = Instant::now();
 
                 while !stop_clone.load(Ordering::SeqCst) {
                     if last_run.elapsed() < interval {
-                        thread::sleep(pool_sleep);
+                        thread::sleep(poll_sleep);
                         continue;
                     }
 
