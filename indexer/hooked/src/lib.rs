@@ -1,5 +1,5 @@
 use {
-    grug_app::{Indexer, IndexerResult, LAST_FINALIZED_BLOCK},
+    grug_app::{APP_CONFIG, CONFIG, Indexer, IndexerResult, LAST_FINALIZED_BLOCK},
     grug_types::{Config, Json},
     std::{
         collections::HashMap,
@@ -63,6 +63,7 @@ impl HookedIndexer {
             .unwrap_or(0)
     }
 
+    /// This will reindex all indexers from their last indexed block height
     pub fn reindex(&self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
         match LAST_FINALIZED_BLOCK.load(storage) {
             Err(_err) => {
@@ -81,6 +82,14 @@ impl HookedIndexer {
                     .indexers
                     .write()
                     .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?;
+
+                let cfg = CONFIG.load(storage).map_err(|e| {
+                    grug_app::IndexerError::storage(format!("Failed to load CONFIG: {}", e))
+                })?;
+
+                let app_cfg = APP_CONFIG.load(storage).map_err(|e| {
+                    grug_app::IndexerError::storage(format!("Failed to load APP_CONFIG: {}", e))
+                })?;
 
                 // 1. We get the lowest last indexed block height among all indexers,
                 let min_heights = indexers
@@ -102,7 +111,13 @@ impl HookedIndexer {
                 // have happened during normal operation but calling a different method.
                 for block_height in min_height..=block.height {
                     let mut ctx = grug_app::IndexerContext::new();
-                    for indexer in &mut indexers.iter_mut() {
+                    for (i, indexer) in &mut indexers.iter_mut().enumerate() {
+                        if let Some(min) = min_heights[i] {
+                            if block_height <= min {
+                                continue;
+                            }
+                        }
+
                         if let Err(err) = indexer.pre_indexing(block_height, &mut ctx) {
                             #[cfg(feature = "tracing")]
                             tracing::error!("Error in start calling reindex_until: {:?}", err);
@@ -116,8 +131,19 @@ impl HookedIndexer {
 
                     // I recreate a context like it would when we index a block normally
                     let mut ctx = grug_app::IndexerContext::new();
-                    for indexer in &mut indexers.iter_mut() {
-                        if let Err(err) = indexer.post_indexing(block_height, &mut ctx) {
+                    for (i, indexer) in &mut indexers.iter_mut().enumerate() {
+                        if let Some(min) = min_heights[i] {
+                            if block_height <= min {
+                                continue;
+                            }
+                        }
+
+                        if let Err(err) = indexer.post_indexing(
+                            block_height,
+                            cfg.clone(),
+                            app_cfg.clone(),
+                            &mut ctx,
+                        ) {
                             #[cfg(feature = "tracing")]
                             tracing::error!("Error in start calling reindex_until: {:?}", err);
                             errors.push(err.to_string());
