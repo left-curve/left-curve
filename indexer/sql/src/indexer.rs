@@ -223,7 +223,10 @@ impl Indexer {
         let start = Instant::now();
 
         #[cfg(feature = "tracing")]
-        tracing::info!(block_height = block.block.info.height, "Saving block");
+        tracing::info!(
+            block_height = block.block.info.height,
+            "Store block in SQL database"
+        );
 
         let models = Models::build(&block)?;
 
@@ -461,42 +464,6 @@ impl IndexerTrait for Indexer {
                 #[cfg(feature = "metrics")]
                 metrics::counter!("indexer.blocks.processed.total").increment(1);
 
-                // if !keep_blocks {
-                //     if let Err(_err) = BlockToIndex::delete_from_disk(block_filename.clone()) {
-                //         #[cfg(feature = "tracing")]
-                //         tracing::error!(
-                //             error = %_err,
-                //             block_filename = %block_filename.display(),
-                //             "Can't delete block from disk in post_indexing"
-                //         );
-
-                //         return Ok(());
-                //     }
-
-                //     #[cfg(feature = "metrics")]
-                //     metrics::counter!("indexer.blocks.deleted.total").increment(1);
-                // } else {
-                //     // compress takes CPU, so we do it in a spawned blocking task
-                //     if let Err(_err) = tokio::task::spawn_blocking(move || {
-                //         if let Err(_err) = BlockToIndex::compress_file(block_filename.clone()) {
-                //             #[cfg(feature = "tracing")]
-                //             tracing::error!(
-                //                 error = %_err,
-                //                 block_filename = %block_filename.display(),
-                //                 "Can't compress block on disk in post_indexing"
-                //             );
-                //         }
-                //     })
-                //     .await
-                //     {
-                //         #[cfg(feature = "tracing")]
-                //         tracing::error!(error = %_err, "`spawn_blocking` error compressing block file");
-                //     }
-
-                //     #[cfg(feature = "metrics")]
-                //     metrics::counter!("indexer.blocks.compressed.total").increment(1);
-                // }
-
                 if let Err(_err) = context.pubsub.publish(block_height).await {
                     #[cfg(feature = "tracing")]
                     tracing::error!(
@@ -516,7 +483,7 @@ impl IndexerTrait for Indexer {
                 metrics::counter!("indexer.pubsub.published.total").increment(1);
 
                 #[cfg(feature = "tracing")]
-                tracing::info!(block_height, indexer_id = id, "`post_indexing` finished");
+                tracing::debug!(block_height, indexer_id = id, "`post_indexing` finished");
 
                 Ok::<(), grug_app::IndexerError>(())
             })

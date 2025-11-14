@@ -8,8 +8,9 @@ use {
     chrono::{DateTime, Utc},
     dango_types::dex::OrdersMatched,
     grug::{
-        Addr, CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
-        FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten, Number,
+        Addr, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus,
+        EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, JsonDeExt,
+        NaiveFlatten, Number,
     },
 };
 
@@ -22,17 +23,16 @@ impl Indexer {
         ctx: &grug_app::IndexerContext,
         context: &Context,
     ) -> Result<()> {
-        let block = ctx
-            .get::<grug_types::Block>()
+        let block_and_block_outcome = ctx
+            .get::<BlockAndBlockOutcomeWithHttpDetails>()
             .ok_or(IndexerError::missing_block_or_block_outcome())?;
 
-        let block_outcome = ctx
-            .get::<grug_types::BlockOutcome>()
-            .ok_or(IndexerError::missing_block_or_block_outcome())?
-            .clone();
-
         let created_at = DateTime::<Utc>::from_naive_utc_and_offset(
-            block.info.timestamp.to_naive_date_time(),
+            block_and_block_outcome
+                .block
+                .info
+                .timestamp
+                .to_naive_date_time(),
             Utc,
         );
 
@@ -42,7 +42,7 @@ impl Indexer {
 
         // DEX order execution happens exclusively in the end-block cronjob, so
         // we loop through the block's cron outcomes.
-        for outcome in block_outcome.cron_outcomes {
+        for outcome in block_and_block_outcome.block_outcome.cron_outcomes.clone() {
             // If the event wasn't successful, skip it.
             let CommitmentStatus::Committed(EventStatus::Ok(EvtCron {
                 guest_event: EventStatus::Ok(event),
@@ -93,7 +93,7 @@ impl Indexer {
                         volume_base: order_matched.volume,
                         volume_quote,
                         created_at,
-                        block_height: block.info.height,
+                        block_height: block_and_block_outcome.block.info.height,
                     });
                 }
             }
@@ -102,7 +102,11 @@ impl Indexer {
         let candle_generator = generator::CandleGenerator::new(context.clone());
 
         candle_generator
-            .add_pair_prices(block.info.height, created_at, pair_prices)
+            .add_pair_prices(
+                block_and_block_outcome.block.info.height,
+                created_at,
+                pair_prices,
+            )
             .await
     }
 }

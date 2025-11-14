@@ -219,6 +219,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         clickhouse_context = clickhouse_context.with_mock();
     }
 
+    hooked_indexer.add_indexer(indexer_cache).unwrap();
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 

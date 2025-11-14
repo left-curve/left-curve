@@ -69,14 +69,13 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "metrics")]
         let start = Instant::now();
 
-        #[cfg(feature = "tracing")]
-        tracing::info!("post_indexing: {block_height}");
-
         let block_to_index = ctx.get::<BlockAndBlockOutcomeWithHttpDetails>().ok_or(
-            grug_app::IndexerError::hook("BlockToIndex not found".to_string()),
+            grug_app::IndexerError::hook(
+                "BlockToBlockAndBlockOutcomeWithHttpDetailsIndex not found".to_string(),
+            ),
         )?;
 
-        let handle = self.runtime_handler.spawn({
+        self.runtime_handler.block_on({
             let context = self.context.clone();
             let block_to_index = block_to_index.clone();
             async move {
@@ -102,9 +101,7 @@ impl grug_app::Indexer for Indexer {
 
                 Ok::<(), Error>(())
             }
-        });
-
-        self.runtime_handler.block_on(async { handle.await? })?;
+        })?;
 
         #[cfg(feature = "metrics")]
         histogram!("indexer.dango.hooks.duration").record(start.elapsed().as_secs_f64());

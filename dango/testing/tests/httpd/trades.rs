@@ -12,6 +12,7 @@ use {
     grug::{
         Addressable, Coin, Coins, Message, MultiplyFraction, NonEmpty, NonZero, NumberConst,
         ResultExt, Signer, StdResult, Timestamp, Udec128, Udec128_24, Uint128, btree_map,
+        setup_tracing_subscriber,
     },
     grug_app::Indexer,
     indexer_testing::{
@@ -20,10 +21,13 @@ use {
     },
     std::sync::Arc,
     tokio::sync::{Mutex, mpsc},
+    tracing::Level,
 };
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_all_trades() -> anyhow::Result<()> {
+    setup_tracing_subscriber(Level::INFO);
+
     let (mut suite, mut accounts, _, contracts, _, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
 
@@ -327,11 +331,15 @@ async fn query_trades_with_address() -> anyhow::Result<()> {
                     let response: PaginatedResponse<serde_json::Value> =
                         call_paginated_graphql(app, request_body.clone()).await?;
 
+                    println!("Received trades: {:#?}", response);
+
                     received_trades = response
                         .edges
                         .into_iter()
                         .map(|e| e.node)
                         .collect::<Vec<_>>();
+
+                    println!("Received trades: {:#?}", received_trades);
                 }
 
                 let expected_candle = serde_json::json!([

@@ -144,7 +144,7 @@ impl grug_app::Indexer for Indexer {
         let ctx = ctx.clone();
         let context = self.context.clone();
 
-        let handle = self.runtime_handler.spawn(async move {
+        self.runtime_handler.block_on(async move {
             #[cfg(feature = "metrics")]
             let start = Instant::now();
 
@@ -171,11 +171,7 @@ impl grug_app::Indexer for Indexer {
             tracing::debug!(block_height, "`post_indexing` async work finished");
 
             Ok::<(), IndexerError>(())
-        });
-
-        self.runtime_handler
-            .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
+        })?;
 
         Ok(())
     }

@@ -1,11 +1,16 @@
 use {
     crate::{Context, cache_file::CacheFile, indexer_path::IndexerPath},
-    grug_types::{Hash256, HttpRequestDetails},
-    std::collections::HashMap,
+    grug_types::{BlockAndBlockOutcomeWithHttpDetails, Hash256, HttpRequestDetails},
+    std::{
+        collections::HashMap,
+        sync::{Arc, Mutex},
+    },
 };
 
+#[derive(Default)]
 pub struct Cache {
     pub context: Context,
+    blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
 }
 
 impl Cache {
@@ -14,11 +19,17 @@ impl Cache {
             indexer_path,
             ..Default::default()
         };
-        Self { context }
+        Self {
+            context,
+            ..Default::default()
+        }
     }
 
     pub fn with_context(context: Context) -> Self {
-        Self { context }
+        Self {
+            context,
+            ..Default::default()
+        }
     }
 
     /// Set HTTP request details for transactions in the given block, those details
@@ -78,7 +89,12 @@ impl grug_app::Indexer for Cache {
             // which we lost since if we are not going through the httpd.
             let cache_file = CacheFile::load_from_disk(file_path)?;
 
-            ctx.insert(cache_file.data);
+            ctx.insert(cache_file.data.clone());
+
+            self.blocks
+                .lock()
+                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
+                .insert(block.info.height, cache_file.data);
         } else {
             let mut cache_file =
                 CacheFile::new(file_path.clone(), block.clone(), block_outcome.clone());
@@ -89,8 +105,49 @@ impl grug_app::Indexer for Cache {
             }
             cache_file.save_to_disk()?;
 
-            ctx.insert(cache_file.data);
+            ctx.insert(cache_file.data.clone());
+
+            self.blocks
+                .lock()
+                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
+                .insert(block.info.height, cache_file.data);
         }
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            block_height = block.info.height,
+            "Added block data to indexer context",
+        );
+
+        Ok(())
+    }
+
+    fn post_indexing(
+        &self,
+        block_height: u64,
+        _cfg: grug_types::Config,
+        _app_cfg: grug_types::Json,
+        ctx: &mut grug_app::IndexerContext,
+    ) -> grug_app::IndexerResult<()> {
+        let Some(data) = self
+            .blocks
+            .lock()
+            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
+            .remove(&block_height)
+        else {
+            return Err(grug_app::IndexerError::hook(format!(
+                "Block data for height {} not found in cache indexer",
+                block_height
+            )));
+        };
+
+        #[cfg(feature = "tracing")]
+        tracing::info!(
+            block_height,
+            "Added block data to indexer context in post_indexing",
+        );
+
+        ctx.insert(data);
 
         Ok(())
     }
