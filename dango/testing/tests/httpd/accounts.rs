@@ -246,7 +246,6 @@ async fn query_accounts_with_wrong_username() -> anyhow::Result<()> {
 #[ignore = "flaky"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn query_user_multiple_spot_accounts() -> anyhow::Result<()> {
-
     let (suite, mut accounts, codes, contracts, validator_sets, _, dango_httpd_context, _) =
         setup_test_with_indexer(TestOption::default()).await;
     let mut suite = HyperlaneTestSuite::new(suite, validator_sets, &contracts);
