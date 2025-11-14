@@ -1091,16 +1091,7 @@ jobs:
           cp env-example .env
           docker compose --profile dango --profile dex-bot --profile faucet -f docker-compose.dango.yml -f docker-compose.yml down -v
 
-          # Pull our containers only when tag is "latest", since if not we should already have it
-          if [ "${{ needs.set-image-tags.outputs.backend_tag }}" = "latest" ]; then
-            docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml pull dango
-          fi
-
-          if [ "${{ needs.set-image-tags.outputs.frontend_tag }}" = "latest" ]; then
-            docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml pull frontend
-          fi
-
-          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml pull faucet dex-bot
+          docker compose --profile dango -f docker-compose.dango.yml -f docker-compose.yml pull
 
           docker compose --profile dango --profile dex-bot --profile faucet -f docker-compose.dango.yml -f docker-compose.yml up -d --wait || {
             # Use this if other services fail
