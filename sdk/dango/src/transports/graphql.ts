@@ -1,5 +1,5 @@
 import { createTransport } from "@left-curve/sdk";
-import { UrlRequiredError, createBatchScheduler } from "@left-curve/sdk/utils";
+import { UrlRequiredError, createBatchScheduler, wait } from "@left-curve/sdk/utils";
 import { createClient } from "graphql-ws";
 import { graphqlClient } from "../http/graphqlClient.js";
 
@@ -68,7 +68,14 @@ export function graphql(
 
     const wsClientStatus = { isConnected: false };
 
-    const wsClient = createClient({ url, lazy });
+    const wsClient = createClient({
+      url,
+      lazy,
+      retryWait: async (retries) => {
+        await wait(Math.min(1_000 * 2 ** retries, 10_000));
+      },
+      shouldRetry: (_) => true,
+    });
 
     wsClient.on("connected", () => {
       wsClientStatus.isConnected = true;
