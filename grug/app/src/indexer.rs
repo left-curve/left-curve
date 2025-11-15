@@ -1,6 +1,5 @@
 use {
-    crate::{Indexer, IndexerError, IndexerResult},
-    grug_types::{Block, BlockOutcome, Config, Json},
+    crate::{Indexer, IndexerError},
     std::{
         convert::Infallible,
         fmt::{self, Display},
@@ -11,46 +10,7 @@ use {
 #[derive(Debug, Clone, Default)]
 pub struct NullIndexer;
 
-impl Indexer for NullIndexer {
-    fn start(&mut self, _storage: &dyn grug_types::Storage) -> IndexerResult<()> {
-        Ok(())
-    }
-
-    fn shutdown(&mut self) -> IndexerResult<()> {
-        Ok(())
-    }
-
-    fn pre_indexing(
-        &self,
-        _block_height: u64,
-        _ctx: &mut crate::IndexerContext,
-    ) -> IndexerResult<()> {
-        Ok(())
-    }
-
-    fn index_block(
-        &self,
-        _block: &Block,
-        _block_outcome: &BlockOutcome,
-        _ctx: &mut crate::IndexerContext,
-    ) -> IndexerResult<()> {
-        Ok(())
-    }
-
-    fn post_indexing(
-        &self,
-        _block_height: u64,
-        _cfg: Config,
-        _app_cfg: Json,
-        _ctx: &mut crate::IndexerContext,
-    ) -> IndexerResult<()> {
-        Ok(())
-    }
-
-    fn wait_for_finish(&self) -> IndexerResult<()> {
-        Ok(())
-    }
-}
+impl Indexer for NullIndexer {}
 
 /// An error type that is never encountered.
 /// Used in conjunction with [`NullIndexer`](crate::NullIndexer).

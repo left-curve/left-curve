@@ -50,6 +50,7 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
+  "indexer/cache",
   "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
@@ -96,7 +97,6 @@ actix-web-metrics           = "0.2"
 aes-gcm                     = "0.10"
 alloy                       = "1"
 anyhow                      = "1"
-anymap                      = "0.12"
 assert-json-diff            = "2"
 assertor                    = "0.0.4"
 async-graphql-actix-web     = "7.0"
@@ -193,7 +193,6 @@ tower-abci                  = "0.19"
 tracing                     = "0.1"
 tracing-actix-web           = "0.7"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
-typedmap                    = { version = "0.6", features = ["dashmap"] }
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "5" # keep at v5 because there's license change for v6
@@ -253,6 +252,7 @@ hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
+indexer-cache               = { path = "indexer/cache" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }

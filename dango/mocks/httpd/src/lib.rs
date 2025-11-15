@@ -25,7 +25,6 @@ pub async fn run(
     cors_allowed_origin: Option<String>,
     test_opt: TestOption,
     genesis_opt: GenesisOption,
-    keep_blocks: bool,
     database_url: Option<String>,
 ) -> Result<(), Error> {
     run_with_callback(
@@ -34,7 +33,6 @@ pub async fn run(
         cors_allowed_origin,
         test_opt,
         genesis_opt,
-        keep_blocks,
         database_url,
         |_, _, _, _, _| {},
     )
@@ -47,7 +45,6 @@ pub async fn run_with_callback<C>(
     cors_allowed_origin: Option<String>,
     test_opt: TestOption,
     genesis_opt: GenesisOption,
-    keep_blocks: bool,
     database_url: Option<String>,
     callback: C,
 ) -> Result<(), Error>
@@ -71,14 +68,12 @@ where
             .with_database_max_connections(1)
     };
 
-    let indexer = indexer
-        .with_keep_blocks(keep_blocks)
-        .with_sqlx_pubsub()
-        .with_tmpdir()
-        .build()?;
+    let indexer = indexer.with_sqlx_pubsub().build()?;
 
     let indexer_context = indexer.context.clone();
-    let indexer_path = indexer.indexer_path.clone();
+
+    let indexer_cache = indexer_cache::Cache::new_with_tempdir();
+    let indexer_cache_context = indexer_cache.context.clone();
 
     let mut hooked_indexer = HookedIndexer::new();
 
@@ -101,6 +96,7 @@ where
 
     let indexer_context_callback = indexer.context.clone();
 
+    hooked_indexer.add_indexer(indexer_cache).unwrap();
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
@@ -129,10 +125,10 @@ where
     let app = suite.lock().await.app.clone_without_indexer();
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
+        indexer_cache_context,
         indexer_context.clone(),
         Arc::new(app),
         Arc::new(mock_client),
-        indexer_path,
     );
 
     let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(

@@ -60,8 +60,9 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
 
     let file_transaction_loader = DataLoader::new(
         FileTransactionDataLoader {
-            indexer: dango_httpd_context
+            indexer_path: dango_httpd_context
                 .indexer_httpd_context
+                .indexer_cache_context
                 .indexer_path
                 .clone(),
         },
@@ -70,6 +71,7 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
 
     let indexer_path = dango_httpd_context
         .indexer_httpd_context
+        .indexer_cache_context
         .indexer_path
         .clone();
 

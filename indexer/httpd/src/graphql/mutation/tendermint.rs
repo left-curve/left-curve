@@ -15,14 +15,22 @@ impl TendermintMutation {
         #[graphql(desc = "Transaction as JSON")] tx: Tx,
     ) -> Result<BroadcastTxOutcome, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
+
         let http_request_details = ctx.data::<HttpRequestDetails>()?;
 
+        // Store HTTP request details for this transaction in the cache context
+        // This is used later by the indexer to associate HTTP request details
+        // with transactions
         app_ctx
-            .sql_context
-            .transaction_hash_details
+            .indexer_cache_context
+            .transactions_http_request_details
             .lock()
-            .map_err(|e| Error::new(format!("Failed to lock transaction_hash_details: {e}")))?
-            .insert(tx.tx_hash()?.to_string(), http_request_details.clone());
+            .map_err(|e| {
+                Error::new(format!(
+                    "Failed to lock transactions_http_request_details: {e}"
+                ))
+            })?
+            .insert(tx.tx_hash()?, http_request_details.clone());
 
         #[cfg(feature = "tracing")]
         tracing::info!(

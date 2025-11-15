@@ -44,6 +44,7 @@ grug-app                    = { workspace = true }
 grug-httpd                  = { workspace = true }
 grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
+indexer-cache               = { workspace = true }
 indexer-sql                 = { workspace = true, features = ["async-graphql"] }
 itertools                   = { workspace = true }
 metrics                     = { workspace = true, optional = true }

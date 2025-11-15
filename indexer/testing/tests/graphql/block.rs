@@ -53,7 +53,7 @@ async fn graphql_returns_blocks() -> anyhow::Result<()> {
                     call_graphql::<PaginatedResponse<grug_types::Json>, _, _, _>(app, request_body)
                         .await?;
 
-                assert_that!(response.data.edges).is_not_empty();
+                assert_that!(response.edges).is_not_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -105,8 +105,8 @@ async fn graphql_returns_batched_blocks() -> anyhow::Result<()> {
                     ])
                     .await?;
 
-                assert_that!(responses[0].data.edges).is_not_empty();
-                assert_that!(responses[1].data.edges).is_not_empty();
+                assert_that!(responses[0].edges).is_not_empty();
+                assert_that!(responses[1].edges).is_not_empty();
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -159,7 +159,7 @@ async fn graphql_returns_block() -> anyhow::Result<()> {
                 let response =
                     call_graphql::<entity::blocks::Model, _, _, _>(app, request_body).await?;
 
-                assert_that!(response.data.block_height).is_equal_to(1);
+                assert_that!(response.block_height).is_equal_to(1);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -200,7 +200,7 @@ async fn graphql_returns_last_block() -> anyhow::Result<()> {
 
                 let response =
                     call_graphql::<entity::blocks::Model, _, _, _>(app, request_body).await?;
-                assert_that!(response.data.block_height).is_equal_to(1);
+                assert_that!(response.block_height).is_equal_to(1);
 
                 Ok::<(), anyhow::Error>(())
             })
@@ -376,7 +376,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
                     parse_graphql_subscription_response::<entity::blocks::Model>(&mut framed, name)
                         .await?;
 
-                assert_that!(response.data.block_height).is_equal_to(1);
+                assert_that!(response.block_height).is_equal_to(1);
 
                 crate_block_tx.send(2).await?;
 
@@ -385,7 +385,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
                     parse_graphql_subscription_response::<entity::blocks::Model>(&mut framed, name)
                         .await?;
 
-                assert_that!(response.data.block_height).is_equal_to(2);
+                assert_that!(response.block_height).is_equal_to(2);
 
                 crate_block_tx.send(3).await?;
 
@@ -394,7 +394,7 @@ async fn graphql_subscribe_to_block() -> anyhow::Result<()> {
                     parse_graphql_subscription_response::<entity::blocks::Model>(&mut framed, name)
                         .await?;
 
-                assert_that!(response.data.block_height).is_equal_to(3);
+                assert_that!(response.block_height).is_equal_to(3);
 
                 Ok::<(), anyhow::Error>(())
             })

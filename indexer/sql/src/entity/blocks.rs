@@ -1,14 +1,14 @@
 #[cfg(feature = "async-graphql")]
 use {
-    crate::block_to_index::BlockToIndex,
     crate::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
     },
-    crate::indexer_path::IndexerPath,
     async_graphql::{ComplexObject, Context, Result, SimpleObject, dataloader::DataLoader},
     grug_types::JsonSerExt,
     grug_types::Timestamp,
+    indexer_cache::{IndexerPath, cache_file::CacheFile},
 };
+
 use {
     sea_orm::{QueryOrder, entity::prelude::*},
     serde::{Deserialize, Serialize},
@@ -56,11 +56,12 @@ impl Model {
     }
 
     async fn crons_outcomes(&self, ctx: &Context<'_>) -> Result<Vec<String>> {
-        Ok(BlockToIndex::load_from_disk_async(
+        Ok(CacheFile::load_from_disk_async(
             ctx.data_unchecked::<IndexerPath>()
                 .block_path(self.block_height as u64),
         )
         .await?
+        .data
         .block_outcome
         .cron_outcomes
         .iter()

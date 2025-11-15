@@ -19,7 +19,11 @@ use {
     sea_orm::sqlx::types::uuid,
     serde::{Deserialize, Serialize, de::DeserializeOwned},
     serde_json::json,
-    std::{collections::HashMap, time::Instant},
+    std::{
+        collections::HashMap,
+        ops::{Deref, DerefMut},
+        time::Instant,
+    },
     tokio::time::{Duration, timeout},
 };
 
@@ -55,6 +59,20 @@ pub struct GraphQLSubscriptionResponse {
 pub struct GraphQLCustomResponse<R> {
     pub data: R,
     pub errors: Option<Vec<serde_json::Value>>,
+}
+
+impl<R> Deref for GraphQLCustomResponse<R> {
+    type Target = R;
+
+    fn deref(&self) -> &Self::Target {
+        &self.data
+    }
+}
+
+impl<R> DerefMut for GraphQLCustomResponse<R> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data
+    }
 }
 
 pub fn build_app_service(

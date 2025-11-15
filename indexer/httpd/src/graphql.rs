@@ -66,12 +66,12 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
 
     let file_transaction_loader = DataLoader::new(
         FileTransactionDataLoader {
-            indexer: app_ctx.indexer_path.clone(),
+            indexer_path: app_ctx.indexer_cache_context.indexer_path.clone(),
         },
         tokio::spawn,
     );
 
-    let indexer_path = app_ctx.indexer_path.clone();
+    let indexer_path = app_ctx.indexer_cache_context.indexer_path.clone();
 
     #[allow(unused_mut)]
     let mut schema_builder = Schema::build(

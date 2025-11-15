@@ -4,7 +4,7 @@ use {
     grug_app::{App, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
     grug_db_disk::DiskDb,
     grug_vm_rust::RustVm,
-    indexer_sql::{block_to_index::BlockToIndex, indexer_path::IndexerPath},
+    indexer_cache::{IndexerPath, cache_file::CacheFile},
     std::path::PathBuf,
 };
 
@@ -32,9 +32,9 @@ fn main() -> anyhow::Result<()> {
     );
 
     for height in (FROM_HEIGHT + 1)..=UNTIL_HEIGHT {
-        let block_to_index = BlockToIndex::load_from_disk(indexer_path.block_path(height))?;
+        let block_to_index = CacheFile::load_from_disk(indexer_path.block_path(height))?;
 
-        let block_outcome = app.do_finalize_block(block_to_index.block)?;
+        let block_outcome = app.do_finalize_block(block_to_index.block.clone())?;
 
         ensure!(
             block_outcome.app_hash == block_to_index.block_outcome.app_hash,

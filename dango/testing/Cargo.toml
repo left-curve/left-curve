@@ -35,6 +35,7 @@ hex-literal              = { workspace = true }
 hyperlane-testing        = { workspace = true }
 hyperlane-types          = { workspace = true }
 identity                 = { workspace = true }
+indexer-cache            = { workspace = true, features = ["metrics", "tracing"] }
 indexer-hooked           = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd            = { workspace = true, features = ["metrics"] }
 indexer-sql              = { workspace = true, features = ["async-graphql", "testing", "tracing"] }

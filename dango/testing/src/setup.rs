@@ -178,7 +178,6 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         .unwrap();
 
     let indexer_context = indexer.context.clone();
-    let indexer_path = indexer.indexer_path.clone();
 
     // Create a shared runtime handler that uses the same tokio runtime
     let shared_runtime_handle =
@@ -187,6 +186,9 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
 
     let mut hooked_indexer = HookedIndexer::new();
+
+    let indexer_cache = indexer_cache::Cache::new_with_tempdir();
+    let indexer_cache_context = indexer_cache.context.clone();
 
     // Create a separate context for dango indexer (shares DB but has independent pubsub)
     let dango_context: dango_indexer_sql::context::Context = indexer
@@ -216,6 +218,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         clickhouse_context = clickhouse_context.with_mock();
     }
 
+    hooked_indexer.add_indexer(indexer_cache).unwrap();
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
@@ -243,10 +246,10 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
+        indexer_cache_context,
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
         consensus_client,
-        indexer_path,
     );
 
     let dango_httpd_context = dango_httpd::context::Context::new(
