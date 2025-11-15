@@ -70,7 +70,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
     m,
     controllers,
     pairId,
-    bucketRecords: isLg ? 11 : 16,
+    bucketRecords: isLg ? 10 : 16,
     onChangePairId,
     action,
     onChangeAction,
@@ -108,22 +108,16 @@ const ProTradeOverview: React.FC = () => {
   return <OrderBookOverview state={state} controllers={controllers} />;
 };
 
-const ChartIQ = lazy(() =>
-  import("../foundation/ChartIQ").then(({ ChartIQ }) => ({ default: ChartIQ })),
-);
-
 const TradingView = lazy(() =>
-  import("./TradingView").then(({ TradingView }) => ({ default: TradingView })),
+  import("./TradingView")
+    .then(({ TradingView }) => ({ default: TradingView }))
+    .catch(() => ({ default: () => <div>Chart</div> })),
 );
 
 const ProTradeChart: React.FC = () => {
   const { state } = useProTrade();
   const { isLg } = useMediaQuery();
-  const { settings } = useApp();
-  const { chart } = settings;
   const { baseCoin, quoteCoin, orders } = state;
-
-  const ChartComponent = chart === "tradingview" ? TradingView : ChartIQ;
 
   const mobileContainer = usePortalTarget("#chart-container-mobile");
 
@@ -137,7 +131,7 @@ const ProTradeChart: React.FC = () => {
     <Suspense fallback={<Spinner color="pink" size="md" />}>
       <div className="flex w-full lg:min-h-[45vh] h-full" id="chart-container">
         <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
-          <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
+          <TradingView coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
         </ErrorBoundary>
       </div>
     </Suspense>
@@ -193,10 +187,6 @@ const ProTradeOpenOrders: React.FC = () => {
   const { formatNumberOptions } = settings;
 
   const columns: TableColumn<OrdersByUserResponse & { id: OrderId }> = [
-    /*  {
-      header: "Time",
-      cell: ({ row }) => <Cell.Time date={row.original.time} />,
-    }, */
     {
       header: m["dex.protrade.history.id"](),
       cell: ({ row }) => {
@@ -328,7 +318,7 @@ const ProTradeOpenOrders: React.FC = () => {
       classNames={{
         row: "h-fit",
         header: "pt-0",
-        base: "pb-0 max-h-[31vh] overflow-y-scroll",
+        base: "pb-[1.5rem] max-h-[9.5rem] overflow-y-scroll",
         cell: twMerge("diatype-xs-regular py-1", {
           "group-hover:bg-transparent": !orders.data.length,
         }),

@@ -83,9 +83,6 @@
   collections:
     - community.docker
     - community.clickhouse
-  roles:
-    - cosign
-    - full-app
   pre_tasks:
     - name: Load postgres vars
       include_vars: "roles/full-app/vars/included_postgres.yml"
@@ -108,13 +105,51 @@
             image: "ghcr.io/left-curve/left-curve/cometbft"
             tag: "{{ cometbft_tag }}"
             identity_regexp: "{{ cosign_identity_cometbft_regexp }}"
-  post_tasks:
-    - name: Log deployment complete
-      community.general.syslogger:
-        msg: "[{{ deployment_name }}] Finished deployment"
-        facility: local0
-        priority: info
-        ident: dango
+    - name: Set dango and cometbft hosts
+      set_fact:
+        dango_host: "{{ deployment_name }}-dango-1"
+        cometbft_host: "{{ deployment_name }}-cometbft-1"
+
+  tasks:
+    - block:
+        - name: Run cosign role
+          import_role:
+            name: cosign
+
+        - name: Run full-app role
+          import_role:
+            name: full-app
+
+      rescue:
+        - name: Stop and remove stack
+          community.docker.docker_compose_v2:
+            project_name: "{{ deployment_name }}"
+            project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+            state: absent
+          ignore_errors: true
+
+        # I want to keep files if I need to dig further using `docker compose logs`
+        # - name: Remove deployment directory
+        #   become: true
+        #   become_user: root
+        #   file:
+        #     path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
+        #     state: absent
+
+        - name: Log deployment failure
+          community.general.syslogger:
+            msg: "[{{ deployment_name }}] Deployment FAILED"
+            facility: local0
+            priority: err
+            ident: dango
+
+      always:
+        - name: Log deployment finished
+          community.general.syslogger:
+            msg: "[{{ deployment_name }}] Finished deployment"
+            facility: local0
+            priority: info
+            ident: dango
 
 - hosts: monitoring
   become: true

@@ -3,6 +3,7 @@ use {
     dango_genesis::{Codes, Contracts, GenesisCodes},
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::{TestAccounts, setup_suite_with_db_and_vm},
+    grug_app::SimpleCommitment,
     grug_db_memory::MemDb,
     grug_testing::MockClient,
     grug_vm_rust::{ContractWrapper, RustVm},
@@ -104,7 +105,7 @@ where
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
-        MemDb::new(),
+        MemDb::<SimpleCommitment>::new(),
         RustVm::new(),
         ProposalPreparer::new([""], ""), // FIXME: endpoints and access token
         hooked_indexer,
@@ -129,7 +130,7 @@ where
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_context.clone(),
-        Arc::new(Mutex::new(app)),
+        Arc::new(app),
         Arc::new(mock_client),
         indexer_path,
     );
@@ -145,6 +146,7 @@ where
         indexer_httpd_context.clone(),
         indexer_clickhouse_context.clone(),
         dango_context,
+        None,
     );
 
     dango_httpd::server::run_server("127.0.0.1", port, cors_allowed_origin, dango_httpd_context)

@@ -49,6 +49,7 @@ export { SortHeader } from "./SortHeader";
 export { FormattedNumber } from "./FormattedNumber";
 export { Dot } from "./Dot";
 export { CurrentBlock } from "./CurrentBlock";
+export { QRCodeReader } from "./QRCodeReader";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -111,3 +112,7 @@ export { IconTools } from "./icons/IconTools";
 export { IconApple } from "./icons/IconApple";
 export { IconGoogle } from "./icons/IconGoogle";
 export { IconEmail } from "./icons/IconEmail";
+export { IconToastSuccess } from "./icons/IconToastSuccess";
+export { IconToastInfo } from "./icons/IconToastInfo";
+export { IconToastError } from "./icons/IconToastError";
+export { IconToastWarning } from "./icons/IconToastWarning";

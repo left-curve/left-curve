@@ -31,6 +31,16 @@ pub enum AppError {
         msg: String,
     },
 
+    #[error(
+        "upgrade height must be in the future! current height: {current}, upgrade height: {upgrade}"
+    )]
+    UpgradeHeightNotInFuture { current: u64, upgrade: u64 },
+
+    #[error(
+        "upgrade height reached. please deploy the correct version of the software. current version: {current}, upgrade version: {upgrade}"
+    )]
+    UpgradeIncorrectVersion { current: String, upgrade: String },
+
     #[error("merkle proof is not supported for `/app` query; use `/store` instead")]
     ProofNotSupported,
 

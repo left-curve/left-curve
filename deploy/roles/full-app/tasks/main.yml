@@ -9,6 +9,8 @@
 # Used to deploy devnet
 # 3. `ansible-playbook full-app.yml -e traefik_enabled=true`
 
+- import_tasks: cloudflare_pr_tunnel.yml
+  when: cloudflare_tunnel_enabled and github_pr_number is defined
 - import_tasks: validate.yml
 - import_tasks: stop_previous.yml
   when: system_wide_directories
@@ -17,11 +19,12 @@
   when: verify_signatures
 - import_tasks: create_databases.yml
 - import_tasks: deploy_standalone.yml
-- import_tasks: cloudflare.yml
 - import_tasks: update_traefik.yml
   when: traefik_enabled
-- import_tasks: update_pr_traefik.yml
-  when: not traefik_enabled
+# This was used when I had no cloudflare tunnel and the connections is direct
+# with a CNAME to the host IP
+# - import_tasks: update_pr_traefik.yml
+#   when: not traefik_enabled
 - import_tasks: delete_old_deploy.yml
   when: current_deployment is defined
 - import_tasks: cloudflare_cache.yml

@@ -1,11 +1,11 @@
 use {
     crate::{Batch, Order, Record, Storage},
     ouroboros::self_referencing,
-    std::{
-        fmt::Display,
-        mem::replace,
-        sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    parking_lot::{
+        ArcRwLockReadGuard, ArcRwLockWriteGuard, RawRwLock, RwLock, RwLockReadGuard,
+        RwLockWriteGuard,
     },
+    std::{fmt::Display, mem::replace, sync::Arc},
 };
 
 /// A wrapper over the `Arc<RwLock<T>>` smart pointer, providing some convenience
@@ -23,15 +23,19 @@ impl<S> Shared<S> {
     }
 
     pub fn read_access(&self) -> RwLockReadGuard<'_, S> {
-        self.inner
-            .read()
-            .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
+        self.inner.read()
+    }
+
+    pub fn static_read_access(&self) -> ArcRwLockReadGuard<RawRwLock, S> {
+        self.inner.read_arc()
     }
 
     pub fn write_access(&self) -> RwLockWriteGuard<'_, S> {
-        self.inner
-            .write()
-            .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
+        self.inner.write()
+    }
+
+    pub fn static_write_access(&self) -> ArcRwLockWriteGuard<RawRwLock, S> {
+        self.inner.write_arc()
     }
 
     pub fn read_with<F, T>(&self, action: F) -> T
@@ -61,7 +65,6 @@ impl<S> Shared<S> {
         Arc::try_unwrap(self.inner)
             .unwrap_or_else(|_| panic!("unwrapping Arc when ref count > 1"))
             .into_inner()
-            .unwrap_or_else(|err| panic!("poisoned lock: {err:?}"))
     }
 }
 
@@ -129,7 +132,7 @@ where
 }
 
 #[self_referencing]
-pub struct SharedIter<'a, S> {
+struct SharedIter<'a, S> {
     guard: RwLockReadGuard<'a, S>,
     #[borrows(guard)]
     #[covariant]

@@ -9,6 +9,10 @@ services:
   postgres:
     image: postgres:17
     shm_size: 1gb
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     labels:
       <<: *common-labels
       service_name: "postgres"
@@ -47,6 +51,24 @@ services:
       interval: 2s
       timeout: 5s
       retries: 10
+{% endif %}
+
+{% if cloudflare_tunnel_enabled %}
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml --metrics 0.0.0.0:2000 run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    env_file:
+      - .env
+    networks:
+      - default
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+    healthcheck:
+      test: ["CMD", "cloudflared", "--config", "/etc/cloudflared/config.yml", "--metrics", "0.0.0.0:2000", "tunnel", "ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 {% endif %}
 
 {% if deploy_includes_clickhouse %}
@@ -117,15 +139,20 @@ services:
 {% if not deploy_includes_clickhouse %}
       - clickhouse
 {% endif %}
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     volumes:
       - "${DANGO_DIRECTORY}:/root/.dango"
+    env_file:
+      - .env
     environment:
       - INDEXER__DATABASE__URL=${POSTGRES_DATABASE_URL}
       - INDEXER__CLICKHOUSE__USER=${CLICKHOUSE_DANGO_USER}
       - INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_DANGO_PASSWORD}
       - INDEXER__CLICKHOUSE__DATABASE=${CLICKHOUSE_DATABASE}
       - INDEXER__CLICKHOUSE__URL=${CLICKHOUSE_URL}
-      - PYTH__ACCESS_TOKEN=${PYTH__ACCESS_TOKEN}
       - RUST_BACKTRACE=1
     tty: true
     healthcheck:
@@ -136,6 +163,10 @@ services:
 
   dango-frontend:
     image: ghcr.io/left-curve/left-curve/dango-frontend:${FRONTEND_TAG:-latest}
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     labels:
       <<: *common-labels
       service_name: "dango-frontend"
@@ -165,6 +196,10 @@ services:
 
   faucet-bot:
     image: ghcr.io/left-curve/bots/faucet:${FAUCET_VERSION:-latest}
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     labels:
       <<: *common-labels
       service_name: "faucet_bot"
@@ -226,6 +261,10 @@ services:
 
   cometbft:
     image: ghcr.io/left-curve/left-curve/cometbft:${COMETBFT_TAG:-latest}
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
     labels:
       <<: *common-labels
       service_name: "cometbft"
@@ -264,7 +303,14 @@ services:
     environment:
       - GRAPHQL_ENDPOINT=${INDEXER_URL}/graphql
     networks:
+      - default
       - traefik
+    tty: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 networks:
   traefik:

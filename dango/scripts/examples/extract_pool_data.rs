@@ -5,8 +5,8 @@ use {
         dex, oracle,
     },
     grug::{Addr, JsonSerExt, Query, addr},
-    grug_app::{App, NaiveProposalPreparer, NullIndexer},
-    grug_db_memory_lite::MemDbLite,
+    grug_app::{App, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
+    grug_db_memory::MemDb,
     grug_vm_rust::RustVm,
     std::path::PathBuf,
 };
@@ -25,18 +25,19 @@ fn main() -> anyhow::Result<()> {
         .join(format!("db-{HEIGHT}.borsh"));
 
     let app = App::new(
-        MemDbLite::recover(snapshot)?,
+        MemDb::<SimpleCommitment>::recover(snapshot)?,
         RustVm::new(),
         NaiveProposalPreparer,
         NullIndexer,
         u64::MAX,
         None,
+        env!("CARGO_PKG_VERSION"),
     );
 
     // Query app config.
     let res = app.do_query_app(
         Query::AppConfig(grug::QueryAppConfigRequest {}),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("app config: {}", res.to_json_string_pretty()?);
@@ -50,7 +51,7 @@ fn main() -> anyhow::Result<()> {
             }
             .to_json_value()?,
         }),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("ETH price: {}", res.to_json_string_pretty()?);
@@ -64,7 +65,7 @@ fn main() -> anyhow::Result<()> {
             }
             .to_json_value()?,
         }),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("USDC price: {}", res.to_json_string_pretty()?);
@@ -79,7 +80,7 @@ fn main() -> anyhow::Result<()> {
             }
             .to_json_value()?,
         }),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("ETH-USDC pool params: {}", res.to_json_string_pretty()?);
@@ -94,7 +95,7 @@ fn main() -> anyhow::Result<()> {
             }
             .to_json_value()?,
         }),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("ETH-USDC pool reserve: {}", res.to_json_string_pretty()?);

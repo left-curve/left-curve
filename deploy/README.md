@@ -1,5 +1,13 @@
 # deploy
 
+## Add a new user
+
+- Add the username in `group_vars/all/main.yml` in the `ssh_users` section
+
+- Add the public key in `roles/users/files/authorized_keys/<username>.pub`
+
+- Run `ansible-playbook users.yml`
+
 ## Install a new server
 
 - Add the host in `inventory` using its public IP
@@ -39,6 +47,11 @@ This shows you have the right password:
 2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
 ```
 
+Make also sure you have ssh-agent and added your key with ssh-add before
+running ansible-playbook, else you'll get `Permission denied (publickey)`.
+
+You must rerun `ssh-add` after you rebooted.
+
 ## Manual Cosign Verification
 
 Run this after deployments if you need to validate an image digest manually:
@@ -49,3 +62,31 @@ cosign verify \
   --certificate-identity-regexp "https://github.com/left-curve/left-curve/.github/workflows/rust.yml@refs/heads/main" \
   ghcr.io/left-curve/left-curve/dango@sha256:<digest>
 ```
+
+## Cloudflare tunnels and load balancers
+
+Those are deployed differently for testnet/devnet and PR review apps.
+
+### PR review apps
+
+When `cloudflare_tunnel_enabled` is set to true, the review app docker compose
+includes a cloudflare tunnel container. Then we create CNAME for each service,
+to that specific "PR-container" tunnel.
+
+The cloudflared container has a config, routing to containers based on host.
+
+[user] -> (( cloudflare )) -> [cloudflared PR container] -> [destination PR container]
+
+### devnet/testnet
+
+Each host has a specific cloudflare tunnel name with the hostname. A
+`cloudflare` docker network is created. The host running traefik includes the
+cloudflare network.
+
+We add a new `traefik` config file, so :80 and :443 and connected to the PR
+containers. It routes those port to proper container services based on
+hostname.
+
+The cloudflared container has a config, routing to containers based on host.
+
+[user] -> (( cloudflare )) -> [cloudflared system container] -> [system traefik] -> [destination container]

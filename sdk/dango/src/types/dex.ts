@@ -293,8 +293,10 @@ export type PairParams = {
   swapFeeRate: string;
   /** Price buckets for the liquidity depth chart. */
   bucketSizes: string[];
-  /**  Minimum order size, defined _in the quote asset_. */
-  minOrderSize: string;
+  /** Minimum order size, defined _in the base asset_. */
+  minOrderSizeBase: string;
+  /** Minimum order size, defined _in the quote asset_. */
+  minOrderSizeQuote: string;
 };
 
 export type PairUpdate = {

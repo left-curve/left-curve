@@ -112,7 +112,7 @@ unsafe = false
 # 0 - unlimited.
 # Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
 # 1024 - 40 - 10 - 50 = 924 = ~900
-max_open_connections = 900
+max_open_connections = 5000
 
 # Maximum number of unique clientIDs that can /subscribe.
 # If you're using /broadcast_tx_commit, set to the estimated maximum number
@@ -464,7 +464,7 @@ timeout_precommit_delta = "500ms"
 # height (this gives us a chance to receive some more precommits, even
 # though we already have +2/3).
 # Set to 0 if you want to make progress as soon as the node has all the precommits.
-timeout_commit = "200ms"
+timeout_commit = "50ms"
 
 # Deprecated: set `timeout_commit` to 0 instead.
 skip_timeout_commit = false

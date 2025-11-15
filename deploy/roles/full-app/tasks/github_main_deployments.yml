@@ -15,6 +15,7 @@
   loop:
     - "dango-frontend"
     - "dango-api"
+    - "dango-graphiql"
     - "faucet-bot"
 
 - name: Create GitHub deployments
@@ -36,6 +37,7 @@
   loop:
     - { name: "dango-frontend", description: "Frontend", url: "https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
     - { name: "dango-api", description: "Dango API", url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
+    - { name: "dango-graphiql", description: "GraphiQL", url: "https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
     - { name: "faucet-bot", description: "Faucet", url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
 
 - name: Set deployment statuses
@@ -70,7 +72,7 @@
     | **Status** | ✅ |
     | **Dango Frontend** | [https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
     | **Dango GraphQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql) |
-    | **Dango GraphiQL** | [https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql](https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphiql) |
+    | **Dango GraphiQL** | [https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}](https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}) |
     | **Faucet bot** | [https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint](https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint) |
     | **Deployment name** | `{{ deployment_name }}` |
     EOF

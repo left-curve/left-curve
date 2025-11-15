@@ -9,7 +9,10 @@ import type {
 } from "../../../types/index.js";
 
 export type QueryAppSubscriptionParameters = SubscriptionCallbacks<{
-  queryApp: QueryResponse;
+  queryApp: {
+    response: QueryResponse;
+    blockHeight: number;
+  };
 }> & {
   request: QueryRequest;
   interval?: number;
@@ -39,7 +42,10 @@ export function queryAppSubscription<
       $request: GrugQueryInput!
       $interval: Int! = 10
     ) {
-      queryApp(request: $request, blockInterval: $interval)
+      queryApp(request: $request, blockInterval: $interval) {
+        response
+        blockHeight
+      }
     }
   `;
   return client.subscribe({ query, variables: { request, interval } }, callbacks);

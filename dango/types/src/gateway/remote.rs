@@ -1,5 +1,5 @@
 use {
-    grug::{Inner, PrimaryKey, RawKey, StdError, StdResult},
+    grug::{Binary, Inner, PrimaryKey, RawKey, StdError, StdResult},
     hyperlane_types::{Addr32, mailbox::Domain},
 };
 
@@ -46,12 +46,13 @@ impl PrimaryKey for Remote {
         match tag {
             0 => {
                 if bytes.len() != 36 {
-                    return Err(StdError::deserialize::<Self::Output, _>(
+                    return Err(StdError::deserialize::<Self::Output, _, Binary>(
                         "key",
                         format!(
                             "incorrect byte length for warp remote! expecting: 36, got: {}",
                             bytes.len()
                         ),
+                        bytes.into(),
                     ));
                 }
 
@@ -68,20 +69,22 @@ impl PrimaryKey for Remote {
             },
             1 => {
                 if !bytes.is_empty() {
-                    return Err(StdError::deserialize::<Self::Output, _>(
+                    return Err(StdError::deserialize::<Self::Output, _, Binary>(
                         "key",
                         format!(
                             "incorrect byte length for bitcoin remote! expecting: 0, got: {}",
                             bytes.len()
                         ),
+                        bytes.into(),
                     ));
                 }
 
                 Ok(Remote::Bitcoin)
             },
-            _ => Err(StdError::deserialize::<Self::Output, _>(
+            _ => Err(StdError::deserialize::<Self::Output, _, Binary>(
                 "key",
                 format!("unknown remote tag: {tag}"),
+                bytes.into(),
             )),
         }
     }

@@ -1,0 +1,13 @@
+---
+metabase_dir: "{{ ansible_env.HOME }}/metabase"
+metabase_use_postgres: true
+metabase_db_name: "metabase"
+metabase_db_user: "metabase"
+metabase_db_host: "postgres"
+# Application password (set via Ansible Vault as instructed)
+# metabase_db_password: ""
+
+# Superuser connection used for creating DB/user
+postgres_external_host: "127.0.0.1"
+postgres_port: 5432
+# postgres_user and postgres_password are expected to be provided (vault or host/group vars)

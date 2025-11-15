@@ -44,6 +44,16 @@ const modals: Record<(typeof Modals)[keyof typeof Modals], ModalDefinition> = {
       header: m["common.signin"](),
     },
   },
+  [Modals.SignWithDesktopFromNativeCamera]: {
+    component: lazy(() =>
+      import("./SignWithDesktopFromNativeCamera").then(({ SignWithDesktopFromNativeCamera }) => ({
+        default: SignWithDesktopFromNativeCamera,
+      })),
+    ),
+    options: {
+      header: m["common.signin"](),
+    },
+  },
   [Modals.ConfirmSwap]: {
     component: lazy(() =>
       import("./ConfirmSwap").then(({ ConfirmSwap }) => ({

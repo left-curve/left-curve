@@ -68,6 +68,11 @@ pub trait Db {
     /// `None` if not a single version has been committed.
     fn latest_version(&self) -> Option<u64>;
 
+    /// Return the oldest version available in the database.
+    /// Versions older than this have been pruned.
+    /// Return `None` if the DB hasn't been pruned once.
+    fn oldest_version(&self) -> Option<u64>;
+
     /// Return the Merkle root hash at the specified version.
     ///
     /// If version is unspecified, return that of the latest committed version.
@@ -91,10 +96,11 @@ pub trait Db {
     /// This is typically invoked in the ABCI `FinalizeBlock` call.
     fn flush_but_not_commit(&self, batch: Batch) -> Result<(u64, Option<Hash256>), Self::Error>;
 
-    /// Persist pending data added in the `flush` method to disk.
+    /// Persist pending data added in the `flush` method to disk. Return the new
+    /// version.
     ///
     /// This is typically invoked in the ABCI `Commit` call.
-    fn commit(&self) -> Result<(), Self::Error>;
+    fn commit(&self) -> Result<u64, Self::Error>;
 
     /// Flush and commit in one go.
     ///
@@ -104,17 +110,6 @@ pub trait Db {
         self.commit()?;
         Ok((new_version, root_hash))
     }
-}
-
-/// Represents a database that can be pruned.
-///
-/// These methods aren't used by the app, so we split them off into a separate
-/// trait.
-pub trait PrunableDb: Db {
-    /// Return the oldest version available in the database.
-    /// Versions older than this have been pruned.
-    /// Return `None` if the DB hasn't been pruned once.
-    fn oldest_version(&self) -> Option<u64>;
 
     /// Prune data of less or equal to the given version.
     ///

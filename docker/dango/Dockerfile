@@ -18,14 +18,15 @@ RUN apt-get update && \
 # RUN useradd --create-home --shell /bin/bash $USERNAME
 
 COPY target/${TARGET_ARCH}/release/dango /usr/local/bin/
+COPY dango/indexer/httpd/static /app/www
 # RUN chown $USERNAME:$USERNAME /usr/local/bin/dango
 
 # USER $USERNAME
 # WORKDIR /home/$USERNAME
 WORKDIR /app
 
-# Expose the indexer httpd (8080), indexer metrics (9191), and Tendermint ABCI (26658) ports.
-EXPOSE 8080 26658 9191
+# Expose the indexer httpd (8080), and indexer metrics (9191).
+EXPOSE 8080 9191
 
 # Run dango.
 # This assumes that the `app.toml` file has been mounted to `/root/.dango/config/app.toml`.

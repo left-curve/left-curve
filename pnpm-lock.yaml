@@ -235,6 +235,9 @@ importers:
       '@tanstack/react-table':
         specifier: '>=8.0.0'
         version: 8.21.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@zxing/library':
+        specifier: ^0.21.3
+        version: 0.21.3
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -526,9 +529,6 @@ importers:
       '@tanstack/zod-adapter':
         specifier: 'catalog:'
         version: 1.111.3(@tanstack/react-router@1.111.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(zod@3.24.1)
-      '@yudiel/react-qr-scanner':
-        specifier: ^2.2.1
-        version: 2.2.1(@types/emscripten@1.40.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -615,9 +615,6 @@ importers:
         specifier: 'catalog:'
         version: 5.6.3
     optionalDependencies:
-      '@left-curve/chartiq':
-        specifier: ^9.9.0
-        version: 9.9.0
       '@left-curve/tradingview':
         specifier: ^29.4.0
         version: 29.4.0
@@ -2823,9 +2820,6 @@ packages:
     peerDependencies:
       tslib: '2'
 
-  '@left-curve/chartiq@9.9.0':
-    resolution: {integrity: sha512-3Kwjf49UJcB10txj4aOchodFE8EBiUgP/P7p5LystRv8ZPUSUBKopoVF1rFugQ7azxdZ8dgvwhFMzhrCtgk+xw==, tarball: https://npm.pkg.github.com/download/@left-curve/chartiq/9.9.0/1ecf5262dd4069d663f8059eb3668fc0582c8605}
-
   '@left-curve/tradingview@29.4.0':
     resolution: {integrity: sha512-dmcthhZA+9qzs16xolv7zdgqECFRn4yJ48b4xYqH6k/xM2mNDnfuj++k0iM3uCwtTcdBIQhR048SpRQV9FjTfA==, tarball: https://npm.pkg.github.com/download/@left-curve/tradingview/29.4.0/0662df570d15127ebf994ff47064f0808425d749}
 
@@ -4266,9 +4260,6 @@ packages:
   '@types/doctrine@0.0.9':
     resolution: {integrity: sha512-eOIHzCUSH7SMfonMG1LsC2f8vxBFtho6NGBznK41R84YzPuvSBzrhEps33IsQiOW9+VL6NQ9DbjQJznk/S4uRA==}
 
-  '@types/emscripten@1.40.0':
-    resolution: {integrity: sha512-MD2JJ25S4tnjnhjWyalMS6K6p0h+zQV6+Ylm+aGbiS8tSn/aHLSGNzBgduj6FB4zH0ax2GRMGYi/8G1uOxhXWA==}
-
   '@types/eslint-scope@3.7.7':
     resolution: {integrity: sha512-MzMFlSLBqNF2gcHWO0G1vP/YQyfvrxZ0bF+u7mzUdZ1/xK4A4sru+nraZz5i3iEIk1l1uyicaDVTB4QbbEkAYg==}
 
@@ -4495,11 +4486,12 @@ packages:
   '@xtuc/long@4.2.2':
     resolution: {integrity: sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==}
 
-  '@yudiel/react-qr-scanner@2.2.1':
-    resolution: {integrity: sha512-5tmzoi9d8mqqaxKTxfI9kulS3N3Kph75AOqwU2lnl4IMwjmLcTXS8IyecDUvzFNuoMNhCpofrqqGueXm8IXkjA==}
-    peerDependencies:
-      react: ^17 || ^18 || ^19
-      react-dom: ^17 || ^18 || ^19
+  '@zxing/library@0.21.3':
+    resolution: {integrity: sha512-hZHqFe2JyH/ZxviJZosZjV+2s6EDSY0O24R+FQmlWZBZXP9IqMo7S3nb3+2LBWxodJQkSurdQGnqE7KXqrYgow==}
+    engines: {node: '>= 10.4.0'}
+
+  '@zxing/text-encoding@0.9.0':
+    resolution: {integrity: sha512-U/4aVJ2mxI0aDNI8Uq0wEhMgY+u4CNtEb0om3+y3+niDAsoTCOB33UF0sxpzqzdqXLqmvc+vZyAt4O8pPdfkwA==}
 
   abitype@1.1.0:
     resolution: {integrity: sha512-6Vh4HcRxNMLA0puzPjM5GBgT4aAcFGKZzSgAXvuZ27shJP6NEpielTuqbBmZILR5/xd0PizkBGy5hReKz9jl5A==}
@@ -4799,9 +4791,6 @@ packages:
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
-
-  barcode-detector@3.0.1:
-    resolution: {integrity: sha512-3fCzG/Py4SVgZJhubD1mt7rVprtHEVWrxQN4FUOG0oulPE4193evbgyptxcOYsfTNEtMlWc+Ec9tdxhjlR4/Ww==}
 
   base-x@4.0.1:
     resolution: {integrity: sha512-uAZ8x6r6S3aUM9rbHGVOIsR15U/ZSc82b3ymnCPsT45Gk1DDvhDPdIgB5MrhirZWt+5K0EEPQH985kNqZgNPFw==}
@@ -8423,9 +8412,6 @@ packages:
     resolution: {integrity: sha512-Gf9qqc58SpCA/xdziiHz35F4GNIWYWZrEshUc/G/r5BnLph6xpKuLeoJoQuj5WfBIx/eQLf+hmVPYHaxJu7V2g==}
     engines: {node: '>= 10.13.0'}
 
-  sdp@3.2.0:
-    resolution: {integrity: sha512-d7wDPgDV3DDiqulJjKiV2865wKsJ34YI+NDREbm+FySq6WuKOikwyNQcm+doLAZ1O6ltdO0SeKle2xMpN3Brgw==}
-
   selfsigned@2.4.1:
     resolution: {integrity: sha512-th5B4L2U+eGLq1TVh7zNRGBapioSORUeymIydxgFpwww9d2qyKvtuPU2jJuHvYAwwqi2Y596QBL3eEqcPEYL8Q==}
     engines: {node: '>=10'}
@@ -9057,6 +9043,10 @@ packages:
       '@rspack/core':
         optional: true
 
+  ts-custom-error@3.3.1:
+    resolution: {integrity: sha512-5OX1tzOjxWEgsr/YEUWSuPrQ00deKLh6D7OTWcvNHm12/7QPyRh8SYpyWvA4IZv8H/+GQWQEh/kwo95Q9OVW1A==}
+    engines: {node: '>=14.0.0'}
+
   ts-dedent@2.2.0:
     resolution: {integrity: sha512-q5W7tVM71e2xjHZTlgfTDoPF/SmqKG5hddq9SzR49CH2hayqRKJtQ4mtRlSxKaJlR/+9rEM+mnBHf7I2/BQcpQ==}
     engines: {node: '>=6.10'}
@@ -9164,10 +9154,6 @@ packages:
   type-fest@0.7.1:
     resolution: {integrity: sha512-Ne2YiiGN8bmrmJJEuTWTLJR32nh/JdL1+PSicowtNb0WFpn59GK8/lfD61bVtzguz7b3PBt74nxpv/Pw5po5Rg==}
     engines: {node: '>=8'}
-
-  type-fest@4.37.0:
-    resolution: {integrity: sha512-S/5/0kFftkq27FPNye0XM1e2NsnoD/3FS+pBmbjmmtLT6I+i344KoOf7pvXreaFsDamWeaJX55nczA1m5PsBDg==}
-    engines: {node: '>=16'}
 
   typed-array-buffer@1.0.3:
     resolution: {integrity: sha512-nAYYwfY3qnzX30IkA6AQZjVbtK6duGontcQm1WSG1MD94YLqK0515GNApXkoxKOWMusVssAHWLh9SeaoefYFGw==}
@@ -9563,10 +9549,6 @@ packages:
       webpack-cli:
         optional: true
 
-  webrtc-adapter@9.0.1:
-    resolution: {integrity: sha512-1AQO+d4ElfVSXyzNVTOewgGT/tAomwwztX/6e3totvyyzXPvXIIuUUjAmyZGbKBKbZOXauuJooZm3g6IuFuiNQ==}
-    engines: {node: '>=6.0.0', npm: '>=3.10.0'}
-
   whatwg-fetch@3.6.20:
     resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
 
@@ -9839,11 +9821,6 @@ packages:
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
-
-  zxing-wasm@2.1.0:
-    resolution: {integrity: sha512-CvuwDZHRHwg6PeCARaCDIp3dauD4cin0mbHrQQZtMDrr5mblPzCimAjdw/XMhD/Au10q/f5+SAupvYqYvUOg1Q==}
-    peerDependencies:
-      '@types/emscripten': '>=1.39.6'
 
 snapshots:
 
@@ -12140,9 +12117,6 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  '@left-curve/chartiq@9.9.0':
-    optional: true
-
   '@left-curve/tradingview@29.4.0':
     optional: true
 
@@ -13789,8 +13763,6 @@ snapshots:
 
   '@types/doctrine@0.0.9': {}
 
-  '@types/emscripten@1.40.0': {}
-
   '@types/eslint-scope@3.7.7':
     dependencies:
       '@types/eslint': 9.6.1
@@ -14068,14 +14040,14 @@ snapshots:
 
   '@xtuc/long@4.2.2': {}
 
-  '@yudiel/react-qr-scanner@2.2.1(@types/emscripten@1.40.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@zxing/library@0.21.3':
     dependencies:
-      barcode-detector: 3.0.1(@types/emscripten@1.40.0)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      webrtc-adapter: 9.0.1
-    transitivePeerDependencies:
-      - '@types/emscripten'
+      ts-custom-error: 3.3.1
+    optionalDependencies:
+      '@zxing/text-encoding': 0.9.0
+
+  '@zxing/text-encoding@0.9.0':
+    optional: true
 
   abitype@1.1.0(typescript@5.6.3)(zod@3.24.1):
     optionalDependencies:
@@ -14419,12 +14391,6 @@ snapshots:
       babel-preset-current-node-syntax: 1.1.0(@babel/core@7.26.8)
 
   balanced-match@1.0.2: {}
-
-  barcode-detector@3.0.1(@types/emscripten@1.40.0):
-    dependencies:
-      zxing-wasm: 2.1.0(@types/emscripten@1.40.0)
-    transitivePeerDependencies:
-      - '@types/emscripten'
 
   base-x@4.0.1: {}
 
@@ -18538,8 +18504,6 @@ snapshots:
       ajv-formats: 2.1.1(ajv@8.11.0)
       ajv-keywords: 5.1.0(ajv@8.11.0)
 
-  sdp@3.2.0: {}
-
   selfsigned@2.4.1:
     dependencies:
       '@types/node-forge': 1.3.13
@@ -19309,6 +19273,8 @@ snapshots:
     optionalDependencies:
       '@rspack/core': 1.5.2(@swc/helpers@0.5.17)
 
+  ts-custom-error@3.3.1: {}
+
   ts-dedent@2.2.0: {}
 
   ts-interface-checker@0.1.13: {}
@@ -19416,8 +19382,6 @@ snapshots:
   type-fest@0.21.3: {}
 
   type-fest@0.7.1: {}
-
-  type-fest@4.37.0: {}
 
   typed-array-buffer@1.0.3:
     dependencies:
@@ -19887,10 +19851,6 @@ snapshots:
       - esbuild
       - uglify-js
 
-  webrtc-adapter@9.0.1:
-    dependencies:
-      sdp: 3.2.0
-
   whatwg-fetch@3.6.20: {}
 
   whatwg-url-without-unicode@8.0.0-3:
@@ -20216,8 +20176,3 @@ snapshots:
       use-sync-external-store: 1.4.0(react@18.3.1)
 
   zwitch@2.0.4: {}
-
-  zxing-wasm@2.1.0(@types/emscripten@1.40.0):
-    dependencies:
-      '@types/emscripten': 1.40.0
-      type-fest: 4.37.0

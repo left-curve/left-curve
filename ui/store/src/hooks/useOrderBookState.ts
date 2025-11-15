@@ -7,13 +7,7 @@ import {
   snakeCaseJsonSerialization,
 } from "@left-curve/dango/encoding";
 
-import type {
-  PairId,
-  QueryRequest,
-  RestingOrderBookState,
-  StatusResponse,
-  StdResult,
-} from "@left-curve/dango/types";
+import type { PairId, QueryRequest, RestingOrderBookState } from "@left-curve/dango/types";
 import { parseUnits } from "@left-curve/dango/utils";
 import { create } from "zustand";
 
@@ -23,7 +17,7 @@ type UseOrderBookStateParameters = {
 };
 
 export type OrderBookStoreState = {
-  lastUpdatedBlockHeight: string;
+  lastUpdatedBlockHeight: number;
   orderBook: RestingOrderBookState | null;
   previousPrice: string;
   currentPrice: string;
@@ -32,25 +26,25 @@ export type OrderBookStoreState = {
     currentPrice,
     blockHeight,
   }: Omit<OrderBookStoreState, "setState" | "previousPrice" | "lastUpdatedBlockHeight"> & {
-    blockHeight: string;
+    blockHeight: number;
   }) => void;
 };
 
 export const orderBookStore = create<OrderBookStoreState>((set, get) => ({
-  lastUpdatedBlockHeight: "0",
+  lastUpdatedBlockHeight: 0,
   orderBook: null,
   currentPrice: "0",
   previousPrice: "0",
   setState: ({ orderBook, currentPrice, blockHeight }) => {
     const { currentPrice: previousPrice, lastUpdatedBlockHeight } = get();
-    if (+blockHeight <= +lastUpdatedBlockHeight) return;
+    if (blockHeight <= lastUpdatedBlockHeight) return;
     set(() => ({ orderBook, previousPrice, currentPrice, lastUpdatedBlockHeight: blockHeight }));
   },
 }));
 
 export function useOrderBookState(parameters: UseOrderBookStateParameters) {
   const { pairId, subscribe } = parameters;
-  const { subscriptions, coins, captureError } = useConfig();
+  const { subscriptions, coins } = useConfig();
   const { data: appConfig } = useAppConfig();
 
   const { setState } = orderBookStore();
@@ -63,43 +57,31 @@ export function useOrderBookState(parameters: UseOrderBookStateParameters) {
       params: {
         interval: 1,
         request: snakeCaseJsonSerialization<QueryRequest>({
-          multi: [
-            { status: {} },
-            {
-              wasmSmart: {
-                contract: addresses.dex,
-                msg: {
-                  restingOrderBookState: {
-                    baseDenom: pairId.baseDenom,
-                    quoteDenom: pairId.quoteDenom,
-                  },
-                },
+          wasmSmart: {
+            contract: addresses.dex,
+            msg: {
+              restingOrderBookState: {
+                baseDenom: pairId.baseDenom,
+                quoteDenom: pairId.quoteDenom,
               },
             },
-          ],
+          },
         }),
       },
       listener: (event) => {
         type Event = {
-          multi: [
-            StdResult<{ status: StatusResponse }>,
-            StdResult<{ wasmSmart: RestingOrderBookState }>,
-          ];
+          response: { wasmSmart: RestingOrderBookState };
+          blockHeight: number;
         };
 
-        const { multi } = camelCaseJsonDeserialization<Event>(event);
-        const [statusResponse, obStatusResponse] = multi;
+        const { response, blockHeight } = camelCaseJsonDeserialization<Event>(event);
+        const { wasmSmart: orderBook } = response;
+        const currentPrice = parseUnits(
+          orderBook.midPrice as string,
+          coins.byDenom[pairId.baseDenom].decimals - coins.byDenom[pairId.quoteDenom].decimals,
+        );
 
-        if ("Ok" in statusResponse && "Ok" in obStatusResponse) {
-          const { status } = statusResponse.Ok;
-          const { wasmSmart: orderBook } = obStatusResponse.Ok;
-          const currentPrice = parseUnits(
-            orderBook.midPrice as string,
-            coins.byDenom[pairId.baseDenom].decimals - coins.byDenom[pairId.quoteDenom].decimals,
-          );
-
-          setState({ orderBook, currentPrice, blockHeight: status.lastFinalizedBlock.height });
-        } else captureError(new Error("Failed to fetch resting order book data"));
+        setState({ orderBook, currentPrice, blockHeight });
       },
     });
 

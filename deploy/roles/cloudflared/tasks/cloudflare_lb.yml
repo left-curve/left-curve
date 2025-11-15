@@ -1,0 +1,131 @@
+- name: Debug var
+  debug:
+    var: dango_network
+
+- name: Get all monitors
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/monitors"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_monitors
+
+- debug: var=cf_monitors.json.result
+  run_once: true
+  become: false
+  delegate_to: localhost
+
+- name: Create monitors
+  include_tasks: cloudflare_monitor.yml
+  loop: "{{ monitor_defs }}"
+  loop_control:
+    loop_var: mon
+
+- name: Refresh monitors after creation
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/monitors"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_monitors
+
+- name: Build monitor id map by name
+  run_once: true
+  become: false
+  delegate_to: localhost
+  set_fact:
+    monitor_id_map: "{{ dict(cf_monitors.json.result | map(attribute='description') | zip(cf_monitors.json.result | map(attribute='id'))) }}"
+
+- name: Get all pools
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_pools
+
+- name: Show debug
+  debug: var=cf_pools.json.result
+  run_once: true
+  become: false
+  delegate_to: localhost
+
+- name: Create pools for services
+  vars:
+    pool: { name: "{{ service }}" }
+  include_tasks: cloudflare_pool.yml
+  loop: "{{ monitor_defs | map(attribute='name') | unique | list }}"
+  loop_control:
+    loop_var: service
+
+# Refresh pools to capture any newly-created IDs
+- name: Refresh pools after creation
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/load_balancers/pools"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_pools
+
+# Zone-scoped Load Balancers
+- name: Ensure Cloudflare zone id
+  run_once: true
+  become: false
+  delegate_to: localhost
+  when: cloudflare_zone_id is not defined
+  block:
+    - name: Lookup Cloudflare zone by name
+      uri:
+        url: "https://api.cloudflare.com/client/v4/zones?name={{ dango_domain }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+      register: zone_info
+
+    - name: Set Cloudflare zone id
+      set_fact:
+        cloudflare_zone_id: "{{ zone_info.json.result[0].id }}"
+
+- name: Get all load balancers
+  run_once: true
+  become: false
+  delegate_to: localhost
+  uri:
+    url: "https://api.cloudflare.com/client/v4/zones/{{ cloudflare_zone_id }}/load_balancers"
+    method: GET
+    headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
+  register: cf_load_balancers
+
+- name: Show debug
+  debug: var=cf_load_balancers.json.result
+  run_once: true
+  become: false
+  delegate_to: localhost
+
+- name: Debug variables
+  vars:
+    services: "{{ monitor_defs | map(attribute='name') | unique | list }}"
+    nets: "{{ target_networks | default([dango_network]) }}"
+  debug:
+    var: svcnet
+  loop: "{{ services | product(nets) | list }}"
+  loop_control:
+    loop_var: svcnet
+
+- name: Create LBs for services and networks
+  vars:
+    services: "{{ monitor_defs | map(attribute='name') | unique | list }}"
+    nets: "{{ target_networks | default([dango_network]) }}"
+  include_tasks: cloudflare_zone_lb.yml
+  loop: "{{ services | product(nets) | list }}"
+  loop_control:
+    loop_var: svcnet
