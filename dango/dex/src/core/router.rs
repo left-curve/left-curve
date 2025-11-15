@@ -35,6 +35,7 @@ pub fn swap_exact_amount_in(
         // Perform the swap.
         // The output of the previous step is the input of this step.
         (reserve, output) = params.swap_exact_amount_in(
+            storage,
             oracle_querier,
             &pair.base_denom,
             &pair.quote_denom,
@@ -79,6 +80,7 @@ pub fn swap_exact_amount_out(
 
         // Perform the swap.
         (reserve, input) = params.swap_exact_amount_out(
+            storage,
             oracle_querier,
             &pair.base_denom,
             &pair.quote_denom,

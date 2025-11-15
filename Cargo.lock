@@ -3359,6 +3359,8 @@ dependencies = [
  "dango-types",
  "grug",
  "metrics",
+ "serde",
+ "serde_json",
  "test-case",
  "tracing",
 ]
