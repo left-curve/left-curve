@@ -24,8 +24,8 @@ use {
     },
     grug::{
         BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, NonZero, Number, NumberConst,
-        QuerierExt, ResultExt, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map,
-        btree_set, coins,
+        QuerierExt, ResultExt, StdError, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
+        btree_map, btree_set, coins,
     },
     grug_types::Addressable,
     hyperlane_types::constants::ethereum,
@@ -903,12 +903,14 @@ fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
             &mut accounts.owner,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountOut {
-                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                route: SwapRoute::new_unchecked(UniqueVec::new_unchecked(vec![])),
                 output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
             },
             Coins::new(),
         )
-        .should_fail_with_error("length of grug_types::unique_vec::UniqueVec<dango_types::dex::msgs::PairId> out of range: 0 < 1");
+        .should_fail_with_error(StdError::length_out_of_range::<UniqueVec<PairId>>(
+            0, "<", 1,
+        ));
 
     // Attempt to swap with a three length route.
     suite
@@ -916,19 +918,25 @@ fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
             &mut accounts.owner,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountOut {
-                route: SwapRoute::new_unchecked(UniqueVec::new(vec![PairId {
-                    base_denom: dango::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                }, PairId {
-                    base_denom: eth::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                }, PairId {
-                    base_denom: btc::DENOM.clone(),
-                    quote_denom: usdc::DENOM.clone(),
-                }]).unwrap()),
+                route: SwapRoute::new_unchecked(UniqueVec::new_unchecked(vec![
+                    PairId {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    },
+                    PairId {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    },
+                    PairId {
+                        base_denom: btc::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    },
+                ])),
                 output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
             },
             Coins::new(),
         )
-        .should_fail_with_error("length of grug_types::unique_vec::UniqueVec<dango_types::dex::msgs::PairId> out of range: 3 > 2");
+        .should_fail_with_error(StdError::length_out_of_range::<UniqueVec<PairId>>(
+            3, ">", 2,
+        ));
 }
