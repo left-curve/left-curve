@@ -1,5 +1,13 @@
 # deploy
 
+## Add a new user
+
+- Add the username in `group_vars/all/main.yml` in the `ssh_users` section
+
+- Add the public key in `roles/users/files/authorized_keys/<username>.pub`
+
+- Run `ansible-playbook users.yml`
+
 ## Install a new server
 
 - Add the host in `inventory` using its public IP
@@ -38,6 +46,11 @@ This shows you have the right password:
 ❯ ./vault-password.sh|sha256
 2f919beb6554c5149ebfdbf03076bed7796fb6853e1d9993bfa259622c7a84e0
 ```
+
+Make also sure you have ssh-agent and added your key with ssh-add before
+running ansible-playbook, else you'll get `Permission denied (publickey)`.
+
+You must rerun `ssh-add` after you rebooted.
 
 ## Manual Cosign Verification
 

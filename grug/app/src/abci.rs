@@ -298,7 +298,7 @@ where
                     ..Default::default()
                 },
             },
-            "/store" => match self.do_query_store(&req.data, req.height.value(), req.prove) {
+            "/store" => match self.do_query_store_raw(&req.data, req.height.value(), req.prove) {
                 Ok((value, proof)) => {
                     let proof = proof.map(|proof| ProofOps {
                         ops: vec![ProofOp {

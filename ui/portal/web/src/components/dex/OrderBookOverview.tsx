@@ -36,7 +36,7 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[46.5rem] h-full"
+      className="overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[36.6875rem] h-full"
     >
       <Tabs
         color="line-red"
@@ -81,7 +81,7 @@ const OrderRow: React.FC<OrderBookRowProps> = (props) => {
       : "bg-utility-error-300 opacity-[18%] lg:right-auto";
 
   return (
-    <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3 px-4 min-h-[23px] items-center">
+    <div className="relative diatype-xs-medium text-ink-secondary-700 grid grid-cols-2 lg:grid-cols-3 px-4 min-h-[19px] items-center">
       <div
         className={twMerge("absolute top-0 bottom-0 opacity-20 z-0", depthBarClass)}
         style={{ width: `${depthBarWidthPercent}%` }}

@@ -1,10 +1,9 @@
 use {
-    crate::{Indexer, IndexerError, IndexerResult, QuerierProvider},
-    grug_types::{Block, BlockOutcome},
+    crate::{Indexer, IndexerError, IndexerResult},
+    grug_types::{Block, BlockOutcome, Config, Json},
     std::{
         convert::Infallible,
         fmt::{self, Display},
-        sync::Arc,
     },
 };
 
@@ -41,7 +40,8 @@ impl Indexer for NullIndexer {
     fn post_indexing(
         &self,
         _block_height: u64,
-        _querier: Arc<dyn QuerierProvider>,
+        _cfg: Config,
+        _app_cfg: Json,
         _ctx: &mut crate::IndexerContext,
     ) -> IndexerResult<()> {
         Ok(())

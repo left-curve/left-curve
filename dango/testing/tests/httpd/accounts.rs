@@ -798,7 +798,7 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
         .app
         .do_query_app(
             Query::balance(accounts.user1.address(), dango::DENOM.clone()),
-            20,
+            Some(20),
             false,
         )
         .unwrap()

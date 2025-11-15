@@ -631,6 +631,10 @@ type Store {
 	The base64 encoded proof
 	"""
 	proof: String
+	"""
+	The block height at which this query was performed at
+	"""
+	blockHeight: Int!
 }
 
 type Subscription {

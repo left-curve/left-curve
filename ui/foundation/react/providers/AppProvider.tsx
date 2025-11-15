@@ -23,7 +23,7 @@ export type AppState = {
   modal: { modal: string | undefined; props: Record<string, unknown> };
   changeSettings: (settings: Partial<AppState["settings"]>) => void;
   settings: {
-    chart: "tradingview" | "chartiq";
+    chart: "tradingview";
     timeFormat: "hh:mm a" | "hh:mm aa" | "HH:mm";
     dateFormat: "MM/dd/yyyy" | "dd/MM/yyyy" | "yyyy/MM/dd";
     timeZone: "local" | "utc";

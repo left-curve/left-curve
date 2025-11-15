@@ -4795,17 +4795,18 @@ dependencies = [
  "error-backtrace",
  "grug-app",
  "grug-jmt",
+ "grug-storage",
  "grug-types",
  "hex-literal",
  "ics23",
  "metrics",
- "ouroboros",
+ "parking_lot",
  "proptest",
  "rocksdb",
- "serde",
  "temp-rocksdb",
  "thiserror 2.0.12",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -4818,6 +4819,7 @@ dependencies = [
  "grug-app",
  "grug-types",
  "ouroboros",
+ "parking_lot",
  "thiserror 2.0.12",
 ]
 
@@ -5020,6 +5022,7 @@ dependencies = [
  "hex-literal",
  "metrics",
  "ouroboros",
+ "parking_lot",
  "paste",
  "prost",
  "ripemd",

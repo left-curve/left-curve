@@ -24,7 +24,7 @@ type SearchTokenHeaderProps = {
   isOpen?: boolean;
 };
 
-const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId, isOpen }) => {
+const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId }) => {
   const { coins } = useConfig();
   const baseCoin = coins.byDenom[pairId.baseDenom];
   const quoteCoin = coins.byDenom[pairId.quoteDenom];
@@ -35,12 +35,6 @@ const SearchTokenHeader: React.FC<SearchTokenHeaderProps> = ({ pairId, isOpen })
       <p className="diatype-lg-heavy text-ink-secondary-700 min-w-fit">
         {`${baseCoin.symbol}-${quoteCoin.symbol}`}
       </p>
-      <IconChevronDownFill
-        className={twMerge(
-          "text-ink-tertiary-500 w-4 h-4 transition-all lg:hidden",
-          isOpen ? "rotate-180" : "",
-        )}
-      />
     </div>
   );
 };
@@ -103,6 +97,7 @@ export const SearchToken: React.FC<SearchTokenProps> = ({ pairId, onChangePairId
   if (isLg)
     return (
       <Popover
+        showArrow={isLg}
         ref={popoverRef}
         classNames={{ menu: "min-w-[45rem]" }}
         trigger={<SearchTokenHeader pairId={pairId} isOpen={isSearchTokenVisible} />}
