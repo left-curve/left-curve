@@ -2,7 +2,7 @@ use {
     dango_testing::{HyperlaneTestSuite, TestOption, TestSuite, setup_test},
     dango_types::{
         constants::{dango, usdc},
-        gateway::{self, Origin, RateLimit, Remote},
+        gateway::{self, Origin, RateLimit, Remote, WarpRemote, bridge::TransferRemoteRequest},
     },
     grug::{
         Addr, BalanceChange, Coin, Coins, Duration, MathError, QuerierExt, ResultExt, Udec128,
@@ -88,13 +88,13 @@ fn rate_limit() {
         .execute(
             receiver,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
+            &gateway::ExecuteMsg::TransferRemote(gateway::bridge::TransferRemoteRequest::Warp {
+                warp_remote: WarpRemote {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
-            },
+            }),
             Coin::new(usdc::DENOM.clone(), 30_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
@@ -104,13 +104,13 @@ fn rate_limit() {
         .execute(
             receiver,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
+            &gateway::ExecuteMsg::TransferRemote(gateway::bridge::TransferRemoteRequest::Warp {
+                warp_remote: WarpRemote {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
-            },
+            }),
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
@@ -144,13 +144,13 @@ fn rate_limit() {
         .execute(
             receiver,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
+            &gateway::ExecuteMsg::TransferRemote(gateway::bridge::TransferRemoteRequest::Warp {
+                warp_remote: WarpRemote {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::USDC_WARP,
                 },
                 recipient: mock_eth_recipient,
-            },
+            }),
             Coin::new(usdc::DENOM.clone(), 100_000_000 + usdc_eth_fee).unwrap(),
         )
         .should_succeed();
@@ -160,13 +160,13 @@ fn rate_limit() {
         .execute(
             receiver,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
+            &gateway::ExecuteMsg::TransferRemote(gateway::bridge::TransferRemoteRequest::Warp {
+                warp_remote: WarpRemote {
                     domain: ethereum::DOMAIN,
                     contract: ethereum::USDC_WARP,
                 },
                 recipient: mock_eth_recipient,
-            },
+            }),
             Coin::new(usdc::DENOM.clone(), 1 + usdc_eth_fee).unwrap(),
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
@@ -182,17 +182,17 @@ fn rate_limit() {
     // Check reserves.
     for (remote, amount) in [
         (
-            Remote::Warp {
+            Remote::Warp(WarpRemote {
                 domain: ethereum::DOMAIN,
                 contract: ethereum::USDC_WARP,
-            },
+            }),
             100_000_000,
         ),
         (
-            Remote::Warp {
+            Remote::Warp(WarpRemote {
                 domain: solana::DOMAIN,
                 contract: solana::USDC_WARP,
-            },
+            }),
             170_000_000,
         ),
     ] {
@@ -209,13 +209,13 @@ fn rate_limit() {
         .execute(
             receiver,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
+            &gateway::ExecuteMsg::TransferRemote(gateway::bridge::TransferRemoteRequest::Warp {
+                warp_remote: WarpRemote {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
-            },
+            }),
             Coin::new(usdc::DENOM.clone(), 27_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
@@ -225,13 +225,13 @@ fn rate_limit() {
         .execute(
             receiver,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
+            &gateway::ExecuteMsg::TransferRemote(gateway::bridge::TransferRemoteRequest::Warp {
+                warp_remote: WarpRemote {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
-            },
+            }),
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("insufficient outbound quota! denom: bridge/usdc, amount: 1");
@@ -261,13 +261,13 @@ fn rate_limit() {
         .execute(
             receiver,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
+            &gateway::ExecuteMsg::TransferRemote(gateway::bridge::TransferRemoteRequest::Warp {
+                warp_remote: WarpRemote {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
-            },
+            }),
             Coin::new(usdc::DENOM.clone(), 143_000_000 + usdc_sol_fee).unwrap(),
         )
         .should_succeed();
@@ -278,13 +278,13 @@ fn rate_limit() {
         .execute(
             receiver,
             contracts.gateway,
-            &gateway::ExecuteMsg::TransferRemote {
-                remote: gateway::Remote::Warp {
+            &gateway::ExecuteMsg::TransferRemote(gateway::bridge::TransferRemoteRequest::Warp {
+                warp_remote: WarpRemote {
                     domain: solana::DOMAIN,
                     contract: solana::USDC_WARP,
                 },
                 recipient: mock_solana_recipient,
-            },
+            }),
             Coin::new(usdc::DENOM.clone(), 1 + usdc_sol_fee).unwrap(),
         )
         .should_fail_with_error("insufficient reserve!");
@@ -309,10 +309,10 @@ fn native_denom() {
                 &gateway::ExecuteMsg::SetRoutes(btree_set!((
                     Origin::Local(dango::DENOM.clone(),),
                     contracts.warp,
-                    Remote::Warp {
+                    Remote::Warp(WarpRemote {
                         domain: remote_domain,
                         contract: remote_warp.into(),
-                    }
+                    })
                 ))),
                 Coins::default(),
             )
@@ -365,13 +365,13 @@ fn native_denom() {
             .execute(
                 &mut accounts.user1,
                 contracts.gateway,
-                &gateway::ExecuteMsg::TransferRemote {
-                    remote: Remote::Warp {
+                &gateway::ExecuteMsg::TransferRemote(TransferRemoteRequest::Warp {
+                    warp_remote: WarpRemote {
                         domain: remote_domain,
                         contract: remote_warp.into(),
                     },
                     recipient: Addr::mock(124).into(),
-                },
+                }),
                 coins! { dango::DENOM.clone() => 100 },
             )
             .should_succeed();

@@ -1,5 +1,5 @@
 use {
-    super::{Addr32, Origin, RateLimit, Remote},
+    super::{Origin, RateLimit, Remote, bridge::TransferRemoteRequest},
     grug::{Addr, Denom, Uint128},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -30,10 +30,18 @@ pub enum ExecuteMsg {
     /// Set rate limit for the routes.
     SetRateLimits(BTreeMap<Denom, RateLimit>),
     /// Set withdrawal fees for the denoms.
+    /// For outbound transactions, a flat fee deducted from the withdrawal amount.
+    ///
+    /// We expect this to be updated often to reflect the gas price of the chains
+    /// and roughly inline with the withdrawal fee on major centralized exchanges.
+    /// For example:
+    ///
+    /// - [Binance](https://www.binance.com/en/fee/cryptoFee)
     SetWithdrawalFees(Vec<WithdrawalFee>),
     /// Receive a token transfer from a remote chain.
     ///
     /// Can only be called by contracts for which has been assigned a
+    /// TODO: incomplete sentence
     ReceiveRemote {
         remote: Remote,
         amount: Uint128,
@@ -42,7 +50,7 @@ pub enum ExecuteMsg {
     /// Send a token transfer to a remote chain.
     ///
     /// Can be called by anyone.
-    TransferRemote { remote: Remote, recipient: Addr32 },
+    TransferRemote(TransferRemoteRequest),
 }
 
 #[grug::derive(Serde, QueryRequest)]
@@ -59,4 +67,7 @@ pub enum QueryMsg {
     /// Given a `(bridge, remote)` tuple, find the reserve amount.
     #[returns(Uint128)]
     Reserve { bridge: Addr, remote: Remote },
+    /// Given a remote, return the withdrawal fees.
+    #[returns(Option<Uint128>)]
+    WithdrawalFee { denom: Denom, remote: Remote },
 }
