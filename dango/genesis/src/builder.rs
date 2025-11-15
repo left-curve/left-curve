@@ -301,6 +301,7 @@ where
     };
 
     let app_config = AppConfig {
+        dex_permissions: opt.dex.permissions,
         addresses: AppAddresses {
             account_factory,
             dex,

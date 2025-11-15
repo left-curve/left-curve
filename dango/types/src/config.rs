@@ -1,5 +1,5 @@
 use {
-    crate::account::margin::CollateralPower,
+    crate::{account::margin::CollateralPower, dex},
     grug::{Addr, Bounded, Denom, Udec128, ZeroExclusiveOneExclusive, ZeroInclusiveOneExclusive},
     std::collections::BTreeMap,
 };
@@ -30,6 +30,8 @@ pub struct AppConfig {
     pub maker_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
     /// The taker fee for the DEX.
     pub taker_fee_rate: Bounded<Udec128, ZeroInclusiveOneExclusive>,
+    /// The permissions for the DEX.
+    pub dex_permissions: dex::Permissions,
 }
 
 impl Default for AppConfig {
@@ -42,6 +44,7 @@ impl Default for AppConfig {
             max_liquidation_bonus: Bounded::new(Udec128::new_percent(20)).unwrap(),
             maker_fee_rate: Bounded::new(Udec128::new_bps(25)).unwrap(),
             taker_fee_rate: Bounded::new(Udec128::new_bps(40)).unwrap(),
+            dex_permissions: dex::Permissions::default(),
         }
     }
 }

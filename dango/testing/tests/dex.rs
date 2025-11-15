@@ -23,8 +23,8 @@ use {
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
         MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order,
-        QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Uint128,
-        UniqueVec, btree_map, btree_set, coin_pair, coins,
+        Permission, QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128,
+        Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
@@ -1955,7 +1955,19 @@ fn swap_exact_amount_in(
     expected_protocol_fee: Coins,
     expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
 ) {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                permissions: dango_types::dex::Permissions {
+                    swap: dango_types::dex::PairPermissions {
+                        permissions: vec![],
+                        default_permission: Permission::Everybody,
+                    },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
 
     for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
         suite
@@ -2311,7 +2323,19 @@ fn swap_exact_amount_out(
     expected_protocol_fee: Coin,
     expected_pool_reserves_after: BTreeMap<(Denom, Denom), Coins>,
 ) {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                permissions: dango_types::dex::Permissions {
+                    swap: dango_types::dex::PairPermissions {
+                        permissions: vec![],
+                        default_permission: Permission::Everybody,
+                    },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
 
     // Update the pairs with the new swap fee rates.
     for ((base_denom, quote_denom), swap_fee_rate) in swap_fee_rates {
@@ -2414,8 +2438,127 @@ fn swap_exact_amount_out(
 }
 
 #[test]
-fn geometric_pool_swaps_fail_without_oracle_price() {
+fn swap_is_disallowed_for_dango_and_allowed_for_eth_by_default() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Provide liquidity to pairs before attempting to swap
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1000000,
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: eth::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                eth::DENOM.clone() => 1000000,
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+
+    println!("liquidity provided");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountIn {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1000000,
+            },
+        )
+        .should_fail_with_error("unauthorized: you don't have the permission to swap");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: dango::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                output: NonZero::new(Coin::new(dango::DENOM.clone(), 50000).unwrap()).unwrap(),
+            },
+            coins! {
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_fail_with_error("unauthorized: you don't have the permission to swap");
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountIn {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                minimum_output: None,
+            },
+            coins! {
+                eth::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+
+    suite
+        .execute(
+            &mut accounts.user1,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: MaxLength::new_unchecked(UniqueVec::new_unchecked(vec![PairId {
+                    base_denom: eth::DENOM.clone(),
+                    quote_denom: usdc::DENOM.clone(),
+                }])),
+                output: NonZero::new(Coin::new(eth::DENOM.clone(), 50000).unwrap()).unwrap(),
+            },
+            coins! {
+                usdc::DENOM.clone() => 1000000,
+            },
+        )
+        .should_succeed();
+}
+
+#[test]
+fn geometric_pool_swaps_fail_without_oracle_price() {
+    let (mut suite, mut accounts, _, contracts, _) =
+        setup_test_naive_with_custom_genesis(Default::default(), GenesisOption {
+            dex: DexOption {
+                permissions: dango_types::dex::Permissions {
+                    swap: dango_types::dex::PairPermissions {
+                        permissions: vec![],
+                        default_permission: Permission::Everybody,
+                    },
+                },
+                ..Preset::preset_test()
+            },
+            ..Preset::preset_test()
+        });
 
     // Provide liquidity to pair before changing the pool type since XYK does not require an oracle price
     suite

@@ -87,6 +87,16 @@ pub enum Permission {
     Somebodies(BTreeSet<Addr>),
 }
 
+impl Permission {
+    pub fn has_permission(&self, sender: Addr) -> bool {
+        match self {
+            Permission::Nobody => false,
+            Permission::Everybody => true,
+            Permission::Somebodies(accounts) => accounts.contains(&sender),
+        }
+    }
+}
+
 #[derive(
     Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Copy, PartialEq, Eq,
 )]

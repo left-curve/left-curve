@@ -4,13 +4,13 @@ use {
         auth::Key,
         bank,
         config::Hyperlane,
-        dex::PairUpdate,
+        dex::{self, PairUpdate},
         gateway::{Origin, RateLimit, Remote, WithdrawalFee},
         lending::InterestRateModel,
         oracle::PriceSource,
         taxman,
     },
-    grug::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, Timestamp, Uint128},
+    grug::{Addr, Binary, Coin, Coins, Denom, Duration, Hash256, Permission, Timestamp, Uint128},
     hyperlane_types::{isms::multisig::ValidatorSet, mailbox::Domain},
     std::collections::{BTreeMap, BTreeSet},
 };
@@ -92,9 +92,23 @@ pub struct BankOption {
     pub metadatas: BTreeMap<Denom, bank::Metadata>,
 }
 
+pub struct DexPermissions {
+    pub swap: Permission,
+}
+
+impl Default for DexPermissions {
+    fn default() -> Self {
+        DexPermissions {
+            swap: Permission::Nobody,
+        }
+    }
+}
+
 pub struct DexOption {
     /// Initial Dango DEX trading pairs.
     pub pairs: Vec<PairUpdate>,
+    /// Dex permissions.
+    pub permissions: dex::Permissions,
 }
 
 pub struct GatewayOption {

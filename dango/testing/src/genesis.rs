@@ -335,6 +335,7 @@ impl Preset for BankOption {
 impl Preset for DexOption {
     fn preset_test() -> Self {
         DexOption {
+            permissions: dango_types::dex::Permissions::default(),
             pairs: vec![
                 PairUpdate {
                     base_denom: dango::DENOM.clone(),

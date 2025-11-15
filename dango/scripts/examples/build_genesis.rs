@@ -10,7 +10,7 @@ use {
     dango_testing::Preset,
     dango_types::{
         constants::{btc, btc_usdc, dango, eth, eth_usdc, sol, sol_usdc, usdc},
-        dex::{Geometric, PairParams, PairUpdate, PassiveLiquidity},
+        dex::{self, Geometric, PairParams, PairUpdate, PassiveLiquidity},
     },
     grug::{
         Bounded, Dec, Denom, Inner, Json, JsonDeExt, JsonSerExt, NumberConst, Udec128, Uint128,
@@ -47,6 +47,7 @@ fn main() -> anyhow::Result<()> {
         RustVm::genesis_codes(),
         GenesisOption {
             dex: DexOption {
+                permissions: dex::Permissions::default(),
                 pairs: vec![
                     PairUpdate {
                         base_denom: dango::DENOM.clone(),
