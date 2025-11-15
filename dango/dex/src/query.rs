@@ -518,6 +518,7 @@ fn query_simulate_provide_liquidity(
 ) -> anyhow::Result<Coin> {
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
     let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
     let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
     let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
