@@ -170,7 +170,9 @@ where
 
 // ------------------------------ Standard bounds ------------------------------
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize,
+)]
 pub struct ZeroInclusiveOneInclusive;
 
 impl Bounds<Udec128> for ZeroInclusiveOneInclusive {
@@ -178,7 +180,9 @@ impl Bounds<Udec128> for ZeroInclusiveOneInclusive {
     const MIN: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ZERO));
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize,
+)]
 pub struct ZeroInclusiveOneExclusive;
 
 impl Bounds<Udec128> for ZeroInclusiveOneExclusive {
@@ -186,7 +190,9 @@ impl Bounds<Udec128> for ZeroInclusiveOneExclusive {
     const MIN: Option<Bound<Udec128>> = Some(Bound::Inclusive(Udec128::ZERO));
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize,
+)]
 pub struct ZeroExclusiveOneInclusive;
 
 impl Bounds<Udec128> for ZeroExclusiveOneInclusive {
@@ -194,7 +200,9 @@ impl Bounds<Udec128> for ZeroExclusiveOneInclusive {
     const MIN: Option<Bound<Udec128>> = Some(Bound::Exclusive(Udec128::ZERO));
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, BorshSerialize, BorshDeserialize,
+)]
 pub struct ZeroExclusiveOneExclusive;
 
 impl Bounds<Udec128> for ZeroExclusiveOneExclusive {

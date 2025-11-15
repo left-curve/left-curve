@@ -8,6 +8,7 @@ pub mod dex;
 pub mod gateway;
 pub mod lending;
 pub mod oracle;
+pub mod perps;
 mod querier;
 pub mod signer;
 pub mod taxman;
