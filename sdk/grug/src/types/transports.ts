@@ -59,7 +59,7 @@ export type RequestFn<transportSchema extends TransportSchema | undefined = unde
 export type SubscribeFn = (<T>(
   { query, variables }: { query: string; variables?: Record<string, unknown> },
   callback: SubscriptionCallbacks<T>,
-) => () => void) & { getClientStatus?: () => { isConnected: boolean } };
+) => () => void) & { getClientStatus?: () => { isConnected: boolean }; emitter?: EventTarget };
 
 export type SubscriptionCallbacks<T = unknown> = {
   next: (data: T) => void;
