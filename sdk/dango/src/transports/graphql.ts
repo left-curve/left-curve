@@ -71,8 +71,8 @@ export function graphql(
     const wsClient = createClient({
       url,
       lazy,
-      retryWait: async (retries) => {
-        await wait(Math.min(1_000 * 2 ** retries, 10_000));
+      retryWait: async (_) => {
+        await wait(1_000);
       },
       shouldRetry: (_) => true,
     });
