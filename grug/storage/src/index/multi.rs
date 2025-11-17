@@ -40,6 +40,10 @@ where
         }
     }
 
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.index_set.is_empty(storage)
+    }
+
     /// Iterate records under a specific index value.
     ///
     /// E.g. If the index key is `(A, B)` and primary key is `(C, D)`, this
@@ -304,6 +308,10 @@ where
     fn remove(&self, storage: &mut dyn Storage, pk: PK, old_data: &T) {
         let idx = (self.indexer)(&pk, old_data);
         self.index_set.remove(storage, (idx, pk))
+    }
+
+    fn clear_all(&self, storage: &mut dyn Storage) {
+        self.index_set.clear(storage, None, None)
     }
 }
 
