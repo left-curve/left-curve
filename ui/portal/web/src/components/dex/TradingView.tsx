@@ -110,7 +110,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       widget.chart().resetData();
     };
 
-    publicClient.subscribe?.emitter?.addEventListener("connected", invalidateCandles);
+    publicClient.subscribe?.emitter?.addListener("connected", invalidateCandles);
 
     widget.onChartReady(() => {
       widgetRef.current = widget;
@@ -125,7 +125,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       });
     });
     return () => {
-      publicClient.subscribe?.emitter?.removeEventListener("connected", invalidateCandles);
+      publicClient.subscribe?.emitter?.removeListener("connected", invalidateCandles);
       widgetRef.current?.remove();
       widgetRef.current = null;
     };

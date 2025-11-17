@@ -12,6 +12,7 @@ minimumReleaseAgeExclude:
   - "@privy-io/public-api"
 
 catalog:
+  "eventemitter3": "^5.0.1"
   "typescript": "^5.6.3"
   # CF Workers
   "wrangler": "^4.0.0"

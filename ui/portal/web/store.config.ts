@@ -1,4 +1,5 @@
-import { createConfig, graphql, passkey, privy, session } from "@left-curve/store";
+import { createConfig, graphql, passkey, session } from "@left-curve/store";
+import { privy } from "@left-curve/applets-kit";
 import { captureException } from "@sentry/react";
 
 import type { Config } from "@left-curve/store/types";
