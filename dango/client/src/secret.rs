@@ -14,19 +14,24 @@ impl Secp256k1 {
         self.0.to_bytes().into()
     }
 
-    /// Return the public key as a byte array.
+    /// Return the compressed public key as a byte array.
     pub fn public_key(&self) -> [u8; 33] {
         self.0.verifying_key().to_bytes()
     }
 
+    /// Return the extended public key as a byte array.
     pub fn extended_public_key(&self) -> [u8; 65] {
-        let a = self.0.verifying_key().to_encoded_point(false);
-        a.as_bytes().try_into().unwrap()
+        self.0
+            .verifying_key()
+            .to_encoded_point(false)
+            .as_bytes()
+            .try_into()
+            .expect("extended Secp256k1 public key to be 65 bytes")
     }
 }
 
 /// An Secp256k1 private key that signs message in Ethereum EIP-712 format.
-pub struct Ethereum(k256::ecdsa::SigningKey);
+pub struct Ethereum(Secp256k1);
 
 impl Secret for Ethereum {}
 
