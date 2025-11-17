@@ -426,6 +426,7 @@ impl IndexerTrait for Indexer {
         //     .indexer_path
         //     .block_path(block_to_index.block.info.height);
 
+        #[cfg(feature = "tracing")]
         let id = self.id;
 
         // TODO: remove this once we extracted the caching to its own crate
