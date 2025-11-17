@@ -1,8 +1,12 @@
+mod direction;
 mod events;
 mod msgs;
-mod types;
+mod order;
+mod pair;
+mod price;
+mod time_in_force;
 
-pub use {events::*, msgs::*, types::*};
+pub use {direction::*, events::*, msgs::*, order::*, pair::*, price::*, time_in_force::*};
 
 use {grug::Part, std::sync::LazyLock};
 

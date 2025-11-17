@@ -1,9 +1,11 @@
 use {
+    bnum::types::U256,
     grug::{
-        Dec, Defined, Exponentiate, FixedPoint, MathResult, MaybeDefined, MultiplyFraction, Number,
-        NumberConst, PrevNumber, Timestamp, Udec128, Uint128, Uint256, Undefined,
+        Dec, Defined, Exponentiate, FixedPoint, MathResult, MaybeDefined, MultiplyFraction,
+        NextNumber, Number, NumberConst, PrevNumber, Timestamp, Udec128, Uint128, Uint256,
+        Undefined,
     },
-    pyth_types::PriceFeed,
+    pyth_types::{PayloadFeedData, PayloadPropertyValue},
     std::cmp::Ordering,
 };
 
@@ -21,9 +23,6 @@ where
     /// The price of the token in its humanized form. I.e. the price of 1 ATOM,
     /// rather than 1 uatom.
     pub humanized_price: Udec128,
-    /// The exponential moving average of the price of the token in its
-    /// humanized form.
-    pub humanized_ema: Udec128,
     /// The UNIX timestamp of the price (seconds since UNIX epoch).
     pub timestamp: Timestamp,
     /// The number of decimal places of the token that is used to convert
@@ -34,10 +33,9 @@ where
 
 impl PrecisionlessPrice {
     /// Creates a new PrecisionlessPrice with the given humanized price.
-    pub fn new(humanized_price: Udec128, humanized_ema: Udec128, timestamp: Timestamp) -> Self {
+    pub fn new(humanized_price: Udec128, timestamp: Timestamp) -> Self {
         Self {
             humanized_price,
-            humanized_ema,
             timestamp,
             precision: Undefined::new(),
         }
@@ -46,7 +44,6 @@ impl PrecisionlessPrice {
     pub fn with_precision(self, precision: Precision) -> PrecisionedPrice {
         Price {
             humanized_price: self.humanized_price,
-            humanized_ema: self.humanized_ema,
             timestamp: self.timestamp,
             precision: Defined::new(precision),
         }
@@ -54,15 +51,9 @@ impl PrecisionlessPrice {
 }
 
 impl PrecisionedPrice {
-    pub fn new(
-        humanized_price: Udec128,
-        humanized_ema: Udec128,
-        timestamp: Timestamp,
-        precision: Precision,
-    ) -> Self {
+    pub fn new(humanized_price: Udec128, timestamp: Timestamp, precision: Precision) -> Self {
         Self {
             humanized_price,
-            humanized_ema,
             timestamp,
             precision: Defined::new(precision),
         }
@@ -96,6 +87,23 @@ impl PrecisionedPrice {
             .checked_mul(Dec::<u128, S>::checked_from_ratio(
                 unit_amount,
                 10u128.pow(self.precision.into_inner() as u32),
+            )?)
+    }
+
+    /// Similar to `Self::value_of_unit_amount`, but returns the value as a
+    /// 256-bit, 24-decimal number. This is for use in the DEX contract, where
+    /// extreme price or amount multiplied together can overflow the limit of
+    /// 128-bit numbers.
+    pub fn value_of_unit_amount_256<const S: u32>(
+        &self,
+        unit_amount: Uint128,
+    ) -> MathResult<Dec<U256, S>> {
+        self.humanized_price
+            .into_next()
+            .convert_precision()?
+            .checked_mul(Dec::<U256, S>::checked_from_ratio(
+                unit_amount.into_next(),
+                Uint256::new_from_u128(10u128.pow(self.precision.into_inner() as u32)),
             )?)
     }
 
@@ -145,27 +153,36 @@ impl PrecisionedPrice {
     }
 }
 
-impl TryFrom<PriceFeed> for PrecisionlessPrice {
+impl TryFrom<(PayloadFeedData, Timestamp)> for PrecisionlessPrice {
     type Error = anyhow::Error;
 
-    fn try_from(value: PriceFeed) -> Result<Self, Self::Error> {
-        let price_unchecked = value.get_price_unchecked();
+    fn try_from((feed_data, timestamp): (PayloadFeedData, Timestamp)) -> Result<Self, Self::Error> {
+        let price = feed_data.properties.iter().find_map(|property| {
+            if let PayloadPropertyValue::Price(Some(price)) = property {
+                Some(price)
+            } else {
+                None
+            }
+        });
+
+        let exponent = feed_data.properties.iter().find_map(|property| {
+            if let PayloadPropertyValue::Exponent(exponent) = property {
+                Some(exponent)
+            } else {
+                None
+            }
+        });
+
+        let price = price.ok_or_else(|| anyhow::anyhow!("price not found"))?;
+        let exponent = exponent.ok_or_else(|| anyhow::anyhow!("exponent not found"))?;
+
         let price = Udec128::checked_from_atomics::<u128>(
-            price_unchecked.price.try_into()?,
-            (-price_unchecked.expo).try_into()?,
+            price.mantissa_i64().try_into()?,
+            (-exponent).try_into()?,
         )?;
-
-        let ema_unchecked = value.get_ema_price_unchecked();
-        let ema = Udec128::checked_from_atomics::<u128>(
-            ema_unchecked.price.try_into()?,
-            (-ema_unchecked.expo).try_into()?,
-        )?;
-
-        let timestamp = Timestamp::from_seconds(price_unchecked.publish_time.try_into()?);
 
         Ok(Price {
             humanized_price: price,
-            humanized_ema: ema,
             timestamp,
             precision: Undefined::new(),
         })
@@ -178,7 +195,7 @@ impl TryFrom<PriceFeed> for PrecisionlessPrice {
 mod tests {
     use {
         super::*,
-        grug::{IsZero, NumberConst, Udec128_24},
+        grug::{IsZero, Udec128_24},
     };
 
     #[test]
@@ -186,7 +203,6 @@ mod tests {
         // $100M per ETH
         let price = PrecisionedPrice {
             humanized_price: Udec128::new(100_000_000u128),
-            humanized_ema: Udec128::ONE,
             timestamp: Timestamp::from_seconds(0),
             precision: Defined::new(18),
         };
@@ -203,7 +219,6 @@ mod tests {
         // $100M per ETH
         let price = PrecisionedPrice {
             humanized_price: Udec128::new(100_000_000u128),
-            humanized_ema: Udec128::ONE,
             timestamp: Timestamp::from_seconds(0),
             precision: Defined::new(18),
         };
@@ -220,7 +235,6 @@ mod tests {
         // 0.000001 USD per token
         let price = PrecisionedPrice {
             humanized_price: Udec128::checked_from_ratio(1, 1_000_000).unwrap(),
-            humanized_ema: Udec128::ONE,
             timestamp: Timestamp::from_seconds(0),
             precision: Defined::new(18),
         };

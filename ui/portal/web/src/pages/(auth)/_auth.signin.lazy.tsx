@@ -1,10 +1,8 @@
-import { createLazyFileRoute, useSearch } from "@tanstack/react-router";
+import { createLazyFileRoute, useRouter, useSearch } from "@tanstack/react-router";
 
-import { WizardProvider } from "@left-curve/applets-kit";
+import { Modals, useApp, WizardProvider } from "@left-curve/applets-kit";
 import { useEffect } from "react";
 import { Signin } from "~/components/auth/Signin";
-import { Modals } from "~/components/modals/RootModal";
-import { useApp } from "~/hooks/useApp";
 
 export const Route = createLazyFileRoute("/(auth)/_auth/signin")({
   component: SigninApplet,
@@ -12,10 +10,11 @@ export const Route = createLazyFileRoute("/(auth)/_auth/signin")({
 
 function SigninApplet() {
   const { showModal } = useApp();
+  const { navigate } = useRouter();
   const { socketId } = useSearch({ strict: false });
 
   useEffect(() => {
-    if (socketId) showModal(Modals.SignWithDesktop, { socketId });
+    if (socketId) showModal(Modals.SignWithDesktopFromNativeCamera, { socketId, navigate });
   }, []);
 
   return (

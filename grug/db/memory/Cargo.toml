@@ -9,10 +9,16 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[dependencies]
-grug-app   = { workspace = true }
-grug-jmt   = { workspace = true }
-grug-types = { workspace = true }
-thiserror  = { workspace = true }
+[features]
+# Add utilities to dump the entire DB to a single file, or recover the DB from it.
+snapshot = ["dep:anyhow", "dep:borsh"]
 
-[dev-dependencies]
+[dependencies]
+anyhow          = { workspace = true, optional = true }
+borsh           = { workspace = true, optional = true }
+error-backtrace = { workspace = true }
+grug-app        = { workspace = true }
+grug-types      = { workspace = true }
+ouroboros       = { workspace = true }
+parking_lot     = { workspace = true }
+thiserror       = { workspace = true }

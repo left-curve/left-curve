@@ -19,9 +19,10 @@ metrics = [
   "dep:metrics",
   "dep:metrics-exporter-prometheus",
   "dep:prometheus",
+  "grug-httpd/metrics",
 ]
 testing = ["dep:grug-testing"]
-tracing = ["dep:tracing"]
+tracing = ["dep:tracing", "grug-app/tracing", "indexer-sql/tracing"]
 
 [dependencies]
 actix                       = { workspace = true }
@@ -36,12 +37,14 @@ async-trait                 = { workspace = true }
 base64                      = { workspace = true }
 chrono                      = { workspace = true }
 clap                        = { workspace = true }
+error-backtrace             = { workspace = true }
+futures                     = { workspace = true }
 futures-util                = { workspace = true, optional = true }
-grug-app                    = { workspace = true, features = ["tracing"] }
+grug-app                    = { workspace = true }
 grug-httpd                  = { workspace = true }
 grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
-indexer-sql                 = { workspace = true, features = ["async-graphql", "tracing"] }
+indexer-sql                 = { workspace = true, features = ["async-graphql"] }
 itertools                   = { workspace = true }
 metrics                     = { workspace = true, optional = true }
 metrics-exporter-prometheus = { workspace = true, optional = true }
@@ -65,5 +68,3 @@ uuid                        = { workspace = true }
 [dev-dependencies]
 assertor              = { workspace = true }
 indexer-sql-migration = { workspace = true }
-# TODO: remove this once we will setup a real postgres instance for testing
-pg-embed = "0.7"

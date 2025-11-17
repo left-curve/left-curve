@@ -6,8 +6,8 @@ use {
     },
     grug_math::{Bytable, Dec, Int},
     grug_types::{
-        Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Inner, LengthBounded,
-        Lengthy, Part, StdError, StdResult, nested_namespaces_with_key,
+        Binary, Bounded, Bounds, CodeStatus, Denom, Duration, EncodedBytes, Encoder, Inner,
+        LengthBounded, Lengthy, Part, StdError, StdResult, nested_namespaces_with_key,
     },
     std::{mem, str, vec},
 };
@@ -75,7 +75,7 @@ pub trait PrimaryKey {
     type Output;
 
     /// Convert the key into one or more _raw keys_.
-    fn raw_keys(&self) -> Vec<RawKey>;
+    fn raw_keys(&self) -> Vec<RawKey<'_>>;
 
     /// Serialize the raw keys into bytes.
     ///
@@ -109,15 +109,16 @@ impl PrimaryKey for () {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         if !bytes.is_empty() {
-            return Err(StdError::deserialize::<Self::Output, _>(
+            return Err(StdError::deserialize::<Self::Output, _, Binary>(
                 "key",
                 "expecting empty bytes",
+                bytes.into(),
             ));
         }
 
@@ -132,7 +133,7 @@ impl PrimaryKey for &[u8] {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self)]
     }
 
@@ -148,7 +149,7 @@ impl PrimaryKey for Vec<u8> {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self)]
     }
 
@@ -164,13 +165,14 @@ impl PrimaryKey for &str {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self.as_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        String::from_utf8(bytes.to_vec())
-            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
+        String::from_utf8(bytes.to_vec()).map_err(|err| {
+            StdError::deserialize::<Self::Output, _, Binary>("key", err, bytes.into())
+        })
     }
 }
 
@@ -181,13 +183,14 @@ impl PrimaryKey for String {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self.as_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
-        String::from_utf8(bytes.to_vec())
-            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
+        String::from_utf8(bytes.to_vec()).map_err(|err| {
+            StdError::deserialize::<Self::Output, _, Binary>("key", err, bytes.into())
+        })
     }
 }
 
@@ -201,7 +204,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self.as_ref())]
     }
 
@@ -218,13 +221,15 @@ impl PrimaryKey for Part {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self.as_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         str::from_utf8(bytes)
-            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
+            .map_err(|err| {
+                StdError::deserialize::<Self::Output, _, Binary>("key", err, bytes.into())
+            })
             .and_then(TryInto::try_into)
     }
 }
@@ -236,13 +241,15 @@ impl PrimaryKey for Denom {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Owned(self.to_string().into_bytes())]
     }
 
     fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
         String::from_utf8(bytes.to_vec())
-            .map_err(|err| StdError::deserialize::<Self::Output, _>("key", err))
+            .map_err(|err| {
+                StdError::deserialize::<Self::Output, _, Binary>("key", err, bytes.into())
+            })
             .and_then(TryInto::try_into)
     }
 }
@@ -254,7 +261,7 @@ impl PrimaryKey for Duration {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Fixed128(self.into_nanos().to_be_bytes())]
     }
 
@@ -271,7 +278,7 @@ impl PrimaryKey for CodeStatus {
 
     const KEY_ELEMS: u8 = 2;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         match self {
             CodeStatus::Orphaned { since } => {
                 vec![
@@ -298,9 +305,10 @@ impl PrimaryKey for CodeStatus {
                 let usage = u32::from_be_bytes(bytes[3..].try_into()?);
                 Ok(CodeStatus::InUse { usage })
             },
-            tag => Err(StdError::deserialize::<Self::Output, _>(
+            tag => Err(StdError::deserialize::<Self::Output, _, Binary>(
                 "key",
                 format!("unknown tag: {tag:?}"),
+                bytes.into(),
             )),
         }
     }
@@ -316,7 +324,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         (*self).raw_keys()
     }
 
@@ -336,7 +344,7 @@ where
 
     const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let mut keys = self.0.raw_keys();
         keys.extend(self.1.raw_keys());
         keys
@@ -374,7 +382,7 @@ where
 
     const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let mut keys = self.0.raw_keys();
         keys.extend(self.1.raw_keys());
         keys.extend(self.2.raw_keys());
@@ -406,7 +414,7 @@ where
 
     const KEY_ELEMS: u8 = A::KEY_ELEMS + B::KEY_ELEMS + C::KEY_ELEMS + D::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let mut keys = self.0.raw_keys();
         keys.extend(self.1.raw_keys());
         keys.extend(self.2.raw_keys());
@@ -438,7 +446,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         self.inner().raw_keys()
     }
 
@@ -458,7 +466,7 @@ where
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         self.inner().raw_keys()
     }
 
@@ -529,19 +537,20 @@ macro_rules! impl_unsigned_integer_key {
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> Vec<RawKey> {
+            fn raw_keys(&self) -> Vec<RawKey<'_>> {
                 vec![RawKey::$variant(self.to_be_bytes())]
             }
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    return Err(StdError::deserialize::<Self::Output, _>(
+                    return Err(StdError::deserialize::<Self::Output, _, Binary>(
                         "key",
                         format!(
                             "wrong number of bytes: expecting {}, got {}",
                             mem::size_of::<Self>(),
                             bytes.len(),
                         ),
+                        bytes.into(),
                     ));
                 };
 
@@ -575,20 +584,21 @@ macro_rules! impl_signed_integer_key {
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> Vec<RawKey> {
+            fn raw_keys(&self) -> Vec<RawKey<'_>> {
                 let bytes = ((*self as $u) ^ (<$s>::MIN as $u)).to_be_bytes();
                 vec![RawKey::$variant(bytes)]
             }
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    return Err(StdError::deserialize::<Self::Output, _>(
+                    return Err(StdError::deserialize::<Self::Output, _, Binary>(
                         "key",
                         format!(
                             "wrong number of bytes: expecting {}, got {}",
                             mem::size_of::<Self>(),
                             bytes.len(),
-                        )
+                        ),
+                        bytes.into(),
                     ));
                 };
 
@@ -620,20 +630,21 @@ macro_rules! impl_bnum_signed_integer_key {
 
             const KEY_ELEMS: u8 = 1;
 
-            fn raw_keys(&self) -> Vec<RawKey> {
+            fn raw_keys(&self) -> Vec<RawKey<'_>> {
                 let bytes = (<$u>::cast_from(self.clone()) ^ <$u>::cast_from(Self::MIN)).to_be_bytes();
                 vec![RawKey::$variant(bytes)]
             }
 
             fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
                 let Ok(bytes) = <[u8; mem::size_of::<Self>()]>::try_from(bytes) else {
-                    return Err(StdError::deserialize::<Self::Output, _>(
+                    return Err(StdError::deserialize::<Self::Output, _, Binary>(
                         "key",
                         format!(
                             "wrong number of bytes: expecting {}, got {}",
                             mem::size_of::<Self>(),
                             bytes.len(),
-                        )
+                        ),
+                        bytes.into(),
                     ));
                 };
 
@@ -666,7 +677,7 @@ where
 
     const KEY_ELEMS: u8 = T::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         self.inner().raw_keys()
     }
 
@@ -685,7 +696,7 @@ where
 
     const KEY_ELEMS: u8 = T::KEY_ELEMS;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         self.inner().raw_keys()
     }
 

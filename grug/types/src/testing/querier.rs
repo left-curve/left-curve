@@ -1,16 +1,18 @@
 use {
     crate::{
-        Addr, Binary, Code, CodeStatus, Coin, Config, ContractInfo, Denom, GenericResult,
-        GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage, Order, Querier, Query,
-        QueryResponse, StdError, StdResult, Storage,
+        Addr, Binary, BlockInfo, Code, CodeStatus, Coin, Config, ContractInfo, Denom,
+        GenericResult, GenericResultExt, Hash256, HashExt, Json, JsonSerExt, MockStorage,
+        NextUpgrade, Order, PastUpgrade, Querier, Query, QueryResponse, QueryStatusResponse,
+        StdError, StdResult, Storage,
     },
+    error_backtrace::BacktracedError,
     grug_math::{NumberConst, Uint128},
     serde::Serialize,
     std::collections::BTreeMap,
 };
 
 /// A function that handles Wasm smart queries.
-type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
+type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> Result<Json, BacktracedError<String>>>;
 
 // ------------------------------- mock querier --------------------------------
 
@@ -18,8 +20,11 @@ type SmartQueryHandler = Box<dyn Fn(Addr, Json) -> GenericResult<Json>>;
 /// purpose.
 #[derive(Default)]
 pub struct MockQuerier {
+    status: Option<QueryStatusResponse>,
     config: Option<Config>,
     app_config: Option<Json>,
+    next_upgrade: Option<NextUpgrade>,
+    past_upgrades: BTreeMap<u64, PastUpgrade>,
     balances: BTreeMap<Addr, BTreeMap<Denom, Uint128>>,
     supplies: BTreeMap<Denom, Uint128>,
     codes: BTreeMap<Hash256, Code>,
@@ -33,6 +38,17 @@ impl MockQuerier {
         Self::default()
     }
 
+    pub fn with_status<T>(mut self, chain_id: T, last_finalized_block: BlockInfo) -> Self
+    where
+        T: Into<String>,
+    {
+        self.status = Some(QueryStatusResponse {
+            chain_id: chain_id.into(),
+            last_finalized_block,
+        });
+        self
+    }
+
     pub fn with_config(mut self, config: Config) -> Self {
         self.config = Some(config);
         self
@@ -44,6 +60,16 @@ impl MockQuerier {
     {
         self.app_config = Some(config.to_json_value()?);
         Ok(self)
+    }
+
+    pub fn with_next_upgrade(mut self, next_upgrade: Option<NextUpgrade>) -> Self {
+        self.next_upgrade = next_upgrade;
+        self
+    }
+
+    pub fn with_past_upgrade(mut self, height: u64, upgrade: PastUpgrade) -> Self {
+        self.past_upgrades.insert(height, upgrade);
+        self
     }
 
     pub fn with_balance<D, A>(mut self, address: Addr, denom: D, amount: A) -> StdResult<Self>
@@ -112,6 +138,13 @@ impl MockQuerier {
 impl Querier for MockQuerier {
     fn query_chain(&self, req: Query) -> StdResult<QueryResponse> {
         match req {
+            Query::Status(_req) => {
+                let status = self
+                    .status
+                    .clone()
+                    .expect("[MockQuerier]: status is not set");
+                Ok(QueryResponse::Status(status))
+            },
             Query::Config(_req) => {
                 let cfg = self
                     .config
@@ -125,6 +158,26 @@ impl Querier for MockQuerier {
                     .clone()
                     .expect("[MockQuerier]: app config is not set");
                 Ok(QueryResponse::AppConfig(app_cfg))
+            },
+            Query::NextUpgrade(_req) => {
+                let next_upgrade = self.next_upgrade.clone();
+                Ok(QueryResponse::NextUpgrade(next_upgrade))
+            },
+            Query::PastUpgrades(req) => {
+                let upgrades = self
+                    .past_upgrades
+                    .iter()
+                    .filter(|(height, _)| {
+                        if let Some(lower_bound) = &req.start_after {
+                            *height > lower_bound
+                        } else {
+                            true
+                        }
+                    })
+                    .take(req.limit.unwrap_or(u32::MAX) as usize)
+                    .map(|(k, v)| (*k, v.clone()))
+                    .collect();
+                Ok(QueryResponse::PastUpgrades(upgrades))
             },
             Query::Balance(req) => {
                 let amount = self
@@ -248,7 +301,7 @@ impl Querier for MockQuerier {
                     .smart_query_handler
                     .as_ref()
                     .expect("[MockQuerier]: smart query handler not set");
-                let response = handler(req.contract, req.msg).map_err(StdError::host)?;
+                let response = handler(req.contract, req.msg).map_err(StdError::Host)?;
                 Ok(QueryResponse::WasmSmart(response))
             },
             Query::Multi(reqs) => {

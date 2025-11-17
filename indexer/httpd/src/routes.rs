@@ -1,3 +1,2 @@
-pub mod api;
-pub mod graphql;
+pub mod blocks;
 pub mod index;

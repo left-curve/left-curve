@@ -9,9 +9,6 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [features]
 # If enabled, Wasm exports won't be created. This allows this contract to be
 # imported into other contracts as a library.
@@ -22,6 +19,7 @@ anyhow        = { workspace = true }
 dango-lending = { workspace = true, features = ["library"] }
 dango-types   = { workspace = true }
 grug          = { workspace = true }
+hex           = { workspace = true }
 pyth-types    = { workspace = true }
 
 [dev-dependencies]

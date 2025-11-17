@@ -14,8 +14,4 @@ services:
       #
       # Uncomment to enable authentication. See https://dozzle.dev/guide/authentication
       # - DOZZLE_AUTH_PROVIDER=simple
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
+    restart: unless-stopped

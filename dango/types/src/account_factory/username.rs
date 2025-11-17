@@ -1,6 +1,6 @@
 use {
     core::str,
-    grug::{Inner, PrimaryKey, RawKey, StdError, StdResult},
+    grug::{Binary, Inner, PrimaryKey, RawKey, StdError, StdResult},
     serde::{Serialize, de},
     std::{fmt, str::FromStr},
 };
@@ -70,7 +70,7 @@ impl PrimaryKey for Username {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         vec![RawKey::Borrowed(self.0.as_bytes())]
     }
 
@@ -79,7 +79,7 @@ impl PrimaryKey for Username {
         // error to an `StdError::Deserialize`.
         // TODO: create `StdError::FromUtf8` variant?
         str::from_utf8(bytes)
-            .map_err(|err| StdError::deserialize::<&str, _>("utf8", err))
+            .map_err(|err| StdError::deserialize::<&str, _, Binary>("utf8", err, bytes.into()))
             .and_then(Self::from_str)
     }
 }
@@ -95,16 +95,18 @@ impl FromStr for Username {
 
     fn from_str(s: &str) -> StdResult<Self> {
         if s.is_empty() {
-            return Err(StdError::deserialize::<Self, _>(
+            return Err(StdError::deserialize::<Self, _, _>(
                 "str",
                 "username can't be empty",
+                s,
             ));
         }
 
         if s.len() > Self::MAX_LEN {
-            return Err(StdError::deserialize::<Self, _>(
+            return Err(StdError::deserialize::<Self, _, _>(
                 "str",
                 format!("username can't be longer than {} characters", Self::MAX_LEN),
+                s,
             ));
         }
 
@@ -112,9 +114,10 @@ impl FromStr for Username {
             .chars()
             .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit() || ch == '_')
         {
-            return Err(StdError::deserialize::<Self, _>(
+            return Err(StdError::deserialize::<Self, _, _>(
                 "str",
                 "username can only contain lowercase alphanumeric characters (a-z|0-9) or underscore",
+                s,
             ));
         }
 

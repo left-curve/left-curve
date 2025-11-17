@@ -8,6 +8,8 @@ use {
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
     std::ops::RangeInclusive,
 };
+#[cfg(feature = "metrics")]
+use {grug_httpd::metrics::GaugeGuard, std::sync::Arc};
 
 #[derive(Default)]
 pub struct TransferSubscription;
@@ -87,7 +89,8 @@ impl TransferSubscription {
 
         let block_range = match since_block_height {
             Some(block_height) => block_height as i64..=latest_block_height,
-            None => latest_block_height..=latest_block_height,
+            // Removing 2 blocks so we have past accounts on the first call.
+            None => latest_block_height.saturating_sub(2).max(1)..=latest_block_height,
         };
 
         if block_range.try_len().unwrap_or(0) > MAX_PAST_BLOCKS {
@@ -97,28 +100,32 @@ impl TransferSubscription {
         let a = address.clone();
         let u = username.clone();
 
-        Ok(
-            once(async move { Self::get_transfers(app_ctx, block_range, a, u).await })
-                .chain(
-                    app_ctx
-                        .pubsub
-                        .subscribe_block_minted()
-                        .await?
-                        .then(move |block_height| {
-                            let a = address.clone();
-                            let u = username.clone();
-                            async move {
-                                Self::get_transfers(
-                                    app_ctx,
-                                    block_height as i64..=block_height as i64,
-                                    a,
-                                    u,
-                                )
-                                .await
-                            }
-                        }),
-                )
-                .filter_map(|transfers| async move { transfers }),
-        )
+        #[cfg(feature = "metrics")]
+        let gauge_guard = Arc::new(GaugeGuard::new(
+            "graphql.subscriptions.active",
+            "transfers",
+            "subscription",
+        ));
+
+        let stream = app_ctx.pubsub.subscribe().await?;
+
+        Ok(once({
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move { Self::get_transfers(app_ctx, block_range, a, u).await }
+        })
+        .chain(stream.then(move |block_height| {
+            let a = address.clone();
+            let u = username.clone();
+
+            #[cfg(feature = "metrics")]
+            let _guard = gauge_guard.clone();
+
+            async move {
+                Self::get_transfers(app_ctx, block_height as i64..=block_height as i64, a, u).await
+            }
+        }))
+        .filter_map(|transfers| async move { transfers }))
     }
 }

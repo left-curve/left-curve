@@ -1,6 +1,6 @@
 use {
-    crate::{Order, OrderTrait},
-    grug::{Number, NumberConst, StdResult, Udec128_6, Udec128_24},
+    dango_types::dex::{Order, Price},
+    grug::{Number, NumberConst, StdResult, Udec128_6},
 };
 
 pub struct MatchingOutcome {
@@ -9,13 +9,13 @@ pub struct MatchingOutcome {
     ///
     /// All prices in this range achieve the same volume. It's up to the caller
     /// to decide which price to use: the lowest, the highest, or the midpoint.
-    pub range: Option<(Udec128_24, Udec128_24)>,
+    pub range: Option<(Price, Price)>,
     /// The amount of trading volume, measured as the amount of the base asset.
     pub volume: Udec128_6,
     /// The BUY orders that have found a match.
-    pub bids: Vec<(Udec128_24, Order)>,
+    pub bids: Vec<Order>,
     /// The SELL orders that have found a match.
-    pub asks: Vec<(Udec128_24, Order)>,
+    pub asks: Vec<Order>,
 }
 
 /// Given the standing BUY and SELL orders in the book, find range of prices
@@ -29,10 +29,10 @@ pub struct MatchingOutcome {
 ///   for orders the same price, the oldest one first.
 /// - `ask_iter`: An iterator over the SELL orders in the book that similarly
 ///   follows the price-time priority.
-pub fn match_limit_orders<B, A>(mut bid_iter: B, mut ask_iter: A) -> StdResult<MatchingOutcome>
+pub fn match_orders<B, A>(mut bid_iter: B, mut ask_iter: A) -> StdResult<MatchingOutcome>
 where
-    B: Iterator<Item = StdResult<(Udec128_24, Order)>>,
-    A: Iterator<Item = StdResult<(Udec128_24, Order)>>,
+    B: Iterator<Item = StdResult<Order>>,
+    A: Iterator<Item = StdResult<Order>>,
 {
     let mut bid = bid_iter.next().transpose()?;
     let mut bids = Vec::new();
@@ -45,28 +45,28 @@ where
     let mut range = None;
 
     loop {
-        let Some((bid_price, bid_order)) = bid else {
+        let Some(bid_order) = bid else {
             break;
         };
 
-        let Some((ask_price, ask_order)) = ask else {
+        let Some(ask_order) = ask else {
             break;
         };
 
-        if bid_price < ask_price {
+        if bid_order.price < ask_order.price {
             break;
         }
 
-        range = Some((ask_price, bid_price));
+        range = Some((ask_order.price, bid_order.price));
 
         if bid_is_new {
-            bids.push((bid_price, bid_order));
-            bid_volume.checked_add_assign(*bid_order.remaining())?;
+            bids.push(bid_order);
+            bid_volume.checked_add_assign(bid_order.remaining)?;
         }
 
         if ask_is_new {
-            asks.push((ask_price, ask_order));
-            ask_volume.checked_add_assign(*ask_order.remaining())?;
+            asks.push(ask_order);
+            ask_volume.checked_add_assign(ask_order.remaining)?;
         }
 
         if bid_volume <= ask_volume {
@@ -84,9 +84,12 @@ where
         }
     }
 
+    // The volume is the smaller between bid and ask volumes.
+    let volume = bid_volume.min(ask_volume);
+
     Ok(MatchingOutcome {
         range,
-        volume: bid_volume.min(ask_volume),
+        volume,
         bids,
         asks,
     })

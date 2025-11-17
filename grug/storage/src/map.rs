@@ -35,11 +35,11 @@ where
     K: PrimaryKey,
     C: Codec<T>,
 {
-    pub fn path_raw(&self, key_raw: &[u8]) -> Path<T, C> {
+    pub fn path_raw(&self, key_raw: &[u8]) -> Path<'_, T, C> {
         Path::new(self.namespace, &[], Some(RawKey::Borrowed(key_raw)))
     }
 
-    pub fn path(&self, key: K) -> Path<T, C> {
+    pub fn path(&self, key: K) -> Path<'_, T, C> {
         let mut raw_keys = key.raw_keys();
         let last_raw_key = raw_keys.pop();
         Path::new(self.namespace, &raw_keys, last_raw_key)

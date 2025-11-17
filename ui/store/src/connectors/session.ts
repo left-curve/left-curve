@@ -23,7 +23,7 @@ type SessionConnectorParameters = {
 export function session(parameters: SessionConnectorParameters = {}) {
   let _provider_ = async (): Promise<SigningSession | null> => await storage.getItem("session");
 
-  const { storage = createStorage({ storage: sessionStorage }), target } = parameters;
+  const { storage = createStorage({ storage: window?.sessionStorage }), target } = parameters;
 
   const { id = "session", name = "Session Provider", icon } = target || {};
 
@@ -100,9 +100,10 @@ export function session(parameters: SessionConnectorParameters = {}) {
         });
       },
       async isAuthorized() {
+        const accounts = await this.getAccounts();
         const session = await storage.getItem<"session", SigningSession, undefined>("session");
         const isExpired = Number(session?.sessionInfo.expireAt || 0) < Date.now();
-        return !isExpired;
+        return !isExpired && accounts.length > 0;
       },
       async signArbitrary(payload) {
         const provider = await this.getProvider();

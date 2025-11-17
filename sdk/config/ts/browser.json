@@ -3,7 +3,7 @@
   "extends": "./common.json",
   "compilerOptions": {
     "isolatedModules": true,
-    "lib": ["dom", "dom.iterable", "es2021"],
+    "lib": ["dom", "dom.iterable", "es2022"],
     "moduleDetection": "force"
   }
 }

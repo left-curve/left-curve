@@ -133,9 +133,9 @@ mod tests {
     use {
         super::*,
         grug::{Inner, MockContext, ResultExt, btree_set},
-        grug_crypto::Identity256,
         hex_literal::hex,
         hyperlane_types::{Addr32, IncrementalMerkleTree, addr32, mailbox::MAILBOX_VERSION},
+        identity::Identity256,
         rand::rngs::OsRng,
         test_case::test_case,
     };

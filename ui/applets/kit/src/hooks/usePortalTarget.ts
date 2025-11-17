@@ -4,7 +4,7 @@ export function usePortalTarget(querySelector: string): HTMLElement | null {
   const [mountNode, setMountNode] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    const targetElement = document.querySelector(querySelector) as HTMLElement;
+    const targetElement = window?.document.querySelector(querySelector) as HTMLElement;
 
     if (targetElement) setMountNode(targetElement);
   }, [querySelector]);

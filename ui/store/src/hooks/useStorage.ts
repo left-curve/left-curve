@@ -1,37 +1,33 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "../query.js";
-import { createStorage } from "../storages/createStorage.js";
 
 import type { Dispatch, SetStateAction } from "react";
 import type { Storage } from "../types/storage.js";
+import { useConfig } from "./useConfig.js";
 
 export type UseStorageOptions<T = undefined> = {
   initialValue?: T | (() => T);
   storage?: Storage;
   version?: number;
   enabled?: boolean;
-  migrations?: Record<number, (data: any) => T>;
+  migrations?: Record<number | string, (data: any) => T>;
+  sync?: boolean;
 };
 export function useStorage<T = undefined>(
   key: string,
   options: UseStorageOptions<T> = {},
 ): [T extends undefined ? null : T, Dispatch<SetStateAction<T>>] {
+  const { storage: defaultStorage } = useConfig();
+  const [channel] = useState(new BroadcastChannel(`dango.storage.${key}`));
+
   const {
     enabled = true,
+    sync = false,
     initialValue: _initialValue_,
-    storage: _storage_,
+    storage = defaultStorage,
     version: __version__ = 1,
     migrations = {},
   } = options;
-
-  const storage = (() => {
-    if (_storage_) return _storage_;
-    return createStorage({
-      key: "dango",
-      storage:
-        typeof window !== "undefined" && window.localStorage ? window.localStorage : undefined,
-    });
-  })();
 
   const initialValue = (() => {
     if (typeof _initialValue_ !== "function") return _initialValue_ as T;
@@ -67,9 +63,20 @@ export function useStorage<T = undefined>(
         return returnValue;
       }
 
-      const migration = migrations[version];
+      const migration = migrations["*"];
 
-      if (!migration) {
+      if (migration) {
+        const migratedValue = migration(value);
+        storage.setItem(key, {
+          version: __version__,
+          value: migratedValue,
+        });
+        return migratedValue;
+      }
+
+      const versionMigration = migrations[version];
+
+      if (!versionMigration) {
         storage.setItem(key, {
           version: __version__,
           value: initialValue,
@@ -77,7 +84,7 @@ export function useStorage<T = undefined>(
         return returnValue;
       }
 
-      const migratedValue = migration(value);
+      const migratedValue = versionMigration(value);
 
       storage.setItem(key, {
         version: __version__,
@@ -97,12 +104,24 @@ export function useStorage<T = undefined>(
       })();
 
       storage.setItem(key, { version: __version__, value: newState });
+      if (sync) channel.postMessage(newState);
       refetch();
     },
     [storage, key, refetch, __version__],
   );
 
+  useEffect(() => {
+    if (!sync) return;
+    function updateStorage(event: MessageEvent) {
+      storage.setItem(key, { version: __version__, value: event.data });
+      refetch();
+    }
+    channel.addEventListener("message", updateStorage);
+
+    return () => {
+      channel.removeEventListener("message", updateStorage);
+    };
+  }, []);
+
   return [data as any, setValue];
 }
-
-export default useStorage;

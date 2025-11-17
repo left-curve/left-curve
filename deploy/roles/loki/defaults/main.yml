@@ -1,0 +1,4 @@
+---
+loki_dir: "{{ ansible_env.HOME }}/loki"
+loki_port: 3100
+promtail_port: 9080

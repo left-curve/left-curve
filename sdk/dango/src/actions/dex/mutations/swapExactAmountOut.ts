@@ -1,9 +1,9 @@
 import { getAppConfig } from "@left-curve/sdk";
 import { getAction } from "@left-curve/sdk/actions";
-import { execute } from "#actions/app/index.js";
+import { execute } from "../../app/mutations/execute.js";
 
 import type { Address, Coin, Transport } from "@left-curve/sdk/types";
-import type { BroadcastTxSyncReturnType } from "#actions/app/mutations/broadcastTxSync.js";
+import type { BroadcastTxSyncReturnType } from "../../app/mutations/broadcastTxSync.js";
 import type {
   AppConfig,
   DangoClient,
@@ -11,7 +11,7 @@ import type {
   Signer,
   SwapRoute,
   TypedDataParameter,
-} from "#types/index.js";
+} from "../../../types/index.js";
 
 export type SwapExactAmountOutParameters = {
   sender: Address;

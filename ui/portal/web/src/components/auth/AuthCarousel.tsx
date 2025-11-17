@@ -1,11 +1,10 @@
-import { twMerge, useTheme } from "@left-curve/applets-kit";
+import { twMerge, useApp, useTheme } from "@left-curve/applets-kit";
 
 import { Button, Carousel } from "@left-curve/applets-kit";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
 
 export const AuthCarousel: React.FC = () => {
   const { settings, changeSettings } = useApp();
@@ -54,7 +53,7 @@ export const AuthCarousel: React.FC = () => {
               </div>
               <div className="flex flex-col flex-1 items-center justify-center gap-1 max-w-full md:max-w-[25rem]">
                 <h3 className="exposure-h3-italic">{title}</h3>
-                <p className="text-tertiary-500 text-sm sm:text-md">
+                <p className="text-ink-tertiary-500 text-sm sm:text-md">
                   {m["signup.carousel.description"]({ step: index })}
                 </p>
               </div>

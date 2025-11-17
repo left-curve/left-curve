@@ -1,8 +1,7 @@
-import { useControlledState } from "#hooks/useControlledState.js";
+import { useControlledState } from "@left-curve/foundation";
 import { useId } from "react";
 
-import { createContext } from "#utils/context.js";
-import { twMerge } from "#utils/twMerge.js";
+import { createContext, twMerge } from "@left-curve/foundation";
 
 import { motion } from "framer-motion";
 
@@ -23,7 +22,6 @@ const [RadioGroupProvider, useRadioGroup] = createContext<RadioGroupContextType>
 
 export type RadioGroupProps = {
   label?: string | ReactNode;
-  name?: string;
   value?: string;
   defaultValue?: string;
   onChange?: (value: string) => void;
@@ -38,14 +36,13 @@ export const Container: React.FC<PropsWithChildren<RadioGroupProps>> = ({ childr
 export const Group: React.FC<PropsWithChildren<RadioGroupProps>> = ({
   children,
   label,
-  name,
   value: _value,
   defaultValue,
   onChange,
   isDisabled = false,
   error,
 }) => {
-  const groupName = name ?? useId();
+  const groupName = useId();
   const [value, setValue] = useControlledState(_value, onChange, defaultValue);
 
   const context: RadioGroupContextType = {
@@ -59,7 +56,7 @@ export const Group: React.FC<PropsWithChildren<RadioGroupProps>> = ({
     <RadioGroupProvider value={context}>
       <div role="radiogroup" aria-labelledby={`${groupName}-label`}>
         {label && (
-          <span id={`${groupName}-label`} className="exposure-m-italic text-secondary-700">
+          <span id={`${groupName}-label`} className="exposure-m-italic text-ink-secondary-700">
             {label}
           </span>
         )}
@@ -109,8 +106,8 @@ export const Item: React.FC<RadioProps> = ({
         className={twMerge(
           "w-4 h-4 rounded-full flex items-center justify-center transition-all border-2",
           isSelected
-            ? "border-red-bean-500 bg-red-bean-500"
-            : "border-secondary-gray bg-transparent",
+            ? "border-primitives-red-light-500 bg-primitives-red-light-500"
+            : "border-outline-secondary-gray bg-transparent",
         )}
       >
         {isSelected && (
@@ -123,7 +120,7 @@ export const Item: React.FC<RadioProps> = ({
           />
         )}
       </motion.div>
-      <span className="diatype-sm-medium text-gray-800">{label}</span>
+      <span className="diatype-sm-medium text-primitives-gray-light-800">{label}</span>
     </label>
   );
 };

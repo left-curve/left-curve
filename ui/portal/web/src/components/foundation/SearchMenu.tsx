@@ -1,10 +1,10 @@
-import { twMerge, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
-import { useNavigate } from "@tanstack/react-router";
+import { twMerge, useApp, useClickAway, useMediaQuery } from "@left-curve/applets-kit";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
-import { useApp } from "~/hooks/useApp";
-import { useSearchBar } from "~/hooks/useSearchBar";
+import { useFavApplets, useSearchBar } from "@left-curve/store";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+import { APPLETS } from "~/constants";
 
 import {
   IconButton,
@@ -19,15 +19,24 @@ import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { SearchItem } from "./SearchItem";
 
-import type { AppletMetadata } from "@left-curve/applets-kit";
 import type React from "react";
-import type { SearchBarResult } from "~/hooks/useSearchBar";
+import type { AppletMetadata } from "@left-curve/store/types";
+import type { SearchBarResult } from "@left-curve/store";
 
 const SearchMenu: React.FC = () => {
   const { isLg } = useMediaQuery();
+  const location = useLocation();
+  const { favApplets } = useFavApplets();
   const { isSearchBarVisible, setSearchBarVisibility } = useApp();
   const { searchText, setSearchText, isLoading, searchResult, allNotFavApplets, isRefetching } =
-    useSearchBar();
+    useSearchBar({
+      applets: Object.fromEntries(
+        Object.entries(APPLETS).filter(
+          ([appletId]) => !(appletId === "earn" && import.meta.env.CONFIG_ENVIRONMENT === "test"),
+        ),
+      ),
+      favApplets,
+    });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -51,7 +60,7 @@ const SearchMenu: React.FC = () => {
         setSearchText("");
         inputRef.current?.blur();
       } else if (
-        !["INPUT", "TEXT"].includes(window.document.activeElement?.nodeName || "") &&
+        !["INPUT", "TEXT", "TEXTAREA"].includes(window.document.activeElement?.nodeName || "") &&
         e.key.length === 1 &&
         /\w/i.test(e.key)
       ) {
@@ -82,10 +91,11 @@ const SearchMenu: React.FC = () => {
       <ResizerContainer layoutId="search-menu">
         <div
           className={twMerge(
-            "flex-col bg-surface-secondary-rice rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative lg:top-[-22px] flex-1 lg:shadow-account-card transition-all duration-300",
+            "flex-col bg-surface-secondary-rice rounded-md h-[44px] lg:h-auto w-full flex items-center lg:absolute relative flex-1 lg:shadow-account-card transition-all duration-300",
             !isLg && isSearchBarVisible
-              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-surface-primary-rice p-4 gap-4"
+              ? "h-svh w-screen -left-4 -bottom-4 absolute z-[100] bg-surface-primary-rice p-4 gap-4 rounded-none"
               : "",
+            isLg && location.pathname === "/" ? "lg:top-0" : "lg:top-[-22px]",
           )}
         >
           <div className="w-full gap-[10px] lg:gap-0 flex items-center">
@@ -96,17 +106,17 @@ const SearchMenu: React.FC = () => {
             ) : null}
             <div className="flex-col bg-surface-secondary-rice shadow-account-card lg:shadow-none rounded-md w-full flex items-center">
               <motion.div className="w-full flex items-center gap-2 px-3 py-2 rounded-md">
-                <IconSearch className="w-5 h-5 text-tertiary-500" />
+                <IconSearch className="w-5 h-5 text-ink-tertiary-500" />
                 <Command.Input
                   ref={inputRef}
                   onValueChange={setSearchText}
                   value={searchText}
-                  className="bg-surface-secondary-rice pt-[4px] w-full outline-none focus:outline-none placeholder:text-tertiary-500"
+                  className="bg-surface-secondary-rice pt-[4px] w-full outline-none focus:outline-none placeholder:text-ink-tertiary-500"
                 />
 
                 {!isLg && searchText ? (
                   <IconClose
-                    className="w-6 h-6 text-tertiary-500"
+                    className="w-6 h-6 text-ink-tertiary-500"
                     onClick={() => setSearchText("")}
                   />
                 ) : null}
@@ -185,7 +195,7 @@ const Body: React.FC<SearchMenuBodyProps> = ({
           animate={{ height: "auto" }}
           exit={{ height: 0 }}
           transition={{ duration: 0.1 }}
-          className="menu w-full overflow-hidden md:max-h-[25.15rem] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-secondary-gray scrollbar-track-transparent"
+          className="menu w-full overflow-hidden md:max-h-[25.15rem] lg:overflow-y-auto scrollbar-thin scrollbar-thumb-outline-secondary-gray scrollbar-track-transparent"
         >
           <motion.div
             className="lg:p-1 w-full flex items-center flex-col gap-1"
@@ -208,13 +218,13 @@ const Body: React.FC<SearchMenuBodyProps> = ({
                     <Spinner color="pink" size="lg" />
                   </div>
                 ) : (
-                  <p className="text-tertiary-500 diatype-m-regular p-2 text-center">
+                  <p className="text-ink-tertiary-500 diatype-m-regular p-2 text-center">
                     {m["searchBar.noResult"]()}
                   </p>
                 )}
               </Command.Empty>
               {applets.length ? (
-                <Command.Group heading="Favorite Applets">
+                <Command.Group heading={isSearching ? "Applets" : "Favorite Applets"}>
                   {applets.map((applet) => (
                     <Command.Item
                       key={applet.title}
@@ -291,18 +301,6 @@ const Body: React.FC<SearchMenuBodyProps> = ({
                   </Command.Item>
                 </Command.Group>
               ) : null}
-              {/*    <Command.Group value="Assets">
-                {[].map((token) => (
-                  <Command.Item
-                    key={token.title}
-                    value={token.title}
-                    className="group"
-                    onSelect={() => [navigate({ to: token.path }), hideMenu()]}
-                  >
-                    <TokenItem {...token} />
-                  </Command.Item>
-                ))}
-              </Command.Group> */}
             </Command.List>
           </motion.div>
         </motion.div>

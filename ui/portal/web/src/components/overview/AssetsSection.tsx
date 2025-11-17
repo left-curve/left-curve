@@ -1,11 +1,13 @@
-import { Button } from "@left-curve/applets-kit";
-import type { Coins } from "@left-curve/dango/types";
+import { useConfig } from "@left-curve/store";
+
+import { Button, useApp } from "@left-curve/applets-kit";
+import { Link } from "@tanstack/react-router";
+
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { useChainId, useConfig } from "@left-curve/store";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+
+import type { Coins } from "@left-curve/dango/types";
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
-import { ButtonLink } from "../foundation/ButtonLink";
 
 interface Props {
   balances: Coins;
@@ -17,7 +19,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   const { settings } = useApp();
   const { formatNumberOptions } = settings;
 
-  const sortedCoinsByBalance = Object.entries(coins).sort(([denomA], [denomB]) => {
+  const sortedCoinsByBalance = Object.entries(coins.byDenom).sort(([denomA], [denomB]) => {
     const balanceA = BigInt(balances[denomA] || "0");
     const balanceB = BigInt(balances[denomB] || "0");
     return balanceB > balanceA ? 1 : -1;
@@ -26,7 +28,7 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
   return (
     <div className="flex-col bg-surface-secondary-rice shadow-account-card lg:flex rounded-xl p-4 gap-2 w-full h-full  min-h-[10rem] lg:justify-between">
       <div className="flex items-center justify-between w-full">
-        <p className="h4-bold text-primary-900">{m["common.assets"]()}</p>
+        <p className="h4-bold text-ink-primary-900">{m["common.assets"]()}</p>
         {showAllAssets ? (
           <Button variant="link" size="xs" onClick={showAllAssets}>
             {m["common.viewAll"]()}
@@ -42,9 +44,12 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
               <img src={coin.logoURI} alt={coin.symbol} className="h-7 w-7 drag-none select-none" />
               <div className="flex flex-col text-xs">
                 <p>{coin.symbol}</p>
-                <p className="text-tertiary-500">
+                <p className="text-ink-tertiary-500">
                   {amount
-                    ? formatNumber(formatUnits(amount, coins[denom].decimals), formatNumberOptions)
+                    ? formatNumber(
+                        formatUnits(amount, coins.byDenom[denom].decimals),
+                        formatNumberOptions,
+                      )
                     : "0"}
                 </p>
               </div>
@@ -53,18 +58,12 @@ export const AssetsSection: React.FC<Props> = ({ balances, showAllAssets }) => {
         })}
       </div>
       <div className="lg:self-end gap-4 items-center justify-center w-full lg:max-w-[256px] hidden lg:flex lg:mt-1">
-        <ButtonLink fullWidth size="md" to="/transfer" search={{ action: "receive" }}>
+        <Button as={Link} fullWidth size="md" to="/transfer?action=receive" search>
           {m["common.fund"]()}
-        </ButtonLink>
-        <ButtonLink
-          fullWidth
-          variant="secondary"
-          size="md"
-          to="/transfer"
-          search={{ action: "send" }}
-        >
+        </Button>
+        <Button as={Link} fullWidth variant="secondary" size="md" to="/transfer?action=send" search>
           {m["common.send"]()}
-        </ButtonLink>
+        </Button>
       </div>
     </div>
   );

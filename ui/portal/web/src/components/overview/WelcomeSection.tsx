@@ -1,9 +1,8 @@
-import { Button } from "@left-curve/applets-kit";
+import { Button, useApp } from "@left-curve/applets-kit";
 import { useAccount, useBalances } from "@left-curve/store";
 import { Link } from "@tanstack/react-router";
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { ButtonLink } from "../foundation/ButtonLink";
 import { AssetsSection } from "./AssetsSection";
 import { SwippeableAccountCard } from "./SwippeableAccountCard";
@@ -28,7 +27,7 @@ export const WelcomeSection: React.FC<Props> = ({ cardMobileVisible, setCardMobi
 
         <div className=" lg:pr-[4.75rem]">
           <div className="flex flex-col gap-4 items-center max-w-[19.5rem] text-center">
-            <p className="text-primary-rice exposure-h3-italic lg:exposure-h2-italic lg:!leading-normal">
+            <p className="text-ink-secondary-rice exposure-h3-italic lg:exposure-h2-italic lg:!leading-normal">
               {m["common.motto"]()}
             </p>
             <div className="flex items-center justify-center gap-4 w-full lg:px-6">

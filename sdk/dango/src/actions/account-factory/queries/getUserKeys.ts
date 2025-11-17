@@ -1,7 +1,7 @@
-import { queryIndexer } from "#actions/indexer/queryIndexer.js";
+import { queryIndexer } from "../../indexer/queryIndexer.js";
 
 import type { Client, Transport } from "@left-curve/sdk/types";
-import type { PublicKey } from "#types/key.js";
+import type { PublicKey } from "../../../types/key.js";
 
 export type GetUserKeysParameters = {
   username: string;

@@ -1,0 +1,47 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: {{ loki_url }}/loki/api/v1/push
+
+scrape_configs:
+  - job_name: system
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: "{{ hostname }}"
+          __path__: /var/log/{syslog,auth.log,kern.log,fail2ban.log}
+
+  # Docker service discovery
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: service
+      - target_label: host
+        replacement: "{{ hostname }}"
+      # Clean up container name (remove leading slash)
+      - source_labels: [__meta_docker_container_name]
+        regex: '/(.+)'
+        target_label: container_name
+        replacement: '${1}'
+      - source_labels: [__meta_docker_container_label_dango_network]
+        target_label: dango_network
+      - source_labels: [__meta_docker_container_label_service_name]
+        target_label: service_name
+      - source_labels: [__meta_docker_container_label_environment]
+        target_label: environment
+      - source_labels: [__meta_docker_container_label_project]
+        target_label: project
+      - source_labels: [__meta_docker_container_label_deployment]
+        target_label: deployment
+      - source_labels: [__meta_docker_container_label_chain_id]
+        target_label: chain_id

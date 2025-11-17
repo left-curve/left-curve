@@ -3,6 +3,7 @@ type Account {
 	address: String!
 	accountType: AccountType!
 	createdBlockHeight: Int!
+	createdTxHash: String!
 	"""
 	Returns the account creation timestamp in ISO 8601 format with time zone.
 	"""
@@ -80,6 +81,7 @@ type Block {
 	Transactions order isn't guaranteed, check `transactionIdx`
 	"""
 	transactions: [Transaction!]!
+	cronsOutcomes: [String!]!
 	flattenEvents: [Event!]!
 }
 
@@ -127,7 +129,9 @@ type Candle {
 	quoteDenom: String!
 	baseDenom: String!
 	interval: CandleInterval!
-	blockHeight: Int!
+	minBlockHeight: Int!
+	maxBlockHeight: Int!
+	blockHeight: Int! @deprecated(reason: "Use `maxBlockHeight` instead")
 	open: BigDecimal!
 	high: BigDecimal!
 	low: BigDecimal!
@@ -203,6 +207,20 @@ Implement the DateTime<Utc> scalar
 The input/output is a string in RFC3339 format.
 """
 scalar DateTime
+
+"""
+The direction of a trade: buy or sell.
+"""
+enum Direction {
+	"""
+	Give away the quote asset, get the base asset; a.k.a. a BUY order.
+	"""
+	bid
+	"""
+	Give away the base asset, get the quote asset; a.k.a. a SELL order.
+	"""
+	ask
+}
 
 type Event {
 	type: String!
@@ -575,6 +593,28 @@ type Query {
 		"""
 		interval: CandleInterval!,		earlierThan: DateTime,		laterThan: DateTime
 	): CandleConnection!
+	"""
+	Get paginated trades
+	"""
+	trades(
+		"""
+		Cursor based pagination
+		"""
+		after: String,
+		"""
+		Cursor based pagination
+		"""
+		first: Int,
+		"""
+		Account Address
+		"""
+		addr: String
+	): TradeConnection!
+}
+
+type QueryResponseWithBlockHeight {
+	response: JSON!
+	blockHeight: Int!
 }
 
 type Status {
@@ -591,6 +631,10 @@ type Store {
 	The base64 encoded proof
 	"""
 	proof: String
+	"""
+	The block height at which this query was performed at
+	"""
+	blockHeight: Int!
 }
 
 type Subscription {
@@ -600,14 +644,106 @@ type Subscription {
 	transactions(sinceBlockHeight: Int): [Transaction!]!
 	messages(sinceBlockHeight: Int): [Message!]!
 	events(sinceBlockHeight: Int, filter: [Filter!]): [Event!]!
+	eventByAddresses(addresses: [String!]!, sinceBlockHeight: Int): [Event!]!
 	"""
-	Get candles for a given base and quote denom, interval, and later than time.
-	If `limit` is provided, it will be used to limit the number of candles returned.
-	If `limit` is not provided, it will default to MAX_PAST_CANDLES.
-	If `limit` is greater than MAX_PAST_CANDLES, it will be set to MAX_PAST_CANDLES.
-	If `later_than` is provided, it will be used to filter the candles returned.
+	Get candles for a given base and quote denom, interval
 	"""
-	candles(baseDenom: String!, quoteDenom: String!, interval: CandleInterval!, laterThan: DateTime, limit: Int): [Candle!]!
+	candles(baseDenom: String!, quoteDenom: String!, interval: CandleInterval!, laterThan: DateTime @deprecated, limit: Int @deprecated): [Candle!]!
+	"""
+	Get all trades, this will not include past trades but only new ones since you subscribed.
+	"""
+	trades(baseDenom: String!, quoteDenom: String!): Trade!
+	queryApp(
+		"""
+		Request as JSON
+		"""
+		request: GrugQueryInput!,
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): QueryResponseWithBlockHeight!
+	queryStore(
+		"""
+		Key as B64 string
+		"""
+		key: String!,		prove: Boolean! = false,
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): Store!
+	queryStatus(
+		"""
+		Receive updates every N blocks from the initial block height when subscription starts
+		"""
+		blockInterval: Int! = 10
+	): Status!
+}
+
+enum TimeInForce {
+	"""
+	Good-Til-Canceled (GTC): indicates that if the order is not fully filled
+	in the first auction, its remaining portion is to be persisted in the
+	order book, and made available for future auctions, where it becomes a
+	maker order (an order is a taker in its first auction).
+	"""
+	GTC
+	"""
+	Immediate-Or-Cancel (IOC): indicates that if the order is not fully
+	filled in the first auction, it is to be canceled, and the remaining
+	portion refunded to the user.
+	"""
+	IOC
+}
+
+type Trade {
+	addr: String!
+	quoteDenom: String!
+	baseDenom: String!
+	direction: Direction!
+	timeInForce: TimeInForce!
+	blockHeight: Int!
+	"""
+	Returns the block timestamp in ISO 8601 format with time zone.
+	"""
+	createdAt: String!
+	filledBase: BigDecimal!
+	filledQuote: BigDecimal!
+	refundBase: BigDecimal!
+	refundQuote: BigDecimal!
+	feeBase: BigDecimal!
+	feeQuote: BigDecimal!
+	clearingPrice: BigDecimal!
+}
+
+type TradeConnection {
+	"""
+	Information to aid in pagination.
+	"""
+	pageInfo: PageInfo!
+	"""
+	A list of edges.
+	"""
+	edges: [TradeEdge!]!
+	"""
+	A list of nodes.
+	"""
+	nodes: [Trade!]!
+}
+
+"""
+An edge in a connection.
+"""
+type TradeEdge {
+	"""
+	The item at the end of the edge
+	"""
+	node: Trade!
+	"""
+	A cursor for use in pagination
+	"""
+	cursor: String!
 }
 
 type Transaction {
@@ -786,6 +922,10 @@ type UserEdge {
 	cursor: String!
 }
 
+"""
+Marks an element of a GraphQL schema as no longer supported.
+"""
+directive @deprecated(reason: String = "No longer supported") on FIELD_DEFINITION | ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION | ENUM_VALUE
 """
 Directs the executor to include this field or fragment only when the `if` argument is true.
 """

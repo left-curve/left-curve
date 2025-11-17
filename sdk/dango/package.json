@@ -23,11 +23,6 @@
   "files": [
     "build"
   ],
-  "imports": {
-    "#types/*": "./src/types/*",
-    "#actions/*": "./src/actions/*",
-    "#utils/*": "./src/utils/*"
-  },
   "exports": {
     ".": {
       "types": "./build/index.d.ts",

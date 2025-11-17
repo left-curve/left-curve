@@ -1,9 +1,14 @@
-import { getCoinsTypedData } from "#utils/typedData.js";
+import { getCoinsTypedData } from "../../../utils/typedData.js";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 import type { Address, Coins, Transport } from "@left-curve/sdk/types";
 
-import type { DangoClient, Signer, TxMessageType, TypedDataParameter } from "#types/index.js";
+import type {
+  DangoClient,
+  Signer,
+  TxMessageType,
+  TypedDataParameter,
+} from "../../../types/index.js";
 
 export type TransferParameters = {
   sender: Address;
@@ -24,6 +29,7 @@ export async function transfer<transport extends Transport>(
     extraTypes: Object.entries(transfer).reduce(
       (acc, [address, coins], i) => {
         acc.Transfer.push({ name: address, type: `Coin${i}` });
+        // biome-ignore lint/performance/noAccumulatingSpread: This is a dynamic type
         return Object.assign(acc, { [`Coin${i}`]: getCoinsTypedData(coins) });
       },
       Object.assign({ Transfer: [] }),

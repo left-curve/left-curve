@@ -32,7 +32,7 @@ where
         Ok(Self(inner))
     }
 
-    pub fn new_unchecked(inner: T) -> Self {
+    pub const fn new_unchecked(inner: T) -> Self {
         Self(inner)
     }
 }

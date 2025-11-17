@@ -36,7 +36,9 @@ where
     tracing::info!(%ip, port, "Starting httpd server");
 
     #[cfg(feature = "metrics")]
-    let metrics = ActixWebMetricsBuilder::new().build().unwrap();
+    let metrics = ActixWebMetricsBuilder::new()
+        .build()
+        .map_err(|_| Error::ActixWebMetricsBuilder)?;
 
     HttpServer::new(move || {
         let mut cors = Cors::default()
@@ -51,7 +53,9 @@ where
             .max_age(3600);
 
         if let Some(origin) = cors_allowed_origin.as_deref() {
-            cors = cors.allowed_origin(origin);
+            for origin in origin.split(',') {
+                cors = cors.allowed_origin(origin.trim());
+            }
         } else {
             cors = cors.allow_any_origin();
         }
@@ -67,6 +71,11 @@ where
 
         app.configure(config_app(context.clone(), graphql_schema.clone()))
     })
+    .workers(8)
+    .max_connections(10_000)
+    .backlog(8192)
+    .keep_alive(actix_web::http::KeepAlive::Os)
+    .worker_max_blocking_threads(16)
     .bind((ip.to_string(), port))?
     .run()
     .await?;
@@ -87,7 +96,9 @@ where
     #[cfg(feature = "tracing")]
     tracing::info!(%ip, port, "Starting metrics httpd server");
 
-    let metrics = ActixWebMetricsBuilder::new().build().unwrap();
+    let metrics = ActixWebMetricsBuilder::new()
+        .build()
+        .map_err(|_| Error::ActixWebMetricsBuilder)?;
 
     let recorder = PrometheusBuilder::new().build_recorder();
     let metrics_handler2 = recorder.handle();
@@ -141,7 +152,11 @@ where
     Box::new(move |cfg: &mut ServiceConfig| {
         cfg.service(routes::index::index)
             .service(routes::index::up)
-            .service(routes::graphql::graphql_route())
+            .service(routes::graphql::graphql_route::<
+                crate::graphql::query::Query,
+                async_graphql::EmptyMutation,
+                async_graphql::EmptySubscription,
+            >())
             .default_service(web::to(HttpResponse::NotFound))
             .app_data(web::Data::new(app_ctx.clone()))
             .app_data(web::Data::new(graphql_schema.clone()));

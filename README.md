@@ -21,7 +21,7 @@ This is a [monorepo](https://en.wikipedia.org/wiki/Monorepo) containing a number
 Prerequisites:
 
 - [Rust](https://rustup.rs/) 1.80+
-- [Node.js](https://nodejs.org/en/download/) 21.0+
+- [Node.js](https://nodejs.org/en/download/) 23.0+
 - [pnpm](https://pnpm.io/)
 - [Just](https://just.systems/man/en/)
 - [Docker](https://docs.docker.com/engine/install/)

@@ -1,0 +1,44 @@
+- name: Create directories
+  file:
+    path: "{{ homer_directory }}/assets"
+    state: directory
+
+- name: Deploy asset files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ homer_directory  }}/{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "config.yml", dest: "assets/config.yml" }
+        - { src: "docker-compose.yml", dest: "docker-compose.yml" }
+
+- name: Deploy asset files
+  become: true
+  become_user: root
+  block:
+    - template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ deploy_user }}"
+      loop:
+        - { src: "traefik-services.yml", dest: "{{ ansible_env.HOME }}/traefik/config/homer.yml" }
+
+- name: Start docker compose
+  community.docker.docker_compose_v2:
+    project_src: "{{ homer_directory }}"
+    recreate: always
+    pull: always
+  retries: 3
+  delay: 5
+
+- name: Add UFW rule
+  become: true
+  become_user: root
+  ufw:
+    rule: allow
+    direction: in
+    port: 80
+    proto: tcp

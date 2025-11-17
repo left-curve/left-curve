@@ -5,11 +5,14 @@ use {
 };
 
 #[derive(Default, Debug)]
-pub struct TransferBuilder<T = Coins> {
+pub struct TransferBuilder<T: Default = Coins> {
     batch: BTreeMap<Addr, T>,
 }
 
-impl<T> TransferBuilder<T> {
+impl<T> TransferBuilder<T>
+where
+    T: Default,
+{
     pub fn new() -> Self {
         Self {
             batch: BTreeMap::new(),
@@ -22,6 +25,10 @@ impl<T> TransferBuilder<T> {
 
     pub fn is_non_empty(&self) -> bool {
         !self.batch.is_empty()
+    }
+
+    pub fn get_mut(&mut self, user: Addr) -> &mut T {
+        self.batch.entry(user).or_default()
     }
 }
 

@@ -1,11 +1,10 @@
 import { useConfig } from "@left-curve/store";
 
-import { Button, twMerge } from "@left-curve/applets-kit";
+import { Button, twMerge, useApp } from "@left-curve/applets-kit";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type React from "react";
-import { useApp } from "~/hooks/useApp";
 
 export const WelcomeModal: React.FC = () => {
   const { chain } = useConfig();
@@ -18,20 +17,22 @@ export const WelcomeModal: React.FC = () => {
   return (
     <div
       className={twMerge(
-        "w-screen h-screen bg-gray-900/50 fixed top-0 left-0 z-[51] flex items-center justify-center p-4 overflow-auto scrollbar-none py-32",
+        "w-screen h-screen bg-primitives-gray-light-900/50 fixed top-0 left-0 z-[51] flex items-center justify-center p-4 overflow-auto scrollbar-none py-32",
       )}
     >
-      <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice rounded-xl border border-secondary-gray max-w-2xl">
+      <div className="w-full flex flex-col items-center justify-start bg-surface-primary-rice rounded-xl border border-outline-secondary-gray max-w-2xl">
         <div className="flex flex-col gap-4 p-4 border-b border-b-secondary-gray">
           <div className="w-12 h-12 rounded-full flex items-center justify-center">
             <img
               src="/favicon.svg"
               alt="dango logo"
-              className={"h-11 order-1 cursor-pointer flex rounded-full shadow-btn-shadow-gradient"}
+              className={
+                "h-11 order-1 cursor-pointer flex rounded-full shadow-account-card select-none"
+              }
             />
           </div>
           <p className="h4-bold">{m["common.testnet.title"]()}</p>
-          <div className="flex flex-col diatype-m-medium text-tertiary-500 gap-4">
+          <div className="flex flex-col diatype-m-medium text-ink-tertiary-500 gap-4">
             <p>Hi there,</p>
             <p>
               Thank you for participating in <span className="font-bold">testnet-2</span>!
@@ -42,7 +43,7 @@ export const WelcomeModal: React.FC = () => {
               <span className="font-bold">onchain order book exchange</span>
               <Button
                 as="a"
-                href="https://x.com/larry0x/status/1947685791167353284%7D"
+                href="https://x.com/larry0x/status/1947685791167353284"
                 target="_blank"
                 rel="noreferrer"
                 variant="link"
@@ -58,7 +59,7 @@ export const WelcomeModal: React.FC = () => {
               There is a quest on the
               <Button
                 as="a"
-                href="https://app.galxe.com/quest/dango/GCMTJtfErm%7D"
+                href="https://app.galxe.com/quest/dango/GCMTJtfErm"
                 target="_blank"
                 rel="noreferrer"
                 variant="link"
@@ -76,7 +77,16 @@ export const WelcomeModal: React.FC = () => {
               Please be aware this is <span className="font-bold">pre-alpha software</span>, which
               doesn't represent final mainnet experience. Expect missing features, bugs, and
               hiccups. Don't hesitate to send us feedback on{" "}
-              <a href="https://discord.gg/4uB9UDzYhz%7D">Discord</a>
+              <Button
+                as="a"
+                href="https://discord.gg/4uB9UDzYhz"
+                target="_blank"
+                rel="noreferrer"
+                variant="link"
+                className="p-0 pr-1 h-fit"
+              >
+                Discord
+              </Button>
             </p>
 
             <p>Have fun and g🍡</p>

@@ -1,11 +1,10 @@
-import { AddressVisualizer } from "@left-curve/applets-kit";
+import { AddressVisualizer, useApp } from "@left-curve/applets-kit";
 import { usePrices, usePublicClient, useQueryWithPagination } from "@left-curve/store";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { createContext, useContext } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Badge, TextCopy } from "@left-curve/applets-kit";
 import { AccountCard } from "../foundation/AccountCard";
@@ -85,22 +84,22 @@ const Details: React.FC = () => {
     <div className="flex flex-col gap-4 lg:flex-row">
       <AccountCard account={account} balance={totalBalance} />
       <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card relative overflow-hidden w-full min-h-[10rem]">
-        <h4 className="h4-bold text-primary-900">
+        <h4 className="h4-bold text-ink-primary-900">
           {m["explorer.contracts.details.contractDetails"]()}
         </h4>
         <div className="flex flex-col gap-2">
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.codeHash"]()}
             </p>
 
             <p className="diatype-sm-medium break-all whitespace-normal">
               {codeHash}
-              <TextCopy className="w-4 h-4 text-tertiary-500 ml-1" copyText={codeHash} />
+              <TextCopy className="w-4 h-4 text-ink-tertiary-500 ml-1" copyText={codeHash} />
             </p>
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.admin"]()}
             </p>
             {admin ? (
@@ -115,7 +114,7 @@ const Details: React.FC = () => {
             )}
           </div>
           <div className="flex md:items-center gap-1 flex-col md:flex-row">
-            <p className="diatype-sm-medium text-tertiary-500 md:min-w-[8rem]">
+            <p className="diatype-sm-medium text-ink-tertiary-500 md:min-w-[8rem]">
               {m["explorer.contracts.details.balances"]()}
             </p>
             <Badge color="green" size="m" text={`${totalBalance} (${totalCoins} Assets)`} />
@@ -134,10 +133,10 @@ const NotFound: React.FC = () => {
     <div className="w-full md:max-w-[76rem] p-4">
       <HeaderExplorer>
         <div className="flex flex-col gap-2 items-center">
-          <h3 className="exposure-m-italic text-secondary-700">
+          <h3 className="exposure-m-italic text-ink-secondary-700">
             {m["explorer.accounts.notFound.title"]()}
           </h3>
-          <p className="diatype-m-medium max-w-[42.5rem] text-center text-tertiary-500 ">
+          <p className="diatype-m-medium max-w-[42.5rem] text-center text-ink-tertiary-500 ">
             {m["explorer.accounts.notFound.pre"]()}
             <span className="break-all overflow-hidden underline">{address}</span>{" "}
             {m["explorer.accounts.notFound.description"]()}

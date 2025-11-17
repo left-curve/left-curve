@@ -68,6 +68,11 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
         tokio::spawn,
     );
 
+    let indexer_path = dango_httpd_context
+        .indexer_httpd_context
+        .indexer_path
+        .clone();
+
     #[allow(unused_mut)]
     let mut schema_builder = Schema::build(
         Query::default(),
@@ -95,6 +100,7 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
         .data(transaction_events_loader)
         .data(file_transaction_loader)
         .data(event_transaction_loader)
+        .data(indexer_path)
         .limit_complexity(300)
         .limit_depth(20)
         .finish()

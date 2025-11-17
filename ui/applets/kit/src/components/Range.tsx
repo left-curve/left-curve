@@ -1,9 +1,9 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { useControlledState } from "#hooks/useControlledState.js";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useControlledState } from "@left-curve/foundation";
 
 import { Input } from "./Input";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type React from "react";
 
@@ -22,6 +22,19 @@ const formatInputValue = (num: number, precision: number): string => {
   return num.toFixed(precision);
 };
 
+export function getDynamicStep(maxValue: number, explicitStep?: number): number {
+  if (typeof explicitStep === "number" && explicitStep > 0) return explicitStep;
+  if (!Number.isFinite(maxValue) || maxValue <= 0) return 0.1;
+
+  const idealStep = maxValue / 120;
+  const power = 10 ** Math.floor(Math.log10(idealStep));
+  const base = idealStep / power;
+  const mult = base < 1.5 ? 1 : base < 3.5 ? 2 : base < 7.5 ? 5 : 10;
+  const step = Math.max(mult * power, 1e-6);
+
+  return Number(step.toPrecision(2));
+}
+
 export type StepObject = { value: number; label: string };
 
 export type RangeProps = {
@@ -34,9 +47,11 @@ export type RangeProps = {
   label?: string | ReactNode;
   isDisabled?: boolean;
   showSteps?: boolean | StepObject[];
+  showPercentage?: boolean;
   classNames?: {
     base?: string;
     input?: string;
+    inputWrapper?: string;
   };
   withInput?: boolean;
   inputEndContent?: ReactNode;
@@ -45,7 +60,7 @@ export type RangeProps = {
 export const Range: React.FC<RangeProps> = ({
   minValue,
   maxValue,
-  step = 1,
+  step,
   defaultValue,
   value: controlledValue,
   onChange,
@@ -55,10 +70,13 @@ export const Range: React.FC<RangeProps> = ({
   classNames,
   withInput = false,
   inputEndContent,
+  showPercentage = false,
 }) => {
+  const stepToUse = useMemo(() => getDynamicStep(maxValue, step), [maxValue, step]);
+
   const [value, setValue] = useControlledState(controlledValue, onChange, () => {
     const initial = defaultValue !== undefined ? defaultValue : minValue;
-    return clampValueToStep(initial, minValue, maxValue, step);
+    return clampValueToStep(initial, minValue, maxValue, stepToUse);
   });
 
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -67,7 +85,7 @@ export const Range: React.FC<RangeProps> = ({
   const getPercentage = useCallback(
     (val: number) => {
       if (maxValue === minValue) return 0;
-      return ((val - minValue) / (maxValue - minValue)) * 100;
+      return Math.min(((val - minValue) / (maxValue - minValue)) * 100, 100);
     },
     [minValue, maxValue],
   );
@@ -81,10 +99,10 @@ export const Range: React.FC<RangeProps> = ({
       const clickPos = clientX - trackRect.left;
       const newValueRatio = Math.max(0, Math.min(1, clickPos / trackRect.width));
       const newValue = minValue + newValueRatio * (maxValue - minValue);
-      const clamped = clampValueToStep(newValue, minValue, maxValue, step);
+      const clamped = clampValueToStep(newValue, minValue, maxValue, stepToUse);
       setValue(clamped);
     },
-    [minValue, maxValue, step, setValue],
+    [minValue, maxValue, stepToUse, setValue],
   );
 
   const handleSliderMouseDown = useCallback(
@@ -110,17 +128,17 @@ export const Range: React.FC<RangeProps> = ({
     };
 
     if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("touchmove", handleMouseMove, { passive: false });
-      document.addEventListener("mouseup", handleMouseUp);
-      document.addEventListener("touchend", handleMouseUp);
+      window?.document.addEventListener("mousemove", handleMouseMove);
+      window?.document.addEventListener("touchmove", handleMouseMove, { passive: false });
+      window?.document.addEventListener("mouseup", handleMouseUp);
+      window?.document.addEventListener("touchend", handleMouseUp);
     }
 
     return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("touchmove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.removeEventListener("touchend", handleMouseUp);
+      window?.document.removeEventListener("mousemove", handleMouseMove);
+      window?.document.removeEventListener("touchmove", handleMouseMove);
+      window?.document.removeEventListener("mouseup", handleMouseUp);
+      window?.document.removeEventListener("touchend", handleMouseUp);
     };
   }, [isDragging, isDisabled, handleInteraction]);
 
@@ -131,17 +149,17 @@ export const Range: React.FC<RangeProps> = ({
     switch (event.key) {
       case "ArrowLeft":
       case "ArrowDown":
-        newValue = value - step;
+        newValue = value - stepToUse;
         break;
       case "ArrowRight":
       case "ArrowUp":
-        newValue = value + step;
+        newValue = value + stepToUse;
         break;
       case "PageDown":
-        newValue = value - step * 10;
+        newValue = value - stepToUse * 10;
         break;
       case "PageUp":
-        newValue = value + step * 10;
+        newValue = value + stepToUse * 10;
         break;
       case "Home":
         newValue = minValue;
@@ -156,7 +174,7 @@ export const Range: React.FC<RangeProps> = ({
 
     if (valueChanged) {
       event.preventDefault();
-      const clampedNewValue = clampValueToStep(newValue, minValue, maxValue, step);
+      const clampedNewValue = clampValueToStep(newValue, minValue, maxValue, stepToUse);
       setValue(clampedNewValue);
     }
   };
@@ -168,7 +186,7 @@ export const Range: React.FC<RangeProps> = ({
     } else {
       stepsToDisplay.push({ value: minValue, label: `${minValue}${withInput ? "x" : ""}` });
       const midPoint = Number.parseFloat(
-        ((minValue + maxValue) / 2).toFixed(step.toString().split(".")[1]?.length || 0),
+        ((minValue + maxValue) / 2).toFixed(stepToUse.toString().split(".")[1]?.length || 0),
       );
       if (
         midPoint !== minValue &&
@@ -186,7 +204,7 @@ export const Range: React.FC<RangeProps> = ({
 
   const inputPrecision = Math.max(
     0,
-    step.toString().split(".")[1]?.length || 0,
+    stepToUse.toString().split(".")[1]?.length || 0,
     minValue.toString().split(".")[1]?.length || 0,
     maxValue.toString().split(".")[1]?.length || 0,
   );
@@ -195,15 +213,21 @@ export const Range: React.FC<RangeProps> = ({
     <div
       className={twMerge("w-full flex flex-col mt-1", { "gap-3": !withInput }, classNames?.base)}
     >
-      {label && <div className="text-tertiary-500 exposure-xs-italic">{label}</div>}
+      {label && <div className="text-ink-tertiary-500 exposure-xs-italic">{label}</div>}
 
       <div className="flex items-center gap-3">
-        <div className="flex flex-col flex-1 px-[10px]">
+        <div
+          className={twMerge(
+            "flex flex-col flex-1",
+            { "mt-4": showPercentage },
+            classNames?.inputWrapper,
+          )}
+        >
           <div
             ref={sliderRef}
             className={twMerge(
               "relative h-1 rounded-full",
-              isDisabled ? "bg-surface-disabled-gray" : "bg-secondary-gray cursor-pointer",
+              isDisabled ? "bg-surface-disabled-gray" : "bg-outline-secondary-gray cursor-pointer",
             )}
             onMouseDown={handleSliderMouseDown}
             onTouchStart={handleSliderMouseDown}
@@ -211,19 +235,20 @@ export const Range: React.FC<RangeProps> = ({
             <div
               className={twMerge(
                 "absolute top-0 left-0 h-full rounded-full",
-                isDisabled ? "bg-gray-400" : "bg-red-bean-400",
+                isDisabled ? "bg-primitives-gray-light-400" : "bg-primitives-red-light-400",
               )}
               style={{ width: `${currentPercentage}%` }}
             />
+
             <div
               className={twMerge(
-                "absolute top-1/2 w-4 h-4 rounded-full shadow-md focus:outline-none focus:border-red-bean-600",
+                "absolute top-1/2 w-4 h-4 rounded-full shadow-md focus:outline-none focus:border-primitives-red-light-600",
                 isDisabled
-                  ? "bg-gray-300 border-2 border-gray-500"
-                  : "bg-white border-2 border-red-bean-500 cursor-grab active:cursor-grabbing",
+                  ? "bg-primitives-gray-light-300 border-2 border-primitives-gray-light-500"
+                  : "bg-white border-2 border-primitives-red-light-500 cursor-grab active:cursor-grabbing",
               )}
               style={{
-                left: `calc(${currentPercentage}% - 10px)`,
+                left: `calc(${currentPercentage}% - ${currentPercentage < 2 ? "0px" : "16px"})`,
                 transform: "translateY(-50%)",
               }}
               tabIndex={isDisabled ? -1 : 0}
@@ -242,7 +267,13 @@ export const Range: React.FC<RangeProps> = ({
                 if (!isDisabled) setIsDragging(true);
               }}
               onKeyDown={handleThumbKeyDown}
-            />
+            >
+              {showPercentage && (
+                <p className="absolute -top-5 text-ink-tertiary-500 exposure-xs-italic select-none">
+                  {currentPercentage.toFixed(0)}%
+                </p>
+              )}
+            </div>
           </div>
           {showSteps && stepsToDisplay.length > 0 && (
             <div className="flex justify-between mt-2 px-1">
@@ -250,7 +281,7 @@ export const Range: React.FC<RangeProps> = ({
                 return (
                   <span
                     key={`stepper-${s.value}`}
-                    className="text-tertiary-500 diatype-xs-regular cursor-pointer"
+                    className="text-ink-tertiary-500 diatype-xs-regular cursor-pointer"
                     onClick={() => setValue(s.value)}
                   >
                     {s.label}
@@ -266,19 +297,20 @@ export const Range: React.FC<RangeProps> = ({
             value={formatInputValue(value, inputPrecision)}
             min={minValue}
             max={maxValue}
-            step={step}
+            step={stepToUse}
             disabled={isDisabled}
             placeholder={minValue.toString()}
             endContent={
-              inputEndContent ? <span className="text-tertiary-500">{inputEndContent}</span> : null
+              inputEndContent ? (
+                <span className="text-ink-tertiary-500">{inputEndContent}</span>
+              ) : null
             }
             onChange={(e) => {
               const rawValue = e.target.value;
-              if (rawValue !== "") {
-                const numValue = Number.parseFloat(rawValue);
-                if (!Number.isNaN(numValue)) {
-                  setValue(numValue);
-                }
+              const value = rawValue === "" ? "0" : rawValue;
+              const numValue = Number.parseFloat(value);
+              if (!Number.isNaN(numValue)) {
+                setValue(numValue);
               }
             }}
             classNames={{ base: twMerge("max-w-[5rem]", classNames?.input) }}

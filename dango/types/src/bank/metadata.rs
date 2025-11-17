@@ -7,5 +7,5 @@ pub struct Metadata {
     pub name: LengthBounded<String, 1, 32>,
     pub symbol: LengthBounded<String, 1, 16>,
     pub description: Option<LengthBounded<String, 1, 140>>,
-    pub decimals: u8,
+    pub decimals: u32,
 }

@@ -127,7 +127,7 @@ pub fn db_write(mut fe: FunctionEnvMut<Environment>, key_ptr: u32, value_ptr: u3
     // calls. During these calls, the contract isn't allowed to call the imports
     // that mutates the state, namely: `db_write`, `db_remove`, and `db_remove_range`.
     if !env.state_mutable {
-        return Err(VmError::ImmutableState);
+        return Err(VmError::immutable_state());
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -170,7 +170,7 @@ pub fn db_remove(mut fe: FunctionEnvMut<Environment>, key_ptr: u32) -> VmResult<
     let (env, mut store) = fe.data_and_store_mut();
 
     if !env.state_mutable {
-        return Err(VmError::ImmutableState);
+        return Err(VmError::immutable_state());
     }
 
     let key = read_from_memory(env, &store, key_ptr)?;
@@ -188,7 +188,7 @@ pub fn db_remove_range(
     let (env, mut store) = fe.data_and_store_mut();
 
     if !env.state_mutable {
-        return Err(VmError::ImmutableState);
+        return Err(VmError::immutable_state());
     }
 
     let min = if min_ptr != 0 {
@@ -415,11 +415,11 @@ mod tests {
             db_scan, db_write, debug, read_from_memory, write_to_memory,
         },
         grug_app::{APP_CONFIG, GAS_COSTS, GasTracker, QuerierProviderImpl, StorageProvider},
-        grug_crypto::{Identity256, Identity512},
         grug_types::{
             Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult, Hash256, MockStorage, Order,
             Query, QueryResponse, ResultExt, Shared, Storage, Timestamp, encode_sections, json,
         },
+        identity::{Identity256, Identity512},
         rand::rngs::OsRng,
         std::{fmt::Debug, sync::Arc},
         test_case::test_case,
@@ -456,7 +456,7 @@ mod tests {
             write_to_memory(env, &mut store, data)
         }
 
-        fn fe_mut(&mut self) -> FunctionEnvMut<Environment> {
+        fn fe_mut(&mut self) -> FunctionEnvMut<'_, Environment> {
             self.fe.clone().into_mut(&mut self.store)
         }
 

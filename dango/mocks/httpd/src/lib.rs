@@ -3,6 +3,7 @@ use {
     dango_genesis::{Codes, Contracts, GenesisCodes},
     dango_proposal_preparer::ProposalPreparer,
     dango_testing::{TestAccounts, setup_suite_with_db_and_vm},
+    grug_app::SimpleCommitment,
     grug_db_memory::MemDb,
     grug_testing::MockClient,
     grug_vm_rust::{ContractWrapper, RustVm},
@@ -35,7 +36,7 @@ pub async fn run(
         genesis_opt,
         keep_blocks,
         database_url,
-        |_, _, _, _| {},
+        |_, _, _, _, _| {},
     )
     .await
 }
@@ -51,7 +52,14 @@ pub async fn run_with_callback<C>(
     callback: C,
 ) -> Result<(), Error>
 where
-    C: FnOnce(TestAccounts, Codes<ContractWrapper>, Contracts, MockValidatorSets) + Send + Sync,
+    C: FnOnce(
+            TestAccounts,
+            Codes<ContractWrapper>,
+            Contracts,
+            MockValidatorSets,
+            indexer_sql::context::Context,
+        ) + Send
+        + Sync,
 {
     let indexer = indexer_sql::IndexerBuilder::default();
 
@@ -80,10 +88,9 @@ where
         .with_separate_pubsub()
         .await
         .map_err(|e| {
-            Error::Indexer(indexer_sql::error::IndexerError::from(anyhow::anyhow!(
-                "Failed to create separate context for dango indexer: {}",
-                e
-            )))
+            indexer_sql::error::IndexerError::from(anyhow::anyhow!(
+                "Failed to create separate context for dango indexer: {e}",
+            ))
         })?
         .into();
 
@@ -92,20 +99,28 @@ where
         dango_context.clone(),
     );
 
+    let indexer_context_callback = indexer.context.clone();
+
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
     let (suite, test, codes, contracts, mock_validator_sets) = setup_suite_with_db_and_vm(
-        MemDb::new(),
+        MemDb::<SimpleCommitment>::new(),
         RustVm::new(),
-        ProposalPreparer::new(),
+        ProposalPreparer::new([""], ""), // FIXME: endpoints and access token
         hooked_indexer,
         RustVm::genesis_codes(),
         test_opt,
         genesis_opt,
     );
 
-    callback(test, codes, contracts, mock_validator_sets);
+    callback(
+        test,
+        codes,
+        contracts,
+        mock_validator_sets,
+        indexer_context_callback,
+    );
 
     let suite = Arc::new(Mutex::new(suite));
 
@@ -115,13 +130,12 @@ where
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_context.clone(),
-        Arc::new(Mutex::new(app)),
+        Arc::new(app),
         Arc::new(mock_client),
         indexer_path,
     );
 
-    let indexer_clickhouse_context = indexer_clickhouse::context::Context::new(
-        indexer_context.clone(),
+    let indexer_clickhouse_context = dango_indexer_clickhouse::context::Context::new(
         "http://localhost:8123".to_string(),
         "default".to_string(),
         "default".to_string(),
@@ -132,6 +146,7 @@ where
         indexer_httpd_context.clone(),
         indexer_clickhouse_context.clone(),
         dango_context,
+        None,
     );
 
     dango_httpd::server::run_server("127.0.0.1", port, cors_allowed_origin, dango_httpd_context)

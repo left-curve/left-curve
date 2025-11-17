@@ -19,7 +19,7 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserS
               className="flex gap-2 w-full hover:bg-surface-tertiary-rice p-2 rounded-xs transition-all cursor-pointer"
               onClick={() => onUserSelection(username)}
             >
-              <div className="w-12 h-12 bg-primary-red rounded-xxs border border-surface-secondary-red flex items-center justify-center">
+              <div className="w-12 h-12 bg-surface-primary-red rounded-xxs border border-surface-secondary-red flex items-center justify-center">
                 <img
                   src="/images/emojis/simple/username.svg"
                   alt="username"
@@ -28,15 +28,17 @@ export const UsernamesList: React.FC<UsernamesListProps> = ({ usernames, onUserS
               </div>
               <div className="flex-1 flex gap-4 items-center justify-between">
                 <div className="flex flex-col gap-1">
-                  <p className="diatype-lg-medium text-secondary-700">{username}</p>
+                  <p className="diatype-lg-medium text-ink-secondary-700">{username}</p>
                 </div>
 
-                <IconButton variant="link" className="text-tertiary-500 p-0 h-fit w-fit">
+                <IconButton variant="link" className="text-ink-tertiary-500 p-0 h-fit w-fit">
                   <IconChevronRight className="w-6 h-6" />
                 </IconButton>
               </div>
             </div>
-            {usernames.length - 1 !== i && <span className="w-full h-[1px] bg-secondary-gray" />}
+            {usernames.length - 1 !== i && (
+              <span className="w-full h-[1px] bg-outline-secondary-gray" />
+            )}
           </Fragment>
         );
       })}

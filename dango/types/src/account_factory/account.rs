@@ -1,7 +1,7 @@
 use {
     super::Username,
     crate::account::{multi, single},
-    grug::{PrimaryKey, RawKey, StdError, StdResult},
+    grug::{Binary, PrimaryKey, RawKey, StdError, StdResult},
     paste::paste,
     std::fmt::{self, Display},
 };
@@ -57,7 +57,7 @@ impl PrimaryKey for AccountType {
 
     const KEY_ELEMS: u8 = 1;
 
-    fn raw_keys(&self) -> Vec<RawKey> {
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
         let index = match self {
             AccountType::Spot => 0,
             AccountType::Margin => 1,
@@ -71,9 +71,10 @@ impl PrimaryKey for AccountType {
             0 => Ok(Self::Spot),
             1 => Ok(Self::Margin),
             2 => Ok(Self::Multi),
-            i => Err(StdError::deserialize::<Self, _>(
+            i => Err(StdError::deserialize::<Self, _, Binary>(
                 "index",
                 format!("unknown account type index: {i}"),
+                bytes.into(),
             )),
         }
     }

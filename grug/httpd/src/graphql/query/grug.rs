@@ -1,12 +1,84 @@
 use {
-    crate::graphql::types::{status::Status, store::Store},
+    crate::graphql::types::{
+        query_response::QueryResponseWithBlockHeight, status::Status, store::Store,
+    },
     async_graphql::*,
     grug_types::{Binary, Inner, QueryResponse, TxOutcome},
     std::str::FromStr,
 };
+#[cfg(feature = "metrics")]
+use {metrics::histogram, std::time::Instant};
 
 #[derive(Default, Debug)]
 pub struct GrugQuery {}
+
+impl GrugQuery {
+    pub async fn _query_app(
+        app_ctx: &crate::context::Context,
+        request: grug_types::Query,
+        height: Option<u64>,
+    ) -> Result<QueryResponseWithBlockHeight, Error> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        let (response, block_height) = app_ctx.grug_app.query_app(request, height).await?;
+
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.query_app.duration").record(start.elapsed().as_secs_f64());
+
+        Ok(QueryResponseWithBlockHeight {
+            response,
+            block_height,
+        })
+    }
+
+    pub async fn _query_store(
+        app_ctx: &crate::context::Context,
+        key: String,
+        height: Option<u64>,
+        prove: bool,
+    ) -> Result<Store, Error> {
+        let key = Binary::from_str(&key)?;
+
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        let (value, proof, block_height) = app_ctx
+            .grug_app
+            .query_store(key.inner(), height, prove)
+            .await?;
+
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.query_store.duration").record(start.elapsed().as_secs_f64());
+
+        let value = if let Some(value) = value {
+            Binary::from(value).to_string()
+        } else {
+            return Err(Error::new(format!("Key not found: {key}")));
+        };
+
+        Ok(Store {
+            value,
+            proof: proof.map(|proof| Binary::from(proof).to_string()),
+            block_height,
+        })
+    }
+
+    pub async fn _query_status(app_ctx: &crate::context::Context) -> Result<Status, Error> {
+        #[cfg(feature = "metrics")]
+        let start = Instant::now();
+
+        let status = Status {
+            block: app_ctx.grug_app.last_finalized_block().await?.into(),
+            chain_id: app_ctx.grug_app.chain_id().await?,
+        };
+
+        #[cfg(feature = "metrics")]
+        histogram!("http.grug.query_status.duration").record(start.elapsed().as_secs_f64());
+
+        Ok(status)
+    }
+}
 
 #[Object]
 impl GrugQuery {
@@ -18,7 +90,9 @@ impl GrugQuery {
     ) -> Result<QueryResponse, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        Ok(app_ctx.grug_app.query_app(request, height).await?)
+        Self::_query_app(app_ctx, request, height)
+            .await
+            .map(|res| res.response)
     }
 
     async fn query_store(
@@ -29,34 +103,14 @@ impl GrugQuery {
         #[graphql(default = false)] prove: bool,
     ) -> Result<Store, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
-        let key = Binary::from_str(&key)?;
 
-        let (value, proof) = app_ctx
-            .grug_app
-            .query_store(key.inner(), height, prove)
-            .await?;
-
-        let value = if let Some(value) = value {
-            Binary::from(value).to_string()
-        } else {
-            return Err(Error::new(format!("Key not found: {key}")));
-        };
-
-        Ok(Store {
-            value,
-            proof: proof.map(|proof| Binary::from(proof).to_string()),
-        })
+        Self::_query_store(app_ctx, key, height, prove).await
     }
 
     async fn query_status(&self, ctx: &async_graphql::Context<'_>) -> Result<Status, Error> {
         let app_ctx = ctx.data::<crate::context::Context>()?;
 
-        let status = Status {
-            block: app_ctx.grug_app.last_finalized_block().await?.into(),
-            chain_id: app_ctx.grug_app.chain_id().await?,
-        };
-
-        Ok(status)
+        Self::_query_status(app_ctx).await
     }
 
     async fn simulate(

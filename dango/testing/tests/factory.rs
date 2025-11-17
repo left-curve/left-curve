@@ -524,6 +524,22 @@ fn update_key() {
             key_hash => pk,
         });
 
+    // It shouldn't be able to add the same key more than once.
+    suite
+        .execute(
+            &mut user,
+            contracts.account_factory,
+            &account_factory::ExecuteMsg::UpdateKey {
+                key: Op::Insert(pk),
+                key_hash,
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(format!(
+            "key is already associated with username `{}`",
+            user.username
+        ));
+
     // Delete the first key should be possible since there is another key.
     suite
         .execute(
@@ -628,7 +644,7 @@ fn malicious_register_user() {
             )
             .unwrap(),
         )
-        .should_fail_with_error(VerificationError::Unauthentic);
+        .should_fail_with_error(VerificationError::unauthentic());
 
     // The attacker can also try falsify a signature. Since the attacker doesn't
     // know the user's private key, he signs with a different private key.
@@ -648,7 +664,7 @@ fn malicious_register_user() {
             )
             .unwrap(),
         )
-        .should_fail_with_error(VerificationError::Unauthentic);
+        .should_fail_with_error(VerificationError::unauthentic());
 
     // What if attacker also changes the `key` in the instantiate message?
     // Signature verification should pass, but the derived deposit address would

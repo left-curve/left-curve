@@ -9,9 +9,6 @@ repository    = { workspace = true }
 rust-version  = { workspace = true }
 version       = { workspace = true }
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [features]
 # If enabled, Wasm exports won't be created. This allows this contract to be
 # imported into other contracts as a library.
@@ -23,8 +20,8 @@ grug            = { workspace = true }
 hyperlane-types = { workspace = true }
 
 [dev-dependencies]
-grug-crypto = { workspace = true }
 hex-literal = { workspace = true }
+identity    = { workspace = true }
 k256        = { workspace = true }
 rand        = { workspace = true }
 test-case   = { workspace = true }

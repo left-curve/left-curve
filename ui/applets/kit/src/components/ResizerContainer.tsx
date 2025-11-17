@@ -14,6 +14,7 @@ export const ResizerContainer: React.FC<ResizerContainerProps> = ({
 }) => {
   return (
     <motion.div
+      layoutRoot
       layout
       layoutId={layoutId}
       className={className}

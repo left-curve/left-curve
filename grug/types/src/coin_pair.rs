@@ -52,27 +52,27 @@ impl CoinPair {
     }
 
     /// Return an immutable reference to the first coin.
-    pub fn first(&self) -> CoinRef {
+    pub fn first(&self) -> CoinRef<'_> {
         self.0[0].as_ref()
     }
 
     /// Return a mutable reference to the first coin.
-    pub fn first_mut(&mut self) -> CoinRefMut {
+    pub fn first_mut(&mut self) -> CoinRefMut<'_> {
         self.0[0].as_mut()
     }
 
     /// Return an immutable reference to the second coin.
-    pub fn second(&self) -> CoinRef {
+    pub fn second(&self) -> CoinRef<'_> {
         self.0[1].as_ref()
     }
 
     /// Return a mutable reference to the second coin.
-    pub fn second_mut(&mut self) -> CoinRefMut {
+    pub fn second_mut(&mut self) -> CoinRefMut<'_> {
         self.0[1].as_mut()
     }
 
     /// Return a pair of immutable references to the two coins.
-    pub fn as_ref(&self) -> (CoinRef, CoinRef) {
+    pub fn as_ref(&self) -> (CoinRef<'_>, CoinRef<'_>) {
         let coin1 = self.0[0].as_ref();
         let coin2 = self.0[1].as_ref();
 
@@ -80,7 +80,7 @@ impl CoinPair {
     }
 
     /// Return a pair of immutable references to the two coins, but in reverse order.
-    pub fn as_ref_rev(&self) -> (CoinRef, CoinRef) {
+    pub fn as_ref_rev(&self) -> (CoinRef<'_>, CoinRef<'_>) {
         let coin1 = self.0[0].as_ref();
         let coin2 = self.0[1].as_ref();
 
@@ -88,7 +88,7 @@ impl CoinPair {
     }
 
     /// Return a pair of mutable references to the two coins.
-    pub fn as_mut(&mut self) -> (CoinRefMut, CoinRefMut) {
+    pub fn as_mut(&mut self) -> (CoinRefMut<'_>, CoinRefMut<'_>) {
         // Note: we can't do something like:
         //
         // ```rust
@@ -115,7 +115,7 @@ impl CoinPair {
     }
 
     /// Return a pair of mutable references to the two coins, but in reverse order.
-    pub fn as_mut_rev(&mut self) -> (CoinRefMut, CoinRefMut) {
+    pub fn as_mut_rev(&mut self) -> (CoinRefMut<'_>, CoinRefMut<'_>) {
         let mut iter_mut = self.0.iter_mut();
         let coin1 = iter_mut.next().unwrap();
         let coin2 = iter_mut.next().unwrap();

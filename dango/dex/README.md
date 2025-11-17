@@ -66,7 +66,9 @@ We take the following measures to reduce the likelihood of this:
 
 ### Market orders
 
-The discussions we've had on periodic auctions only concern limit orders. For market orders, we handle separately. In the end-block routine, _before_ the auction for limit orders, we match BUY market orders against the SELL side of the limit order book, and SELL market orders against the BUY side of the limit order book. See [this notebook](../../notebooks/market_order.ipynb) for the algorithm.
+~~The discussions we've had on periodic auctions only concern limit orders. For market orders, we handle separately. In the end-block routine, _before_ the auction for limit orders, we match BUY market orders against the SELL side of the limit order book, and SELL market orders against the BUY side of the limit order book. See [this notebook](../../notebooks/market_order.ipynb) for the algorithm.~~
+
+We have changed the way market orders work in [PR #1095](https://github.com/left-curve/left-curve/pull/1095). Now, there are no two separate order types (limit and market). A market order is treated interally as a limit order, of which the limit price is determined by the best available price in the resting order book at the time the market order is created, and the market order's maximum slippage. All orders are now handled in a single auction. You can consider market order as just a separate API for creating a limit order.
 
 ### Instant swaps
 
@@ -128,15 +130,17 @@ It's also notable that our DEX contracts automatically reject any "donations" by
 
 ### Iterator abstraction
 
-Empirically, the bottleneck for blockchain performance is often disk read/write. We typically want as many things as possible to happen in the CPU cache or the RAM, without touching the hard drive.
+~~Empirically, the bottleneck for blockchain performance is often disk read/write. We typically want as many things as possible to happen in the CPU cache or the RAM, without touching the hard drive.~~
 
-A notable optimization we do in Dango DEX that follows this principle, is that the market making vault doesn't _physically_ insert orders to the order book (which is in the disk); instead, during the end-of-block auction, it computes on-the-fly the orders it would place, given its policy and inventory state. Since these orders don't physically exist in the order book, we call them "virtual orders".
+~~A notable optimization we do in Dango DEX that follows this principle, is that the market making vault doesn't _physically_ insert orders to the order book (which is in the disk); instead, during the end-of-block auction, it computes on-the-fly the orders it would place, given its policy and inventory state. Since these orders don't physically exist in the order book, we call them "virtual orders".~~
 
-Essentially, we have two order books, a physical one and a virtual one. We use a [`MergedOrders`](./src/core/merged_orders.rs) structure to combine them into one, leveraging Rust's zero cost iterator abstraction. Interestingly, we adapted this from [a structure in cw-multi-test](https://github.com/CosmWasm/cw-multi-test/blob/main/src/transactions.rs#L22-L29) that is intended for a completely different purpose: to mock a cached blockchain storage.
+~~Essentially, we have two order books, a physical one and a virtual one. We use a [`MergedOrders`](./src/core/merged_orders.rs) structure to combine them into one, leveraging Rust's zero cost iterator abstraction. Interestingly, we adapted this from [a structure in cw-multi-test](https://github.com/CosmWasm/cw-multi-test/blob/main/src/transactions.rs#L22-L29) that is intended for a completely different purpose: to mock a cached blockchain storage.~~
+
+Since PR [#1096](https://github.com/left-curve/left-curve/pull/1096), we no longe do this. The benefit is negligible, as the market making vault typically only places no more than 3 or 4 orders on each side of the book. Furthermore, generating the vault orders on-the-fly and not inserting it into the physical order book, makes it difficult to compute liquitidy depth.
 
 ## Related works
 
-The only other application of periodic auctions in DeFi, in our knowledge, is [Injective](https://blog.injective.com/injective-exchange-upgrade-a-novel-order-matching-mechanism/).
+The only other application of periodic auctions in DeFi, in our knowledge, is [Injective](https://blog.injective.com/injective-exchange-upgrade-a-novel-order-matching-mechanism/). [Jump Crypto](https://x.com/jump_) has also recently published [a research](https://jumpcrypto.com/writing/dual-flow-batch-auction/) on this subject.
 
 Whereas many CLOB DEXs employ passive market making vaults, they are mostly for the perpetual futures market, and operates with only the market's settlement asset such as USDC (meaning, you don't earn real BTC from market making in the BTC market). The only application of a passive market making vault in the spot market, to our knowledge, is [a currently experimental project by Neutron](https://x.com/neutron_org/status/1917995050081964074).
 

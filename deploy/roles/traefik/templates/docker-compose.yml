@@ -1,0 +1,30 @@
+services:
+  traefik:
+    image: traefik:v3.5
+    ulimits:
+      nofile:
+        soft: 200000
+        hard: 200000
+    ports:
+      - "80:80"
+      - "443:443"
+      # traefik dashboard
+      - "{{ tailscale_ip }}:8888:8888"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - "{{ traefik_dir }}/config:/config:ro"
+      - "{{ traefik_dir }}/traefik.yml:/etc/traefik/traefik.yml:ro"
+      - "{{ traefik_dir }}/letsencrypt:/letsencrypt:ro"
+    networks:
+      - traefik
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping", "--entrypoints.traefik.address=:8888"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+networks:
+  traefik:
+    driver: bridge
+    name: traefik

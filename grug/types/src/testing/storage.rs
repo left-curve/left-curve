@@ -5,16 +5,7 @@ use {
 
 /// An in-memory, mock implementatiion of the [`Storage`](crate::Storage) trait
 /// for testing purpose.
-#[derive(Default, Debug, Clone)]
-pub struct MockStorage {
-    data: BTreeMap<Vec<u8>, Vec<u8>>,
-}
-
-impl MockStorage {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
+pub type MockStorage = BTreeMap<Vec<u8>, Vec<u8>>;
 
 macro_rules! range_bounds {
     ($min:ident, $max:ident) => {{
@@ -40,7 +31,7 @@ macro_rules! range_bounds {
 
 impl Storage for MockStorage {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.data.get(key).cloned()
+        self.get(key).cloned()
     }
 
     fn scan<'a>(
@@ -50,7 +41,7 @@ impl Storage for MockStorage {
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
         let bounds = range_bounds!(min, max);
-        let iter = self.data.range(bounds).map(|(k, v)| (k.clone(), v.clone()));
+        let iter = self.range(bounds).map(|(k, v)| (k.clone(), v.clone()));
         match order {
             Order::Ascending => Box::new(iter),
             Order::Descending => Box::new(iter.rev()),
@@ -64,7 +55,7 @@ impl Storage for MockStorage {
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
         let bounds = range_bounds!(min, max);
-        let iter = self.data.range(bounds).map(|(k, _)| k.clone());
+        let iter = self.range(bounds).map(|(k, _)| k.clone());
         match order {
             Order::Ascending => Box::new(iter),
             Order::Descending => Box::new(iter.rev()),
@@ -78,7 +69,7 @@ impl Storage for MockStorage {
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
         let bounds = range_bounds!(min, max);
-        let iter = self.data.range(bounds).map(|(_, v)| v.clone());
+        let iter = self.range(bounds).map(|(_, v)| v.clone());
         match order {
             Order::Ascending => Box::new(iter),
             Order::Descending => Box::new(iter.rev()),
@@ -86,15 +77,15 @@ impl Storage for MockStorage {
     }
 
     fn write(&mut self, key: &[u8], value: &[u8]) {
-        self.data.insert(key.to_vec(), value.to_vec());
+        self.insert(key.to_vec(), value.to_vec());
     }
 
     fn remove(&mut self, key: &[u8]) {
-        self.data.remove(key);
+        self.remove(key);
     }
 
     fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
-        self.data.retain(|k, _| {
+        self.retain(|k, _| {
             if let Some(min) = min {
                 if k.as_slice() < min {
                     return true;

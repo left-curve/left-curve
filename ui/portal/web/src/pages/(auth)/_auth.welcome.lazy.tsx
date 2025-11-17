@@ -1,6 +1,6 @@
 import { Button } from "@left-curve/applets-kit";
 import { Link, createLazyFileRoute } from "@tanstack/react-router";
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 export const Route = createLazyFileRoute("/(auth)/_auth/welcome")({
   component: WelcomeComponent,
@@ -12,14 +12,14 @@ function WelcomeComponent() {
       <div className="bg-[url('./images/waves.svg')] w-full h-[3rem] bg-cover bg-no-repeat bg-bottom fixed top-0 left-0" />
       <div className="w-full flex flex-col gap-10 max-w-[366px]">
         <img
-          src="./favicon.svg rounded-full shadow-btn-shadow-gradient"
+          src="./favicon.svg"
           alt="dango-logo"
-          className="h-12"
+          className="h-12 rounded-full shadow-account-card"
         />
         <div className="flex flex-col gap-6 items-center">
           <div className="flex flex-col gap-2 items-center justify-center text-center">
             <h1 className="display-heading-xl">{m["welcome.title"]()}</h1>
-            <p className="text-tertiary-500 diatype-lg-regular">{m["welcome.description"]()}</p>
+            <p className="text-ink-tertiary-500 diatype-lg-regular">{m["welcome.description"]()}</p>
           </div>
           <Button as={Link} className="w-full md:w-[260px]" to="/">
             {m["common.continue"]()}

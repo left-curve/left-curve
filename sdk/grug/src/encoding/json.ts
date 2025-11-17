@@ -40,8 +40,8 @@ export function sortedJsonStringify(obj: JsonValue): string {
   return JSON.stringify(sortedObject(obj));
 }
 
-export function snakeCaseJsonSerialization(obj: Json): Json {
-  return recursiveTransform(obj, camelToSnake);
+export function snakeCaseJsonSerialization<T = Json>(obj: Json): T {
+  return recursiveTransform(obj, camelToSnake) as T;
 }
 
 export function camelCaseJsonDeserialization<T = Json>(s: Json): T {

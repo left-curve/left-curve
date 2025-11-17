@@ -12,6 +12,7 @@
 **/.env
 **/*.vars
 .envrc
+.envrc-old
 
 # Workers
 **/.wrangler
@@ -40,6 +41,8 @@ target/
 **/tsconfig.tsbuildinfo
 **/build
 !ui/portal/app/.eas/build/
+!ui/portal/web/**/*.pdf
+ui/portal/web/public/images
 **/.turbo
 
 # SDK
@@ -54,17 +57,30 @@ sdk/docs
 *storybook.log
 app.pages.ts
 next-env.d.ts
-ui/config/project.inlang/*
-!ui/config/project.inlang/settings.json
-!ui/config/project.inlang/project_id
+ui/foundation/project.inlang/*
+ui/foundation/paraglide/*
+!ui/foundation/project.inlang/settings.json
+!ui/foundation/project.inlang/project_id
 
-# Data used in testing
+# Data used in tests, examples, or benchmarks
+**/cargo-flamegraph.trace
+**/flamegraph*.svg
 **/testdata/
-**/proptest-regressions/
-**/*.proptest-regressions
+dango/scripts/examples/blocks*
+dango/scripts/examples/data*
+dango/scripts/examples/*.borsh
+dango/scripts/examples/*.json
+dango/scripts/examples/*.tar
+dango/scripts/examples/*.tar.gz
 !pyth/client/testdata/
 
 # Network data
 networks/**/configs/cometbft/config/addrbook.json
 networks/**/configs/cometbft/config/write-file-atomic-*
+networks/**/configs/backups
 networks/**/data
+networks/**/indexer
+networks/**/logs
+
+# GraphiQL
+docker/graphiql/dist

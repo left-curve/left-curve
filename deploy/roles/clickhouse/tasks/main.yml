@@ -11,13 +11,42 @@
       - clickhouse_password | length > 0
     fail_msg: "CLICKHOUSE_PASSWORD must be set and non-empty, aborting deployment."
 
+- name: Configure kernel parameters for memory optimization
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { key: 'vm.swappiness', value: '1' }
+    - { key: 'vm.vfs_cache_pressure', value: '50' }
+  become: true
+  become_user: root
+
 - name: Copy config files
+  become: true
+  become_user: root
   template:
     src: "{{ item }}"
     dest: "{{ config_dir }}/{{ item }}"
+    mode: '0644'
+    owner: '{{ deploy_user }}'
   loop:
     - config.xml
     - users.xml
+
+- name: Copy backup script
+  become: true
+  become_user: root
+  template:
+    src: "make_clickhouse_backup.sh"
+    dest: "{{ ansible_env.HOME }}"
+    mode: '0755'
+    owner: '{{ deploy_user }}'
+
+- name: Create clickhouse network
+  docker_network:
+    name: clickhouse
 
 - name: Deploy clickhouse container
   docker_container:
@@ -26,13 +55,21 @@
     restart_policy: unless-stopped
     state: started
     recreate: true
+    networks:
+      - name: clickhouse
     env:
       CLICKHOUSE_SKIP_USER_SETUP: "1"
+    labels:
+      com.docker.compose.service: "clickhouse"
+      service_name: "clickhouse"
+      environment: "production"
+    # Not sure I still need to bind outside
     ports:
       - "127.0.0.1:8123:8123" # HTTP interface
       - "127.0.0.1:9000:9000" # Native TCP interface
       - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
       - "127.0.0.1:9004:9004" # MySQL compatibility interface
+      - "{{ tailscale_ip }}:9126:9126" # Prometheus metrics
     volumes:
       - "{{ data_dir }}:/var/lib/clickhouse"
       - "{{ logs_dir }}:/var/log/clickhouse-server"

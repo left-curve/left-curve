@@ -81,7 +81,7 @@ impl Vm for WasmVm {
         gas_tracker: GasTracker,
     ) -> VmResult<WasmInstance> {
         if query_depth > MAX_QUERY_DEPTH {
-            return Err(VmError::ExceedMaxQueryDepth);
+            return Err(VmError::exceed_max_query_depth());
         }
 
         let (module, engine) = if let Some(cache) = &self.cache {
@@ -233,7 +233,7 @@ impl Instance for WasmInstance {
             let res_ptr: u32 = env
                 .call_function1(store, name, &[ctx_ptr.into()])?
                 .try_into()
-                .map_err(VmError::ReturnType)?;
+                .map_err(VmError::return_type)?;
 
             let data = read_then_wipe(env, store, res_ptr)?;
 
@@ -256,7 +256,7 @@ impl Instance for WasmInstance {
             let res_ptr: u32 = env
                 .call_function1(store, name, &[ctx_ptr.into(), param1_ptr.into()])?
                 .try_into()
-                .map_err(VmError::ReturnType)?;
+                .map_err(VmError::return_type)?;
 
             let data = read_then_wipe(env, store, res_ptr)?;
 
@@ -286,7 +286,7 @@ impl Instance for WasmInstance {
                     param2_ptr.into(),
                 ])?
                 .try_into()
-                .map_err(VmError::ReturnType)?;
+                .map_err(VmError::return_type)?;
             let data = read_then_wipe(env, store, res_ptr)?;
 
             Ok(data)

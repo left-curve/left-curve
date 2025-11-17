@@ -1,7 +1,16 @@
-use {crate::home_directory::HomeDirectory, clap::Subcommand, colored::Colorize, std::fs};
+use {
+    crate::home_directory::HomeDirectory,
+    clap::Subcommand,
+    colored::Colorize,
+    grug_app::{Db, SimpleCommitment},
+    grug_db_disk::DiskDb,
+    std::fs,
+};
 
 #[derive(Subcommand)]
 pub enum DbCmd {
+    /// Print the database version
+    Version,
     /// Delete the entire database
     Reset {
         /// Skip confirmation
@@ -20,6 +29,12 @@ impl DbCmd {
         }
 
         match self {
+            DbCmd::Version => {
+                let db = DiskDb::<SimpleCommitment>::open(dir.data_dir())?;
+
+                println!("Latest version: {:?}", db.latest_version());
+                println!("Oldest version: {:?}", db.oldest_version());
+            },
             DbCmd::Reset { yes } => {
                 if !yes {
                     confirm(
@@ -31,9 +46,11 @@ impl DbCmd {
                     )?;
                 }
 
-                Ok(fs::remove_dir_all(data_dir)?)
+                fs::remove_dir_all(data_dir)?;
             },
         }
+
+        Ok(())
     }
 }
 

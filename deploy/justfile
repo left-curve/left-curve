@@ -4,6 +4,9 @@ set positional-arguments
 default:
   @just --list
 
+edit-secrets:
+  ansible-vault edit group_vars/all/vault.yml
+
 cold-provision:
   ansible-playbook playbook.yml
 
@@ -17,33 +20,33 @@ setup:
   source .venv/bin/activate && pip install ansible
   source .venv/bin/activate && ansible-galaxy collection install -r requirements.yml
 
-# Run the github runner installation playbooks
-install-runners:
-  source .venv/bin/activate && ansible-playbook setup-github-runner-hosts.yml
-  source .venv/bin/activate && ansible-playbook install-github-runner-hosts.yml
+deploy-github-runners:
+  ansible-playbook setup-github-runner-hosts.yml
+  ansible-playbook install-github-runner-hosts.yml
 
-deploy-bots:
-  ansible-playbook bots.yml
+restart-devnet:
+  ansible-playbook restart-services.yml -e dango_network=devnet
+
+restart-testnet:
+  ansible-playbook restart-services.yml -e dango_network=testnet
+
+reset-and-deploy-testnet:
+  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dev-6", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest", "reset_data": true}'
+
+deploy-testnet:
+  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "chain_id": "dev-6", "dango_network": "testnet", "system_wide_directories": true, "deploy_env": "production", "dango_image_tag": "latest", "frontend_image_tag": "latest"}'
+
+deploy-devnet:
+  ansible-playbook full-app.yml -e '{"traefik_enabled": true, "cometbft_generate_keys": true, "dex_bot_enabled": true, "github_deployments_enabled": false, "expose_ports": false, "delete_postgres_database_at_merge": false, "delete_clickhouse_database_at_merge": false, "deploy_includes_postgres": false, "deploy_includes_clickhouse": false, "dango_network": "devnet", "deploy_env": "production", "chain_id": "dev-9", "dango_image_tag": "latest", "frontend_image_tag": "latest", "frontend_banner": "You are using devnet", "system_wide_directories": true}'
+
+deploy-preview-latest:
+  ansible-playbook full-app.yml -e '{"expose_ports": true, "dex_bot_enabled":true, "cometbft_generate_keys":true}' -e deploy_env=preview -e dango_image_tag=latest -e dango_network=previewnet -e frontend_image_tag=latest -e chain_id=preview
 
 deploy-dozzle:
   ansible-playbook dozzle.yml
 
-cold-deploy-dango:
-  ansible-playbook dango.yml
-
-deploy-dango:
-  ansible-playbook dango.yml --tags setup
-  ansible-playbook dango.yml --skip-tags setup
-
-reset-deploy:
-  ansible-playbook reset-cometbft.yml
-  ansible-playbook reset-dango.yml
-
-setup-deploy-dango:
-  ansible-playbook dango.yml --tags setup
-
-deploy-cometbft:
-  ansible-playbook cometbft.yml
+deploy-monitoring:
+  ansible-playbook monitoring.yml
 
 deploy-tailscale:
   ansible-playbook tailscale.yml
@@ -53,9 +56,3 @@ deploy-db:
 
 deploy-clickhouse:
   ansible-playbook clickhouse.yml
-
-logs-cometbft:
-  ansible cometbft -m shell -a "docker logs cometbft -f"
-
-logs-dango:
-  ansible dango -m shell -a "docker logs dango -f"

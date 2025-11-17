@@ -1,6 +1,15 @@
 - hosts: all
   become: true
+  vars:
+    swap_file_path: /swapfile
+    swap_file_size_mb: '32768'
+  collections:
+    - community.docker
+    - community.general
   roles:
     - common
     - users
     - docker
+    - node-exporter
+    - promtail
+    - geerlingguy.swap

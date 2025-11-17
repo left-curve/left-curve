@@ -65,7 +65,8 @@ export function useQueryWithPagination<
   const goNext = () => {
     if (data?.pageInfo?.hasNextPage) {
       setPagination({
-        ...pagination,
+        before: undefined,
+        last: undefined,
         first: 10,
         after: data.pageInfo.endCursor as string,
         sortBy: "BLOCK_HEIGHT_DESC",
@@ -76,7 +77,8 @@ export function useQueryWithPagination<
   const goPrev = () => {
     if (data?.pageInfo?.hasPreviousPage) {
       setPagination({
-        ...pagination,
+        after: undefined,
+        first: undefined,
         last: 10,
         before: data.pageInfo.startCursor as string,
         sortBy: "BLOCK_HEIGHT_DESC",

@@ -4,7 +4,9 @@
 
 use {
     crate::{Coins, Denom, StdError, StdResult},
+    borsh::{BorshDeserialize, BorshSerialize},
     grug_math::{Dec, FixedPoint, IsZero, Number, NumberConst},
+    serde::{Deserialize, Serialize},
     std::{
         collections::{BTreeMap, btree_map},
         fmt::{self, Display},
@@ -12,6 +14,7 @@ use {
 };
 
 /// Like `Coin` but the amount is a decimal.
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DecCoin<const S: u32> {
     pub denom: Denom,
     pub amount: Dec<u128, S>,
@@ -23,7 +26,9 @@ impl<const S: u32> From<(Denom, Dec<u128, S>)> for DecCoin<S> {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(
+    Serialize, Deserialize, BorshSerialize, BorshDeserialize, Default, Debug, Clone, PartialEq, Eq,
+)]
 pub struct DecCoins<const S: u32>(BTreeMap<Denom, Dec<u128, S>>);
 
 impl<const S: u32> DecCoins<S> {
