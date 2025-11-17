@@ -28,32 +28,39 @@ export function useLiveTradesState(parameters: UseLiveTradesStateParameters) {
   const { pairId, subscribe } = parameters;
   const { subscriptions, coins } = useConfig();
   const tradesBuffer = useRef<Trade[]>([]);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const { getTrades, addTrades, clearTrades } = liveTradesStore();
+  const { addTrades, clearTrades } = liveTradesStore();
 
   const baseCoin = coins.byDenom[pairId.baseDenom];
   const quoteCoin = coins.byDenom[pairId.quoteDenom];
 
   useEffect(() => {
     if (!subscribe) return;
+    const processBuffer = () => {
+      if (tradesBuffer.current.length > 0) {
+        addTrades(tradesBuffer.current);
+        tradesBuffer.current = [];
+      }
+      debounceTimer.current = null;
+    };
+
     const unsubscribe = subscriptions.subscribe("trades", {
       params: {
         baseDenom: baseCoin.denom,
         quoteDenom: quoteCoin.denom,
       },
       listener: async ({ trades: trade }) => {
-        const trades = getTrades();
-        if (trades.length >= 50) return addTrades([trade]);
-        const { current: buffer } = tradesBuffer;
-        if (buffer.length < 190) return buffer.push(trade);
-        addTrades(buffer);
-        tradesBuffer.current = [];
+        tradesBuffer.current.unshift(trade);
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        debounceTimer.current = setTimeout(processBuffer, 500);
       },
     });
 
     return () => {
       unsubscribe();
       clearTrades();
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, [baseCoin, quoteCoin]);
 
