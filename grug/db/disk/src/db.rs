@@ -740,24 +740,24 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the disk.
         // Note: `min` is inclusive, while `max` is exclusive.
-        if let Some(data) = &self.guard.priority_data
-            && data.min.as_slice() <= key
-            && key < data.max.as_slice()
-        {
-            let value = data.records.get(key).cloned();
+        // TODO: the nested `if` statements can be simplified with rust edition 2024
+        if let Some(data) = &self.guard.priority_data {
+            if data.min.as_slice() <= key && key < data.max.as_slice() {
+                let value = data.records.get(key).cloned();
 
-            #[cfg(feature = "metrics")]
-            {
-                metrics::histogram!(
-                    DISK_DB_LABEL,
-                    "operation" => "read",
-                    "comment" => self.comment,
-                    "source" => PRIORITY_DATA_LABEL
-                )
-                .record(duration.elapsed().as_secs_f64());
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::histogram!(
+                        DISK_DB_LABEL,
+                        "operation" => "read",
+                        "comment" => self.comment,
+                        "source" => PRIORITY_DATA_LABEL
+                    )
+                    .record(duration.elapsed().as_secs_f64());
+                }
+
+                return value;
             }
-
-            return value;
         }
 
         let opts = new_read_options(None, None);
@@ -796,33 +796,33 @@ impl Storage for StateStorage {
         // within the priority range, then create a priority iterator.
         // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
         // are both exclusive.
-        if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max)
-            && data.min.as_slice() <= min
-            && max <= data.max.as_slice()
-        {
-            let iter = data.records.scan(Some(min), Some(max), order);
+        // TODO: the nested `if` statements can be simplified with rust edition 2024
+        if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max) {
+            if data.min.as_slice() <= min && max <= data.max.as_slice() {
+                let iter = data.records.scan(Some(min), Some(max), order);
 
-            #[cfg(feature = "metrics")]
-            {
-                let iter = iter.with_metrics(DISK_DB_LABEL, [
-                    ("operation", "next"),
-                    ("comment", self.comment),
-                    ("source", PRIORITY_DATA_LABEL),
-                ]);
+                #[cfg(feature = "metrics")]
+                {
+                    let iter = iter.with_metrics(DISK_DB_LABEL, [
+                        ("operation", "next"),
+                        ("comment", self.comment),
+                        ("source", PRIORITY_DATA_LABEL),
+                    ]);
 
-                metrics::histogram!(
-                    DISK_DB_LABEL,
-                    "operation" => "scan",
-                    "comment" => self.comment,
-                    "source" => PRIORITY_DATA_LABEL
-                )
-                .record(duration.elapsed().as_secs_f64());
+                    metrics::histogram!(
+                        DISK_DB_LABEL,
+                        "operation" => "scan",
+                        "comment" => self.comment,
+                        "source" => PRIORITY_DATA_LABEL
+                    )
+                    .record(duration.elapsed().as_secs_f64());
 
-                return Box::new(iter);
+                    return Box::new(iter);
+                }
+
+                #[cfg(not(feature = "metrics"))]
+                return iter;
             }
-
-            #[cfg(not(feature = "metrics"))]
-            return iter;
         }
 
         let opts = new_read_options(min, max);
