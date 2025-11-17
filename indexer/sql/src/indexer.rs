@@ -149,6 +149,7 @@ where
         }?;
 
         // Generate unique ID
+        #[cfg(feature = "tracing")]
         let id = INDEXER_COUNTER.fetch_add(1, Ordering::SeqCst);
 
         let mut context = Context {
