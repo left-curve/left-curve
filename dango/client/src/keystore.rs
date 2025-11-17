@@ -1,9 +1,8 @@
 use {
+    crate::Secret,
     aes_gcm::{AeadCore, Aes256Gcm, Key, KeyInit, aead::Aead},
-    bip32::{Mnemonic, XPrv},
+    anyhow::anyhow,
     grug::{Binary, ByteArray, JsonDeExt, JsonSerExt},
-    identity::Identity256,
-    k256::ecdsa::{Signature, signature::DigestSigner},
     pbkdf2::pbkdf2_hmac,
     rand::{Rng, rngs::OsRng},
     sha2::Sha256,
@@ -16,8 +15,7 @@ const PBKDF2_SALT_LEN: usize = 16;
 const PBKDF2_KEY_LEN: usize = 32;
 const AES256GCM_NONCE_LEN: usize = 12;
 
-/// [`SigningKey`](crate::SigningKey) serialized into JSON format, to be stored
-/// on disk.
+/// Data structure for encrypting a 32-byte private key save saving on disk.
 #[grug::derive(Serde)]
 pub struct Keystore {
     pub pk: ByteArray<SECP256K1_COMPRESSED_PUBKEY_LEN>,
@@ -26,45 +24,9 @@ pub struct Keystore {
     pub ciphertext: Binary,
 }
 
-/// A wrapper over an Secp256k1 [`SigningKey`](k256::ecdsa::SigningKey),
-/// providing a handy API to work with.
-#[derive(Debug, Clone)]
-pub struct SigningKey {
-    pub(crate) inner: k256::ecdsa::SigningKey,
-}
-
-impl SigningKey {
-    /// Generate a random Secp256k1 private key.
-    pub fn new_random() -> Self {
-        Self {
-            inner: k256::ecdsa::SigningKey::random(&mut OsRng),
-        }
-    }
-
-    /// Recover an Secp256k1 private key from raw bytes.
-    pub fn from_bytes(bytes: [u8; 32]) -> anyhow::Result<Self> {
-        Ok(Self {
-            inner: k256::ecdsa::SigningKey::from_bytes(&bytes.into())?,
-        })
-    }
-
-    /// Recover an Secp256k1 private key from the given English mnemonic and
-    /// BIP-44 coin type.
-    pub fn from_mnemonic(mnemonic: &Mnemonic, coin_type: usize) -> anyhow::Result<Self> {
-        // The `to_seed` function takes a password to generate salt.
-        // Here we just use an empty str.
-        // For reference, Terra Station and Keplr use an empty string as well:
-        // - https://github.com/terra-money/terra.js/blob/v3.1.7/src/key/MnemonicKey.ts#L79
-        // - https://github.com/chainapsis/keplr-wallet/blob/b6062a4d24f3dcb15dda063b1ece7d1fbffdbfc8/packages/crypto/src/mnemonic.ts#L63
-        let seed = mnemonic.to_seed("");
-        let path = format!("m/44'/{coin_type}'/0'/0/0");
-        let xprv = XPrv::derive_from_path(&seed, &path.parse()?)?;
-
-        Ok(Self { inner: xprv.into() })
-    }
-
+impl Keystore {
     /// Read and decrypt a keystore file.
-    pub fn from_file<F, P>(filename: F, password: P) -> anyhow::Result<Self>
+    pub fn from_file<F, P>(filename: F, password: P) -> anyhow::Result<[u8; 32]>
     where
         F: AsRef<Path>,
         P: AsRef<[u8]>,
@@ -84,17 +46,24 @@ impl SigningKey {
 
         // decrypt the private key
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&password_hash));
-        let decrypted =
-            cipher.decrypt(keystore.nonce.as_ref().into(), keystore.ciphertext.as_ref())?;
 
-        Ok(Self {
-            inner: k256::ecdsa::SigningKey::from_bytes(decrypted.as_slice().into())?,
-        })
+        cipher
+            .decrypt(keystore.nonce.as_ref().into(), keystore.ciphertext.as_ref())?
+            .try_into()
+            .map_err(|bytes: Vec<u8>| {
+                anyhow!(
+                    "incorrect private key length! expecting: 32, got: {}",
+                    bytes.len()
+                )
+            })
     }
 
     /// Encrypt a key and save it to a file.
-    pub fn write_to_file<F, P>(&self, filename: F, password: P) -> anyhow::Result<Keystore>
+    pub fn write_to_file<S, F, P>(secret: &S, filename: F, password: P) -> anyhow::Result<Self>
     where
+        S: Secret,
+        S::Private: AsRef<[u8]>,
+        S::Public: Into<ByteArray<SECP256K1_COMPRESSED_PUBKEY_LEN>>,
         F: AsRef<Path>,
         P: AsRef<[u8]>,
     {
@@ -112,11 +81,11 @@ impl SigningKey {
         // encrypt the private key
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&password_hash));
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-        let ciphertext = cipher.encrypt(&nonce, self.private_key().as_slice())?;
+        let ciphertext = cipher.encrypt(&nonce, secret.private_key().as_ref())?;
 
         // write keystore to file
         let keystore = Keystore {
-            pk: self.public_key().into(),
+            pk: secret.public_key().into(),
             salt: salt.into(),
             nonce: nonce.as_slice().try_into()?,
             ciphertext: ciphertext.into(),
@@ -125,22 +94,5 @@ impl SigningKey {
         fs::write(filename, keystore_str.as_bytes())?;
 
         Ok(keystore)
-    }
-
-    /// Sign the given digest.
-    pub fn sign_digest(&self, digest: [u8; 32]) -> [u8; 64] {
-        let digest = Identity256::from(digest);
-        let signature: Signature = self.inner.sign_digest(digest);
-        signature.to_bytes().into()
-    }
-
-    pub fn sign_digest_with_recovery_id(&self, digest: [u8; 32]) -> [u8; 65] {
-        let digest = Identity256::from(digest);
-        let (signature, recovery_id) = self.inner.sign_digest_recoverable(digest).unwrap();
-        let mut sig = [0; 65];
-        sig[..64].copy_from_slice(&signature.to_bytes());
-        let recover_id = recovery_id.to_byte();
-        sig[64] = recover_id;
-        sig
     }
 }

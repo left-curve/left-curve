@@ -1,24 +1,14 @@
 use {
-    crate::{Ethereum, Secp256k1, Secret, SigningKey},
-    alloy::{
-        dyn_abi::{Eip712Domain, TypedData},
-        primitives::U160,
-    },
-    bip32::{Language, Mnemonic},
-    dango_auth::EIP155_CHAIN_ID,
+    crate::Secret,
     dango_types::{
         account::spot,
         account_factory::Username,
-        auth::{
-            Credential, Eip712Signature, Key, Metadata, Nonce, SignDoc, Signature,
-            StandardCredential,
-        },
+        auth::{Credential, Metadata, Nonce, SignDoc, StandardCredential},
         signer::SequencedSigner,
     },
     grug::{
-        Addr, Addressable, ByteArray, Defined, Hash256, HashExt, Inner, JsonDeExt, JsonSerExt,
-        MaybeDefined, Message, NonEmpty, QueryClient, QueryClientExt, SignData, Signer, StdError,
-        StdResult, Tx, Undefined, UnsignedTx, json,
+        Addr, Addressable, Defined, JsonSerExt, MaybeDefined, Message, NonEmpty, QueryClient,
+        QueryClientExt, Signer, StdError, StdResult, Tx, Undefined, UnsignedTx,
     },
     std::str::FromStr,
 };
@@ -35,13 +25,8 @@ where
 {
     pub username: Username,
     pub address: Addr,
-    /// The public key.
-    pub key: Key,
-    /// A hash of the public key.
-    pub key_hash: Hash256,
-    /// The private key.
-    pub sk: S,
     pub nonce: N,
+    pub secret: S,
 }
 
 impl<S, N> SingleSigner<S, N>
@@ -67,48 +52,20 @@ where
     }
 }
 
-impl SingleSigner<Secp256k1, Undefined<Nonce>> {
-    /// Create a new `SingleSigner` of the [`Secp256k1`](dango_client::Secp256k1)
-    /// secret key type, with the given secret key.
-    pub fn new(username: &str, address: Addr, sk: Secp256k1) -> anyhow::Result<Self> {
+impl<S> SingleSigner<S, Undefined<Nonce>>
+where
+    S: Secret,
+{
+    /// Create a new `SingleSigner` with the given secret key.
+    pub fn new(username: &str, address: Addr, secret: S) -> anyhow::Result<Self> {
         let username = Username::from_str(username)?;
-        let key = Key::Secp256k1(ByteArray::from_inner(sk.public_key()));
-        let key_hash = sk.public_key().hash256();
 
         Ok(Self {
             username,
             address,
-            key,
-            key_hash,
             nonce: Undefined::new(),
-            sk,
+            secret,
         })
-    }
-
-    /// Create a new `SingleSinger` of the [`Secp256k1`](dango_client::Secp256k1)
-    /// secret key type, with a random secret key.
-    pub fn new_random(username: &str, address: Addr) -> anyhow::Result<Self> {
-        Self::new(username, address, SigningKey::new_random())
-    }
-
-    /// Create a new `SingleSinger` of the [`Secp256k1`](dango_client::Secp256k1)
-    /// secret key type, with the given raw private key.
-    pub fn from_private_key(username: &str, address: Addr, key: [u8; 32]) -> anyhow::Result<Self> {
-        Self::new(username, address, SigningKey::from_bytes(key)?)
-    }
-
-    /// Create a new `SingleSinger` of the [`Secp256k1`](dango_client::Secp256k1)
-    /// secret key type, with the given BIP-39 mnemonic phrase and BIP-44 coin type.
-    pub fn from_mnemonic(
-        username: &str,
-        address: Addr,
-        mnemonic: &str,
-        coin_type: usize,
-    ) -> anyhow::Result<Self> {
-        let mnemonic = Mnemonic::new(mnemonic, Language::English)?;
-        let sk = SigningKey::from_mnemonic(&mnemonic, coin_type)?;
-
-        Self::new(username, address, sk)
     }
 }
 
@@ -120,10 +77,8 @@ where
         SingleSigner {
             username: self.username,
             address: self.address,
-            key: self.key,
-            key_hash: self.key_hash,
             nonce: Defined::new(nonce),
-            sk: self.sk,
+            secret: self.secret,
         }
     }
 
@@ -131,7 +86,7 @@ where
     pub async fn with_query_nonce<C>(
         self,
         client: &C,
-    ) -> anyhow::Result<SingleSigner<Defined<Nonce>>>
+    ) -> anyhow::Result<SingleSigner<S, Defined<Nonce>>>
     where
         C: QueryClient,
         anyhow::Error: From<C::Error>,
@@ -141,10 +96,8 @@ where
         Ok(SingleSigner {
             username: self.username,
             address: self.address,
-            key: self.key,
-            key_hash: self.key_hash,
             nonce: Defined::new(nonce),
-            sk: self.sk,
+            secret: self.secret,
         })
     }
 }
@@ -159,7 +112,10 @@ where
     }
 }
 
-impl<S> Signer for SingleSigner<S, Defined<Nonce>> {
+impl<S> Signer for SingleSigner<S, Defined<Nonce>>
+where
+    S: Secret,
+{
     fn unsigned_transaction(
         &self,
         msgs: NonEmpty<Vec<Message>>,
@@ -201,50 +157,13 @@ impl<S> Signer for SingleSigner<S, Defined<Nonce>> {
             data: metadata.clone(),
         };
 
-        let credential = match self.key {
-            Key::Secp256k1(_) => {
-                let sign_data = sign_doc.to_sign_data()?;
-
-                Credential::Standard(StandardCredential {
-                    key_hash: self.key_hash,
-                    signature: Signature::Secp256k1(self.sk.sign_digest(sign_data.into()).into()),
-                })
-            },
-            Key::Ethereum(_) => {
-                let verifying_contract =
-                    Some(U160::from_be_bytes(sign_doc.sender.into_inner()).into());
-
-                let message = sign_doc.to_json_value()?;
-
-                // EIP-712 hash used in the signature.
-                let data = TypedData {
-                    resolver: json!({"Message":[]}).deserialize_json()?,
-                    domain: Eip712Domain {
-                        name: Some("dango".into()),
-                        chain_id: Some(EIP155_CHAIN_ID),
-                        verifying_contract,
-                        ..Default::default()
-                    },
-                    primary_type: "Message".to_string(),
-                    message: message.into_inner(),
-                };
-
-                let sign_bytes = data
-                    .eip712_signing_hash()
-                    .map_err(|err| StdError::host(err.to_string()))?;
-
-                let sig = self.sk.sign_digest_with_recovery_id(sign_bytes.0);
-
-                Credential::Standard(StandardCredential {
-                    key_hash: self.key_hash,
-                    signature: Signature::Eip712(Eip712Signature {
-                        typed_data: data.to_json_vec()?.into(),
-                        sig: sig.into(),
-                    }),
-                })
-            },
-            _ => todo!(),
-        };
+        let credential = Credential::Standard(StandardCredential {
+            key_hash: self.secret.key_hash(),
+            signature: self
+                .secret
+                .sign_transaction(sign_doc)
+                .map_err(|err| StdError::host(err.to_string()))?, // TODO: better handle this error
+        });
 
         Ok(Tx {
             sender: self.address,
@@ -288,6 +207,7 @@ where
 mod tests {
     use {
         super::*,
+        crate::{Eip712, Secp256k1},
         dango_account_factory::{ACCOUNTS_BY_USER, KEYS},
         dango_auth::authenticate_tx,
         dango_types::config::{AppAddresses, AppConfig},
@@ -301,10 +221,9 @@ mod tests {
         let nonce = 0;
         let account_factory = Addr::mock(1);
 
-        let mut signer =
-            SingleSigner::new_random(username.as_ref(), address, CredentialType::Secp256k1)
-                .unwrap()
-                .with_nonce(nonce);
+        let mut signer = SingleSigner::new(username.as_ref(), address, Secp256k1::new_random())
+            .unwrap()
+            .with_nonce(nonce);
 
         let tx = signer
             .sign_transaction(
@@ -322,8 +241,12 @@ mod tests {
                 ACCOUNTS_BY_USER
                     .insert(storage, (&username, address))
                     .unwrap();
-                KEYS.save(storage, (&username, signer.key_hash), &signer.key)
-                    .unwrap();
+                KEYS.save(
+                    storage,
+                    (&username, signer.secret.key_hash()),
+                    &signer.secret.key(),
+                )
+                .unwrap();
             })
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -351,10 +274,9 @@ mod tests {
         let nonce = 0;
         let account_factory = Addr::mock(1);
 
-        let mut signer =
-            SingleSigner::new_random(username.as_ref(), address, CredentialType::Ethereum)
-                .unwrap()
-                .with_nonce(nonce);
+        let mut signer = SingleSigner::new(username.as_ref(), address, Eip712::new_random())
+            .unwrap()
+            .with_nonce(nonce);
 
         let tx = signer
             .sign_transaction(
@@ -372,8 +294,12 @@ mod tests {
                 ACCOUNTS_BY_USER
                     .insert(storage, (&username, address))
                     .unwrap();
-                KEYS.save(storage, (&username, signer.key_hash), &signer.key)
-                    .unwrap();
+                KEYS.save(
+                    storage,
+                    (&username, signer.secret.key_hash()),
+                    &signer.secret.key(),
+                )
+                .unwrap();
             })
             .with_app_config(AppConfig {
                 addresses: AppAddresses {
@@ -400,10 +326,9 @@ mod tests {
         let username = Username::from_str("owner").unwrap();
         let address = Addr::from_str("0x33361de42571d6aa20c37daa6da4b5ab67bfaad9").unwrap();
 
-        let signer =
-            SingleSigner::new_random(username.as_ref(), address, CredentialType::Secp256k1)
-                .unwrap()
-                .with_nonce(1);
+        let signer = SingleSigner::new(username.as_ref(), address, Secp256k1::new_random())
+            .unwrap()
+            .with_nonce(1);
 
         let tx = signer
             .unsigned_transaction(

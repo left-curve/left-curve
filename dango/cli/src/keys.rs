@@ -4,7 +4,7 @@ use {
     bip32::{Language, Mnemonic},
     clap::Subcommand,
     colored::Colorize,
-    dango_client::{Keystore, SigningKey},
+    dango_client::{Keystore, Secp256k1, Secret},
     grug_types::JsonDeExt,
     rand::rngs::OsRng,
     std::{
@@ -84,8 +84,8 @@ fn add(dir: &Path, name: &str, recover: bool, coin_type: usize) -> anyhow::Resul
     let password = read_password(
         format!("🔑 Enter a password to encrypt the keystore `{filename:?}`").bold(),
     )?;
-    let sk = SigningKey::from_mnemonic(&mnemonic, coin_type)?;
-    let keystore = sk.write_to_file(&filename, password)?;
+    let sk = Secp256k1::from_mnemonic(&mnemonic, coin_type)?;
+    let keystore = Keystore::write_to_file(&sk, &filename, password)?;
 
     println!();
     print_json_pretty(keystore)?;
