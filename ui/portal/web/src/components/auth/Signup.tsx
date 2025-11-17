@@ -503,7 +503,7 @@ export const Fund: React.FC = () => {
           salt,
         });
 
-        const response = await fetch(`${window.dango.urls.faucetUrl}/mint/${address}`);
+        const response = await fetch(`${window.dango.urls.faucetUrl}/${address}`);
         if (!response.ok) throw new Error(m["signup.errors.failedSendingFunds"]());
 
         nextStep();

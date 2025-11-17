@@ -1,7 +1,7 @@
-#[cfg(feature = "metrics")]
-use grug_types::MetricsIterExt;
 #[cfg(feature = "tracing")]
 use uuid::Uuid;
+#[cfg(feature = "metrics")]
+use {crate::statistics, grug_types::MetricsIterExt};
 use {
     crate::{DbError, DbResult},
     grug_app::{Commitment, Db},
@@ -70,6 +70,9 @@ pub struct DiskDb<T> {
     pending: Arc<RwLock<Option<PendingData>>>,
     /// The commitment scheme.
     _commitment: PhantomData<T>,
+    /// Worker for emitting RocksDB statistics.
+    #[cfg(feature = "metrics")]
+    _statistics: Arc<statistics::StatisticsWorker>,
 }
 
 #[derive(Debug)]
@@ -113,7 +116,8 @@ impl<T> DiskDb<T> {
         P: AsRef<Path>,
         B: AsRef<[u8]>,
     {
-        let db = DB::open_cf(&new_db_options(), data_dir, [
+        let opts = new_db_options();
+        let db = DB::open_cf(&opts, data_dir, [
             CF_NAME_DEFAULT,
             #[cfg(feature = "ibc")]
             CF_NAME_PREIMAGES,
@@ -156,10 +160,17 @@ impl<T> DiskDb<T> {
             }
         });
 
+        let data = Arc::new(RwLock::new(Data { db, priority_data }));
+
+        #[cfg(feature = "metrics")]
+        let handle = statistics::StatisticsWorker::run(opts, Arc::clone(&data));
+
         Ok(Self {
-            data: Arc::new(RwLock::new(Data { db, priority_data })),
+            data,
             pending: Arc::new(RwLock::new(None)),
             _commitment: PhantomData,
+            #[cfg(feature = "metrics")]
+            _statistics: Arc::new(handle),
         })
     }
 }
@@ -167,9 +178,11 @@ impl<T> DiskDb<T> {
 impl<T> Clone for DiskDb<T> {
     fn clone(&self) -> Self {
         Self {
-            data: self.data.clone(),
-            pending: self.pending.clone(),
+            data: Arc::clone(&self.data),
+            pending: Arc::clone(&self.pending),
             _commitment: PhantomData,
+            #[cfg(feature = "metrics")]
+            _statistics: Arc::clone(&self._statistics),
         }
     }
 }
@@ -213,7 +226,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 uuid,
                 comment = "latest_version",
@@ -226,7 +239,7 @@ where
 
             #[cfg(feature = "tracing")]
             {
-                tracing::warn!(
+                tracing::debug!(
                     kind = "read",
                     uuid,
                     comment = "latest_version",
@@ -250,7 +263,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 uuid,
                 comment = "latest_version",
@@ -337,14 +350,14 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "write", comment = "commit", "Locking data");
+            tracing::debug!(kind = "write", comment = "commit", "Locking data");
         }
 
         let mut data = self.data.write();
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "write", comment = "commit", "Locked data");
+            tracing::debug!(kind = "write", comment = "commit", "Locked data");
         }
 
         // If priority data exists, apply the change set to it.
@@ -408,7 +421,7 @@ where
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "write", comment = "commit", "Unlocked data");
+            tracing::debug!(kind = "write", comment = "commit", "Unlocked data");
         }
 
         #[cfg(feature = "metrics")]
@@ -482,7 +495,7 @@ impl StateCommitment {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 comment = "state_commitment",
                 uuid,
@@ -494,7 +507,7 @@ impl StateCommitment {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 comment = "state_commitment",
                 uuid,
@@ -520,7 +533,7 @@ impl Clone for StateCommitment {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 comment = "state_commitment",
                 strong_count = Arc::strong_count(&self.guard),
@@ -541,7 +554,7 @@ impl Clone for StateCommitment {
 #[cfg(feature = "tracing")]
 impl Drop for StateCommitment {
     fn drop(&mut self) {
-        tracing::warn!(
+        tracing::debug!(
             kind = "read",
             comment = "state_commitment",
             strong_count = Arc::strong_count(&self.guard),
@@ -652,14 +665,14 @@ impl StateStorage {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "read", uuid, comment, "Locking data");
+            tracing::debug!(kind = "read", uuid, comment, "Locking data");
         }
 
         let guard = data.read_arc();
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(kind = "read", uuid, comment, "Locked data");
+            tracing::debug!(kind = "read", uuid, comment, "Locked data");
         }
 
         Self {
@@ -681,7 +694,7 @@ impl Clone for StateStorage {
 
         #[cfg(feature = "tracing")]
         {
-            tracing::warn!(
+            tracing::debug!(
                 kind = "read",
                 comment = self.comment,
                 strong_count = Arc::strong_count(&self.guard),
@@ -703,7 +716,7 @@ impl Clone for StateStorage {
 #[cfg(feature = "tracing")]
 impl Drop for StateStorage {
     fn drop(&mut self) {
-        tracing::warn!(
+        tracing::debug!(
             kind = "read",
             comment = self.comment,
             strong_count = Arc::strong_count(&self.guard),

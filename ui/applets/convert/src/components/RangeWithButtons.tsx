@@ -30,9 +30,9 @@ export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) =>
       <div className="w-full flex gap-4 justify-end">
         <Button
           type="button"
-          variant="secondary"
+          variant="tertiary-red"
           size="xs"
-          className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+          className="py-[2px] px-[6px]"
           onClick={() => {
             setActiveInput();
             setValue(String(Number(balance) * 0.25));
@@ -42,9 +42,9 @@ export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) =>
         </Button>{" "}
         <Button
           type="button"
-          variant="secondary"
+          variant="tertiary-red"
           size="xs"
-          className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+          className="py-[2px] px-[6px]"
           onClick={() => {
             setActiveInput();
             setValue(String(Number(balance) * 0.5));
@@ -54,9 +54,21 @@ export const RangeWithButtons: React.FC<RangeWithButtonsProps> = (parameters) =>
         </Button>{" "}
         <Button
           type="button"
-          variant="secondary"
+          variant="tertiary-red"
           size="xs"
-          className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+          className="py-[2px] px-[6px]"
+          onClick={() => {
+            setActiveInput();
+            setValue(String(Number(balance) * 0.75));
+          }}
+        >
+          75%
+        </Button>{" "}
+        <Button
+          type="button"
+          variant="tertiary-red"
+          size="xs"
+          className="py-[2px] px-[6px]"
           onClick={() => {
             setActiveInput();
             setValue(balance);
