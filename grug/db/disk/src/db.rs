@@ -801,14 +801,13 @@ impl Storage for StateStorage {
             let iter = data.records.scan(Some(min), Some(max), order);
 
             #[cfg(feature = "metrics")]
-            let iter = iter.with_metrics(DISK_DB_LABEL, [
-                ("operation", "next"),
-                ("comment", self.comment),
-                ("source", PRIORITY_DATA_LABEL),
-            ]);
-
-            #[cfg(feature = "metrics")]
             {
+                let iter = iter.with_metrics(DISK_DB_LABEL, [
+                    ("operation", "next"),
+                    ("comment", self.comment),
+                    ("source", PRIORITY_DATA_LABEL),
+                ]);
+
                 metrics::histogram!(
                     DISK_DB_LABEL,
                     "operation" => "scan",
@@ -816,9 +815,12 @@ impl Storage for StateStorage {
                     "source" => PRIORITY_DATA_LABEL
                 )
                 .record(duration.elapsed().as_secs_f64());
+
+                return Box::new(iter);
             }
 
-            return Box::new(iter);
+            #[cfg(not(feature = "metrics"))]
+            return iter;
         }
 
         let opts = new_read_options(min, max);
