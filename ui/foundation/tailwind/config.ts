@@ -10,6 +10,10 @@ export const tailwindConfig: Partial<Config> = {
   ],
   theme: {
     extend: {
+      screens: {
+        "3xl": "142rem",
+        "4xl": "160rem",
+      },
       colors: {
         brand: {
           black: "#302723",

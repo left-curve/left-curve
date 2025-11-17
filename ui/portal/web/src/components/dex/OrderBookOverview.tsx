@@ -27,22 +27,30 @@ type OrderBookOverviewProps = {
 export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, controllers }) => {
   const [activeTab, setActiveTab] = useState<"order book" | "trades" | "graph">("graph");
 
-  const { isLg } = useMediaQuery();
+  const { isLg, is3Xl } = useMediaQuery();
 
   useEffect(() => {
     setActiveTab(isLg ? "order book" : "graph");
   }, [isLg]);
 
+  const tabsKeys = useMemo(() => {
+    if (is3Xl) {
+      setActiveTab("order book");
+      return ["order book"];
+    }
+    return isLg ? ["order book", "trades"] : ["graph", "order book", "trades"];
+  }, [isLg, is3Xl]);
+
   return (
     <ResizerContainer
       layoutId="order-book-section"
-      className="overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[36.6875rem] h-full"
+      className="overflow-hidden z-10 relative p-0 shadow-account-card bg-surface-primary-rice flex flex-col gap-2 w-full xl:[width:clamp(279px,20vw,330px)] min-h-[27.25rem] lg:min-h-[36.6875rem] 3xl:min-h-[51.6875rem] 4xl:3xl:min-h-[61.6875rem] h-full"
     >
       <Tabs
         color="line-red"
         layoutId="tabs-order-history"
         selectedTab={activeTab}
-        keys={isLg ? ["order book", "trades"] : ["graph", "order book", "trades"]}
+        keys={tabsKeys}
         fullWidth
         onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
         classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
@@ -55,6 +63,20 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
         <>
           {activeTab === "order book" && <OrderBook state={state} controllers={controllers} />}
           {activeTab === "trades" && <LiveTrades state={state} controllers={controllers} />}
+        </>
+      )}
+      {is3Xl && (
+        <>
+          <Tabs
+            color="line-red"
+            layoutId="tabs-order-history-2"
+            selectedTab={"trades"}
+            keys={["trades"]}
+            fullWidth
+            onTabChange={(tab) => setActiveTab(tab as "order book" | "trades")}
+            classNames={{ button: "exposure-xs-italic", base: "px-4 pt-4" }}
+          />
+          <LiveTrades state={state} controllers={controllers} />
         </>
       )}
       <Subscription pairId={state.pairId} />
@@ -181,7 +203,7 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const trades = liveTradesStore((s) => s.trades);
 
   return (
-    <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[43rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4">
+    <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[43rem] 2xl:max-h-[15rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4">
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
