@@ -1,12 +1,15 @@
 use {
     crate::{Context, cache_file::CacheFile, indexer_path::IndexerPath},
-    grug_types::{BlockAndBlockOutcomeWithHttpDetails, Hash256, HttpRequestDetails},
+    grug_types::BlockAndBlockOutcomeWithHttpDetails,
     std::{
         collections::HashMap,
         path::PathBuf,
         sync::{Arc, Mutex},
     },
 };
+
+#[cfg(feature = "http-request-details")]
+use grug_types::{Hash256, HttpRequestDetails};
 
 #[derive(Default)]
 pub struct Cache {
