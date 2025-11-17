@@ -176,7 +176,7 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { settings } = useApp();
   const { timeFormat } = settings;
   const { baseCoin, quoteCoin, pairId } = state;
-  const { liveTradesStore } = useLiveTradesState({ pairId, subscribe: true });
+  const { liveTradesStore } = useLiveTradesState({ pairId });
 
   const trades = liveTradesStore((s) => s.trades);
 
@@ -350,5 +350,6 @@ type SubscriptionProps = {
 };
 const Subscription: React.FC<SubscriptionProps> = ({ pairId }) => {
   useOrderBookState({ pairId, subscribe: true });
+  useLiveTradesState({ pairId, subscribe: true });
   return null;
 };
