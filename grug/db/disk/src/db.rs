@@ -36,6 +36,10 @@ pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 #[cfg(feature = "metrics")]
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
+pub const PRIORITY_DATA_LABEL: &str = "priority_data";
+
+pub const ROCKSDB_LABEL: &str = "rocksdb";
+
 /// The base storage primitive.
 ///
 /// Its main feature is the separation of state storage (SS) and state commitment
@@ -734,24 +738,27 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the disk.
         // Note: `min` is inclusive, while `max` is exclusive.
-        if let Some(data) = &self.guard.priority_data {
-            if data.min.as_slice() <= key && key < data.max.as_slice() {
-                return data.records.get(key).cloned();
-            }
-        }
-
-        let opts = new_read_options(None, None);
-        let value = self
-            .guard
-            .db
-            .get_cf_opt(&cf_state_storage(&self.guard.db), key, &opts)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from state storage: {err}");
-            });
+        let (value, _source) = if let Some(data) = &self.guard.priority_data
+            && data.min.as_slice() <= key
+            && key < data.max.as_slice()
+        {
+            (data.records.get(key).cloned(), PRIORITY_DATA_LABEL)
+        } else {
+            let opts = new_read_options(None, None);
+            (
+                self.guard
+                    .db
+                    .get_cf_opt(&cf_state_storage(&self.guard.db), key, &opts)
+                    .unwrap_or_else(|err| {
+                        panic!("failed to read from state storage: {err}");
+                    }),
+                ROCKSDB_LABEL,
+            )
+        };
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "read", "comment" => self.comment)
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "read", "comment" => self.comment, "source" => _source)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -767,11 +774,11 @@ impl Storage for StateStorage {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
-        let iter = self.create_iterator(min, max, order);
+        let (iter, _source) = self.create_iterator(min, max, order);
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan", "comment" => self.comment)
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan", "comment" => self.comment, "source" => _source)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -787,11 +794,12 @@ impl Storage for StateStorage {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
-        let iter = self.create_iterator(min, max, order).map(|(k, _)| k);
+        let (iter, _source) = self.create_iterator(min, max, order);
+        let iter = iter.map(|(k, _)| k);
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_keys", "comment" => self.comment)
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_keys", "comment" => self.comment, "source" => _source)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -807,11 +815,13 @@ impl Storage for StateStorage {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
-        let iter = self.create_iterator(min, max, order).map(|(_, v)| v);
+        let (iter, _source) = self.create_iterator(min, max, order);
+
+        let iter = iter.map(|(_, v)| v);
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_values", "comment" => self.comment)
+            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_values", "comment" => self.comment, "source" => _source)
                 .record(duration.elapsed().as_secs_f64());
         }
 
@@ -837,14 +847,23 @@ impl StateStorage {
         min: Option<&[u8]>,
         max: Option<&[u8]>,
         order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+    ) -> (Box<dyn Iterator<Item = Record> + 'a>, &'static str) {
         // If priority data exists, and the iterator range completely falls
         // within the priority range, then create a priority iterator.
         // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
         // are both exclusive.
         if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max) {
             if data.min.as_slice() <= min && max <= data.max.as_slice() {
-                return data.records.scan(Some(min), Some(max), order);
+                let iter = data.records.scan(Some(min), Some(max), order);
+
+                #[cfg(feature = "metrics")]
+                let iter = iter.with_metrics(DISK_DB_LABEL, [
+                    ("operation", "next"),
+                    ("comment", self.comment),
+                    ("source", PRIORITY_DATA_LABEL),
+                ]);
+
+                return (Box::new(iter), PRIORITY_DATA_LABEL);
             }
         }
 
@@ -865,9 +884,10 @@ impl StateStorage {
         let iter = iter.with_metrics(DISK_DB_LABEL, [
             ("operation", "next"),
             ("comment", self.comment),
+            ("source", ROCKSDB_LABEL),
         ]);
 
-        Box::new(iter)
+        (Box::new(iter), ROCKSDB_LABEL)
     }
 }
 
