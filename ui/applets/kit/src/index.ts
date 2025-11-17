@@ -1,6 +1,8 @@
 export * from "@left-curve/foundation";
 export * from "./components";
 
+export { privy } from "./connectors/privy";
+
 export { useClickAway } from "./hooks/useClickAway";
 export { useDOMRef } from "./hooks/useDOMRef";
 export { useHasMounted } from "./hooks/useHasMounted";

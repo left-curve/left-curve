@@ -2,6 +2,7 @@ import { createTransport } from "@left-curve/sdk";
 import { UrlRequiredError, createBatchScheduler, wait } from "@left-curve/sdk/utils";
 import { createClient } from "graphql-ws";
 import { graphqlClient } from "../http/graphqlClient.js";
+import { EventEmitter } from "eventemitter3";
 
 import type {
   CometBftRpcSchema,
@@ -67,7 +68,7 @@ export function graphql(
     const timeout = _timeout_ ?? 10_000;
 
     const wsClientStatus = { isConnected: false };
-    const wsStatusEmitter = new EventTarget();
+    const wsStatusEmitter = new EventEmitter();
 
     const wsClient = createClient({
       url,
@@ -80,12 +81,12 @@ export function graphql(
 
     wsClient.on("connected", () => {
       wsClientStatus.isConnected = true;
-      wsStatusEmitter.dispatchEvent(new Event("connected"));
+      wsStatusEmitter.emit("connected");
     });
 
     wsClient.on("closed", () => {
       wsClientStatus.isConnected = false;
-      wsStatusEmitter.dispatchEvent(new Event("closed"));
+      wsStatusEmitter.emit("closed");
     });
 
     const client = graphqlClient(url, {

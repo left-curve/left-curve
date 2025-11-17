@@ -88,6 +88,7 @@
   },
   "dependencies": {
     "@left-curve/sdk": "workspace:^",
+    "eventemitter3": "catalog:",
     "graphql": "^16.10.0"
   },
   "peerDependencies": {

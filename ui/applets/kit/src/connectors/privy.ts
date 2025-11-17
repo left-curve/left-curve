@@ -3,9 +3,8 @@ import { decodeHex, encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding"
 import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango";
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
 
-import { createConnector } from "./createConnector.js";
 import { composeArbitraryTypedData } from "@left-curve/dango/utils";
-import { createStorage } from "../storages/createStorage.js";
+import { createConnector, createStorage } from "@left-curve/store";
 
 import Privy, {
   getEntropyDetailsFromUser,
@@ -14,8 +13,7 @@ import Privy, {
 
 import type { Eip712Signature } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
-import type { EIP1193Provider } from "../types/eip1193.js";
-import type { AbstractStorage } from "../types/storage.js";
+import type { AbstractStorage, EIP1193Provider } from "@left-curve/store/types";
 
 const ETHEREUM_HEX_CHAIN_ID = "0x1";
 
