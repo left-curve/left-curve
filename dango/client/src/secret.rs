@@ -61,7 +61,7 @@ pub trait Secret: Sized {
 
 /// An Secp256k1 private key.
 pub struct Secp256k1 {
-    pub(crate) inner: k256::ecdsa::SigningKey,
+    inner: k256::ecdsa::SigningKey,
 }
 
 impl Secret for Secp256k1 {
