@@ -203,6 +203,7 @@ pub struct Indexer {
     // as I understand it doesn't clone `App` in a way it'd raise concern.
     pub indexing: bool,
     // Add unique ID field, used for debugging and tracing
+    #[cfg(feature = "tracing")]
     id: u64,
 }
 
