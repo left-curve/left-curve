@@ -1,0 +1,13 @@
+set positional-arguments
+
+# List available recipes
+default:
+  @just --list
+
+docker-build-builder-images:
+  docker buildx bake --push
+
+  # Combine the two into a manifest
+  docker buildx imagetools create -t ghcr.io/left-curve/left-curve/native-builder:latest \
+    ghcr.io/left-curve/left-curve/native-builder:amd64 \
+    ghcr.io/left-curve/left-curve/native-builder:arm64
