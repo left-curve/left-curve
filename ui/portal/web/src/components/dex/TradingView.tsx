@@ -105,14 +105,12 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
 
     const saveFn = () => widget.save(setChartState);
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        widget.resetCache();
-        widget.chart().resetData();
-      }
+    const invalidateCandles = () => {
+      widget.resetCache();
+      widget.chart().resetData();
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    publicClient.subscribe?.emitter?.addEventListener("connected", invalidateCandles);
 
     widget.onChartReady(() => {
       widgetRef.current = widget;
@@ -127,7 +125,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
       });
     });
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      publicClient.subscribe?.emitter?.removeEventListener("connected", invalidateCandles);
       widgetRef.current?.remove();
       widgetRef.current = null;
     };

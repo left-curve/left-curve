@@ -67,6 +67,7 @@ export function graphql(
     const timeout = _timeout_ ?? 10_000;
 
     const wsClientStatus = { isConnected: false };
+    const wsStatusEmitter = new EventTarget();
 
     const wsClient = createClient({
       url,
@@ -79,10 +80,12 @@ export function graphql(
 
     wsClient.on("connected", () => {
       wsClientStatus.isConnected = true;
+      wsStatusEmitter.dispatchEvent(new Event("connected"));
     });
 
     wsClient.on("closed", () => {
       wsClientStatus.isConnected = false;
+      wsStatusEmitter.dispatchEvent(new Event("closed"));
     });
 
     const client = graphqlClient(url, {
@@ -131,6 +134,7 @@ export function graphql(
     };
 
     subscribe.getClientStatus = () => wsClientStatus;
+    subscribe.emitter = wsStatusEmitter;
 
     return createTransport<"http-graphql">({
       type: "http-graphql",
