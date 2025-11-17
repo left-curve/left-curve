@@ -1,6 +1,7 @@
 #[cfg(feature = "metrics")]
 use metrics::counter;
-use sea_orm::TransactionTrait;
+#[cfg(feature = "tracing")]
+use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "metrics")]
 use std::time::Instant;
 
@@ -18,14 +19,8 @@ use {
         Undefined,
     },
     itertools::Itertools,
-    sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter},
-    std::{
-        future::Future,
-        sync::{
-            Arc,
-            atomic::{AtomicU64, Ordering},
-        },
-    },
+    sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
+    std::{future::Future, sync::Arc},
     tokio::runtime::{Builder, Handle, Runtime},
 };
 
@@ -185,6 +180,7 @@ where
 // ----------------------------- NonBlockingIndexer ----------------------------
 
 // Add a global counter for unique IDs
+#[cfg(feature = "tracing")]
 static INDEXER_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// Because I'm using `.spawn` in this implementation, I ran into lifetime issues where I need the
