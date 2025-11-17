@@ -1,8 +1,8 @@
 use {
     crate::{
-        APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, CONTRACT_NAMESPACE, CONTRACTS,
-        GasTracker, LAST_FINALIZED_BLOCK, MeteredItem, MeteredMap, MeteredStorage, NEXT_UPGRADE,
-        PAST_UPGRADES, StorageProvider, Vm, call_in_1_out_1,
+        AppError, AppResult, CODES, CONTRACT_NAMESPACE, CONTRACTS, GasTracker,
+        LAST_FINALIZED_BLOCK, MeteredItem, MeteredMap, MeteredStorage, NEXT_UPGRADE, PAST_UPGRADES,
+        StorageProvider, Vm, call_in_1_out_1,
     },
     grug_types::{
         Addr, BankQuery, BankQueryResponse, Binary, BlockInfo, Bound, Code, Coin, Coins, Config,
@@ -18,22 +18,14 @@ use {
 pub fn query_status(
     storage: &dyn Storage,
     gas_tracker: GasTracker,
+    chain_id: String,
 ) -> StdResult<QueryStatusResponse> {
-    let chain_id = CHAIN_ID.load_with_gas(storage, gas_tracker.clone())?;
     let last_finalized_block = LAST_FINALIZED_BLOCK.load_with_gas(storage, gas_tracker)?;
 
     Ok(QueryStatusResponse {
         chain_id,
         last_finalized_block,
     })
-}
-
-pub fn query_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<Config> {
-    CONFIG.load_with_gas(storage, gas_tracker)
-}
-
-pub fn query_app_config(storage: &dyn Storage, gas_tracker: GasTracker) -> StdResult<Json> {
-    APP_CONFIG.load_with_gas(storage, gas_tracker)
 }
 
 pub fn query_next_upgrade(
@@ -62,6 +54,9 @@ pub fn query_balance<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: Config,
+    app_cfg: Json,
     query_depth: usize,
     req: QueryBalanceRequest,
 ) -> AppResult<Coin>
@@ -74,6 +69,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         query_depth,
         &BankQuery::Balance(req),
     )
@@ -85,6 +83,9 @@ pub fn query_balances<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: Config,
+    app_cfg: Json,
     query_depth: usize,
     req: QueryBalancesRequest,
 ) -> AppResult<Coins>
@@ -97,6 +98,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         query_depth,
         &BankQuery::Balances(req),
     )
@@ -108,6 +112,9 @@ pub fn query_supply<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: Config,
+    app_cfg: Json,
     query_depth: usize,
     req: QuerySupplyRequest,
 ) -> AppResult<Coin>
@@ -120,6 +127,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         query_depth,
         &BankQuery::Supply(req),
     )
@@ -131,6 +141,9 @@ pub fn query_supplies<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: Config,
+    app_cfg: Json,
     query_depth: usize,
     req: QuerySuppliesRequest,
 ) -> AppResult<Coins>
@@ -143,6 +156,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         query_depth,
         &BankQuery::Supplies(req),
     )
@@ -154,6 +170,9 @@ fn _query_bank<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: Config,
+    app_cfg: Json,
     query_depth: usize,
     msg: &BankQuery,
 ) -> AppResult<BankQueryResponse>
@@ -161,8 +180,6 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    let cfg = CONFIG.load(&storage)?;
-    let chain_id = CHAIN_ID.load(&storage)?;
     let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
 
     let ctx = Context {
@@ -178,6 +195,8 @@ where
         vm,
         storage,
         gas_tracker,
+        cfg,
+        app_cfg,
         query_depth,
         false,
         "bank_query",
@@ -272,6 +291,9 @@ pub fn query_wasm_smart<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: Config,
+    app_cfg: Json,
     query_depth: usize,
     req: QueryWasmSmartRequest,
 ) -> AppResult<Json>
@@ -279,7 +301,6 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    let chain_id = CHAIN_ID.load(&storage)?;
     let code_hash = CONTRACTS.load(&storage, req.contract)?.code_hash;
 
     let ctx = Context {
@@ -295,6 +316,8 @@ where
         vm,
         storage,
         gas_tracker,
+        cfg,
+        app_cfg,
         query_depth,
         false,
         "query",

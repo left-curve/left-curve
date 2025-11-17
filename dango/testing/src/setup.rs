@@ -10,8 +10,8 @@ use {
         warp,
     },
     grug::{
-        Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, Message, TendermintRpcClient,
-        Uint128,
+        Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, JsonSerExt, Message,
+        TendermintRpcClient, Uint128,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
     grug_db_disk::DiskDb,
@@ -366,7 +366,7 @@ where
     let local_domain = genesis_opt.hyperlane.local_domain;
 
     // Build the genesis state.
-    let (mut genesis_state, contracts, addresses) =
+    let (mut genesis_state, cfg, app_cfg, contracts, addresses) =
         build_genesis(codes.clone(), genesis_opt).unwrap();
 
     // Create the test accounts.
@@ -404,7 +404,7 @@ where
     for op in (test_opt.bridge_ops)(&accounts) {
         match op.remote {
             Remote::Warp { domain, contract } => {
-                genesis_state.msgs.push(build_genesis_warp_msg(
+                genesis_state.push(build_genesis_warp_msg(
                     &contracts,
                     &validator_sets,
                     domain,
@@ -425,8 +425,10 @@ where
         vm,
         pp,
         indexer,
-        None, // TODO: support customizing upgrade handler in tests
         test_opt.chain_id,
+        cfg,
+        app_cfg.to_json_value().unwrap(),
+        None, // TODO: support customizing upgrade handler in tests
         test_opt.block_time,
         test_opt.default_gas_limit,
         test_opt.genesis_block,

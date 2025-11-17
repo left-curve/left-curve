@@ -9,8 +9,8 @@ use {
     },
     grug::{
         Addr, Binary, Coins, Config, Duration, GENESIS_SENDER, GenesisState, Hash256, HashExt,
-        IsZero, JsonSerExt, Message, Permission, Permissions, ResultExt, StdResult, btree_map,
-        btree_set, coins,
+        IsZero, Message, Permission, Permissions, ResultExt, StdResult, btree_map, btree_set,
+        coins,
     },
     hyperlane_types::{isms, mailbox, va},
     serde::Serialize,
@@ -21,7 +21,7 @@ use {
 pub fn build_genesis<T>(
     codes: Codes<T>,
     opt: GenesisOption,
-) -> anyhow::Result<(GenesisState, Contracts, Addresses)>
+) -> anyhow::Result<(GenesisState, Config, AppConfig, Contracts, Addresses)>
 where
     T: Into<Binary>,
 {
@@ -314,13 +314,7 @@ where
         ..Default::default()
     };
 
-    let genesis_state = GenesisState {
-        config,
-        msgs,
-        app_config: app_config.to_json_value()?,
-    };
-
-    Ok((genesis_state, contracts, addresses))
+    Ok((msgs, config, app_config, contracts, addresses))
 }
 
 fn upload<B>(msgs: &mut Vec<Message>, code: B) -> Hash256

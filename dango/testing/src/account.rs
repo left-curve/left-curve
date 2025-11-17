@@ -257,8 +257,6 @@ where
         ID: Indexer,
         AppError: From<PP::Error> + From<DB::Error> + From<VM::Error>,
     {
-        let chain_id = test_suite.chain_id.clone();
-
         test_suite
             .execute(
                 &mut Factory::new(factory),
@@ -271,7 +269,7 @@ where
                     signature: self
                         .sign_arbitrary(RegisterUserData {
                             username: self.username.clone(),
-                            chain_id,
+                            chain_id: test_suite.app.chain_id.clone(),
                         })
                         .unwrap(),
                 },

@@ -2,10 +2,10 @@
 use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        AppError, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
     },
-    grug_types::{AuthMode, BlockInfo, Context, EvtBackrun, Storage, Tx},
+    grug_types::{AuthMode, BlockInfo, Config, Context, EvtBackrun, Json, Storage, Tx},
 };
 
 pub fn do_backrun<VM>(
@@ -13,6 +13,9 @@ pub fn do_backrun<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     tx: &Tx,
     mode: AuthMode,
     trace_opt: TraceOption,
@@ -21,7 +24,18 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    let evt = _do_backrun(vm, storage, gas_tracker, block, tx, mode, trace_opt);
+    let evt = _do_backrun(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        chain_id,
+        cfg,
+        app_cfg,
+        tx,
+        mode,
+        trace_opt,
+    );
 
     #[cfg(feature = "tracing")]
     evt.debug(
@@ -44,6 +58,9 @@ pub fn _do_backrun<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     tx: &Tx,
     mode: AuthMode,
     trace_opt: TraceOption,
@@ -54,12 +71,10 @@ where
 {
     let mut evt = EvtBackrun::base(tx.sender);
 
-    let (code_hash, chain_id) = catch_event! {
+    let code_hash = catch_event! {
         {
-            let code_hash = CONTRACTS.load(&storage, tx.sender)?.code_hash;
-            let chain_id = CHAIN_ID.load(&storage)?;
-
-            Ok((code_hash, chain_id))
+            let contract = CONTRACTS.load(&storage, tx.sender)?;
+            Ok(contract.code_hash)
         },
         evt
     };
@@ -78,6 +93,8 @@ where
             vm,
             storage,
             gas_tracker,
+            cfg,
+            app_cfg,
             0,
             0,
             true,

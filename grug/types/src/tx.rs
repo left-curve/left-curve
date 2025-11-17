@@ -2,7 +2,7 @@
 use async_graphql::{InputValueError, InputValueResult, Scalar, ScalarType, Value};
 use {
     crate::{
-        Addr, Binary, Coins, Config, Hash256, HashExt, Json, JsonSerExt, LengthBounded, MaxLength,
+        Addr, Binary, Coins, Hash256, HashExt, Json, JsonSerExt, LengthBounded, MaxLength,
         NextUpgrade, NonEmpty, StdError, StdResult, btree_map,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -114,8 +114,6 @@ impl ScalarType for UnsignedTx {
 #[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum Message {
-    /// Update the chain- and app-level configurations.
-    Configure(MsgConfigure),
     /// Schedule a chain upgrade at a future block.
     Upgrade(MsgUpgrade),
     /// Send coins to the given recipient address.
@@ -131,17 +129,6 @@ pub enum Message {
 }
 
 impl Message {
-    pub fn configure<T>(new_cfg: Option<Config>, new_app_cfg: Option<T>) -> StdResult<Self>
-    where
-        T: Serialize,
-    {
-        Ok(MsgConfigure {
-            new_cfg,
-            new_app_cfg: new_app_cfg.map(|t| t.to_json_value()).transpose()?,
-        }
-        .into())
-    }
-
     pub fn upgrade<T, U, V>(
         height: u64,
         cargo_version: T,
@@ -246,13 +233,6 @@ impl Message {
     }
 }
 
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
-pub struct MsgConfigure {
-    pub new_cfg: Option<Config>,
-    pub new_app_cfg: Option<Json>,
-}
-
 pub type MsgUpgrade = NextUpgrade;
 
 // recipient => coins
@@ -308,7 +288,6 @@ macro_rules! impl_into_message {
 }
 
 impl_into_message! {
-    Configure   => MsgConfigure,
     Upgrade     => MsgUpgrade,
     Transfer    => MsgTransfer,
     Upload      => MsgUpload,

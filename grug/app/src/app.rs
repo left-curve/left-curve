@@ -6,28 +6,36 @@ use grug_types::JsonSerExt;
 use grug_types::{HashExt, JsonDeExt};
 use {
     crate::{
-        APP_CONFIG, AppError, AppResult, CHAIN_ID, CODES, CONFIG, Db, EventResult, GasTracker,
-        Indexer, LAST_FINALIZED_BLOCK, NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer,
-        NaiveQuerier, NullIndexer, PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl,
-        TraceOption, Vm, catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun,
-        do_configure, do_cron_execute, do_execute, do_finalize_fee, do_instantiate, do_migrate,
-        do_transfer, do_upgrade, do_upload, do_withhold_fee, query_app_config, query_balance,
-        query_balances, query_code, query_codes, query_config, query_contract, query_contracts,
-        query_next_upgrade, query_past_upgrades, query_status, query_supplies, query_supply,
-        query_wasm_raw, query_wasm_scan, query_wasm_smart,
+        AppError, AppResult, CODES, Db, EventResult, GasTracker, Indexer, LAST_FINALIZED_BLOCK,
+        NEXT_CRONJOBS, NEXT_UPGRADE, NaiveProposalPreparer, NaiveQuerier, NullIndexer,
+        PAST_UPGRADES, ProposalPreparer, QuerierProviderImpl, TraceOption, Vm,
+        catch_and_push_event, catch_and_update_event, do_authenticate, do_backrun, do_cron_execute,
+        do_execute, do_finalize_fee, do_instantiate, do_migrate, do_transfer, do_upgrade,
+        do_upload, do_withhold_fee, query_balance, query_balances, query_code, query_codes,
+        query_contract, query_contracts, query_next_upgrade, query_past_upgrades, query_status,
+        query_supplies, query_supply, query_wasm_raw, query_wasm_scan, query_wasm_smart,
     },
     grug_storage::PrefixBound,
     grug_types::{
         Addr, AuthMode, Block, BlockInfo, BlockOutcome, BorshSerExt, Buffer, CheckTxEvents,
-        CheckTxOutcome, CodeStatus, CommitmentStatus, CronOutcome, Duration, Event, EventStatus,
-        GENESIS_SENDER, GenericResult, GenericResultExt, GenesisState, Hash256, Json, Message,
-        MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse, Shared,
-        StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
+        CheckTxOutcome, CodeStatus, CommitmentStatus, Config, CronOutcome, Duration, Event,
+        EventStatus, GENESIS_SENDER, GenericResult, GenericResultExt, GenesisState, Hash256, Json,
+        Message, MsgsAndBackrunEvents, Order, Permission, QuerierWrapper, Query, QueryResponse,
+        Shared, StdResult, Storage, Timestamp, Tx, TxEvents, TxOutcome, UnsignedTx,
     },
     prost::bytes::Bytes,
 };
 
-pub type UpgradeHandler<VM> = fn(Box<dyn Storage>, VM, BlockInfo) -> AppResult<()>;
+/// The upgrade handler is a function that takes the following inputs:
+///
+/// - the state storage as a boxed `dyn Storage` object;
+/// - the VM instance;
+/// - the last finalized block;
+/// - the chain ID;
+/// - the chain's global config;
+/// - the chain's application-specific config.
+pub type UpgradeHandler<VM> =
+    fn(Box<dyn Storage>, VM, BlockInfo, String, Config, Json) -> AppResult<()>;
 
 /// The ABCI application.
 ///
@@ -39,6 +47,12 @@ pub struct App<DB, VM, PP = NaiveProposalPreparer, ID = NullIndexer> {
     vm: VM,
     pp: PP,
     pub indexer: ID,
+    /// Identifier of the chain.
+    pub chain_id: String,
+    /// Basic configurations to the Grug app.
+    pub cfg: Config,
+    /// Configurations specific to the application.
+    pub app_cfg: Json,
     /// The gas limit when serving ABCI `Query` calls.
     ///
     /// Prevents the situation where an attacker deploys a contract that
@@ -64,6 +78,9 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
         vm: VM,
         pp: PP,
         indexer: ID,
+        chain_id: String,
+        cfg: Config,
+        app_cfg: Json,
         query_gas_limit: u64,
         upgrade_handler: Option<UpgradeHandler<VM>>,
         cargo_version: V,
@@ -81,6 +98,9 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
             vm,
             pp,
             indexer,
+            chain_id,
+            cfg,
+            app_cfg,
             query_gas_limit,
             upgrade_handler,
             cargo_version: cargo_version.into(),
@@ -90,6 +110,14 @@ impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
 
 #[cfg(feature = "testing")]
 impl<DB, VM, PP, ID> App<DB, VM, PP, ID> {
+    pub fn set_cfg(&mut self, cfg: Config) {
+        self.cfg = cfg;
+    }
+
+    pub fn set_app_cfg(&mut self, app_cfg: Json) {
+        self.app_cfg = app_cfg;
+    }
+
     pub fn set_cargo_version_and_upgrade_handler<V>(
         &mut self,
         cargo_version: V,
@@ -114,6 +142,9 @@ where
             vm: self.vm.clone(),
             pp: self.pp.clone(),
             indexer: NullIndexer,
+            chain_id: self.chain_id.clone(),
+            cfg: self.cfg.clone(),
+            app_cfg: self.app_cfg.clone(),
             query_gas_limit: self.query_gas_limit,
             upgrade_handler: self.upgrade_handler,
             cargo_version: self.cargo_version.clone(),
@@ -160,16 +191,12 @@ where
         // During genesis, there is no gas limit.
         let gas_tracker = GasTracker::new_limitless();
 
-        // Save the config and genesis block, so that they can be queried when
-        // executing genesis messages.
-        CHAIN_ID.save(&mut buffer, &chain_id)?;
+        // Save the genesis block, so that it can be queried when executing genesis messages.
         LAST_FINALIZED_BLOCK.save(&mut buffer, &block)?;
-        CONFIG.save(&mut buffer, &genesis_state.config)?;
-        APP_CONFIG.save(&mut buffer, &genesis_state.app_config)?;
 
         // Schedule cronjobs.
-        for (contract, interval) in genesis_state.config.cronjobs {
-            schedule_cronjob(&mut buffer, contract, block.timestamp + interval)?;
+        for (contract, interval) in &self.cfg.cronjobs {
+            schedule_cronjob(&mut buffer, *contract, block.timestamp + *interval)?;
         }
 
         // Loop through genesis messages and execute each one.
@@ -178,7 +205,7 @@ where
         // If anyone fails, it's considered fatal and genesis is aborted.
         // The developer should examine the error, fix it, and retry.
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
-        for (_idx, msg) in genesis_state.msgs.into_iter().enumerate() {
+        for (_idx, msg) in genesis_state.into_iter().enumerate() {
             #[cfg(feature = "tracing")]
             {
                 tracing::info!(idx = _idx, "Processing genesis message");
@@ -189,6 +216,9 @@ where
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
                 block,
+                self.chain_id.clone(),
+                &self.cfg,
+                self.app_cfg.clone(),
                 0,
                 GENESIS_SENDER,
                 msg,
@@ -293,6 +323,9 @@ where
             Box::new(storage),
             GasTracker::new_limitless(),
             block,
+            self.chain_id.clone(),
+            self.cfg.clone(),
+            self.app_cfg.clone(),
         );
 
         Ok(self
@@ -394,14 +427,20 @@ where
 
                     // If executing the action errors, an error is returned in the
                     // ABCI response, which leads to a chain halt (as intended).
-                    (handler)(Box::new(buffer.clone()), self.vm.clone(), block.info).inspect_err(
-                        |_err| {
-                            #[cfg(feature = "tracing")]
-                            {
-                                tracing::error!(reason = %_err, "!!! UPGRADE FAILED !!!");
-                            }
-                        },
-                    )?;
+                    (handler)(
+                        Box::new(buffer.clone()),
+                        self.vm.clone(),
+                        block.info,
+                        self.chain_id.clone(),
+                        self.cfg.clone(),
+                        self.app_cfg.clone(),
+                    )
+                    .inspect_err(|_err| {
+                        #[cfg(feature = "tracing")]
+                        {
+                            tracing::error!(reason = %_err, "!!! UPGRADE FAILED !!!");
+                        }
+                    })?;
 
                     #[cfg(feature = "tracing")]
                     {
@@ -457,6 +496,9 @@ where
                 self.vm.clone(),
                 buffer.clone(),
                 block.info,
+                self.chain_id.clone(),
+                &self.cfg,
+                self.app_cfg.clone(),
                 tx.clone(),
                 AuthMode::Finalize,
                 TraceOption::LOUD,
@@ -476,8 +518,6 @@ where
 
             tx_outcomes.push(tx_outcome);
         }
-
-        let cfg = CONFIG.load(&buffer)?;
 
         // Find all cronjobs that should be performed. That is, ones that the
         // scheduled time is earlier or equal to the current block time.
@@ -512,13 +552,16 @@ where
 
             let cron_buffer = Shared::new(Buffer::new(buffer.clone(), None, "cron"));
             let cron_gas_tracker = GasTracker::new_limitless();
-            let next_time = block.info.timestamp + cfg.cronjobs[&contract];
+            let next_time = block.info.timestamp + self.cfg.cronjobs[&contract];
 
             let cron_event = do_cron_execute(
                 self.vm.clone(),
                 Box::new(cron_buffer.clone()),
                 cron_gas_tracker.clone(),
                 block.info,
+                self.chain_id.clone(),
+                &self.cfg,
+                self.app_cfg.clone(),
                 contract,
                 time,
                 next_time,
@@ -547,7 +590,7 @@ where
             .info
             .timestamp
             .into_nanos()
-            .checked_sub(cfg.max_orphan_age.into_nanos())
+            .checked_sub(self.cfg.max_orphan_age.into_nanos())
         {
             for hash in CODES
                 .idx
@@ -636,13 +679,14 @@ where
             tracing::info!(height = version, "Committed state");
         }
 
-        let storage = self.db.state_storage_with_comment(None, "post_indexing")?;
-        let cfg = CONFIG.load(&storage)?;
-        let app_cfg = APP_CONFIG.load(&storage)?;
-
         let mut indexer_ctx = crate::IndexerContext::new();
         self.indexer
-            .post_indexing(version, cfg, app_cfg, &mut indexer_ctx)
+            .post_indexing(
+                version,
+                self.cfg.clone(),
+                self.app_cfg.clone(),
+                &mut indexer_ctx,
+            )
             .inspect_err(|_err| {
                 #[cfg(feature = "tracing")]
                 {
@@ -679,6 +723,9 @@ where
                 Box::new(buffer.clone()),
                 GasTracker::new_limitless(),
                 block,
+                self.chain_id.clone(),
+                &self.cfg,
+                self.app_cfg.clone(),
                 &tx,
                 AuthMode::Check,
                 TraceOption::MUTE,
@@ -695,6 +742,9 @@ where
             Box::new(buffer),
             gas_tracker.clone(),
             block,
+            self.chain_id.clone(),
+            &self.cfg,
+            self.app_cfg.clone(),
             &tx,
             AuthMode::Check,
             TraceOption::MUTE,
@@ -764,6 +814,9 @@ where
             Box::new(storage),
             GasTracker::new_limited(self.query_gas_limit),
             block,
+            self.chain_id.clone(),
+            self.cfg.clone(),
+            self.app_cfg.clone(),
             0,
             req,
         )?;
@@ -851,6 +904,9 @@ where
             self.vm.clone(),
             buffer,
             block,
+            self.chain_id.clone(),
+            &self.cfg,
+            self.app_cfg.clone(),
             tx,
             AuthMode::Simulate,
             TraceOption::MUTE, // Mute tracing outputs during simulation.
@@ -982,6 +1038,9 @@ fn process_tx<S, VM>(
     vm: VM,
     storage: S,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     tx: Tx,
     mode: AuthMode,
     trace_opt: TraceOption,
@@ -1012,13 +1071,15 @@ where
     // If this succeeds, record the events emitted.
     //
     // If this fails, we abort the tx and return, discard all state changes.
-
     let mut events = TxEvents::new(
         do_withhold_fee(
             vm.clone(),
             Box::new(fee_buffer.clone()),
             GasTracker::new_limitless(),
             block,
+            chain_id.clone(),
+            cfg,
+            app_cfg.clone(),
             &tx,
             mode,
             trace_opt,
@@ -1044,12 +1105,14 @@ where
     //
     // If fails, discard state changes in `msg_buffer` (but keeping those in
     // `fee_buffer`), discard the events, and jump to `finalize_fee`.
-
     events.authenticate = do_authenticate(
         vm.clone(),
         Box::new(msg_buffer.clone()),
         gas_tracker.clone(),
         block,
+        chain_id.clone(),
+        cfg,
+        app_cfg.clone(),
         &tx,
         mode,
         trace_opt,
@@ -1065,6 +1128,9 @@ where
                 fee_buffer,
                 gas_tracker,
                 block,
+                chain_id.clone(),
+                cfg,
+                app_cfg,
                 tx,
                 mode,
                 events,
@@ -1095,6 +1161,9 @@ where
         msg_buffer.clone(),
         gas_tracker.clone(),
         block,
+        chain_id.clone(),
+        cfg,
+        app_cfg.clone(),
         &tx,
         mode,
         request_backrun,
@@ -1111,6 +1180,9 @@ where
                 fee_buffer,
                 gas_tracker,
                 block,
+                chain_id,
+                cfg,
+                app_cfg,
                 tx,
                 mode,
                 events,
@@ -1139,6 +1211,9 @@ where
         fee_buffer,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         tx,
         mode,
         events,
@@ -1153,6 +1228,9 @@ fn process_msgs_then_backrun<S, VM>(
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     tx: &Tx,
     mode: AuthMode,
     request_backrun: bool,
@@ -1178,6 +1256,9 @@ where
                 Box::new(buffer.clone()),
                 gas_tracker.clone(),
                 block,
+                chain_id.clone(),
+                cfg,
+                app_cfg.clone(),
                 0,
                 tx.sender,
                 msg.clone(),
@@ -1195,6 +1276,9 @@ where
                 Box::new(buffer),
                 gas_tracker,
                 block,
+                chain_id,
+                cfg,
+                app_cfg,
                 tx,
                 mode,
                 trace_opt,
@@ -1211,6 +1295,9 @@ fn process_finalize_fee<S, VM>(
     buffer: Shared<Buffer<S>>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     tx: Tx,
     mode: AuthMode,
     mut events: TxEvents,
@@ -1229,6 +1316,9 @@ where
         Box::new(buffer.clone()),
         GasTracker::new_limitless(),
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         &tx,
         &outcome_so_far,
         mode,
@@ -1259,6 +1349,9 @@ pub fn process_msg<VM>(
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     sender: Addr,
     msg: Message,
@@ -1274,12 +1367,8 @@ where
     }
 
     match msg {
-        Message::Configure(msg) => {
-            let res = do_configure(&mut storage, block, sender, msg, trace_opt);
-            res.map(Event::Configure)
-        },
         Message::Upgrade(msg) => {
-            let res = do_upgrade(&mut storage, gas_tracker, block, sender, msg, trace_opt);
+            let res = do_upgrade(&mut storage, block, cfg, sender, msg, trace_opt);
             res.map(Event::Upgrade)
         },
         Message::Transfer(msg) => {
@@ -1288,6 +1377,9 @@ where
                 storage,
                 gas_tracker,
                 block,
+                chain_id,
+                cfg,
+                app_cfg,
                 msg_depth,
                 sender,
                 msg,
@@ -1297,7 +1389,15 @@ where
             res.map(Event::Transfer)
         },
         Message::Upload(msg) => {
-            let res = do_upload(&mut storage, gas_tracker, block, sender, msg, trace_opt);
+            let res = do_upload(
+                &mut storage,
+                gas_tracker,
+                block,
+                cfg,
+                sender,
+                msg,
+                trace_opt,
+            );
             res.map(Event::Upload)
         },
         Message::Instantiate(msg) => {
@@ -1306,6 +1406,9 @@ where
                 storage,
                 gas_tracker,
                 block,
+                chain_id,
+                cfg,
+                app_cfg,
                 msg_depth,
                 sender,
                 msg,
@@ -1319,6 +1422,9 @@ where
                 storage,
                 gas_tracker,
                 block,
+                chain_id,
+                cfg,
+                app_cfg,
                 msg_depth,
                 sender,
                 msg,
@@ -1332,6 +1438,9 @@ where
                 storage,
                 gas_tracker,
                 block,
+                chain_id,
+                cfg,
+                app_cfg,
                 msg_depth,
                 sender,
                 msg,
@@ -1347,6 +1456,9 @@ pub fn process_query<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: Config,
+    app_cfg: Json,
     query_depth: usize,
     req: Query,
 ) -> AppResult<QueryResponse>
@@ -1361,15 +1473,15 @@ where
 
     match req {
         Query::Status(_req) => {
-            let res = query_status(&storage, gas_tracker)?;
+            let res = query_status(&storage, gas_tracker, chain_id)?;
             Ok(QueryResponse::Status(res))
         },
         Query::Config(_req) => {
-            let res = query_config(&storage, gas_tracker)?;
+            let res = cfg.clone();
             Ok(QueryResponse::Config(res))
         },
         Query::AppConfig(_req) => {
-            let res = query_app_config(&storage, gas_tracker)?;
+            let res = app_cfg.clone();
             Ok(QueryResponse::AppConfig(res))
         },
         Query::NextUpgrade(_req) => {
@@ -1381,19 +1493,59 @@ where
             Ok(QueryResponse::PastUpgrades(res))
         },
         Query::Balance(req) => {
-            let res = query_balance(vm, storage, gas_tracker, block, query_depth, req)?;
+            let res = query_balance(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                chain_id,
+                cfg,
+                app_cfg,
+                query_depth,
+                req,
+            )?;
             Ok(QueryResponse::Balance(res))
         },
         Query::Balances(req) => {
-            let res = query_balances(vm, storage, gas_tracker, block, query_depth, req)?;
+            let res = query_balances(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                chain_id,
+                cfg,
+                app_cfg,
+                query_depth,
+                req,
+            )?;
             Ok(QueryResponse::Balances(res))
         },
         Query::Supply(req) => {
-            let res = query_supply(vm, storage, gas_tracker, block, query_depth, req)?;
+            let res = query_supply(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                chain_id,
+                cfg,
+                app_cfg,
+                query_depth,
+                req,
+            )?;
             Ok(QueryResponse::Supply(res))
         },
         Query::Supplies(req) => {
-            let res = query_supplies(vm, storage, gas_tracker, block, query_depth, req)?;
+            let res = query_supplies(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                chain_id,
+                cfg,
+                app_cfg,
+                query_depth,
+                req,
+            )?;
             Ok(QueryResponse::Supplies(res))
         },
         Query::Code(req) => {
@@ -1421,7 +1573,17 @@ where
             Ok(QueryResponse::WasmScan(res))
         },
         Query::WasmSmart(req) => {
-            let res = query_wasm_smart(vm, storage, gas_tracker, block, query_depth, req)?;
+            let res = query_wasm_smart(
+                vm,
+                storage,
+                gas_tracker,
+                block,
+                chain_id,
+                cfg,
+                app_cfg,
+                query_depth,
+                req,
+            )?;
             Ok(QueryResponse::WasmSmart(res))
         },
         Query::Multi(reqs) => {
@@ -1433,6 +1595,9 @@ where
                         storage.clone(),
                         gas_tracker.clone(),
                         block,
+                        chain_id.clone(),
+                        cfg.clone(),
+                        app_cfg.clone(),
                         query_depth,
                         req,
                     )
@@ -1444,7 +1609,7 @@ where
     }
 }
 
-pub(crate) fn has_permission(permission: &Permission, owner: Addr, sender: Addr) -> bool {
+pub fn has_permission(permission: &Permission, owner: Addr, sender: Addr) -> bool {
     // The genesis sender can always store code and instantiate contracts.
     if sender == GENESIS_SENDER {
         return true;
@@ -1462,7 +1627,7 @@ pub(crate) fn has_permission(permission: &Permission, owner: Addr, sender: Addr)
     }
 }
 
-pub(crate) fn schedule_cronjob(
+pub fn schedule_cronjob(
     storage: &mut dyn Storage,
     contract: Addr,
     next_time: Timestamp,

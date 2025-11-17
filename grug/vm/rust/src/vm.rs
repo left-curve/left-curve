@@ -270,8 +270,8 @@ mod tests {
         crate::{ContractBuilder, RustVm},
         grug_app::{GasTracker, Instance, QuerierProviderImpl, StorageProvider, Vm},
         grug_types::{
-            Addr, Binary, BlockInfo, BorshSerExt, Coins, Context, Hash, JsonSerExt, MockStorage,
-            Shared, Storage, Timestamp,
+            Addr, Binary, BorshSerExt, Coins, Context, Hash, JsonSerExt, MOCK_BLOCK, MOCK_CHAIN_ID,
+            MockStorage, Shared, Storage, mock_app_config, mock_config,
         },
         test_case::test_case,
     };
@@ -319,19 +319,16 @@ mod tests {
         let db = Shared::new(MockStorage::new());
         let mut vm = RustVm::new();
 
-        let block = BlockInfo {
-            height: 0,
-            timestamp: Timestamp::from_nanos(0),
-            hash: Hash::ZERO,
-        };
-
         let gas_tracker = GasTracker::new_limitless();
 
         let querier_provider = QuerierProviderImpl::new_boxed(
             vm.clone(),
             Box::new(db.clone()),
             gas_tracker.clone(),
-            block,
+            MOCK_BLOCK,
+            MOCK_CHAIN_ID.to_string(),
+            mock_config(),
+            mock_app_config(),
         );
 
         let storage_provider = StorageProvider::new(Box::new(db.clone()), &[b"tester"]);
@@ -350,7 +347,7 @@ mod tests {
 
         let ctx = Context {
             chain_id: "dev-1".to_string(),
-            block,
+            block: MOCK_BLOCK,
             contract: Addr::mock(1),
             sender: Some(Addr::mock(2)),
             funds: Some(Coins::new()),

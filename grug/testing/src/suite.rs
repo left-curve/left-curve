@@ -12,7 +12,7 @@ use {
     grug_math::Uint128,
     grug_types::{
         Addr, Addressable, Binary, Block, BlockInfo, CheckTxOutcome, Coins, Config, Denom,
-        Duration, GenesisState, Hash256, HashExt, JsonDeExt, JsonSerExt, Message, NonEmpty,
+        Duration, GenesisState, Hash256, HashExt, Json, JsonDeExt, JsonSerExt, Message, NonEmpty,
         Querier, QuerierExt, QuerierWrapper, Query, QueryResponse, QueryStatusResponse, Signer,
         StdError, StdResult, Tx, TxOutcome, UnsignedTx,
     },
@@ -29,9 +29,6 @@ where
     ID: Indexer,
 {
     pub app: App<DB, VM, PP, ID>,
-    /// The chain ID can be queries from the `app`, but we internally track it in
-    /// the test suite, so we don't need to query it every time we need it.
-    pub chain_id: String,
     /// Interally track the last finalized block.
     pub block: BlockInfo,
     /// Each time we make a new block, we set the new block's time as the
@@ -49,6 +46,8 @@ impl TestSuite {
     /// instead.
     pub fn new(
         chain_id: String,
+        cfg: Config,
+        app_cfg: Json,
         block_time: Duration,
         default_gas_limit: u64,
         genesis_block: BlockInfo,
@@ -57,6 +56,8 @@ impl TestSuite {
         Self::new_with_vm(
             RustVm::new(),
             chain_id,
+            cfg,
+            app_cfg,
             block_time,
             default_gas_limit,
             genesis_block,
@@ -75,6 +76,8 @@ where
     pub fn new_with_vm(
         vm: VM,
         chain_id: String,
+        cfg: Config,
+        app_cfg: Json,
         block_time: Duration,
         default_gas_limit: u64,
         genesis_block: BlockInfo,
@@ -85,8 +88,10 @@ where
             vm,
             NaiveProposalPreparer,
             NullIndexer,
-            None,
             chain_id,
+            cfg,
+            app_cfg,
+            None,
             block_time,
             default_gas_limit,
             genesis_block,
@@ -105,6 +110,8 @@ where
     pub fn new_with_pp(
         pp: PP,
         chain_id: String,
+        cfg: Config,
+        app_cfg: Json,
         block_time: Duration,
         default_gas_limit: u64,
         genesis_block: BlockInfo,
@@ -115,8 +122,10 @@ where
             RustVm::new(),
             pp,
             NullIndexer,
-            None,
             chain_id,
+            cfg,
+            app_cfg,
+            None,
             block_time,
             default_gas_limit,
             genesis_block,
@@ -139,8 +148,10 @@ where
         vm: VM,
         pp: PP,
         mut id: ID,
-        upgrade_handler: Option<UpgradeHandler<VM>>,
         chain_id: String,
+        cfg: Config,
+        app_cfg: Json,
+        upgrade_handler: Option<UpgradeHandler<VM>>,
         block_time: Duration,
         default_gas_limit: u64,
         genesis_block: BlockInfo,
@@ -170,27 +181,36 @@ where
 
         // 2. Creating the app instance
         // Use `u64::MAX` as query gas limit so that there's practically no limit.
-        let app = App::new(db, vm, pp, id, u64::MAX, upgrade_handler, "0.0.0"); // TODO: allow customizing the cargo version
+        let app = App::new(
+            db,
+            vm,
+            pp,
+            id,
+            chain_id.clone(),
+            cfg,
+            app_cfg,
+            u64::MAX,
+            upgrade_handler,
+            "0.0.0", // TODO: allow customizing the cargo version
+        );
 
-        app.do_init_chain(chain_id.clone(), genesis_block, genesis_state)
+        app.do_init_chain(chain_id, genesis_block, genesis_state)
             .unwrap_or_else(|err| {
                 panic!("fatal error while initializing chain: {err}");
             });
 
-        Self::new_with_app(app, chain_id, genesis_block, block_time, default_gas_limit)
+        Self::new_with_app(app, genesis_block, block_time, default_gas_limit)
     }
 
     /// Create a new test suite with the given already initialized app instance.
     pub fn new_with_app(
         app: App<DB, VM, PP, ID>,
-        chain_id: String,
         last_finalized_block: BlockInfo,
         block_time: Duration,
         default_gas_limit: u64,
     ) -> Self {
         Self {
             app,
-            chain_id,
             block: last_finalized_block,
             block_time,
             default_gas_limit,
@@ -294,7 +314,7 @@ where
         msgs: NonEmpty<Vec<Message>>,
     ) -> Tx {
         signer
-            .sign_transaction(msgs, &self.chain_id, gas_limit)
+            .sign_transaction(msgs, &self.app.chain_id, gas_limit)
             .unwrap_or_else(|err| {
                 panic!("fatal error while signing tx: {err}");
             })
@@ -332,37 +352,6 @@ where
         msgs: NonEmpty<Vec<Message>>,
     ) -> TxOutcome {
         self.send_transaction(self.sign_transaction_with_gas(signer, gas_limit, msgs))
-    }
-
-    /// Update the chain's config.
-    pub fn configure<T>(
-        &mut self,
-        signer: &mut dyn Signer,
-        new_cfg: Option<Config>,
-        new_app_cfg: Option<T>,
-    ) -> TxOutcome
-    where
-        T: Serialize,
-    {
-        self.configure_with_gas(signer, self.default_gas_limit, new_cfg, new_app_cfg)
-    }
-
-    /// Update the chain's config under the given gas limit.
-    pub fn configure_with_gas<T>(
-        &mut self,
-        signer: &mut dyn Signer,
-        gas_limit: u64,
-        new_cfg: Option<Config>,
-        new_app_cfg: Option<T>,
-    ) -> TxOutcome
-    where
-        T: Serialize,
-    {
-        self.send_message_with_gas(
-            signer,
-            gas_limit,
-            Message::configure(new_cfg, new_app_cfg).unwrap(),
-        )
     }
 
     /// Schedule a chain upgrade.

@@ -4,21 +4,11 @@ use {
     grug_crypto::sha2_256,
     grug_tester::QueryMsg,
     grug_types::{
-        Addr, BlockInfo, BorshSerExt, Context, GenericResult, Hash, JsonSerExt, MockStorage,
-        Timestamp,
+        BorshSerExt, Context, GenericResult, Hash, JsonSerExt, MOCK_BLOCK, MOCK_CHAIN_ID,
+        MOCK_CONTRACT, MockStorage, mock_app_config, mock_config,
     },
     grug_vm_wasm::WasmVm,
     std::time::Duration,
-};
-
-const MOCK_CHAIN_ID: &str = "dev-1";
-
-const MOCK_CONTRACT: Addr = Addr::mock(1);
-
-const MOCK_BLOCK: BlockInfo = BlockInfo {
-    height: 1,
-    timestamp: Timestamp::from_seconds(100),
-    hash: Hash::ZERO,
 };
 
 static BENCHMARKER_CODE: &[u8] = include_bytes!("../testdata/grug_tester.wasm");
@@ -52,7 +42,11 @@ fn looping(c: &mut Criterion) {
                             storage.clone(),
                             gas_tracker.clone(),
                             MOCK_BLOCK,
+                            MOCK_CHAIN_ID.to_string(),
+                            mock_config(),
+                            mock_app_config(),
                         );
+
                         let storage = StorageProvider::new(storage, &[&MOCK_CONTRACT]);
 
                         let instance = vm

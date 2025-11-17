@@ -1,5 +1,5 @@
 use {
-    grug_app::{AppError, CHAIN_ID, CONFIG, CONTRACTS, GasTracker, TraceOption},
+    grug_app::{AppError, CONTRACTS, GasTracker, TraceOption},
     grug_math::{Bytable, NextNumber, Uint128, Uint256},
     grug_testing::TestBuilder,
     grug_types::{
@@ -44,16 +44,16 @@ fn error_cases() {
         .should_fail_with_error(AppError::upgrade_height_not_in_future(2, 2));
 }
 
-/// In this test, we attempt to change the chain ID through a chain upgrade.
+/// In this test, we attempt to change the save a random key-value pair in the
+/// chain's state through a chain upgrade.
 /// This is otherwise not possible through normal transactions.
 /// This upgrade doesn't involve any contract calls.
 #[test]
 fn upgrading_without_calling_contract() {
-    const OLD_CHAIN_ID: &str = "oonga";
-    const NEW_CHAIN_ID: &str = "boonga";
+    const KEY: &[u8] = b"oonga";
+    const VALUE: &[u8] = b"boonga";
 
     let (mut suite, mut accounts) = TestBuilder::new()
-        .set_chain_id(OLD_CHAIN_ID)
         .set_genesis_time(Timestamp::from_nanos(0))
         .set_block_time(Duration::from_seconds(1))
         .add_account("owner", Coins::new())
@@ -74,9 +74,10 @@ fn upgrading_without_calling_contract() {
         )
         .should_succeed();
 
-    suite.query_status().should_succeed_and(|status| {
-        status.chain_id == OLD_CHAIN_ID && status.last_finalized_block.height == 1
-    });
+    suite
+        .app
+        .do_query_store(KEY, None, false)
+        .should_succeed_and_equal((None, None));
 
     suite
         .query_next_upgrade()
@@ -92,9 +93,10 @@ fn upgrading_without_calling_contract() {
     // Upgrade doesn't happen yet.
     suite.make_empty_block();
 
-    suite.query_status().should_succeed_and(|status| {
-        status.chain_id == OLD_CHAIN_ID && status.last_finalized_block.height == 2
-    });
+    suite
+        .app
+        .do_query_store(KEY, None, false)
+        .should_succeed_and_equal((None, None));
 
     // -------------------------------- Block 3 --------------------------------
 
@@ -109,8 +111,8 @@ fn upgrading_without_calling_contract() {
     // Perform the chain upgrade. Remove the halt height, add the upgrade handler.
     suite.app.set_cargo_version_and_upgrade_handler(
         "0.1.0",
-        Some(|mut storage, _vm, _block| {
-            CHAIN_ID.save(&mut storage, &NEW_CHAIN_ID.to_string())?;
+        Some(|mut storage, _vm, _block, _chain_id, _cfg, _app_cfg| {
+            storage.write(KEY, VALUE);
             Ok(())
         }),
     );
@@ -118,9 +120,10 @@ fn upgrading_without_calling_contract() {
     // Make block 3 again with the new app. Upgrade happens.
     suite.make_empty_block();
 
-    suite.query_status().should_succeed_and(|status| {
-        status.chain_id == NEW_CHAIN_ID && status.last_finalized_block.height == 3
-    });
+    suite
+        .app
+        .do_query_store(KEY, None, false)
+        .should_succeed_and_equal((Some(VALUE.to_vec()), None));
 
     // The next upgrade should have been removed.
     suite.query_next_upgrade().should_succeed_and_equal(None);
@@ -230,8 +233,7 @@ fn upgrading_with_calling_contract() {
     // Perform the chain upgrade. Remove the halt height, add the upgrade handler.
     suite.app.set_cargo_version_and_upgrade_handler(
         "0.1.0",
-        Some(|mut storage, vm, block| {
-            let cfg = CONFIG.load(&storage)?;
+        Some(|mut storage, vm, block, chain_id, cfg, app_cfg| {
             let bank_contract = CONTRACTS.load(&storage, cfg.bank)?;
 
             // Build the new bank contract code.
@@ -252,6 +254,9 @@ fn upgrading_with_calling_contract() {
                 storage,
                 GasTracker::new_limitless(),
                 block,
+                chain_id,
+                &cfg,
+                app_cfg,
                 0,
                 Addr::mock(0),
                 MsgExecute {

@@ -2,8 +2,8 @@ use {
     crate::{AppError, EventResult, GasTracker, TraceOption, Vm, do_reply, process_msg},
     error_backtrace::Backtraceable,
     grug_types::{
-        Addr, BlockInfo, Buffer, EventStatus, ReplyOn, Shared, Storage, SubEvent, SubEventStatus,
-        SubMessage,
+        Addr, BlockInfo, Buffer, Config, EventStatus, Json, ReplyOn, Shared, Storage, SubEvent,
+        SubEventStatus, SubMessage,
     },
 };
 
@@ -64,6 +64,9 @@ pub fn handle_submessages<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     sender: Addr,
     submsgs: Vec<SubMessage>,
@@ -89,6 +92,9 @@ where
             Box::new(buffer.clone()),
             gas_tracker.clone(),
             block,
+            chain_id.clone(),
+            cfg,
+            app_cfg.clone(),
             msg_depth + 1, // important: increase message depth
             sender,
             submsg.msg,
@@ -106,6 +112,9 @@ where
                     storage.clone(),
                     gas_tracker.clone(),
                     block,
+                    chain_id.clone(),
+                    cfg,
+                    app_cfg.clone(),
                     msg_depth + 1, // important: increase message depth
                     sender,
                     payload,
@@ -129,6 +138,9 @@ where
                     storage.clone(),
                     gas_tracker.clone(),
                     block,
+                    chain_id.clone(),
+                    cfg,
+                    app_cfg.clone(),
                     msg_depth + 1, // important: increase message depth
                     sender,
                     payload,

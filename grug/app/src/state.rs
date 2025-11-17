@@ -1,22 +1,13 @@
 use {
     grug_storage::{Index, IndexList, IndexedMap, Item, Map, MultiIndex, Set},
     grug_types::{
-        Addr, BlockInfo, Code, CodeStatus, Config, ContractInfo, Hash256, Json, NextUpgrade,
-        PastUpgrade, Timestamp,
+        Addr, BlockInfo, Code, CodeStatus, ContractInfo, Hash256, NextUpgrade, PastUpgrade,
+        Timestamp,
     },
 };
 
-/// A string that identifies the chain
-pub const CHAIN_ID: Item<String> = Item::new("chain_id");
-
 /// The most recently finalized block
 pub const LAST_FINALIZED_BLOCK: Item<BlockInfo> = Item::new("last_finalized_block");
-
-/// Chain-level configuration
-pub const CONFIG: Item<Config> = Item::new("config");
-
-/// Application-specific configuration.
-pub const APP_CONFIG: Item<Json> = Item::new("app_config");
 
 /// Scheduled cronjobs.
 ///

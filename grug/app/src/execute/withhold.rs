@@ -2,10 +2,10 @@
 use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        AppError, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
     },
-    grug_types::{AuthMode, BlockInfo, Context, EvtWithhold, Storage, Tx},
+    grug_types::{AuthMode, BlockInfo, Config, Context, EvtWithhold, Json, Storage, Tx},
 };
 
 pub fn do_withhold_fee<VM>(
@@ -13,6 +13,9 @@ pub fn do_withhold_fee<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     tx: &Tx,
     mode: AuthMode,
     trace_opt: TraceOption,
@@ -21,7 +24,18 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    let evt = _do_withhold_fee(vm, storage, gas_tracker, block, tx, mode, trace_opt);
+    let evt = _do_withhold_fee(
+        vm,
+        storage,
+        gas_tracker,
+        block,
+        chain_id,
+        cfg,
+        app_cfg,
+        tx,
+        mode,
+        trace_opt,
+    );
 
     #[cfg(feature = "tracing")]
     evt.debug(
@@ -44,6 +58,9 @@ pub fn _do_withhold_fee<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     tx: &Tx,
     mode: AuthMode,
     trace_opt: TraceOption,
@@ -54,13 +71,9 @@ where
 {
     let mut evt = EvtWithhold::base(tx.sender, tx.gas_limit);
 
-    let (cfg, taxman, chain_id) = catch_event! {
+    let taxman = catch_event! {
         {
-            let cfg = CONFIG.load(&storage)?;
-            let chain_id = CHAIN_ID.load(&storage)?;
-            let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
-
-            Ok((cfg, taxman, chain_id))
+            Ok(CONTRACTS.load(&storage, cfg.taxman)?)
         },
         evt
     };
@@ -81,6 +94,8 @@ where
             vm,
             storage,
             gas_tracker,
+            cfg,
+            app_cfg,
             0,
             0,
             true,

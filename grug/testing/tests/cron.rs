@@ -1,7 +1,7 @@
 use {
     grug_testing::TestBuilder,
     grug_types::{
-        Binary, Coin, Coins, Duration, Empty, Json, QuerierExt, ResultExt, Timestamp, btree_map,
+        Binary, Coin, Coins, Duration, Empty, QuerierExt, ResultExt, Timestamp, btree_map,
     },
     grug_vm_rust::ContractBuilder,
 };
@@ -150,7 +150,17 @@ fn cronjob_works() {
 
     // Block time: 5
     //
-    // Update the config to add the cronjobs.
+    // Schedule a chain upgrade. The chain upgrade will set the cronjobs.
+    suite
+        .upgrade(
+            &mut accounts["larry"],
+            6,
+            "0.1.0",
+            None::<&str>,
+            None::<&str>,
+        )
+        .should_succeed();
+
     let mut new_cfg = suite.query_config().unwrap();
     new_cfg.cronjobs = btree_map! {
         // cron1 has interval of 0, meaning it's to be called every block.
@@ -159,61 +169,64 @@ fn cronjob_works() {
         cron3 => Duration::from_seconds(3),
     };
 
-    // cron1 scheduled at 5
-    // cron2 scheduled at 7
-    // cron3 scheduled at 8
-    suite
-        .configure::<Json>(&mut accounts["larry"], Some(new_cfg), None)
-        .should_succeed();
+    suite.app.set_cfg(new_cfg);
+    suite.app.set_cargo_version_and_upgrade_handler(
+        "0.1.0",
+        Some(|mut storage, _, block, _, cfg, _| {
+            for (contract, interval) in cfg.cronjobs {
+                grug_app::schedule_cronjob(&mut storage, contract, block.timestamp + interval)?;
+            }
+
+            Ok(())
+        }),
+    );
 
     // Make some blocks.
     // After each block, check that Jake has the correct balances.
     for balances in [
-        // Block time: 5
+        // Block time: 6
         //
-        // cron1 sends 1 uatom, rescheduled to 6
+        // Chain upgrade runs. Cronjobs are scheduled:
+        //
+        // cron1 scheduled at 6
+        // cron2 scheduled at 8
+        // cron3 scheduled at 9
+        //
+        // cron1 sends 1 uatom, rescheduled to 7
         Balances {
             uatom: 1,
             uosmo: 0,
             umars: 0,
         },
-        // Block time: 6
+        // Block time: 7
         //
-        // cron1 sends 1 uatom, rescheduled to 7
+        // cron1 sends 1 uatom, rescheduled to 8
         Balances {
             uatom: 2,
             uosmo: 0,
             umars: 0,
         },
-        // Block time: 7
+        // Block time: 8
         //
-        // cron1 sends 1 uatom, rescheduled to 8 (it runs out of coins here)
-        // cron2 sends 1 uosmo, rescheduled to 9
+        // cron1 sends 1 uatom, rescheduled to 9 (it runs out of coins here)
+        // cron2 sends 1 uosmo, rescheduled to 10
         Balances {
             uatom: 3,
             uosmo: 1,
             umars: 0,
         },
-        // Block time: 8
+        // Block time: 9
         //
         // cron1 errors because it's out of coins
-        // cron3 sends 1 umars, rescheduled to 11
+        // cron3 sends 1 umars, rescheduled to 12
         Balances {
             uatom: 3,
             uosmo: 1,
             umars: 1,
         },
-        // Block time: 9
-        //
-        // cron2 sends 1 uosmo, rescheduled to 11
-        Balances {
-            uatom: 3,
-            uosmo: 2,
-            umars: 1,
-        },
         // Block time: 10
         //
-        // Nothing happens
+        // cron2 sends 1 uosmo, rescheduled to 12
         Balances {
             uatom: 3,
             uosmo: 2,
@@ -221,16 +234,16 @@ fn cronjob_works() {
         },
         // Block time: 11
         //
-        // cron2 sends 1 uosmo (runs out of coins), rescheduled to 13
-        // cron3 sends 1 umars, rescheduled to 14
+        // Nothing happens
         Balances {
             uatom: 3,
-            uosmo: 3,
-            umars: 2,
+            uosmo: 2,
+            umars: 1,
         },
         // Block time: 12
         //
-        // Nothing happens
+        // cron2 sends 1 uosmo (runs out of coins), rescheduled to 14
+        // cron3 sends 1 umars, rescheduled to 15
         Balances {
             uatom: 3,
             uosmo: 3,
@@ -238,13 +251,21 @@ fn cronjob_works() {
         },
         // Block time: 13
         //
-        // cron2 errors, otherwise nothing happens
+        // Nothing happens
         Balances {
             uatom: 3,
             uosmo: 3,
             umars: 2,
         },
         // Block time: 14
+        //
+        // cron2 errors, otherwise nothing happens
+        Balances {
+            uatom: 3,
+            uosmo: 3,
+            umars: 2,
+        },
+        // Block time: 15
         //
         // cron3 sends 1 umars, runs out of coins
         Balances {
@@ -253,6 +274,9 @@ fn cronjob_works() {
             umars: 3,
         },
     ] {
+        // Advance block
+        suite.make_empty_block();
+
         // The balances Jake is expected to have at time point
         let mut expect = Coins::new();
         expect.insert(("uatom", balances.uatom)).unwrap();
@@ -263,9 +287,6 @@ fn cronjob_works() {
         suite
             .query_balances(&accounts["jake"])
             .should_succeed_and_equal(expect);
-
-        // Advance block
-        suite.make_empty_block();
     }
 }
 
@@ -278,6 +299,7 @@ fn cronjob_fails() {
         .set_owner("larry")
         .build();
 
+    // Block height: 1
     let tester_code = ContractBuilder::new(Box::new(failing_tester::instantiate))
         .with_cron_execute(Box::new(failing_tester::cron_execute))
         .build();
@@ -287,6 +309,7 @@ fn cronjob_fails() {
         .should_succeed()
         .code_hash;
 
+    // Block height: 2
     let cron = suite
         .instantiate(
             &mut accounts["larry"],
@@ -300,22 +323,42 @@ fn cronjob_fails() {
         .should_succeed()
         .address;
 
+    // Block height: 3
+    suite
+        .upgrade(
+            &mut accounts["larry"],
+            4,
+            "0.1.0",
+            None::<&str>,
+            None::<&str>,
+        )
+        .should_succeed();
+
     let mut new_cfg = suite.query_config().unwrap();
     new_cfg.cronjobs = btree_map! {
         // cron1 has interval of 0, meaning it's to be called every block.
         cron => Duration::from_seconds(0),
     };
 
-    suite
-        .configure::<Json>(&mut accounts["larry"], Some(new_cfg), None)
-        .should_succeed();
+    suite.app.set_cfg(new_cfg);
+    suite.app.set_cargo_version_and_upgrade_handler(
+        "0.1.0",
+        Some(|mut storage, _, block, _, cfg, _| {
+            for (contract, interval) in cfg.cronjobs {
+                grug_app::schedule_cronjob(&mut storage, contract, block.timestamp + interval)?;
+            }
+
+            Ok(())
+        }),
+    );
 
     // Before the block, storage key `b"foo"` should have the value `b"init"`.
     suite
         .query_wasm_raw(cron, *b"foo")
         .should_succeed_and_equal(Some(Binary::from(*b"init")));
 
-    // Advance block and trigger the cronjob
+    // Advance block to height 4. Upgrade runs. Cronjob scheduled at the same
+    // block. Cronjob runs.
     let res = suite.make_empty_block().block_outcome;
     assert_eq!(res.cron_outcomes.len(), 1);
 

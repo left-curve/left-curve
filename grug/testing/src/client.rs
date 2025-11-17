@@ -103,7 +103,7 @@ where
     }
 
     pub async fn chain_id(&self) -> String {
-        self.suite.lock().await.chain_id.clone()
+        self.suite.lock().await.app.chain_id.clone()
     }
 }
 

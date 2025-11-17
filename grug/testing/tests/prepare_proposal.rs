@@ -193,9 +193,8 @@ fn prepare_proposal_works() {
         .address;
 
     // Set oracle contract address as app config.
-    suite
-        .configure(&mut accounts["larry"], None, Some(oracle))
-        .should_succeed();
+    // In reality, this is done via a chain upgrade.
+    suite.app.set_app_cfg(oracle.to_json_value().unwrap());
 
     // At this point, the feeder shouldn't have fed any price yet, because the
     // oracle address wasn't set in app config.

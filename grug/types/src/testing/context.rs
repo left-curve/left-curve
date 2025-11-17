@@ -1,9 +1,12 @@
 #![cfg_attr(rustfmt, rustfmt::skip)]
 
-use crate::{
-    Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Defined, Hash256, ImmutableCtx, MockApi,
-    MockQuerier, MockStorage, MutableCtx, Querier, QuerierWrapper, Storage, SudoCtx, Timestamp,
-    Undefined,
+use {
+    crate::{
+        Addr, Api, AuthCtx, AuthMode, BlockInfo, Coins, Config, Defined, Duration, Hash256,
+        ImmutableCtx, Json, MockApi, MockQuerier, MockStorage, MutableCtx, Permission, Permissions,
+        Querier, QuerierWrapper, Storage, SudoCtx, Timestamp, Undefined,
+    },
+    std::collections::BTreeMap,
 };
 
 /// Default mock chain ID used in mock context.
@@ -18,6 +21,26 @@ pub const MOCK_BLOCK: BlockInfo = BlockInfo {
 
 /// Default contract address used in mock context.
 pub const MOCK_CONTRACT: Addr = Addr::mock(0);
+
+/// Return a mock-up `Config` for use in tests.
+pub fn mock_config() -> Config {
+    Config {
+        owner: Addr::mock(1),
+        bank: Addr::mock(2),
+        taxman: Addr::mock(3),
+        cronjobs: BTreeMap::default(),
+        permissions: Permissions {
+            upload: Permission::Everybody,
+            instantiate: Permission::Everybody
+        },
+        max_orphan_age: Duration::from_nanos(u128::MAX),
+    }
+}
+
+/// Return a mock-up app-config for use in tests.
+pub fn mock_app_config() -> Json {
+    Json::null()
+}
 
 /// A mock up context for use in unit tests.
 pub struct MockContext<

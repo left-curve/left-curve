@@ -2,9 +2,7 @@
 use grug_testing::TestSuite;
 use {
     async_trait::async_trait,
-    grug_app::{
-        App, AppError, AppResult, CHAIN_ID, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm,
-    },
+    grug_app::{App, AppError, AppResult, Db, Indexer, LAST_FINALIZED_BLOCK, ProposalPreparer, Vm},
     grug_types::{BlockInfo, Query, QueryResponse, TxOutcome, UnsignedTx},
 };
 
@@ -67,10 +65,7 @@ where
     }
 
     async fn chain_id(&self) -> AppResult<String> {
-        let storage = self.db.state_storage_with_comment(None, "httpd")?;
-        let chain_id = CHAIN_ID.load(&storage)?;
-
-        Ok(chain_id)
+        Ok(self.chain_id.clone())
     }
 
     async fn last_finalized_block(&self) -> AppResult<BlockInfo> {

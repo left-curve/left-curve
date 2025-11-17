@@ -2,13 +2,12 @@
 use dyn_event::dyn_event;
 use {
     crate::{
-        _do_transfer, AppError, CHAIN_ID, CODES, CONFIG, CONTRACTS, EventResult, GasTracker,
-        TraceOption, Vm, call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
-        has_permission,
+        _do_transfer, AppError, CODES, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        call_in_1_out_1_handle_response, catch_and_update_event, catch_event, has_permission,
     },
     grug_types::{
-        Addr, BlockInfo, CodeStatus, Context, ContractInfo, EvtInstantiate, MsgInstantiate,
-        StdResult, Storage, btree_map,
+        Addr, BlockInfo, CodeStatus, Config, Context, ContractInfo, EvtInstantiate, Json,
+        MsgInstantiate, StdResult, Storage, btree_map,
     },
 };
 
@@ -17,6 +16,9 @@ pub fn do_instantiate<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     sender: Addr,
     msg: MsgInstantiate,
@@ -31,6 +33,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         msg_depth,
         sender,
         msg,
@@ -58,6 +63,9 @@ pub fn _do_instantiate<VM>(
     mut storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     sender: Addr,
     msg: MsgInstantiate,
@@ -73,10 +81,8 @@ where
 
     let mut evt = EvtInstantiate::base(sender, msg.code_hash, address, msg.msg.clone());
 
-    let chain_id = catch_event! {
+    catch_event! {
         {
-            let cfg = CONFIG.load(&storage)?;
-
             // Make sure the user has the permission to instantiate contracts
             if !has_permission(&cfg.permissions.instantiate, cfg.owner, sender) {
                 return Err(AppError::unauthorized());
@@ -109,7 +115,7 @@ where
                 Ok(code)
             })?;
 
-            Ok(CHAIN_ID.load(&storage)?)
+            Ok(())
         },
         evt
     };
@@ -121,6 +127,9 @@ where
                 storage.clone(),
                 gas_tracker.clone(),
                 block,
+                chain_id.clone(),
+                cfg,
+                app_cfg.clone(),
                 msg_depth,
                 sender,
                 btree_map! { address => msg.funds.clone() },
@@ -146,6 +155,8 @@ where
             vm,
             storage,
             gas_tracker,
+            cfg,
+            app_cfg,
             msg_depth,
             0,
             true,

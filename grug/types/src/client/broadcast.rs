@@ -1,7 +1,7 @@
 use {
     crate::{
-        Addr, AdminOption, Binary, BroadcastTxOutcome, Coins, Config, GasOption, GenericResult,
-        Hash256, HashExt, Message, NonEmpty, QueryClient, Signer, StdError, Tx, TxOutcome,
+        Addr, AdminOption, Binary, BroadcastTxOutcome, Coins, GasOption, GenericResult, Hash256,
+        HashExt, Message, NonEmpty, QueryClient, Signer, StdError, Tx, TxOutcome,
     },
     async_trait::async_trait,
     error_backtrace::BacktracedError,
@@ -145,23 +145,6 @@ where
         let tx = signer.sign_transaction(msgs, chain_id, gas_limit)?;
 
         self.broadcast_tx_with_confirmation(tx, confirm_fn).await
-    }
-
-    /// Send a transaction with a single [`Message::Configure`](grug_types::Message::Configure).
-    async fn configure<S, T>(
-        &self,
-        signer: &mut S,
-        new_cfg: Option<Config>,
-        new_app_cfg: Option<T>,
-        gas_opt: GasOption,
-        chain_id: &str,
-    ) -> Result<BroadcastTxOutcome, <Self as BroadcastClient>::Error>
-    where
-        S: Signer + Send + Sync,
-        T: Serialize + Send,
-    {
-        let msg = Message::configure(new_cfg, new_app_cfg)?;
-        self.send_message(signer, msg, gas_opt, chain_id).await
     }
 
     /// Send a transaction with a single [`Message::Upgrade`](grug_types::Message::Upgrade).

@@ -2,10 +2,12 @@
 use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        AppError, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_2_out_1_handle_response, catch_and_update_event, catch_event,
     },
-    grug_types::{Addr, BlockInfo, Context, EvtReply, Json, ReplyOn, Storage, SubMsgResult},
+    grug_types::{
+        Addr, BlockInfo, Config, Context, EvtReply, Json, ReplyOn, Storage, SubMsgResult,
+    },
 };
 
 pub fn do_reply<VM>(
@@ -13,6 +15,9 @@ pub fn do_reply<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     contract: Addr,
     msg: &Json,
@@ -29,6 +34,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         msg_depth,
         contract,
         msg,
@@ -58,6 +66,9 @@ fn _do_reply<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     contract: Addr,
     msg: &Json,
@@ -71,12 +82,10 @@ where
 {
     let mut evt = EvtReply::base(contract, reply_on.clone());
 
-    let (code_hash, chain_id) = catch_event! {
+    let code_hash = catch_event! {
         {
-            let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
-            let chain_id = CHAIN_ID.load(&storage)?;
-
-            Ok((code_hash, chain_id))
+            let contract = CONTRACTS.load(&storage, contract)?;
+            Ok(contract.code_hash)
         },
         evt
     };
@@ -95,6 +104,8 @@ where
             vm,
             storage,
             gas_tracker,
+            cfg,
+            app_cfg,
             msg_depth,
             0,
             true,

@@ -2,13 +2,13 @@
 use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        AppError, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_0_out_1_handle_response, call_in_1_out_1_handle_response, catch_and_insert_event,
         catch_and_update_event, catch_event,
     },
     grug_types::{
-        Addr, BankMsg, BlockInfo, Coins, Context, EvtGuest, EvtTransfer, Hash256, MsgTransfer,
-        Storage,
+        Addr, BankMsg, BlockInfo, Coins, Config, Context, EvtGuest, EvtTransfer, Hash256, Json,
+        MsgTransfer, Storage,
     },
 };
 
@@ -17,6 +17,9 @@ pub fn do_transfer<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     sender: Addr,
     msg: MsgTransfer,
@@ -32,6 +35,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         msg_depth,
         sender,
         msg.clone(),
@@ -61,6 +67,9 @@ pub(crate) fn _do_transfer<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     sender: Addr,
     msg: MsgTransfer,
@@ -77,19 +86,16 @@ where
 {
     let mut evt = EvtTransfer::base(sender, msg.clone());
 
-    let (cfg, code_hash, chain_id) = catch_event! {
+    let code_hash = catch_event! {
         {
-            let cfg = CONFIG.load(&storage)?;
-            let chain_id = CHAIN_ID.load(&storage)?;
-            let code_hash = CONTRACTS.load(&storage, cfg.bank)?.code_hash;
-
-            Ok((cfg, code_hash, chain_id))
+            let contract = CONTRACTS.load(&storage, cfg.bank)?;
+            Ok::<_, AppError>(contract.code_hash)
         },
         evt
     };
 
     let ctx = Context {
-        chain_id,
+        chain_id: chain_id.clone(),
         block,
         contract: cfg.bank,
         sender: None,
@@ -107,6 +113,8 @@ where
             vm.clone(),
             storage.clone(),
             gas_tracker.clone(),
+            cfg,
+            app_cfg.clone(),
             msg_depth,
             0,
             true,
@@ -129,6 +137,9 @@ where
                         storage.clone(),
                         gas_tracker.clone(),
                         block,
+                        chain_id.clone(),
+                        cfg,
+                        app_cfg.clone(),
                         msg_depth,
                         msg.from,
                         to,
@@ -152,6 +163,9 @@ fn _do_receive<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     from: Addr,
     to: Addr,
@@ -163,14 +177,6 @@ where
     VM: Vm + Clone + Send + Sync + 'static,
     AppError: From<VM::Error>,
 {
-    #[allow(clippy::redundant_closure_call)]
-    let chain_id = catch_event! {
-        {
-            CHAIN_ID.load(&storage).map_err(Into::into)
-        },
-        EvtGuest::base(to, "receive")
-    };
-
     let ctx = Context {
         chain_id,
         block,
@@ -184,6 +190,8 @@ where
         vm,
         storage,
         gas_tracker,
+        cfg,
+        app_cfg,
         msg_depth,
         0,
         true,

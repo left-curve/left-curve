@@ -414,10 +414,11 @@ mod tests {
             Environment, GAS_PER_OPERATION, VmResult, WasmVm, db_read, db_remove, db_remove_range,
             db_scan, db_write, debug, read_from_memory, write_to_memory,
         },
-        grug_app::{APP_CONFIG, GAS_COSTS, GasTracker, QuerierProviderImpl, StorageProvider},
+        grug_app::{GAS_COSTS, GasTracker, QuerierProviderImpl, StorageProvider},
         grug_types::{
-            Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult, Hash256, MockStorage, Order,
-            Query, QueryResponse, ResultExt, Shared, Storage, Timestamp, encode_sections, json,
+            Addr, BlockInfo, BorshDeExt, BorshSerExt, GenericResult, Hash256, MOCK_CHAIN_ID,
+            MockStorage, Order, Query, QueryResponse, ResultExt, Shared, Storage, Timestamp,
+            encode_sections, json, mock_config,
         },
         identity::{Identity256, Identity512},
         rand::rngs::OsRng,
@@ -443,7 +444,6 @@ mod tests {
     /// Helper struct to hold the necessary data for testing.
     struct Suite {
         fe: FunctionEnv<Environment>,
-        storage: Box<dyn Storage>,
         storage_provider: StorageProvider,
         store: Store,
         _instance: Box<Instance>,
@@ -528,7 +528,7 @@ mod tests {
         // For production (in `WasmVm::build_instance`) this needs to be done
         // before creating the instance, but here for testing purpose, we don't
         // need any import function, so this can be done later, which is simpler.
-        let (fe, storage, storage_provider) = {
+        let (fe, storage_provider) = {
             let storage = Shared::new(MockStorage::new());
             let storage_provider =
                 StorageProvider::new(Box::new(storage.clone()), &[NAMESPACE_CONTRACT]);
@@ -538,6 +538,9 @@ mod tests {
                 Box::new(storage.clone()),
                 gas_tracker.clone(),
                 MOCK_BLOCK,
+                MOCK_CHAIN_ID.to_string(),
+                mock_config(),
+                json!({ "foo": "bar" }),
             );
 
             let env = Environment::new(
@@ -555,14 +558,13 @@ mod tests {
 
             env.set_wasmer_memory(&instance).unwrap();
             env.set_wasmer_instance(&instance).unwrap();
-            (fe, storage, storage_provider)
+            (fe, storage_provider)
         };
 
         Suite {
             store,
             _instance: instance,
             fe,
-            storage: Box::new(storage),
             storage_provider,
         }
     }
@@ -877,10 +879,6 @@ mod tests {
         // Use AppConfig query as example
         // We don't want to test the query itself, just the query_chain function
         let request = Query::app_config();
-
-        APP_CONFIG
-            .save(&mut suite.storage, &json!({ "foo": "bar" }))
-            .unwrap();
 
         let ptr_key = suite.write(&request.to_borsh_vec().unwrap()).unwrap();
         let ptr_result = crate::query_chain(suite.fe_mut(), ptr_key).unwrap();

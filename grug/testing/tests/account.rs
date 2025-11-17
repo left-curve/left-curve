@@ -33,7 +33,7 @@ fn check_tx_and_finalize() {
             let tx = accounts["rhaki"]
                 .sign_transaction_with_sequence(
                     NonEmpty::new_unchecked(vec![transfer_msg.clone()]),
-                    &suite.chain_id,
+                    &suite.app.chain_id,
                     sequence,
                     0,
                 )
@@ -103,7 +103,7 @@ fn check_tx_and_finalize() {
     let tx = accounts["rhaki"]
         .sign_transaction_with_sequence(
             NonEmpty::new_unchecked(vec![transfer_msg]),
-            &suite.chain_id,
+            &suite.app.chain_id,
             3,
             0,
         )

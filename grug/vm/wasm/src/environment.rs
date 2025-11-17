@@ -282,7 +282,8 @@ mod test {
         error_backtrace::BacktracedError,
         grug_app::{GasTracker, QuerierProviderImpl, StorageProvider},
         grug_types::{
-            BlockInfo, Hash256, MockStorage, Order, Shared, StdError, Storage, Timestamp,
+            BlockInfo, Hash256, MOCK_CHAIN_ID, MockStorage, Order, Shared, StdError, Storage,
+            Timestamp, mock_app_config, mock_config,
         },
         std::sync::Arc,
         test_case::test_case,
@@ -340,6 +341,9 @@ mod test {
                 Box::new(storage),
                 gas_tracker.clone(),
                 MOCK_BLOCK,
+                MOCK_CHAIN_ID.to_string(),
+                mock_config(),
+                mock_app_config(),
             );
 
             let mut env = Environment::new(

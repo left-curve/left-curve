@@ -2,10 +2,12 @@
 use dyn_event::dyn_event;
 use {
     crate::{
-        _do_transfer, AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        _do_transfer, AppError, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_1_out_1_handle_response, catch_and_update_event, catch_event,
     },
-    grug_types::{Addr, BlockInfo, Context, EvtExecute, MsgExecute, Storage, btree_map},
+    grug_types::{
+        Addr, BlockInfo, Config, Context, EvtExecute, Json, MsgExecute, Storage, btree_map,
+    },
 };
 
 pub fn do_execute<VM>(
@@ -13,6 +15,9 @@ pub fn do_execute<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     sender: Addr,
     msg: MsgExecute,
@@ -27,6 +32,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         msg_depth,
         sender,
         msg,
@@ -54,6 +62,9 @@ fn _do_execute<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     msg_depth: usize,
     sender: Addr,
     msg: MsgExecute,
@@ -65,12 +76,10 @@ where
 {
     let mut evt = EvtExecute::base(sender, msg.contract, msg.funds.clone(), msg.msg.clone());
 
-    let (code_hash, chain_id) = catch_event! {
+    let code_hash = catch_event! {
         {
-            let code_hash = CONTRACTS.load(&storage, msg.contract)?.code_hash;
-            let chain_id = CHAIN_ID.load(&storage)?;
-
-            Ok((code_hash, chain_id))
+            let contract = CONTRACTS.load(&storage, msg.contract)?;
+            Ok(contract.code_hash)
         },
         evt
     };
@@ -82,6 +91,9 @@ where
                 storage.clone(),
                 gas_tracker.clone(),
                 block,
+                chain_id.clone(),
+                cfg,
+                app_cfg.clone(),
                 msg_depth,
                 sender,
                 btree_map! { msg.contract => msg.funds.clone() },
@@ -107,6 +119,8 @@ where
             vm,
             storage,
             gas_tracker,
+            cfg,
+            app_cfg,
             msg_depth,
             0,
             true,

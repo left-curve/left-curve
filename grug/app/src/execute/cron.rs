@@ -2,10 +2,10 @@
 use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        AppError, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_0_out_1_handle_response, catch_and_update_event, catch_event,
     },
-    grug_types::{Addr, BlockInfo, Context, EvtCron, Storage, Timestamp},
+    grug_types::{Addr, BlockInfo, Config, Context, EvtCron, Json, Storage, Timestamp},
 };
 
 pub fn do_cron_execute<VM>(
@@ -13,6 +13,9 @@ pub fn do_cron_execute<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     contract: Addr,
     time: Timestamp,
     next: Timestamp,
@@ -27,6 +30,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         contract,
         time,
         next,
@@ -54,6 +60,9 @@ fn _do_cron_execute<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     contract: Addr,
     time: Timestamp,
     next: Timestamp,
@@ -65,12 +74,10 @@ where
 {
     let mut evt = EvtCron::base(contract, time, next);
 
-    let (code_hash, chain_id) = catch_event! {
+    let code_hash = catch_event! {
         {
-            let code_hash = CONTRACTS.load(&storage, contract)?.code_hash;
-            let chain_id = CHAIN_ID.load(&storage)?;
-
-            Ok((code_hash, chain_id))
+            let contract = CONTRACTS.load(&storage, contract)?;
+            Ok(contract.code_hash)
         },
         evt
     };
@@ -89,6 +96,8 @@ where
             vm,
             storage,
             gas_tracker,
+            cfg,
+            app_cfg,
             0,
             0,
             true,

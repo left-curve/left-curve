@@ -2,10 +2,10 @@
 use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, CHAIN_ID, CONFIG, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
+        AppError, CONTRACTS, EventResult, GasTracker, TraceOption, Vm,
         call_in_2_out_1_handle_response, catch_and_update_event, catch_event,
     },
-    grug_types::{AuthMode, BlockInfo, Context, EvtFinalize, Storage, Tx, TxOutcome},
+    grug_types::{AuthMode, BlockInfo, Config, Context, EvtFinalize, Json, Storage, Tx, TxOutcome},
 };
 
 pub fn do_finalize_fee<VM>(
@@ -13,6 +13,9 @@ pub fn do_finalize_fee<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     tx: &Tx,
     outcome: &TxOutcome,
     mode: AuthMode,
@@ -27,6 +30,9 @@ where
         storage,
         gas_tracker,
         block,
+        chain_id,
+        cfg,
+        app_cfg,
         tx,
         outcome,
         mode,
@@ -58,6 +64,9 @@ pub fn _do_finalize_fee<VM>(
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: &Config,
+    app_cfg: Json,
     tx: &Tx,
     outcome: &TxOutcome,
     mode: AuthMode,
@@ -69,13 +78,9 @@ where
 {
     let mut evt = EvtFinalize::base(tx.sender, tx.gas_limit, outcome.gas_used);
 
-    let (cfg, taxman, chain_id) = catch_event! {
+    let taxman = catch_event! {
         {
-            let cfg = CONFIG.load(&storage)?;
-            let chain_id = CHAIN_ID.load(&storage)?;
-            let taxman = CONTRACTS.load(&storage, cfg.taxman)?;
-
-            Ok((cfg, taxman, chain_id))
+            Ok(CONTRACTS.load(&storage, cfg.taxman)?)
         },
         evt
     };
@@ -96,6 +101,8 @@ where
             vm,
             storage,
             gas_tracker,
+            cfg,
+            app_cfg,
             0,
             0,
             true,

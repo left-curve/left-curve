@@ -2,7 +2,8 @@ use {
     crate::{AppError, GasTracker, Vm, process_query},
     error_backtrace::{Backtraceable, BacktracedError},
     grug_types::{
-        BlockInfo, Querier, Query, QueryResponse, QueryResult, StdError, StdResult, Storage,
+        BlockInfo, Config, Json, Querier, Query, QueryResponse, QueryResult, StdError, StdResult,
+        Storage,
     },
 };
 
@@ -43,6 +44,9 @@ pub struct QuerierProviderImpl<VM> {
     storage: Box<dyn Storage>,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    chain_id: String,
+    cfg: Config,
+    app_cfg: Json,
 }
 
 impl<VM> QuerierProviderImpl<VM> {
@@ -51,12 +55,18 @@ impl<VM> QuerierProviderImpl<VM> {
         storage: Box<dyn Storage>,
         gas_tracker: GasTracker,
         block: BlockInfo,
+        chain_id: String,
+        cfg: Config,
+        app_cfg: Json,
     ) -> Self {
         Self {
             vm,
             storage,
             gas_tracker,
             block,
+            chain_id,
+            cfg,
+            app_cfg,
         }
     }
 }
@@ -71,8 +81,19 @@ where
         storage: Box<dyn Storage>,
         gas_tracker: GasTracker,
         block: BlockInfo,
+        chain_id: String,
+        cfg: Config,
+        app_cfg: Json,
     ) -> Box<dyn QuerierProvider> {
-        Box::new(Self::new(vm, storage, gas_tracker, block))
+        Box::new(Self::new(
+            vm,
+            storage,
+            gas_tracker,
+            block,
+            chain_id,
+            cfg,
+            app_cfg,
+        ))
     }
 }
 
@@ -87,6 +108,9 @@ where
             self.storage.clone(),
             self.gas_tracker.clone(),
             self.block,
+            self.chain_id.clone(),
+            self.cfg.clone(),
+            self.app_cfg.clone(),
             query_depth,
             req,
         )

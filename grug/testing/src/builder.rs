@@ -7,8 +7,8 @@ use {
     grug_math::Udec128,
     grug_types::{
         Addr, Binary, BlockInfo, Coins, Config, Defined, Denom, Duration, GENESIS_BLOCK_HASH,
-        GENESIS_BLOCK_HEIGHT, GENESIS_SENDER, GenesisState, HashExt, Json, JsonSerExt,
-        MaybeDefined, Message, Permission, Permissions, StdResult, Timestamp, Undefined,
+        GENESIS_BLOCK_HEIGHT, GENESIS_SENDER, HashExt, Json, JsonSerExt, MaybeDefined, Message,
+        Permission, Permissions, StdResult, Timestamp, Undefined,
     },
     grug_vm_rust::RustVm,
     serde::Serialize,
@@ -661,23 +661,19 @@ where
             max_orphan_age: self.max_orphan_age.unwrap_or(DEFAULT_MAX_ORPHAN_AGE),
         };
 
-        let genesis_state = GenesisState {
-            config,
-            msgs,
-            app_config: self.app_config,
-        };
-
         let suite = TestSuite::new_with_db_vm_indexer_and_pp(
             self.db,
             self.vm,
             self.pp,
             self.indexer,
-            self.upgrade_handler,
             chain_id,
+            config,
+            self.app_config,
+            self.upgrade_handler,
             block_time,
             default_gas_limit,
             genesis_block,
-            genesis_state,
+            msgs,
         );
 
         (suite, self.accounts.into_inner())

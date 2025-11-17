@@ -2,11 +2,11 @@
 use dyn_event::dyn_event;
 use {
     crate::{
-        AppError, AppResult, CODES, CONFIG, EventResult, GasTracker, MeteredItem, MeteredMap,
-        TraceOption, has_permission,
+        AppError, AppResult, CODES, EventResult, GasTracker, MeteredMap, TraceOption,
+        has_permission,
     },
     grug_types::{
-        Addr, BlockInfo, Code, CodeStatus, EvtUpload, Hash256, HashExt, MsgUpload, Storage,
+        Addr, BlockInfo, Code, CodeStatus, Config, EvtUpload, Hash256, HashExt, MsgUpload, Storage,
     },
 };
 
@@ -14,6 +14,7 @@ pub fn do_upload(
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    cfg: &Config,
     uploader: Addr,
     msg: MsgUpload,
     #[allow(unused_variables)] trace_opt: TraceOption,
@@ -25,7 +26,7 @@ pub fn do_upload(
         code_hash,
     };
 
-    match _do_upload(storage, gas_tracker, block, uploader, msg, code_hash) {
+    match _do_upload(storage, gas_tracker, block, cfg, uploader, msg, code_hash) {
         Ok(_) => {
             #[cfg(feature = "tracing")]
             dyn_event!(
@@ -54,13 +55,11 @@ fn _do_upload(
     storage: &mut dyn Storage,
     gas_tracker: GasTracker,
     block: BlockInfo,
+    cfg: &Config,
     uploader: Addr,
     msg: MsgUpload,
     code_hash: Hash256,
 ) -> AppResult<()> {
-    // Make sure the user has the permission to upload contracts
-    let cfg = CONFIG.load_with_gas(storage, gas_tracker.clone())?;
-
     if !has_permission(&cfg.permissions.upload, cfg.owner, uploader) {
         return Err(AppError::unauthorized());
     }

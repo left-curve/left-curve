@@ -1,6 +1,5 @@
 mod authenticate;
 mod backrun;
-mod configure;
 mod cron;
 #[allow(clippy::module_inception)]
 mod execute;
@@ -14,6 +13,6 @@ mod upload;
 mod withhold;
 
 pub use {
-    authenticate::*, backrun::*, configure::*, cron::*, execute::*, finalize::*, instantiate::*,
-    migrate::*, reply::*, transfer::*, upgrade::*, upload::*, withhold::*,
+    authenticate::*, backrun::*, cron::*, execute::*, finalize::*, instantiate::*, migrate::*,
+    reply::*, transfer::*, upgrade::*, upload::*, withhold::*,
 };

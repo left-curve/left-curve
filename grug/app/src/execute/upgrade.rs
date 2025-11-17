@@ -1,17 +1,14 @@
 #[cfg(feature = "tracing")]
 use dyn_event::dyn_event;
 use {
-    crate::{
-        AppError, AppResult, CONFIG, EventResult, GasTracker, MeteredItem, NEXT_UPGRADE,
-        TraceOption,
-    },
-    grug_types::{Addr, BlockInfo, EvtUpgrade, NextUpgrade, Storage},
+    crate::{AppError, AppResult, EventResult, NEXT_UPGRADE, TraceOption},
+    grug_types::{Addr, BlockInfo, Config, EvtUpgrade, NextUpgrade, Storage},
 };
 
 pub fn do_upgrade(
     storage: &mut dyn Storage,
-    gas_tracker: GasTracker,
     block: BlockInfo,
+    cfg: &Config,
     sender: Addr,
     upgrade: NextUpgrade,
     #[allow(unused_variables)] trace_opt: TraceOption,
@@ -22,7 +19,7 @@ pub fn do_upgrade(
         cargo_version: upgrade.cargo_version.clone(),
     };
 
-    match _do_upgrade(storage, gas_tracker, block, sender, upgrade.clone()) {
+    match _do_upgrade(storage, block, cfg, sender, upgrade.clone()) {
         Ok(_) => {
             #[cfg(feature = "tracing")]
             {
@@ -49,13 +46,11 @@ pub fn do_upgrade(
 
 fn _do_upgrade(
     storage: &mut dyn Storage,
-    gas_tracker: GasTracker,
     block: BlockInfo,
+    cfg: &Config,
     sender: Addr,
     upgrade: NextUpgrade,
 ) -> AppResult<()> {
-    let cfg = CONFIG.load_with_gas(storage, gas_tracker)?;
-
     // Only the chain owner can schedule upgrades.
     if sender != cfg.owner {
         return Err(AppError::not_owner(sender, cfg.owner));

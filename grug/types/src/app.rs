@@ -1,5 +1,5 @@
 use {
-    crate::{Addr, Duration, Hash256, Json, Label, Message, Timestamp, Tx},
+    crate::{Addr, Duration, Hash256, Label, Message, Timestamp, Tx},
     borsh::{BorshDeserialize, BorshSerialize},
     hex_literal::hex,
     serde::{Deserialize, Serialize},
@@ -34,18 +34,9 @@ pub const GENESIS_BLOCK_HASH: Hash256 = Hash256::from_inner(hex!(
 /// database and Merkle tree version.
 pub const GENESIS_BLOCK_HEIGHT: u64 = 0;
 
-/// The chain's genesis state. To be included in the `app_state` field of
-/// CometBFT's `genesis.json`.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct GenesisState {
-    /// Chain configurations.
-    pub config: Config,
-    /// App-specific configurations.
-    pub app_config: Json,
-    /// Messages to be executed in order during genesis.
-    pub msgs: Vec<Message>,
-}
+/// The chain's genesis state. Consists of messages to be executed in order
+/// during genesis. To be included in the `app_state` field of CometBFT's `genesis.json`.
+pub type GenesisState = Vec<Message>;
 
 /// Chain-level configurations. Not to be confused with contract-level configs.
 #[skip_serializing_none]
