@@ -1,6 +1,6 @@
 use {
     aes_gcm::{AeadCore, Aes256Gcm, Key, KeyInit, aead::Aead},
-    bip32::{Mnemonic, PublicKey, XPrv},
+    bip32::{Mnemonic, XPrv},
     grug::{Binary, ByteArray, JsonDeExt, JsonSerExt},
     identity::Identity256,
     k256::ecdsa::{Signature, signature::DigestSigner},
@@ -142,20 +142,5 @@ impl SigningKey {
         let recover_id = recovery_id.to_byte();
         sig[64] = recover_id;
         sig
-    }
-
-    /// Return the private key as a byte array.
-    pub fn private_key(&self) -> [u8; 32] {
-        self.inner.to_bytes().into()
-    }
-
-    /// Return the public key as a byte array.
-    pub fn public_key(&self) -> [u8; 33] {
-        self.inner.verifying_key().to_bytes()
-    }
-
-    pub fn extended_public_key(&self) -> [u8; 65] {
-        let a = self.inner.verifying_key().to_encoded_point(false);
-        a.as_bytes().try_into().unwrap()
     }
 }

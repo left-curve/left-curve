@@ -1,5 +1,5 @@
 use {
-    crate::SigningKey,
+    crate::{Ethereum, Secp256k1, Secret, SigningKey},
     alloy::{
         dyn_abi::{Eip712Domain, TypedData},
         primitives::U160,
@@ -25,30 +25,29 @@ use {
 
 pub const DEFAULT_DERIVATION_PATH: &str = "m/44'/60'/0'/0/0";
 
-#[derive(Debug)]
-pub enum CredentialType {
-    Secp256k1,
-    Ethereum,
-}
-
 /// Utility for signing transactions in the format by Dango's single-signature
 /// accounts, i.e. spot and margin accounts.
 #[derive(Debug)]
-pub struct SingleSigner<T>
+pub struct SingleSigner<S, N>
 where
-    T: MaybeDefined<Nonce>,
+    S: Secret,
+    N: MaybeDefined<Nonce>,
 {
     pub username: Username,
     pub address: Addr,
+    /// The public key.
     pub key: Key,
+    /// A hash of the public key.
     pub key_hash: Hash256,
-    pub nonce: T,
-    pub sk: SigningKey,
+    /// The private key.
+    pub sk: S,
+    pub nonce: N,
 }
 
-impl<T> SingleSigner<T>
+impl<S, N> SingleSigner<S, N>
 where
-    T: MaybeDefined<Nonce>,
+    S: Secret,
+    N: MaybeDefined<Nonce>,
 {
     pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
     where
@@ -68,25 +67,13 @@ where
     }
 }
 
-impl SingleSigner<Undefined<Nonce>> {
-    pub fn new(
-        username: &str,
-        address: Addr,
-        sk: SigningKey,
-        credential_type: CredentialType,
-    ) -> anyhow::Result<Self> {
+impl SingleSigner<Secp256k1, Undefined<Nonce>> {
+    /// Create a new `SingleSigner` of the [`Secp256k1`](dango_client::Secp256k1)
+    /// secret key type, with the given secret key.
+    pub fn new(username: &str, address: Addr, sk: Secp256k1) -> anyhow::Result<Self> {
         let username = Username::from_str(username)?;
-
-        let (key, key_hash) = match credential_type {
-            CredentialType::Secp256k1 => (
-                Key::Secp256k1(ByteArray::from_inner(sk.public_key())),
-                sk.public_key().hash256(),
-            ),
-            CredentialType::Ethereum => {
-                let addr = Addr::from_inner(eth_utils::derive_address(sk.inner.verifying_key()));
-                (Key::Ethereum(addr), addr.hash256())
-            },
-        };
+        let key = Key::Secp256k1(ByteArray::from_inner(sk.public_key()));
+        let key_hash = sk.public_key().hash256();
 
         Ok(Self {
             username,
@@ -98,42 +85,38 @@ impl SingleSigner<Undefined<Nonce>> {
         })
     }
 
-    pub fn new_random(
-        username: &str,
-        address: Addr,
-        credential_type: CredentialType,
-    ) -> anyhow::Result<Self> {
-        Self::new(username, address, SigningKey::new_random(), credential_type)
+    /// Create a new `SingleSinger` of the [`Secp256k1`](dango_client::Secp256k1)
+    /// secret key type, with a random secret key.
+    pub fn new_random(username: &str, address: Addr) -> anyhow::Result<Self> {
+        Self::new(username, address, SigningKey::new_random())
     }
 
-    pub fn from_private_key(
-        username: &str,
-        address: Addr,
-        key: [u8; 32],
-        credential_type: CredentialType,
-    ) -> anyhow::Result<Self> {
-        Self::new(
-            username,
-            address,
-            SigningKey::from_bytes(key)?,
-            credential_type,
-        )
+    /// Create a new `SingleSinger` of the [`Secp256k1`](dango_client::Secp256k1)
+    /// secret key type, with the given raw private key.
+    pub fn from_private_key(username: &str, address: Addr, key: [u8; 32]) -> anyhow::Result<Self> {
+        Self::new(username, address, SigningKey::from_bytes(key)?)
     }
 
+    /// Create a new `SingleSinger` of the [`Secp256k1`](dango_client::Secp256k1)
+    /// secret key type, with the given BIP-39 mnemonic phrase and BIP-44 coin type.
     pub fn from_mnemonic(
         username: &str,
         address: Addr,
         mnemonic: &str,
         coin_type: usize,
-        credential_type: CredentialType,
     ) -> anyhow::Result<Self> {
         let mnemonic = Mnemonic::new(mnemonic, Language::English)?;
         let sk = SigningKey::from_mnemonic(&mnemonic, coin_type)?;
 
-        Self::new(username, address, sk, credential_type)
+        Self::new(username, address, sk)
     }
+}
 
-    pub fn with_nonce(self, nonce: Nonce) -> SingleSigner<Defined<Nonce>> {
+impl<S> SingleSigner<S, Undefined<Nonce>>
+where
+    S: Secret,
+{
+    pub fn with_nonce(self, nonce: Nonce) -> SingleSigner<S, Defined<Nonce>> {
         SingleSigner {
             username: self.username,
             address: self.address,
@@ -166,16 +149,17 @@ impl SingleSigner<Undefined<Nonce>> {
     }
 }
 
-impl<T> Addressable for SingleSigner<T>
+impl<S, N> Addressable for SingleSigner<S, N>
 where
-    T: MaybeDefined<Nonce>,
+    S: Secret,
+    N: MaybeDefined<Nonce>,
 {
     fn address(&self) -> Addr {
         self.address
     }
 }
 
-impl Signer for SingleSigner<Defined<Nonce>> {
+impl<S> Signer for SingleSigner<S, Defined<Nonce>> {
     fn unsigned_transaction(
         &self,
         msgs: NonEmpty<Vec<Message>>,
@@ -273,7 +257,10 @@ impl Signer for SingleSigner<Defined<Nonce>> {
 }
 
 #[async_trait::async_trait]
-impl SequencedSigner for SingleSigner<Defined<Nonce>> {
+impl<S> SequencedSigner for SingleSigner<S, Defined<Nonce>>
+where
+    S: Secret + Send + Sync,
+{
     async fn query_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
     where
         C: QueryClient,
