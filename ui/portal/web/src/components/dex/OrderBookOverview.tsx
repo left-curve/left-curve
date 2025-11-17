@@ -30,12 +30,15 @@ export const OrderBookOverview: React.FC<OrderBookOverviewProps> = ({ state, con
   const { isLg, is3Xl } = useMediaQuery();
 
   useEffect(() => {
-    setActiveTab(isLg ? "order book" : "graph");
-  }, [isLg]);
+    if (is3Xl) {
+      setActiveTab("order book");
+    } else {
+      setActiveTab(isLg ? "order book" : "graph");
+    }
+  }, [isLg, is3Xl]);
 
   const tabsKeys = useMemo(() => {
     if (is3Xl) {
-      setActiveTab("order book");
       return ["order book"];
     }
     return isLg ? ["order book", "trades"] : ["graph", "order book", "trades"];
