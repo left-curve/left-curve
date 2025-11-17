@@ -744,6 +744,8 @@ impl Storage for StateStorage {
             && data.min.as_slice() <= key
             && key < data.max.as_slice()
         {
+            let value = data.records.get(key).cloned();
+
             #[cfg(feature = "metrics")]
             {
                 metrics::histogram!(
@@ -755,7 +757,7 @@ impl Storage for StateStorage {
                 .record(duration.elapsed().as_secs_f64());
             }
 
-            return data.records.get(key).cloned();
+            return value;
         }
 
         let opts = new_read_options(None, None);
