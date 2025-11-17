@@ -241,8 +241,12 @@ where
     C: Codec<T>,
     I: IndexList<K, T>,
 {
+    /// Delete all records in the indexed map.
+    ///
+    /// Note: this involves clearing _both_ the primary map and the index maps.
     pub fn clear_all(&self, storage: &mut dyn Storage) {
         self.primary.clear(storage, None, None);
+
         for index in self.idx.get_indexes() {
             index.clear_all(storage);
         }
