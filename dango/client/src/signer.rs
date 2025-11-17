@@ -36,7 +36,7 @@ pub enum CredentialType {
 #[derive(Debug)]
 pub struct SingleSigner<T>
 where
-    T: MaybeDefined<u32>,
+    T: MaybeDefined<Nonce>,
 {
     pub username: Username,
     pub address: Addr,
@@ -48,7 +48,7 @@ where
 
 impl<T> SingleSigner<T>
 where
-    T: MaybeDefined<u32>,
+    T: MaybeDefined<Nonce>,
 {
     pub async fn query_next_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
     where
@@ -68,7 +68,7 @@ where
     }
 }
 
-impl SingleSigner<Undefined<u32>> {
+impl SingleSigner<Undefined<Nonce>> {
     pub fn new(
         username: &str,
         address: Addr,
@@ -133,7 +133,7 @@ impl SingleSigner<Undefined<u32>> {
         Self::new(username, address, sk, credential_type)
     }
 
-    pub fn with_nonce(self, nonce: u32) -> SingleSigner<Defined<u32>> {
+    pub fn with_nonce(self, nonce: Nonce) -> SingleSigner<Defined<Nonce>> {
         SingleSigner {
             username: self.username,
             address: self.address,
@@ -145,7 +145,10 @@ impl SingleSigner<Undefined<u32>> {
     }
 
     /// Fetch the next nonce and return a `SingleSigner` with the nonce set.
-    pub async fn with_query_nonce<C>(self, client: &C) -> anyhow::Result<SingleSigner<Defined<u32>>>
+    pub async fn with_query_nonce<C>(
+        self,
+        client: &C,
+    ) -> anyhow::Result<SingleSigner<Defined<Nonce>>>
     where
         C: QueryClient,
         anyhow::Error: From<C::Error>,
@@ -165,14 +168,14 @@ impl SingleSigner<Undefined<u32>> {
 
 impl<T> Addressable for SingleSigner<T>
 where
-    T: MaybeDefined<u32>,
+    T: MaybeDefined<Nonce>,
 {
     fn address(&self) -> Addr {
         self.address
     }
 }
 
-impl Signer for SingleSigner<Defined<u32>> {
+impl Signer for SingleSigner<Defined<Nonce>> {
     fn unsigned_transaction(
         &self,
         msgs: NonEmpty<Vec<Message>>,
@@ -270,7 +273,7 @@ impl Signer for SingleSigner<Defined<u32>> {
 }
 
 #[async_trait::async_trait]
-impl SequencedSigner for SingleSigner<Defined<u32>> {
+impl SequencedSigner for SingleSigner<Defined<Nonce>> {
     async fn query_nonce<C>(&self, client: &C) -> anyhow::Result<Nonce>
     where
         C: QueryClient,
