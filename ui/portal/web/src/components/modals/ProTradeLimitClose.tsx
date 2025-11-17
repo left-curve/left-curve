@@ -20,12 +20,7 @@ export const ProTradeLimitClose = forwardRef(() => {
           startText="right"
           placeholder="0"
           startContent={
-            <Button
-              type="button"
-              variant="secondary"
-              size="xs"
-              className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-            >
+            <Button type="button" variant="tertiary-red" size="xs" className="py-[2px] px-[6px]">
               Mid
             </Button>
           }

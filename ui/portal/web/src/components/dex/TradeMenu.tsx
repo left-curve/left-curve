@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   CoinSelector,
+  FormattedNumber,
   IconButton,
   IconChevronDownFill,
   IconUser,
@@ -121,6 +122,22 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               value={sizeCoin.denom}
               coins={[baseCoin, quoteCoin]}
             />
+          }
+          insideBottomComponent={
+            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular pl-4">
+              <div className="flex items-center gap-2">
+                <FormattedNumber number={availableCoin.amount} />
+                <Button
+                  type="button"
+                  variant="tertiary-red"
+                  size="xs"
+                  className="py-[2px] px-[6px] cursor-pointer"
+                  onClick={() => setValue("size", maxSizeAmount.toString())}
+                >
+                  {m["common.max"]()}
+                </Button>
+              </div>
+            </div>
           }
         />
         <Range
@@ -256,12 +273,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
           <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular pl-4">
             <div className="flex items-center gap-2">
               <p>12.23</p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="xs"
-                className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-              >
+              <Button type="button" variant="tertiary-red" size="xs" className="py-[2px] px-[6px]">
                 {m["common.max"]()}
               </Button>
             </div>
