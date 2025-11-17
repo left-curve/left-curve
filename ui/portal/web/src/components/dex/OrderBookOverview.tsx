@@ -1,5 +1,5 @@
 import { FormattedNumber, Select, Spinner, useApp, useMediaQuery } from "@left-curve/applets-kit";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 
 import { Direction, type PairId } from "@left-curve/dango/types";
@@ -203,7 +203,8 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const { baseCoin, quoteCoin, pairId } = state;
   const { liveTradesStore } = useLiveTradesState({ pairId });
 
-  const trades = liveTradesStore((s) => s.trades);
+  const liveTrades = liveTradesStore((s) => s.trades);
+  const trades = useDeferredValue(liveTrades);
 
   return (
     <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[43rem] 2xl:max-h-[15rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4">
@@ -213,45 +214,49 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
         <p className="text-end">{m["dex.protrade.history.time"]()}</p>
       </div>
       <div className="relative flex-1 w-full flex flex-col gap-1 items-center">
-        {trades.map((trade, index) => (
-          <div
-            key={`${trade.addr}-${trade.createdAt}-${index}`}
-            onClick={() => navigate({ to: `/block/${trade.blockHeight}` })}
-            className={
-              "grid grid-cols-3 diatype-xs-medium text-ink-secondary-700 w-full cursor-pointer group relative"
-            }
-          >
+        {trades.length ? (
+          trades.map((trade, index) => (
             <div
-              className={twMerge(
-                "z-10",
-                trade.direction === Direction.Buy
-                  ? "text-utility-success-600"
-                  : "text-utility-error-600",
-              )}
+              key={`${trade.addr}-${trade.createdAt}-${index}`}
+              onClick={() => navigate({ to: `/block/${trade.blockHeight}` })}
+              className={
+                "grid grid-cols-3 diatype-xs-medium text-ink-secondary-700 w-full cursor-pointer group relative"
+              }
             >
-              <FormattedNumber
-                number={parseUnits(
-                  trade.clearingPrice,
-                  baseCoin.decimals - quoteCoin.decimals,
-                  true,
+              <div
+                className={twMerge(
+                  "z-10",
+                  trade.direction === Direction.Buy
+                    ? "text-utility-success-600"
+                    : "text-utility-error-600",
                 )}
-                formatOptions={{ minimumTotalDigits: 8 }}
-              />
-            </div>
-            <div className="text-center z-10 flex gap-1 justify-center">
-              <FormattedNumber
-                number={calculateTradeSize(trade, baseCoin.decimals).toFixed()}
-                formatOptions={{ maximumTotalDigits: 5, minimumTotalDigits: 5 }}
-              />
-            </div>
+              >
+                <FormattedNumber
+                  number={parseUnits(
+                    trade.clearingPrice,
+                    baseCoin.decimals - quoteCoin.decimals,
+                    true,
+                  )}
+                  formatOptions={{ minimumTotalDigits: 8 }}
+                />
+              </div>
+              <div className="text-center z-10 flex gap-1 justify-center">
+                <FormattedNumber
+                  number={calculateTradeSize(trade, baseCoin.decimals).toFixed()}
+                  formatOptions={{ maximumTotalDigits: 5, minimumTotalDigits: 5 }}
+                />
+              </div>
 
-            <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
-              <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
-              <IconLink className="w-3 h-3 min-h-3 min-w-3" />
+              <div className="flex flex-nowrap whitespace-nowrap gap-1 items-center justify-end z-10">
+                <p>{formatDate(trade.createdAt, timeFormat.replace("mm", "mm:ss"))}</p>
+                <IconLink className="w-3 h-3 min-h-3 min-w-3" />
+              </div>
+              <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
             </div>
-            <span className="group-hover:bg-surface-tertiary-rice h-[calc(100%+0.5rem)] w-[calc(100%+2rem)] absolute top-[-0.25rem] -left-4 z-0" />
-          </div>
-        ))}
+          ))
+        ) : (
+          <Spinner fullContainer size="md" color="pink" />
+        )}
       </div>
     </div>
   );
