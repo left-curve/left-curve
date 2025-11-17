@@ -164,6 +164,27 @@ where
         self.send_message(signer, msg, gas_opt, chain_id).await
     }
 
+    /// Send a transaction with a single [`Message::Upgrade`](grug_types::Message::Upgrade).
+    async fn upgrade<S, T, U, V>(
+        &self,
+        signer: &mut S,
+        cargo_version: T,
+        height: u64,
+        git_tag: Option<U>,
+        url: Option<V>,
+        gas_opt: GasOption,
+        chain_id: &str,
+    ) -> Result<BroadcastTxOutcome, <Self as BroadcastClient>::Error>
+    where
+        S: Signer + Send + Sync,
+        T: Into<String> + Send,
+        U: Into<String> + Send,
+        V: Into<String> + Send,
+    {
+        let msg = Message::upgrade(height, cargo_version, git_tag, url);
+        self.send_message(signer, msg, gas_opt, chain_id).await
+    }
+
     /// Send a transaction with a single [`Message::Transfer`](grug_types::Message::Transfer).
     async fn transfer<S, C>(
         &self,

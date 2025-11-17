@@ -70,7 +70,7 @@ export type SubscriptionSchema = [
       request: QueryRequest;
       interval?: number;
     };
-    listener: (event: QueryResponse) => void;
+    listener: (event: { response: QueryResponse; blockHeight: number }) => void;
   },
 ];
 

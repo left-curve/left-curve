@@ -65,6 +65,7 @@ const Details: React.FC = () => {
 
   const { sender, hash, blockHeight, createdAt, transactionIdx, gasUsed, gasWanted, hasSucceeded } =
     tx;
+
   return (
     <div className="flex flex-col gap-4 rounded-xl p-4 bg-surface-secondary-rice shadow-account-card text-ink-secondary-700 diatype-sm-medium relative overflow-hidden">
       <h1 className="h4-bold text-ink-primary-900">{m["explorer.txs.txDetails"]()}</h1>
@@ -157,10 +158,52 @@ const Messages: React.FC = () => {
 
   if (!tx) return null;
 
-  const { nestedEvents, messages } = tx;
+  const { nestedEvents, messages, errorMessage } = tx;
+
+  const { error, backtrace } = (() => {
+    if (!errorMessage) return { error: undefined, backtrace: undefined };
+    try {
+      const parsed = JSON.parse(errorMessage);
+      return { error: parsed.error, backtrace: parsed.backtrace };
+    } catch {
+      return { error: undefined, backtrace: undefined };
+    }
+  })();
+
+  const shouldShowErrorAccordion = errorMessage && (error || backtrace);
 
   return (
     <div className="flex flex-col w-full gap-6">
+      {shouldShowErrorAccordion && (
+        <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
+          <p className="h4-bold text-ink-primary-900">{m["explorer.txs.error"]()}</p>
+          {error && (
+            <AccordionItem
+              key={"error-message"}
+              text={m["explorer.txs.message"]()}
+              classNames={{ text: "capitalize", menu: "overflow-visible" }}
+              defaultExpanded={false}
+            >
+              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
+                <JsonVisualizer json={{ error }} collapsed={1} />
+              </div>
+            </AccordionItem>
+          )}
+          {backtrace && (
+            <AccordionItem
+              key={"error-backtrace"}
+              text={m["explorer.txs.backtrace"]()}
+              classNames={{ text: "capitalize", menu: "overflow-visible" }}
+            >
+              <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">
+                <pre style={{ whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+                  {backtrace.replace(/ (\d+):/g, "\n$1:")}
+                </pre>
+              </div>
+            </AccordionItem>
+          )}
+        </div>
+      )}
       <div className="w-full shadow-account-card bg-surface-secondary-rice rounded-xl p-4 flex flex-col gap-4">
         <p className="h4-bold text-ink-primary-900">{m["explorer.txs.messages"]()}</p>
         {messages.map(({ data, methodName, orderIdx }) => {
@@ -169,7 +212,7 @@ const Messages: React.FC = () => {
             <AccordionItem
               key={orderIdx}
               text={methodName}
-              classNames={{ text: "capitalize" }}
+              classNames={{ text: "capitalize", menu: "overflow-visible" }}
               defaultExpanded
             >
               <div className="p-4 bg-primitives-gray-light-700 shadow-account-card  rounded-md text-primitives-white-light-100">

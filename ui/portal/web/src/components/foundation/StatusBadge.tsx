@@ -60,7 +60,7 @@ export const StatusBadge: React.FC = () => {
 
   const wsStatus = wsIsConnected ? "success" : "error";
   const chainStatus = isChainPaused ? "error" : "success";
-  const dexStatus = isDexPaused ? "error" : "success";
+  const dexStatus = isChainPaused || isDexPaused ? "error" : "success";
 
   const globalStatus = useMemo(() => {
     if (chainStatus === "error") return "error";
@@ -139,7 +139,7 @@ const ChainStatusSection: React.FC<ChainStatusSectionProps> = ({ chainStatus }) 
         <CurrentBlock
           classNames={{
             container: "diatype-xs-medium text-ink-tertiary-500",
-            skeleton: "h-4 w-12",
+            skeleton: "h-[16.8px] w-12",
           }}
         />
       </div>

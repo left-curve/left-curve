@@ -28,7 +28,7 @@ const coins = {
   },
   "bridge/eth": {
     type: "native",
-    name: "Ethereum",
+    name: "Ether",
     logoURI: "/images/coins/eth.svg",
     symbol: "ETH",
     denom: "bridge/eth",
@@ -37,7 +37,7 @@ const coins = {
   },
   "bridge/xrp": {
     type: "native",
-    name: "Ripple",
+    name: "XRP",
     logoURI: "/images/coins/xrp.svg",
     symbol: "XRP",
     denom: "bridge/xrp",

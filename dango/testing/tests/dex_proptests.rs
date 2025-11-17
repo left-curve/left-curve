@@ -11,8 +11,8 @@ use {
     },
     grug::{
         Addressable, BlockOutcome, Bounded, Coin, Coins, Dec128_24, Denom, Inner, IsZero,
-        MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, QuerierExt,
-        ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
+        LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst,
+        QuerierExt, ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
         ZeroInclusiveOneExclusive, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
@@ -750,14 +750,14 @@ fn swap_route() -> impl Strategy<Value = SwapRoute> {
         // Single pair route
         pair_id().prop_map(|pair| {
             let unique_vec = UniqueVec::new(vec![pair]).unwrap();
-            MaxLength::new(unique_vec).unwrap()
+            LengthBounded::new(unique_vec).unwrap()
         }),
         // Two pair route - select from all valid combinations of different pairs
         // Since all pairs use USDC as quote, any two different pairs are chainable
         select(vec![(0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1)]).prop_map(|(i, j)| {
             let pairs = pair_ids();
             let unique_vec = UniqueVec::new(vec![pairs[i].clone(), pairs[j].clone()]).unwrap();
-            MaxLength::new(unique_vec).unwrap()
+            LengthBounded::new(unique_vec).unwrap()
         })
     ]
 }
@@ -1090,7 +1090,8 @@ fn test_dex_actions(
                             pool_type: pool_type.clone(),
                             bucket_sizes: bucket_sizes.get(pair).unwrap().clone(),
                             swap_fee_rate: Bounded::new_unchecked(Udec128::new_permille(5)),
-                            min_order_size: Uint128::ZERO,
+                            min_order_size_quote: Uint128::ZERO,
+                            min_order_size_base: Uint128::ZERO,
                         },
                     })
                     .collect(),

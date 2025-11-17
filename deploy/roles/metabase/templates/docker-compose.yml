@@ -1,0 +1,21 @@
+services:
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: "{{ metabase_db_name }}"
+      MB_DB_PORT: "5432"
+      MB_DB_USER: "{{ metabase_db_user }}"
+      MB_DB_PASS: "{{ metabase_db_password }}"
+      MB_DB_HOST: "{{ metabase_db_host }}"
+    networks:
+      - traefik
+      - postgres
+    restart: unless-stopped
+
+networks:
+  traefik:
+    external: true
+  postgres:
+    external: true

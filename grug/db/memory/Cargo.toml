@@ -20,4 +20,5 @@ error-backtrace = { workspace = true }
 grug-app        = { workspace = true }
 grug-types      = { workspace = true }
 ouroboros       = { workspace = true }
+parking_lot     = { workspace = true }
 thiserror       = { workspace = true }

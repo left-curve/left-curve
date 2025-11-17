@@ -1,13 +1,12 @@
 use {
     crate::{entity, error::Error},
     dango_types::{
-        DangoQuerier,
         account_factory::{
             AccountParams, AccountRegistered, KeyDisowned, KeyOwned, UserRegistered,
         },
+        config::AppConfig,
     },
-    grug::{EventName, Inner, JsonDeExt},
-    grug_app::QuerierProvider,
+    grug::{EventName, Inner, Json, JsonDeExt},
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
     indexer_sql::block_to_index::{BlockToIndex, MAX_ROWS_INSERT},
     itertools::Itertools,
@@ -27,7 +26,7 @@ use {
 pub(crate) async fn save_accounts(
     context: &crate::context::Context,
     block: &BlockToIndex,
-    querier: &dyn QuerierProvider,
+    app_cfg: Json,
 ) -> Result<(), Error> {
     #[cfg(feature = "metrics")]
     let start = Instant::now();
@@ -35,7 +34,7 @@ pub(crate) async fn save_accounts(
     #[cfg(feature = "tracing")]
     tracing::info!("Saving accounts for block: {}", block.block.info.height);
 
-    let account_factory = querier.query_account_factory()?;
+    let app_cfg: AppConfig = app_cfg.deserialize_json()?;
 
     let mut user_registered_events = Vec::new();
     let mut account_registered_events = Vec::new();
@@ -73,7 +72,7 @@ pub(crate) async fn save_accounts(
                 continue;
             };
 
-            if event.contract != account_factory {
+            if event.contract != app_cfg.addresses.account_factory {
                 continue;
             }
 

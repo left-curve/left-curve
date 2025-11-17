@@ -130,7 +130,7 @@ where
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
         indexer_context.clone(),
-        Arc::new(Mutex::new(app)),
+        Arc::new(app),
         Arc::new(mock_client),
         indexer_path,
     );
@@ -146,6 +146,7 @@ where
         indexer_httpd_context.clone(),
         indexer_clickhouse_context.clone(),
         dango_context,
+        None,
     );
 
     dango_httpd::server::run_server("127.0.0.1", port, cors_allowed_origin, dango_httpd_context)

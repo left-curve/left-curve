@@ -68,10 +68,10 @@ export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
                 <AnimatePresence>
                   {open && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.1, ease: "easeInOut" }}
                     >
                       {menu}
                     </motion.div>

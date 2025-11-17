@@ -1,7 +1,8 @@
 use {
     crate::{context::Context, error::IndexerError},
-    dango_types::DangoQuerier,
+    dango_types::config::AppConfig,
     futures::try_join,
+    grug::{Config, Json, JsonDeExt},
     grug_app::Indexer as IndexerTrait,
     indexer_sql::indexer::RuntimeHandler,
 };
@@ -140,7 +141,8 @@ impl grug_app::Indexer for Indexer {
     fn post_indexing(
         &self,
         #[allow(unused_variables)] block_height: u64,
-        querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
+        _cfg: Config,
+        app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
@@ -150,7 +152,6 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` work started");
 
-        let querier = querier.clone();
         let ctx = ctx.clone();
         let context = self.context.clone();
 
@@ -158,11 +159,11 @@ impl grug_app::Indexer for Indexer {
             #[cfg(feature = "metrics")]
             let start = Instant::now();
 
-            let dex_addr = querier.as_ref().query_dex()?;
+            let app_cfg: AppConfig = app_cfg.deserialize_json()?;
 
             try_join!(
-                Self::store_candles(&dex_addr, &ctx, &context),
-                Self::store_trades(&dex_addr, &ctx, &context)
+                Self::store_candles(&app_cfg.addresses.dex, &ctx, &context),
+                Self::store_trades(&app_cfg.addresses.dex, &ctx, &context)
             )?;
 
             #[cfg(feature = "metrics")]

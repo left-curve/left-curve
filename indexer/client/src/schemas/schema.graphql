@@ -612,6 +612,11 @@ type Query {
 	): TradeConnection!
 }
 
+type QueryResponseWithBlockHeight {
+	response: JSON!
+	blockHeight: Int!
+}
+
 type Status {
 	block: BlockInfo!
 	chainId: String!
@@ -626,6 +631,10 @@ type Store {
 	The base64 encoded proof
 	"""
 	proof: String
+	"""
+	The block height at which this query was performed at
+	"""
+	blockHeight: Int!
 }
 
 type Subscription {
@@ -653,7 +662,7 @@ type Subscription {
 		Receive updates every N blocks from the initial block height when subscription starts
 		"""
 		blockInterval: Int! = 10
-	): JSON!
+	): QueryResponseWithBlockHeight!
 	queryStore(
 		"""
 		Key as B64 string

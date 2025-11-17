@@ -1,10 +1,8 @@
 use {
     crate::{context::Context, error::Error},
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
-    grug::Storage,
-    grug_app::QuerierProvider,
+    grug::{Config, Json, Storage},
     indexer_sql::{block_to_index::BlockToIndex, indexer::RuntimeHandler},
-    std::sync::Arc,
 };
 #[cfg(feature = "metrics")]
 use {
@@ -79,7 +77,8 @@ impl grug_app::Indexer for Indexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        querier: Arc<dyn QuerierProvider>,
+        _cfg: Config,
+        app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
@@ -102,7 +101,7 @@ impl grug_app::Indexer for Indexer {
                 transfers::save_transfers(&context, block_height).await?;
 
                 // Save accounts
-                accounts::save_accounts(&context, &block_to_index, &*querier)
+                accounts::save_accounts(&context, &block_to_index, app_cfg)
                     .await
                     .inspect_err(|_| {
                         #[cfg(feature = "metrics")]

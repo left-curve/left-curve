@@ -9,6 +9,7 @@ import {
 import {
   useAccount,
   useAppConfig,
+  useBalances,
   usePublicClient,
   useSigningClient,
   useSubmitTx,
@@ -18,6 +19,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useState, type PropsWithChildren } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import querySchema from "./querySchema.json";
 
 type MsgBuilderProps = {
   currentTab: "execute" | "query";
@@ -61,15 +63,34 @@ const QueryMsg: React.FC = () => {
     data: queryResponse,
   } = useMutation({
     mutationFn: () =>
-      client.queryWasmSmart(JSON.parse(queryMsg)).catch((e: any) => {
-        return { error: e.details };
-      }),
+      client
+        .queryApp({ query: JSON.parse(queryMsg) })
+        .then((r) => ({ response: r }))
+        .catch((e: any) => {
+          return { error: e.details };
+        }),
   });
   if (currentTab !== "query" || !config) return null;
 
   const addresses = Object.fromEntries(
     Object.entries(config.addresses).filter(([key]) => !key.includes("0x")),
   );
+
+  querySchema.$defs.Address = {
+    anyOf: [
+      {
+        type: "string",
+        enum: Object.values(addresses),
+        enumDescriptions: Object.keys(addresses).map((k) =>
+          m["explorer.contracts.contractDescription"]({ contract: k }),
+        ),
+      },
+      {
+        type: "string",
+      },
+    ],
+    description: "The address of the contract to which the query will be sent.",
+  } as unknown as { type: string; description: string };
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -86,34 +107,7 @@ const QueryMsg: React.FC = () => {
                   {
                     uri: "",
                     fileMatch: ["*"],
-                    schema: {
-                      type: "object",
-                      properties: {
-                        contract: {
-                          anyOf: [
-                            {
-                              type: "string",
-                              enum: Object.values(addresses),
-                              enumDescriptions: Object.keys(addresses).map((k) =>
-                                m["explorer.contracts.contractDescription"]({ contract: k }),
-                              ),
-                            },
-                            {
-                              type: "string",
-                            },
-                          ],
-                          description:
-                            "The address of the contract to which the query will be sent.",
-                        },
-                        msg: {
-                          type: "object",
-                          description:
-                            "The query message in JSON format that will be sent to the contract.",
-                          additionalProperties: true,
-                        },
-                      },
-                      required: ["contract", "msg"],
-                    },
+                    schema: querySchema,
                   },
                 ],
               });
@@ -143,7 +137,7 @@ const QueryMsg: React.FC = () => {
         {queryResponse ? (
           <div className="min-h-[60vh] lg:min-h-full p-4 bg-surface-tertiary-rice shadow-account-card  rounded-xl  flex-1 w-full lg:w-auto overflow-auto">
             <div className="overflow-hidden rounded-lg p-2 bg-[#453d39] h-[61vh] overflow-y-scroll scrollbar-none">
-              <JsonVisualizer json={JSON.stringify(queryResponse)} collapsed={1} />
+              <JsonVisualizer json={queryResponse} collapsed={1} />
             </div>
           </div>
         ) : null}
@@ -159,6 +153,7 @@ const ExecuteMsg: React.FC = () => {
   const { currentTab } = useMsgBuilder();
   const { data: signingClient } = useSigningClient();
   const { isConnected, account } = useAccount();
+  const { data: balances = {} } = useBalances({ address: account?.address });
   const [executeMsg, setExecuteMsg] = useState<string>("");
   const { theme } = useTheme();
 
@@ -207,17 +202,18 @@ const ExecuteMsg: React.FC = () => {
                               additionalProperties: true,
                             },
                             funds: {
-                              type: "array",
+                              type: "object",
                               description:
                                 "(Optional) Funds (coins) to be sent with the execution.",
-                              items: {
-                                type: "object",
-                                properties: {
-                                  denom: { type: "string" },
-                                  amount: { type: "string" },
-                                },
-                                required: ["denom", "amount"],
-                              },
+                              properties: Object.fromEntries(
+                                Object.entries(balances).map(([denom, balance]) => [
+                                  denom,
+                                  {
+                                    type: "string",
+                                    description: `Available balance: ${balance}`,
+                                  },
+                                ]),
+                              ),
                             },
                           },
                           required: ["contract", "msg"],

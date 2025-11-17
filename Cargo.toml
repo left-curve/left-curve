@@ -23,6 +23,7 @@ members = [
   "dango/taxman",
   "dango/testing",
   "dango/types",
+  "dango/upgrade",
   "dango/vesting",
   "dango/warp",
   "grug/app",
@@ -150,6 +151,7 @@ num-format                  = "0.4"
 num_cpus                    = "1"
 ouroboros                   = "0.18"
 p256                        = "0.13"
+parking_lot                 = { version = "0.12", features = ["arc_lock", "send_guard"] }
 paste                       = "1"
 pbkdf2                      = "0.12"
 proc-macro2                 = "1"
@@ -221,6 +223,7 @@ dango-scripts               = { path = "dango/scripts" }
 dango-taxman                = { path = "dango/taxman" }
 dango-testing               = { path = "dango/testing" }
 dango-types                 = { path = "dango/types" }
+dango-upgrade               = { path = "dango/upgrade" }
 dango-vesting               = { path = "dango/vesting" }
 dango-warp                  = { path = "dango/warp" }
 grug                        = { path = "grug/std" }

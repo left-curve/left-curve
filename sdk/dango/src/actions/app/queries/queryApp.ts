@@ -18,13 +18,13 @@ export async function queryApp<
   chain extends Chain | undefined = Chain,
   signer extends Signer | undefined = undefined,
 >(client: Client<Transport, chain, signer>, parameters: QueryAppParameters): QueryAppReturnType {
-  const { query, height = 0 } = parameters;
+  const { query, height } = parameters;
   const { transport } = client;
 
   if (transport.type !== "http-graphql") return await internalQueryApp(client, parameters);
 
   const document = `
-    query queryResult($request: String!, $height: Int!) {
+    query queryResult($request: String!, $height: Int) {
       queryApp(request: $request, height: $height)
     }
   `;
@@ -35,7 +35,7 @@ export async function queryApp<
       document,
       variables: {
         request: snakeCaseJsonSerialization(query),
-        height,
+        height: height === 0 ? undefined : height,
       },
     },
   );

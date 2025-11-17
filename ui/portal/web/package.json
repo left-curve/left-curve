@@ -38,7 +38,6 @@
     "zod": "catalog:"
   },
   "optionalDependencies": {
-    "@left-curve/chartiq": "^9.9.0",
     "@left-curve/tradingview": "^29.4.0"
   },
   "devDependencies": {
