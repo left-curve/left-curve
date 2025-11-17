@@ -3137,39 +3137,7 @@ fn submit_standard_order(
 
 #[test]
 fn volume_tracking_works() {
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
-
-    // Register oracle price source for USDC
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Register oracle price source for DANGO
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
+    let (mut suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let mut user1_addr_1 = accounts.user1;
     let mut user1_addr_2 = user1_addr_1
@@ -3252,13 +3220,13 @@ fn volume_tracking_works() {
     // Get timestamp after trade
     let timestamp_after_second_trade = suite.block.timestamp;
 
-    // Query the volume for username user1, should be 200
+    // Query the volume for username user1, should be $200 = 200M USD microunits
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user1_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(200_000_000));
 
     // Query the volume for username user2, should be 200
     suite
@@ -3266,7 +3234,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(200_000_000));
 
     // Query the volume for user1 address 1, should be 200
     suite
@@ -3274,7 +3242,7 @@ fn volume_tracking_works() {
             user: user1_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(200_000_000));
 
     // Query the volume for user2 address 1, should be 200
     suite
@@ -3282,7 +3250,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(200_000_000));
 
     // Query the volume for user1 address 2, should be zero
     suite
@@ -3308,13 +3276,13 @@ fn volume_tracking_works() {
 
     let timestamp_after_third_trade = suite.block.timestamp;
 
-    // Query the volume for username user1, should be 300
+    // Query the volume for username user1, should be $300 = 300M USD microunits
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user1_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(300));
+        .should_succeed_and_equal(Udec128::new(300_000_000));
 
     // Query the volume for username user2, should be 300
     suite
@@ -3322,7 +3290,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(300));
+        .should_succeed_and_equal(Udec128::new(300_000_000));
 
     // Query the volume for user1 address 1, should be 200
     suite
@@ -3330,7 +3298,7 @@ fn volume_tracking_works() {
             user: user1_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(200_000_000));
 
     // Query the volume for user1 address 2, should be 100
     suite
@@ -3338,7 +3306,7 @@ fn volume_tracking_works() {
             user: user1_addr_2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Query the volume for user2 address 1, should be 200
     suite
@@ -3346,7 +3314,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(200_000_000));
 
     // Query the volume for user2 address 2, should be 100
     suite
@@ -3354,7 +3322,7 @@ fn volume_tracking_works() {
             user: user2_addr_2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Query the volume for both usernames since timestamp after first trade, should be 200
     suite
@@ -3362,14 +3330,14 @@ fn volume_tracking_works() {
             user: user1_addr_1.username.clone(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(200_000_000));
 
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user2_addr_1.username.clone(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::new(200));
+        .should_succeed_and_equal(Udec128::new(200_000_000));
 
     // Query the volume for both usernames since timestamp after second trade, should be 100
     suite
@@ -3377,14 +3345,14 @@ fn volume_tracking_works() {
             user: user1_addr_1.username.clone(),
             since: Some(timestamp_after_second_trade),
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: user2_addr_1.username.clone(),
             since: Some(timestamp_after_second_trade),
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Query the volume for both users address 1 since timestamp after second trade, should be zero
     suite
@@ -3407,14 +3375,14 @@ fn volume_tracking_works() {
             user: user1_addr_2.address(),
             since: Some(timestamp_after_second_trade),
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: user2_addr_2.address(),
             since: Some(timestamp_after_second_trade),
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Range over the stored volume data, ensure it's correct
     let storage = suite.contract_storage(contracts.dex);
@@ -3423,12 +3391,12 @@ fn volume_tracking_works() {
         .collect::<StdResult<BTreeMap<_, _>>>()
         .unwrap();
     assert_eq!(volumes, btree_map! {
-        (user1_addr_1.address(), timestamp_after_first_trade) => Udec128_6::new(100),
-        (user1_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200),
-        (user1_addr_2.address(), timestamp_after_third_trade) => Udec128_6::new(100),
-        (user2_addr_1.address(), timestamp_after_first_trade) => Udec128_6::new(100),
-        (user2_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200),
-        (user2_addr_2.address(), timestamp_after_third_trade) => Udec128_6::new(100),
+        (user1_addr_1.address(), timestamp_after_first_trade)  => Udec128_6::new(100_000_000),
+        (user1_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
+        (user1_addr_2.address(), timestamp_after_third_trade)  => Udec128_6::new(100_000_000),
+        (user2_addr_1.address(), timestamp_after_first_trade)  => Udec128_6::new(100_000_000),
+        (user2_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
+        (user2_addr_2.address(), timestamp_after_third_trade)  => Udec128_6::new(100_000_000),
     });
 
     let volumes_by_user = VOLUMES_BY_USER
@@ -3436,12 +3404,12 @@ fn volume_tracking_works() {
         .collect::<StdResult<BTreeMap<_, _>>>()
         .unwrap();
     assert_eq!(volumes_by_user, btree_map! {
-        (user1_addr_1.username.clone(), timestamp_after_first_trade) => Udec128_6::new(100),
-        (user1_addr_1.username.clone(), timestamp_after_second_trade) => Udec128_6::new(200),
-        (user1_addr_1.username.clone(), timestamp_after_third_trade) => Udec128_6::new(300),
-        (user2_addr_1.username.clone(), timestamp_after_first_trade) => Udec128_6::new(100),
-        (user2_addr_1.username.clone(), timestamp_after_second_trade) => Udec128_6::new(200),
-        (user2_addr_1.username.clone(), timestamp_after_third_trade) => Udec128_6::new(300),
+        (user1_addr_1.username.clone(), timestamp_after_first_trade)  => Udec128_6::new(100_000_000),
+        (user1_addr_1.username.clone(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
+        (user1_addr_1.username.clone(), timestamp_after_third_trade)  => Udec128_6::new(300_000_000),
+        (user2_addr_1.username.clone(), timestamp_after_first_trade)  => Udec128_6::new(100_000_000),
+        (user2_addr_1.username.clone(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
+        (user2_addr_1.username.clone(), timestamp_after_third_trade)  => Udec128_6::new(300_000_000),
     });
 
     // Fast forward by the duration of MAX_VOLUME_AGE
@@ -3469,12 +3437,12 @@ fn volume_tracking_works() {
     assert_eq!(volumes, btree_map! {
         // `user1_addr_1` has three trades: 1st, 2nd, 4th. Among which, 1st and 2nd
         // are older than the cutoff. 2nd is kept, 1st is deleted.
-        (user1_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200),
-        (user1_addr_1.address(), timestamp_after_fourth_trade) => Udec128_6::new(300),
-        (user1_addr_2.address(), timestamp_after_third_trade) => Udec128_6::new(100),
-        (user2_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200),
-        (user2_addr_1.address(), timestamp_after_fourth_trade) => Udec128_6::new(300),
-        (user2_addr_2.address(), timestamp_after_third_trade) => Udec128_6::new(100),
+        (user1_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
+        (user1_addr_1.address(), timestamp_after_fourth_trade) => Udec128_6::new(300_000_000),
+        (user1_addr_2.address(), timestamp_after_third_trade)  => Udec128_6::new(100_000_000),
+        (user2_addr_1.address(), timestamp_after_second_trade) => Udec128_6::new(200_000_000),
+        (user2_addr_1.address(), timestamp_after_fourth_trade) => Udec128_6::new(300_000_000),
+        (user2_addr_2.address(), timestamp_after_third_trade)  => Udec128_6::new(100_000_000),
     });
 
     let volumes_by_user = VOLUMES_BY_USER
@@ -3482,10 +3450,10 @@ fn volume_tracking_works() {
         .collect::<StdResult<BTreeMap<_, _>>>()
         .unwrap();
     assert_eq!(volumes_by_user, btree_map! {
-        (user1_addr_1.username.clone(), timestamp_after_third_trade) => Udec128_6::new(300),
-        (user1_addr_1.username.clone(), timestamp_after_fourth_trade) => Udec128_6::new(400),
-        (user2_addr_1.username.clone(), timestamp_after_third_trade) => Udec128_6::new(300),
-        (user2_addr_1.username.clone(), timestamp_after_fourth_trade) => Udec128_6::new(400),
+        (user1_addr_1.username.clone(), timestamp_after_third_trade)  => Udec128_6::new(300_000_000),
+        (user1_addr_1.username.clone(), timestamp_after_fourth_trade) => Udec128_6::new(400_000_000),
+        (user2_addr_1.username.clone(), timestamp_after_third_trade)  => Udec128_6::new(300_000_000),
+        (user2_addr_1.username.clone(), timestamp_after_fourth_trade) => Udec128_6::new(400_000_000),
     });
 
     // Query the volume for username user1, should be 400
@@ -3494,7 +3462,7 @@ fn volume_tracking_works() {
             user: user1_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(400));
+        .should_succeed_and_equal(Udec128::new(400_000_000));
 
     // Query the volume for username user2, should be 400
     suite
@@ -3502,7 +3470,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(400));
+        .should_succeed_and_equal(Udec128::new(400_000_000));
 
     // Query the volume for user1 address 1, should be 300
     suite
@@ -3510,7 +3478,7 @@ fn volume_tracking_works() {
             user: user1_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(300));
+        .should_succeed_and_equal(Udec128::new(300_000_000));
 
     // Query the volume for user2 address 1, should be 300
     suite
@@ -3518,7 +3486,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(300));
+        .should_succeed_and_equal(Udec128::new(300_000_000));
 
     // Query the volume for user1 address 2, should still be 100
     suite
@@ -3526,7 +3494,7 @@ fn volume_tracking_works() {
             user: user1_addr_2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Query the volume for user2 address 2, should still be 100
     suite
@@ -3534,7 +3502,7 @@ fn volume_tracking_works() {
             user: user2_addr_2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Query the volume for user1 address 1 since timestamp after third trade,
     // should return 100.
@@ -3543,7 +3511,7 @@ fn volume_tracking_works() {
             user: user1_addr_1.address(),
             since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Query the volume for user2 address 1 since timestamp after third trade,
     // should return 100.
@@ -3552,7 +3520,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.address(),
             since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Query the volume for username user1 since timestamp after third trade,
     // should return 100.
@@ -3561,7 +3529,7 @@ fn volume_tracking_works() {
             user: user1_addr_1.username.clone(),
             since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Query the volume for username user2 since timestamp after third trade,
     // should return 100.
@@ -3570,7 +3538,7 @@ fn volume_tracking_works() {
             user: user2_addr_1.username.clone(),
             since: Some(timestamp_after_fourth_trade_minus_max_volume_age),
         })
-        .should_succeed_and_equal(Udec128::new(100));
+        .should_succeed_and_equal(Udec128::new(100_000_000));
 
     // Query the volume for user1 address 1 since timestamp after second trade,
     // should fail as time is more than MAX_VOLUME_AGE ago.
@@ -3613,54 +3581,6 @@ fn volume_tracking_works() {
 fn volume_tracking_works_with_multiple_orders_from_same_user() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
-    // Register oracle price source for USDC
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Register oracle price source for DANGO
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Register oracle price source for ETH
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                eth::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::from_str("85248.71").unwrap(),
-                    precision: 8,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
     // Submit two orders for DANGO/USDC and one for ETH/USDC with user1
     suite
         .execute(
@@ -3692,7 +3612,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
                 ],
                 cancels: None,
             },
-            Coins::one(usdc::DENOM.clone(), 301_000_000).unwrap(),
+            coins! { usdc::DENOM.clone() => 301_000_000 },
         )
         .should_succeed();
 
@@ -3730,13 +3650,16 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     // Get timestamp after trade
     let timestamp_after_first_trade = suite.block.timestamp;
 
-    // Query the volume for username user1, should be 300
+    // Query the volume for username user1, should be:
+    // - DANGO pair: 200_000_000
+    // - ETH pair: 117_304 * 852.485845 = 99_999_999.56188
+    // Sum = 200_000_000 + 99_999_999.56188 = 299_999_999.56188
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: accounts.user1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.000146").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("299999999.56188").unwrap());
 
     // Query the volume for username user2, should be 300
     suite
@@ -3744,7 +3667,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.000146").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("299999999.56188").unwrap());
 
     // Query the volume for user1 address, should be 300
     suite
@@ -3752,7 +3675,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.000146").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("299999999.56188").unwrap());
 
     // Query the volume for user2 address, should be 300
     suite
@@ -3760,7 +3683,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("300.000146").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("299999999.56188").unwrap());
 
     // Query the volume for both usernames since timestamp after first trade, should be zero
     suite
@@ -3857,12 +3780,17 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
     let timestamp_after_second_trade = suite.block.timestamp;
 
     // Query the volume for username user1, should be 700
+    // - Existing volume: 299_999_999.56188
+    // - DANGO pair: 200_000_000
+    // - ETH pair: 117_304 * 2 * 852.485845 = 199_999_999.12376
+    // Sum = 299_999_999.56188 + 200_000_000 + 199_999_999.12376 = 699_999_998.68564
+    // New volume = 200_000_000 + 199_999_999.12376 = 399_999_999.12376
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeByUserRequest {
             user: accounts.user1.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.000438").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("699999998.68564").unwrap());
 
     // Query the volume for username user2, should be 700
     suite
@@ -3870,7 +3798,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.username.clone(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.000439").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("699999998.68564").unwrap());
 
     // Query the volume for user1 address, should be 700
     suite
@@ -3878,7 +3806,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.000438").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("699999998.68564").unwrap());
 
     // Query the volume for user2 address, should be 700
     suite
@@ -3886,7 +3814,7 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user2.address(),
             since: None,
         })
-        .should_succeed_and_equal(Udec128::from_str("700.000439").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("699999998.68564").unwrap());
 
     // Query the volume for both usernames since timestamp after second trade, should be zero
     suite
@@ -3908,13 +3836,13 @@ fn volume_tracking_works_with_multiple_orders_from_same_user() {
             user: accounts.user1.address(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::from_str("400.000292").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("399999999.12376").unwrap());
     suite
         .query_wasm_smart(contracts.dex, dex::QueryVolumeRequest {
             user: accounts.user2.address(),
             since: Some(timestamp_after_first_trade),
         })
-        .should_succeed_and_equal(Udec128::from_str("400.000293").unwrap());
+        .should_succeed_and_equal(Udec128::from_str("399999999.12376").unwrap());
 }
 
 #[test_case(
