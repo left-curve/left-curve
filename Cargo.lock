@@ -3335,12 +3335,14 @@ name = "dango-client"
 version = "0.0.0"
 dependencies = [
  "aes-gcm",
+ "alloy",
  "anyhow",
  "async-trait",
  "bip32",
  "dango-account-factory",
  "dango-auth",
  "dango-types",
+ "eth-utils",
  "grug",
  "identity",
  "k256",

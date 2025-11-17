@@ -1,5 +1,5 @@
 use {
-    dango_client::SingleSigner,
+    dango_client::{Secp256k1, Secret, SingleSigner},
     grug::{Addr, BroadcastClientExt, GasOption, JsonSerExt, QueryClientExt, SearchTxClient, addr},
     grug_app::GAS_COSTS,
     hex_literal::hex,
@@ -21,9 +21,13 @@ const OWNER_PRIVATE_KEY: [u8; 32] =
 async fn main() -> anyhow::Result<()> {
     let client = HttpClient::new("https://api-devnet.dango.zone/")?;
 
-    let mut owner = SingleSigner::from_private_key(OWNER_USERNAME, OWNER, OWNER_PRIVATE_KEY)?
-        .with_query_nonce(&client)
-        .await?;
+    let mut owner = SingleSigner::new(
+        OWNER_USERNAME,
+        OWNER,
+        Secp256k1::from_bytes(OWNER_PRIVATE_KEY)?,
+    )?
+    .with_query_nonce(&client)
+    .await?;
 
     let outcome = client
         .upgrade(
