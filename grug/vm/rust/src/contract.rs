@@ -13,7 +13,7 @@ use {
         make_auth_ctx, make_immutable_ctx, make_mutable_ctx, make_sudo_ctx,
     },
     serde::de::DeserializeOwned,
-    std::{fmt::Debug, sync::OnceLock},
+    std::sync::OnceLock,
 };
 
 static CONTRACTS: OnceLock<FrozenVec<Box<dyn Contract + Send + Sync>>> = OnceLock::new();
