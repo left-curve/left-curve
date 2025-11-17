@@ -13,7 +13,7 @@ use {
     dango_types::{
         DangoQuerier,
         account_factory::Username,
-        constants::usd,
+        constants::usdc,
         dex::{
             CallbackMsg, Direction, ExecuteMsg, Order, OrderCanceled, OrderFilled, OrdersMatched,
             Paused, Price, ReplyMsg, RestingOrderBookState, TimeInForce,
@@ -21,8 +21,8 @@ use {
         taxman::{self, FeeType},
     },
     grug::{
-        Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Exponentiate, Inner, IsZero, Map,
-        Message, MetricsIterExt, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
+        Addr, Bound, Coins, DecCoins, Denom, EventBuilder, Inner, IsZero, Map, Message,
+        MetricsIterExt, MultiplyFraction, MutableCtx, NonZero, Number, NumberConst,
         Order as IterationOrder, PrimaryKey, Response, StdError, StdResult, Storage, SubMessage,
         SubMsgResult, SudoCtx, Timestamp, TransferBuilder, Udec128, Udec128_6,
     },
@@ -952,7 +952,10 @@ fn refund_ioc_order(
     Ok(())
 }
 
-/// Updates trading volumes for both user addresses and usernames
+/// Updates trading volumes for both user addresses and usernames.
+///
+/// If this only done if the quote denom is the USD. Volumes are stored as USD
+/// microunits.
 fn update_trading_volumes(
     storage: &mut dyn Storage,
     account_querier: &mut AccountQuerier,
@@ -962,20 +965,16 @@ fn update_trading_volumes(
     volumes: &mut HashMap<Addr, Udec128_6>,
     volumes_by_username: &mut HashMap<Username, Udec128_6>,
 ) -> anyhow::Result<()> {
-    // Only track trading volumes where quote asset is alloyed USD.
-    if quote_denom != &usd::DENOM.clone() {
+    // Only track trading volumes where quote asset is USDC.
+    if quote_denom != &usdc::DENOM.clone() {
         return Ok(());
     }
 
-    // Store the volume as a decimal of whole USD amounts, not USD microunits.
-    let new_volume =
-        filled_quote.checked_div_dec_floor(Udec128::new(10).checked_pow(usd::DECIMAL)?)?;
-
-    // Record trading volume for the user's address
+    // Record trading volume for the user's address.
     {
         match volumes.entry(order_user) {
             Entry::Occupied(mut v) => {
-                v.get_mut().checked_add_assign(new_volume)?;
+                v.get_mut().checked_add_assign(filled_quote)?;
             },
             Entry::Vacant(v) => {
                 let volume = VOLUMES
@@ -984,7 +983,7 @@ fn update_trading_volumes(
                     .next()
                     .transpose()?
                     .unwrap_or(Udec128_6::ZERO)
-                    .checked_add(new_volume)?;
+                    .checked_add(filled_quote)?;
 
                 v.insert(volume);
             },
@@ -999,7 +998,7 @@ fn update_trading_volumes(
     {
         match volumes_by_username.entry(username.clone()) {
             Entry::Occupied(mut v) => {
-                v.get_mut().checked_add_assign(new_volume)?;
+                v.get_mut().checked_add_assign(filled_quote)?;
             },
             Entry::Vacant(v) => {
                 let volume = VOLUMES_BY_USER
@@ -1008,7 +1007,7 @@ fn update_trading_volumes(
                     .next()
                     .transpose()?
                     .unwrap_or(Udec128_6::ZERO)
-                    .checked_add(new_volume)?;
+                    .checked_add(filled_quote)?;
 
                 v.insert(volume);
             },
