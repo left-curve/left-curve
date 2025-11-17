@@ -37,7 +37,7 @@ impl Cache {
 
     /// Set HTTP request details for transactions in the given block, those details
     /// are previously stored in the context by the httpd
-    #[allow(dead_code)]
+    #[cfg(feature = "http-request-details")]
     fn set_http_request_details(
         &self,
         block: &grug_types::Block,
