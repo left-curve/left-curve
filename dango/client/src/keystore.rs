@@ -15,7 +15,7 @@ const PBKDF2_SALT_LEN: usize = 16;
 const PBKDF2_KEY_LEN: usize = 32;
 const AES256GCM_NONCE_LEN: usize = 12;
 
-/// Data structure for encrypting a 32-byte private key save saving on disk.
+/// Data structure for encrypting a 32-byte private key before saving on disk.
 #[grug::derive(Serde)]
 pub struct Keystore {
     pub pk: ByteArray<SECP256K1_COMPRESSED_PUBKEY_LEN>,
