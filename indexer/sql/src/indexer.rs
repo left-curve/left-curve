@@ -175,6 +175,7 @@ where
             context,
             handle: self.handle,
             indexing: false,
+            #[cfg(feature = "tracing")]
             id,
         })
     }
