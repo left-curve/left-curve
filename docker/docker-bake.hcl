@@ -1,5 +1,6 @@
 group "default" {
-  targets = ["cross-builder-amd64", "cross-builder-arm64", "native-builder-amd64", "native-builder-arm64"]
+  targets = ["cross-builder-amd64", "cross-builder-arm64",
+    "native-builder-amd64", "native-builder-arm64"]
 }
 
 target "cross-builder-arm64" {
@@ -8,13 +9,6 @@ target "cross-builder-arm64" {
   tags = ["ghcr.io/left-curve/left-curve/cross-builder-arm64:latest"]
   platforms = ["linux/amd64", "linux/arm64"]
   push = true
-  # provenance = false
-  # cache-from = [
-  #   "type=registry,ref=ghcr.io/left-curve/left-curve/cross-builder-arm64-cache"
-  # ]
-  # cache-to = [
-  #   "type=registry,ref=ghcr.io/left-curve/left-curve/cross-builder-arm64-cache,mode=max"
-  # ]
 }
 
 target "cross-builder-amd64" {
@@ -23,13 +17,6 @@ target "cross-builder-amd64" {
   tags = ["ghcr.io/left-curve/left-curve/cross-builder-amd64:latest"]
   platforms = ["linux/arm64", "linux/amd64"]
   push = true
-  # provenance = false
-  # cache-from = [
-  #   "type=registry,ref=ghcr.io/left-curve/left-curve/cross-builder-amd64-cache"
-  # ]
-  # cache-to = [
-  #   "type=registry,ref=ghcr.io/left-curve/left-curve/cross-builder-amd64-cache,mode=max"
-  # ]
 }
 
 target "native-builder-amd64" {
@@ -42,14 +29,6 @@ target "native-builder-amd64" {
   platforms = ["linux/amd64"]
   push = true
   provenance = false
-  # cache-from = [
-  #   # "type=local,src=/tmp/.buildx-cache/native-builder-amd64",
-  #   "type=registry,ref=ghcr.io/left-curve/left-curve/native-builder:amd64-cache"
-  # ]
-  # cache-to = [
-  #   # "type=local,dest=/tmp/.buildx-cache/native-builder-amd64",
-  #   "type=registry,ref=ghcr.io/left-curve/left-curve/native-builder:amd64-cache,mode=max"
-  # ]
 }
 
 target "native-builder-arm64" {
@@ -62,12 +41,4 @@ target "native-builder-arm64" {
   platforms = ["linux/arm64"]
   push = true
   provenance = false
-  # cache-from = [
-  #   # "type=local,src=/tmp/.buildx-cache/native-builder-arm64",
-  #   "type=registry,ref=ghcr.io/left-curve/left-curve/native-builder:arm64-cache"
-  # ]
-  # cache-to = [
-  #   # "type=local,dest=/tmp/.buildx-cache/native-builder-arm64",
-  #   "type=registry,ref=ghcr.io/left-curve/left-curve/native-builder:arm64-cache,mode=max"
-  # ]
 }
