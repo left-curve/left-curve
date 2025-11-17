@@ -36,6 +36,12 @@ pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 #[cfg(feature = "metrics")]
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
+#[cfg(feature = "metrics")]
+pub const PRIORITY_DATA_LABEL: &str = "priority_data";
+
+#[cfg(feature = "metrics")]
+pub const ROCKSDB_LABEL: &str = "rocksdb";
+
 /// The base storage primitive.
 ///
 /// Its main feature is the separation of state storage (SS) and state commitment
@@ -734,9 +740,23 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the disk.
         // Note: `min` is inclusive, while `max` is exclusive.
+        // TODO: the nested `if` statements can be simplified with rust edition 2024
         if let Some(data) = &self.guard.priority_data {
             if data.min.as_slice() <= key && key < data.max.as_slice() {
-                return data.records.get(key).cloned();
+                let value = data.records.get(key).cloned();
+
+                #[cfg(feature = "metrics")]
+                {
+                    metrics::histogram!(
+                        DISK_DB_LABEL,
+                        "operation" => "read",
+                        "comment" => self.comment,
+                        "source" => PRIORITY_DATA_LABEL
+                    )
+                    .record(duration.elapsed().as_secs_f64());
+                }
+
+                return value;
             }
         }
 
@@ -751,8 +771,13 @@ impl Storage for StateStorage {
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "read", "comment" => self.comment)
-                .record(duration.elapsed().as_secs_f64());
+            metrics::histogram!(
+                DISK_DB_LABEL,
+                "operation" => "read",
+                "comment" => self.comment,
+                "source" => ROCKSDB_LABEL
+            )
+            .record(duration.elapsed().as_secs_f64());
         }
 
         value
@@ -767,84 +792,36 @@ impl Storage for StateStorage {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
-        let iter = self.create_iterator(min, max, order);
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan", "comment" => self.comment)
-                .record(duration.elapsed().as_secs_f64());
-        }
-
-        iter
-    }
-
-    fn scan_keys<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        #[cfg(feature = "metrics")]
-        let duration = std::time::Instant::now();
-
-        let iter = self.create_iterator(min, max, order).map(|(k, _)| k);
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_keys", "comment" => self.comment)
-                .record(duration.elapsed().as_secs_f64());
-        }
-
-        Box::new(iter)
-    }
-
-    fn scan_values<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        #[cfg(feature = "metrics")]
-        let duration = std::time::Instant::now();
-
-        let iter = self.create_iterator(min, max, order).map(|(_, v)| v);
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_values", "comment" => self.comment)
-                .record(duration.elapsed().as_secs_f64());
-        }
-
-        Box::new(iter)
-    }
-
-    fn write(&mut self, _key: &[u8], _value: &[u8]) {
-        unreachable!("write function called on read-only storage");
-    }
-
-    fn remove(&mut self, _key: &[u8]) {
-        unreachable!("write function called on read-only storage");
-    }
-
-    fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
-        unreachable!("write function called on read-only storage");
-    }
-}
-
-impl StateStorage {
-    fn create_iterator<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
         // If priority data exists, and the iterator range completely falls
         // within the priority range, then create a priority iterator.
         // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
         // are both exclusive.
+        // TODO: the nested `if` statements can be simplified with rust edition 2024
         if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max) {
             if data.min.as_slice() <= min && max <= data.max.as_slice() {
-                return data.records.scan(Some(min), Some(max), order);
+                let iter = data.records.scan(Some(min), Some(max), order);
+
+                #[cfg(feature = "metrics")]
+                {
+                    let iter = iter.with_metrics(DISK_DB_LABEL, [
+                        ("operation", "next"),
+                        ("comment", self.comment),
+                        ("source", PRIORITY_DATA_LABEL),
+                    ]);
+
+                    metrics::histogram!(
+                        DISK_DB_LABEL,
+                        "operation" => "scan",
+                        "comment" => self.comment,
+                        "source" => PRIORITY_DATA_LABEL
+                    )
+                    .record(duration.elapsed().as_secs_f64());
+
+                    return Box::new(iter);
+                }
+
+                #[cfg(not(feature = "metrics"))]
+                return iter;
             }
         }
 
@@ -865,9 +842,53 @@ impl StateStorage {
         let iter = iter.with_metrics(DISK_DB_LABEL, [
             ("operation", "next"),
             ("comment", self.comment),
+            ("source", ROCKSDB_LABEL),
         ]);
 
+        #[cfg(feature = "metrics")]
+        {
+            metrics::histogram!(
+                DISK_DB_LABEL,
+                "operation" => "scan",
+                "comment" => self.comment,
+                "source" => ROCKSDB_LABEL
+            )
+            .record(duration.elapsed().as_secs_f64());
+        }
+
         Box::new(iter)
+    }
+
+    fn scan_keys<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let iter = self.scan(min, max, order).map(|(k, _)| k);
+        Box::new(iter)
+    }
+
+    fn scan_values<'a>(
+        &'a self,
+        min: Option<&[u8]>,
+        max: Option<&[u8]>,
+        order: Order,
+    ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
+        let iter = self.scan(min, max, order).map(|(_, v)| v);
+        Box::new(iter)
+    }
+
+    fn write(&mut self, _key: &[u8], _value: &[u8]) {
+        unreachable!("write function called on read-only storage");
+    }
+
+    fn remove(&mut self, _key: &[u8]) {
+        unreachable!("write function called on read-only storage");
+    }
+
+    fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
+        unreachable!("write function called on read-only storage");
     }
 }
 
