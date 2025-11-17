@@ -1,4 +1,4 @@
-import { Button, twMerge, useMediaQuery, usePortalTarget } from "@left-curve/applets-kit";
+import { Button, twMerge, useApp, useMediaQuery, usePortalTarget } from "@left-curve/applets-kit";
 import { IconChecked, IconClose } from "@left-curve/applets-kit";
 import { Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { useAccount } from "@left-curve/store";
@@ -6,17 +6,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { useApp } from "~/hooks/useApp";
-
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text }) => {
   return (
     <div className="flex items-center gap-1 diatype-sm-medium">
       <div
         className={twMerge(
-          "h-4 w-4 flex items-center justify-center rounded-full bg-green-bean-400",
-          { "bg-gray-400": !completed },
+          "h-4 w-4 flex items-center justify-center rounded-full bg-primitives-green-light-400",
+          { "bg-primitives-gray-light-400": !completed },
         )}
       >
         {completed ? (
@@ -25,7 +23,7 @@ const Quest: React.FC<{ text: string; completed: boolean }> = ({ completed, text
           <IconClose className="h-4 w-4 text-white" />
         )}
       </div>
-      <p className={twMerge({ "text-tertiary-500": !completed })}>{text}</p>
+      <p className={twMerge({ "text-ink-tertiary-500": !completed })}>{text}</p>
     </div>
   );
 };
@@ -40,31 +38,24 @@ export const QuestBanner: React.FC = () => {
     queryKey: ["quests", account?.username],
     enabled: isConnected && isQuestBannerVisible,
     queryFn: () =>
-      fetch(`${window.dango.urls.questUrl}/${account?.username}`).then((res) => res.json()),
+      fetch(`${window.dango.urls.questUrl}/check_username/${account?.username}`).then((res) =>
+        res.json(),
+      ),
   });
 
   if (location.pathname === "/" && !isLg) return null;
   if (!isQuestBannerVisible || isLoading || !quests) return null;
 
   const isTxCountCompleted = quests.tx_count >= 10;
-  const isLimitOrdersCompleted = quests.limit_orders;
-  const isMarketOrdersCompleted = quests.market_orders;
-  const isTradingPairsCompleted = quests.trading_pairs === 0;
   const isTradingVolumesCompleted = Number(quests.trading_volumes) === 0;
 
-  const areQuestsCompleted =
-    quests.eth_address &&
-    isTxCountCompleted &&
-    isLimitOrdersCompleted &&
-    isMarketOrdersCompleted &&
-    isTradingPairsCompleted &&
-    isTradingVolumesCompleted;
+  const areQuestsCompleted = quests.eth_address && isTxCountCompleted && isTradingVolumesCompleted;
 
   return (
     <div className="z-10 w-full shadow-account-card p-4 bg-account-card-blue flex gap-4 flex-col 2xl:flex-row 2xl:items-center justify-between relative">
       <a
         className="exposure-l-italic min-w-fit"
-        href="https://app.galxe.com/quest/dango/GCMTJtfErm"
+        href="https://app.galxe.com/quest/dango/GCNAXt8Tqv"
         target="_blank"
         rel="noreferrer"
       >
@@ -80,7 +71,7 @@ export const QuestBanner: React.FC = () => {
             text={m["quests.galxeQuest.quest.swapAtLeastForUSD"]({
               number: formatNumber(
                 formatUnits(
-                  Decimal(1000000000000)
+                  Decimal(6900000000000)
                     .minus(quests?.trading_volumes || 0)
                     .toFixed(0, 0),
                   6,
@@ -90,7 +81,7 @@ export const QuestBanner: React.FC = () => {
             })}
             completed={isTradingVolumesCompleted}
           />
-          <Quest
+          {/*     <Quest
             text={m["quests.galxeQuest.quest.swapAtLeastInPairs"]({
               number: quests?.trading_pairs,
             })}
@@ -103,16 +94,18 @@ export const QuestBanner: React.FC = () => {
           <Quest
             text={m["quests.galxeQuest.quest.completeLimitOrder"]()}
             completed={isLimitOrdersCompleted}
-          />
+          /> */}
           <Quest
-            text={m["quests.galxeQuest.quest.completeTxsInEthereum"]()}
+            text={m["quests.galxeQuest.quest.completeTxsInEthereum"]({
+              number: quests.tx_count || 0,
+            })}
             completed={isTxCountCompleted}
           />
         </div>
         {areQuestsCompleted ? (
           <Button
             as="a"
-            href="https://app.galxe.com/quest/dango/GCMTJtfErm"
+            href="https://app.galxe.com/quest/dango/GCNAXt8Tqv"
             target="_blank"
             rel="noreferrer"
           >
@@ -120,7 +113,7 @@ export const QuestBanner: React.FC = () => {
           </Button>
         ) : null}
         <IconClose
-          className="absolute top-4 right-4 lg:static h-6 w-6 text-tertiary-500 cursor-pointer"
+          className="absolute top-4 right-4 lg:static h-6 w-6 text-ink-tertiary-500 cursor-pointer"
           onClick={() => setQuestBannerVisibility(false)}
         />
       </div>

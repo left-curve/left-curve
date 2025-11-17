@@ -14,9 +14,9 @@
 - name: Abort if DB password is empty
   assert:
     that:
-      - db_password is defined
-      - db_password | length > 0
-    fail_msg: "DB_PASSWORD must be set and non-empty, aborting deployment."
+      - postgres_password is defined
+      - postgres_password | length > 0
+    fail_msg: "postgres_password must be set and non-empty, aborting deployment."
 
 - name: Ensure directories exists
   file:
@@ -24,6 +24,32 @@
     state: directory
     mode: '0755'
   loop: ["{{ config_dir }}"]
+
+- name: Write .env for docker-compose
+  become: true
+  become_user: root
+  copy:
+    dest: "{{ deploy_dir }}/.env"
+    mode: "0600"
+    owner: '{{ deploy_user }}'
+    content: |
+      CONTAINER_NAME=postgres
+      PSQL_VERSION={{ psql_version }}
+      POSTGRES_USER={{ postgres_user }}
+      POSTGRES_PASSWORD={{ postgres_password }}
+      TAILSCALE_IP={{ tailscale_ip }}
+      HOST_PORT={{ host_port }}
+      DATA_DIR={{ data_dir }}
+      CONFIG_DIR={{ config_dir }}
+
+- name: Copy docker-compose.yml
+  become: true
+  become_user: root
+  copy:
+    src: files/docker-compose.yml
+    dest: "{{ deploy_dir }}/docker-compose.yml"
+    mode: '0644'
+    owner: '{{ deploy_user }}'
 
 - name: Copy postgres config
   become: true
@@ -53,46 +79,19 @@
   docker_network:
     name: postgres
 
-- name: Deploy postgres container
-  docker_container:
-    name: "{{ container_name }}"
-    image: "postgres:{{ psql_version }}"
-    restart_policy: unless-stopped
-    state: started
-    networks:
-      - name: postgres
-    env:
-      POSTGRES_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
-      POSTGRES_PASSWORD: "{{ db_password }}"
-      POSTGRES_INITDB_ARGS: "-c include=/etc/postgresql/postgresql.conf"
-    ports:
-      - "127.0.0.1:{{ host_port }}:5432"
-    volumes:
-      - "{{ data_dir }}:/var/lib/postgresql/data"
-      - "{{ config_dir }}/postgresql.conf:/etc/postgresql/postgresql.conf:ro"
-      - "{{ config_dir }}/init.sql:/docker-entrypoint-initdb.d/init.sql:ro"
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "{{ lookup('env','DB_USER', default='postgres') }}", "-q"]
-      interval: 2s
-      timeout: 5s
-      retries: 10
+- name: Pre-pull images (avoid downtime while pulling)
+  community.docker.docker_image:
+    name: "{{ item }}"
+    source: pull
+  loop:
+    - "postgres:{{ psql_version }}"
+    - "prometheuscommunity/postgres-exporter:latest"
 
-- name: Deploy postgres exporter
-  docker_container:
-    name: postgres-exporter
-    image: prometheuscommunity/postgres-exporter:latest
-    restart_policy: unless-stopped
-    state: started
-    networks:
-      - name: postgres
-    env:
-      DATA_SOURCE_URI: "{{ container_name }}:5432/postgres?sslmode=disable"
-      DATA_SOURCE_USER: "{{ lookup('env','DB_USER', default='postgres') }}"
-      DATA_SOURCE_PASS: "{{ db_password }}"
-    ports:
-      - "{{ tailscale_ip }}:9187:9187"
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9187/metrics"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+- name: Start postgres stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ deploy_dir }}"
+    pull: always
+    recreate: always
+    remove_orphans: true
+    wait: true
+    wait_timeout: 300

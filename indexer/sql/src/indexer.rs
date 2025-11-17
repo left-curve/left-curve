@@ -1,6 +1,6 @@
 use {
     crate::{
-        Context, bail,
+        Context, EventCache, bail,
         block_to_index::BlockToIndex,
         entity,
         error::{self, IndexerError},
@@ -8,7 +8,10 @@ use {
         pubsub::{MemoryPubSub, PostgresPubSub, PubSubType},
     },
     grug_app::{Indexer as IndexerTrait, LAST_FINALIZED_BLOCK},
-    grug_types::{Block, BlockOutcome, Defined, MaybeDefined, Storage, Undefined},
+    grug_types::{
+        Block, BlockOutcome, Config, Defined, HttpRequestDetails, Json, MaybeDefined, Storage,
+        Undefined,
+    },
     sea_orm::DatabaseConnection,
     std::{
         collections::HashMap,
@@ -33,6 +36,7 @@ pub struct IndexerBuilder<DB = Undefined<String>, P = Undefined<IndexerPath>> {
     indexer_path: P,
     keep_blocks: bool,
     pubsub: PubSubType,
+    event_cache_window: usize,
 }
 
 impl Default for IndexerBuilder {
@@ -44,6 +48,7 @@ impl Default for IndexerBuilder {
             indexer_path: Undefined::default(),
             keep_blocks: false,
             pubsub: PubSubType::Memory,
+            event_cache_window: 100,
         }
     }
 }
@@ -57,6 +62,7 @@ impl IndexerBuilder<Defined<String>> {
             db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 }
@@ -73,6 +79,7 @@ impl<P> IndexerBuilder<Undefined<String>, P> {
             db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 
@@ -90,6 +97,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 
@@ -101,6 +109,7 @@ impl<DB> IndexerBuilder<DB, Undefined<IndexerPath>> {
             db_max_connections: self.db_max_connections,
             keep_blocks: self.keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
         }
     }
 }
@@ -114,6 +123,7 @@ impl<DB, P> IndexerBuilder<DB, P> {
             indexer_path: self.indexer_path,
             keep_blocks: self.keep_blocks,
             pubsub: PubSubType::Postgres,
+            event_cache_window: self.event_cache_window,
         }
     }
 }
@@ -134,6 +144,19 @@ where
             indexer_path: self.indexer_path,
             keep_blocks,
             pubsub: self.pubsub,
+            event_cache_window: self.event_cache_window,
+        }
+    }
+
+    pub fn with_event_cache_window(self, event_cache_window: usize) -> Self {
+        Self {
+            handle: self.handle,
+            db_url: self.db_url,
+            db_max_connections: self.db_max_connections,
+            indexer_path: self.indexer_path,
+            keep_blocks: self.keep_blocks,
+            pubsub: self.pubsub,
+            event_cache_window,
         }
     }
 
@@ -149,6 +172,8 @@ where
             db: db.clone(),
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
+            event_cache: EventCache::new(self.event_cache_window),
+            transaction_hash_details: Default::default(),
         };
 
         match self.pubsub {
@@ -192,6 +217,8 @@ where
             db: db.clone(),
             // This gets overwritten in the next match
             pubsub: Arc::new(MemoryPubSub::new(100)),
+            event_cache: EventCache::new(self.event_cache_window),
+            transaction_hash_details: Default::default(),
         };
 
         match self.pubsub {
@@ -351,7 +378,11 @@ impl Indexer {
 
             self.handle.block_on(async {
                 block_to_index
-                    .save(self.context.db.clone(), self.id)
+                    .save(
+                        self.context.db.clone(),
+                        self.context.event_cache.clone(),
+                        self.id,
+                    )
                     .await?;
 
                 Ok::<(), error::IndexerError>(())
@@ -452,7 +483,7 @@ impl IndexerTrait for Indexer {
         _ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         Ok(())
@@ -465,7 +496,7 @@ impl IndexerTrait for Indexer {
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         #[cfg(feature = "tracing")]
@@ -477,10 +508,37 @@ impl IndexerTrait for Indexer {
 
         let block_filename = self.indexer_path.block_path(block.info.height);
 
+        let mut http_request_details: HashMap<String, HttpRequestDetails> = HashMap::new();
+
+        let mut transaction_hash_details = self
+            .context
+            .transaction_hash_details
+            .lock()
+            .map_err(|_| grug_app::IndexerError::mutex_poisoned())?;
+        http_request_details.extend(block.txs.iter().filter_map(|tx| {
+            let tx_hash = tx.1.to_string();
+            transaction_hash_details
+                .remove(&tx_hash)
+                .map(|details| (tx_hash, details))
+        }));
+
+        transaction_hash_details.clean();
+
+        #[cfg(feature = "metrics")]
+        metrics::gauge!("indexer.http_request_details.total")
+            .set(transaction_hash_details.len() as f64);
+
+        drop(transaction_hash_details);
+
         Ok(
             self.find_or_create(block_filename, block, block_outcome, |block_to_index| {
                 #[cfg(feature = "tracing")]
                 tracing::debug!(block_height = block.info.height, "`index_block` started");
+
+                #[cfg(feature = "http-request-details")]
+                {
+                    block_to_index.http_request_details = http_request_details;
+                }
 
                 ctx.insert(block_to_index.clone());
 
@@ -501,12 +559,13 @@ impl IndexerTrait for Indexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        _querier: Arc<dyn grug_app::QuerierProvider>,
+        _cfg: Config,
+        _app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             Self::remove_or_fail(self.blocks.clone(), &block_height)?;
-            return Err(grug_app::IndexerError::NotRunning);
+            return Err(grug_app::IndexerError::not_running());
         }
 
         #[cfg(feature = "tracing")]
@@ -537,10 +596,11 @@ impl IndexerTrait for Indexer {
                 "`post_indexing` async work started"
             );
 
-            let block_height = block_to_index.block.info.height;
-
             #[allow(clippy::map_identity)]
-            if let Err(_err) = block_to_index.save(context.db.clone(), id).await {
+            if let Err(_err) = block_to_index
+                .save(context.db.clone(), context.event_cache.clone(), id)
+                .await
+            {
                 #[cfg(feature = "tracing")]
                 tracing::error!(
                     err = %_err,
@@ -632,7 +692,7 @@ impl IndexerTrait for Indexer {
 
         self.handle
             .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))??;
+            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
 
         Ok(())
     }
@@ -643,7 +703,7 @@ impl IndexerTrait for Indexer {
             if self
                 .blocks
                 .lock()
-                .map_err(|_| grug_app::IndexerError::MutexPoisoned)?
+                .map_err(|_| grug_app::IndexerError::mutex_poisoned())?
                 .is_empty()
             {
                 break;

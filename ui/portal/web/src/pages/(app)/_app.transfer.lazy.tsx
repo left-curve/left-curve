@@ -1,4 +1,4 @@
-import { useInputs, useWatchEffect } from "@left-curve/applets-kit";
+import { Modals, useApp, useInputs, useWatchEffect } from "@left-curve/applets-kit";
 import {
   useAccount,
   useBalances,
@@ -8,9 +8,8 @@ import {
   useSubmitTx,
 } from "@left-curve/store";
 import { useQueryClient } from "@tanstack/react-query";
-import { createLazyFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createLazyFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useApp } from "~/hooks/useApp";
 
 import {
   AccountSearchInput,
@@ -25,9 +24,8 @@ import {
 } from "@left-curve/applets-kit";
 import type { Address } from "@left-curve/dango/types";
 import { MobileTitle } from "~/components/foundation/MobileTitle";
-import { Modals } from "~/components/modals/RootModal";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { isValidAddress } from "@left-curve/dango";
 import {
@@ -43,14 +41,13 @@ export const Route = createLazyFileRoute("/(app)/_app/transfer")({
 });
 
 function TransferApplet() {
-  const { toast } = useApp();
-  const { action } = useSearch({ strict: false });
+  const { action } = Route.useSearch();
   const navigate = useNavigate({ from: "/transfer" });
   const { settings, showModal } = useApp();
   const { formatNumberOptions } = settings;
 
   const queryClient = useQueryClient();
-  const setAction = (v: string) => navigate({ search: { action: v }, replace: false });
+  const setAction = (v: string) => navigate({ search: { action: v }, replace: true });
   const [selectedDenom, setSelectedDenom] = useState("bridge/usdc");
   const { register, setValue, reset, handleSubmit, inputs } = useInputs({
     strategy: "onSubmit",
@@ -82,14 +79,6 @@ function TransferApplet() {
     Error,
     { amount: string; address: string }
   >({
-    toast: {
-      success: () => toast.success({ title: m["sendAndReceive.sendSuccessfully"]() }),
-      error: () =>
-        toast.error(
-          { title: m["transfer.error.title"](), description: m["transfer.error.description"]() },
-          { duration: Number.POSITIVE_INFINITY },
-        ),
-    },
     submission: {
       success: m["sendAndReceive.sendSuccessfully"](),
       error: m["transfer.error.description"](),
@@ -185,20 +174,14 @@ function TransferApplet() {
                   }
                   insideBottomComponent={
                     <div className="w-full flex justify-between pl-4 h-[22px]">
-                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-tertiary-500">
-                        <span>
-                          {formatNumber(humanAmount, {
-                            ...formatNumberOptions,
-                            notation: "compact",
-                            maxFractionDigits: selectedCoin.decimals / 3,
-                          })}
-                        </span>
+                      <div className="flex gap-1 items-center justify-center diatype-sm-regular text-ink-tertiary-500">
+                        <span>{formatNumber(humanAmount, formatNumberOptions)}</span>
                         <Button
                           type="button"
                           isDisabled={isPending}
                           variant="secondary"
                           size="xs"
-                          className="bg-red-bean-50 text-red-bean-500 hover:bg-red-bean-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
+                          className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
                           onClick={() => setValue("amount", humanAmount)}
                         >
                           {m["common.max"]()}
@@ -235,12 +218,12 @@ function TransferApplet() {
                 <p className="exposure-h3-italic">{`${capitalize((account?.type as string) || "")} Account #${account?.index}`}</p>
                 <div className="flex gap-1">
                   <TruncateText
-                    className="diatype-sm-medium text-tertiary-500"
+                    className="diatype-sm-medium text-ink-tertiary-500"
                     text={account?.address}
                   />
                   <TextCopy
                     copyText={account?.address}
-                    className="w-4 h-4 cursor-pointer text-tertiary-500"
+                    className="w-4 h-4 cursor-pointer text-ink-tertiary-500"
                   />
                 </div>
               </div>

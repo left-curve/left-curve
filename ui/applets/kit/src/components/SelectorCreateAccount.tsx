@@ -1,6 +1,6 @@
 import { IconCheckedCircle } from "./icons/IconCheckedCircle";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type { AccountTypes } from "@left-curve/dango/types";
 import type React from "react";
@@ -24,7 +24,7 @@ export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected
       className={twMerge(
         "min-h-[9.125rem] w-full max-w-[22.5rem] border border-transparent text-start rounded-md overflow-hidden relative p-4 flex flex-col gap-4 transition-all shadow-account-card items-start justify-start",
         { "cursor-pointer": onClick },
-        { " border border-red-bean-400": isSelected },
+        { " border border-primitives-red-light-400": isSelected },
         {
           "bg-[linear-gradient(98.89deg,_rgba(255,_251,_245,_0.5)_5.88%,_rgba(249,_226,_226,_0.5)_46.73%,_rgba(255,_251,_244,_0.5)_94.73%)]":
             accountType === "spot",
@@ -37,7 +37,7 @@ export const SelectorCreateAccount: React.FC<Props> = ({ accountType, isSelected
       onClick={onClick}
     >
       <p className="capitalize exposure-m-italic">{accountType} Account</p>
-      <p className="diatype-sm-medium text-tertiary-500 relative max-w-[15.5rem] z-10 ">
+      <p className="diatype-sm-medium text-ink-tertiary-500 relative max-w-[15.5rem] z-10 ">
         {subtext[accountType]}
       </p>
       <img

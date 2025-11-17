@@ -40,7 +40,7 @@ import type {
   SimulateParameters,
   SimulateReturnType,
 } from "@left-curve/sdk/actions";
-import type { AppConfig, DangoClient, Signer } from "#types/index.js";
+import type { AppConfig, DangoClient, Signer } from "../../types/index.js";
 import { getAppConfig } from "./queries/getAppConfig.js";
 import { queryApp } from "./queries/queryApp.js";
 import { type QueryStatusReturnType, queryStatus } from "./queries/queryStatus.js";

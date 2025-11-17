@@ -11,6 +11,6 @@ export const local = /*#__PURE__*/ defineChain({
     contractPage: "/contract/${address}",
   },
   urls: {
-    indexer: "http://localhost:8080/graphql",
+    indexer: "http://localhost:8080",
   },
 });

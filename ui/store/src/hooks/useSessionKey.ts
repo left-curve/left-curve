@@ -5,7 +5,7 @@ import { createStorage } from "../storages/createStorage.js";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "./useAccount.js";
 import { useConfig } from "./useConfig.js";
-import useStorage from "./useStorage.js";
+import { useStorage } from "./useStorage.js";
 
 import { encodeBase64 } from "@left-curve/dango/encoding";
 import type { SigningSession, SigningSessionInfo } from "@left-curve/dango/types";
@@ -44,7 +44,7 @@ export function useSessionKey(parameters: UseSessionKeyParameters = {}): UseSess
 
   const [session, setSession] = useStorage<SigningSession | null>("session_key", {
     initialValue: parameters.session,
-    storage: createStorage({ storage: sessionStorage }),
+    storage: createStorage({ storage: window?.sessionStorage }),
     version: 1.1,
   });
 

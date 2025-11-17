@@ -6,9 +6,9 @@ mod keys;
 mod prompt;
 mod query;
 mod start;
+mod tendermint;
 #[cfg(feature = "testing")]
 mod test;
-mod tracing_filter;
 mod tx;
 
 #[cfg(feature = "testing")]
@@ -16,7 +16,7 @@ use crate::test::TestCmd;
 use {
     crate::{
         db::DbCmd, home_directory::HomeDirectory, indexer::IndexerCmd, keys::KeysCmd,
-        query::QueryCmd, start::StartCmd, tracing_filter::SuppressingLevelFilter, tx::TxCmd,
+        query::QueryCmd, start::StartCmd, tendermint::TendermintCmd, tx::TxCmd,
     },
     clap::Parser,
     config::Config,
@@ -57,6 +57,10 @@ enum Command {
     /// Start the node
     Start(StartCmd),
 
+    /// Interact with Tendermint RPC [alias: tm]
+    #[command(next_display_order = None, alias = "tm")]
+    Tendermint(TendermintCmd),
+
     /// Run test
     #[cfg(feature = "testing")]
     Test(TestCmd),
@@ -76,9 +80,6 @@ async fn main() -> anyhow::Result<()> {
 
     // Parse the config file.
     let cfg: Config = parse_config(app_dir.config_file())?;
-
-    // Set up custom tracing filter.
-    let filter = SuppressingLevelFilter::from_inner(cfg.log_level.parse()?);
 
     // Create the base environment filter
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
@@ -112,7 +113,7 @@ async fn main() -> anyhow::Result<()> {
 
         tracing_subscriber::registry()
             .with(env_filter)
-            .with(fmt_layer.with_filter(filter))
+            .with(fmt_layer)
             .with(sentry_layer())
             .init();
 
@@ -120,7 +121,7 @@ async fn main() -> anyhow::Result<()> {
     } else {
         tracing_subscriber::registry()
             .with(env_filter)
-            .with(fmt_layer.with_filter(filter))
+            .with(fmt_layer)
             .init();
     }
 
@@ -130,8 +131,9 @@ async fn main() -> anyhow::Result<()> {
         Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
         Command::Query(cmd) => cmd.run(app_dir).await,
         Command::Start(cmd) => cmd.run(app_dir).await,
+        Command::Tendermint(cmd) => cmd.run(app_dir).await,
         #[cfg(feature = "testing")]
-        Command::Test(cmd) => cmd.run().await,
+        Command::Test(cmd) => cmd.run(app_dir).await,
         Command::Tx(cmd) => cmd.run(app_dir).await,
     }
 }

@@ -1,7 +1,8 @@
 use {
     crate::{
-        Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, Query,
-        QueryRequest, QueryResponse, StdError, TxOutcome, UnsignedTx,
+        Addr, Binary, Code, Coins, Config, ContractInfo, Denom, Hash256, JsonDeExt, NextUpgrade,
+        PastUpgrade, Query, QueryRequest, QueryResponse, QueryStatusResponse, StdError, TxOutcome,
+        UnsignedTx,
     },
     async_trait::async_trait,
     grug_math::Uint128,
@@ -32,6 +33,12 @@ pub trait QueryClient: Send + Sync {
 
 #[async_trait]
 pub trait QueryClientExt: QueryClient {
+    async fn query_status(&self, height: Option<u64>) -> Result<QueryStatusResponse, Self::Error> {
+        self.query_app(Query::status(), height)
+            .await
+            .map(|res| res.as_status())
+    }
+
     async fn query_config(&self, height: Option<u64>) -> Result<Config, Self::Error> {
         self.query_app(Query::config(), height)
             .await
@@ -57,6 +64,26 @@ pub trait QueryClientExt: QueryClient {
         self.query_app(Query::app_config(), height)
             .await
             .and_then(|res| res.as_app_config().deserialize_json().map_err(Into::into))
+    }
+
+    async fn query_next_upgrade(
+        &self,
+        height: Option<u64>,
+    ) -> Result<Option<NextUpgrade>, Self::Error> {
+        self.query_app(Query::next_upgrade(), height)
+            .await
+            .map(|res| res.as_next_upgrade())
+    }
+
+    async fn query_past_upgrades(
+        &self,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        height: Option<u64>,
+    ) -> Result<BTreeMap<u64, PastUpgrade>, Self::Error> {
+        self.query_app(Query::past_upgrades(start_after, limit), height)
+            .await
+            .map(|res| res.as_past_upgrades())
     }
 
     async fn query_balance(
@@ -204,7 +231,7 @@ pub trait QueryClientExt: QueryClient {
                 std::array::from_fn(|_| {
                     iter.next()
                         .unwrap() // unwrap is safe because we've checked the length.
-                        .map_err(StdError::host)
+                        .map_err(StdError::Host)
                         .map_err(Into::into)
                 })
             })

@@ -1,21 +1,25 @@
 use {
     crate::{
-        LIMIT_ORDERS, MAX_ORACLE_STALENESS, PAIRS, PAUSED, RESERVES, VOLUMES, VOLUMES_BY_USER,
+        DEPTHS, MAX_ORACLE_STALENESS, MAX_VOLUME_AGE, ORDERS, PAIRS, PAUSED, RESERVES,
+        RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{self, PassiveLiquidityPool},
     },
+    anyhow::ensure,
     dango_oracle::OracleQuerier,
     dango_types::{
         DangoQuerier,
         account_factory::Username,
         dex::{
-            Direction, OrderId, OrderResponse, OrdersByPairResponse, OrdersByUserResponse, PairId,
-            PairParams, PairUpdate, PassiveOrder, QueryMsg, ReservesResponse, SwapRoute,
+            Direction, LiquidityDepth, LiquidityDepthResponse, OrderId, OrderResponse,
+            OrdersByPairResponse, OrdersByUserResponse, PairId, PairParams, PairUpdate, Price,
+            QueryMsg, ReflectCurveResponse, ReservesResponse, RestingOrderBookState,
+            RestingOrderBookStatesResponse, SwapRoute,
         },
     },
     grug::{
         Addr, Bound, Coin, CoinPair, DEFAULT_PAGE_LIMIT, Denom, ImmutableCtx, Inner, Json,
         JsonSerExt, NonZero, Number, NumberConst, Order as IterationOrder, QuerierExt, StdResult,
-        Timestamp, Udec128_6, Udec128_24, Uint128,
+        Timestamp, Udec128_6, Uint128,
     },
     std::collections::BTreeMap,
 };
@@ -47,6 +51,17 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         },
         QueryMsg::Reserves { start_after, limit } => {
             let res = query_reserves(ctx, start_after, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::RestingOrderBookState {
+            base_denom,
+            quote_denom,
+        } => {
+            let res = query_resting_order_book_state(ctx, base_denom, quote_denom)?;
+            res.to_json_value()
+        },
+        QueryMsg::RestingOrderBookStates { start_after, limit } => {
+            let res = query_resting_order_book_states(ctx, start_after, limit)?;
             res.to_json_value()
         },
         QueryMsg::Order { order_id } => {
@@ -110,14 +125,104 @@ pub fn query(ctx: ImmutableCtx, msg: QueryMsg) -> anyhow::Result<Json> {
         QueryMsg::ReflectCurve {
             base_denom,
             quote_denom,
-            direction,
             limit,
         } => {
-            let res = query_reflect_curve(ctx, base_denom, quote_denom, direction, limit)?;
+            let res = query_reflect_curve(ctx, base_denom, quote_denom, limit)?;
+            res.to_json_value()
+        },
+        QueryMsg::LiquidityDepth {
+            base_denom,
+            quote_denom,
+            bucket_size,
+            limit,
+        } => {
+            let res = query_liquidity_depth(
+                ctx,
+                base_denom,
+                quote_denom,
+                bucket_size,
+                limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize,
+            )?;
             res.to_json_value()
         },
     }
     .map_err(Into::into)
+}
+
+fn query_liquidity_depth(
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+    bucket_size: Price,
+    limit: usize,
+) -> anyhow::Result<LiquidityDepthResponse> {
+    // load the pair params
+    let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    anyhow::ensure!(
+        pair.bucket_sizes.contains(&NonZero::new(bucket_size)?),
+        "Bucket size {bucket_size} not found for pair ({base_denom}, {quote_denom})"
+    );
+
+    // Load the resting order book.
+    let resting_order_book = RESTING_ORDER_BOOK.load(ctx.storage, (&base_denom, &quote_denom))?;
+
+    // Load the liquidity depth for asks.
+    let ask_depth = resting_order_book
+        .best_ask_price
+        .map(|best_ask_price| {
+            DEPTHS
+                .prefix((&base_denom, &quote_denom))
+                .append(bucket_size)
+                .append(Direction::Ask)
+                .range(
+                    ctx.storage,
+                    Some(Bound::Inclusive(best_ask_price)),
+                    None,
+                    IterationOrder::Ascending,
+                )
+                .take(limit)
+                .map(|res| {
+                    let (bucket, (depth_base, depth_quote)) = res?;
+                    Ok((bucket, LiquidityDepth {
+                        depth_base,
+                        depth_quote,
+                    }))
+                })
+                .collect::<StdResult<_>>()
+        })
+        .transpose()?;
+
+    // Load the liquidity depth for bids.
+    let bid_depth = resting_order_book
+        .best_bid_price
+        .map(|best_bid_price| {
+            DEPTHS
+                .prefix((&base_denom, &quote_denom))
+                .append(bucket_size)
+                .append(Direction::Bid)
+                .range(
+                    ctx.storage,
+                    None,
+                    Some(Bound::Inclusive(best_bid_price)),
+                    IterationOrder::Descending,
+                )
+                .take(limit)
+                .map(|res| {
+                    let (bucket, (depth_base, depth_quote)) = res?;
+                    Ok((bucket, LiquidityDepth {
+                        depth_base,
+                        depth_quote,
+                    }))
+                })
+                .collect::<StdResult<_>>()
+        })
+        .transpose()?;
+
+    Ok(LiquidityDepthResponse {
+        bid_depth,
+        ask_depth,
+    })
 }
 
 fn query_paused(ctx: ImmutableCtx) -> StdResult<bool> {
@@ -182,9 +287,43 @@ fn query_reserves(
         .collect()
 }
 
+fn query_resting_order_book_state(
+    ctx: ImmutableCtx,
+    base_denom: Denom,
+    quote_denom: Denom,
+) -> StdResult<RestingOrderBookState> {
+    RESTING_ORDER_BOOK.load(ctx.storage, (&base_denom, &quote_denom))
+}
+
+fn query_resting_order_book_states(
+    ctx: ImmutableCtx,
+    start_after: Option<PairId>,
+    limit: Option<u32>,
+) -> StdResult<Vec<RestingOrderBookStatesResponse>> {
+    let start = start_after
+        .as_ref()
+        .map(|pair| Bound::Exclusive((&pair.base_denom, &pair.quote_denom)));
+    let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
+
+    RESTING_ORDER_BOOK
+        .range(ctx.storage, start, None, IterationOrder::Ascending)
+        .take(limit)
+        .map(|res| {
+            let ((base_denom, quote_denom), state) = res?;
+            Ok(RestingOrderBookStatesResponse {
+                pair: PairId {
+                    base_denom,
+                    quote_denom,
+                },
+                state,
+            })
+        })
+        .collect()
+}
+
 fn query_order(ctx: ImmutableCtx, order_id: OrderId) -> StdResult<OrderResponse> {
     let (((base_denom, quote_denom), direction, price, _), order) =
-        LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+        ORDERS.idx.order_id.load(ctx.storage, order_id)?;
 
     Ok(OrderResponse {
         base_denom,
@@ -205,7 +344,7 @@ fn query_orders(
     let start = start_after.map(Bound::Exclusive);
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    LIMIT_ORDERS
+    ORDERS
         .idx
         .order_id
         .range(ctx.storage, start, None, IterationOrder::Ascending)
@@ -234,14 +373,13 @@ fn query_orders_by_pair(
 ) -> StdResult<BTreeMap<OrderId, OrdersByPairResponse>> {
     let start = start_after
         .map(|order_id| -> StdResult<_> {
-            let ((_, direction, price, _), _) =
-                LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+            let ((_, direction, price, _), _) = ORDERS.idx.order_id.load(ctx.storage, order_id)?;
             Ok(Bound::Exclusive((direction, price, order_id)))
         })
         .transpose()?;
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    LIMIT_ORDERS
+    ORDERS
         .prefix((base_denom, quote_denom))
         .range(ctx.storage, start, None, IterationOrder::Ascending)
         .take(limit)
@@ -267,13 +405,13 @@ fn query_orders_by_user(
     let start = start_after
         .map(|order_id| -> StdResult<_> {
             let ((pair, direction, price, _), _) =
-                LIMIT_ORDERS.idx.order_id.load(ctx.storage, order_id)?;
+                ORDERS.idx.order_id.load(ctx.storage, order_id)?;
             Ok(Bound::Exclusive((pair, direction, price, order_id)))
         })
         .transpose()?;
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    LIMIT_ORDERS
+    ORDERS
         .idx
         .user
         .prefix(user)
@@ -294,7 +432,19 @@ fn query_orders_by_user(
 }
 
 #[inline]
-fn query_volume(ctx: ImmutableCtx, user: Addr, since: Option<Timestamp>) -> StdResult<Udec128_6> {
+fn query_volume(
+    ctx: ImmutableCtx,
+    user: Addr,
+    since: Option<Timestamp>,
+) -> anyhow::Result<Udec128_6> {
+    // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
+    if let Some(since) = since {
+        ensure!(
+            ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE) <= since,
+            "the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago"
+        );
+    }
+
     let volume_now = VOLUMES
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
@@ -325,7 +475,15 @@ fn query_volume_by_user(
     ctx: ImmutableCtx,
     user: Username,
     since: Option<Timestamp>,
-) -> StdResult<Udec128_6> {
+) -> anyhow::Result<Udec128_6> {
+    // Validate that the since timestamp is not more than MAX_VOLUME_AGE ago.
+    if let Some(since) = since {
+        ensure!(
+            ctx.block.timestamp.saturating_sub(MAX_VOLUME_AGE) <= since,
+            "the `since` timestamp can't be more than `MAX_VOLUME_AGE` ago"
+        );
+    }
+
     let volume_now = VOLUMES_BY_USER
         .prefix(&user)
         .values(ctx.storage, None, None, IterationOrder::Descending)
@@ -358,7 +516,9 @@ fn query_simulate_provide_liquidity(
     quote_denom: Denom,
     deposit: CoinPair,
 ) -> anyhow::Result<Coin> {
-    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier);
+    let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
+        .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
+
     let pair = PAIRS.load(ctx.storage, (&base_denom, &quote_denom))?;
     let reserve = RESERVES.load(ctx.storage, (&base_denom, &quote_denom))?;
     let lp_token_supply = ctx.querier.query_supply(pair.lp_denom.clone())?;
@@ -426,9 +586,8 @@ fn query_reflect_curve(
     ctx: ImmutableCtx,
     base_denom: Denom,
     quote_denom: Denom,
-    direction: Direction,
     limit: Option<u32>,
-) -> anyhow::Result<BTreeMap<Udec128_24, PassiveOrder>> {
+) -> anyhow::Result<ReflectCurveResponse> {
     // Create oracle querier.
     let mut oracle_querier = OracleQuerier::new_remote(ctx.querier.query_oracle()?, ctx.querier)
         .with_no_older_than(ctx.block.timestamp - MAX_ORACLE_STALENESS);
@@ -441,12 +600,10 @@ fn query_reflect_curve(
     let (bids, asks) =
         pair.reflect_curve(&mut oracle_querier, base_denom, quote_denom, &reserve)?;
 
-    let orders = match direction {
-        Direction::Bid => bids,
-        Direction::Ask => asks,
-    };
-
     let limit = limit.unwrap_or(DEFAULT_PAGE_LIMIT) as usize;
 
-    Ok(orders.take(limit).collect())
+    Ok(ReflectCurveResponse {
+        bids: bids.take(limit).collect(),
+        asks: asks.take(limit).collect(),
+    })
 }

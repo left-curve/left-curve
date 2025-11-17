@@ -1,13 +1,14 @@
+#[cfg(feature = "tendermint")]
+use crate::StdResult;
 #[cfg(any(feature = "tendermint", feature = "async-graphql"))]
 use crate::serializers::JsonDeExt;
-#[cfg(feature = "tendermint")]
-use {crate::StdResult, data_encoding::BASE64};
 use {
     crate::{
         CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
         EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    error_backtrace::BacktracedError,
     serde::{Deserialize, Serialize},
     std::fmt::{self, Display},
 };
@@ -127,12 +128,7 @@ impl TxOutcome {
     pub fn from_tm_tx_result(
         tm_tx_result: tendermint::abci::types::ExecTxResult,
     ) -> StdResult<Self> {
-        Ok(Self {
-            gas_limit: tm_tx_result.gas_wanted as u64,
-            gas_used: tm_tx_result.gas_used as u64,
-            result: into_generic_result(tm_tx_result.code, tm_tx_result.log),
-            events: BASE64.decode(&tm_tx_result.data)?.deserialize_json()?,
-        })
+        tm_tx_result.log.deserialize_json()
     }
 }
 
@@ -170,7 +166,7 @@ pub struct TxSuccess {
 pub struct TxError {
     pub gas_limit: u64,
     pub gas_used: u64,
-    pub error: String,
+    pub error: BacktracedError<String>,
     pub events: TxEvents,
 }
 
@@ -203,13 +199,16 @@ impl TxEvents {
     pub fn finalize_fails(
         self,
         finalize: CommitmentStatus<EventStatus<EvtFinalize>>,
-        cause: &str,
+        cause: &BacktracedError<String>,
     ) -> Self {
-        fn update<T>(evt: CommitmentStatus<T>, cause: &str) -> CommitmentStatus<T> {
+        fn update<T>(
+            evt: CommitmentStatus<T>,
+            cause: &BacktracedError<String>,
+        ) -> CommitmentStatus<T> {
             if let CommitmentStatus::Committed(event) = evt {
                 CommitmentStatus::Reverted {
                     event,
-                    revert_by: cause.to_string(),
+                    revert_by: cause.clone(),
                 }
             } else {
                 evt
@@ -328,12 +327,7 @@ impl BroadcastTxOutcome {
     ) -> StdResult<Self> {
         Ok(Self {
             tx_hash: Hash256::from_inner(response.hash.as_bytes().try_into()?),
-            check_tx: CheckTxOutcome {
-                gas_limit: 0,
-                gas_used: 0,
-                result: into_generic_result(response.code, response.log),
-                events: response.data.deserialize_json()?,
-            },
+            check_tx: response.log.deserialize_json()?,
         })
     }
 }
@@ -370,14 +364,5 @@ impl SearchTxOutcome {
             tx: response.tx.deserialize_json()?,
             outcome: TxOutcome::from_tm_tx_result(response.tx_result)?,
         })
-    }
-}
-
-#[cfg(feature = "tendermint")]
-fn into_generic_result(code: tendermint::abci::Code, log: String) -> GenericResult<()> {
-    if code == tendermint::abci::Code::Ok {
-        Ok(())
-    } else {
-        Err(log)
     }
 }

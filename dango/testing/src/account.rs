@@ -159,14 +159,19 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
         }
     }
 
-    pub fn set_address(self, addresses: &BTreeMap<Username, Addr>) -> TestAccount {
+    pub fn set_address(self, address: Addr) -> TestAccount {
         TestAccount {
-            address: Defined::new(addresses[&self.username]),
+            address: Defined::new(address),
             username: self.username,
             nonce: self.nonce,
             keys: btree_map! { self.sign_with => self.keys },
             sign_with: self.sign_with,
         }
+    }
+
+    pub fn set_address_with(self, addresses: &BTreeMap<Username, Addr>) -> TestAccount {
+        let address = addresses[&self.username];
+        self.set_address(address)
     }
 }
 
@@ -374,6 +379,11 @@ where
 
     pub fn sign_with(&self) -> Hash256 {
         self.sign_with
+    }
+
+    pub fn set_nonce(mut self, nonce: Nonce) -> Self {
+        self.nonce = nonce;
+        self
     }
 }
 

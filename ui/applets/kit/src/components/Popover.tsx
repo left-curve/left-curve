@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ResizerContainer } from "./ResizerContainer";
 import { IconChevronDownFill } from "./icons/IconChevronDownFill";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 export type PopoverRef = {
   close: () => void;
@@ -18,6 +18,7 @@ type PopoverProps = {
     base?: string;
     trigger?: string;
     menu?: string;
+    panel?: string;
   };
   showArrow?: boolean;
 };
@@ -52,7 +53,10 @@ export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
 
             <PopoverPanel
               anchor="bottom"
-              className={twMerge("flex flex-col absolute z-50 p-2 scrollbar-none")}
+              className={twMerge(
+                "flex flex-col absolute z-50 p-2 scrollbar-none",
+                classNames?.panel,
+              )}
             >
               <ResizerContainer
                 layoutId={`popover-menu-${id}`}
@@ -64,10 +68,10 @@ export const Popover = React.forwardRef<PopoverRef, PopoverProps>(
                 <AnimatePresence>
                   {open && (
                     <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.1, ease: "easeInOut" }}
                     >
                       {menu}
                     </motion.div>

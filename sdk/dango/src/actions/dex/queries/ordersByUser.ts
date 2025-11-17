@@ -3,7 +3,7 @@ import type { Client, Prettify, Transport } from "@left-curve/sdk/types";
 
 import { getAction, getAppConfig } from "@left-curve/sdk/actions";
 import type { Chain, Signer } from "@left-curve/sdk/types";
-import type { AppConfig } from "#types/app.js";
+import type { AppConfig } from "../../../types/app.js";
 import type { GetDexQueryMsg, OrderId, OrdersByUserResponse } from "../../../types/dex.js";
 
 type ActionMsg = GetDexQueryMsg<"ordersByUser">;

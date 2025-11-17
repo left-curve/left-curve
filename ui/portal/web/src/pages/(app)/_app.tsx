@@ -1,10 +1,11 @@
-import { twMerge, useMediaQuery, useTheme } from "@left-curve/applets-kit";
+import { twMerge, useApp, useMediaQuery, useTheme } from "@left-curve/applets-kit";
 import { captureException } from "@sentry/react";
 import { Outlet, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Header } from "~/components/foundation/Header";
 import { NotFound } from "~/components/foundation/NotFound";
-import { QuestBannerRender } from "~/components/foundation/QuestBanner";
+import { StatusBadge } from "~/components/foundation/StatusBadge";
+import { TestnetBanner } from "~/components/foundation/TestnetBanner";
 
 import { WelcomeModal } from "~/components/modals/WelcomeModal";
 
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/(app)/_app")({
     const { isLg } = useMediaQuery();
 
     return (
-      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-surface-primary-rice text-secondary-700">
+      <main className="flex flex-col h-screen w-screen relative items-center justify-start overflow-x-hidden bg-surface-primary-rice text-ink-secondary-700">
         <img
           src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
           alt="bg-image"
@@ -30,6 +31,7 @@ export const Route = createFileRoute("/(app)/_app")({
         />
         <Header isScrolled={false} />
         <NotFound />
+        <StatusBadge />
       </main>
     );
   },
@@ -39,6 +41,7 @@ function LayoutApp() {
   const [isScrolled, setIsScrolled] = useState(false);
   const { isLg } = useMediaQuery();
   const router = useRouter();
+  const { isSidebarVisible } = useApp();
 
   const isProSwap = useMemo(() => {
     return router.state.location.pathname.includes("trade");
@@ -61,9 +64,12 @@ function LayoutApp() {
   const { theme } = useTheme();
 
   const isHomePage = location.pathname === "/";
+  const lockedY = Number(document.body.dataset.scrollLockY || 0);
+
+  const effectiveIsScrolled = isSidebarVisible ? lockedY > (isProSwap ? 20 : 70) : isScrolled;
 
   return (
-    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-surface-primary-rice text-secondary-700">
+    <main className="flex flex-col w-full min-h-[100svh] relative pb-[3rem] lg:pb-0 max-w-screen bg-surface-primary-rice text-ink-secondary-700">
       <img
         src={theme === "dark" ? "/images/union-dark.png" : "/images/union.png"}
         alt="bg-image"
@@ -74,11 +80,12 @@ function LayoutApp() {
       />
       <WelcomeModal />
       {!isLg ? <div id="quest-banner-mobile" /> : null}
-      <QuestBannerRender />
-      <Header isScrolled={isScrolled} />
+      {!isLg ? <TestnetBanner /> : null}
+      <Header isScrolled={effectiveIsScrolled} />
       <div className="flex flex-1 items-center justify-start w-full h-full relative flex-col z-30">
         <Outlet />
       </div>
+      <StatusBadge />
     </main>
   );
 }

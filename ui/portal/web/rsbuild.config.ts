@@ -1,18 +1,25 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import fs from "fs-extra";
 
 import { defineConfig } from "@rsbuild/core";
 import { loadEnv } from "@rsbuild/core";
 import { pluginReact } from "@rsbuild/plugin-react";
+import { pluginSvgr } from "@rsbuild/plugin-svgr";
 
-import { paraglideRspackPlugin } from "@inlang/paraglide-js";
 import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import { TanStackRouterRspack } from "@tanstack/router-plugin/rspack";
+import { GenerateSW } from "workbox-webpack-plugin";
+import { pluginNodePolyfill } from "@rsbuild/plugin-node-polyfill";
 
 import { devnet, local, testnet } from "@left-curve/dango";
 
 import type { Chain } from "@left-curve/dango/types";
 import type { Rspack } from "@rsbuild/core";
+
+const isLocal = process.env.NODE_ENV === "development";
+
+const PORT = 5080;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,29 +27,58 @@ const { publicVars } = loadEnv();
 
 const environment = process.env.CONFIG_ENVIRONMENT || "local";
 
+const workspaceRoot = path.resolve(__dirname, "../../../");
+
+fs.copySync(
+  path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
+  path.resolve(__dirname, "public/images"),
+  { overwrite: true },
+);
+
 const chain = {
   local: local,
   dev: devnet,
   test: testnet,
 }[environment] as Chain;
 
-const urls =
-  environment === "local"
-    ? {
-        faucetUrl: "http://localhost:8082/mint",
-        questUrl: "http://localhost:8081/check_username",
-        upUrl: "http://localhost:8080/up",
-      }
-    : {
-        faucetUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/faucet")}/mint`,
-        questUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/quests")}/check_username`,
-        upUrl: `${chain.urls.indexer.replace(/\/graphql$/, "/up")}`,
-      };
+const urls = {
+  local: {
+    faucetUrl: "http://localhost:8082",
+    questUrl: "http://localhost:8081",
+    upUrl: "http://localhost:8080/up",
+  },
+  dev: {
+    faucetUrl: "https://faucet-devnet-ovh2.dango.zone",
+    questUrl: "https://quest-bot-devnet.dango.zone",
+    upUrl: `${chain.urls.indexer}/up`,
+  },
+  test: {
+    faucetUrl: "https://faucet-testnet-ovh2.dango.zone",
+    questUrl: "https://quest-bot-testnet.dango.zone",
+    upUrl: `${chain.urls.indexer}/up`,
+  },
+}[environment]!;
+
+const banner = {
+  dev: "You are using devnet",
+}[environment];
 
 const envConfig = `window.dango = ${JSON.stringify(
   {
-    chain,
-    urls,
+    chain: isLocal
+      ? {
+          ...chain,
+          urls: { indexer: `http://localhost:${PORT}` },
+        }
+      : chain,
+    urls: isLocal
+      ? {
+          faucetUrl: `http://localhost:${PORT}/faucet`,
+          questUrl: `http://localhost:${PORT}/quest`,
+          upUrl: `http://localhost:${PORT}/up`,
+        }
+      : urls,
+    banner,
   },
   null,
   2,
@@ -53,11 +89,11 @@ export default defineConfig({
     aliasStrategy: "prefer-alias",
     alias: {
       // Order matters
-      "~/paraglide": path.resolve(__dirname, "./.paraglide"),
       "~/constants": path.resolve(__dirname, "./constants.config.ts"),
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
-      "~/chartiq": path.resolve(__dirname, "./chartiq.config.ts"),
+      "~/images": path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
+      "~/datafeed": path.resolve(__dirname, "./datafeed.config.ts"),
       "~": path.resolve(__dirname, "./src"),
     },
   },
@@ -72,7 +108,32 @@ export default defineConfig({
       "import.meta.env": {},
     },
   },
-  server: { port: 5080 },
+  server: {
+    port: PORT,
+    proxy: {
+      "/graphql": {
+        target: `${chain.urls.indexer}/graphql`,
+        changeOrigin: true,
+        pathRewrite: { "^/graphql": "" },
+        ws: true,
+      },
+      "/faucet": {
+        target: urls.faucetUrl,
+        changeOrigin: true,
+        pathRewrite: { "^/faucet": "" },
+      },
+      "/quest": {
+        target: urls.questUrl,
+        changeOrigin: true,
+        pathRewrite: { "^/quest": "" },
+      },
+      "/up": {
+        target: `${chain.urls.indexer}/up`,
+        changeOrigin: true,
+        pathRewrite: { "^/up": "" },
+      },
+    },
+  },
   html: { template: "public/index.html", title: "" },
   performance: {
     prefetch: {
@@ -84,6 +145,17 @@ export default defineConfig({
     distPath: {
       root: "build",
     },
+    copy: [
+      {
+        from: path.resolve(
+          workspaceRoot,
+          "node_modules",
+          "@left-curve/tradingview/charting_library",
+        ),
+        to: "./static/charting_library",
+      },
+      { from: "./public/rmsw.js", to: "service-worker.js" },
+    ],
     minify: {
       jsOptions: {
         exclude: [],
@@ -93,7 +165,13 @@ export default defineConfig({
       },
     },
   },
-  plugins: [pluginReact()],
+  plugins: [
+    pluginReact(),
+    pluginSvgr(),
+    pluginNodePolyfill({
+      include: ["buffer"],
+    }),
+  ],
   tools: {
     rspack: (config, { rspack }) => {
       config.plugins ??= [];
@@ -107,15 +185,6 @@ export default defineConfig({
           sourcemaps: {
             filesToDeleteAfterUpload: ["build/**/*.map"],
           },
-        }),
-        paraglideRspackPlugin({
-          outdir: "./.paraglide",
-          emitGitIgnore: false,
-          emitPrettierIgnore: false,
-          includeEslintDisableComment: false,
-          project: "../../config/project.inlang",
-          strategy: ["localStorage", "preferredLanguage", "baseLocale"],
-          localStorageKey: "dango.locale",
         }),
         TanStackRouterRspack({
           routesDirectory: "./src/pages",
@@ -137,6 +206,26 @@ export default defineConfig({
           },
         },
       );
+
+      if (process.env.NODE_ENV === "production") {
+        /*   config.plugins.push(
+          new GenerateSW({
+            cacheId: "leftcurve-portal",
+            clientsClaim: true,
+            skipWaiting: false,
+            cleanupOutdatedCaches: true,
+            runtimeCaching: [
+              {
+                urlPattern: ({ request }) => request.mode === "navigate",
+                handler: "NetworkFirst",
+                options: {
+                  cacheName: "html-cache",
+                },
+              },
+            ],
+          }),
+        ); */
+      }
 
       config.devtool = "source-map";
       return config;

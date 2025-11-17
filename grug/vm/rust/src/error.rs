@@ -1,46 +1,54 @@
-use {grug_app::AppError, grug_types::StdError, thiserror::Error};
+use {error_backtrace::Backtraceable, grug_app::AppError, grug_types::StdError};
 
-#[derive(Debug, Error)]
+#[error_backtrace::backtrace]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum VmError {
     #[error(transparent)]
-    Std(#[from] StdError),
+    Std(StdError),
 
     #[error("contract with index `{index}` not found")]
+    #[backtrace(private_constructor)]
     ContractNotFound { index: usize },
 
     #[error("contract does not implement function `{name}`")]
+    #[backtrace(private_constructor)]
     FunctionNotFound { name: &'static str },
 
     #[error("unknown function: `{name}`")]
+    #[backtrace(private_constructor)]
     UnknownFunction { name: &'static str },
 
     #[error(
         "attempting to call `{name}` with {num} inputs, but this function takes a different number of inputs"
     )]
+    #[backtrace(private_constructor)]
     IncorrectNumberOfInputs { name: &'static str, num: usize },
 }
 
 impl VmError {
-    pub const fn contract_not_found(index: usize) -> Self {
-        Self::ContractNotFound { index }
+    pub fn contract_not_found(index: usize) -> Self {
+        Self::_contract_not_found(index)
     }
 
-    pub const fn function_not_found(name: &'static str) -> Self {
-        Self::FunctionNotFound { name }
+    pub fn function_not_found(name: &'static str) -> Self {
+        Self::_function_not_found(name)
     }
 
-    pub const fn unknown_function(name: &'static str) -> Self {
-        Self::UnknownFunction { name }
+    pub fn unknown_function(name: &'static str) -> Self {
+        Self::_unknown_function(name)
     }
 
-    pub const fn incorrect_number_of_inputs(name: &'static str, num: usize) -> Self {
-        Self::IncorrectNumberOfInputs { name, num }
+    pub fn incorrect_number_of_inputs(name: &'static str, num: usize) -> Self {
+        Self::_incorrect_number_of_inputs(name, num)
     }
 }
 
 impl From<VmError> for AppError {
     fn from(err: VmError) -> Self {
-        AppError::Vm(err.to_string())
+        AppError::Vm {
+            error: err.error(),
+            backtrace: err.backtrace(),
+        }
     }
 }
 

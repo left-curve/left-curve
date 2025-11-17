@@ -1,10 +1,8 @@
 use {
-    crate::context::Context,
+    crate::{context::Context, error::Error},
     dango_indexer_sql_migration::{Migrator, MigratorTrait},
-    grug::Storage,
-    grug_app::QuerierProvider,
+    grug::{Config, Json, Storage},
     indexer_sql::{block_to_index::BlockToIndex, indexer::RuntimeHandler},
-    std::sync::Arc,
 };
 #[cfg(feature = "metrics")]
 use {
@@ -38,7 +36,7 @@ impl grug_app::Indexer for Indexer {
         self.runtime_handler.block_on(async {
             Migrator::up(&self.context.db, None)
                 .await
-                .map_err(|e| grug_app::IndexerError::Database(e.to_string()))?;
+                .map_err(|e| grug_app::IndexerError::database(e.to_string()))?;
 
             Ok::<(), grug_app::IndexerError>(())
         })?;
@@ -79,7 +77,8 @@ impl grug_app::Indexer for Indexer {
     fn post_indexing(
         &self,
         block_height: u64,
-        querier: Arc<dyn QuerierProvider>,
+        _cfg: Config,
+        app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
@@ -90,7 +89,7 @@ impl grug_app::Indexer for Indexer {
 
         let block_to_index = ctx
             .get::<BlockToIndex>()
-            .ok_or(grug_app::IndexerError::Hook(
+            .ok_or(grug_app::IndexerError::hook(
                 "BlockToIndex not found".to_string(),
             ))?;
 
@@ -102,7 +101,7 @@ impl grug_app::Indexer for Indexer {
                 transfers::save_transfers(&context, block_height).await?;
 
                 // Save accounts
-                accounts::save_accounts(&context, &block_to_index, &*querier)
+                accounts::save_accounts(&context, &block_to_index, app_cfg)
                     .await
                     .inspect_err(|_| {
                         #[cfg(feature = "metrics")]
@@ -118,15 +117,11 @@ impl grug_app::Indexer for Indexer {
                         counter!("indexer.dango.hooks.pubsub.errors.total").increment(1);
                     })?;
 
-                Ok::<(), grug_app::IndexerError>(())
+                Ok::<(), Error>(())
             }
         });
 
-        self.runtime_handler.block_on(async {
-            handle
-                .await
-                .map_err(|e| grug_app::IndexerError::Hook(e.to_string()))?
-        })?;
+        self.runtime_handler.block_on(async { handle.await? })?;
 
         #[cfg(feature = "metrics")]
         histogram!("indexer.dango.hooks.duration").record(start.elapsed().as_secs_f64());

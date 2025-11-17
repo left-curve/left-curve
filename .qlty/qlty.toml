@@ -1,3 +1,4 @@
-test_patterns = [
-  "**/testing/**",
-]
+test_patterns = ["**/testing/**"]
+
+[smells.function-parameters]
+threshold = 20 # default: 5; https://docs.qlty.sh/qlty-toml#smellsnamethreshold

@@ -1,15 +1,17 @@
 use {
-    dango_dex::INCOMING_ORDERS,
     dango_genesis::Contracts,
     dango_testing::setup_test_naive,
     dango_types::{
         constants::{dango, usdc},
-        dex::{self, CreateLimitOrderRequest, Direction, LimitOrder, OrderId, QueryPausedRequest},
+        dex::{
+            self, CreateOrderRequest, Direction, OrderId, OrdersByPairResponse, Price,
+            QueryOrdersByPairRequest, QueryPausedRequest,
+        },
     },
     grug::{
         Addr, Addressable, ContractBuilder, ContractWrapper, Empty, HashExt, Message, NonEmpty,
-        NonZero, QuerierExt, Response, ResultExt, Signer, StdResult, StorageQuerier, SudoCtx,
-        Udec128_6, Udec128_24, Uint128, coins,
+        NonZero, QuerierExt, Response, ResultExt, Signer, StdResult, SudoCtx, Udec128_6, Uint128,
+        btree_map, coins,
     },
     test_case::test_case,
 };
@@ -94,8 +96,6 @@ fn do_nothing(_ctx: SudoCtx, _msg: Empty) -> StdResult<Response> {
     "intentional error in taxman fee payment"
 )]
 fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
-    // grug::setup_tracing_subscriber(tracing::Level::INFO); // uncomment to see tracing logs
-
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let (contract_to_migrate, bugged_code) = f(&contracts);
@@ -116,22 +116,21 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
                 Message::execute(
                     contracts.dex,
                     &dex::ExecuteMsg::BatchUpdateOrders {
-                        creates_market: vec![],
-                        creates_limit: vec![
-                            CreateLimitOrderRequest {
-                                base_denom: dango::DENOM.clone(),
-                                quote_denom: usdc::DENOM.clone(),
-                                direction: Direction::Bid,
-                                amount: NonZero::new_unchecked(Uint128::new(3)),
-                                price: NonZero::new_unchecked(Udec128_24::new(100)),
-                            },
-                            CreateLimitOrderRequest {
-                                base_denom: dango::DENOM.clone(),
-                                quote_denom: usdc::DENOM.clone(),
-                                direction: Direction::Ask,
-                                amount: NonZero::new_unchecked(Uint128::new(3)),
-                                price: NonZero::new_unchecked(Udec128_24::new(100)),
-                            },
+                        creates: vec![
+                            CreateOrderRequest::new_limit(
+                                dango::DENOM.clone(),
+                                usdc::DENOM.clone(),
+                                Direction::Bid,
+                                NonZero::new_unchecked(Price::new(100)),
+                                NonZero::new_unchecked(Uint128::new(300)), // 100 * 3
+                            ),
+                            CreateOrderRequest::new_limit(
+                                dango::DENOM.clone(),
+                                usdc::DENOM.clone(),
+                                Direction::Ask,
+                                NonZero::new_unchecked(Price::new(100)),
+                                NonZero::new_unchecked(Uint128::new(3)),
+                            ),
                         ],
                         cancels: None,
                     },
@@ -156,47 +155,30 @@ fn handling_error_in_auction(f: fn(&Contracts) -> (Addr, ContractWrapper)) {
         .query_wasm_smart(contracts.dex, QueryPausedRequest {})
         .should_succeed_and_equal(true);
 
-    // Ensure the two limit orders still exist the DEX as "incoming orders".
+    // Ensure the two limit orders still exist the DEX as limit orders.
+    // While they may have been matched in `cron_execute`, the state changes
+    // should have been reverted due to errors in bank or taxman.
     suite
-        .query_wasm_path(
-            contracts.dex,
-            &INCOMING_ORDERS.path((accounts.owner.address(), OrderId::new(!1))),
-        )
-        .should_succeed_and_equal((
-            (
-                (dango::DENOM.clone(), usdc::DENOM.clone()),
-                Direction::Bid,
-                Udec128_24::new(100),
-                OrderId::new(!1),
-            ),
-            LimitOrder {
+        .query_wasm_smart(contracts.dex, QueryOrdersByPairRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            start_after: None,
+            limit: None,
+        })
+        .should_succeed_and_equal(btree_map! {
+            OrderId::new(!1) => OrdersByPairResponse {
                 user: accounts.owner.address(),
-                id: OrderId::new(!1),
-                price: Udec128_24::new(100),
+                direction: Direction::Bid,
+                price: Price::new(100),
                 amount: Uint128::new(3),
                 remaining: Udec128_6::new(3),
-                created_at_block_height: 1,
             },
-        ));
-    suite
-        .query_wasm_path(
-            contracts.dex,
-            &INCOMING_ORDERS.path((accounts.owner.address(), OrderId::new(2))),
-        )
-        .should_succeed_and_equal((
-            (
-                (dango::DENOM.clone(), usdc::DENOM.clone()),
-                Direction::Ask,
-                Udec128_24::new(100),
-                OrderId::new(2),
-            ),
-            LimitOrder {
+            OrderId::new(2) => OrdersByPairResponse {
                 user: accounts.owner.address(),
-                id: OrderId::new(2),
-                price: Udec128_24::new(100),
+                direction: Direction::Ask,
+                price: Price::new(100),
                 amount: Uint128::new(3),
                 remaining: Udec128_6::new(3),
-                created_at_block_height: 1,
             },
-        ));
+        });
 }

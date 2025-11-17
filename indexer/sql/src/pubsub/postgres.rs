@@ -1,5 +1,5 @@
 use {
-    crate::{error::Result, pubsub::PubSub},
+    super::{PubSub, error::Result},
     async_trait::async_trait,
     sea_orm::sqlx::{self, postgres::PgListener},
     serde::{Serialize, de::DeserializeOwned},

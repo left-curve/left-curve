@@ -1,11 +1,13 @@
 use {
-    grug::{PrimaryKey, RawKey, StdError, StdResult},
+    grug::{Binary, PrimaryKey, RawKey, StdError, StdResult},
     std::ops::Neg,
 };
 
 /// The direction of a trade: buy or sell.
 #[grug::derive(Serde, Borsh)]
 #[derive(Copy)]
+#[cfg_attr(feature = "async-graphql", derive(async_graphql::Enum))]
+#[cfg_attr(feature = "async-graphql", graphql(rename_items = "lowercase"))]
 pub enum Direction {
     /// Give away the quote asset, get the base asset; a.k.a. a BUY order.
     Bid,
@@ -42,9 +44,10 @@ impl PrimaryKey for Direction {
         match bytes {
             [0] => Ok(Direction::Bid),
             [1] => Ok(Direction::Ask),
-            _ => Err(StdError::deserialize::<Self::Output, _>(
+            _ => Err(StdError::deserialize::<Self::Output, _, Binary>(
                 "key",
                 "invalid order direction! must be 0|1",
+                bytes.into(),
             )),
         }
     }

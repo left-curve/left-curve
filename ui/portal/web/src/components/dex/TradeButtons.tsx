@@ -3,14 +3,14 @@ import {
   IconButton,
   IconChevronRight,
   twMerge,
+  useApp,
   usePortalTarget,
 } from "@left-curve/applets-kit";
 import { useAccount } from "@left-curve/store";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
-import { useApp } from "~/hooks/useApp";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { useProTradeState } from "@left-curve/store";
 import type React from "react";
@@ -24,7 +24,7 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
   const { setTradeBarVisibility } = useApp();
   const { isConnected } = useAccount();
 
-  const { changeAction } = state;
+  const { changeAction, baseCoin } = state;
 
   const container = usePortalTarget("#trade-buttons");
 
@@ -53,7 +53,7 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
                       changeAction("buy");
                     }}
                   >
-                    {m["proSwap.buy"]()}
+                    {m["proSwap.buy"]()} {baseCoin.symbol}
                   </Button>
                   <Button
                     className="h-[44px]"
@@ -63,12 +63,12 @@ export const TradeButtons: React.FC<TradeButtonsProps> = ({ state }) => {
                       changeAction("sell");
                     }}
                   >
-                    {m["proSwap.sell"]()}
+                    {m["proSwap.sell"]()} {baseCoin.symbol}
                   </Button>
                 </div>
               ) : (
-                <Button className="flex-1 h-full" onClick={() => navigate({ to: "/signin" })}>
-                  Connect
+                <Button className="flex-1 h-[44px]" onClick={() => navigate({ to: "/signin" })}>
+                  {m["common.connect"]()}
                 </Button>
               )}
             </div>,

@@ -26,12 +26,14 @@ mod git_info;
 mod hash;
 mod hashers;
 mod imports;
+mod indexer;
 mod inner;
 mod jellyfish_merkle;
 mod json;
 mod length_bounded;
 mod lengthy;
 mod macros;
+mod metrics;
 mod non_zero;
 mod outcome;
 mod query;
@@ -45,15 +47,17 @@ mod time;
 mod transfer;
 mod tx;
 mod unique_vec;
+mod upgrade;
 mod utils;
 
 pub use {
     address::*, app::*, bank::*, binary::*, bound::*, buffer::*, builder::*, bytes::*, cache::*,
     changeset::*, code::*, coin::*, coin_pair::*, coins::*, context::*, db::*, dec_coin::*,
     denom::*, empty::*, encoded_bytes::*, encoders::*, error::*, events::*, ffi::*, git_info::*,
-    hash::*, hashers::*, imports::*, inner::*, jellyfish_merkle::*, json::*, length_bounded::*,
-    lengthy::*, non_zero::*, outcome::*, query::*, response::*, result::*, serializers::*,
-    shared::*, signer::*, status::*, time::*, transfer::*, tx::*, unique_vec::*, utils::*,
+    hash::*, hashers::*, imports::*, indexer::*, inner::*, jellyfish_merkle::*, json::*,
+    length_bounded::*, lengthy::*, metrics::*, non_zero::*, outcome::*, query::*, response::*,
+    result::*, serializers::*, shared::*, signer::*, status::*, time::*, transfer::*, tx::*,
+    unique_vec::*, upgrade::*, utils::*,
 };
 
 // ---------------------------------- testing ----------------------------------

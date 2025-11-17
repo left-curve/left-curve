@@ -2,14 +2,14 @@
 use {metrics::counter, std::time::Instant};
 
 use {
-    crate::{active_model::Models, entity, error},
+    crate::{active_model::Models, entity, error, event_cache::EventCacheWriter},
     borsh::{BorshDeserialize, BorshSerialize},
-    grug_types::{Block, BlockOutcome},
+    grug_types::{Block, BlockOutcome, HttpRequestDetails},
     indexer_disk_saver::persistence::DiskPersistence,
     itertools::Itertools,
     sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, TransactionTrait},
     serde::{Deserialize, Serialize},
-    std::path::PathBuf,
+    std::{collections::HashMap, path::PathBuf},
 };
 
 /// Saves the block and its transactions in memory
@@ -17,6 +17,7 @@ use {
 pub struct BlockToIndex {
     pub block: Block,
     pub block_outcome: BlockOutcome,
+    pub http_request_details: HashMap<String, HttpRequestDetails>,
     #[serde(skip)]
     #[borsh(skip)]
     filename: PathBuf,
@@ -35,6 +36,7 @@ impl BlockToIndex {
             block,
             block_outcome,
             filename,
+            http_request_details: HashMap::new(),
         }
     }
 
@@ -42,6 +44,7 @@ impl BlockToIndex {
     pub async fn save(
         &self,
         db: DatabaseConnection,
+        event_cache: EventCacheWriter,
         #[allow(unused_variables)] indexer_id: u64,
     ) -> error::Result<()> {
         #[cfg(feature = "metrics")]
@@ -54,7 +57,7 @@ impl BlockToIndex {
             "Indexing block"
         );
 
-        let models = Models::build(&self.block, &self.block_outcome)?;
+        let models = Models::build(self)?;
 
         let db = db.begin().await?;
 
@@ -170,6 +173,10 @@ impl BlockToIndex {
 
         db.commit().await?;
 
+        event_cache
+            .save_events(self.block.info.height, models.events_by_address)
+            .await;
+
         #[cfg(feature = "metrics")]
         metrics::histogram!("indexer.block_save.duration").record(start.elapsed().as_secs_f64());
 
@@ -205,6 +212,10 @@ impl BlockToIndex {
         let mut block_to_index: Self = DiskPersistence::new(file_path.clone(), false).load()?;
         block_to_index.filename = file_path;
         Ok(block_to_index)
+    }
+
+    pub async fn load_from_disk_async(file_path: PathBuf) -> error::Result<Self> {
+        tokio::task::spawn_blocking(move || Self::load_from_disk(file_path)).await?
     }
 
     pub fn exists(file_path: PathBuf) -> bool {

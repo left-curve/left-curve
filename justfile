@@ -4,8 +4,14 @@ set positional-arguments
 default:
   @just --list
 
+# ------------------------------------ Git -------------------------------------
+
+# Sync the `main` branch with the origin
+git-fetch-main:
+  git fetch origin main:main
+
 # Delete all local git branches except for main
-clean-branches:
+git-clear-branches:
   git branch | grep -v "main" | xargs git branch -D
 
 # ------------------------------------ Rust ------------------------------------
@@ -47,18 +53,30 @@ build-graphql-schema:
   cargo run -p dango-httpd build_graphql_schema -- \
     ./indexer/client/src/schemas/schema.graphql
 
-# Update wasm artifacts used in tests
-testdata:
-  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm/wasm/testdata/
-
-# Build the Left Curve Book
+# Build the Dango Book
 book:
   mdbook build --open
 
+# Update CometBFT genesis files
+update-genesis:
+  cargo run -p dango-scripts --example build_genesis -- \
+    networks/localdango/configs/cometbft/config/genesis.json \
+    deploy/roles/full-app/templates/config/cometbft/genesis.json
+
+# Update wasm artifacts used in tests
+update-testdata:
+  cp -v artifacts/grug_{mock_*,tester}.wasm grug/vm/wasm/testdata/
+
+# ---------------------------------- Frontend ----------------------------------
+
+run-website:
+  pnpm i
+  pnpm dev:portal-web
+
 # --------------------------------- Optimizer ----------------------------------
 
-OPTIMIZER_NAME := "leftcurve/bob"
-OPTIMIZER_VERSION := "0.2.0"
+OPTIMIZER_NAME := "leftcurve/bob-arm64"
+OPTIMIZER_VERSION := "0.1.0"
 
 # Compile and optimize contracts
 optimize:
@@ -79,3 +97,13 @@ docker-build-builder-images:
 
   # Push the manifest
   docker manifest push ghcr.io/left-curve/left-curve/native-builder:latest
+
+# ----------------------------------- Debug ------------------------------------
+
+check-candles:
+  INDEXER__CLICKHOUSE__URL="http://localhost:8123" \
+    INDEXER__DATABASE__URL=postgres://postgres@localhost:5432/grug_dev \
+    INDEXER__CLICKHOUSE__DATABASE=testnet_dango_production \
+    INDEXER__CLICKHOUSE__PASSWORD=${CLICKHOUSE_PASSWORD} \
+    RUST_LOG=info \
+    cargo run -p dango-cli indexer --home networks/localdango/configs/dango/ check-candles

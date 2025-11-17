@@ -12,7 +12,8 @@ version       = { workspace = true }
 [dependencies]
 anyhow             = { workspace = true }
 async-trait        = { workspace = true }
-grug-app           = { workspace = true, features = ["abci", "tracing"] }
+error-backtrace    = { workspace = true }
+grug-app           = { workspace = true, features = ["abci", "testing", "tracing"] }
 grug-db-memory     = { workspace = true }
 grug-math          = { workspace = true }
 grug-mock-account  = { workspace = true, features = ["library"] }

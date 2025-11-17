@@ -10,11 +10,12 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [dependencies]
-bnum      = { workspace = true, features = ["borsh"] }
-borsh     = { workspace = true, features = ["de_strict_order", "derive"] }
-paste     = { workspace = true }
-serde     = { workspace = true, features = ["derive"] }
-thiserror = { workspace = true }
+bnum            = { workspace = true, features = ["borsh"] }
+borsh           = { workspace = true, features = ["de_strict_order", "derive"] }
+error-backtrace = { workspace = true }
+paste           = { workspace = true }
+serde           = { workspace = true, features = ["derive"] }
+thiserror       = { workspace = true }
 
 [dev-dependencies]
 proptest   = { workspace = true }

@@ -9,6 +9,7 @@ export type {
   QueryCodeRequest,
   QueryConfigRequest,
   QuerySupplyRequest,
+  QueryStatusRequest,
   QueryRequest,
   QueryResponse,
   QuerySuppliesRequest,
@@ -23,6 +24,7 @@ export type {
   ContractResponse,
   ContractsResponse,
   AppConfigResponse,
+  StatusResponse,
 } from "./queries.js";
 
 export type {
@@ -91,6 +93,7 @@ export type { UID } from "./common.js";
 
 export type {
   Json,
+  JsonString,
   Hex,
   Base64,
   Binary,
@@ -119,6 +122,12 @@ export type {
   ExtractFromUnion,
   NestedOmit,
   WithId,
+  Flatten,
+  Range,
+  ValueFunction,
+  ValueOrFunction,
+  Require,
+  StdResult,
 } from "./utils.js";
 
 export type {
@@ -149,7 +158,7 @@ export type {
   HttpClientOptions,
 } from "./http.js";
 
-export {
+export type {
   Block,
   BlockId,
   BlockIdFlags,
@@ -181,7 +190,7 @@ export {
   QueryAbciResponse,
 } from "./cometbft.js";
 
-export {
+export type {
   SignatureOutcome,
   RawSignature,
   SignDoc,

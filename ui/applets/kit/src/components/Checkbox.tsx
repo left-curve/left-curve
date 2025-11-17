@@ -1,9 +1,9 @@
-import { useControlledState } from "#hooks/useControlledState.js";
+import { useControlledState } from "@left-curve/foundation";
 
 import { Field, Checkbox as HCheckBox, Label } from "@headlessui/react";
 import { tv } from "tailwind-variants";
 
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import type { VariantProps } from "tailwind-variants";
 
@@ -60,9 +60,9 @@ const checkBoxVariants = tv(
     base: "flex items-center justify-center group transition-all border-2 outline-none cursor-pointer",
     variants: {
       color: {
-        red: "bg-white data-[checked]:bg-red-bean-400 border-red-bean-400",
-        blue: "bg-white data-[checked]:bg-blue-500  border-blue-500",
-        grey: "bg-white data-[checked]:bg-gray-500  border-gray-500",
+        red: "bg-white data-[checked]:bg-primitives-red-light-400 border-primitives-red-light-400",
+        blue: "bg-white data-[checked]:bg-primitives-blue-light-500  border-primitives-blue-light-500",
+        grey: "bg-white data-[checked]:bg-primitives-gray-light-500  border-primitives-gray-light-500",
       },
       size: {
         sm: "w-4 h-4",
@@ -92,7 +92,7 @@ const checkBoxVariants = tv(
 
 const labelVariants = tv(
   {
-    base: "text-tertiary-500 pt-1 select-none cursor-pointer",
+    base: "text-ink-tertiary-500 pt-1 select-none cursor-pointer",
     variants: {
       size: {
         sm: "diatype-sm-regular",

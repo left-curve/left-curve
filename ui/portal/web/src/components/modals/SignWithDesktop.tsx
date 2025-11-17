@@ -1,18 +1,16 @@
 import { useSigninWithDesktop } from "@left-curve/store";
-import { forwardRef, useEffect } from "react";
-import { useApp } from "~/hooks/useApp";
+import { forwardRef } from "react";
 
-import { Spinner } from "@left-curve/applets-kit";
-import { Scanner } from "@yudiel/react-qr-scanner";
+import { QRCodeReader, Spinner, useApp } from "@left-curve/applets-kit";
 
-import { WEBRTC_URI } from "~/constants";
-import { m } from "~/paraglide/messages";
+import { WS_URI } from "~/constants";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
-export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ socketId }, _ref) => {
-  const { router, toast, hideModal } = useApp();
+export const SignWithDesktop = forwardRef((_, _ref) => {
+  const { toast, hideModal, navigate } = useApp();
 
   const { mutateAsync: connectWithDesktop, isPending } = useSigninWithDesktop({
-    url: WEBRTC_URI,
+    url: WS_URI,
     toast: {
       error: () =>
         toast.error({
@@ -22,45 +20,25 @@ export const SignWithDesktop = forwardRef<unknown, { socketId: string }>(({ sock
     },
     mutation: {
       onSuccess: () => {
-        router.navigate({ to: "/" });
+        navigate("/");
         hideModal();
       },
     },
   });
 
-  useEffect(() => {
-    if (socketId) connectWithDesktop({ socketId });
-  }, []);
-
   return (
     <div className="flex flex-col h-full bg-surface-primary-rice items-center justify-center gap-2">
       {isPending ? (
         <div className="flex flex-col items-center justify-center gap-2 p-4">
-          <Spinner size="lg" color="pink" />
-          <p className="diatype-m-bold text-center">{m["signin.authorizeInDesktop"]()}</p>
+          <Spinner size="lg" color="blue" />
+          <p className="diatype-m-bold text-center text-ink-tertiary-500">
+            {m["signin.authorizeInDesktop"]()}
+          </p>
         </div>
       ) : (
-        <>
-          <div className="flex justify-center items-center py-12">
-            <p className="diatype-m-medium text-tertiary-500 p-4 text-center">
-              {m["signin.qrInstructions"]({ domain: window.location.hostname })}
-            </p>
-          </div>
-          <Scanner
-            onScan={([{ rawValue }]) => {
-              const socketId = rawValue.split("socketId=")[1];
-              if (!socketId) return;
-              connectWithDesktop({ socketId });
-            }}
-            allowMultiple={false}
-            components={{ audio: false }}
-            formats={["qr_code"]}
-            classNames={{ container: "qr-container", video: "bg-surface-primary-rice" }}
-          />
-          <div className="py-20 flex items-center justify-center">
-            <p className="text-tertiary-500 diatype-m-medium" />
-          </div>
-        </>
+        <div className="h-full w-full">
+          <QRCodeReader onScan={(socketId) => connectWithDesktop({ socketId })} />
+        </div>
       )}
     </div>
   );

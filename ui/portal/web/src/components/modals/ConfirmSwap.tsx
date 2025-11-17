@@ -1,12 +1,11 @@
 import { forwardRef, useImperativeHandle } from "react";
-import { useApp } from "~/hooks/useApp";
 
-import { Button, IconArrowDown, IconButton, IconClose } from "@left-curve/applets-kit";
+import { Button, IconArrowDown, IconButton, IconClose, useApp } from "@left-curve/applets-kit";
 
 import { formatUnits } from "@left-curve/dango/utils";
 import { useConfig, usePrices } from "@left-curve/store";
 
-import { m } from "~/paraglide/messages";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { Coin } from "@left-curve/dango/types";
 import type { ModalRef } from "./RootModal";
@@ -44,7 +43,7 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
     const outputAmount = formatUnits(output.amount, outputCoin.decimals);
 
     return (
-      <div className="flex flex-col bg-surface-primary-rice md:border border-secondary-gray rounded-xl relative gap-4 w-full md:max-w-[25rem] p-6 pt-4">
+      <div className="flex flex-col bg-surface-primary-rice md:border border-outline-secondary-gray rounded-xl relative gap-4 w-full md:max-w-[25rem] p-6 pt-4">
         <IconButton
           className="hidden md:block absolute right-5 top-5"
           variant="link"
@@ -54,38 +53,40 @@ export const ConfirmSwap = forwardRef<ModalRef, ConfirmSwapProps>(
         </IconButton>
 
         <div className="md:flex flex-col gap-4 md:pt-3 items-center hidden">
-          <p className="text-primary-900 diatype-lg-medium">{m["dex.convert.swap"]()}</p>
+          <p className="text-ink-primary-900 diatype-lg-medium">{m["dex.convert.swap"]()}</p>
         </div>
         <div className="flex flex-col gap-3 items-center">
           <div className="flex flex-col gap-1 w-full">
-            <p className="text-gray-300 exposure-sm-italic">{m["dex.swapping"]()}</p>
+            <p className="text-primitives-gray-light-300 exposure-sm-italic">
+              {m["dex.swapping"]()}
+            </p>
             <div className="flex w-full items-center justify-between">
-              <p className="text-secondary-700 h3-bold">
+              <p className="text-ink-secondary-700 h3-bold">
                 {inputAmount} {inputCoin.symbol}
               </p>
               <img className="h-8 w-8" src={inputCoin.logoURI} alt={inputCoin.symbol} />
             </div>
-            <p className="text-tertiary-500 diatype-sm-regular">
+            <p className="text-ink-tertiary-500 diatype-sm-regular">
               {getPrice(inputAmount, inputCoin.denom, { format: true, ...formatNumberOptions })}
             </p>
           </div>
-          <div className="flex items-center justify-center border border-gray-300 rounded-full h-5 w-5">
-            <IconArrowDown className="h-3 w-3 text-gray-300" />
+          <div className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5">
+            <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
           </div>
           <div className="flex flex-col gap-1 w-full">
             <div className="flex w-full items-center justify-between">
-              <p className="text-secondary-700 h3-bold">
+              <p className="text-ink-secondary-700 h3-bold">
                 {outputAmount} {outputCoin.symbol}
               </p>
               <img className="h-8 w-8" src={outputCoin.logoURI} alt={outputCoin.symbol} />
             </div>
-            <p className="text-tertiary-500 diatype-sm-regular">
+            <p className="text-ink-tertiary-500 diatype-sm-regular">
               {getPrice(outputAmount, outputCoin.denom, { format: true, ...formatNumberOptions })}
             </p>
           </div>
           <div className="flex w-full items-center justify-between pt-3">
-            <p className="text-tertiary-500 diatype-sm-regular">{m["dex.fee"]()}</p>
-            <p className=" diatype-sm-medium text-secondary-700">{fee}</p>
+            <p className="text-ink-tertiary-500 diatype-sm-regular">{m["dex.fee"]()}</p>
+            <p className=" diatype-sm-medium text-ink-secondary-700">{fee}</p>
           </div>
         </div>
 

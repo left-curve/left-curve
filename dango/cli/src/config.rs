@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    grug_types::HexBinary,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -11,6 +14,7 @@ pub struct Config {
     pub sentry: SentryConfig,
     pub log_level: String,
     pub log_format: LogFormat,
+    pub pyth: PythLazerConfig,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -33,6 +37,7 @@ pub enum LogFormat {
 pub struct GrugConfig {
     pub wasm_cache_capacity: usize,
     pub query_gas_limit: u64,
+    pub priority_range: Option<(HexBinary, HexBinary)>,
 }
 
 impl Default for GrugConfig {
@@ -40,6 +45,7 @@ impl Default for GrugConfig {
         Self {
             wasm_cache_capacity: 1000,
             query_gas_limit: 100_000_000,
+            priority_range: None,
         }
     }
 }
@@ -82,6 +88,7 @@ pub struct HttpdConfig {
     pub ip: String,
     pub port: u16,
     pub cors_allowed_origin: Option<String>,
+    pub static_files_path: Option<String>,
 }
 
 impl Default for HttpdConfig {
@@ -91,6 +98,7 @@ impl Default for HttpdConfig {
             ip: "127.0.0.1".to_string(),
             port: 0,
             cors_allowed_origin: None,
+            static_files_path: None,
         }
     }
 }
@@ -123,4 +131,10 @@ impl Default for TransactionsConfig {
             gas_adjustment: 1.4,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct PythLazerConfig {
+    pub endpoints: Vec<String>,
+    pub access_token: String,
 }

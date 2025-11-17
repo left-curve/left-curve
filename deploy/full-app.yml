@@ -1,0 +1,225 @@
+- name: Generate keys on all nodes and build peer list
+  hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  gather_facts: yes
+  vars:
+  vars_files:
+    - roles/full-app/vars/main.yml
+  tasks:
+    - name: Generate shared timestamp
+      set_fact:
+        timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+      run_once: true
+
+    - name: Set timestamp and deployment name on all hosts
+      set_fact:
+        deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+        timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+
+    - name: Log deployment start
+      community.general.syslogger:
+        msg: "[{{ deployment_name }}] Starting deployment"
+        facility: local0
+        priority: info
+        ident: dango
+
+    - name: Set system wide cometbft and dango directories
+      set_fact:
+        dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
+        cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
+      when: system_wide_directories
+
+    - name: Read current deploy
+      include_role:
+        name: full-app
+        tasks_from: read_current_deploy.yml
+
+    - name: Run setup tasks
+      include_role:
+        name: full-app
+        tasks_from: setup.yml
+
+    - name: Detect free ports
+      include_role:
+        name: full-app
+        tasks_from: detect_free_ports.yml
+      when: expose_ports and not skip_port_discovery
+
+    - name: Generate keys
+      include_role:
+        name: full-app
+        tasks_from: cometbft_keys.yml
+
+    - name: Build persistent_peers list
+      set_fact:
+        persistent_peers: "{{ peer_list }}"
+      vars:
+        peer_list: |-
+          {%- set peers = [] -%}
+          {%- for host in groups['full-app'] -%}
+            {%- if host != inventory_hostname and hostvars[host].cometbft_node_id is defined -%}
+              {%- set port = (traefik_enabled | default(false))
+                            | ternary(traefik[dango_network].ports.cometbft_p2p_port,
+                                      hostvars[host].cometbft_p2p_port) -%}
+              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].tailscale_ip ~ ':' ~ port -%}
+              {{- peers.append(peer) or '' -}}
+            {%- endif -%}
+          {%- endfor -%}
+          {{- peers | join(',') -}}
+      when: cometbft_node_id is defined
+
+    - name: Debug peer configuration
+      debug:
+        msg: "Persistent peers for {{ inventory_hostname }}: {{ persistent_peers }}"
+      when: persistent_peers is defined
+
+    # Stop for debugging
+    # - meta: end_play
+
+- hosts: full-app
+  become: true
+  become_user: "{{ deploy_user }}"
+  collections:
+    - community.docker
+    - community.clickhouse
+  pre_tasks:
+    - name: Load postgres vars
+      include_vars: "roles/full-app/vars/included_postgres.yml"
+      when: deploy_includes_postgres
+    - name: Load clickhouse vars
+      include_vars: "roles/full-app/vars/included_clickhouse.yml"
+      when: deploy_includes_clickhouse
+    - name: Build cosign verification image list
+      set_fact:
+        deploy_cosign_images:
+          - service: "dango"
+            image: "ghcr.io/left-curve/left-curve/dango"
+            tag: "{{ dango_image_tag }}"
+            identity_regexp: "{{ cosign_identity_rust_regexp }}"
+          - service: "dango-frontend"
+            image: "ghcr.io/left-curve/left-curve/dango-frontend"
+            tag: "{{ frontend_image_tag }}"
+            identity_regexp: "{{ cosign_identity_rust_regexp }}"
+          - service: "cometbft"
+            image: "ghcr.io/left-curve/left-curve/cometbft"
+            tag: "{{ cometbft_tag }}"
+            identity_regexp: "{{ cosign_identity_cometbft_regexp }}"
+    - name: Set dango and cometbft hosts
+      set_fact:
+        dango_host: "{{ deployment_name }}-dango-1"
+        cometbft_host: "{{ deployment_name }}-cometbft-1"
+
+  tasks:
+    - block:
+        - name: Run cosign role
+          import_role:
+            name: cosign
+
+        - name: Run full-app role
+          import_role:
+            name: full-app
+
+      rescue:
+        - name: Stop and remove stack
+          community.docker.docker_compose_v2:
+            project_name: "{{ deployment_name }}"
+            project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+            state: absent
+          ignore_errors: true
+
+        # I want to keep files if I need to dig further using `docker compose logs`
+        # - name: Remove deployment directory
+        #   become: true
+        #   become_user: root
+        #   file:
+        #     path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
+        #     state: absent
+
+        - name: Log deployment failure
+          community.general.syslogger:
+            msg: "[{{ deployment_name }}] Deployment FAILED"
+            facility: local0
+            priority: err
+            ident: dango
+
+      always:
+        - name: Log deployment finished
+          community.general.syslogger:
+            msg: "[{{ deployment_name }}] Finished deployment"
+            facility: local0
+            priority: info
+            ident: dango
+
+- hosts: monitoring
+  become: true
+  become_user: "{{ deploy_user }}"
+  tags: monitoring
+  vars_files:
+    - roles/full-app/vars/main.yml
+  tasks:
+    - block:
+        - name: Load prometheus vars
+          include_vars: roles/prometheus/defaults/main.yml
+        - name: Create Dango prometheus targets
+          copy:
+            content: |
+              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].dango_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'dango'
+                  environment: 'preview'
+                  dango_network: '{{ dango_network }}'
+                  hostname: '{{ hostvars[item].hostname }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-dango.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+          loop: "{{ groups['full-app'] }}"
+        - name: Create Cometbft prometheus targets
+          copy:
+            content: |
+              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].cometbft_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'cometbft'
+                  environment: 'preview'
+                  dango_network: '{{ dango_network }}'
+                  hostname: '{{ hostvars[item].hostname }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-cometbft.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+          loop: "{{ groups['full-app'] }}"
+        - name: Create Postgres prometheus targets
+          when: deploy_includes_postgres
+          copy:
+            content: |
+              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].db_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'postgres'
+                  environment: 'preview'
+                  dango_network: '{{ dango_network }}'
+                  hostname: '{{ hostvars[item].hostname }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-postgres.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+          loop: "{{ groups['full-app'] }}"
+        - name: Create Clickhouse prometheus targets
+          when: deploy_includes_clickhouse
+          copy:
+            content: |
+              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].clickhouse_metrics_port }}']
+                labels:
+                  deployment: '{{ deployment_name }}'
+                  service: 'clickhouse'
+                  environment: 'preview'
+                  dango_network: '{{ dango_network }}'
+                  hostname: '{{ hostvars[item].hostname }}'
+            dest: "{{ prometheus_dir }}/targets/{{ deployment_name }}-{{ hostvars[item].hostname }}-clickhouse.yml"
+            owner: "{{ deploy_user }}"
+            group: "{{ deploy_user }}"
+          loop: "{{ groups['full-app'] }}"
+      when:
+        - hostvars[groups['full-app'][0]]['expose_ports'] == true
+      become: true
+      become_user: root

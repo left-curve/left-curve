@@ -8,10 +8,10 @@ export default defineConfig([
   {
     ...(config as Options),
     entry: ["./src/**"],
-    bundle: true,
+    bundle: false,
     splitting: false,
     treeshake: false,
-    format: ["esm"],
+    format: ["esm", "cjs"],
     external: ["react", "react-dom", "@tanstack/react-query"],
     platform: "browser",
     publicDir: "./public",

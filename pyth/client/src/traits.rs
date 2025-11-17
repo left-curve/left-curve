@@ -1,6 +1,7 @@
 use {
     async_trait::async_trait,
-    grug::{Binary, Lengthy, NonEmpty},
+    grug::{Lengthy, NonEmpty},
+    pyth_types::{PriceUpdate, PythLazerSubscriptionDetails},
     std::{fmt::Display, pin::Pin},
 };
 
@@ -8,18 +9,14 @@ use {
 pub trait PythClientTrait: Clone {
     type Error: Display;
 
+    /// Creates a stream of price updates for the given ids.
     async fn stream<I>(
         &mut self,
         ids: NonEmpty<I>,
-    ) -> Result<Pin<Box<dyn tokio_stream::Stream<Item = Vec<Binary>> + Send>>, Self::Error>
+    ) -> Result<Pin<Box<dyn tokio_stream::Stream<Item = PriceUpdate> + Send>>, Self::Error>
     where
-        I: IntoIterator + Lengthy + Send + Clone,
-        I::Item: ToString;
+        I: IntoIterator<Item = PythLazerSubscriptionDetails> + Lengthy + Send + Clone;
 
-    fn get_latest_vaas<I>(&self, ids: NonEmpty<I>) -> Result<Vec<Binary>, Self::Error>
-    where
-        I: IntoIterator + Clone + Lengthy,
-        I::Item: ToString;
-
+    /// Closes the stream.
     fn close(&mut self);
 }

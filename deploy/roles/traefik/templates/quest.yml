@@ -1,0 +1,20 @@
+http:
+  services:
+    quest-bot:
+      loadBalancer:
+        servers:
+          - url: "http://quest-2-app-1:8081"
+
+  routers:
+    quest-bot-ssl:
+      rule: "Host(`quest-bot-testnet.dango.zone`)"
+      entryPoints:
+        - "websecure"
+      tls: {}
+      service: "quest-bot"
+
+    quest-bot:
+      rule: "Host(`quest-bot-testnet.dango.zone`)"
+      entryPoints:
+        - "web"
+      service: "quest-bot"

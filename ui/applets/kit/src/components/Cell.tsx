@@ -1,8 +1,8 @@
-import { useConfig, usePrices } from "@left-curve/store";
+import { useConfig, useFavPairs, usePrices } from "@left-curve/store";
 
 import { capitalize, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
-import { twMerge } from "#utils/twMerge.js";
+import { twMerge } from "@left-curve/foundation";
 
 import { AddressVisualizer } from "./AddressVisualizer";
 import { Badge } from "./Badge";
@@ -25,6 +25,8 @@ import type React from "react";
 import type { PropsWithChildren } from "react";
 import { Button } from "./Button";
 import { PairAssets } from "./PairAssets";
+import { IconStar } from "./icons/IconStar";
+import { IconEmptyStar } from "./icons/IconEmptyStar";
 
 const Container: React.FC<PropsWithChildren> = ({ children }) => {
   return <>{children}</>;
@@ -93,7 +95,9 @@ type CellAmountProps = {
 
 const Amount: React.FC<CellAmountProps> = ({ amount, price, decimals, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-tertiary-500", className)}>
+    <div
+      className={twMerge("flex flex-col gap-1 diatype-sm-medium text-ink-tertiary-500", className)}
+    >
       <p>{formatUnits(amount, decimals)}</p>
       <p>{price}</p>
     </div>
@@ -107,7 +111,7 @@ type CellTextProps = {
 
 const Text: React.FC<CellTextProps> = ({ text, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 text-tertiary-500", className)}>
+    <div className={twMerge("flex flex-col gap-1 text-ink-tertiary-500", className)}>
       <p>{text}</p>
     </div>
   );
@@ -121,7 +125,7 @@ type CellNumberProps = {
 
 const CellNumber: React.FC<CellNumberProps> = ({ value, formatOptions, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 text-tertiary-500", className)}>
+    <div className={twMerge("flex flex-col gap-1 text-ink-tertiary-500", className)}>
       <p>{formatNumber(value, formatOptions)}</p>
     </div>
   );
@@ -160,7 +164,7 @@ const MarketPrice: React.FC<CellMarketPriceProps> = ({ denom, className, formatO
   return (
     <div
       className={twMerge(
-        "flex h-full flex-col gap-1 diatype-sm-medium text-tertiary-500 my-auto justify-center",
+        "flex h-full flex-col gap-1 diatype-sm-medium text-ink-tertiary-500 my-auto justify-center",
         className,
       )}
     >
@@ -234,27 +238,31 @@ type CellTxHashProps = {
 const TxHash: React.FC<CellTxHashProps> = ({ hash, navigate }) => {
   return (
     <div
-      className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-secondary-700"
+      className="flex items-center h-full gap-1 cursor-pointer diatype-mono-sm-medium text-ink-secondary-700"
       onClick={navigate}
     >
-      <div className="flex items-center hover:text-primary-900">
+      <div className="flex items-center hover:text-ink-primary-900">
         <p className="truncate max-w-36">{hash}</p>
         <IconLink className="h-4 w-4" />
       </div>
-      <TextCopy copyText={hash} className="h-4 w-4 text-primary-gray hover:text-primary-900" />
+      <TextCopy
+        copyText={hash}
+        className="h-4 w-4 text-ink-secondary-700 hover:text-ink-primary-900"
+      />
     </div>
   );
 };
 
 type CellTimeProps = {
   className?: string;
-  date: Date;
+  dateFormat: string;
+  date: Date | string | number;
 };
 
-const Time: React.FC<CellTimeProps> = ({ date, className }) => {
+const Time: React.FC<CellTimeProps> = ({ date, dateFormat, className }) => {
   return (
-    <div className={twMerge("flex flex-col gap-1 diatype-sm-medium text-tertiary-500", className)}>
-      <p>{format(date, "MM/dd")}</p>
+    <div className={twMerge("flex flex-col gap-1", className)}>
+      <p>{format(date, dateFormat)}</p>
     </div>
   );
 };
@@ -273,7 +281,7 @@ const Action: React.FC<CellActionProps> = ({ action, label, classNames, isDisabl
   return (
     <div
       className={twMerge(
-        "flex flex-col gap-1 diatype-sm-medium text-tertiary-500",
+        "flex flex-col gap-1 diatype-sm-medium text-ink-tertiary-500",
         classNames?.cell,
       )}
     >
@@ -299,7 +307,7 @@ const TxMessages: React.FC<CellTxMessagesProps> = ({ messages }) => {
   return (
     <div className="flex h-full items-center gap-1">
       <Badge text={capitalize(firstMessage.methodName)} color="blue" />
-      {extraMessages ? <Badge text={`+${extraMessages}`} color="red" /> : null}
+      {extraMessages ? <Badge text={`+${extraMessages}`} color="blue" /> : null}
     </div>
   );
 };
@@ -329,6 +337,51 @@ const PairName: React.FC<CellPairNameProps> = ({ pairId, type, className }) => {
   );
 };
 
+type CellPairNameWithFavProps = {
+  pairId: PairId;
+  type?: string;
+  className?: string;
+};
+
+const PairNameWithFav: React.FC<CellPairNameWithFavProps> = ({ pairId, type, className }) => {
+  const { coins } = useConfig();
+  const { baseDenom, quoteDenom } = pairId;
+  const baseCoin = coins.byDenom[baseDenom];
+  const quoteCoin = coins.byDenom[quoteDenom];
+  const { toggleFavPair, hasFavPair } = useFavPairs();
+
+  const pairSymbols = `${baseCoin.symbol}-${quoteCoin.symbol}`;
+
+  const isFav = hasFavPair(pairSymbols);
+
+  return (
+    <div
+      className={twMerge(
+        "flex h-full gap-2 diatype-sm-medium justify-start items-center my-auto",
+        className,
+      )}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleFavPair(pairSymbols);
+        }}
+        className="focus:outline-none"
+      >
+        {isFav ? (
+          <IconStar className="w-4 h-4 text-fg-primary-700" />
+        ) : (
+          <IconEmptyStar className="w-4 h-4 text-fg-primary-700" />
+        )}
+      </button>
+      <img src={baseCoin.logoURI} alt={baseCoin.symbol} className="w-5 h-5" />
+      <p className="min-w-fit">{`${baseCoin.symbol}-${quoteCoin.symbol}`}</p>
+      {type ? <Badge text={type} color="blue" size="s" /> : null}
+    </div>
+  );
+};
+
 export const Cell = Object.assign(Container, {
   Age,
   Asset,
@@ -345,5 +398,6 @@ export const Cell = Object.assign(Container, {
   TxResult,
   MarketPrice,
   PairName,
+  PairNameWithFav,
   BlockHeight,
 });

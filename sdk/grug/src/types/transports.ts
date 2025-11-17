@@ -56,14 +56,14 @@ export type RequestFn<transportSchema extends TransportSchema | undefined = unde
   options?: RequestOptions,
 ) => Promise<_returnType>;
 
-export type SubscribeFn = <T>(
+export type SubscribeFn = (<T>(
   { query, variables }: { query: string; variables?: Record<string, unknown> },
   callback: SubscriptionCallbacks<T>,
-) => () => void;
+) => () => void) & { getClientStatus?: () => { isConnected: boolean } };
 
 export type SubscriptionCallbacks<T = unknown> = {
   next: (data: T) => void;
-  error?: (error: Error) => void;
+  error?: (error: unknown) => void;
   complete?: () => void;
 };
 

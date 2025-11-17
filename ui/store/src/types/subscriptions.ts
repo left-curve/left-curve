@@ -1,11 +1,16 @@
 import type {
+  Address,
   Candle,
   CandleIntervals,
   Denom,
   IndexedAccountEvent,
   IndexedBlock,
+  IndexedEvent,
   IndexedTransferEvent,
   PublicClient,
+  QueryRequest,
+  QueryResponse,
+  Trade,
   Username,
 } from "@left-curve/dango/types";
 
@@ -26,6 +31,11 @@ export type SubscriptionSchema = [
     listener: (event: { accounts: IndexedAccountEvent[] }) => void;
   },
   {
+    key: "eventsByAddresses";
+    params: { addresses: Address[]; sinceBlockHeight?: number };
+    listener: (events: IndexedEvent[]) => void;
+  },
+  {
     key: "candles";
     params: {
       baseDenom: Denom;
@@ -37,6 +47,14 @@ export type SubscriptionSchema = [
     listener: (event: { candles: Candle[] }) => void;
   },
   {
+    key: "trades";
+    params: {
+      baseDenom: Denom;
+      quoteDenom: Denom;
+    };
+    listener: (event: { trades: Trade }) => void;
+  },
+  {
     key: "submitTx";
     params?: undefined;
     listener: <T>(event: {
@@ -45,6 +63,14 @@ export type SubscriptionSchema = [
       message?: string;
       data?: T;
     }) => void;
+  },
+  {
+    key: "queryApp";
+    params: {
+      request: QueryRequest;
+      interval?: number;
+    };
+    listener: (event: { response: QueryResponse; blockHeight: number }) => void;
   },
 ];
 
@@ -59,6 +85,7 @@ export type SubscriptionExecutor<K extends SubscriptionKey> = (context: {
   client: PublicClient;
   params: GetSubscriptionDef<K>["params"];
   getListeners: () => Set<GetSubscriptionDef<K>["listener"]>;
+  onError?: (error: unknown) => void;
 }) => () => void;
 
 export type SubscribeArguments<K extends SubscriptionKey> =
@@ -72,5 +99,8 @@ export type SubscriptionEvent<K extends SubscriptionKey> = Parameters<
 
 export type SubscriptionStore = {
   subscribe: <K extends SubscriptionKey>(key: K, args: SubscribeArguments<K>) => () => void;
-  emit: <K extends SubscriptionKey>(key: K, event: SubscriptionEvent<K>) => void;
+  emit: <K extends SubscriptionKey>(
+    { key, params }: { key: K; params?: GetSubscriptionDef<K>["params"] },
+    event: SubscriptionEvent<K>,
+  ) => void;
 };

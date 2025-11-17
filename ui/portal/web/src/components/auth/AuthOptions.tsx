@@ -1,45 +1,46 @@
-import { Button, ExpandOptions, IconPasskey } from "@left-curve/applets-kit";
+import { useState } from "react";
 import { useConnectors } from "@left-curve/store";
+
+import { Button } from "@left-curve/applets-kit";
 import { motion } from "framer-motion";
+
+import { m } from "@left-curve/foundation/paraglide/messages.js";
+
 import type React from "react";
-
-import { m } from "~/paraglide/messages";
-
 interface Props {
   action: (method: string) => void;
   isPending: boolean;
-  mode: "signup" | "signin";
 }
 
-export const AuthOptions: React.FC<Props> = ({ action, isPending, mode }) => {
+export const AuthOptions: React.FC<Props> = ({ action, isPending }) => {
+  const [selectedConnector, setSelectedConnector] = useState<string | null>(null);
   const connectors = useConnectors();
 
   return (
     <div className="flex flex-col gap-4 w-full">
-      <Button fullWidth onClick={() => action("passkey")} isLoading={isPending} className="gap-2">
-        <IconPasskey className="w-6 h-6" />
-        <p className="min-w-20"> {m["common.signWithPasskey"]({ action: mode })}</p>
-      </Button>
       {connectors.length > 2 ? (
         connectors.map((connector) => {
-          if (["passkey", "session"].includes(connector.type)) return null;
+          if (["passkey", "session", "privy"].includes(connector.type)) return null;
           return (
             <Button
               key={connector.id}
               as={motion.div}
-              isDisabled={isPending}
+              isLoading={isPending && selectedConnector === connector.id}
+              isDisabled={isPending && selectedConnector !== connector.id}
               className="gap-2"
               variant="secondary"
               fullWidth
-              onClick={() => action(connector.id)}
+              onClick={() => [action(connector.id), setSelectedConnector(connector.id)]}
             >
               <img src={connector.icon} alt={connector.name} className="w-6 h-6" />
-              <p className="min-w-20">{connector.name}</p>
+              <p>{connector.name}</p>
             </Button>
           );
         })
       ) : (
-        <p className="text-center text-blue-400">{m["common.notWalletDetected"]()}</p>
+        <p className="text-center text-primitives-blue-light-400">
+          {m["common.notWalletDetected"]()}
+        </p>
       )}
     </div>
   );

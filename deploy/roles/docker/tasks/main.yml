@@ -51,3 +51,37 @@
   file:
     path: /var/run/docker.sock
     mode: '0666'
+
+- name: Ensure systemd override dir for Docker
+  ansible.builtin.file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+    mode: "0755"
+
+- name: Set Docker LimitNOFILE
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/docker.service.d/override.conf
+    mode: "0644"
+    content: |
+      [Service]
+      LimitNOFILE=200000
+
+- name: Set Docker default ulimits
+  ansible.builtin.copy:
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+    content: |
+      {
+        "default-ulimits": {
+          "nofile": { "Name": "nofile", "Soft": 200000, "Hard": 200000 }
+        }
+      }
+
+- name: Reload systemd
+  command: systemctl daemon-reload
+  changed_when: false
+
+- name: Ensure Docker running
+  service:
+    name: docker
+    state: started

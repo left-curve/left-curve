@@ -3,6 +3,7 @@ use {
         Addr, CheckedContractEvent, Coins, EventStatus, Hash256, Json, Label, ReplyOn, Timestamp,
     },
     borsh::{BorshDeserialize, BorshSerialize},
+    error_backtrace::{Backtraceable, BacktracedError},
     paste::paste,
     serde::{Deserialize, Serialize},
     serde_with::skip_serializing_none,
@@ -14,6 +15,8 @@ use {
 pub enum Event {
     /// The chain- or app-level configurations were updated.
     Configure(EvtConfigure),
+    /// A chain upgrade was scheduled.
+    Upgrade(EvtUpgrade),
     /// Coins were transferred from one account to another.
     Transfer(EvtTransfer),
     /// A wasm binary code was uploaded.
@@ -36,7 +39,6 @@ pub enum Event {
     Finalize(EvtFinalize),
     /// A cronjob was executed.
     Cron(EvtCron),
-    // TODO: IBC events
 }
 
 macro_rules! generate_downcast {
@@ -64,6 +66,7 @@ macro_rules! generate_downcast {
 impl Event {
     generate_downcast! {
         Configure    => EvtConfigure,
+        Upgrade      => EvtUpgrade,
         Transfer     => EvtTransfer,
         Upload       => EvtUpload,
         Instantiate  => EvtInstantiate,
@@ -105,6 +108,14 @@ impl Event {
 pub struct EvtConfigure {
     pub sender: Addr,
     // TODO: not sure what else we need here. the old and new configs?
+}
+
+/// An event indicating that a chain upgrade was scheduled.
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, PartialEq, Eq)]
+pub struct EvtUpgrade {
+    pub sender: Addr,
+    pub height: u64,
+    pub cargo_version: String,
 }
 
 /// An event indicating that coins were transferred from one account to another.
@@ -372,30 +383,36 @@ pub enum SubEventStatus {
     NestedFailed(Event),
     /// The event failed.
     /// State changes are reverted.
-    Failed { event: Event, error: String },
+    Failed {
+        event: Event,
+        error: BacktracedError<String>,
+    },
     /// The event failed but the error was handled.
     /// State changes are reverted but the tx continues.
-    Handled { event: Event, error: String },
+    Handled {
+        event: Event,
+        error: BacktracedError<String>,
+    },
 }
 
 impl SubEventStatus {
     pub fn failed<E>(event: Event, error: E) -> Self
     where
-        E: ToString,
+        E: Backtraceable,
     {
         Self::Failed {
             event,
-            error: error.to_string(),
+            error: error.into_generic_backtraced_error(),
         }
     }
 
     pub fn handled<E>(event: Event, error: E) -> Self
     where
-        E: ToString,
+        E: Backtraceable,
     {
         Self::Handled {
             event,
-            error: error.to_string(),
+            error: error.into_generic_backtraced_error(),
         }
     }
 }

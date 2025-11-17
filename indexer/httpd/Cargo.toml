@@ -37,6 +37,7 @@ async-trait                 = { workspace = true }
 base64                      = { workspace = true }
 chrono                      = { workspace = true }
 clap                        = { workspace = true }
+error-backtrace             = { workspace = true }
 futures                     = { workspace = true }
 futures-util                = { workspace = true, optional = true }
 grug-app                    = { workspace = true }
@@ -67,5 +68,3 @@ uuid                        = { workspace = true }
 [dev-dependencies]
 assertor              = { workspace = true }
 indexer-sql-migration = { workspace = true }
-# TODO: remove this once we will setup a real postgres instance for testing
-pg-embed = "0.7"

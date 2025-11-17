@@ -1,10 +1,12 @@
 use {
     account::AccountSubscription,
     async_graphql::*,
-    indexer_clickhouse::httpd::graphql::subscription::candle::CandleSubscription,
+    dango_indexer_clickhouse::httpd::graphql::subscription::{
+        candle::CandleSubscription, trade::TradeSubscription,
+    },
     indexer_httpd::graphql::subscription::{
-        block::BlockSubscription, event::EventSubscription, message::MessageSubscription,
-        transaction::TransactionSubscription,
+        block::BlockSubscription, event::EventSubscription, grug::GrugSubscription,
+        message::MessageSubscription, transaction::TransactionSubscription,
     },
     transfer::TransferSubscription,
 };
@@ -21,4 +23,6 @@ pub struct Subscription(
     MessageSubscription,
     EventSubscription,
     CandleSubscription,
+    TradeSubscription,
+    GrugSubscription,
 );

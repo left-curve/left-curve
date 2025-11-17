@@ -10,16 +10,21 @@ use {
 
 #[async_trait]
 pub trait QueryApp {
-    /// Query the app, return a JSON String.
-    async fn query_app(&self, raw_req: Query, height: Option<u64>) -> AppResult<QueryResponse>;
+    /// Query the app, return the query response and the block height this query
+    /// was performed at.
+    async fn query_app(
+        &self,
+        raw_req: Query,
+        height: Option<u64>,
+    ) -> AppResult<(QueryResponse, u64)>;
 
-    /// Query the app's underlying key-value store, return `(value, proof)`.
+    /// Query the app's underlying key-value store, return `(value, proof, height)`.
     async fn query_store(
         &self,
         key: &[u8],
         height: Option<u64>,
         prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)>;
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)>;
 
     /// Simulate a transaction.
     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome>;
@@ -40,8 +45,12 @@ where
     ID: Indexer + Send + Sync + 'static,
     AppError: From<DB::Error> + From<VM::Error> + From<PP::Error>,
 {
-    async fn query_app(&self, raw_req: Query, height: Option<u64>) -> AppResult<QueryResponse> {
-        Ok(self.do_query_app(raw_req, height.unwrap_or(0), false)?)
+    async fn query_app(
+        &self,
+        raw_req: Query,
+        height: Option<u64>,
+    ) -> AppResult<(QueryResponse, u64)> {
+        Ok(self.do_query_app_with_height(raw_req, height, false)?)
     }
 
     async fn query_store(
@@ -49,8 +58,8 @@ where
         key: &[u8],
         height: Option<u64>,
         prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        self.do_query_store(key, height.unwrap_or(0), prove)
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
+        self.do_query_store_with_height(key, height, prove)
     }
 
     async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
@@ -58,14 +67,14 @@ where
     }
 
     async fn chain_id(&self) -> AppResult<String> {
-        let storage = self.db.state_storage(None)?;
+        let storage = self.db.state_storage_with_comment(None, "httpd")?;
         let chain_id = CHAIN_ID.load(&storage)?;
 
         Ok(chain_id)
     }
 
     async fn last_finalized_block(&self) -> AppResult<BlockInfo> {
-        let storage = self.db.state_storage(None)?;
+        let storage = self.db.state_storage_with_comment(None, "httpd")?;
         let last_finalized_block = LAST_FINALIZED_BLOCK.load(&storage)?;
 
         Ok(last_finalized_block)
@@ -82,7 +91,11 @@ where
     ID: Indexer + Send + Sync + 'static,
     App<DB, VM, PP, ID>: QueryApp,
 {
-    async fn query_app(&self, raw_req: Query, height: Option<u64>) -> AppResult<QueryResponse> {
+    async fn query_app(
+        &self,
+        raw_req: Query,
+        height: Option<u64>,
+    ) -> AppResult<(QueryResponse, u64)> {
         self.app.query_app(raw_req, height).await
     }
 
@@ -91,7 +104,7 @@ where
         key: &[u8],
         height: Option<u64>,
         prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
+    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
         self.app.query_store(key, height, prove).await
     }
 
@@ -105,36 +118,5 @@ where
 
     async fn last_finalized_block(&self) -> AppResult<BlockInfo> {
         self.app.last_finalized_block().await
-    }
-}
-
-#[async_trait]
-impl<T> QueryApp for tokio::sync::Mutex<T>
-where
-    T: QueryApp + Send + Sync + 'static,
-{
-    async fn query_app(&self, raw_req: Query, height: Option<u64>) -> AppResult<QueryResponse> {
-        self.lock().await.query_app(raw_req, height).await
-    }
-
-    async fn query_store(
-        &self,
-        key: &[u8],
-        height: Option<u64>,
-        prove: bool,
-    ) -> AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        self.lock().await.query_store(key, height, prove).await
-    }
-
-    async fn simulate(&self, unsigned_tx: UnsignedTx) -> AppResult<TxOutcome> {
-        self.lock().await.simulate(unsigned_tx).await
-    }
-
-    async fn chain_id(&self) -> AppResult<String> {
-        self.lock().await.chain_id().await
-    }
-
-    async fn last_finalized_block(&self) -> AppResult<BlockInfo> {
-        self.lock().await.last_finalized_block().await
     }
 }

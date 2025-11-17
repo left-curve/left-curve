@@ -1,5 +1,5 @@
 use {
-    crate::{error::Result, pubsub::PubSub},
+    super::{PubSub, error::Result},
     async_trait::async_trait,
     std::pin::Pin,
     tokio::sync::broadcast,

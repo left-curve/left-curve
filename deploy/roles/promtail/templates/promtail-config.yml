@@ -33,3 +33,15 @@ scrape_configs:
         regex: '/(.+)'
         target_label: container_name
         replacement: '${1}'
+      - source_labels: [__meta_docker_container_label_dango_network]
+        target_label: dango_network
+      - source_labels: [__meta_docker_container_label_service_name]
+        target_label: service_name
+      - source_labels: [__meta_docker_container_label_environment]
+        target_label: environment
+      - source_labels: [__meta_docker_container_label_project]
+        target_label: project
+      - source_labels: [__meta_docker_container_label_deployment]
+        target_label: deployment
+      - source_labels: [__meta_docker_container_label_chain_id]
+        target_label: chain_id
