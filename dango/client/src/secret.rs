@@ -114,6 +114,7 @@ impl Secret for Secp256k1 {
         let sign_data = sign_doc.to_sign_data()?;
         let digest = Identity256::from_inner(sign_data);
         let signature: k256::ecdsa::Signature = self.inner.sign_digest(digest);
+
         Ok(Signature::Secp256k1(ByteArray::from_inner(
             signature.to_bytes().into(),
         )))
