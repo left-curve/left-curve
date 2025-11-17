@@ -207,7 +207,7 @@ const LiveTrades: React.FC<OrderBookOverviewProps> = ({ state }) => {
   const trades = useDeferredValue(liveTrades);
 
   return (
-    <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[43rem] 2xl:max-h-[15rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4">
+    <div className="flex gap-2 flex-col items-center justify-start lg:max-h-[43rem] 3xl:max-h-[15rem] 3xl:min-h-[15rem] 4xl:max-h-[20rem] 4xl:min-h-[20rem] overflow-y-scroll scrollbar-none overflow-x-hidden relative px-4">
       <div className="diatype-xs-medium text-ink-tertiary-500 w-full grid grid-cols-3 sticky top-0 bg-surface-primary-rice z-20">
         <p>{m["dex.protrade.history.price"]()}</p>
         <p className="text-center">{m["dex.protrade.history.size"]({ symbol: baseCoin.symbol })}</p>
