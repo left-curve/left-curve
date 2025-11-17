@@ -954,7 +954,7 @@ fn refund_ioc_order(
 
 /// Updates trading volumes for both user addresses and usernames.
 ///
-/// If this only done if the quote denom is the USD. Volumes are stored as USD
+/// If this only done if the quote denom is USDC. Volumes are stored as USDC
 /// microunits.
 fn update_trading_volumes(
     storage: &mut dyn Storage,

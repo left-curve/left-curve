@@ -3137,40 +3137,7 @@ fn submit_standard_order(
 
 #[test]
 fn volume_tracking_works() {
-    // Setup custom genesis bridging USDC into alloyed USD and create a pool for DANGO-USD
-    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
-
-    // Register oracle price source for USD
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Register oracle price source for DANGO
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
+    let (mut suite, accounts, _, contracts, _) = setup_test_naive(Default::default());
 
     let mut user1_addr_1 = accounts.user1;
     let mut user1_addr_2 = user1_addr_1
@@ -3612,56 +3579,7 @@ fn volume_tracking_works() {
 
 #[test]
 fn volume_tracking_works_with_multiple_orders_from_same_user() {
-    // Setup custom genesis bridging USDC into alloyed USD and create a pool for DANGO-USD
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
-
-    // Register oracle price source for USD
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                usdc::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Register oracle price source for DANGO
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                dango::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::ONE,
-                    precision: 6,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
-
-    // Register oracle price source for ETH
-    suite
-        .execute(
-            &mut accounts.owner,
-            contracts.oracle,
-            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-                eth::DENOM.clone() => PriceSource::Fixed {
-                    humanized_price: Udec128::from_str("85248.71").unwrap(),
-                    precision: 8,
-                    timestamp: Timestamp::from_seconds(1730802926),
-                },
-            }),
-            Coins::new(),
-        )
-        .should_succeed();
 
     // Submit two orders for DANGO/USDC and one for ETH/USDC with user1
     suite
