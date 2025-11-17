@@ -107,6 +107,7 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
+        widget.resetCache();
         widget.chart().resetData();
       }
     };
