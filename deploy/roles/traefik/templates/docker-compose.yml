@@ -10,7 +10,7 @@ services:
       - "443:443"
       # traefik dashboard
       - "{{ tailscale_ip }}:8888:8888"
-      - "{{ wireguard }}:8888:8888"
+      - "{{ wireguard_ip }}:8888:8888"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - "{{ traefik_dir }}/config:/config:ro"

@@ -28,6 +28,7 @@ This Ansible role sets up a WireGuard mesh network across all hosts in the inven
 **Optional (see `defaults/main.yml`):**
 - `wireguard_port`: UDP port for WireGuard (default: 51820)
 - `wireguard_persistent_keepalive`: Keepalive interval in seconds (default: 25)
+- `wireguard_authorized_peers`: List of authorized peers (team members, personal devices) that can connect to the mesh network (default: [])
 
 ## IP Assignment
 
@@ -40,6 +41,57 @@ Run the playbook:
 ```bash
 ansible-playbook -i inventory wireguard.yml
 ```
+
+## Adding Authorized Peers
+
+You can allow team members and personal devices to connect to the WireGuard mesh network by adding them to the `wireguard_authorized_peers` list. This can be defined in `group_vars/all/main.yml` or `roles/wireguard/defaults/main.yml`.
+
+Example configuration:
+
+```yaml
+wireguard_authorized_peers:
+  - name: "alice-laptop"
+    public_key: "ABC123publickey...="
+    allowed_ips: "10.99.0.100/32"
+    persistent_keepalive: 25  # Optional
+    endpoint: "1.2.3.4:51820"  # Optional, for road warrior clients
+  - name: "bob-desktop"
+    public_key: "XYZ789publickey...="
+    allowed_ips: "10.99.0.101/32"
+```
+
+### Generating Keys for Authorized Peers
+
+On the client device:
+```bash
+# Generate private key
+wg genkey > privatekey
+
+# Generate public key from private key
+wg pubkey < privatekey > publickey
+
+# Display the public key to add to wireguard_authorized_peers
+cat publickey
+```
+
+### Client Configuration
+
+On the client device, create `/etc/wireguard/wg0.conf`:
+
+```ini
+[Interface]
+PrivateKey = <client's private key>
+Address = 10.99.0.100/32  # Must match allowed_ips in config
+
+[Peer]
+# You can add any server as a peer, or all of them
+PublicKey = <server's public key>
+AllowedIPs = 10.99.0.0/24  # Route all WireGuard network traffic through this peer
+Endpoint = <server's public IP>:51820
+PersistentKeepalive = 25
+```
+
+**Note:** Use IPs in the range `10.99.0.100-10.99.0.255` for authorized peers to avoid conflicts with server IPs (`10.99.0.1-10.99.0.7`).
 
 ## Security Notes
 
