@@ -51,6 +51,7 @@
 - name: Install base packages
   apt:
     name:
+      - iperf3
       - rsyslog
       - ufw
       - curl
