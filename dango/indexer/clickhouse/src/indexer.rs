@@ -34,7 +34,7 @@ impl Indexer {
 
 impl grug_app::Indexer for Indexer {
     fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
-        // TODO: Implement last_indexed_block_height for indexer
+        // TODO: Implement last_indexed_block_height using `pair_prices` table.
         Ok(None)
     }
 

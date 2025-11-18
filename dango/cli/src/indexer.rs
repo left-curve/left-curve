@@ -158,6 +158,7 @@ impl IndexerCmd {
                     cfg.indexer.clickhouse.password.clone(),
                 );
 
+                // We won't need this the day we're full async
                 let clickhouse_indexer = dango_indexer_clickhouse::Indexer::new(
                     indexer_sql::indexer::RuntimeHandler::from_handle(
                         sql_indexer.handle.handle().clone(),

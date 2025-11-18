@@ -58,12 +58,12 @@ fn main() -> anyhow::Result<()> {
     for height in 1..=UNTIL_HEIGHT {
         let block_to_index = CacheFile::load_from_disk(indexer_path.block_path(height))?;
 
-        let block_outcome = app.do_finalize_block(block_to_index.block.clone())?;
+        let block_outcome = app.do_finalize_block(block_to_index.data.block)?;
 
         ensure!(
-            block_outcome.app_hash == block_to_index.block_outcome.app_hash,
+            block_outcome.app_hash == block_to_index.data.block_outcome.app_hash,
             "apphash mismatch! height: {height}, expecting: {}, got: {}",
-            block_to_index.block_outcome.app_hash,
+            block_to_index.data.block_outcome.app_hash,
             block_outcome.app_hash
         );
 

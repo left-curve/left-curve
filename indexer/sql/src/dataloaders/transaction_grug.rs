@@ -33,7 +33,6 @@ impl Loader<entity::transactions::Model> for FileTransactionDataLoader {
 
                 // Find the transaction in the block.
                 let (tx, hash) = indexed_block
-                    .data
                     .block
                     .txs
                     .get(graphql_tx.transaction_idx as usize)
@@ -42,7 +41,6 @@ impl Loader<entity::transactions::Model> for FileTransactionDataLoader {
 
                 // Find the transaction outcome in the block.
                 let outcome = indexed_block
-                    .data
                     .block_outcome
                     .tx_outcomes
                     .get(graphql_tx.transaction_idx as usize)

@@ -88,48 +88,6 @@ impl CacheFile {
     }
 }
 
-// I might need to implement those manually one day, if changing the structs
-// breaks compatibility.
-// impl BorshSerialize for CacheFile {
-//     fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-//         BorshSerialize::serialize(&self.data.block, writer)?;
-//         BorshSerialize::serialize(&self.data.block_outcome, writer)?;
-//         let string_map: HashMap<String, _> = self
-//             .data
-//             .http_request_details
-//             .iter()
-//             .map(|(k, v)| (k.to_string(), v.clone()))
-//             .collect();
-//         BorshSerialize::serialize(&string_map, writer)?;
-//         Ok(())
-//     }
-// }
-
-// impl BorshDeserialize for CacheFile {
-//     fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
-//         let block = Block::deserialize_reader(reader)?;
-//         let block_outcome = BlockOutcome::deserialize_reader(reader)?;
-//         let string_map: HashMap<String, HttpRequestDetails> =
-//             BorshDeserialize::deserialize_reader(reader)?;
-
-//         Ok(Self {
-//             data: BlockAndBlockOutcomeWithHttpDetails {
-//                 block,
-//                 block_outcome,
-//                 http_request_details: string_map
-//                     .into_iter()
-//                     .map(|(k, v)| {
-//                         Hash256::from_str(&k)
-//                             .map(|hash| (hash, v))
-//                             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))
-//                     })
-//                     .collect::<std::io::Result<_>>()?,
-//             },
-//             filename: PathBuf::new(),
-//         })
-//     }
-// }
-
 #[cfg(test)]
 mod tests {
     use {

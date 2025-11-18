@@ -4,4 +4,4 @@ pub mod error;
 pub mod indexer;
 pub mod indexer_path;
 
-pub use {context::Context, indexer::Cache, indexer_path::IndexerPath};
+pub use {context::Context, error::Result, indexer::Cache, indexer_path::IndexerPath};

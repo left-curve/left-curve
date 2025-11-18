@@ -131,7 +131,7 @@ impl HookedIndexer {
                     // it's only used to store data on disk, which we already have.
                     // In the future this can be an issue if an indexer relies on `index_block`
 
-                    // I recreate a context like it would when we index a block normally
+                    // I recreate a context like classic indexing code path
                     let mut ctx = grug_app::IndexerContext::new();
                     for indexer in &mut indexers.iter_mut() {
                         if let Err(err) = indexer.post_indexing(

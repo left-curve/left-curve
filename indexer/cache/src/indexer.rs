@@ -11,9 +11,15 @@ use {
 #[cfg(feature = "http-request-details")]
 use grug_types::{Hash256, HttpRequestDetails};
 
+// TODO: need to add `keep_blocks` configuration to allow choosing if we keep blocks
+// or not, to save disk space. `app.toml` could also add a u64 field to limit the
+// number of blocks to keep, deleting the oldest ones when exceeding that number.
+
 #[derive(Default)]
 pub struct Cache {
     pub context: Context,
+    // This because the way indexer methods are called, we need to store the blocks
+    // in memory between `pre_indexing`, `index_block` and `post_indexing`.
     blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
 }
 
@@ -73,7 +79,7 @@ impl Cache {
 
 impl grug_app::Indexer for Cache {
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
-        // TODO: create missing directories
+        // NOTE: might need to create caching directory, but working so far.
         Ok(())
     }
 
