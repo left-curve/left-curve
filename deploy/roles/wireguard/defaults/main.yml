@@ -1,0 +1,4 @@
+---
+# WireGuard configuration defaults
+wireguard_port: 51820
+wireguard_persistent_keepalive: 25

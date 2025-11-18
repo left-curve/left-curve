@@ -1,2 +1,4 @@
 ---
 tailscale_ip: "100.75.192.25"
+hostname: "ovh5"
+wireguard_ip: "172.17.0.5"
