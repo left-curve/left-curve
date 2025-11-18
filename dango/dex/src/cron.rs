@@ -615,6 +615,8 @@ fn clear_orders_of_pair(
             fee_quote,
             clearing_price,
             cleared: order.remaining.is_zero(),
+            total: order.amount,
+            remaining: order.remaining,
         })?;
 
         // Record the order's trading volume.
