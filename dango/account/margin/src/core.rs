@@ -9,13 +9,14 @@ use {
         dex::{Direction, QueryOrdersByUserRequest},
         lending::Market,
         oracle::PrecisionedPrice,
+        perps::{QueryPerpsPositionsForUserRequest, QueryPerpsVaultStateRequest},
     },
     grug::{
-        Addr, Coin, Coins, Denom, IsZero, Number, NumberConst, QuerierExt, QuerierWrapper,
-        StorageQuerier, Timestamp, Udec128, Uint128,
+        Addr, Coin, Coins, Dec128, Denom, IsZero, Number, NumberConst, QuerierExt, QuerierWrapper,
+        Sign, Signed, StorageQuerier, Timestamp, Udec128, Uint128,
     },
     std::{
-        cmp::min,
+        cmp::{max, min},
         collections::{BTreeMap, HashSet},
     },
 };
@@ -66,6 +67,7 @@ pub fn query_and_compute_health(
                 .values()
                 .map(|res| res.quote_denom.clone()),
         )
+        .chain(vec![data.perps_vault_state.denom.clone()])
         .collect::<HashSet<_>>();
 
     let prices = denoms
@@ -115,10 +117,22 @@ pub fn query_health(
             limit: None,
         })?;
 
+    // Query all perps positions for the account.
+    let perps_positions = querier
+        .query_wasm_smart(app_cfg.addresses.perps, QueryPerpsPositionsForUserRequest {
+            address: account,
+        })?;
+
+    // Query the perps vault state.
+    let perps_vault_state =
+        querier.query_wasm_smart(app_cfg.addresses.perps, QueryPerpsVaultStateRequest {})?;
+
     Ok(HealthData {
         scaled_debts,
         collateral_balances,
         limit_orders,
+        perps_positions,
+        perps_vault_state,
     })
 }
 
@@ -145,6 +159,8 @@ pub fn compute_health(
         scaled_debts,
         collateral_balances,
         limit_orders,
+        perps_positions,
+        perps_vault_state,
     }: HealthData,
     markets: BTreeMap<Denom, Market>,
     prices: BTreeMap<Denom, PrecisionedPrice>,
@@ -175,6 +191,48 @@ pub fn compute_health(
 
         total_debt_value.checked_add_assign(value)?;
     }
+
+    let perps_vault_denom_price = prices
+        .get(&perps_vault_state.denom)
+        .ok_or_else(|| anyhow!("price for denom {} not found", perps_vault_state.denom))?;
+
+    // Handle debts from perps positions.
+    let mut perps_debts = Udec128::ZERO;
+    for (_denom, position) in &perps_positions {
+        let mut position_debt = Udec128::ZERO;
+
+        // Add the position's price PnL to the debt.
+        if position.size.is_positive() {
+            // Long position
+            position_debt.checked_add_assign(
+                max(position.entry_execution_price, Dec128::ZERO)
+                    .checked_mul(position.size.checked_into_dec::<18>()?)?
+                    .unsigned_abs(),
+            )?;
+        } else {
+            // Short position
+            position_debt.checked_add_assign(
+                max(position.current_fill_price, Dec128::ZERO)
+                    .checked_mul(position.size.checked_into_dec::<18>()?)?
+                    .unsigned_abs(),
+            )?;
+        }
+
+        // Add the position's unrealized funding PnL to the debt if it is negative.
+        if position.unrealized_pnl.funding_pnl.is_negative() {
+            let funding_pnl_debt = perps_vault_denom_price
+                .value_of_unit_amount::<18>(position.unrealized_pnl.funding_pnl.unsigned_abs())?;
+            position_debt.checked_add_assign(funding_pnl_debt)?;
+        }
+
+        // Add the position's unrealized fees to the debt.
+        let unrealized_fees_debt = perps_vault_denom_price
+            .value_of_unit_amount::<18>(position.unrealized_pnl.fees.unsigned_abs())?;
+        position_debt.checked_add_assign(unrealized_fees_debt)?;
+
+        perps_debts.checked_add_assign(position_debt)?;
+    }
+    total_debt_value.checked_add_assign(perps_debts)?;
 
     // If the account has no debt, then it must be healthy. We can return early
     // if the caller has requested so.
@@ -211,6 +269,41 @@ pub fn compute_health(
         total_collateral_value.checked_add_assign(value)?;
         total_adjusted_collateral_value.checked_add_assign(adjusted_value)?;
     }
+
+    // Handle collaterals from perps positions.
+    let mut perps_collaterals = Udec128::ZERO;
+    for (_denom, position) in &perps_positions {
+        let mut position_collateral = Udec128::ZERO;
+
+        // Add the position's price PnL to the collateral.
+        if position.size.is_positive() {
+            // Long position
+            position_collateral.checked_add_assign(
+                max(position.current_fill_price, Dec128::ZERO)
+                    .checked_mul(position.size.checked_into_dec::<18>()?)?
+                    .unsigned_abs(),
+            )?;
+        } else {
+            // Short position
+            position_collateral.checked_add_assign(
+                max(position.entry_execution_price, Dec128::ZERO)
+                    .checked_mul(position.size.checked_into_dec::<18>()?)?
+                    .unsigned_abs(),
+            )?;
+        }
+
+        // Add the position's unrealized funding PnL to the collateral if it is positive.
+        if position.unrealized_pnl.funding_pnl.is_positive() {
+            let funding_pnl_collateral = perps_vault_denom_price
+                .value_of_unit_amount::<18>(position.unrealized_pnl.funding_pnl.unsigned_abs())?;
+            position_collateral.checked_add_assign(funding_pnl_collateral)?;
+        }
+
+        perps_collaterals.checked_add_assign(position_collateral)?;
+    }
+    total_collateral_value.checked_add_assign(perps_collaterals)?;
+    // TODO: Add collateral powers to perps positions?
+    total_adjusted_collateral_value.checked_add_assign(perps_collaterals)?;
 
     // ---------------------------- 3. Limit Orders ----------------------------
 
@@ -297,5 +390,7 @@ pub fn compute_health(
         collaterals,
         limit_order_collaterals,
         limit_order_outputs,
+        perps_debts,
+        perps_collaterals,
     }))
 }

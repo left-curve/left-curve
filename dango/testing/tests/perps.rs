@@ -2,9 +2,14 @@ use {
     dango_genesis::Contracts,
     dango_testing::{TestAccount, TestAccounts, TestSuite, setup_test_naive},
     dango_types::{
-        account::single,
+        account::{
+            margin::{CollateralPower, QueryHealthRequest},
+            single,
+        },
         account_factory::AccountParams,
+        config::AppConfig,
         constants::{dango, usdc},
+        oracle::QueryPriceRequest,
         perps::{
             self, INITIAL_SHARES_PER_TOKEN, PerpsMarketAccumulators, PerpsMarketParams,
             PerpsMarketState, PerpsPositionResponse, PerpsVaultState, Pnl,
@@ -14,8 +19,9 @@ use {
         },
     },
     grug::{
-        BalanceChange, Coins, Dec128, Denom, Duration, Inner, Int128, Message, NumberConst,
-        QuerierExt, ResultExt, Sign, Signed, Timestamp, Udec128, Uint128, btree_map, coins,
+        BalanceChange, Coins, Dec128, Denom, Duration, Inner, Int128, JsonSerExt, Message,
+        MsgConfigure, Number, NumberConst, QuerierExt, ResultExt, Sign, Signed, Timestamp, Udec128,
+        Uint128, btree_map, coins,
     },
     grug_app::NaiveProposalPreparer,
     grug_vm_rust::VmError,
@@ -104,6 +110,36 @@ fn create_margin_account(
     margin_account
 }
 
+/// Sets the collateral power for a given denom
+fn set_collateral_power(
+    suite: &mut TestSuite<NaiveProposalPreparer>,
+    accounts: &mut TestAccounts,
+    denom: Denom,
+    power: CollateralPower,
+) {
+    // Get old config
+    let mut config: AppConfig = suite.query_app_config().unwrap();
+
+    // Update collateral power
+    config.collateral_powers.insert(denom, power);
+
+    // Set new config
+    suite
+        .send_message(
+            &mut accounts.owner,
+            Message::Configure(MsgConfigure {
+                new_app_cfg: Some(config.to_json_value().unwrap()),
+                new_cfg: None,
+            }),
+        )
+        .should_succeed();
+
+    // Ensure config was updated.
+    suite
+        .query_app_config::<AppConfig>()
+        .should_succeed_and_equal(config.clone());
+}
+
 /// Registers fixed prices and creates a single margin account.
 fn perps_test_setup(
     suite: &mut TestSuite<NaiveProposalPreparer>,
@@ -112,6 +148,14 @@ fn perps_test_setup(
 ) -> TestAccount {
     // Register prices
     register_fixed_prices(suite, accounts, contracts);
+
+    // Set collateral power for USDC
+    set_collateral_power(
+        suite,
+        accounts,
+        usdc::DENOM.clone(),
+        CollateralPower::new(Udec128::new_percent(90)).unwrap(),
+    );
 
     // Create a margin account.
     create_margin_account(suite, accounts, contracts)
@@ -526,6 +570,13 @@ fn open_position_works() {
 
     let mut margin_account = perps_test_setup(&mut suite, &mut accounts, &contracts);
 
+    // Query vault denom price
+    let vault_denom_price = suite
+        .query_wasm_smart(contracts.oracle, QueryPriceRequest {
+            denom: usdc::DENOM.clone(),
+        })
+        .should_succeed();
+
     // Open position
     suite
         .execute(
@@ -541,7 +592,7 @@ fn open_position_works() {
     let oracle_price = Udec128::from_str("0.000001").unwrap();
 
     // Ensure the perps positions are updated
-    suite
+    let positions = suite
         .query_wasm_smart(contracts.perps, QueryPerpsPositionsForUserRequest {
             address: margin_account.address.into_inner(),
         })
@@ -561,8 +612,46 @@ fn open_position_works() {
                 fees: Int128::new(-202_000),
                 price_pnl: Int128::ZERO,
                 funding_pnl: Int128::ZERO,
-            }
+            },
+            current_fill_price: Dec128::from_str("0.00000101").unwrap(),
         } });
+    let position = positions.get(&dango::DENOM.clone()).unwrap();
+    let current_fill_price = position.current_fill_price;
+    let entry_execution_price = position.entry_execution_price;
+    let position_size = position.size;
+    let unrealized_fees = position.unrealized_pnl.fees;
+
+    // Query the margin account's health
+    let health = suite
+        .query_wasm_smart(margin_account.address.into_inner(), QueryHealthRequest {
+            skip_if_no_debt: true,
+        })
+        .should_succeed()
+        .unwrap();
+
+    // Ensure the perps collaterals are correct
+    assert_eq!(
+        health.perps_collaterals,
+        current_fill_price
+            .checked_mul(position_size.checked_into_dec::<18>().unwrap())
+            .unwrap()
+            .unsigned_abs()
+    );
+
+    // Ensure the perps debts are correct
+    assert_eq!(
+        health.perps_debts,
+        entry_execution_price
+            .checked_mul(position_size.checked_into_dec::<18>().unwrap())
+            .unwrap()
+            .unsigned_abs()
+            .checked_add(
+                vault_denom_price
+                    .value_of_unit_amount::<18>(unrealized_fees.unsigned_abs())
+                    .unwrap()
+            )
+            .unwrap()
+    );
 }
 
 #[test]
@@ -615,7 +704,8 @@ fn vault_pnl_works() {
                 fees: Int128::new(-202_000),
                 price_pnl: Int128::ZERO,
                 funding_pnl: Int128::ZERO,
-            }
+            },
+            current_fill_price: Dec128::from_str("0.00000101").unwrap(),
         } });
 
     // Ensure the perps market state is updated

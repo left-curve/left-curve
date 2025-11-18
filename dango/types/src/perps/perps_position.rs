@@ -81,4 +81,6 @@ pub struct PerpsPositionResponse {
     pub realized_pnl: Pnl,
     /// The unrealized pnl of the position, if the whole position was closed now.
     pub unrealized_pnl: Pnl,
+    /// The current fill price if the whole position was closed now.
+    pub current_fill_price: Dec128,
 }

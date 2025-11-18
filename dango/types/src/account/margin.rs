@@ -2,6 +2,7 @@ use {
     crate::{
         auth::Nonce,
         dex::{OrderId, OrdersByUserResponse},
+        perps::{PerpsPositionResponse, PerpsVaultState},
     },
     grug::{Bounded, Coins, Denom, Udec128, Udec256, Uint128, ZeroExclusiveOneInclusive},
     std::collections::{BTreeMap, BTreeSet},
@@ -16,6 +17,8 @@ pub struct HealthData {
     pub scaled_debts: BTreeMap<Denom, Udec256>,
     pub collateral_balances: BTreeMap<Denom, Uint128>,
     pub limit_orders: BTreeMap<OrderId, OrdersByUserResponse>,
+    pub perps_positions: BTreeMap<Denom, PerpsPositionResponse>,
+    pub perps_vault_state: PerpsVaultState,
 }
 
 /// Output for computing a margin account's health.
@@ -38,6 +41,10 @@ pub struct HealthResponse {
     pub limit_order_collaterals: Coins,
     /// The coins that would be returned if the account's limit orders were to be filled.
     pub limit_order_outputs: Coins,
+    /// The total value of the margin account's debt from perps positions.
+    pub perps_debts: Udec128,
+    /// The total value of the margin account's collateral from perps positions.
+    pub perps_collaterals: Udec128,
 }
 
 #[grug::derive(Serde)]
