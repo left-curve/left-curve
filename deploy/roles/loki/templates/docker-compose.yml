@@ -5,7 +5,7 @@ services:
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
     ports:
-      - "{{ tailscale_ip }}:{{ loki_port }}:3100"
+      - "{{ wireguard_ip }}:{{ loki_port }}:3100"
     volumes:
       - ./config/loki-config.yml:/etc/loki/local-config.yaml
       - ./data:/tmp/loki

@@ -62,7 +62,7 @@
               {%- set port = (traefik_enabled | default(false))
                             | ternary(traefik[dango_network].ports.cometbft_p2p_port,
                                       hostvars[host].cometbft_p2p_port) -%}
-              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].tailscale_ip ~ ':' ~ port -%}
+              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].wireguard_ip ~ ':' ~ port -%}
               {{- peers.append(peer) or '' -}}
             {%- endif -%}
           {%- endfor -%}
@@ -164,7 +164,7 @@
         - name: Create Dango prometheus targets
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].dango_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].dango_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'dango'
@@ -178,7 +178,7 @@
         - name: Create Cometbft prometheus targets
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].cometbft_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].cometbft_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'cometbft'
@@ -193,7 +193,7 @@
           when: deploy_includes_postgres
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].db_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].db_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'postgres'
@@ -208,7 +208,7 @@
           when: deploy_includes_clickhouse
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].clickhouse_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].clickhouse_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'clickhouse'

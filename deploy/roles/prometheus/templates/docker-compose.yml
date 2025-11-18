@@ -14,7 +14,7 @@ services:
       - '--storage.tsdb.max-block-duration=8h'
       - '--web.enable-lifecycle'
     ports:
-      - "{{ tailscale_ip }}:{{ prometheus_port }}:9090"
+      - "{{ wireguard_ip }}:{{ prometheus_port }}:9090"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./config/alert-rules.yml:/etc/prometheus/alert-rules.yml
@@ -32,7 +32,7 @@ services:
   victoriametrics:
     image: victoriametrics/victoria-metrics
     ports:
-      - "{{ tailscale_ip }}:{{ victoriametrics_port }}:8428"
+      - "{{ wireguard_ip }}:{{ victoriametrics_port }}:8428"
     volumes:
       - ./victoria-metrics-data:/victoria-metrics-data
     command:
@@ -52,7 +52,7 @@ services:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
     ports:
-      - "{{ tailscale_ip }}:{{ alertmanager_port }}:9093"
+      - "{{ wireguard_ip }}:{{ alertmanager_port }}:9093"
     volumes:
       - ./config/alertmanager.yml:/etc/alertmanager/alertmanager.yml
       - ./alertmanager-data:/alertmanager

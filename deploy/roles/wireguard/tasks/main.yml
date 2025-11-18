@@ -157,3 +157,16 @@
     - item.rc != 0
   loop_control:
     label: "{{ item.item | default('N/A') }}"
+
+# Update /etc/hosts with WireGuard IPs for all hosts
+- name: Add WireGuard IPs to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: "^{{ hostvars[item].wireguard_ip }}\\s+{{ hostvars[item].hostname }}"
+    line: "{{ hostvars[item].wireguard_ip }} {{ hostvars[item].hostname }}"
+    state: present
+  loop: "{{ groups['all'] }}"
+  when:
+    - item != inventory_hostname
+    - hostvars[item].wireguard_ip is defined
+    - hostvars[item].hostname is defined

@@ -43,9 +43,9 @@
     - { name: "dango-frontend", description: "Frontend", url: "https://www-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
     - { name: "dango-api", description: "Dango API", url: "https://api-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/graphql" }
     - { name: "dango-graphiql", description: "Dango GraphiQL", url: "https://graphiql-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}" }
-    - { name: "dango-metrics", description: "Dango Metrics", url: "http://{{ tailscale_ip }}:{{ dango_metrics_port }}" }
+    - { name: "dango-metrics", description: "Dango Metrics", url: "http://{{ wireguard_ip }}:{{ dango_metrics_port }}" }
     - { name: "faucet-bot", description: "Faucet", url: "https://faucet-{{ dango_network }}-{{ hostname }}.{{ dango_domain }}/mint" }
-    - { name: "cometbft-p2p", description: "CometBFT P2P", url: "http://{{ tailscale_ip }}:{{ cometbft_p2p_port }}" }
+    - { name: "cometbft-p2p", description: "CometBFT P2P", url: "http://{{ wireguard_ip }}:{{ cometbft_p2p_port }}" }
     - { name: "cometbft-rpc", description: "CometBFT RPC", url: "http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}" }
     - { name: "cometbft-metrics", description: "CometBFT metrics", url: "http://{{ tailscale_ip }}:{{ cometbft_metrics_port }}" }
 

@@ -69,7 +69,7 @@
       - "127.0.0.1:9000:9000" # Native TCP interface
       - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
       - "127.0.0.1:9004:9004" # MySQL compatibility interface
-      - "{{ tailscale_ip }}:9126:9126" # Prometheus metrics
+      - "{{ wireguard_ip }}:9126:9126" # Prometheus metrics
     volumes:
       - "{{ data_dir }}:/var/lib/clickhouse"
       - "{{ logs_dir }}:/var/log/clickhouse-server"
