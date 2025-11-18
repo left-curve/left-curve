@@ -298,7 +298,7 @@ impl DexAction {
         accounts: &mut TestAccounts,
         contracts: &Contracts,
     ) -> Result<Option<BlockOutcome>, TestCaseError> {
-        println!("Executing action: {self:?}");
+        // println!("Executing action: {self:?}");
 
         let block_outcome = match self {
             DexAction::CreateLimitOrder {
@@ -1054,14 +1054,14 @@ fn test_dex_actions(
     });
 
     // Print user address
-    println!("user1 address: {}", accounts.user1.address());
+    // println!("user1 address: {}", accounts.user1.address());
 
     // Print dex contract address
-    println!("dex contract address: {}", contracts.dex);
+    // println!("dex contract address: {}", contracts.dex);
 
     // Query the balances of the user1 account.
-    let balances = suite.query_balances(&accounts.user1)?;
-    println!("user1 balances: {balances:?}");
+    // let balances = suite.query_balances(&accounts.user1)?;
+    // println!("user1 balances: {balances:?}");
 
     // Register fixed prices for all denoms.
     let timestamp = Timestamp::from_nanos(u128::MAX); // Maximum time in the future to prevent oracle price from being outdated.

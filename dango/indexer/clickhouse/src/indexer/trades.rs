@@ -8,8 +8,9 @@ use {
     chrono::{DateTime, Utc},
     dango_types::dex::OrderFilled,
     grug::{
-        Addr, CommitmentStatus, EventName, EventStatus, EvtCron, FlatCommitmentStatus, FlatEvent,
-        FlatEventInfo, FlatEventStatus, JsonDeExt, NaiveFlatten,
+        Addr, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventName, EventStatus,
+        EvtCron, FlatCommitmentStatus, FlatEvent, FlatEventInfo, FlatEventStatus, JsonDeExt,
+        NaiveFlatten,
     },
 };
 
@@ -23,14 +24,9 @@ impl Indexer {
     ) -> Result<()> {
         let clickhouse_client = context.clickhouse_client().clone();
 
-        let block = ctx
-            .get::<grug_types::Block>()
+        let block_and_block_outcome = ctx
+            .get::<BlockAndBlockOutcomeWithHttpDetails>()
             .ok_or(IndexerError::missing_block_or_block_outcome())?;
-
-        let block_outcome = ctx
-            .get::<grug_types::BlockOutcome>()
-            .ok_or(IndexerError::missing_block_or_block_outcome())?
-            .clone();
 
         // Clearing price is denominated as the units of quote asset per 1 unit
         // of the base asset.
@@ -40,7 +36,7 @@ impl Indexer {
 
         // DEX order execution happens exclusively in the end-block cronjob, so
         // we loop through the block's cron outcomes.
-        for outcome in block_outcome.cron_outcomes {
+        for outcome in block_and_block_outcome.block_outcome.cron_outcomes.clone() {
             // If the event wasn't successful, skip it.
             let CommitmentStatus::Committed(EventStatus::Ok(EvtCron {
                 guest_event: EventStatus::Ok(event),
@@ -95,10 +91,14 @@ impl Indexer {
                         fee_quote: order_filled.fee_quote,
                         clearing_price: order_filled.clearing_price,
                         created_at: DateTime::<Utc>::from_naive_utc_and_offset(
-                            block.info.timestamp.to_naive_date_time(),
+                            block_and_block_outcome
+                                .block
+                                .info
+                                .timestamp
+                                .to_naive_date_time(),
                             Utc,
                         ),
-                        block_height: block.info.height,
+                        block_height: block_and_block_outcome.block.info.height,
                         trade_idx,
                     };
 

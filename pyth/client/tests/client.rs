@@ -11,7 +11,7 @@ use {
         response::IntoResponse,
         routing::get,
     },
-    grug::{NonEmpty, setup_tracing_subscriber},
+    grug::NonEmpty,
     pyth_client::{PythClient, PythClientCache, PythClientTrait},
     pyth_lazer_protocol::{
         api::{SubscriptionId, WsRequest},
@@ -27,7 +27,7 @@ use {
     std::{net::SocketAddr, sync::Arc, time::Duration},
     tokio::{select, sync::Mutex, time::sleep},
     tokio_stream::StreamExt,
-    tracing::{Level, error, info},
+    tracing::{error, info},
 };
 
 const TOKEN: &str = "inser_lazer_token_here";
@@ -35,8 +35,6 @@ const TOKEN: &str = "inser_lazer_token_here";
 #[ignore = "rely on network calls"]
 #[tokio::test]
 async fn test_lazer_stream() {
-    setup_tracing_subscriber(Level::INFO);
-
     let client = PythClient::new(NonEmpty::new_unchecked(LAZER_ENDPOINTS_TEST), TOKEN).unwrap();
 
     test_stream(client, vec![BTC_USD_ID, DOGE_USD_ID], vec![
@@ -58,8 +56,6 @@ async fn test_lazer_stream() {
 #[ignore = "fails on CI; need to investigate; TODO"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn reconnection() {
-    setup_tracing_subscriber(Level::DEBUG);
-
     // Random port 15k - 16k.
     let mut rng = rand::thread_rng();
     let port = rng.gen_range(15000..16000);

@@ -1,8 +1,8 @@
 use {
-    crate::{block_to_index::BlockToIndex, entity, error::Result},
+    crate::{entity, error::Result},
     grug_types::{
-        Addr, Block, CommitmentStatus, EventId, Extractable, FlatCategory, FlatEventInfo,
-        FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
+        Addr, Block, BlockAndBlockOutcomeWithHttpDetails, CommitmentStatus, EventId, Extractable,
+        FlatCategory, FlatEventInfo, FlattenStatus, Inner, JsonSerExt, flatten_commitment_status,
     },
     sea_orm::{Set, TryIntoModel, prelude::*, sqlx::types::chrono::NaiveDateTime},
     std::{
@@ -23,7 +23,7 @@ pub struct Models {
 }
 
 impl Models {
-    pub fn build(block_to_index: &BlockToIndex) -> Result<Self> {
+    pub fn build(block_to_index: &BlockAndBlockOutcomeWithHttpDetails) -> Result<Self> {
         let block = &block_to_index.block;
         let block_outcome = &block_to_index.block_outcome;
 
@@ -95,7 +95,7 @@ impl Models {
                 {
                     new_transaction.http_request_details = Set(block_to_index
                         .http_request_details
-                        .get(&tx_hash.to_string())
+                        .get(tx_hash)
                         .and_then(|d| d.to_json_value().ok())
                         .map(|v| v.into_inner()));
                 }

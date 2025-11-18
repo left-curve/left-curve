@@ -6,9 +6,9 @@ use {
         },
         config::AppConfig,
     },
-    grug::{EventName, Inner, Json, JsonDeExt},
+    grug::{BlockAndBlockOutcomeWithHttpDetails, EventName, Inner, Json, JsonDeExt},
     grug_types::{FlatCommitmentStatus, FlatEvent, SearchEvent},
-    indexer_sql::block_to_index::{BlockToIndex, MAX_ROWS_INSERT},
+    indexer_sql::indexer::MAX_ROWS_INSERT,
     itertools::Itertools,
     sea_orm::{
         ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, Set, TransactionTrait,
@@ -25,7 +25,7 @@ use {
 
 pub(crate) async fn save_accounts(
     context: &crate::context::Context,
-    block: &BlockToIndex,
+    block: &BlockAndBlockOutcomeWithHttpDetails,
     app_cfg: Json,
 ) -> Result<(), Error> {
     #[cfg(feature = "metrics")]

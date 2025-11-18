@@ -3312,6 +3312,7 @@ dependencies = [
  "grug-vm-rust",
  "hex",
  "home",
+ "indexer-cache",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
@@ -3540,6 +3541,7 @@ dependencies = [
  "grug-types",
  "grug-vm-rust",
  "hyperlane-testing",
+ "indexer-cache",
  "indexer-hooked",
  "indexer-httpd",
  "indexer-sql",
@@ -3596,6 +3598,7 @@ dependencies = [
  "grug-vm-rust",
  "hex",
  "hex-literal",
+ "indexer-cache",
  "indexer-client",
  "indexer-sql",
  "num-format",
@@ -3660,6 +3663,7 @@ dependencies = [
  "hyperlane-testing",
  "hyperlane-types",
  "identity",
+ "indexer-cache",
  "indexer-client",
  "indexer-disk-saver",
  "indexer-hooked",
@@ -5800,6 +5804,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
+name = "indexer-cache"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "assertor",
+ "async-stream",
+ "async-trait",
+ "borsh",
+ "error-backtrace",
+ "futures",
+ "grug-app",
+ "grug-types",
+ "indexer-disk-saver",
+ "indexer-hooked",
+ "itertools 0.14.0",
+ "metrics",
+ "serde",
+ "serde_json",
+ "strum 0.27.1",
+ "strum_macros 0.27.1",
+ "tempfile",
+ "test-case",
+ "thiserror 2.0.12",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
 name = "indexer-client"
 version = "0.0.0"
 dependencies = [
@@ -5867,8 +5900,6 @@ dependencies = [
  "grug-app",
  "grug-types",
  "http 1.3.1",
- "indexer-disk-saver",
- "indexer-sql-migration",
  "itertools 0.14.0",
  "metrics",
  "sea-orm",
@@ -5910,6 +5941,7 @@ dependencies = [
  "grug-httpd",
  "grug-testing",
  "grug-types",
+ "indexer-cache",
  "indexer-sql",
  "indexer-sql-migration",
  "itertools 0.14.0",
@@ -5948,6 +5980,7 @@ dependencies = [
  "grug-app",
  "grug-macros",
  "grug-types",
+ "indexer-cache",
  "indexer-disk-saver",
  "indexer-hooked",
  "indexer-sql-migration",
@@ -6005,6 +6038,7 @@ dependencies = [
  "grug-testing",
  "grug-types",
  "grug-vm-rust",
+ "indexer-cache",
  "indexer-client",
  "indexer-hooked",
  "indexer-httpd",

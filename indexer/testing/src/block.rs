@@ -1,19 +1,20 @@
 use {
+    crate::setup::create_hooked_indexer,
     grug_app::{Indexer, NaiveProposalPreparer},
     grug_db_memory::MemDb,
     grug_httpd::traits::QueryApp,
     grug_testing::{MockClient, TestAccounts, TestBuilder},
     grug_types::{BroadcastClientExt, Coins, Denom},
     grug_vm_rust::RustVm,
+    indexer_hooked::HookedIndexer,
     indexer_httpd::context::Context,
-    indexer_sql::indexer::Indexer as IndexerTrait,
     std::{str::FromStr, sync::Arc},
     tokio::sync::Mutex,
 };
 
 pub async fn create_block() -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, IndexerTrait>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, HookedIndexer>>,
     TestAccounts,
 )> {
     create_blocks(1).await
@@ -23,19 +24,12 @@ pub async fn create_blocks(
     count: usize,
 ) -> anyhow::Result<(
     Context,
-    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, IndexerTrait>>,
+    Arc<MockClient<MemDb, RustVm, NaiveProposalPreparer, HookedIndexer>>,
     TestAccounts,
 )> {
     let denom = Denom::from_str("ugrug")?;
 
-    let indexer = indexer_sql::IndexerBuilder::default()
-        .with_memory_database()
-        .with_database_max_connections(1)
-        .with_keep_blocks(true)
-        .build()?;
-
-    let context = indexer.context.clone();
-    let indexer_path = indexer.indexer_path.clone();
+    let (indexer, sql_indexer_context, indexer_cache_context) = create_hooked_indexer();
 
     let (suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -75,7 +69,12 @@ pub async fn create_blocks(
 
     let suite_guard = suite.lock().await;
     let httpd_app = suite_guard.app.clone_without_indexer();
-    let httpd_context = Context::new(context, Arc::new(httpd_app), client.clone(), indexer_path);
+    let httpd_context = Context::new(
+        indexer_cache_context,
+        sql_indexer_context,
+        Arc::new(httpd_app),
+        client.clone(),
+    );
 
     Ok((httpd_context, client, accounts))
 }

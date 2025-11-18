@@ -39,9 +39,10 @@ grug-types                  = { workspace = true }
 grug-vm-rust                = { workspace = true }
 hex                         = { workspace = true }
 home                        = { workspace = true }
+indexer-cache               = { workspace = true, features = ["http-request-details", "metrics", "tracing"] }
 indexer-hooked              = { workspace = true, features = ["metrics", "tracing"] }
 indexer-httpd               = { workspace = true, features = ["metrics", "tracing"] }
-indexer-sql                 = { workspace = true, features = ["async-graphql", "http-request-details", "metrics", "tracing"] }
+indexer-sql                 = { workspace = true, features = ["async-graphql", "metrics", "tracing"] }
 metrics-exporter-prometheus = { workspace = true }
 pyth-client                 = { workspace = true, optional = true }
 pyth-types                  = { workspace = true, optional = true }

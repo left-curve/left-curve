@@ -33,6 +33,11 @@ impl Indexer {
 }
 
 impl grug_app::Indexer for Indexer {
+    fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+        // TODO: Implement last_indexed_block_height using `pair_prices` table.
+        Ok(None)
+    }
+
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "testing")]
         if self.context.is_mocked() {
@@ -40,10 +45,11 @@ impl grug_app::Indexer for Indexer {
             tracing::info!("Clickhouse indexer is mocked");
             return Ok(());
         }
+
         #[cfg(feature = "tracing")]
         tracing::info!("Clickhouse indexer started");
 
-        let handle = self.runtime_handler.spawn({
+        self.runtime_handler.block_on({
             let clickhouse_client = self.context.clickhouse_client().clone();
             async move {
                 for migration in crate::migrations::candle_builder::migrations()
@@ -69,11 +75,7 @@ impl grug_app::Indexer for Indexer {
 
                 Ok::<(), grug_app::IndexerError>(())
             }
-        });
-
-        self.runtime_handler
-            .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
+        })?;
 
         self.indexing = true;
 
@@ -121,23 +123,6 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
-    fn pre_indexing(
-        &self,
-        _block_height: u64,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
-        Ok(())
-    }
-
-    fn index_block(
-        &self,
-        _block: &grug_types::Block,
-        _block_outcome: &grug_types::BlockOutcome,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
-        Ok(())
-    }
-
     fn post_indexing(
         &self,
         #[allow(unused_variables)] block_height: u64,
@@ -155,7 +140,7 @@ impl grug_app::Indexer for Indexer {
         let ctx = ctx.clone();
         let context = self.context.clone();
 
-        let handle = self.runtime_handler.spawn(async move {
+        self.runtime_handler.block_on(async move {
             #[cfg(feature = "metrics")]
             let start = Instant::now();
 
@@ -182,11 +167,7 @@ impl grug_app::Indexer for Indexer {
             tracing::debug!(block_height, "`post_indexing` async work finished");
 
             Ok::<(), IndexerError>(())
-        });
-
-        self.runtime_handler
-            .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
+        })?;
 
         Ok(())
     }
