@@ -2,4 +2,4 @@
 loki_url: "http://loki:3100"
 tailscale_ip: "100.122.37.57"
 hostname: "ovh3"
-wireguard_ip: "172.17.0.3"
+wireguard_ip: "10.99.0.3"

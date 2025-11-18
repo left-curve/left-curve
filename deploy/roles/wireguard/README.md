@@ -23,7 +23,7 @@ This Ansible role sets up a WireGuard mesh network across all hosts in the inven
 ## Variables
 
 **Required (must be set in host_vars):**
-- `wireguard_ip`: The WireGuard IP address for this host (e.g., "172.17.0.1")
+- `wireguard_ip`: The WireGuard IP address for this host (e.g., "10.99.0.1")
 
 **Optional (see `defaults/main.yml`):**
 - `wireguard_port`: UDP port for WireGuard (default: 51820)

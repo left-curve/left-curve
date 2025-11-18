@@ -1,4 +1,4 @@
 ---
 tailscale_ip: 100.107.248.71
 hostname: ovh2
-wireguard_ip: "172.17.0.2"
+wireguard_ip: "10.99.0.2"
