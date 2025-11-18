@@ -54,7 +54,7 @@ export async function storeCodeAndInstantiate<transport extends Transport>(
     ],
     extraTypes: {
       Instantiate: [
-        { name: "codeHash", type: "string" },
+        { name: "code_hash", type: "string" },
         { name: "salt", type: "string" },
         { name: "admin", type: "address" },
         { name: "funds", type: "Funds" },
