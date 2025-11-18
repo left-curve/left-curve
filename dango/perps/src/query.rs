@@ -184,6 +184,7 @@ fn query_perps_positions_for_user(
             entry_funding_index: perps_position.entry_funding_index,
             realized_pnl: perps_position.realized_pnl,
             size: perps_position.size,
+            current_fill_price: fill_price,
         });
     }
 
@@ -251,6 +252,7 @@ fn query_perps_positions(
             entry_funding_index: perps_position.entry_funding_index,
             realized_pnl: perps_position.realized_pnl,
             size: perps_position.size,
+            current_fill_price: fill_price,
         };
 
         result
