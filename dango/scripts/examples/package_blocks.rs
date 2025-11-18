@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     let blocks = (FROM_HEIGHT..=UNTIL_HEIGHT)
         .map(|height| {
             let block_to_index = CacheFile::load_from_disk(indexer_path.block_path(height))
-                .map_err(|e| anyhow::anyhow!("Failed to load block at height height {e}"))?;
+                .map_err(|e| anyhow::anyhow!("Failed to load block at height {e}"))?;
             Ok((
                 block_to_index.data.block,
                 block_to_index.data.block_outcome.app_hash,

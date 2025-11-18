@@ -71,7 +71,7 @@ impl grug_app::Indexer for Indexer {
 
         let block_to_index = ctx.get::<BlockAndBlockOutcomeWithHttpDetails>().ok_or(
             grug_app::IndexerError::hook(
-                "BlockToBlockAndBlockOutcomeWithHttpDetailsIndex not found".to_string(),
+                "BlockAndBlockOutcomeWithHttpDetails not found".to_string(),
             ),
         )?;
 
