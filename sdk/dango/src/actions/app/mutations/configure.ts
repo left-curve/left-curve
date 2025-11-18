@@ -1,4 +1,4 @@
-import type { Address, GetTxMesssage, Transport } from "@left-curve/sdk/types";
+import type { Address, GetTxMessage, Transport } from "@left-curve/sdk/types";
 import { type SignAndBroadcastTxReturnType, signAndBroadcastTx } from "./signAndBroadcastTx.js";
 
 import type {
@@ -8,7 +8,7 @@ import type {
   TypedDataParameter,
 } from "../../../types/index.js";
 
-type Message = GetTxMesssage<"configure">;
+type Message = GetTxMessage<"configure">;
 
 export type ConfigureParameters = {
   sender: Address;

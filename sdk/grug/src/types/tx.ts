@@ -39,7 +39,7 @@ export type Message =
   /**  Update the code hash associated with a contract. */
   | { migrate: MsgMigrate };
 
-export type GetTxMesssage<K extends KeyOfUnion<Message>> = ExtractFromUnion<Message, K>;
+export type GetTxMessage<K extends KeyOfUnion<Message>> = ExtractFromUnion<Message, K>;
 
 export type MsgUpgrade = {
   height: number;
