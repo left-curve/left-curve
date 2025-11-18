@@ -37,7 +37,8 @@
       PSQL_VERSION={{ psql_version }}
       POSTGRES_USER={{ postgres_user }}
       POSTGRES_PASSWORD={{ postgres_password }}
-      BINDING_IP={{ wireguard_ip }}
+      WIREGUARD_IP={{ wireguard_ip }}
+      TAILSCALE_IP={{ tailscale_ip }}
       HOST_PORT={{ host_port }}
       DATA_DIR={{ data_dir }}
       CONFIG_DIR={{ config_dir }}

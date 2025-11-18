@@ -5,6 +5,7 @@ services:
     container_name: promtail
     command: -config.file=/etc/promtail/config.yml
     ports:
+      - "{{ tailscale_ip }}:{{ promtail_port }}:9080"
       - "{{ wireguard_ip }}:{{ promtail_port }}:9080"
     volumes:
       - ./config/promtail-config.yml:/etc/promtail/config.yml

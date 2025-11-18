@@ -11,7 +11,8 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_INITDB_ARGS: "-c include=/etc/postgresql/postgresql.conf"
     ports:
-      - "${BINDING_IP}:${HOST_PORT}:5432"
+      - "${TAILSCALE_IP}:${HOST_PORT}:5432"
+      - "${WIREGUARD_IP}:${HOST_PORT}:5432"
       - "127.0.0.1:${HOST_PORT}:5432"
     volumes:
       - "${DATA_DIR}:/var/lib/postgresql/data"

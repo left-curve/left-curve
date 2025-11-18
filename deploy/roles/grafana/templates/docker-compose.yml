@@ -12,6 +12,7 @@ services:
       - GF_RENDERING_CALLBACK_URL=http://grafana:3000/
       - GF_RENDERING_RENDERER_TOKEN={{ lookup('env','GF_RENDERING_RENDERER_TOKEN') }}
     ports:
+      - "{{ wireguard_ip }}:{{ grafana_port }}:3000"
       - "{{ tailscale_ip }}:{{ grafana_port }}:3000"
     volumes:
       - ./data:/var/lib/grafana

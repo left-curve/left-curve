@@ -1,5 +1,3 @@
-- debug: msg="{{ inventory_hostname }} => {{ dex_bot_host }}"
-
 - name: Check if liquidity setup already done (current deployment)
   stat:
     path: "{{ ansible_env.HOME }}/deployments/{{ current_deployment }}/bot_liquidity_setup_done"

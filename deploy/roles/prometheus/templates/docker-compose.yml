@@ -14,6 +14,7 @@ services:
       - '--storage.tsdb.max-block-duration=8h'
       - '--web.enable-lifecycle'
     ports:
+      - "{{ tailscale_ip }}:{{ prometheus_port }}:9090"
       - "{{ wireguard_ip }}:{{ prometheus_port }}:9090"
     volumes:
       - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
