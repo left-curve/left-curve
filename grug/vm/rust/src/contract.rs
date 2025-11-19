@@ -41,7 +41,7 @@ impl ContractWrapper {
         }
     }
 
-    pub fn to_bytes(&self) -> [u8; usize::BITS as usize / 8] {
+    pub fn to_bytes(self) -> [u8; usize::BITS as usize / 8] {
         self.index.to_le_bytes()
     }
 }

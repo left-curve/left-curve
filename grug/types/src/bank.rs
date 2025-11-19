@@ -52,7 +52,7 @@ pub enum BankQueryResponse {
 macro_rules! generate_downcast {
     ($id:ident => $ret:ty) => {
         paste! {
-            pub fn [<as_$id:snake>](self) -> $ret {
+            pub fn [<into_$id:snake>](self) -> $ret {
                 match self {
                     BankQueryResponse::$id(value) => value,
                     _ => panic!("BankQueryResponse is not {}", stringify!($id)),

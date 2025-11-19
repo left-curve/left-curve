@@ -120,17 +120,17 @@ impl Duration {
 
 #[cfg(feature = "chrono")]
 impl Timestamp {
-    pub fn to_utc_date_time(&self) -> DateTime<Utc> {
+    pub fn to_utc_date_time(self) -> DateTime<Utc> {
         // This panics if the timestamp (as nanoseconds) overflows `i64` range.
         // But that'd be 500 years or so from now...
         DateTime::from_timestamp_nanos(self.into_nanos() as i64)
     }
 
-    pub fn to_naive_date_time(&self) -> NaiveDateTime {
+    pub fn to_naive_date_time(self) -> NaiveDateTime {
         self.to_utc_date_time().naive_utc()
     }
 
-    pub fn to_rfc3339_string(&self) -> String {
+    pub fn to_rfc3339_string(self) -> String {
         self.to_utc_date_time()
             .to_rfc3339_opts(SecondsFormat::AutoSi, true)
     }
