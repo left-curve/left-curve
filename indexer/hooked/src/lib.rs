@@ -64,6 +64,7 @@ impl HookedIndexer {
     }
 
     /// This will reindex all indexers from their last indexed block height
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn reindex(&self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
         match LAST_FINALIZED_BLOCK.load(storage) {
             Err(_err) => {
@@ -165,6 +166,7 @@ impl Default for HookedIndexer {
 
 impl Indexer for HookedIndexer {
     /// Start all indexers
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn start(&mut self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
         if self.is_running.load(Ordering::Relaxed) {
             return Err(grug_app::IndexerError::already_running());
@@ -204,6 +206,7 @@ impl Indexer for HookedIndexer {
     }
 
     /// Shutdown all indexers in reverse order
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn shutdown(&mut self) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
             return Ok(()); // Already shut down
@@ -238,6 +241,7 @@ impl Indexer for HookedIndexer {
     }
 
     /// Run pre_indexing for each block height
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn pre_indexing(
         &self,
         block_height: u64,
@@ -271,6 +275,7 @@ impl Indexer for HookedIndexer {
     }
 
     /// Index a block by calling all registered indexers
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn index_block(
         &self,
         block: &grug_types::Block,
@@ -303,6 +308,7 @@ impl Indexer for HookedIndexer {
     }
 
     /// Run post_indexing in a separate thread for each block height
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn post_indexing(
         &self,
         block_height: u64,
@@ -375,6 +381,7 @@ impl Indexer for HookedIndexer {
     }
 
     /// Wait for all indexers and post_indexing threads to finish
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn wait_for_finish(&self) -> IndexerResult<()> {
         #[cfg(feature = "tracing")]
         tracing::debug!("Waiting for indexer to finish");
