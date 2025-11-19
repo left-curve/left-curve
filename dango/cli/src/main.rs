@@ -105,7 +105,6 @@ async fn main() -> anyhow::Result<()> {
 
     // Optionally build an OpenTelemetry layer if tracing export is enabled.
     let otel_layer_opt = if cfg.trace.enabled {
-        // Build OTEL resource with required/optional attributes for Grafana dashboards.
         let mut attrs = vec![
             // Keep existing chain id for querying
             KeyValue::new("chain.id", cfg.transactions.chain_id.clone()),

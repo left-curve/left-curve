@@ -13,6 +13,7 @@ pub fn services() -> Scope {
         .service(block_result)
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/info")]
 pub async fn latest_block_info(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
     let block_height = app_ctx
@@ -25,6 +26,7 @@ pub async fn latest_block_info(app_ctx: web::Data<Context>) -> Result<HttpRespon
     _block_by_height(block_height, &app_ctx)
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/info/{block_height}")]
 pub async fn block_info_by_height(
     path: web::Path<u64>,
@@ -50,6 +52,7 @@ fn _block_by_height(block_height: u64, app_ctx: &Context) -> Result<HttpResponse
     }
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/result")]
 pub async fn block_result(app_ctx: web::Data<Context>) -> Result<HttpResponse, Error> {
     let block_height = app_ctx
@@ -62,6 +65,7 @@ pub async fn block_result(app_ctx: web::Data<Context>) -> Result<HttpResponse, E
     _block_results_by_height(block_height, &app_ctx)
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/result/{block_height}")]
 pub async fn block_result_by_height(
     path: web::Path<u64>,
