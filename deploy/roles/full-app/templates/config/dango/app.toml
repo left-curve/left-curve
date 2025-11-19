@@ -151,6 +151,9 @@ enabled = false
 # OTLP/gRPC collector endpoint (Tempo default gRPC port is 4317).
 endpoint = "http://tempo:4317"
 
+# Protocol used to export traces: "otlp_grpc" or "otlp_http".
+protocol = "otlp_grpc"
+
 [pyth]
 
 # Pyth Lazer endpoints. This is a Vec<String>.

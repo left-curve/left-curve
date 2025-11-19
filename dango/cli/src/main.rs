@@ -111,16 +111,17 @@ async fn main() -> anyhow::Result<()> {
             .build();
 
         // Build exporter and tracer provider
-        let export_config = ExportConfig {
-            endpoint: Some(cfg.trace.endpoint.clone()),
-            protocol: Protocol::Grpc,
-            ..Default::default()
+        // Build exporter via selected OTLP protocol (gRPC or HTTP).
+        let exporter = match cfg.trace.protocol {
+            config::TraceProtocol::OtlpGrpc => {
+                let export_config = ExportConfig { endpoint: Some(cfg.trace.endpoint.clone()), protocol: Protocol::Grpc, ..Default::default() };
+                SpanExporter::builder().with_tonic().with_export_config(export_config).build()?
+            },
+            config::TraceProtocol::OtlpHttp => {
+                let export_config = ExportConfig { endpoint: Some(cfg.trace.endpoint.clone()), protocol: Protocol::HttpBinary, ..Default::default() };
+                SpanExporter::builder().with_http().with_export_config(export_config).build()?
+            },
         };
-
-        let exporter = SpanExporter::builder()
-            .with_tonic()
-            .with_export_config(export_config)
-            .build()?;
 
         let provider = sdktrace::SdkTracerProvider::builder()
             .with_batch_exporter(exporter)
@@ -130,7 +131,7 @@ async fn main() -> anyhow::Result<()> {
         // Register provider in a global OnceLock so signal handlers can shut it down.
         let tracer = provider.tracer("dango");
         crate::telemetry::set_provider(provider);
-        tracing::info!(endpoint = %cfg.trace.endpoint, "OpenTelemetry OTLP exporter initialized");
+        tracing::info!(endpoint = %cfg.trace.endpoint, protocol = ?cfg.trace.protocol, "OpenTelemetry OTLP exporter initialized");
         Some(otel_layer().with_tracer(tracer))
     } else {
         None

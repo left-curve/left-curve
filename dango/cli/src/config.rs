@@ -146,4 +146,14 @@ pub struct TraceConfig {
     pub enabled: bool,
     /// Collector endpoint (e.g. http://tempo:4317 for OTLP/gRPC).
     pub endpoint: String,
+    /// Protocol used to export traces: "otlp_grpc" or "otlp_http".
+    pub protocol: TraceProtocol,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TraceProtocol {
+    #[default]
+    OtlpGrpc,
+    OtlpHttp,
 }
