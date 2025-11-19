@@ -28,6 +28,10 @@ pub fn process(mut input: TokenStream) -> TokenStream {
         "##
     );
 
+    #[allow(
+        clippy::unwrap_used,
+        reason = "unwrapping in procedural macros is acceptible because it would panic at compile time"
+    )]
     let entry = TokenStream::from_str(&new_code).unwrap();
     input.extend(entry);
     input

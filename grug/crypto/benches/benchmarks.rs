@@ -192,6 +192,10 @@ fn bench_verifiers(c: &mut Criterion) {
     });
 
     group.bench_function("secp256k1_pubkey_recover", |b| {
+        #[allow(
+            clippy::unwrap_used,
+            reason = "this is a benchmark, not production code"
+        )]
         b.iter_batched(
             || {
                 let msg = generate_random_msg(SIGN_MSG_LEN);

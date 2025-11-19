@@ -33,7 +33,7 @@ use {
     Ord,
     Hash,
 )]
-pub struct Dec<U, const S: u32>(pub Int<U>);
+pub struct Dec<U, const S: u32>(pub Int<U>); // TODO: compile time check that S > 0
 
 impl<U, const S: u32> Dec<U, S> {
     pub const DECIMAL_PLACES: u32 = S;
@@ -77,7 +77,10 @@ where
                 // No overflow because decimal_places > S
                 let digits = decimal_places - S;
                 if let Ok(factor) = Int::<U>::TEN.checked_pow(digits) {
-                    // Safe because factor cannot be zero
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "`factor` is a power of 10 which is necessarily non-zero"
+                    )]
                     atomics.checked_div(factor).unwrap()
                 } else {
                     // In this case `factor` exceeds the Int<U> range.
@@ -157,23 +160,35 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let decimals = Self::PRECISION;
         let whole = (self.0) / decimals;
+        #[allow(
+            clippy::unwrap_used,
+            reason = ".checked_rem errors only when the divider is zero; decimals = Self::PRECISON = 10 ^ S > 0"
+        )]
         let fractional = (self.0).checked_rem(decimals).unwrap();
-
-        if whole == Int::<U>::MIN && whole.is_negative() {
-            f.write_str(whole.to_string().as_str())?
-        }
 
         if fractional.is_zero() {
             write!(f, "{whole}")?;
         } else {
             let fractional_string = format!(
                 "{:0>padding$}",
-                fractional.checked_abs().unwrap().0,
+                {
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = ".checked_abs errors only when the value is negative max. fractional = self.0 % decimals <= decimals < negative max"
+                    )]
+                    fractional.checked_abs().unwrap().0
+                },
                 padding = S as usize
             );
+
             if whole.is_negative() || fractional.is_negative() {
                 f.write_char('-')?;
             }
+
+            #[allow(
+                clippy::unwrap_used,
+                reason = ".checked_abs errors only when the value is negative max. that would require decimals = 1, fraction = 0, so this arm of the if-statement isn't reached"
+            )]
             f.write_str(&whole.checked_abs().unwrap().to_string())?;
             f.write_char('.')?;
             f.write_str(fractional_string.trim_end_matches('0'))?;
@@ -199,9 +214,13 @@ where
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         let mut parts_iter = input.split('.');
 
+        #[allow(
+            clippy::unwrap_used,
+            reason = "split always returns at least one element"
+        )]
         let mut atomics = parts_iter
             .next()
-            .unwrap() // split always returns at least one element
+            .unwrap()
             .parse::<Int<U>>()
             .map_err(|_| MathError::parse_number::<Self, _, _>(input, "error parsing whole"))?
             .checked_mul(Self::PRECISION)
@@ -231,10 +250,16 @@ where
 
             debug_assert!(exp <= S);
 
+            #[allow(
+                clippy::unwrap_used,
+                reason = "can't overflow because exp <= S, so 10 ^ exp <= 10 ^ S which is a small number"
+            )]
             let fractional_factor = Int::TEN.checked_pow(exp).unwrap();
 
-            // This multiplication can't overflow because
-            // fractional < 10^DECIMAL_PLACES && fractional_factor <= 10^DECIMAL_PLACES
+            #[allow(
+                clippy::unwrap_used,
+                reason = "can't overflow because fractional < 10 ^ S and fractional_factor <= 10 ^ S"
+            )]
             let fractional_part = fractional.checked_mul(fractional_factor).unwrap();
 
             // for negative numbers, we need to subtract the fractional part

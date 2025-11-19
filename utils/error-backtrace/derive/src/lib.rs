@@ -24,6 +24,10 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
 
             variant.attrs.retain(|a| {
                 if a.path().is_ident("backtrace") {
+                    #[allow(
+                        clippy::unwrap_used,
+                        reason = "unwrapping in procedural macros is acceptible because it would panic at compile time"
+                    )]
                     let inner = a.parse_args::<Ident>().unwrap();
 
                     if inner == "new" {
@@ -59,6 +63,10 @@ pub fn backtrace(_attr: TokenStream, input: TokenStream) -> TokenStream {
                     let mut values = vec![];
 
                     for f in &fields.named {
+                        #[allow(
+                            clippy::unwrap_used,
+                            reason = "unwrapping in procedural macros is acceptible because it would panic at compile time"
+                        )]
                         let ident = f.ident.clone().unwrap();
                         let ty = f.ty.clone();
                         inputs.push(quote! {

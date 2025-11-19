@@ -4,6 +4,7 @@ use {
     std::{fs::File, io::BufReader},
 };
 
+#[allow(clippy::unwrap_used, reason = "this code is only used in tests")]
 pub fn read_file<F>(path: &str) -> F
 where
     F: DeserializeOwned,
@@ -15,6 +16,7 @@ where
     serde_json::from_reader(reader).unwrap()
 }
 
+#[allow(clippy::unwrap_used, reason = "this code is only used in tests")]
 pub fn validate_recover_secp256k1(
     message_hash: &[u8],
     signature: &[u8],

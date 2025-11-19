@@ -20,16 +20,22 @@ pub fn derive_address(vk: &k256::ecdsa::VerifyingKey) -> Address {
     let vk_raw = vk.to_encoded_point(false);
     let vk_hash = keccak256(&vk_raw.as_bytes()[1..]);
     let address = &vk_hash[12..];
+
+    #[allow(
+        clippy::unwrap_used,
+        reason = "vk_hash is necessarily 32 bytes, so &vk_hash[12..] is necessarily 20 bytes"
+    )]
     address.try_into().unwrap()
 }
 
 /// Sign the given _hashed_ message with the given private key, and pack the
 /// signature into the format expected by Ethereum.
-pub fn sign_digest(msg_hash: [u8; 32], sk: &k256::ecdsa::SigningKey) -> Signature {
-    let (signature, recovery_id) = sk
-        .sign_digest_recoverable(Identity256::from(msg_hash))
-        .unwrap();
-    pack_signature(signature, recovery_id)
+pub fn sign_digest(
+    msg_hash: [u8; 32],
+    sk: &k256::ecdsa::SigningKey,
+) -> Result<Signature, k256::ecdsa::signature::Error> {
+    let (signature, recovery_id) = sk.sign_digest_recoverable(Identity256::from(msg_hash))?;
+    Ok(pack_signature(signature, recovery_id))
 }
 
 /// Convert a recoverable Secp256k1 signature produced by the k256 library
