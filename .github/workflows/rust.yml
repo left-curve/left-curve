@@ -250,6 +250,10 @@ jobs:
             cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
           done
 
+      - name: sccache stats (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: sccache --show-stats || true
+
   backend-test:
     needs: [format, changes]
     name: Lint + Test
@@ -402,6 +406,10 @@ jobs:
                          --lcov  --output-path target/coverage/lcov.info
         env:
           RUST_BACKTRACE: 1
+
+      - name: sccache stats (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: sccache --show-stats || true
 
       - name: Upload coverage to Qlty
         if: env.BACKEND_CHANGED == 'true'
@@ -562,6 +570,17 @@ jobs:
           mkdir -p .cross-cache/${{ steps.config.outputs.target }}
           CROSS_TARGET_CACHE=$(pwd)/.cross-cache/${{ steps.config.outputs.target }} \
           cross build --target ${{ steps.config.outputs.target }} --release --verbose
+
+      - name: sccache stats (cross, optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: |
+          # Best-effort: show stats from a fresh container mounting the cache dir.
+          # Note: hit/miss counters are per-server lifetime, so this may not reflect
+          # the just-finished build if the server died with the container.
+          docker run --rm \
+            -v $PWD/.sccache:/var/cache/sccache \
+            ${{ steps.config.outputs.image }} \
+            bash -lc 'command -v sccache && sccache --show-stats || true'
 
       - name: build docker image
         if: env.BACKEND_CHANGED == 'true'
