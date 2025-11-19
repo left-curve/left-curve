@@ -127,7 +127,28 @@ async fn main() -> anyhow::Result<()> {
             .build();
 
         let tracer = provider.tracer("dango");
+
+        tracing::info!(endpoint = %cfg.trace.endpoint, "OpenTelemetry OTLP exporter initialized");
         Some(otel_layer().with_tracer(tracer))
+    } else {
+        None
+    };
+
+    let sentry_layer = if cfg.sentry.enabled {
+        let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
+            environment: Some(cfg.sentry.environment.clone().into()),
+            release: sentry::release_name!(),
+            sample_rate: cfg.sentry.sample_rate,
+            traces_sample_rate: cfg.sentry.traces_sample_rate,
+            ..Default::default()
+        }));
+
+        sentry::configure_scope(|scope| {
+            scope.set_tag("chain-id", &cfg.transactions.chain_id);
+        });
+
+        tracing::info!("Sentry initialized");
+        Some(sentry_layer())
     } else {
         None
     };
@@ -136,30 +157,9 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::registry()
         .with(env_filter)
         .with(fmt_layer)
-        .with(if cfg.sentry.enabled {
-            let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
-                environment: Some(cfg.sentry.environment.clone().into()),
-                release: sentry::release_name!(),
-                sample_rate: cfg.sentry.sample_rate,
-                traces_sample_rate: cfg.sentry.traces_sample_rate,
-                ..Default::default()
-            }));
-
-            sentry::configure_scope(|scope| {
-                scope.set_tag("chain-id", &cfg.transactions.chain_id);
-            });
-
-            tracing::info!("Sentry initialized");
-            Some(sentry_layer())
-        } else {
-            None
-        })
+        .with(sentry_layer)
         .with(otel_layer_opt)
         .init();
-
-    if cfg.trace.enabled {
-        tracing::info!(endpoint = %cfg.trace.endpoint, "OpenTelemetry OTLP exporter initialized");
-    }
 
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir),
