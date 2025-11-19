@@ -210,7 +210,7 @@ jobs:
           set -euo pipefail
           for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
             echo "Checking $crate..."
-            cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
+            cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings -D clippy::unwrap_used
           done
 
   backend-test:
@@ -296,7 +296,7 @@ jobs:
 
       - name: Run clippy
         if: env.BACKEND_CHANGED == 'true'
-        run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
+        run: cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings -D clippy::unwrap_used
 
       - name: Build GraphQL schema
         if: env.BACKEND_CHANGED == 'true'

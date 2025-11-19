@@ -1,2 +1,6 @@
+# Reference: https://doc.rust-lang.org/nightly/clippy/lint_configuration.html
+
+allow-unwrap-in-tests        = true
+avoid-breaking-exported-api  = false
 too-many-arguments-threshold = 999
 type-complexity-threshold    = 999

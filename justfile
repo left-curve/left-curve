@@ -42,7 +42,7 @@ check:
 
 # Perform linting
 lint:
-  cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
+  cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings -D clippy::unwrap_used
 
 # Perform formatting
 fmt:
