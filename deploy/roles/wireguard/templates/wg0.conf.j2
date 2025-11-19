@@ -1,0 +1,29 @@
+[Interface]
+Address = {{ wireguard_ip }}/32
+PrivateKey = {{ wg_private_key }}
+ListenPort = {{ wireguard_port }}
+
+{% for host in groups['all'] %}
+{% if host != inventory_hostname %}
+# Peer: {{ host }} ({{ hostvars[host].hostname | default(host) }})
+[Peer]
+PublicKey = {{ hostvars[host].wg_public_key }}
+AllowedIPs = {{ hostvars[host].wireguard_ip }}/32
+Endpoint = {{ hostvars[host].public_ip }}:{{ wireguard_port }}
+PersistentKeepalive = {{ wireguard_persistent_keepalive }}
+
+{% endif %}
+{% endfor %}
+{% for peer in wireguard_authorized_peers %}
+# Authorized Peer: {{ peer.name }}
+[Peer]
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ peer.allowed_ips }}
+{% if peer.endpoint is defined %}
+Endpoint = {{ peer.endpoint }}
+{% endif %}
+{% if peer.persistent_keepalive is defined %}
+PersistentKeepalive = {{ peer.persistent_keepalive }}
+{% endif %}
+
+{% endfor %}
