@@ -143,6 +143,10 @@
             priority: err
             ident: dango
 
+        - name: Fail the task
+          fail:
+            msg: "Deployment failed, please look at the logs. You can also ssh to the server, to the PR directory and run `docker compose logs`"
+
       always:
         - name: Log deployment finished
           community.general.syslogger:
