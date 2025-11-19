@@ -8,6 +8,8 @@ env:
   GIT_COMMIT: ${{ github.event.workflow_run.head_sha || github.event.pull_request.head.sha || github.sha }}
   DEPLOY_BACKEND_IMAGE_TAG: latest
   DEPLOY_FRONTEND_IMAGE_TAG: latest
+  # Toggle sccache in CI via repo/org variable USE_SCCACHE = 'true'
+  USE_SCCACHE: ${{ vars.USE_SCCACHE }}
 
 on:
   workflow_dispatch:
@@ -200,6 +202,41 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
 
+      - name: Setup sccache (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: |
+          set -euo pipefail
+          if ! command -v sccache >/dev/null 2>&1; then
+            V=0.12.0
+            ARCH=$(uname -m)
+            case "$ARCH" in
+              x86_64) A=x86_64 ;;
+              aarch64|arm64) A=aarch64 ;;
+              *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+            esac
+            curl -sSfL -o /tmp/sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v${V}/sccache-v${V}-${A}-unknown-linux-musl.tar.gz"
+            tar -xzf /tmp/sccache.tar.gz -C /tmp
+            mkdir -p "$HOME/.local/bin" "$HOME/.cache/sccache"
+            mv "/tmp/sccache-v${V}-${A}-unknown-linux-musl/sccache" "$HOME/.local/bin/sccache"
+            chmod +x "$HOME/.local/bin/sccache"
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+          else
+            mkdir -p "$HOME/.cache/sccache"
+          fi
+          {
+            echo "RUSTC_WRAPPER=sccache"
+            echo "SCCACHE_DIR=$HOME/.cache/sccache"
+            echo "SCCACHE_CACHE_SIZE=10G"
+            echo "SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+            echo "SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+            echo "SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+            echo "SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+            echo "SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+            echo "SCCACHE_S3_FORCE_PATH_STYLE=1"
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          } >> $GITHUB_ENV
+
       - uses: dtolnay/rust-toolchain@stable
         if: env.BACKEND_CHANGED == 'true'
         with:
@@ -272,6 +309,41 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref || github.ref }}
+
+      - name: Setup sccache (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: |
+          set -euo pipefail
+          if ! command -v sccache >/dev/null 2>&1; then
+            V=0.12.0
+            ARCH=$(uname -m)
+            case "$ARCH" in
+              x86_64) A=x86_64 ;;
+              aarch64|arm64) A=aarch64 ;;
+              *) echo "Unsupported arch: $ARCH"; exit 1 ;;
+            esac
+            curl -sSfL -o /tmp/sccache.tar.gz "https://github.com/mozilla/sccache/releases/download/v${V}/sccache-v${V}-${A}-unknown-linux-musl.tar.gz"
+            tar -xzf /tmp/sccache.tar.gz -C /tmp
+            mkdir -p "$HOME/.local/bin" "$HOME/.cache/sccache"
+            mv "/tmp/sccache-v${V}-${A}-unknown-linux-musl/sccache" "$HOME/.local/bin/sccache"
+            chmod +x "$HOME/.local/bin/sccache"
+            echo "$HOME/.local/bin" >> $GITHUB_PATH
+          else
+            mkdir -p "$HOME/.cache/sccache"
+          fi
+          {
+            echo "RUSTC_WRAPPER=sccache"
+            echo "SCCACHE_DIR=$HOME/.cache/sccache"
+            echo "SCCACHE_CACHE_SIZE=10G"
+            echo "SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+            echo "SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+            echo "SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+            echo "SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+            echo "SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+            echo "SCCACHE_S3_FORCE_PATH_STYLE=1"
+            echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+            echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          } >> $GITHUB_ENV
 
       - name: Install toolchain
         if: env.BACKEND_CHANGED == 'true'
@@ -365,6 +437,26 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
 
+      - name: Enable sccache for cross (optional)
+        if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p .sccache
+          opts=""
+          opts="$opts -e RUSTC_WRAPPER=/usr/local/bin/sccache"
+          opts="$opts -e SCCACHE_DIR=/var/cache/sccache"
+          opts="$opts -e SCCACHE_CACHE_SIZE=10G"
+          [ -n "${{ secrets.SCCACHE_BUCKET }}" ] && opts="$opts -e SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
+          [ -n "${{ secrets.SCCACHE_ENDPOINT }}" ] && opts="$opts -e SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
+          [ -n "${{ secrets.SCCACHE_REGION }}" ] && opts="$opts -e SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
+          [ -n "${{ secrets.SCCACHE_S3_KEY_PREFIX }}" ] && opts="$opts -e SCCACHE_S3_KEY_PREFIX=${{ secrets.SCCACHE_S3_KEY_PREFIX }}"
+          [ -n "${{ secrets.SCCACHE_S3_USE_SSL }}" ] && opts="$opts -e SCCACHE_S3_USE_SSL=${{ secrets.SCCACHE_S3_USE_SSL }}"
+          opts="$opts -e SCCACHE_S3_FORCE_PATH_STYLE=1"
+          [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && opts="$opts -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
+          [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && opts="$opts -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          opts="$opts -v $PWD/.sccache:/var/cache/sccache"
+          echo "CROSS_CONTAINER_OPTS=$opts" >> $GITHUB_ENV
+
       - name: Set build config
         id: config
         if: env.BACKEND_CHANGED == 'true'
@@ -450,7 +542,9 @@ jobs:
       - uses: actions/cache@v4
         if: env.BACKEND_CHANGED == 'true'
         with:
-          path: .cross-cache
+          path: |
+            .cross-cache
+            .sccache
           key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: pull cross docker builder image
