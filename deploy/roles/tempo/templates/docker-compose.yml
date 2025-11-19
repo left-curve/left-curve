@@ -1,0 +1,35 @@
+services:
+  tempo:
+    image: grafana/tempo:latest
+    user: "{{ ansible_user_uid }}:{{ ansible_user_gid }}"
+    container_name: tempo
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    ports:
+      - "{{ tailscale_ip }}:{{ tempo_port }}:3200"
+      - "{{ wireguard_ip }}:{{ tempo_port }}:3200"
+      - "{{ tailscale_ip }}:{{ tempo_otlp_grpc_port }}:4317"
+      - "{{ wireguard_ip }}:{{ tempo_otlp_grpc_port }}:4317"
+      - "{{ tailscale_ip }}:{{ tempo_otlp_http_port }}:4318"
+      - "{{ wireguard_ip }}:{{ tempo_otlp_http_port }}:4318"
+      - "{{ tailscale_ip }}:{{ tempo_jaeger_grpc_port }}:14250"
+      - "{{ wireguard_ip }}:{{ tempo_jaeger_grpc_port }}:14250"
+      - "{{ tailscale_ip }}:{{ tempo_jaeger_http_port }}:14268"
+      - "{{ wireguard_ip }}:{{ tempo_jaeger_http_port }}:14268"
+      - "{{ tailscale_ip }}:{{ tempo_jaeger_udp_compact_port }}:6831/udp"
+      - "{{ wireguard_ip }}:{{ tempo_jaeger_udp_compact_port }}:6831/udp"
+      - "{{ tailscale_ip }}:{{ tempo_jaeger_udp_binary_port }}:6832/udp"
+      - "{{ wireguard_ip }}:{{ tempo_jaeger_udp_binary_port }}:6832/udp"
+    volumes:
+      - ./config/tempo.yaml:/etc/tempo/tempo.yaml
+      - ./data:/tmp/tempo
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3200/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  default:
+    name: monitoring
+    external: true
