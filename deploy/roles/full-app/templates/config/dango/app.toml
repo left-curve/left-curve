@@ -140,8 +140,16 @@ sample_rate = 1.0
 traces_sample_rate = 1.0
 
 ################################################################################
-###                            Pyth Configuration                            ###
+###                         Telemetry Configuration                         ###
 ################################################################################
+
+[trace]
+
+# Whether to enable OpenTelemetry exporter.
+enabled = false
+
+# OTLP/gRPC collector endpoint (Tempo default gRPC port is 4317).
+endpoint = "http://tempo:4317"
 
 [pyth]
 

@@ -21,8 +21,12 @@ use {
     clap::Parser,
     config::Config,
     config_parser::parse_config,
+    opentelemetry::{KeyValue, trace::TracerProvider},
+    opentelemetry_otlp::{ExportConfig, Protocol, SpanExporter, WithExportConfig},
+    opentelemetry_sdk::{Resource, trace as sdktrace},
     sentry::integrations::tracing::layer as sentry_layer,
     std::path::PathBuf,
+    tracing_opentelemetry::layer as otel_layer,
     tracing_subscriber::{fmt::format::FmtSpan, prelude::*},
 };
 
@@ -98,31 +102,63 @@ async fn main() -> anyhow::Result<()> {
         config::LogFormat::Text => tracing_subscriber::fmt::layer().boxed(),
     };
 
-    if cfg.sentry.enabled {
-        let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
-            environment: Some(cfg.sentry.environment.into()),
-            release: sentry::release_name!(),
-            sample_rate: cfg.sentry.sample_rate,
-            traces_sample_rate: cfg.sentry.traces_sample_rate,
+    // Optionally build an OpenTelemetry layer if tracing export is enabled.
+    let otel_layer_opt = if cfg.trace.enabled {
+        let resource = Resource::builder()
+            .with_service_name("dango")
+            .with_attributes([KeyValue::new("chain.id", cfg.transactions.chain_id.clone())])
+            .build();
+
+        // Build exporter and tracer provider
+        let export_config = ExportConfig {
+            endpoint: Some(cfg.trace.endpoint.clone()),
+            protocol: Protocol::Grpc,
             ..Default::default()
-        }));
+        };
 
-        sentry::configure_scope(|scope| {
-            scope.set_tag("chain-id", &cfg.transactions.chain_id);
-        });
+        let exporter = SpanExporter::builder()
+            .with_tonic()
+            .with_export_config(export_config)
+            .build()?;
 
-        tracing_subscriber::registry()
-            .with(env_filter)
-            .with(fmt_layer)
-            .with(sentry_layer())
-            .init();
+        let provider = sdktrace::SdkTracerProvider::builder()
+            .with_batch_exporter(exporter)
+            .with_resource(resource)
+            .build();
 
-        tracing::info!("Sentry initialized");
+        let tracer = provider.tracer("dango");
+        Some(otel_layer().with_tracer(tracer))
     } else {
-        tracing_subscriber::registry()
-            .with(env_filter)
-            .with(fmt_layer)
-            .init();
+        None
+    };
+
+    // Compose the subscriber with optional layers (Option implements Layer)
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(fmt_layer)
+        .with(if cfg.sentry.enabled {
+            let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
+                environment: Some(cfg.sentry.environment.clone().into()),
+                release: sentry::release_name!(),
+                sample_rate: cfg.sentry.sample_rate,
+                traces_sample_rate: cfg.sentry.traces_sample_rate,
+                ..Default::default()
+            }));
+
+            sentry::configure_scope(|scope| {
+                scope.set_tag("chain-id", &cfg.transactions.chain_id);
+            });
+
+            tracing::info!("Sentry initialized");
+            Some(sentry_layer())
+        } else {
+            None
+        })
+        .with(otel_layer_opt)
+        .init();
+
+    if cfg.trace.enabled {
+        tracing::info!(endpoint = %cfg.trace.endpoint, "OpenTelemetry OTLP exporter initialized");
     }
 
     match cli.command {
