@@ -195,7 +195,7 @@ where
                 TraceOption::LOUD,
             );
 
-            if let Err((_event, err)) = output.as_result() {
+            if let Err((_event, err)) = output.into_result() {
                 #[cfg(feature = "tracing")]
                 {
                     tracing::error!(

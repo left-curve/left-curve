@@ -77,7 +77,7 @@ where
         query_depth,
         &BankQuery::Balance(req),
     )
-    .map(|res| res.as_balance())
+    .map(|res| res.into_balance())
 }
 
 pub fn query_balances<VM>(
@@ -100,7 +100,7 @@ where
         query_depth,
         &BankQuery::Balances(req),
     )
-    .map(|res| res.as_balances())
+    .map(|res| res.into_balances())
 }
 
 pub fn query_supply<VM>(
@@ -123,7 +123,7 @@ where
         query_depth,
         &BankQuery::Supply(req),
     )
-    .map(|res| res.as_supply())
+    .map(|res| res.into_supply())
 }
 
 pub fn query_supplies<VM>(
@@ -146,7 +146,7 @@ where
         query_depth,
         &BankQuery::Supplies(req),
     )
-    .map(|res| res.as_supplies())
+    .map(|res| res.into_supplies())
 }
 
 fn _query_bank<VM>(
