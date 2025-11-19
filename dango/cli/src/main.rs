@@ -105,9 +105,41 @@ async fn main() -> anyhow::Result<()> {
 
     // Optionally build an OpenTelemetry layer if tracing export is enabled.
     let otel_layer_opt = if cfg.trace.enabled {
+        // Build OTEL resource with required/optional attributes for Grafana dashboards.
+        let mut attrs = vec![
+            // Keep existing chain id for querying
+            KeyValue::new("chain.id", cfg.transactions.chain_id.clone()),
+            // Required: service.instance.id — default to chain_id
+            KeyValue::new("service.instance.id", cfg.transactions.chain_id.clone()),
+        ];
+
+        // Required: service.namespace — priority: SERVICE_NAMESPACE > DEPLOY_ENV > sentry.environment > DEPLOYMENT_NAME
+        let service_namespace = std::env::var("SERVICE_NAMESPACE").ok()
+            .filter(|s| !s.is_empty())
+            .or_else(|| std::env::var("DEPLOY_ENV").ok().filter(|s| !s.is_empty()))
+            .or_else(|| (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone()))
+            .or_else(|| std::env::var("DEPLOYMENT_NAME").ok().filter(|s| !s.is_empty()));
+        if let Some(ns) = service_namespace {
+            attrs.push(KeyValue::new("service.namespace", ns));
+        }
+
+        // Optional: deployment.environment — prefer DEPLOY_ENV, else sentry.environment
+        if let Some(env) = std::env::var("DEPLOY_ENV").ok().filter(|s| !s.is_empty())
+            .or_else(|| (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone()))
+        {
+            attrs.push(KeyValue::new("deployment.environment", env));
+        }
+
+        // Optional: host.name — read from HOSTNAME if provided
+        if let Ok(host) = std::env::var("HOSTNAME") {
+            if !host.is_empty() {
+                attrs.push(KeyValue::new("host.name", host));
+            }
+        }
+
         let resource = Resource::builder()
             .with_service_name("dango")
-            .with_attributes([KeyValue::new("chain.id", cfg.transactions.chain_id.clone())])
+            .with_attributes(attrs)
             .build();
 
         // Build exporter and tracer provider
