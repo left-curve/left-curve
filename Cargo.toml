@@ -277,7 +277,7 @@ features = [
   "log",
   "opentelemetry",
   # see https://github.com/async-graphql/async-graphql/issues/1726
-  # "tracing",
+  "tracing",
   "unblock",
   "url",
   "uuid",
