@@ -1,4 +1,5 @@
 mod config;
+mod telemetry;
 mod db;
 mod home_directory;
 mod indexer;
@@ -126,8 +127,9 @@ async fn main() -> anyhow::Result<()> {
             .with_resource(resource)
             .build();
 
+        // Register provider in a global OnceLock so signal handlers can shut it down.
         let tracer = provider.tracer("dango");
-
+        crate::telemetry::set_provider(provider);
         tracing::info!(endpoint = %cfg.trace.endpoint, "OpenTelemetry OTLP exporter initialized");
         Some(otel_layer().with_tracer(tracer))
     } else {
@@ -162,14 +164,20 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     match cli.command {
-        Command::Db(cmd) => cmd.run(app_dir),
-        Command::Indexer(cmd) => cmd.run(app_dir).await,
-        Command::Keys(cmd) => cmd.run(app_dir.keys_dir()),
-        Command::Query(cmd) => cmd.run(app_dir).await,
-        Command::Start(cmd) => cmd.run(app_dir).await,
-        Command::Tendermint(cmd) => cmd.run(app_dir).await,
+        Command::Db(cmd) => cmd.run(app_dir)?,
+        Command::Indexer(cmd) => cmd.run(app_dir).await?,
+        Command::Keys(cmd) => cmd.run(app_dir.keys_dir())?,
+        Command::Query(cmd) => cmd.run(app_dir).await?,
+        Command::Start(cmd) => cmd.run(app_dir).await?,
+        Command::Tendermint(cmd) => cmd.run(app_dir).await?,
         #[cfg(feature = "testing")]
-        Command::Test(cmd) => cmd.run(app_dir).await,
-        Command::Tx(cmd) => cmd.run(app_dir).await,
+        Command::Test(cmd) => cmd.run(app_dir).await?,
+        Command::Tx(cmd) => cmd.run(app_dir).await?,
     }
+
+    // Flush and shutdown the tracer provider to avoid losing spans.
+    // Flush and shutdown the tracer provider (if set) to avoid losing spans.
+    crate::telemetry::shutdown();
+
+    Ok(())
 }
