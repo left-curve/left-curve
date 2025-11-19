@@ -35,6 +35,9 @@ use {
 
 pub const RESUBSCRIBE_ATTEMPTS: u32 = 5;
 
+/// Timeout in milliseconds that we wait for receiving data before trying to resubscribe.
+pub const DATA_RECEIVE_TIMEOUT_MS: u64 = 100;
+
 #[derive(Clone, Debug)]
 pub struct PythClient {
     endpoints: Vec<Url>,
@@ -417,7 +420,7 @@ impl PythClientTrait for PythClient {
         // Create the buffer to pull data from the receiver.
         let buffer_capacity = 1000;
         let mut buffer = Vec::with_capacity(buffer_capacity);
-        let timeout = Duration::from_millis(500);
+        let timeout = Duration::from_millis(DATA_RECEIVE_TIMEOUT_MS);
 
         // Flag to indicate if we need to resubscribe.
         let mut to_resubscribe = false;
