@@ -7,6 +7,7 @@ import { Modals, useApp, twMerge } from "@left-curve/foundation";
 import { Direction, OrderType, TimeInForceOption, type OrderTypes } from "@left-curve/dango/types";
 import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { OrderActivity } from "./OrderActivity";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { ActivityRef } from "./Activity";
 import type { ActivityRecord } from "@left-curve/store";
@@ -98,12 +99,12 @@ export const ActivityOrderCanceled = forwardRef<ActivityRef, ActivityOrderCancel
         }
       >
         <GlobalText className="flex flex-row items-center gap-2 diatype-m-medium text-ink-secondary-700">
-          Order canceled
+          {m["activities.activity.orderCanceled.title"]()}
         </GlobalText>
 
         <View className="flex flex-col items-start">
           <View className="flex flex-row gap-1 items-center">
-            <GlobalText>{kind === OrderType.Limit ? "limit" : "market"}</GlobalText>
+            <GlobalText>{m["dex.protrade.orderType"]({ orderType: kind })}</GlobalText>
 
             <GlobalText
               className={twMerge(
@@ -111,7 +112,7 @@ export const ActivityOrderCanceled = forwardRef<ActivityRef, ActivityOrderCancel
                 directionBid ? "text-status-success" : "text-status-fail",
               )}
             >
-              {directionBid ? "Buy" : "Sell"}
+              {directionBid ? m["proSwap.buy"]() : m["proSwap.sell"]()}
             </GlobalText>
 
             <PairAssets assets={[base, quote]} className="w-5 h-5 min-w-5 min-h-5" />
@@ -123,7 +124,7 @@ export const ActivityOrderCanceled = forwardRef<ActivityRef, ActivityOrderCancel
 
           {limitPrice ? (
             <View className="flex flex-row gap-1 items-center">
-              <GlobalText>at price </GlobalText>
+              <GlobalText>{m["activities.activity.orderCanceled.atPrice"]()}</GlobalText>
               <GlobalText className="diatype-m-bold">
                 {limitPrice} {quote.symbol}
               </GlobalText>

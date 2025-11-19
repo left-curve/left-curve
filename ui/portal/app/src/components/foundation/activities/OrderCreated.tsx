@@ -5,6 +5,7 @@ import { forwardRef, useImperativeHandle } from "react";
 import { twMerge, useApp } from "@left-curve/foundation";
 import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
 import { calculatePrice } from "@left-curve/dango/utils";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import type { ActivityRef } from "./Activity";
 import type { ActivityRecord } from "@left-curve/store";
@@ -59,19 +60,21 @@ export const ActivityOrderCreated = forwardRef<ActivityRef, ActivityOrderCreated
     return (
       <OrderActivity kind={kind}>
         <GlobalText className="flex items-center gap-2 diatype-m-medium text-ink-secondary-700">
-          Order created
+          {m["activities.activity.orderCreated.title"]()}
         </GlobalText>
 
         <View className="flex flex-col items-start">
           <View className="flex gap-1">
-            <GlobalText className="capitalize">{kind}</GlobalText>
+            <GlobalText className="capitalize">
+              {m["dex.protrade.orderType"]({ orderType: kind })}
+            </GlobalText>
             <GlobalText
               className={twMerge(
                 "uppercase diatype-m-bold",
                 directionBid ? "text-status-success" : "text-status-fail",
               )}
             >
-              {directionAsk ? "Sell" : "Buy"}
+              {directionAsk ? m["proSwap.sell"]() : m["proSwap.buy"]()}
             </GlobalText>
             <PairAssets assets={[base, quote]} className="w-5 h-5 min-w-5 min-h-5" />
             <GlobalText className="diatype-m-bold">
@@ -80,7 +83,7 @@ export const ActivityOrderCreated = forwardRef<ActivityRef, ActivityOrderCreated
           </View>
           {limitPrice ? (
             <View className="flex gap-1">
-              <GlobalText>at price </GlobalText>
+              <GlobalText>{m["activities.activity.orderCreated.atPrice"]()}</GlobalText>
               <GlobalText className="diatype-m-bold">
                 {limitPrice} {quote.symbol}
               </GlobalText>

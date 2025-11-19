@@ -2,13 +2,12 @@ import { useRouter } from "expo-router";
 
 import { forwardRef, useImperativeHandle } from "react";
 
-import { View, Text, type GestureResponderEvent } from "react-native";
+import { View, type GestureResponderEvent } from "react-native";
 import { Badge } from "../Badge";
 import { AddressVisualizer } from "../AddressVisualizer";
 import { IconNewAccount } from "../icons/IconNewAccount";
 
 import type { ActivityRecord } from "@left-curve/store";
-import { G } from "react-native-svg";
 import { GlobalText } from "../GlobalText";
 
 export type ActivityRef = {

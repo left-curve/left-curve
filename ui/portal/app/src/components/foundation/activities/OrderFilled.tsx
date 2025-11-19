@@ -78,19 +78,25 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
     return (
       <OrderActivity kind={kind}>
         <GlobalText className="flex items-center gap-2 diatype-m-medium text-ink-secondary-700">
-          Order {cleared ? "fulfilled" : "partially fulfilled"}
+          {m["activities.activity.orderFilled.title"]({
+            isFullfilled: m["activities.activity.orderFilled.isFullfilled"]({
+              isFullfilled: String(cleared),
+            }),
+          })}
         </GlobalText>
 
         <View className="flex flex-col items-start w-full">
           <View className="flex gap-2 w-full flex-row">
-            <GlobalText className="capitalize text-ink-tertiary-500">{kind}</GlobalText>
+            <GlobalText className="capitalize text-ink-tertiary-500">
+              {m["dex.protrade.orderType"]({ orderType: kind })}
+            </GlobalText>
             <GlobalText
               className={twMerge(
                 "uppercase diatype-m-bold",
                 direction === Direction.Buy ? "text-status-success" : "text-status-fail",
               )}
             >
-              {direction === Direction.Buy ? "Buy" : "Sell"}
+              {direction === Direction.Buy ? m["proSwap.buy"]() : m["proSwap.sell"]()}
             </GlobalText>
             <PairAssets assets={[base, quote]} className="w-5 h-5 min-w-5 min-h-5" />
             <GlobalText className="diatype-m-bold text-ink-tertiary-500">

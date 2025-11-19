@@ -10,6 +10,7 @@ import {
 import { useActivities } from "@left-curve/store";
 import { isToday } from "date-fns";
 import { twMerge, formatDate } from "@left-curve/foundation";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { MotiView } from "moti";
 import HamsterEmoji from "@left-curve/foundation/images/emojis/detailed/hamster.svg";
 
@@ -62,9 +63,11 @@ export const Activities: React.FC<ActivitiesProps> = ({ className, activitiesPer
       <View className="px-4 py-20 flex flex-col gap-6 items-center">
         <HamsterEmoji className="h-32 w-32" />
         <View className="flex flex-col gap-2 items-center text-center">
-          <GlobalText className="exposure-m-italic">No activity yet</GlobalText>
+          <GlobalText className="exposure-m-italic">
+            {m["activities.noActivities.title"]()}
+          </GlobalText>
           <GlobalText className="text-ink-tertiary-500 diatype-m-bold">
-            When you trade, transfer tokens, or perform other activities, updates will appear here
+            {m["activities.noActivities.description"]()}
           </GlobalText>
         </View>
       </View>
