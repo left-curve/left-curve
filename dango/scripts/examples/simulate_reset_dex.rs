@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
             Some(FROM_HEIGHT),
             false,
         )?
-        .as_status();
+        .into_status();
 
     let mut suite = TestSuite::new_with_app(
         app,

@@ -37,7 +37,7 @@ pub enum RecipientQueryResponse {
 }
 
 impl RecipientQueryResponse {
-    pub fn as_interchain_security_module(self) -> Option<Addr> {
+    pub fn into_interchain_security_module(self) -> Option<Addr> {
         match self {
             RecipientQueryResponse::InterchainSecurityModule(ism) => ism,
         }

@@ -404,7 +404,7 @@ impl OutputType for QueryResponse {
 macro_rules! generate_downcast {
     ($id:ident => $ret:ty) => {
         paste! {
-            pub fn [<as_$id:snake>](self) -> $ret {
+            pub fn [<into_$id:snake>](self) -> $ret {
                 match self {
                     QueryResponse::$id(value) => value,
                     _ => panic!("QueryResponse is not {}", stringify!($id)),

@@ -22,7 +22,7 @@ pub enum IsmQueryResponse {
 }
 
 impl IsmQueryResponse {
-    pub fn as_verify(self) {
+    pub fn into_verify(self) {
         match self {
             IsmQueryResponse::Verify(res) => res,
         }
