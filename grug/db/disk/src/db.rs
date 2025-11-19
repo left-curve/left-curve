@@ -8,8 +8,8 @@ use {
     grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
     rocksdb::{
-        BlockBasedOptions, Cache, ColumnFamily, CompactionPri, DB, DBCompactionStyle, IteratorMode,
-        Options, ReadOptions, WriteBatch,
+        BlockBasedOptions, Cache, ColumnFamily, ColumnFamilyDescriptor, CompactionPri, DB,
+        DBCompactionStyle, IteratorMode, Options, ReadOptions, WriteBatch,
     },
     std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
 };
@@ -126,13 +126,21 @@ impl<T> DiskDb<T> {
         B: AsRef<[u8]>,
     {
         let opts = new_db_options();
-        let db = DB::open_cf(&opts, data_dir, [
-            CF_NAME_DEFAULT,
-            #[cfg(feature = "ibc")]
-            CF_NAME_PREIMAGES,
-            CF_NAME_STATE_STORAGE,
-            CF_NAME_STATE_COMMITMENT,
-        ])?;
+        let cf_opts = new_state_cf_options();
+        let db = DB::open_cf_descriptors(
+            &opts,
+            data_dir,
+            [
+                (CF_NAME_DEFAULT, Options::default()),
+                #[cfg(feature = "ibc")]
+                (CF_NAME_PREIMAGES, Options::default()),
+                (CF_NAME_STATE_STORAGE, cf_opts.clone()),
+                (CF_NAME_STATE_COMMITMENT, cf_opts),
+            ]
+            .into_iter()
+            .map(|(name, cf_opt)| ColumnFamilyDescriptor::new(name.to_string(), cf_opt))
+            .collect::<Vec<_>>(),
+        )?;
 
         // If `priority_range` is specified, load the data in that range into memory.
         let priority_data = priority_range.map(|(min, max)| {
@@ -911,77 +919,82 @@ fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
 
 pub fn new_db_options() -> Options {
     let mut opts = Options::default();
+
+    // Create the DB and CFs if they do not exist.
     opts.create_if_missing(true);
     opts.create_missing_column_families(true);
 
-    // 1) Parallelism / background work
-    // Use more background threads for flush and compaction. This helps keep
-    // LSM levels healthy without blocking foreground operations.
+    // Increase background parallelism: flushes and compactions run in more threads.
+    // Helps maintain healthy LSM structure without blocking foreground operations.
     opts.increase_parallelism(num_cpus::get() as i32);
 
     // Give RocksDB a memory budget to tune level-style compaction.
-    // 256MB is a reasonable starting point; adjust based on available RAM.
+    // This optimizes compaction strategy and usually reduces write amplification.
     opts.optimize_level_style_compaction(256 * 1024 * 1024);
 
-    // 2) Memtable / write buffer: keep memtables relatively small and limit how
-    // many exist at the same time.
+    // Remove limit on open file descriptors, avoiding overhead of
+    // frequently opening/closing SST files.
+    opts.set_max_open_files(-1); // -1 = unlimited
+
+    opts
+}
+
+/// Returns tuned ColumnFamilyOptions for a state CF.
+/// These options control memtable size, compaction behavior,
+/// block cache, bloom filters, and table structure.
+pub fn new_state_cf_options() -> Options {
+    let mut opts = Options::default();
+
+    // 1) Memtable / write buffer
     //
-    // Metrics show that iterator creation time grows as the memtable grows,
-    // and drops right after a flush. So we prefer smaller memtables and more
-    // frequent flushes to keep iterator creation time stable and low.
-    //
-    // 16MB per memtable is a conservative value; you can experiment with
-    // 16–32MB depending on write throughput and disk.
+    // Smaller memtables improve iterator creation latency.
+    // Your metrics showed iterator creation time grows as memtable grows.
+    // Setting this to 16MB keeps memtables small and flushes frequent.
     opts.set_write_buffer_size(16 * 1024 * 1024);
 
-    // Allow at most 1 active + 1 immutable memtable.
-    // This avoids having many skiplists to merge during iterator creation.
+    // Allow only 1 active + 1 immutable memtable.
+    // This avoids having several skiplists in memory that slow down iterator creation.
     opts.set_max_write_buffer_number(2);
 
-    // Do not require merging multiple memtables before flushing.
-    // We want memtables to flush relatively quickly instead of growing too big.
+    // Flush memtable as soon as the active one is full, instead of waiting
+    // to merge multiple memtables.
     opts.set_min_write_buffer_number_to_merge(1);
 
-    // 3) L0 behavior: avoid having too many L0 files.
-    // These thresholds help trigger compaction before L0 becomes too fragmented.
+    // 2) L0 behavior (reduce L0 overload)
+    //
+    // Keep the number of L0 files under control to avoid expensive scans/seeks.
     opts.set_level_zero_file_num_compaction_trigger(4);
     opts.set_level_zero_slowdown_writes_trigger(8);
     opts.set_level_zero_stop_writes_trigger(16);
 
-    // 4) Compaction style and priority.
-    // Level-based compaction works well for general workloads.
+    // 3) Compaction
+    //
     opts.set_compaction_style(DBCompactionStyle::Level);
 
-    // Try to minimize overlap between files across levels. This reduces the
-    // number of SST files that scans need to touch.
+    // Reduce SST overlap between levels: improves iterator performance.
     opts.set_compaction_pri(CompactionPri::MinOverlappingRatio);
 
-    // 5) Block cache + Bloom filter settings.
+    // 4) Block-based table options: cache + bloom filters
+    //
     let mut block_opts = BlockBasedOptions::default();
 
-    // LRU cache for data blocks (and index/filter blocks if enabled).
-    // 256MB is a solid starting point; increase this if you have plenty of RAM
-    // and a larger working set.
+    // LRU block cache for SST data + metadata.
+    // 256MB is a solid default; increase if the server has plenty of RAM.
     let cache = Cache::new_lru_cache(256 * 1024 * 1024);
     block_opts.set_block_cache(&cache);
 
-    // Whole-key Bloom filter (since we are not using a prefix extractor).
-    // 10 bits per key is a good default trade-off between accuracy and space.
+    // Whole-key Bloom filter (since no prefix extractor is used).
     block_opts.set_bloom_filter(10.0, true);
 
-    // Keep index and filter blocks in the block cache.
-    // This makes iterator creation much cheaper because metadata is already in RAM.
+    // Keep index/filter blocks in the block cache for faster iterator creation.
     block_opts.set_cache_index_and_filter_blocks(true);
 
-    // Pin index/filter blocks of L0 files in the cache — these files are very
-    // hot in your workload and change often, so their metadata should stay in RAM.
+    // Pin L0 index/filter blocks in cache — these files change often and
+    // their metadata is extremely hot for your workload.
     block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
 
+    // Attach the block-based table configuration.
     opts.set_block_based_table_factory(&block_opts);
-
-    // 6) File handles: remove the open file limit.
-    // This avoids overhead from repeatedly opening and closing SST files.
-    opts.set_max_open_files(-1); // -1 = unlimited
 
     opts
 }
