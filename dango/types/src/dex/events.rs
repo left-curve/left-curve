@@ -69,6 +69,10 @@ pub struct OrderFilled {
     pub clearing_price: Price,
     /// Whether the order was _completed_ filled and cleared from the book.
     pub cleared: bool,
+    /// The order's total amount, in the base asset.
+    pub total: Uint128,
+    /// The remaining amount in the order, in the base asset, _after_ this fill.
+    pub remaining: Udec128_6,
 }
 
 impl From<&OrderFilled> for PairId {
