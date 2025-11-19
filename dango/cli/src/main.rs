@@ -136,14 +136,16 @@ async fn main() -> anyhow::Result<()> {
         None
     };
 
+    let mut _sentry_guard: Option<sentry::ClientInitGuard> = None;
     let sentry_layer = if cfg.sentry.enabled {
-        let _sentry_guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
+        let guard = sentry::init((cfg.sentry.dsn, sentry::ClientOptions {
             environment: Some(cfg.sentry.environment.clone().into()),
             release: sentry::release_name!(),
             sample_rate: cfg.sentry.sample_rate,
             traces_sample_rate: cfg.sentry.traces_sample_rate,
             ..Default::default()
         }));
+        _sentry_guard = Some(guard);
 
         sentry::configure_scope(|scope| {
             scope.set_tag("chain-id", &cfg.transactions.chain_id);
@@ -175,9 +177,10 @@ async fn main() -> anyhow::Result<()> {
         Command::Tx(cmd) => cmd.run(app_dir).await?,
     }
 
-    // Flush and shutdown the tracer provider to avoid losing spans.
     // Flush and shutdown the tracer provider (if set) to avoid losing spans.
     crate::telemetry::shutdown();
+    // Flush Sentry transport too.
+    crate::telemetry::shutdown_sentry();
 
     Ok(())
 }

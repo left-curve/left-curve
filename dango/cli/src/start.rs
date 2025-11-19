@@ -364,11 +364,13 @@ impl StartCmd {
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
                 telemetry::shutdown();
+                telemetry::shutdown_sentry();
                 Ok(())
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
                 telemetry::shutdown();
+                telemetry::shutdown_sentry();
                 Ok(())
             },
         }
