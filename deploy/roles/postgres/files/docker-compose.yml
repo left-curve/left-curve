@@ -35,7 +35,8 @@ services:
       DATA_SOURCE_USER: "${POSTGRES_USER}"
       DATA_SOURCE_PASS: "${POSTGRES_PASSWORD}"
     ports:
-      - "${BINDING_IP}:9187:9187"
+      - "${TAILSCALE_IP}:9187:9187"
+      - "${WIREGUARD_IP}:9187:9187"
     depends_on:
       postgres:
         condition: service_healthy
