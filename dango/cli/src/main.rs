@@ -114,12 +114,26 @@ async fn main() -> anyhow::Result<()> {
         // Build exporter via selected OTLP protocol (gRPC or HTTP).
         let exporter = match cfg.trace.protocol {
             config::TraceProtocol::OtlpGrpc => {
-                let export_config = ExportConfig { endpoint: Some(cfg.trace.endpoint.clone()), protocol: Protocol::Grpc, ..Default::default() };
-                SpanExporter::builder().with_tonic().with_export_config(export_config).build()?
+                let export_config = ExportConfig {
+                    endpoint: Some(cfg.trace.endpoint.clone()),
+                    protocol: Protocol::Grpc,
+                    ..Default::default()
+                };
+                SpanExporter::builder()
+                    .with_tonic()
+                    .with_export_config(export_config)
+                    .build()?
             },
             config::TraceProtocol::OtlpHttp => {
-                let export_config = ExportConfig { endpoint: Some(cfg.trace.endpoint.clone()), protocol: Protocol::HttpBinary, ..Default::default() };
-                SpanExporter::builder().with_http().with_export_config(export_config).build()?
+                let export_config = ExportConfig {
+                    endpoint: Some(cfg.trace.endpoint.clone()),
+                    protocol: Protocol::HttpBinary,
+                    ..Default::default()
+                };
+                SpanExporter::builder()
+                    .with_http()
+                    .with_export_config(export_config)
+                    .build()?
             },
         };
 
