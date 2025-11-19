@@ -114,18 +114,29 @@ async fn main() -> anyhow::Result<()> {
         ];
 
         // Required: service.namespace — priority: SERVICE_NAMESPACE > DEPLOY_ENV > sentry.environment > DEPLOYMENT_NAME
-        let service_namespace = std::env::var("SERVICE_NAMESPACE").ok()
+        let service_namespace = std::env::var("SERVICE_NAMESPACE")
+            .ok()
             .filter(|s| !s.is_empty())
             .or_else(|| std::env::var("DEPLOY_ENV").ok().filter(|s| !s.is_empty()))
-            .or_else(|| (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone()))
-            .or_else(|| std::env::var("DEPLOYMENT_NAME").ok().filter(|s| !s.is_empty()));
+            .or_else(|| {
+                (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone())
+            })
+            .or_else(|| {
+                std::env::var("DEPLOYMENT_NAME")
+                    .ok()
+                    .filter(|s| !s.is_empty())
+            });
         if let Some(ns) = service_namespace {
             attrs.push(KeyValue::new("service.namespace", ns));
         }
 
         // Optional: deployment.environment — prefer DEPLOY_ENV, else sentry.environment
-        if let Some(env) = std::env::var("DEPLOY_ENV").ok().filter(|s| !s.is_empty())
-            .or_else(|| (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone()))
+        if let Some(env) = std::env::var("DEPLOY_ENV")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .or_else(|| {
+                (!cfg.sentry.environment.is_empty()).then(|| cfg.sentry.environment.clone())
+            })
         {
             attrs.push(KeyValue::new("deployment.environment", env));
         }
