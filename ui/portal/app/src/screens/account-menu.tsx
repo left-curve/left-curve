@@ -1,8 +1,9 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { View } from "react-native";
+import { Image, View } from "react-native";
 import {
   AccountCard,
+  Activities,
   Button,
   GlobalText,
   IconAddCross,
@@ -67,6 +68,22 @@ export default function AccountMenuScreen() {
             fullWidth
             onTabChange={setActiveTab}
           />
+        </View>
+        <View>
+          {activeTab === "wallet" ? (
+            <View className="px-4 flex flex-col gap-6 items-center">
+              <Image
+                source={require("@left-curve/foundation/images/emojis/detailed/hamster.svg")}
+                resizeMode="contain"
+                style={{ height: 125, width: 125 }}
+              />
+              <View className="flex flex-col gap-2 items-center text-center">
+                <GlobalText className="exposure-m-italic">No tokens yet</GlobalText>
+              </View>
+            </View>
+          ) : (
+            <Activities />
+          )}
         </View>
       </View>
     </View>

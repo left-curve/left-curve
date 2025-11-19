@@ -1,11 +1,17 @@
 import type React from "react";
 import { useMemo, useState, useCallback } from "react";
-import { View, SectionList, ActivityIndicator, Image, type ListRenderItemInfo } from "react-native";
+import {
+  View,
+  SectionList,
+  ActivityIndicator,
+  type ListRenderItemInfo,
+  ScrollView,
+} from "react-native";
 import { useActivities } from "@left-curve/store";
 import { isToday } from "date-fns";
-import { twMerge } from "@left-curve/foundation";
-import { useApp, formatDate } from "@left-curve/applets-kit";
+import { twMerge, formatDate } from "@left-curve/foundation";
 import { MotiView } from "moti";
+import HamsterEmoji from "@left-curve/foundation/images/emojis/detailed/hamster.svg";
 
 import { Activity } from "./Activity";
 
@@ -20,8 +26,8 @@ type ActivitiesProps = {
 type Section = { title: string; data: ActivityRecord[] };
 
 export const Activities: React.FC<ActivitiesProps> = ({ className, activitiesPerCall = 5 }) => {
-  const { settings } = useApp();
-  const { dateFormat } = settings;
+  // TODO: change to dateFormat configured on settings
+  const dateFormat = "MM/dd/yyyy";
 
   const { userActivities, hasActivities, totalActivities } = useActivities();
 
@@ -53,12 +59,8 @@ export const Activities: React.FC<ActivitiesProps> = ({ className, activitiesPer
 
   if (!hasActivities) {
     return (
-      <View className="px-4 flex flex-col gap-6 items-center">
-        <Image
-          source={require("@left-curve/foundation/images/emojis/detailed/hamster.svg")}
-          resizeMode="contain"
-          style={{ height: 125, width: 125 }}
-        />
+      <View className="px-4 py-20 flex flex-col gap-6 items-center">
+        <HamsterEmoji className="h-32 w-32" />
         <View className="flex flex-col gap-2 items-center text-center">
           <GlobalText className="exposure-m-italic">No activity yet</GlobalText>
           <GlobalText className="text-ink-tertiary-500 diatype-m-bold">
@@ -85,7 +87,7 @@ export const Activities: React.FC<ActivitiesProps> = ({ className, activitiesPer
   );
 
   return (
-    <View className={twMerge("flex flex-col gap-6", className)}>
+    <ScrollView className={twMerge("flex flex-col gap-6 h-[52vh]", className)}>
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
@@ -106,6 +108,6 @@ export const Activities: React.FC<ActivitiesProps> = ({ className, activitiesPer
         removeClippedSubviews
         stickySectionHeadersEnabled={false}
       />
-    </View>
+    </ScrollView>
   );
 };
