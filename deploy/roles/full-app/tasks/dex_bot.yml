@@ -31,7 +31,7 @@
     # - name: Run both liquidity commands in sequence
     #   community.docker.docker_compose_v2_exec:
     #     project_name: "{{ deployment_name }}"
-    #     project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+    #     project_src: "{{ deployment_dir }}"
     #     service: dex-bot
     #     command: bash -c "{{ provide_liquidity_command }} ; {{ mint_command }} ; exit 0"
     #     tty: yes

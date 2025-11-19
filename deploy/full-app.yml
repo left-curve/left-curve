@@ -124,7 +124,7 @@
         - name: Stop and remove stack
           community.docker.docker_compose_v2:
             project_name: "{{ deployment_name }}"
-            project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+            project_src: "{{ deployment_dir }}"
             state: absent
           ignore_errors: true
 
@@ -145,7 +145,7 @@
 
         - name: Fail the task
           fail:
-            msg: "Deployment failed, please look at the logs. You can also ssh to the server, to the PR directory and run `docker compose logs`"
+            msg: "Deployment failed, please look at the logs. You can also ssh to any of the servers, to {{ deployment_dir }} and run `docker compose logs`"
 
       always:
         - name: Log deployment finished
