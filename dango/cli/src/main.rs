@@ -148,6 +148,7 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!(endpoint = %cfg.trace.endpoint, protocol = ?cfg.trace.protocol, "OpenTelemetry OTLP exporter initialized");
         Some(otel_layer().with_tracer(tracer))
     } else {
+        tracing::info!("OpenTelemetry OTLP exporter is disabled");
         None
     };
 
@@ -169,6 +170,7 @@ async fn main() -> anyhow::Result<()> {
         tracing::info!("Sentry initialized");
         Some(sentry_layer())
     } else {
+        tracing::info!("Sentry is disabled");
         None
     };
 
