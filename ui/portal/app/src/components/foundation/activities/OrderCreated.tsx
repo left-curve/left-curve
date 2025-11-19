@@ -2,7 +2,7 @@ import { useConfig } from "@left-curve/store";
 
 import { forwardRef, useImperativeHandle } from "react";
 
-import { twMerge, useApp } from "@left-curve/applets-kit";
+import { twMerge, useApp } from "@left-curve/foundation";
 import { Direction, OrderType, TimeInForceOption } from "@left-curve/dango/types";
 import { calculatePrice } from "@left-curve/dango/utils";
 

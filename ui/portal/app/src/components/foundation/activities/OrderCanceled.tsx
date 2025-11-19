@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useConfig } from "@left-curve/store";
-import { Modals, useApp, twMerge } from "@left-curve/applets-kit";
+import { Modals, useApp, twMerge } from "@left-curve/foundation";
 import { Direction, OrderType, TimeInForceOption, type OrderTypes } from "@left-curve/dango/types";
 import { calculatePrice, Decimal, formatNumber, formatUnits } from "@left-curve/dango/utils";
 import { OrderActivity } from "./OrderActivity";

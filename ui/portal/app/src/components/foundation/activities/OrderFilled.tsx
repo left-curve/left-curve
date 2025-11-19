@@ -1,10 +1,11 @@
 import { useApp } from "@left-curve/foundation";
 import { forwardRef, useImperativeHandle } from "react";
 import { useConfig } from "@left-curve/store";
+import { m } from "@left-curve/foundation/paraglide/messages.js";
 
 import { Direction, TimeInForceOption } from "@left-curve/dango/types";
 import { twMerge } from "@left-curve/foundation";
-import { formatNumber } from "@left-curve/dango/utils";
+import { calculatePrice } from "@left-curve/dango/utils";
 
 import { OrderActivity } from "./OrderActivity";
 
@@ -12,6 +13,7 @@ import type { ActivityRef } from "./Activity";
 import type { ActivityRecord } from "@left-curve/store";
 import { PairAssets } from "../PairAssets";
 import { GlobalText } from "../GlobalText";
+import { View } from "react-native";
 
 type ActivityOrderFilledProps = {
   activity: ActivityRecord<"orderFilled">;
@@ -20,12 +22,10 @@ type ActivityOrderFilledProps = {
 export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledProps>(
   ({ activity }, ref) => {
     const { getCoinInfo } = useConfig();
-    const { quote_denom, base_denom, remaining, time_in_force, direction, cleared } = activity.data;
+    const { quote_denom, base_denom, clearing_price, time_in_force, direction, cleared } =
+      activity.data;
     const { settings } = useApp();
     const { formatNumberOptions } = settings;
-    /* const { createdAt, blockHeight } = activity;
-    const { navigate } = useRouter();
-    const { getPrice } = usePrices(); */
 
     const kind = time_in_force === TimeInForceOption.GoodTilCanceled ? "limit" : "market";
 
@@ -46,13 +46,11 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
 
     const limitPrice = null;
 
-    const width = cleared ? null : formatNumber(remaining, formatNumberOptions);
-
-    /*  const filled =
-      direction === Direction.Buy
-        ? filled_base
-        : Decimal(filled_quote).div(clearing_price).toFixed(); */
-
+    const averagePrice = calculatePrice(
+      clearing_price,
+      { base: base.decimals, quote: quote.decimals },
+      formatNumberOptions,
+    );
     useImperativeHandle(ref, () => ({
       onPress: () =>
         /* showModal(Modals.ActivitySpotOrder, {
@@ -79,13 +77,13 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
 
     return (
       <OrderActivity kind={kind}>
-        <p className="flex items-center gap-2 diatype-m-medium text-ink-secondary-700">
-          Order {cleared ? "filled" : "partially fulfilled"}
-        </p>
+        <GlobalText className="flex items-center gap-2 diatype-m-medium text-ink-secondary-700">
+          Order {cleared ? "fulfilled" : "partially fulfilled"}
+        </GlobalText>
 
-        <div className="flex flex-col items-start">
-          <div className="flex gap-1">
-            <GlobalText>{kind}</GlobalText>
+        <View className="flex flex-col items-start w-full">
+          <View className="flex gap-2 w-full flex-row">
+            <GlobalText className="capitalize text-ink-tertiary-500">{kind}</GlobalText>
             <GlobalText
               className={twMerge(
                 "uppercase diatype-m-bold",
@@ -95,28 +93,31 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
               {direction === Direction.Buy ? "Buy" : "Sell"}
             </GlobalText>
             <PairAssets assets={[base, quote]} className="w-5 h-5 min-w-5 min-h-5" />
-            <GlobalText className="diatype-m-bold">
+            <GlobalText className="diatype-m-bold text-ink-tertiary-500">
               {base.symbol}-{quote.symbol}
             </GlobalText>
             {limitPrice ? (
               <>
-                <GlobalText>at price</GlobalText>
-                <GlobalText className="diatype-m-bold">
+                <GlobalText className="text-ink-tertiary-500">
+                  {m["activities.activity.orderCreated.atPrice"]()}
+                </GlobalText>
+                <GlobalText className="diatype-m-bold text-ink-tertiary-500">
                   {limitPrice} {quote.symbol}
                 </GlobalText>
               </>
             ) : null}
-          </div>
-          {!cleared ? (
-            <div className="flex gap-1">
-              <GlobalText>width</GlobalText>
-              <GlobalText className="diatype-m-bold">
-                {width} {base.symbol}
+          </View>
+          {averagePrice ? (
+            <View className="flex w-full gap-1 flex-row">
+              <GlobalText className="text-ink-tertiary-500">
+                {m["activities.activity.orderCreated.atPrice"]()}
               </GlobalText>
-              <GlobalText>remaining</GlobalText>
-            </div>
+              <GlobalText className="diatype-m-bold text-ink-tertiary-500">
+                {averagePrice} {quote.symbol}
+              </GlobalText>
+            </View>
           ) : null}
-        </div>
+        </View>
       </OrderActivity>
     );
   },

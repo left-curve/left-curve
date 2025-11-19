@@ -1,10 +1,10 @@
 import { forwardRef, useImperativeHandle } from "react";
-import { View, Text, Image, Pressable } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useConfig } from "@left-curve/store";
 import { formatNumber, formatUnits } from "@left-curve/dango/utils";
-import { twMerge, useApp } from "@left-curve/applets-kit";
+import { twMerge, useApp } from "@left-curve/foundation";
 
 import type { ActivityRecord } from "@left-curve/store";
 
@@ -13,6 +13,8 @@ import { IconReceived } from "../icons/IconReceived";
 import { PairAssets } from "../PairAssets";
 import { AddressVisualizer } from "../AddressVisualizer";
 import type { ActivityRef } from "./Activity";
+import { GlobalText } from "../GlobalText";
+import { CoinIcon } from "../CoinIcon";
 
 type ActivityTransferProps = {
   activity: ActivityRecord<"transfer">;
@@ -81,18 +83,18 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
                     {coin.type === "lp" ? (
                       <PairAssets assets={[coin.base, coin.quote]} />
                     ) : (
-                      <Image source={{ uri: coin.logoURI }} className="w-5 h-5 min-w-5 min-h-5" />
+                      <CoinIcon symbol={coin.symbol} />
                     )}
                   </View>
 
-                  <Text
+                  <GlobalText
                     className={twMerge(
-                      "diatype-m-bold",
+                      "diatype-m-bold text-ink-secondary-700",
                       type === "received" ? "text-status-success" : "text-status-fail",
                     )}
                   >
                     {`${isSent ? "−" : "+"}${formatted}  ${coin.symbol}`}
-                  </Text>
+                  </GlobalText>
                 </View>
               );
             })}
@@ -100,9 +102,12 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
 
           <View className="flex flex-col diatype-m-medium text-ink-tertiary-500 items-start gap-1 mt-1">
             <View className="flex flex-row flex-wrap items-center gap-1">
-              <Text>From</Text>
+              <GlobalText className=" text-ink-tertiary-500">from</GlobalText>
               <AddressVisualizer
-                classNames={{ container: "address-visualizer" }}
+                classNames={{
+                  container: "address-visualizer",
+                  text: "diatype-m-medium text-ink-tertiary-500",
+                }}
                 address={fromAddress}
                 withIcon
                 onClick={onNavigate}
@@ -110,9 +115,12 @@ export const ActivityTransfer = forwardRef<ActivityRef, ActivityTransferProps>(
             </View>
 
             <View className="flex flex-row flex-wrap items-center gap-1">
-              <Text>To</Text>
+              <GlobalText className=" text-ink-tertiary-500">to</GlobalText>
               <AddressVisualizer
-                classNames={{ container: "address-visualizer" }}
+                classNames={{
+                  container: "address-visualizer",
+                  text: "diatype-m-medium text-ink-tertiary-500",
+                }}
                 address={toAddress}
                 withIcon
                 onClick={onNavigate}

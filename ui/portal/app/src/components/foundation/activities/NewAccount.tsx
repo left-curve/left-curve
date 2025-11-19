@@ -8,6 +8,8 @@ import { AddressVisualizer } from "../AddressVisualizer";
 import { IconNewAccount } from "../icons/IconNewAccount";
 
 import type { ActivityRecord } from "@left-curve/store";
+import { G } from "react-native-svg";
+import { GlobalText } from "../GlobalText";
 
 export type ActivityRef = {
   onPress: (event: GestureResponderEvent) => void;
@@ -35,11 +37,18 @@ export const ActivityNewAccount = forwardRef<ActivityRef, ActivityAccountProps>(
 
         <View className="flex flex-col max-w-[100%] overflow-hidden">
           <View className="flex flex-row justify-center items-center gap-2 diatype-m-medium text-ink-secondary-700 capitalize">
-            <Text>Account created</Text>
+            <GlobalText>Account created</GlobalText>
             <Badge classNames={{ text: "capitalize" }} text={accountType} />
           </View>
 
-          <AddressVisualizer address={address} withIcon onClick={navigateToAccount} />
+          <AddressVisualizer
+            classNames={{
+              text: "diatype-m-medium text-ink-tertiary-500",
+            }}
+            address={address}
+            withIcon
+            onClick={navigateToAccount}
+          />
         </View>
       </View>
     );

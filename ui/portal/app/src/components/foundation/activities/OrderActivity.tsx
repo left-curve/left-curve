@@ -1,6 +1,6 @@
 import type React from "react";
 import { Pressable, View, type GestureResponderEvent } from "react-native";
-import { twMerge } from "@left-curve/applets-kit";
+import { twMerge } from "@left-curve/foundation";
 import { OrderType, type OrderTypes } from "@left-curve/dango/types";
 import { IconLimitOrder } from "../icons/IconLimitOrder";
 import { IconMarketOrder } from "../icons/IconMarketOrder";
@@ -22,7 +22,7 @@ export const OrderActivity: React.FC<OrderActivityProps> = ({ kind, onClick, chi
   return (
     <Pressable
       onPress={handlePress}
-      className="flex flex-row items-start gap-2 max-w-full overflow-hidden"
+      className="flex flex-row items-start gap-2 max-w-full w-full overflow-hidden"
       accessibilityRole="button"
     >
       <View

@@ -1,9 +1,9 @@
-import { useApp } from "@left-curve/applets-kit";
+import { useApp } from "@left-curve/foundation";
 import { useActivities } from "@left-curve/store";
 import { useCallback, useRef } from "react";
 
 import { lazy, Suspense } from "react";
-import { formatActivityTimestamp, twMerge } from "@left-curve/applets-kit";
+import { formatActivityTimestamp, twMerge } from "@left-curve/foundation";
 
 import { Pressable, View, Text, type GestureResponderEvent } from "react-native";
 import type { Activities, ActivityRecord } from "@left-curve/store";
@@ -68,20 +68,22 @@ export const Activity: React.FC<ActivityProps> = ({ activity }) => {
       <Pressable
         onPress={handlePress}
         className={twMerge(
-          "relative flex flex-row items-end justify-between gap-2 p-2 rounded-lg max-w-full bg-transparent",
+          "relative flex flex-row items-start justify-between gap-2 p-2 rounded-lg max-w-full bg-transparent",
         )}
         accessibilityRole="button"
       >
-        <ActivityCard activity={activity} ref={activityRef} />
+        <View className="flex-1">
+          <ActivityCard activity={activity} ref={activityRef} />
+        </View>
 
-        <View className="min-w-fit items-center">
+        <View className="h-full flex items-end justify-between max-h-full">
           <Pressable
             onPress={handleDeletePress}
-            className="absolute top-1 right-1"
+            className="w-8 h-8 flex items-end justify-center fixed left-0"
             accessibilityRole="button"
             accessibilityLabel="remove-activity"
           >
-            <IconClose className="w-6 h-6" />
+            <IconClose className="w-8 h-8 text-ink-tertiary-500" />
           </Pressable>
 
           <Text className="diatype-sm-medium text-ink-tertiary-500">
