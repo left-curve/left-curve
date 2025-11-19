@@ -1,6 +1,4 @@
-use opentelemetry_sdk::trace::SdkTracerProvider;
-use sentry::Hub;
-use std::sync::OnceLock;
+use {opentelemetry_sdk::trace::SdkTracerProvider, sentry::Hub, std::sync::OnceLock};
 
 static PROVIDER: OnceLock<SdkTracerProvider> = OnceLock::new();
 

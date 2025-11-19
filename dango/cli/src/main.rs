@@ -1,5 +1,4 @@
 mod config;
-mod telemetry;
 mod db;
 mod home_directory;
 mod indexer;
@@ -7,6 +6,7 @@ mod keys;
 mod prompt;
 mod query;
 mod start;
+mod telemetry;
 mod tendermint;
 #[cfg(feature = "testing")]
 mod test;

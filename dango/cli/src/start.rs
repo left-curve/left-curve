@@ -1,26 +1,27 @@
-    use {
-        crate::{
-            config::{Config, GrugConfig, HttpdConfig, PythLazerConfig, TendermintConfig},
-            home_directory::HomeDirectory,
-        },
-        anyhow::anyhow,
-        clap::Parser,
-        config_parser::parse_config,
-        crate::telemetry,
-        dango_genesis::GenesisCodes,
-        dango_proposal_preparer::ProposalPreparer,
-        grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
-        grug_client::TendermintRpcClient,
-        grug_db_disk::DiskDb,
-        grug_httpd::context::Context as HttpdContext,
-        grug_types::GIT_COMMIT,
-        grug_vm_rust::RustVm,
-        indexer_hooked::HookedIndexer,
-        metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
-        std::sync::Arc,
-        tokio::signal::unix::{SignalKind, signal},
-        tower_abci::v038::{Server, split},
-    };
+
+use {
+    crate::{
+        config::{Config, GrugConfig, HttpdConfig, PythLazerConfig, TendermintConfig},
+        home_directory::HomeDirectory,
+        telemetry,
+    },
+    anyhow::anyhow,
+    clap::Parser,
+    config_parser::parse_config,
+    dango_genesis::GenesisCodes,
+    dango_proposal_preparer::ProposalPreparer,
+    grug_app::{App, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment},
+    grug_client::TendermintRpcClient,
+    grug_db_disk::DiskDb,
+    grug_httpd::context::Context as HttpdContext,
+    grug_types::GIT_COMMIT,
+    grug_vm_rust::RustVm,
+    indexer_hooked::HookedIndexer,
+    metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
+    std::sync::Arc,
+    tokio::signal::unix::{SignalKind, signal},
+    tower_abci::v038::{Server, split},
+};
 
 #[derive(Parser)]
 pub struct StartCmd;
