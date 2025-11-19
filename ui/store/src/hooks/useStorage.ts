@@ -1,22 +1,38 @@
-import { useCallback, useEffect, useState } from "react";
-import { useQuery } from "../query.js";
-
-import type { Dispatch, SetStateAction } from "react";
-import type { Storage } from "../types/storage.js";
+import { create } from "zustand";
+import { persist, type PersistStorage } from "zustand/middleware";
+import { useState, useEffect, useCallback } from "react";
 import { useConfig } from "./useConfig.js";
 
-export type UseStorageOptions<T = undefined> = {
+import type { Storage } from "../types/storage.js";
+
+interface StorageState<T> {
+  value: T;
+  setHydrated: (hydrated: boolean) => void;
+  setValue: (valOrFunc: T | ((prev: T) => T)) => void;
+  version: number;
+  _hasHydrated: boolean;
+}
+
+const storeCache = new Map<string, any>();
+
+export type UseStorageOptions<T> = {
+  enabled?: boolean;
   initialValue?: T | (() => T);
   storage?: Storage;
   version?: number;
-  enabled?: boolean;
   migrations?: Record<number | string, (data: any) => T>;
   sync?: boolean;
 };
-export function useStorage<T = undefined>(
+
+export function useStorage<T>(
   key: string,
   options: UseStorageOptions<T> = {},
-): [T extends undefined ? null : T, Dispatch<SetStateAction<T>>] {
+): [T, (valOrFunc: T | ((t: T) => T)) => void, boolean] {
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const { storage: defaultStorage } = useConfig();
   const [channel] = useState(new BroadcastChannel(`dango.storage.${key}`));
 
@@ -25,96 +41,77 @@ export function useStorage<T = undefined>(
     sync = false,
     initialValue: _initialValue_,
     storage = defaultStorage,
-    version: __version__ = 1,
+    version = 1,
     migrations = {},
   } = options;
 
-  const initialValue = (() => {
-    if (typeof _initialValue_ !== "function") return _initialValue_ as T;
-    return (_initialValue_ as () => T)();
-  })();
+  const initialValue =
+    typeof _initialValue_ === "function" ? (_initialValue_ as () => T)() : _initialValue_;
 
-  const { data, refetch } = useQuery<T | null, Error, T, string[]>({
-    enabled,
-    queryKey: ["dango", enabled.toString(), key],
-    queryFn: () => {
-      const { value } = storage.getItem(key, { value: initialValue! }) as { value: T };
+  if (!storeCache.has(key)) {
+    const store = create<StorageState<T>>()(
+      persist(
+        (set, get) => ({
+          value: initialValue as T,
+          version: version,
+          _hasHydrated: false,
+          setHydrated: (hydrated: boolean) => set({ _hasHydrated: hydrated }),
+          setValue: (valOrFunc) => {
+            const currentValue = get().value;
+            const newValue =
+              typeof valOrFunc === "function"
+                ? (valOrFunc as (prev: T) => T)(currentValue)
+                : valOrFunc;
 
-      return value ?? null;
-    },
-    initialData: () => {
-      if (!enabled) return initialValue ?? null;
+            set({ value: newValue });
+            return newValue;
+          },
+        }),
+        {
+          name: key,
+          version: version,
+          storage: storage as PersistStorage<StorageState<T>>,
+          migrate: (persistedState: any, version: number) => {
+            const state = persistedState as StorageState<T>;
 
-      const item = storage.getItem(key, {
-        value: initialValue!,
-      });
+            if (migrations["*"]) {
+              const migratedValue = migrations["*"](state.value);
+              return { ...state, value: migratedValue, version };
+            }
 
-      const { version, value } = item as { version: number; value: T };
+            if (migrations[version]) {
+              const migratedValue = migrations[version](state.value);
+              return { ...state, value: migratedValue, version };
+            }
 
-      const returnValue = value ?? null;
+            return state;
+          },
+          onRehydrateStorage: (state) => () => state.setHydrated(true),
+        },
+      ),
+    );
 
-      if (version === __version__) return returnValue;
+    storeCache.set(key, store);
+  }
 
-      if (!version) {
-        storage.setItem(key, {
-          version: __version__,
-          value: initialValue,
-        });
-        return returnValue;
-      }
+  const store = storeCache.get(key)!;
 
-      const migration = migrations["*"];
-
-      if (migration) {
-        const migratedValue = migration(value);
-        storage.setItem(key, {
-          version: __version__,
-          value: migratedValue,
-        });
-        return migratedValue;
-      }
-
-      const versionMigration = migrations[version];
-
-      if (!versionMigration) {
-        storage.setItem(key, {
-          version: __version__,
-          value: initialValue,
-        });
-        return returnValue;
-      }
-
-      const migratedValue = versionMigration(value);
-
-      storage.setItem(key, {
-        version: __version__,
-        value: migratedValue,
-      });
-
-      return migratedValue ?? null;
-    },
-  });
+  const value = store((state: StorageState<T>) => state.value);
+  const _setValue = store((state: StorageState<T>) => state.setValue);
+  const hasHydrated = store((state: StorageState<T>) => state._hasHydrated);
 
   const setValue = useCallback(
     (valOrFunc: T | ((t: T) => void)) => {
-      const newState = (() => {
-        if (typeof valOrFunc !== "function") return valOrFunc as T;
-        const { value } = storage.getItem(key, { value: initialValue! }) as { value: T };
-        return (valOrFunc as (prevState: T) => T)(value);
-      })();
-
-      storage.setItem(key, { version: __version__, value: newState });
+      const newState = _setValue(valOrFunc);
       if (sync) channel.postMessage(newState);
-      refetch();
     },
-    [storage, key, refetch, __version__],
+    [storage, channel],
   );
 
   useEffect(() => {
     if (!sync) return;
     function updateStorage(event: MessageEvent) {
-      storage.setItem(key, { version: __version__, value: event.data });
-      refetch();
+      _setValue(() => event.data);
     }
     channel.addEventListener("message", updateStorage);
 
@@ -123,5 +120,8 @@ export function useStorage<T = undefined>(
     };
   }, []);
 
-  return [data as any, setValue];
+  if (!isMounted) return [initialValue as T, setValue, true];
+  if (!enabled) return [initialValue as T, setValue, false];
+
+  return [value as T, setValue, !hasHydrated];
 }
