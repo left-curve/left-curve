@@ -4,16 +4,17 @@ import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango"
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
 
 import { composeArbitraryTypedData } from "@left-curve/dango/utils";
-import { createConnector, createStorage } from "@left-curve/store";
+import { createConnector } from "@left-curve/store";
 
 import Privy, {
   getEntropyDetailsFromUser,
   getUserEmbeddedEthereumWallet,
+  LocalStorage,
 } from "@privy-io/js-sdk-core";
 
 import type { Eip712Signature } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
-import type { AbstractStorage, EIP1193Provider } from "@left-curve/store/types";
+import type { EIP1193Provider } from "@left-curve/store/types";
 
 const ETHEREUM_HEX_CHAIN_ID = "0x1";
 
@@ -21,23 +22,16 @@ type PrivyConnectorParameters = {
   appId: string;
   clientId: string;
   loadIframe?: boolean;
-  storage?: AbstractStorage;
   icon?: string;
 };
 
 export function privy(parameters: PrivyConnectorParameters) {
-  const { appId, clientId, loadIframe, storage: _storage_, icon } = parameters;
-  const storage = createStorage({ storage: _storage_ });
+  const { appId, clientId, loadIframe, icon } = parameters;
 
   const privy = new Privy({
     appId,
     clientId,
-    storage: {
-      get: (key) => storage.getItem(key),
-      getKeys: () => storage.keys(),
-      put: (key, value) => storage.setItem(key, value),
-      del: (key: string) => storage.removeItem(key),
-    },
+    storage: new LocalStorage(),
   });
 
   return createConnector<EIP1193Provider>(({ transport, emitter, getUsername, chain }) => {
