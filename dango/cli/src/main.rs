@@ -145,10 +145,8 @@ async fn main() -> anyhow::Result<()> {
         // Register provider in a global OnceLock so signal handlers can shut it down.
         let tracer = provider.tracer("dango");
         crate::telemetry::set_provider(provider);
-        tracing::info!(endpoint = %cfg.trace.endpoint, protocol = ?cfg.trace.protocol, "OpenTelemetry OTLP exporter initialized");
         Some(otel_layer().with_tracer(tracer))
     } else {
-        tracing::info!("OpenTelemetry OTLP exporter is disabled");
         None
     };
 
@@ -166,11 +164,8 @@ async fn main() -> anyhow::Result<()> {
         sentry::configure_scope(|scope| {
             scope.set_tag("chain-id", &cfg.transactions.chain_id);
         });
-
-        tracing::info!("Sentry initialized");
         Some(sentry_layer())
     } else {
-        tracing::info!("Sentry is disabled");
         None
     };
 
@@ -181,6 +176,18 @@ async fn main() -> anyhow::Result<()> {
         .with(sentry_layer)
         .with(otel_layer_opt)
         .init();
+
+    // Emit startup logs now that the subscriber is initialized.
+    if cfg.sentry.enabled {
+        tracing::info!("Sentry initialized");
+    } else {
+        tracing::info!("Sentry is disabled");
+    }
+    if cfg.trace.enabled {
+        tracing::info!(endpoint = %cfg.trace.endpoint, protocol = ?cfg.trace.protocol, "OpenTelemetry OTLP exporter initialized");
+    } else {
+        tracing::info!("OpenTelemetry OTLP exporter is disabled");
+    }
 
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir)?,
