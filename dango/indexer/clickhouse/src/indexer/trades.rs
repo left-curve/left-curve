@@ -75,7 +75,15 @@ impl Indexer {
                     metrics::counter!("indexer.clickhouse.order_filled_events.total").increment(1);
 
                     // Deserialize the event.
-                    let order_filled = event.data.clone().deserialize_json::<OrderFilled>()?;
+                    let Ok(order_filled) = event.data.clone().deserialize_json::<OrderFilled>()
+                    else {
+                        #[cfg(feature = "tracing")]
+                        tracing::warn!(
+                            block_height = block_and_block_outcome.block.info.height,
+                            "Can not deserialize event as OrderFilled"
+                        );
+                        continue;
+                    };
 
                     let trade = Trade {
                         addr: order_filled.user.to_string(),
