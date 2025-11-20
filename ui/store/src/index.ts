@@ -182,6 +182,7 @@ export { rehydrate } from "./rehydrate.js";
 
 export { createMemoryStorage } from "./storages/memoryStorage.js";
 export { createStorage } from "./storages/createStorage.js";
+export { createAsyncStorage } from "./storages/createStorage.js";
 
 /* -------------------------------------------------------------------------- */
 /*                                 Connectors                                 */
