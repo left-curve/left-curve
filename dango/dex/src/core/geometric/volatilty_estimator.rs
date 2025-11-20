@@ -1,9 +1,9 @@
 use {
-    crate::core::geometric::math::{NATURAL_LOG_OF_TWO, UnsignedDecimalConstant, e_pow},
+    crate::core::geometric::math::{NaturalLogOfTwo, UnsignedDecimalConstant, e_pow},
     dango_types::dex::Price,
     grug::{
-        Dec128, Denom, Duration, Exponentiate, Map, Number, NumberConst, Signed, Storage,
-        Timestamp, Udec128, Unsigned,
+        Denom, Duration, Exponentiate, Map, Number, NumberConst, Signed, Storage, Timestamp,
+        Udec128, Unsigned,
     },
 };
 
@@ -40,16 +40,15 @@ pub fn update_volatility_estimate(
     price: Price,
     half_life: Duration,
 ) -> anyhow::Result<Price> {
-    let (last_timestamp, last_price) = match LAST_PRICE
-        .may_load(storage, (base_denom, quote_denom))?
-    {
-        Some(price) => price,
-        None => {
-            LAST_PRICE.save(storage, (base_denom, quote_denom), &(block_time, price))?;
-            LAST_VOLATILITY_ESTIMATE.save(storage, (&base_denom, &quote_denom), &Price::ZERO)?;
-            return Ok(Price::ZERO);
-        },
-    };
+    let (last_timestamp, last_price) =
+        match LAST_PRICE.may_load(storage, (base_denom, quote_denom))? {
+            Some(price) => price,
+            None => {
+                LAST_PRICE.save(storage, (base_denom, quote_denom), &(block_time, price))?;
+                LAST_VOLATILITY_ESTIMATE.save(storage, (base_denom, quote_denom), &Price::ZERO)?;
+                return Ok(Price::ZERO);
+            },
+        };
 
     let prev_squared_vol =
         match LAST_VOLATILITY_ESTIMATE.may_load(storage, (base_denom, quote_denom))? {
@@ -74,7 +73,7 @@ pub fn update_volatility_estimate(
 
     // Calculate the decay rate for the sample based on the time diff
     // alpha = 1 - exp(-ln(2) * dt / half_life) = 1 - 1/exp(ln(2) * dt / half_life)
-    let ln_of_two = NATURAL_LOG_OF_TWO::to_decimal_value::<24>()?;
+    let ln_of_two = NaturalLogOfTwo::to_decimal_value::<24>()?;
     let alpha = Price::ONE.checked_sub(Price::ONE.checked_div(e_pow(
         Price::checked_from_ratio(time_diff_ms, half_life.into_millis())?.checked_mul(ln_of_two)?,
     )?)?)?;

@@ -1,9 +1,9 @@
 use grug::{
-    Dec, Decimal, Exponentiate, FixedPoint, Inner, IsZero, MathResult, MultiplyFraction, Number,
-    NumberConst, Sign, Signed, Unsigned,
+    Dec, Decimal, Exponentiate, Inner, MathResult, MultiplyFraction, Number, NumberConst, Signed,
+    Unsigned,
 };
 
-use crate::core::geometric::math::{NATURAL_LOG_OF_TWO, UnsignedDecimalConstant};
+use crate::core::geometric::math::{NaturalLogOfTwo, UnsignedDecimalConstant};
 
 /// Computes the exponential function e^x using the following trick.
 ///
@@ -16,7 +16,7 @@ use crate::core::geometric::math::{NATURAL_LOG_OF_TWO, UnsignedDecimalConstant};
 /// We can compute e^r using a Padé approximant series expansion.
 pub fn e_pow<const S: u32>(x: Dec<u128, S>) -> MathResult<Dec<u128, S>> {
     // Compute k and r
-    let ln_of_two = NATURAL_LOG_OF_TWO::to_decimal_value::<S>()?;
+    let ln_of_two = NaturalLogOfTwo::to_decimal_value::<S>()?;
     let k = round(x.checked_div(ln_of_two)?)?;
     let r = x
         .checked_into_signed()?
@@ -26,7 +26,7 @@ pub fn e_pow<const S: u32>(x: Dec<u128, S>) -> MathResult<Dec<u128, S>> {
     let two_to_k = Dec::<u128, S>::new(2).checked_pow(k_as_u32)?;
     let e_r = _pade_approximant_of_e_to_r(r)?;
 
-    Ok(two_to_k.checked_mul(e_r)?)
+    two_to_k.checked_mul(e_r)
 }
 
 /// Computes the Padé (2,2) approximant of e^r, where -ln(2)/2 <= r < ln(2)/2, using the following

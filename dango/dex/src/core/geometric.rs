@@ -151,8 +151,8 @@ pub fn swap_exact_amount_out(
         oracle_querier,
         base_denom,
         quote_denom,
-        reserve.amount_of(base_denom)?.into(),
-        reserve.amount_of(quote_denom)?.into(),
+        reserve.amount_of(base_denom)?,
+        reserve.amount_of(quote_denom)?,
         params,
         swap_fee_rate,
     )?;
@@ -282,17 +282,17 @@ pub fn reflect_curve(
 
     let half_spread = avellaneda_stoikov::half_spread(k, gamma, sigma_squared, time_horizon)?;
 
-    println!("half_spread: {half_spread}");
-    println!("reservation_price: {reservation_price}");
     println!("oracle_price: {marginal_price}");
+    println!("sigma_squared: {sigma_squared}");
     println!(
-        "half_spread / reservation_price: {}",
-        half_spread.checked_div(reservation_price)?
+        "(base_reserve * price) / quote_reserve: {:?}",
+        marginal_price
+            .checked_mul(Price::checked_from_ratio(base_reserve, quote_reserve).unwrap())
+            .unwrap()
+            .to_string()
     );
-    println!(
-        "swap_fee_rate: {:?}",
-        _swap_fee_rate.into_inner().to_string()
-    );
+    println!("reservation_price: {reservation_price}");
+    println!("half_spread: {half_spread}");
 
     // Construct bid price iterator with decreasing prices.
     let bids = {
@@ -404,7 +404,7 @@ mod tests {
     /// the outflow.
     #[test]
     fn testnet_3_halt_20251015() {
-        use {grug::Storage, std::collections::BTreeMap};
+        use std::collections::BTreeMap;
 
         let eth_reserve = Uint128::new(491567617626054560353243);
         let usdc_reserve = Uint128::new(8);

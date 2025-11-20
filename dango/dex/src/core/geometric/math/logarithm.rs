@@ -171,7 +171,7 @@ fn log2_dec<const S: u32>(x: Dec<i128, S>) -> anyhow::Result<Dec<i128, S>> {
 pub fn ln_dec<const S: u32>(x: Dec<i128, S>) -> anyhow::Result<Dec<i128, S>> {
     // ln(x) = log2(x) * ln(2)
     let log2_x = log2_dec(x)?;
-    let ln_of_two = NATURAL_LOG_OF_TWO::to_decimal_value::<S>()?.checked_into_signed()?;
+    let ln_of_two = NaturalLogOfTwo::to_decimal_value::<S>()?.checked_into_signed()?;
     Ok(log2_x.checked_mul(ln_of_two)?)
 }
 

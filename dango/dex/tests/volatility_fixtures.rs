@@ -35,19 +35,9 @@ pub struct VolatilityEstimate {
 }
 
 impl VolatilityEstimate {
-    pub fn get_timestamp(&self) -> Timestamp {
-        Timestamp::from_millis(self.timestamp)
-    }
-
     pub fn get_estimate(&self) -> Price {
         Price::raw(Int(
             u128::from_str(&self.estimate).expect("Invalid estimate string")
-        ))
-    }
-
-    pub fn get_price(&self) -> Price {
-        Price::raw(Int(
-            u128::from_str(&self.price).expect("Invalid price string")
         ))
     }
 }

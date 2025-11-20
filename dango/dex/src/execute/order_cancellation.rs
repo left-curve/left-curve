@@ -70,11 +70,10 @@ pub(super) fn cancel_order_from_user(
     events: &mut EventBuilder,
     refunds: &mut DecCoins<6>,
 ) -> anyhow::Result<()> {
-    let (order_key, order) = ORDERS
-        .idx
-        .order_id
-        .load(storage, order_id)
-        .map_err(|e| anyhow::anyhow!("Error removing order with id {order_id}"))?;
+    let (order_key, order) =
+        ORDERS.idx.order_id.load(storage, order_id).map_err(|e| {
+            anyhow::anyhow!("Failed to remove order with id {order_id}. Error: {e}")
+        })?;
 
     ensure!(
         order.user == user,

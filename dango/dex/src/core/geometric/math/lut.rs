@@ -1,5 +1,6 @@
 pub const TABLE_SIZE: u128 = 6144;
 
+#[allow(clippy::large_const_arrays)]
 pub const LOG2_LUT_ONE_TO_TWO: [u64; TABLE_SIZE as usize] = [
     0,
     234794538867818,

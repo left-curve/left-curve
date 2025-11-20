@@ -74,40 +74,6 @@ pub struct PythPrice {
     pub expo: i32,
 }
 
-impl PythPrice {
-    /// Parse a CSV line into a PythPrice
-    fn from_csv_line(line: &str) -> Result<Self, String> {
-        let parts: Vec<&str> = line.split(',').collect();
-
-        if parts.len() < 8 {
-            return Err(format!("Not enough columns: {}", parts.len()));
-        }
-
-        let timestamp_millis = parts[0]
-            .trim()
-            .parse::<u64>()
-            .map_err(|e| format!("Invalid timestamp: {}", e))?;
-        let timestamp = Timestamp::from_millis(timestamp_millis as u128);
-
-        let price = Udec128::from_str(parts[4]).map_err(|e| format!("Invalid price: {}", e))?;
-
-        let confidence =
-            Udec128::from_str(parts[5]).map_err(|e| format!("Invalid confidence: {}", e))?;
-
-        let expo = parts[6]
-            .trim()
-            .parse::<i32>()
-            .map_err(|e| format!("Invalid expo: {}", e))?;
-
-        Ok(Self {
-            timestamp,
-            price,
-            confidence,
-            expo,
-        })
-    }
-}
-
 pub(crate) fn to_dango_dex_order(
     price: Udec128,
     size: Udec128,
@@ -445,12 +411,12 @@ impl BitstampDataAdapter {
 
     /// Returns an iterator that yields OrderBatch objects.
     /// The iteration ends when either the orders or prices CSV file is exhausted.
-    pub fn batches<'a>(
-        &'a mut self,
+    pub fn batches(
+        &mut self,
         time_diff: Duration,
         max_oracle_staleness: Duration,
         order_id_initial_value: u64,
-    ) -> OrderBatchIterator<'a> {
+    ) -> OrderBatchIterator<'_> {
         OrderBatchIterator {
             adapter: self,
             time_diff,
@@ -462,11 +428,6 @@ impl BitstampDataAdapter {
     /// Get the current timestamp
     pub fn current_timestamp(&self) -> Timestamp {
         self.current_timestamp
-    }
-
-    /// Check if there are more order events to process
-    pub fn has_more_orders(&self) -> bool {
-        self.current_order_index < self.order_events.len()
     }
 
     /// Get the total number of order events
@@ -484,7 +445,7 @@ impl BitstampDataAdapter {
     }
 }
 
-impl<'a> Iterator for OrderBatchIterator<'a> {
+impl Iterator for OrderBatchIterator<'_> {
     type Item = OrderBatch;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -568,7 +529,7 @@ impl<'a> Iterator for OrderBatchIterator<'a> {
     }
 }
 
-impl<'a> OrderBatchIterator<'a> {
+impl OrderBatchIterator<'_> {
     /// Convert order events to DEX orders with order ID tracking
     /// Returns (create_orders, cancel_order)
     fn convert_events_to_orders(

@@ -220,8 +220,6 @@ fn test_replay_bitstamp_orders_on_dex(
         )
         .should_succeed();
 
-    drop(first_oracle_price);
-
     println!("Provided liquidity");
 
     // Record dex balances
@@ -414,7 +412,7 @@ fn create_order(
     assert_eq!(order_created_events.len(), 1);
 
     let order_created_event = order_created_events.first().unwrap();
-    bitstamp_to_dex_order_id_mapping.insert(bitstamp_order_id, order_created_event.id.clone());
+    bitstamp_to_dex_order_id_mapping.insert(bitstamp_order_id, order_created_event.id);
 }
 
 fn cancel_order(
@@ -441,9 +439,7 @@ fn cancel_order(
             dex_contract,
             &dex::ExecuteMsg::BatchUpdateOrders {
                 creates: vec![],
-                cancels: Some(CancelOrderRequest::Some(BTreeSet::from([
-                    dex_order_id.clone()
-                ]))),
+                cancels: Some(CancelOrderRequest::Some(BTreeSet::from([*dex_order_id]))),
             },
             Coins::new(),
         )
