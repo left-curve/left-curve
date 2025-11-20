@@ -665,6 +665,7 @@ fn issue_194_cancel_all_orders_works_properly_with_passive_orders() {
                         min_order_size_base: Uint128::ZERO,
                     },
                 }],
+                ..Preset::preset_test()
             },
             oracle: OracleOption {
                 pyth_price_sources: btree_map! {

@@ -172,6 +172,7 @@ fn main() -> anyhow::Result<()> {
                         },
                     },
                 ],
+                ..Preset::preset_test()
             },
             ..Preset::preset_test()
         },

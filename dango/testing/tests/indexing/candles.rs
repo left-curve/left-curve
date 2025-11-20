@@ -390,6 +390,7 @@ async fn index_candles_changing_prices() -> anyhow::Result<()> {
                             min_order_size_base: Uint128::ZERO,
                         },
                     }],
+                    ..Preset::preset_test()
                 },
                 ..Preset::preset_test()
             },

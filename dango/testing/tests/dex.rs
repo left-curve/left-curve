@@ -6066,6 +6066,7 @@ fn refund_left_over_market_bid() {
                         min_order_size_base: Uint128::ZERO,
                     },
                 }],
+                ..Preset::preset_test()
             },
             ..Preset::preset_test()
         });
@@ -6259,6 +6260,7 @@ fn refund_left_over_market_ask() {
                         min_order_size_base: Uint128::ZERO,
                     },
                 }],
+                ..Preset::preset_test()
             },
             ..Preset::preset_test()
         });
