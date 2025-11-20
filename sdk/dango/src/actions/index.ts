@@ -79,6 +79,12 @@ export {
   type TransferParameters,
   type TransferReturnType,
   transfer,
+  type UpgradeParameters,
+  type UpgradeReturnType,
+  upgrade,
+  type ConfigureParameters,
+  type ConfigureReturnType,
+  configure,
 } from "./app/index.js";
 
 /* -------------------------------------------------------------------------- */

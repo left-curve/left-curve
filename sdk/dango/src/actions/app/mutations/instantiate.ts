@@ -1,4 +1,4 @@
-import { encodeBase64 } from "@left-curve/sdk/encoding";
+import { encodeBase64, encodeUtf8 } from "@left-curve/sdk/encoding";
 import type { Address, Funds, Hex, Json, Transport } from "@left-curve/sdk/types";
 import { computeAddress } from "../../../account/address.js";
 import { getCoinsTypedData } from "../../../utils/typedData.js";
@@ -15,7 +15,7 @@ export type InstantiateParameters = {
   sender: Address;
   codeHash: Hex;
   msg: Json;
-  salt: Uint8Array;
+  salt: Uint8Array | string;
   funds?: Funds;
   admin?: Address;
   gasLimit?: number;
@@ -28,7 +28,10 @@ export async function instantiate<transport extends Transport>(
   client: DangoClient<transport, Signer>,
   parameters: InstantiateParameters,
 ): InstantiateReturnType {
-  const { sender, msg, codeHash, salt, admin, gasLimit, funds = {} } = parameters;
+  const { sender, msg, codeHash, salt: _salt_, admin, gasLimit, funds = {} } = parameters;
+
+  const salt = typeof _salt_ === "string" ? encodeUtf8(_salt_) : _salt_;
+
   const address = computeAddress({ deployer: sender, codeHash, salt });
 
   const instantiateMsg = {
@@ -47,7 +50,7 @@ export async function instantiate<transport extends Transport>(
     type: [{ name: "instantiate", type: "Instantiate" }],
     extraTypes: {
       Instantiate: [
-        { name: "codeHash", type: "string" },
+        { name: "code_hash", type: "string" },
         { name: "salt", type: "string" },
         { name: "admin", type: "address" },
         { name: "funds", type: "Funds" },
