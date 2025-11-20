@@ -219,18 +219,6 @@ async fn main() -> anyhow::Result<()> {
         .with(otel_layer_opt)
         .init();
 
-    // Emit startup logs now that the subscriber is initialized.
-    if cfg.sentry.enabled {
-        tracing::info!("Sentry initialized");
-    } else {
-        tracing::info!("Sentry is disabled");
-    }
-    if cfg.trace.enabled {
-        tracing::info!(endpoint = %cfg.trace.endpoint, protocol = ?cfg.trace.protocol, "OpenTelemetry OTLP exporter initialized");
-    } else {
-        tracing::info!("OpenTelemetry OTLP exporter is disabled");
-    }
-
     match cli.command {
         Command::Db(cmd) => cmd.run(app_dir)?,
         Command::Indexer(cmd) => cmd.run(app_dir).await?,
