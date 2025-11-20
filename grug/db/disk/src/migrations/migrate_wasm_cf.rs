@@ -42,5 +42,8 @@ pub(crate) fn run(db: &DB) -> Result<(), DbError> {
 
     db.write(batch)?;
 
+    #[cfg(feature = "tracing")]
+    tracing::info!("Migration wasm cf done");
+
     Ok(())
 }
