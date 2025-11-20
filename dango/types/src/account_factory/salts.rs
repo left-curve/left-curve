@@ -25,7 +25,7 @@ pub struct NewUserSalt {
     pub key_hash: Hash256,
     /// An arbitrary number chosen by the user, to give more variety to the
     /// derived deposit address.
-    pub seed: u32,
+    pub seed: u16,
 }
 
 impl NewUserSalt {

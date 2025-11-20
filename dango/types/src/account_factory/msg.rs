@@ -56,7 +56,7 @@ pub enum ExecuteMsg {
         username: Username,
         key: Key,
         key_hash: Hash256,
-        seed: u32,
+        seed: u16,
         /// A signature over the `RegisterUserData`.
         signature: Signature,
     },

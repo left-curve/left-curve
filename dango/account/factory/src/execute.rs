@@ -45,7 +45,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> StdResult<Response> 
                 username,
                 key,
                 key_hash,
-                seed as u32,
+                seed as u16,
                 Coins::default(),
             )?;
 
@@ -141,7 +141,7 @@ fn register_user(
     username: Username,
     key: Key,
     key_hash: Hash256,
-    seed: u32,
+    seed: u16,
     signature: Signature,
 ) -> anyhow::Result<Response> {
     // Verify the signature is valid.
@@ -203,7 +203,7 @@ fn onboard_new_user(
     username: Username,
     key: Key,
     key_hash: Hash256,
-    seed: u32,
+    seed: u16,
     minimum_deposit: Coins,
 ) -> StdResult<(Message, UserRegistered, AccountRegistered)> {
     // A new user's 1st account is always a spot account.
