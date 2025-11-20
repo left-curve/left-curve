@@ -27,20 +27,39 @@ pub fn reservation_price(
     time_horizon: Duration,
 ) -> anyhow::Result<Price> {
     // Normalise the target inventory percentage to an amount of base asset.
-    let value_of_inventory_in_base = Price::new(quote_inventory.into_inner())
-        .checked_div(oracle_price)?
-        .checked_add(Price::new(base_inventory.into_inner()))?;
+    let value_of_inventory_in_base = quote_inventory.into_next()
+        .checked_into_dec::<24>()?
+        .checked_div(oracle_price.into_next())?
+        .checked_add(Udec256_24::new(base_inventory.into_inner()))?;
     let base_inventory_target = base_inventory_target_percentage
         .into_inner()
+        .into_next()
         .checked_mul(value_of_inventory_in_base)?;
+    let base_inventory_diff_from_target = base_inventory
+        .checked_into_dec::<24>()?
+        .checked_into_signed()?
+        .into_next()
+        .checked_sub(
+            base_inventory_target
+                .checked_into_signed()?
+        )?;
 
-    Ok(oracle_price.checked_sub(
-        base_inventory_target.checked_mul(
-            Price::new(time_horizon.into_seconds())
-                .checked_mul_dec(gamma)?
-                .checked_mul_dec(sigma_squared)?,
+    let time_horizon_seconds = Dec128_24::new(time_horizon.into_seconds() as i128);
+
+    let reservation_price = oracle_price.checked_into_signed()?.into_next().checked_sub(
+        base_inventory_diff_from_target.checked_mul(
+            time_horizon_seconds
+                .checked_mul(gamma.checked_into_signed()?)?
+                .checked_mul(sigma_squared.checked_into_signed()?)?.into_next(),
         )?,
-    )?)
+    )?;
+
+    let signed_oracle_price = oracle_price.checked_into_signed()?;
+    let lower_bound = signed_oracle_price.checked_mul(Dec128_24::from_str("0.95").unwrap())?.into_next();
+    let upper_bound = signed_oracle_price.checked_mul(Dec128_24::from_str("1.05").unwrap())?.into_next();
+    let capped_reservation_price = reservation_price.max(lower_bound).min(upper_bound).checked_into_unsigned()?;
+
+    Ok(capped_reservation_price.checked_into_prev()?)
 }
 
 pub fn half_spread(
