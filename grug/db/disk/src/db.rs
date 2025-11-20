@@ -54,7 +54,7 @@ pub const PRIORITY_DATA_LABEL: &str = "priority_data";
 #[cfg(feature = "metrics")]
 pub const ROCKSDB_LABEL: &str = "rocksdb";
 
-const WASM_PREFIX_LEN: LazyLock<usize> = LazyLock::new(|| {
+static WASM_PREFIX_LEN: LazyLock<usize> = LazyLock::new(|| {
     StorageProvider::new(Box::new(MockStorage::new()), &[
         CONTRACT_NAMESPACE,
         &Addr::mock(0),
@@ -957,7 +957,7 @@ fn create_wasm_iter<'a>(
     if let (Some(min), Some(max)) = (min, max) {
         if min.len() >= *WASM_PREFIX_LEN
             && max.len() >= *WASM_PREFIX_LEN
-            && &min[..*WASM_PREFIX_LEN] == &max[..*WASM_PREFIX_LEN]
+            && min[..*WASM_PREFIX_LEN] == max[..*WASM_PREFIX_LEN]
         {
             opts.set_prefix_same_as_start(true);
         }
