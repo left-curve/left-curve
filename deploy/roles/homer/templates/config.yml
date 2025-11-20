@@ -269,6 +269,16 @@ services:
         url: "http://ovh7:9090"
         target: "_blank"
 
+  - name: "Other services"
+    icon: "fas fa-network-wired"
+    items:
+      - name: "Minio"
+        logo: "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/minio.png"
+        subtitle: "S3"
+        tag: "storage"
+        url: "http://ovh3:9001"
+        target: "_blank"
+
   - name: "Reverse Proxy"
     icon: "fas fa-network-wired"
     items:
