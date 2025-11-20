@@ -4805,6 +4805,7 @@ dependencies = [
  "grug-types",
  "hex-literal",
  "ics23",
+ "itertools 0.14.0",
  "metrics",
  "num_cpus",
  "parking_lot",

@@ -1,15 +1,20 @@
+use std::sync::LazyLock;
+
+use crate::migrations;
 #[cfg(feature = "tracing")]
 use uuid::Uuid;
+
 #[cfg(feature = "metrics")]
 use {crate::statistics, grug_types::MetricsIterExt};
 use {
     crate::{DbError, DbResult},
-    grug_app::{Commitment, Db},
-    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
+    grug_app::{CONTRACT_NAMESPACE, Commitment, Db, StorageProvider},
+    grug_types::{Addr, Batch, Buffer, Hash256, HashExt, MockStorage, Op, Order, Record, Storage},
+    itertools::Itertools,
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
     rocksdb::{
         BlockBasedOptions, Cache, ColumnFamily, ColumnFamilyDescriptor, CompactionPri, DB,
-        DBCompactionStyle, IteratorMode, Options, ReadOptions, WriteBatch,
+        DBCompactionStyle, IteratorMode, Options, ReadOptions, SliceTransform, WriteBatch,
     },
     std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
 };
@@ -33,6 +38,10 @@ pub const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 /// When performing normal read/write/remove/scan interactions, we use this CF.
 pub const CF_NAME_STATE_STORAGE: &str = "state_storage";
 
+pub const CF_NAME_WASM_STORAGE: &str = "wasm_storage";
+
+pub const CF_NAME_MIGRATIONS: &str = "migrations";
+
 /// Storage key for the latest version.
 pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 
@@ -44,6 +53,15 @@ pub const PRIORITY_DATA_LABEL: &str = "priority_data";
 
 #[cfg(feature = "metrics")]
 pub const ROCKSDB_LABEL: &str = "rocksdb";
+
+const WASM_PREFIX_LEN: LazyLock<usize> = LazyLock::new(|| {
+    StorageProvider::new(Box::new(MockStorage::new()), &[
+        CONTRACT_NAMESPACE,
+        &Addr::mock(0),
+    ])
+    .namespace()
+    .len()
+});
 
 /// The base storage primitive.
 ///
@@ -127,43 +145,46 @@ impl<T> DiskDb<T> {
     {
         let opts = new_db_options();
         let cf_opts = new_state_cf_options();
+        let wasm_cf_opts = new_wasm_cf_options(Some(cf_opts.clone()));
         let db = DB::open_cf_descriptors(
             &opts,
             data_dir,
             [
                 (CF_NAME_DEFAULT, Options::default()),
+                (CF_NAME_MIGRATIONS, Options::default()),
                 #[cfg(feature = "ibc")]
                 (CF_NAME_PREIMAGES, Options::default()),
                 (CF_NAME_STATE_STORAGE, cf_opts.clone()),
                 (CF_NAME_STATE_COMMITMENT, cf_opts),
+                (CF_NAME_WASM_STORAGE, wasm_cf_opts),
             ]
             .into_iter()
             .map(|(name, cf_opt)| ColumnFamilyDescriptor::new(name.to_string(), cf_opt))
             .collect::<Vec<_>>(),
         )?;
 
+        migrations::run_migrations(&db)?;
+
         // If `priority_range` is specified, load the data in that range into memory.
         let priority_data = priority_range.map(|(min, max)| {
             #[cfg(feature = "tracing")]
             let mut size = 0;
 
-            let cf = cf_state_storage(&db);
-            let opts = new_read_options(Some(min.as_ref()), Some(max.as_ref()));
-            let records = db
-                .iterator_cf_opt(&cf, opts, IteratorMode::Start)
-                .map(|item| {
-                    let (k, v) = item.unwrap_or_else(|err| {
-                        panic!("failed to load record for priority data: {err}");
-                    });
+            let records = create_rocksdb_storage_iter(
+                &db,
+                Some(min.as_ref()),
+                Some(max.as_ref()),
+                Order::Ascending,
+            )
+            .map(|(k, v)| {
+                #[cfg(feature = "tracing")]
+                {
+                    size += k.len() + v.len();
+                }
 
-                    #[cfg(feature = "tracing")]
-                    {
-                        size += k.len() + v.len();
-                    }
-
-                    (k.to_vec(), v.to_vec())
-                })
-                .collect::<BTreeMap<_, _>>();
+                (k, v)
+            })
+            .collect::<BTreeMap<_, _>>();
 
             #[cfg(feature = "tracing")]
             {
@@ -425,8 +446,15 @@ where
         }
 
         // Writes in state storage
-        let cf = cf_state_storage(&data.db);
+        let cf_state = cf_state_storage(&data.db);
+        let cf_wasm = cf_wasm_storage(&data.db);
         for (key, op) in pending.state_storage {
+            let cf = if is_wasm_key(&key) {
+                cf_wasm
+            } else {
+                cf_state
+            };
+
             if let Op::Insert(value) = op {
                 batch.put_cf(&cf, key, value);
             } else {
@@ -771,11 +799,17 @@ impl Storage for StateStorage {
             }
         }
 
+        let cf = if is_wasm_key(key) {
+            cf_wasm_storage(&self.guard.db)
+        } else {
+            cf_state_storage(&self.guard.db)
+        };
+
         let opts = new_read_options(None, None);
         let value = self
             .guard
             .db
-            .get_cf_opt(&cf_state_storage(&self.guard.db), key, &opts)
+            .get_cf_opt(&cf, key, &opts)
             .unwrap_or_else(|err| {
                 panic!("failed to read from state storage: {err}");
             });
@@ -836,18 +870,7 @@ impl Storage for StateStorage {
             }
         }
 
-        let opts = new_read_options(min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self
-            .guard
-            .db
-            .iterator_cf_opt(&cf_state_storage(&self.guard.db), opts, mode)
-            .map(|item| {
-                let (k, v) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in state storage: {err}");
-                });
-                (k.to_vec(), v.to_vec())
-            });
+        let iter = create_rocksdb_storage_iter(&self.guard.db, min, max, order);
 
         #[cfg(feature = "metrics")]
         let iter = iter.with_metrics(DISK_DB_LABEL, [
@@ -905,6 +928,96 @@ impl Storage for StateStorage {
 
 // ---------------------------------- helpers ----------------------------------
 
+fn create_rocksdb_storage_iter<'a>(
+    db: &'a DB,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+    order: Order,
+) -> Box<dyn Iterator<Item = Record> + 'a> {
+    match (min, max) {
+        (Some(min), Some(max)) => match (is_wasm_key(min), is_wasm_key(max)) {
+            (true, true) => create_wasm_iter(db, Some(min), Some(max), order),
+            (false, false) => create_state_iter(db, Some(min), Some(max), order),
+            _ => create_merged_iter(db, Some(min), Some(max), order),
+        },
+
+        _ => create_merged_iter(db, min, max, order),
+    }
+}
+
+fn create_wasm_iter<'a>(
+    db: &'a DB,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+    order: Order,
+) -> Box<dyn Iterator<Item = Record> + 'a> {
+    let mut opts = new_read_options(min, max);
+
+    // Enable prefix mode only if min & max share the exact same wasm+addr prefix
+    if let (Some(min), Some(max)) = (min, max) {
+        if min.len() >= *WASM_PREFIX_LEN
+            && max.len() >= *WASM_PREFIX_LEN
+            && &min[..*WASM_PREFIX_LEN] == &max[..*WASM_PREFIX_LEN]
+        {
+            opts.set_prefix_same_as_start(true);
+        }
+    }
+
+    let mode = into_iterator_mode(order);
+
+    let iter = db
+        .iterator_cf_opt(&cf_wasm_storage(db), opts, mode)
+        .map(|item| {
+            let (k, v) = item.unwrap_or_else(|err| {
+                panic!("failed to iterate in state storage: {err}");
+            });
+            (k.to_vec(), v.to_vec())
+        });
+
+    Box::new(iter)
+}
+
+pub(crate) fn create_state_iter<'a>(
+    db: &'a DB,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+    order: Order,
+) -> Box<dyn Iterator<Item = Record> + 'a> {
+    let opts = new_read_options(min, max);
+    let mode = into_iterator_mode(order);
+
+    let iter = db
+        .iterator_cf_opt(&cf_state_storage(db), opts, mode)
+        .map(|item| {
+            let (k, v) = item.unwrap_or_else(|err| {
+                panic!("failed to iterate in state storage: {err}");
+            });
+            (k.to_vec(), v.to_vec())
+        });
+
+    Box::new(iter)
+}
+
+fn create_merged_iter<'a>(
+    db: &'a DB,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+    order: Order,
+) -> Box<dyn Iterator<Item = Record> + 'a> {
+    let wasm_iter = create_wasm_iter(db, min, max, order);
+    let state_iter = create_state_iter(db, min, max, order);
+
+    if let Order::Ascending = order {
+        Box::new(wasm_iter.merge_by(state_iter, |a, b| a.0 < b.0))
+    } else {
+        Box::new(wasm_iter.merge_by(state_iter, |a, b| a.0 > b.0))
+    }
+}
+
+fn is_wasm_key(key: &[u8]) -> bool {
+    key.starts_with(b"wasm") && key.len() >= 4 + 20
+}
+
 #[inline]
 fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
     match order {
@@ -939,63 +1052,43 @@ pub fn new_db_options() -> Options {
     opts
 }
 
-/// Returns tuned ColumnFamilyOptions for a state CF.
-/// These options control memtable size, compaction behavior,
-/// block cache, bloom filters, and table structure.
+/// Returns tuned default ColumnFamilyOptions for a state CF.
 pub fn new_state_cf_options() -> Options {
     let mut opts = Options::default();
 
-    // 1) Memtable / write buffer
-    //
-    // Smaller memtables improve iterator creation latency.
-    // Your metrics showed iterator creation time grows as memtable grows.
-    // Setting this to 16MB keeps memtables small and flushes frequent.
-    opts.set_write_buffer_size(16 * 1024 * 1024);
+    // ---- Memtable ----
+    opts.set_write_buffer_size(16 * 1024 * 1024); // Default is 64MB
+    opts.set_max_write_buffer_number(2); // Default is 2
+    opts.set_min_write_buffer_number_to_merge(1); // Default is 1
 
-    // Allow only 1 active + 1 immutable memtable.
-    // This avoids having several skiplists in memory that slow down iterator creation.
-    opts.set_max_write_buffer_number(2);
+    // ---- L0 ----
+    opts.set_level_zero_file_num_compaction_trigger(4); // Default is 4
+    opts.set_level_zero_slowdown_writes_trigger(8); // Default is 20
+    opts.set_level_zero_stop_writes_trigger(16); // Default is 24
 
-    // Flush memtable as soon as the active one is full, instead of waiting
-    // to merge multiple memtables.
-    opts.set_min_write_buffer_number_to_merge(1);
+    opts.set_max_open_files(-1); // Default is -1
 
-    // 2) L0 behavior (reduce L0 overload)
-    //
-    // Keep the number of L0 files under control to avoid expensive scans/seeks.
-    opts.set_level_zero_file_num_compaction_trigger(4);
-    opts.set_level_zero_slowdown_writes_trigger(8);
-    opts.set_level_zero_stop_writes_trigger(16);
+    // ---- Compaction ----
+    opts.set_compaction_style(DBCompactionStyle::Level); // Default is DBCompactionStyle::Level
+    opts.set_compaction_pri(CompactionPri::MinOverlappingRatio); // Default is CompactionPri::ByCompensatedSize
 
-    // 3) Compaction
-    //
-    opts.set_compaction_style(DBCompactionStyle::Level);
-
-    // Reduce SST overlap between levels: improves iterator performance.
-    opts.set_compaction_pri(CompactionPri::MinOverlappingRatio);
-
-    // 4) Block-based table options: cache + bloom filters
-    //
+    // ---- Block-based table ----
     let mut block_opts = BlockBasedOptions::default();
-
-    // LRU block cache for SST data + metadata.
-    // 256MB is a solid default; increase if the server has plenty of RAM.
-    let cache = Cache::new_lru_cache(256 * 1024 * 1024);
-    block_opts.set_block_cache(&cache);
-
-    // Whole-key Bloom filter (since no prefix extractor is used).
+    block_opts.set_block_cache(&Cache::new_lru_cache(256 * 1024 * 1024)); // Default is 8MB
     block_opts.set_bloom_filter(10.0, true);
-
-    // Keep index/filter blocks in the block cache for faster iterator creation.
     block_opts.set_cache_index_and_filter_blocks(true);
+    block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true); // Default is false
 
-    // Pin L0 index/filter blocks in cache — these files change often and
-    // their metadata is extremely hot for your workload.
-    block_opts.set_pin_l0_filter_and_index_blocks_in_cache(true);
-
-    // Attach the block-based table configuration.
     opts.set_block_based_table_factory(&block_opts);
+    opts
+}
 
+pub fn new_wasm_cf_options(base_opts: Option<Options>) -> Options {
+    let mut opts = base_opts.unwrap_or_default();
+
+    // Prefix extractor per b"wasm" (4 bytes) + address (20 bytes)
+
+    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(*WASM_PREFIX_LEN));
     opts
 }
 
@@ -1034,6 +1127,12 @@ pub(crate) fn cf_preimages(db: &DB) -> &ColumnFamily {
 pub fn cf_state_storage(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_STATE_STORAGE).unwrap_or_else(|| {
         panic!("failed to find state storage column family");
+    })
+}
+
+pub fn cf_wasm_storage(db: &DB) -> &ColumnFamily {
+    db.cf_handle(CF_NAME_WASM_STORAGE).unwrap_or_else(|| {
+        panic!("failed to find wasm storage column family");
     })
 }
 
@@ -1484,7 +1583,13 @@ mod tests_jmt {
 
 #[cfg(test)]
 mod tests_simple {
-    use {super::*, grug_app::SimpleCommitment, grug_types::hash, temp_rocksdb::TempDataDir};
+    use {
+        super::*,
+        grug_app::SimpleCommitment,
+        grug_storage::Map,
+        grug_types::{BorshSerExt, Shared, btree_map, hash},
+        temp_rocksdb::TempDataDir,
+    };
 
     // sha256(6 | donald | 1 | 5 | trump | 4 | jake | 1 | 8 | shepherd | 3 | joe | 1 | 5 | biden | 5 | larry | 1 | 8 | engineer)
     // = sha256(0006646f6e616c640100057472756d7000046a616b65010008736865706865726400036a6f65010005626964656e00056c61727279010008656e67696e656572)
@@ -1699,6 +1804,61 @@ mod tests_simple {
         // Open a brand new DB with priority data. Should succeed.
         let _db =
             DiskDb::<SimpleCommitment>::open_with_priority(&path, Some((b"000", b"004"))).unwrap();
+    }
+
+    #[test]
+    fn ensure_wasm_cf_prefix() {
+        const MAP: Map<&str, u64> = Map::new("map");
+
+        let buffer = Shared::new(Buffer::new_unnamed(MockStorage::new(), None));
+
+        let mut provider = StorageProvider::new(Box::new(buffer.clone()), &[
+            CONTRACT_NAMESPACE,
+            &Addr::mock(0),
+        ]);
+
+        MAP.save(&mut provider, "foo", &1).unwrap();
+
+        drop(provider);
+
+        let (_, b) = buffer.disassemble().disassemble();
+
+        let mut k = Vec::with_capacity(4 + 20 + 2 + 3 + 3);
+
+        k.extend_from_slice(b"wasm");
+        k.extend_from_slice(&Addr::mock(0));
+        k.extend_from_slice(&("map".len() as u16).to_be_bytes());
+        k.extend_from_slice(b"map");
+        k.extend_from_slice(b"foo");
+
+        assert_eq!(b, btree_map! {
+         k => Op::Insert(1_u64.to_borsh_vec().unwrap()),
+        })
+    }
+
+    #[test]
+    fn merge_iterators() {
+        // Ascending
+        let l = vec![1, 2, 4];
+        let r = vec![3, 5, 6];
+
+        assert_eq!(
+            l.into_iter()
+                .merge_by(r.into_iter(), |a, b| a < b)
+                .collect::<Vec<_>>(),
+            [1, 2, 3, 4, 5, 6]
+        );
+
+        // Descending
+        let l = vec![4, 2, 1];
+        let r = vec![6, 5, 3];
+
+        assert_eq!(
+            l.into_iter()
+                .merge_by(r.into_iter(), |a, b| a > b)
+                .collect::<Vec<_>>(),
+            [6, 5, 4, 3, 2, 1]
+        );
     }
 }
 
