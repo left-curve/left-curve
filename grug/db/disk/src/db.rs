@@ -49,10 +49,16 @@ pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
 #[cfg(feature = "metrics")]
+pub const ITERATOR_DB_LABEL: &str = "grug.db.disk.iterator.count";
+
+#[cfg(feature = "metrics")]
 pub const PRIORITY_DATA_LABEL: &str = "priority_data";
 
 #[cfg(feature = "metrics")]
-pub const ROCKSDB_LABEL: &str = "rocksdb";
+pub const WASM_STORAGE_LABEL: &str = "wasm";
+
+#[cfg(feature = "metrics")]
+pub const STATE_STORAGE_LABEL: &str = "state";
 
 static WASM_PREFIX_LEN: LazyLock<usize> = LazyLock::new(|| {
     StorageProvider::new(Box::new(MockStorage::new()), &[
@@ -175,6 +181,8 @@ impl<T> DiskDb<T> {
                 Some(min.as_ref()),
                 Some(max.as_ref()),
                 Order::Ascending,
+                #[cfg(feature = "metrics")]
+                "priority_data_init",
             );
 
             #[cfg(feature = "tracing")]
@@ -826,7 +834,11 @@ impl Storage for StateStorage {
                 DISK_DB_LABEL,
                 "operation" => "read",
                 "comment" => self.comment,
-                "source" => ROCKSDB_LABEL
+                "source" => if is_wasm_key(key) {
+                    WASM_STORAGE_LABEL
+                } else {
+                    STATE_STORAGE_LABEL
+                }
             )
             .record(duration.elapsed().as_secs_f64());
         }
@@ -840,9 +852,6 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        #[cfg(feature = "metrics")]
-        let duration = std::time::Instant::now();
-
         // If priority data exists, and the iterator range completely falls
         // within the priority range, then create a priority iterator.
         // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
@@ -850,6 +859,9 @@ impl Storage for StateStorage {
         // TODO: the nested `if` statements can be simplified with rust edition 2024
         if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max) {
             if data.min.as_slice() <= min && max <= data.max.as_slice() {
+                #[cfg(feature = "metrics")]
+                let duration = std::time::Instant::now();
+
                 let iter = data.records.scan(Some(min), Some(max), order);
 
                 #[cfg(feature = "metrics")]
@@ -876,25 +888,14 @@ impl Storage for StateStorage {
             }
         }
 
-        let iter = create_rocksdb_storage_iter(&self.guard.db, min, max, order);
-
-        #[cfg(feature = "metrics")]
-        let iter = iter.with_metrics(DISK_DB_LABEL, [
-            ("operation", "next"),
-            ("comment", self.comment),
-            ("source", ROCKSDB_LABEL),
-        ]);
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::histogram!(
-                DISK_DB_LABEL,
-                "operation" => "scan",
-                "comment" => self.comment,
-                "source" => ROCKSDB_LABEL
-            )
-            .record(duration.elapsed().as_secs_f64());
-        }
+        let iter = create_rocksdb_storage_iter(
+            &self.guard.db,
+            min,
+            max,
+            order,
+            #[cfg(feature = "metrics")]
+            self.comment,
+        );
 
         Box::new(iter)
     }
@@ -939,15 +940,44 @@ fn create_rocksdb_storage_iter<'a>(
     min: Option<&[u8]>,
     max: Option<&[u8]>,
     order: Order,
+    #[cfg(feature = "metrics")] comment: &'static str,
 ) -> Box<dyn Iterator<Item = Record> + 'a> {
     match (min, max) {
         (Some(min), Some(max)) => match (is_wasm_key(min), is_wasm_key(max)) {
-            (true, true) => create_wasm_iter(db, Some(min), Some(max), order),
-            (false, false) => create_state_iter(db, Some(min), Some(max), order),
-            _ => create_merged_iter(db, Some(min), Some(max), order),
+            (true, true) => create_wasm_iter(
+                db,
+                Some(min),
+                Some(max),
+                order,
+                #[cfg(feature = "metrics")]
+                comment,
+            ),
+            (false, false) => create_state_iter(
+                db,
+                Some(min),
+                Some(max),
+                order,
+                #[cfg(feature = "metrics")]
+                comment,
+            ),
+            _ => create_merged_iter(
+                db,
+                Some(min),
+                Some(max),
+                order,
+                #[cfg(feature = "metrics")]
+                comment,
+            ),
         },
 
-        _ => create_merged_iter(db, min, max, order),
+        _ => create_merged_iter(
+            db,
+            min,
+            max,
+            order,
+            #[cfg(feature = "metrics")]
+            comment,
+        ),
     }
 }
 
@@ -956,7 +986,11 @@ fn create_wasm_iter<'a>(
     min: Option<&[u8]>,
     max: Option<&[u8]>,
     order: Order,
+    #[cfg(feature = "metrics")] comment: &'static str,
 ) -> Box<dyn Iterator<Item = Record> + 'a> {
+    #[cfg(feature = "metrics")]
+    let duration = std::time::Instant::now();
+
     let mut opts = new_read_options(min, max);
 
     // Enable prefix mode only if min & max share the exact same wasm+addr prefix
@@ -980,6 +1014,23 @@ fn create_wasm_iter<'a>(
             (k.to_vec(), v.to_vec())
         });
 
+    #[cfg(feature = "metrics")]
+    let iter = {
+        metrics::histogram!(
+            DISK_DB_LABEL,
+            "operation" => "scan",
+            "comment" => comment,
+            "source" => WASM_STORAGE_LABEL
+        )
+        .record(duration.elapsed().as_secs_f64());
+
+        iter.with_metrics(DISK_DB_LABEL, [
+            ("operation", "next"),
+            ("comment", comment),
+            ("source", WASM_STORAGE_LABEL),
+        ])
+    };
+
     Box::new(iter)
 }
 
@@ -988,7 +1039,11 @@ pub(crate) fn create_state_iter<'a>(
     min: Option<&[u8]>,
     max: Option<&[u8]>,
     order: Order,
+    #[cfg(feature = "metrics")] comment: &'static str,
 ) -> Box<dyn Iterator<Item = Record> + 'a> {
+    #[cfg(feature = "metrics")]
+    let duration = std::time::Instant::now();
+
     let opts = new_read_options(min, max);
     let mode = into_iterator_mode(order);
 
@@ -1001,6 +1056,23 @@ pub(crate) fn create_state_iter<'a>(
             (k.to_vec(), v.to_vec())
         });
 
+    #[cfg(feature = "metrics")]
+    let iter = {
+        metrics::histogram!(
+            DISK_DB_LABEL,
+            "operation" => "scan",
+            "comment" => comment,
+            "source" => STATE_STORAGE_LABEL
+        )
+        .record(duration.elapsed().as_secs_f64());
+
+        iter.with_metrics(DISK_DB_LABEL, [
+            ("operation", "next"),
+            ("comment", comment),
+            ("source", WASM_STORAGE_LABEL),
+        ])
+    };
+
     Box::new(iter)
 }
 
@@ -1009,9 +1081,24 @@ fn create_merged_iter<'a>(
     min: Option<&[u8]>,
     max: Option<&[u8]>,
     order: Order,
+    #[cfg(feature = "metrics")] comment: &'static str,
 ) -> Box<dyn Iterator<Item = Record> + 'a> {
-    let wasm_iter = create_wasm_iter(db, min, max, order);
-    let state_iter = create_state_iter(db, min, max, order);
+    let wasm_iter = create_wasm_iter(
+        db,
+        min,
+        max,
+        order,
+        #[cfg(feature = "metrics")]
+        comment,
+    );
+    let state_iter = create_state_iter(
+        db,
+        min,
+        max,
+        order,
+        #[cfg(feature = "metrics")]
+        comment,
+    );
 
     if let Order::Ascending = order {
         Box::new(wasm_iter.merge_by(state_iter, |a, b| a.0 < b.0))

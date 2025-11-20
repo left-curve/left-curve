@@ -33,6 +33,8 @@ pub(crate) fn run(db: &DB) -> Result<(), DbError> {
         Some(b"wasm"),
         Some(&increment_last_byte(b"wasm".to_vec())),
         Order::Ascending,
+        #[cfg(feature = "metrics")]
+        "migrate_wasm_cf",
     ) {
         batch.put_cf(&wasm_cf, k.clone(), v);
         batch.delete_cf(&state_cf, k);
