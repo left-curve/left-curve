@@ -35,7 +35,6 @@ RUN set -eux; \
     rm -rf /tmp/sccache*
 
 # sccache environment variables are provided at runtime by CI.
-RUN mkdir -p /var/cache/sccache
 
 RUN rustup target add aarch64-unknown-linux-gnu
 

@@ -449,10 +449,10 @@ jobs:
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
         run: |
           set -euo pipefail
-          mkdir -p .sccache
           opts=""
           opts="$opts -e RUSTC_WRAPPER=/usr/local/bin/sccache"
-          opts="$opts -e SCCACHE_DIR=/var/cache/sccache"
+          # Do not set SCCACHE_DIR here; let CI secrets or defaults decide.
+          # opts="$opts -e SCCACHE_DIR=/some/path"
           opts="$opts -e SCCACHE_CACHE_SIZE=10G"
           [ -n "${{ secrets.SCCACHE_BUCKET }}" ] && opts="$opts -e SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
           [ -n "${{ secrets.SCCACHE_ENDPOINT }}" ] && opts="$opts -e SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
@@ -462,7 +462,6 @@ jobs:
           opts="$opts -e SCCACHE_S3_FORCE_PATH_STYLE=1"
           [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && opts="$opts -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
           [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && opts="$opts -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-          opts="$opts -v $PWD/.sccache:/var/cache/sccache"
           echo "CROSS_CONTAINER_OPTS=$opts" >> $GITHUB_ENV
 
       - name: Set build config
@@ -550,9 +549,7 @@ jobs:
       - uses: actions/cache@v4
         if: env.BACKEND_CHANGED == 'true'
         with:
-          path: |
-            .cross-cache
-            .sccache
+          path: .cross-cache
           key: cross-cache-${{ runner.os }}-${{ steps.config.outputs.target }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: pull cross docker builder image
@@ -574,11 +571,8 @@ jobs:
       - name: sccache stats (cross, optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
         run: |
-          # Best-effort: show stats from a fresh container mounting the cache dir.
-          # Note: hit/miss counters are per-server lifetime, so this may not reflect
-          # the just-finished build if the server died with the container.
+          # Best-effort: show stats in a fresh container; counters may be zero.
           docker run --rm \
-            -v $PWD/.sccache:/var/cache/sccache \
             ${{ steps.config.outputs.image }} \
             bash -lc 'command -v sccache && sccache --show-stats || true'
 
