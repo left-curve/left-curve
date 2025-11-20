@@ -1,6 +1,7 @@
 use {
     super::{math::ln_dec, *},
-    grug::{Dec128_24, Dec256_24, Duration, Fraction, NextNumber, PrevNumber, Udec256_24}, std::str::FromStr,
+    grug::{Dec128_24, Duration, Fraction, NextNumber, PrevNumber, Udec256_24},
+    std::str::FromStr,
 };
 
 /// Computes the reservation price for the Avellaneda-Stoikov model.
@@ -27,7 +28,8 @@ pub fn reservation_price(
     time_horizon: Duration,
 ) -> anyhow::Result<Price> {
     // Normalise the target inventory percentage to an amount of base asset.
-    let value_of_inventory_in_base = quote_inventory.into_next()
+    let value_of_inventory_in_base = quote_inventory
+        .into_next()
         .checked_into_dec::<24>()?
         .checked_div(oracle_price.into_next())?
         .checked_add(Udec256_24::new(base_inventory.into_inner()))?;
@@ -39,25 +41,33 @@ pub fn reservation_price(
         .checked_into_dec::<24>()?
         .checked_into_signed()?
         .into_next()
-        .checked_sub(
-            base_inventory_target
-                .checked_into_signed()?
-        )?;
+        .checked_sub(base_inventory_target.checked_into_signed()?)?;
 
     let time_horizon_seconds = Dec128_24::new(time_horizon.into_seconds() as i128);
 
-    let reservation_price = oracle_price.checked_into_signed()?.into_next().checked_sub(
-        base_inventory_diff_from_target.checked_mul(
-            time_horizon_seconds
-                .checked_mul(gamma.checked_into_signed()?)?
-                .checked_mul(sigma_squared.checked_into_signed()?)?.into_next(),
-        )?,
-    )?;
+    let reservation_price = oracle_price
+        .checked_into_signed()?
+        .into_next()
+        .checked_sub(
+            base_inventory_diff_from_target.checked_mul(
+                time_horizon_seconds
+                    .checked_mul(gamma.checked_into_signed()?)?
+                    .checked_mul(sigma_squared.checked_into_signed()?)?
+                    .into_next(),
+            )?,
+        )?;
 
     let signed_oracle_price = oracle_price.checked_into_signed()?;
-    let lower_bound = signed_oracle_price.checked_mul(Dec128_24::from_str("0.95").unwrap())?.into_next();
-    let upper_bound = signed_oracle_price.checked_mul(Dec128_24::from_str("1.05").unwrap())?.into_next();
-    let capped_reservation_price = reservation_price.max(lower_bound).min(upper_bound).checked_into_unsigned()?;
+    let lower_bound = signed_oracle_price
+        .checked_mul(Dec128_24::from_str("0.95").unwrap())?
+        .into_next();
+    let upper_bound = signed_oracle_price
+        .checked_mul(Dec128_24::from_str("1.05").unwrap())?
+        .into_next();
+    let capped_reservation_price = reservation_price
+        .max(lower_bound)
+        .min(upper_bound)
+        .checked_into_unsigned()?;
 
     Ok(capped_reservation_price.checked_into_prev()?)
 }
@@ -95,7 +105,7 @@ mod tests {
     use test_case::test_case;
 
     #[test_case(
-        Price::ONE, 
+        Price::ONE,
         Price::ZERO,
         Price::ONE,
         Duration::from_seconds(300)
@@ -103,14 +113,14 @@ mod tests {
         ; "gamma = 0 means no spread"
     )]
     #[test_case(
-        Price::ONE, 
+        Price::ONE,
         Price::ONE,
         Price::from_str("0.00000000076787914154").unwrap(),
         Duration::from_seconds(300)
         => Price::from_str("0.693377544302407308652726").unwrap()
     )]
     #[test_case(
-        Price::ONE, 
+        Price::ONE,
         Price::ONE,
         Price::from_str("0.000000076787914154").unwrap(),
         Duration::from_seconds(300)
@@ -128,7 +138,7 @@ mod tests {
     }
 
     #[test_case(
-        Price::ONE, 
+        Price::ONE,
         Uint128::new(1_000_000_000u128),
         Uint128::new(1_000_000_000u128),
         Bounded::new(Udec128::from_str("0.5").unwrap()).unwrap(),
