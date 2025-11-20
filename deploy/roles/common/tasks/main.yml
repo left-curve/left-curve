@@ -67,6 +67,11 @@
       - btop
       - htop
       - jq
+      - libyaml-dev
+      - build-essential
+      - libssl-dev
+      - clang
+      - pkg-config
     state: present
     update_cache: yes
 
