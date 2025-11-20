@@ -41,29 +41,29 @@ impl NewUserSalt {
     ///   - `0` for Secp256r1;
     ///   - `1` for Secp256k1;
     ///   - `2` for Ethereum address.
-    pub fn to_bytes(&self) -> [u8; 70] {
+    pub fn to_bytes(&self) -> [u8; 68] {
         // Maximum possible length for the bytes:
-        // - seed: 4
+        // - seed: 2
         // - key_hash: 32
         // - key_tag: 1
         // - key: 33
-        // Total: 70 bytes.
-        let mut bytes = [0; 70];
-        bytes[0..4].copy_from_slice(&self.seed.to_be_bytes());
-        bytes[4..36].copy_from_slice(&self.key_hash);
+        // Total: 68 bytes.
+        let mut bytes = [0; 68];
+        bytes[0..2].copy_from_slice(&self.seed.to_be_bytes());
+        bytes[2..34].copy_from_slice(&self.key_hash);
         match self.key {
             Key::Secp256r1(pk) => {
-                bytes[36] = 0;
-                bytes[37..70].copy_from_slice(&pk);
+                bytes[34] = 0;
+                bytes[35..68].copy_from_slice(&pk);
             },
             Key::Secp256k1(pk) => {
-                bytes[36] = 1;
-                bytes[37..70].copy_from_slice(&pk);
+                bytes[34] = 1;
+                bytes[35..68].copy_from_slice(&pk);
             },
             Key::Ethereum(addr) => {
-                bytes[36] = 2;
+                bytes[34] = 2;
                 // Front-pad the address with zeros.
-                bytes[50..70].copy_from_slice(&addr);
+                bytes[48..68].copy_from_slice(&addr);
             },
         }
         bytes
