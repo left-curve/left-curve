@@ -145,6 +145,10 @@ pub fn log2_i128<const S: u32>(x: i128) -> anyhow::Result<Dec<i128, S>> {
 /// * `Ok(Dec<i128, S>)` - The base-2 logarithm of x
 /// * `Err` - If x is not positive or numerical error occurs
 fn log2_dec<const S: u32>(x: Dec<i128, S>) -> anyhow::Result<Dec<i128, S>> {
+    if x == Dec::<i128, S>::ONE {
+        return Ok(Dec::<i128, S>::ZERO);
+    }
+
     let n = Dec::<i128, S>::new(Dec::<i128, S>::DECIMAL_PLACES as i128);
 
     let log2_of_m = log2_i128(x.into_inner())?;
