@@ -290,7 +290,7 @@ where
         bank,
         taxman,
         cronjobs: btree_map! {
-            dex => Duration::ZERO, // Important: DEX cronjob is to be invoked at end of every block.
+            dex => opt.dex.cron_frequency,
             gateway => opt.gateway.rate_limit_refresh_period,
         },
         permissions: Permissions {
