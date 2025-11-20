@@ -175,16 +175,22 @@ impl<T> DiskDb<T> {
                 Some(min.as_ref()),
                 Some(max.as_ref()),
                 Order::Ascending,
-            )
-            .map(|(k, v)| {
-                #[cfg(feature = "tracing")]
-                {
-                    size += k.len() + v.len();
-                }
+            );
 
-                (k, v)
-            })
-            .collect::<BTreeMap<_, _>>();
+            #[cfg(feature = "tracing")]
+            let records = records
+                .map(|(k, v)| {
+                    #[cfg(feature = "tracing")]
+                    {
+                        size += k.len() + v.len();
+                    }
+
+                    (k, v)
+                })
+                .collect::<BTreeMap<_, _>>();
+
+            #[cfg(not(feature = "tracing"))]
+            let records = records.collect::<BTreeMap<_, _>>();
 
             #[cfg(feature = "tracing")]
             {
