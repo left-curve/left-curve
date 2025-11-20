@@ -449,11 +449,16 @@ jobs:
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
         run: |
           set -euo pipefail
+          mkdir -p "$HOME/.cache/sccache" "$PWD/.cross-cache/cargo"
           opts=""
           opts="$opts -e RUSTC_WRAPPER=/usr/local/bin/sccache"
-          # Do not set SCCACHE_DIR here; let CI secrets or defaults decide.
-          # opts="$opts -e SCCACHE_DIR=/some/path"
+          # Reuse the same host cache directory inside the container
+          opts="$opts -e SCCACHE_DIR=/tmp/sccache"
           opts="$opts -e SCCACHE_CACHE_SIZE=10G"
+          # Run container processes as the host user to avoid permission issues
+          opts="$opts --user $(id -u):$(id -g)"
+          # Provide a writable cargo home inside the container and persist it
+          opts="$opts -e CARGO_HOME=/tmp/cargo -v $PWD/.cross-cache/cargo:/tmp/cargo"
           [ -n "${{ secrets.SCCACHE_BUCKET }}" ] && opts="$opts -e SCCACHE_BUCKET=${{ secrets.SCCACHE_BUCKET }}"
           [ -n "${{ secrets.SCCACHE_ENDPOINT }}" ] && opts="$opts -e SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}"
           [ -n "${{ secrets.SCCACHE_REGION }}" ] && opts="$opts -e SCCACHE_REGION=${{ secrets.SCCACHE_REGION }}"
@@ -462,6 +467,8 @@ jobs:
           opts="$opts -e SCCACHE_S3_FORCE_PATH_STYLE=1"
           [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && opts="$opts -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}"
           [ -n "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && opts="$opts -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          # Mount the host cache directory into the container
+          opts="$opts -v $HOME/.cache/sccache:/tmp/sccache"
           echo "CROSS_CONTAINER_OPTS=$opts" >> $GITHUB_ENV
 
       - name: Set build config
@@ -571,8 +578,11 @@ jobs:
       - name: sccache stats (cross, optional)
         if: env.BACKEND_CHANGED == 'true' && env.USE_SCCACHE == 'true'
         run: |
-          # Best-effort: show stats in a fresh container; counters may be zero.
+          # Best-effort: show stats in a fresh container with the same cache mounted.
           docker run --rm \
+            --user $(id -u):$(id -g) \
+            -e SCCACHE_DIR=/tmp/sccache \
+            -v $HOME/.cache/sccache:/tmp/sccache \
             ${{ steps.config.outputs.image }} \
             bash -lc 'command -v sccache && sccache --show-stats || true'
 
