@@ -1,3 +1,15 @@
+use dango_types::dex::{AmountOption, TimeInForce};
+
+use {
+    anyhow::Context,
+    grug::{Inner, MultiplyFraction},
+};
+
+use {
+    dango_types::dex::{Direction as DexDirection, PriceOption},
+    grug::{Denom, NonZero, Number, Uint128},
+};
+
 use {
     anyhow::Result,
     dango_types::dex::CreateOrderRequest,
@@ -11,10 +23,156 @@ use {
     },
 };
 
-// Reuse types from coinbase adapter
-use crate::coinbase_data_adapter::{
-    DexOrderConfig, OrderBatch, OrderDirection, PythPrice, to_dango_dex_order,
-};
+/// Configuration for converting Coinbase orders to DEX orders
+#[derive(Clone)]
+pub struct DexOrderConfig {
+    pub base_denom: Denom,
+    pub quote_denom: Denom,
+    /// Base asset amount scaling factor: multiply Coinbase size (in base asset) by this
+    /// For example, if BTC has 8 decimals and we want to scale to base units,
+    /// we'd use 100_000_000. This is because coinbase quotes are in whole BTC units,
+    /// and the DEX uses smallest units.
+    pub base_amount_scale: u128,
+    /// Quote asset amount scaling factor: multiply quote amount by this
+    /// For example, if USDC has 6 decimals, we'd use 1_000_000. This is because coinbase quotes
+    /// are in whole USDC units, and the DEX uses smallest units.
+    pub quote_amount_scale: u128,
+
+    pub passive_orders_per_side: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum OrderDirection {
+    Bid,
+    Ask,
+}
+
+impl From<DexDirection> for OrderDirection {
+    fn from(direction: DexDirection) -> Self {
+        match direction {
+            DexDirection::Bid => OrderDirection::Bid,
+            DexDirection::Ask => OrderDirection::Ask,
+        }
+    }
+}
+
+impl From<OrderDirection> for DexDirection {
+    fn from(direction: OrderDirection) -> Self {
+        match direction {
+            OrderDirection::Bid => DexDirection::Bid,
+            OrderDirection::Ask => DexDirection::Ask,
+        }
+    }
+}
+
+/// Represents a single Pyth oracle price update
+#[derive(Debug, Clone)]
+pub struct PythPrice {
+    pub timestamp: Timestamp,
+    pub price: Udec128,
+    pub confidence: Udec128,
+    pub expo: i32,
+}
+
+impl PythPrice {
+    /// Parse a CSV line into a PythPrice
+    fn from_csv_line(line: &str) -> Result<Self, String> {
+        let parts: Vec<&str> = line.split(',').collect();
+
+        if parts.len() < 8 {
+            return Err(format!("Not enough columns: {}", parts.len()));
+        }
+
+        let timestamp_millis = parts[0]
+            .trim()
+            .parse::<u64>()
+            .map_err(|e| format!("Invalid timestamp: {}", e))?;
+        let timestamp = Timestamp::from_millis(timestamp_millis as u128);
+
+        let price = Udec128::from_str(parts[4]).map_err(|e| format!("Invalid price: {}", e))?;
+
+        let confidence =
+            Udec128::from_str(parts[5]).map_err(|e| format!("Invalid confidence: {}", e))?;
+
+        let expo = parts[6]
+            .trim()
+            .parse::<i32>()
+            .map_err(|e| format!("Invalid expo: {}", e))?;
+
+        Ok(Self {
+            timestamp,
+            price,
+            confidence,
+            expo,
+        })
+    }
+}
+
+pub(crate) fn to_dango_dex_order(
+    price: Udec128,
+    size: Udec128,
+    direction: OrderDirection,
+    config: &DexOrderConfig,
+) -> Result<CreateOrderRequest> {
+    // Only create orders for non-zero sizes
+    anyhow::ensure!(!size.is_zero(), "Cannot create order with zero size");
+
+    // DEX prices are in base units: quote base units per base base units.
+    // To convert from human price (quote per base) to base units:
+    // price_base = price_human * quote_amount_scale / base_amount_scale
+    //
+    // We use checked_from_ratio(numerator, denominator), so:
+    // - numerator = price_human * quote_amount_scale (scaled to integer)
+    // - denominator = base_amount_scale
+    let scaled_price =
+        Udec128::checked_from_ratio(config.quote_amount_scale, config.base_amount_scale)?
+            .checked_mul(price)?;
+
+    // Scale the amount based on order direction:
+    // - Buy (Bid): amount is in quote asset (USDC) = size * price
+    // - Sell (Ask): amount is in base asset (BTC) = size
+    let scaled_amount = match direction {
+        OrderDirection::Bid => {
+            // For buy orders, calculate quote amount: size (BTC) * price (USD/BTC) = USD
+            let base_amount = Uint128::new(config.base_amount_scale).checked_mul_dec(size)?;
+            base_amount.checked_mul_dec(scaled_price)?
+        },
+        OrderDirection::Ask => {
+            // For sell orders, amount is in base asset (BTC)
+            Uint128::new(config.base_amount_scale).checked_mul_dec(size)?
+        },
+    };
+
+    anyhow::ensure!(
+        *scaled_amount.inner() > 0,
+        "Order amount is zero after scaling"
+    );
+
+    // Create price (using checked_from_ratio)
+    let price = NonZero::new(scaled_price.convert_precision()?)
+        .context("Price is zero after conversion")?;
+
+    // Create amount
+    let amount = NonZero::new(scaled_amount).context("Amount is zero after conversion")?;
+
+    Ok(CreateOrderRequest {
+        base_denom: config.base_denom.clone(),
+        quote_denom: config.quote_denom.clone(),
+        price: PriceOption::Limit(price),
+        amount: AmountOption::new(direction.into(), amount),
+        time_in_force: TimeInForce::GoodTilCanceled,
+    })
+}
+
+/// A batch of orders with the latest oracle price
+#[derive(Debug, Clone)]
+pub struct OrderBatch {
+    pub creates: BTreeMap<u64, CreateOrderRequest>,
+    pub cancels: BTreeSet<u64>,
+    pub changes: BTreeMap<u64, CreateOrderRequest>,
+    pub oracle_price: PythPrice,
+    pub block_time: Timestamp,
+}
 
 /// Represents a single order event from Bitstamp CSV file
 #[derive(Debug, Clone)]
@@ -475,7 +633,6 @@ impl<'a> OrderBatchIterator<'a> {
 mod tests {
     use {
         super::*,
-        crate::coinbase_data_adapter::DexOrderConfig,
         dango_types::constants::{dango, usdc},
         std::path::PathBuf,
     };

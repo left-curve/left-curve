@@ -1,35 +1,26 @@
 #![cfg(test)]
-
-#[path = "dex/coinbase_data_adapter.rs"]
-mod coinbase_data_adapter;
-
 #[path = "dex/bitstamp_data_adapter.rs"]
 mod bitstamp_data_adapter;
 
 use {
-    crate::coinbase_data_adapter::OrderBatch,
+    crate::bitstamp_data_adapter::{DexOrderConfig, OrderBatch},
     bitstamp_data_adapter::BitstampDataAdapter,
-    coinbase_data_adapter::{CoinbaseDataAdapter, DexOrderConfig},
-    dango_dex::NEXT_ORDER_ID,
     dango_genesis::{DexOption, GenesisOption},
     dango_testing::{BridgeOp, Preset, TestOption, setup_test_naive_with_custom_genesis},
     dango_types::{
-        account_factory::Account,
         constants::{dango, usdc},
         dex::{
             self, AmountOption, AvellanedaStoikovParams, CancelOrderRequest, CreateOrderRequest,
             Geometric, OrderCreated, OrderFilled, OrderId, PairParams, PairUpdate,
-            PassiveLiquidity, QueryNextOrderIdRequest,
+            PassiveLiquidity,
         },
         gateway::Remote,
         oracle::{self, PriceSource},
     },
     grug::{
-        Addr, Addressable, BalanceChange, Bounded, CheckedContractEvent, Coin, Coins,
-        CommitmentStatus, Dec, Denom, Duration, Event, EventStatus, EvtCron, EvtExecute, EvtGuest,
-        Inner, JsonDeExt, Message, MultiplyFraction, NonEmpty, Number, NumberConst, QuerierExt,
-        ResultExt, SearchEvent, Signer, StorageQuerier, SubEvent, SubEventStatus, TestSuite,
-        Timestamp, Udec128, Uint128, btree_map, btree_set, coins,
+        Addr, Addressable, Bounded, CheckedContractEvent, Coin, Coins, Dec, Denom, Duration, Inner,
+        JsonDeExt, MultiplyFraction, Number, NumberConst, ResultExt, SearchEvent, Signer,
+        TestSuite, Timestamp, Udec128, Uint128, btree_map, btree_set, coins,
     },
     std::{
         collections::{BTreeMap, BTreeSet},
@@ -39,87 +30,6 @@ use {
 };
 
 use test_case::test_case;
-
-#[test]
-fn test_market_data_adapter() {
-    // Get the paths to the CSV files
-    let orders_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/dex/market_data/orderbook_BTCUSD_20251113_143202.csv");
-    let prices_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/dex/market_data/pyth_btcusd_20251113_143202.csv");
-
-    // Create a dummy config for testing
-    let config = DexOrderConfig {
-        base_denom: dango::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
-        base_amount_scale: 1_000_000,
-        quote_amount_scale: 1_000_000,
-        passive_orders_per_side: 0,
-    };
-
-    // Create the adapter
-    let adapter = CoinbaseDataAdapter::from_csv(&orders_path, &prices_path, config).unwrap();
-
-    println!("Loaded {} orders from CSV", adapter.total_orders());
-
-    // Test peeking at order depths in time windows (without creating transactions)
-    let batch1 = adapter.peek_order_depths(Duration::from_millis(1000));
-    println!("First batch (1s): {} order depths", batch1.len());
-
-    let batch2 = adapter.peek_order_depths(Duration::from_millis(11000)); // Total 11 seconds from start
-    println!("Second batch (11s total): {} order depths", batch2.len());
-
-    // Verify we can process orders
-    assert!(adapter.total_orders() > 0);
-    assert!(batch1.len() > 0 || batch2.len() > 0);
-}
-
-#[test]
-fn test_dex_order_conversion() {
-    // Get the paths to the CSV files
-    let orders_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/dex/market_data/orderbook_BTCUSD_20251113_143202.csv");
-    let prices_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/dex/market_data/pyth_btcusd_20251113_143202.csv");
-
-    // Create DEX order config
-    // BTC-USD pair: BTC has 8 decimals, USD (represented as USDC) has 6 decimals
-    // Price is in USD per BTC, so if BTC is $100,000, we want to represent it properly
-    let order_config = DexOrderConfig {
-        base_denom: dango::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
-        // Scale BTC amount from BTC (8 decimals) to smallest units
-        base_amount_scale: 100_000_000,
-        // Scale USDC amount (6 decimals) - this is also used as the price scale
-        quote_amount_scale: 1_000_000,
-        passive_orders_per_side: 0,
-    };
-
-    let adapter = CoinbaseDataAdapter::from_csv(&orders_path, &prices_path, order_config).unwrap();
-
-    // Get first batch of order depths (without creating transactions)
-    let batch = adapter.peek_order_depths(Duration::from_millis(1000));
-    // Process them to get final levels
-    // Note: This creates a temporary adapter just for testing - in real usage,
-    // the iterator handles this automatically
-    let order_config = DexOrderConfig {
-        base_denom: dango::DENOM.clone(),
-        quote_denom: usdc::DENOM.clone(),
-        base_amount_scale: 100_000_000,
-        quote_amount_scale: 1_000_000,
-        passive_orders_per_side: 0,
-    };
-    let mut temp_adapter =
-        CoinbaseDataAdapter::from_csv(&orders_path, &prices_path, order_config).unwrap();
-    // Note: The iterator handles processing batch updates internally
-    // This test just verifies we can peek at order depths
-    println!("Peeked at {} order depths in first batch", batch.len());
-
-    // Verify we successfully peeked at some order depths
-    if !batch.is_empty() {
-        assert!(batch.len() > 0, "Should peek at least some order depths");
-    }
-}
 
 fn funds_required(creates: &Vec<CreateOrderRequest>) -> Coins {
     let mut funds = Coins::new();
@@ -138,272 +48,6 @@ fn funds_required(creates: &Vec<CreateOrderRequest>) -> Coins {
         }
     }
     funds
-}
-
-#[test_case(
-    Geometric {
-        spacing: Udec128::new_percent(1),
-        ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
-        limit: 1,
-        avellaneda_stoikov_params: AvellanedaStoikovParams {
-            gamma: Dec::from_str("0.01").unwrap(),
-            time_horizon: Duration::from_seconds(120),
-            k: Dec::from_str("1.3").unwrap(),
-            half_life: Duration::from_seconds(30),
-            base_inventory_target_percentage: Bounded::new(
-                Udec128::new_percent(50),
-            )
-            .unwrap(),
-        },
-    },
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/dex/market_data/orderbook_BTCUSD_20251113_143202.csv"),
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/dex/market_data/pyth_btcusd_20251113_143202.csv"),
-    Duration::from_millis(1000),
-    Duration::from_millis(500),
-    8,
-    6,
-    10
-)]
-fn test_replay_coinbase_orders_on_dex(
-    pool_params: Geometric,
-    order_data_path: PathBuf,
-    price_data_path: PathBuf,
-    block_time: Duration,
-    max_oracle_staleness: Duration,
-    base_precision: u8,
-    quote_precision: u8,
-    blocks_to_replay: usize,
-) {
-    // Setup the test environment with a BTC/USDC DEX pair
-    // TODO: set max oracle staleness
-    // let (mut suite, mut accounts, _, contracts, _) = setup_test_naive_with_custom_genesis(
-    //     TestOption {
-    //         bridge_ops: |accounts| {
-    //             vec![
-    //                 BridgeOp {
-    //                     remote: Remote::Warp {
-    //                         domain: hyperlane_types::constants::ethereum::DOMAIN,
-    //                         contract: hyperlane_types::constants::ethereum::USDC_WARP,
-    //                     },
-    //                     amount: Uint128::new(100_000_000_000_000_000),
-    //                     recipient: accounts.user1.address(),
-    //                 },
-    //                 BridgeOp {
-    //                     remote: Remote::Warp {
-    //                         domain: hyperlane_types::constants::ethereum::DOMAIN,
-    //                         contract: hyperlane_types::constants::ethereum::USDC_WARP,
-    //                     },
-    //                     amount: Uint128::new(100_000_000_000_000_000),
-    //                     recipient: accounts.owner.address(),
-    //                 },
-    //             ]
-    //         },
-    //         ..TestOption::default()
-    //     },
-    //     GenesisOption {
-    //         dex: DexOption {
-    //             pairs: vec![PairUpdate {
-    //                 base_denom: dango::DENOM.clone(),
-    //                 quote_denom: usdc::DENOM.clone(),
-    //                 params: PairParams {
-    //                     lp_denom: Denom::from_str("dex/pool/btc/usdc").unwrap(),
-    //                     pool_type: PassiveLiquidity::Geometric(pool_params.clone()),
-    //                     bucket_sizes: btree_set![],
-    //                     swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
-    //                     min_order_size_quote: Uint128::ZERO,
-    //                     min_order_size_base: Uint128::ZERO,
-    //                 },
-    //             }],
-    //         },
-    //         ..Preset::preset_test()
-    //     },
-    // );
-
-    // println!("DEX pair configured");
-
-    // println!("Loading market data...");
-
-    // // Configure order conversion
-    // let order_config = DexOrderConfig {
-    //     base_denom: dango::DENOM.clone(),
-    //     quote_denom: usdc::DENOM.clone(),
-    //     base_amount_scale: 1_000_000,
-    //     quote_amount_scale: 1_000_000,
-    //     passive_orders_per_side: pool_params.limit,
-    // };
-
-    // // Load market data
-    // let mut adapter =
-    //     CoinbaseDataAdapter::from_csv(&order_data_path, &price_data_path, order_config).unwrap();
-
-    // println!("Loaded {} orders from CSV", adapter.total_orders());
-
-    // // Get a trader account
-    // let user1 = &mut accounts.user1;
-
-    // println!("Starting order replay...");
-
-    // let mut batch_count = 0;
-
-    // let mut order_batches = adapter
-    //     .batches(block_time, max_oracle_staleness)
-    //     .take(blocks_to_replay)
-    //     .peekable();
-
-    // // peek first oracle price
-    // let first_oracle_price = order_batches.peek().unwrap().oracle_price.clone();
-
-    // // Register oracle price sources for DANGO and USDC
-    // suite
-    //     .execute(
-    //         &mut accounts.owner,
-    //         contracts.oracle,
-    //         &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-    //             dango::DENOM.clone() => PriceSource::Fixed {
-    //                 humanized_price: first_oracle_price.price,
-    //                 precision: base_precision,
-    //                 timestamp: first_oracle_price.timestamp,
-    //             },
-    //             usdc::DENOM.clone() => PriceSource::Fixed {
-    //                 humanized_price: Udec128::ONE,
-    //                 precision: quote_precision,
-    //                 timestamp: Timestamp::from_seconds(1730802926),
-    //             },
-    //         }),
-    //         Coins::new(),
-    //     )
-    //     .should_succeed();
-
-    // // Provide liquidity with owner account
-    // suite
-    //     .execute(
-    //         &mut accounts.owner,
-    //         contracts.dex,
-    //         &dex::ExecuteMsg::ProvideLiquidity {
-    //             base_denom: dango::DENOM.clone(),
-    //             quote_denom: usdc::DENOM.clone(),
-    //             minimum_output: None,
-    //         },
-    //         coins! {
-    //             dango::DENOM.clone() => 100000000000000,
-    //             usdc::DENOM.clone() => 100000000000,
-    //         },
-    //     )
-    //     .should_succeed();
-
-    // // Replay orders in batches using the iterator
-    // for OrderBatch {
-    //     creates,
-    //     cancels,
-    //     oracle_price,
-    // } in order_batches
-    // {
-    //     // Update fixed oracle price.
-    //     suite
-    //         .execute(
-    //             &mut accounts.owner,
-    //             contracts.oracle,
-    //             &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
-    //                 dango::DENOM.clone() => PriceSource::Fixed {
-    //                     humanized_price: oracle_price.price,
-    //                     precision: base_precision,
-    //                     timestamp: Timestamp::from_seconds(1730802926),
-    //                 },
-    //             }),
-    //             Coins::new(),
-    //         )
-    //         .should_succeed();
-
-    //     if creates.is_empty() && cancels.is_none() {
-    //         continue;
-    //     }
-
-    //     batch_count += 1;
-
-    //     println!(
-    //         "Batch {}: {} create orders, {} cancel orders",
-    //         batch_count,
-    //         creates.len(),
-    //         cancels
-    //             .as_ref()
-    //             .map(|c| match c {
-    //                 CancelOrderRequest::Some(ids) => ids.len(),
-    //                 CancelOrderRequest::All => 0, // All orders
-    //             })
-    //             .unwrap_or(0)
-    //     );
-
-    //     // Log oracle price
-    //     println!(
-    //         "  Oracle price: {} (confidence: {}, expo: {})",
-    //         oracle_price.price, oracle_price.confidence, oracle_price.expo
-    //     );
-
-    //     // Create and submit transaction to place orders
-    //     let funds = funds_required(&creates);
-
-    //     suite
-    //         .execute(
-    //             user1,
-    //             contracts.dex,
-    //             &dex::ExecuteMsg::BatchUpdateOrders { creates, cancels },
-    //             funds,
-    //         )
-    //         .should_succeed();
-
-    //     // Finalize the block to trigger cron execution and get cron events
-    //     let block_outcome = suite.make_empty_block().block_outcome;
-
-    //     // Extract all filled orders from cron events
-    //     let mut filled_orders = Vec::new();
-    //     for cron_outcome in block_outcome.cron_outcomes {
-    //         // Check if the cron event was successful
-    //         let CommitmentStatus::Committed(EventStatus::Ok(EvtCron {
-    //             guest_event: EventStatus::Ok(guest_event),
-    //             ..
-    //         })) = cron_outcome.cron_event
-    //         else {
-    //             continue;
-    //         };
-
-    //         // Check if this is from the DEX contract
-    //         if guest_event.contract == contracts.dex.address() {
-    //             // Extract all order_filled events
-    //             for contract_event in guest_event.contract_events {
-    //                 if contract_event.ty == "order_filled" {
-    //                     if let Ok(order_filled) =
-    //                         contract_event.data.deserialize_json::<OrderFilled>()
-    //                     {
-    //                         filled_orders.push(order_filled);
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     println!("filled_orders: {:?}", filled_orders);
-
-    //     if !filled_orders.is_empty() {
-    //         eprintln!(
-    //             "  Found {} filled orders in this block",
-    //             filled_orders.len()
-    //         );
-    //         for order in &filled_orders {
-    //             eprintln!(
-    //                 "    Order {:?}: filled_base={}, filled_quote={}, cleared={}",
-    //                 order.id, order.filled_base, order.filled_quote, order.cleared
-    //             );
-    //         }
-    //     }
-    // }
-
-    // eprintln!(
-    //     "Processed {}/{} total orders from CSV",
-    //     adapter.processed_orders(),
-    //     adapter.total_orders()
-    // );
 }
 
 #[test_case(
