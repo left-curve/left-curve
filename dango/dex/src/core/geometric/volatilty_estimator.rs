@@ -31,7 +31,7 @@ pub const LAST_VOLATILITY_ESTIMATE: Map<(&Denom, &Denom), Price> =
 ///
 /// # Returns
 ///
-/// The updated volatility estimate.
+/// The updated volatility estimate in units of per millisecond squared.
 pub fn update_volatility_estimate(
     storage: &mut dyn Storage,
     block_time: Timestamp,
@@ -68,8 +68,9 @@ pub fn update_volatility_estimate(
     // Compute the time diff since the last update in milliseconds
     let time_diff_ms = block_time.checked_sub(last_timestamp)?.into_millis();
 
-    // Normalise the log return to the time interval
-    let r_t_squared_norm = r_t_squared.checked_div(Udec128::new(time_diff_ms))?;
+    // Normalise the log return to one second time interval
+    let r_t_squared_norm =
+        r_t_squared.checked_div(Udec128::checked_from_ratio(time_diff_ms, 1000)?)?;
 
     // Calculate the decay rate for the sample based on the time diff
     // alpha = 1 - exp(-ln(2) * dt / half_life) = 1 - 1/exp(ln(2) * dt / half_life)
