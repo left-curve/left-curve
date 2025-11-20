@@ -5643,7 +5643,6 @@ fn market_order_clearing(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            // println!("orders: {:?}", orders);
             assert_eq!(orders.len(), expected_limit_orders_after.len());
             expected_limit_orders_after.iter().all(
                 |(order_id, (direction, price, amount, remaining, user_index))| {
