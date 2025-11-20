@@ -23,6 +23,7 @@ use {
     config::Config,
     config_parser::parse_config,
     opentelemetry::{KeyValue, trace::TracerProvider},
+    opentelemetry::trace::TraceContextExt,
     opentelemetry_otlp::{ExportConfig, Protocol, SpanExporter, WithExportConfig},
     opentelemetry_sdk::{Resource, trace as sdktrace},
     sentry::integrations::tracing::layer as sentry_layer,
@@ -33,7 +34,6 @@ use {
         layer::{Context as LayerContext},
         prelude::*,
         registry::LookupSpan,
-        Layer as _,
     },
 };
 
@@ -44,27 +44,33 @@ impl<S> tracing_subscriber::Layer<S> for TraceIdLayer
 where
     S: tracing::Subscriber + for<'a> LookupSpan<'a>,
 {
-    fn on_enter(&self, id: &tracing_core::span::Id, ctx: LayerContext<'_, S>) {
+    fn on_enter(&self, id: &tracing::span::Id, ctx: LayerContext<'_, S>) {
         // When a span is entered, record otel trace/span ids onto it (if available).
         if let Some(_span_ref) = ctx.span(id) {
             let otel_ctx = tracing::Span::current().context();
-            let sc = otel_ctx.span().span_context();
+            let span_ref = otel_ctx.span();
+            let sc = span_ref.span_context();
             if sc.is_valid() {
+                let trace_id = sc.trace_id();
+                let span_id = sc.span_id();
                 let span = tracing::Span::current();
-                span.record("trace_id", &tracing::field::display(sc.trace_id()));
-                span.record("span_id", &tracing::field::display(sc.span_id()));
+                span.record("trace_id", tracing::field::display(trace_id));
+                span.record("span_id", tracing::field::display(span_id));
             }
         }
     }
 
-    fn on_event(&self, _event: &tracing_core::Event<'_>, _ctx: LayerContext<'_, S>) {
+    fn on_event(&self, _event: &tracing::Event<'_>, _ctx: LayerContext<'_, S>) {
         // Best-effort: also record onto whatever span is current when an event happens.
         let otel_ctx = tracing::Span::current().context();
-        let sc = otel_ctx.span().span_context();
+        let span_ref = otel_ctx.span();
+        let sc = span_ref.span_context();
         if sc.is_valid() {
+            let trace_id = sc.trace_id();
+            let span_id = sc.span_id();
             let span = tracing::Span::current();
-            span.record("trace_id", &tracing::field::display(sc.trace_id()));
-            span.record("span_id", &tracing::field::display(sc.span_id()));
+            span.record("trace_id", tracing::field::display(trace_id));
+            span.record("span_id", tracing::field::display(span_id));
         }
     }
 }
@@ -140,10 +146,7 @@ async fn main() -> anyhow::Result<()> {
             // include the current span so recorded trace_id/span_id appear in JSON output
             .with_current_span(true)
             .boxed(),
-        config::LogFormat::Text => tracing_subscriber::fmt::layer()
-            // include current span in text logs as well
-            .with_current_span(true)
-            .boxed(),
+        config::LogFormat::Text => tracing_subscriber::fmt::layer().boxed(),
     };
 
     // Optionally build an OpenTelemetry layer if tracing export is enabled.
