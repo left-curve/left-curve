@@ -1,10 +1,9 @@
 #![cfg(test)]
-#[path = "dex/bitstamp_data_adapter.rs"]
-mod bitstamp_data_adapter;
 
 use {
-    crate::bitstamp_data_adapter::{DexOrderConfig, OrderBatch},
-    bitstamp_data_adapter::BitstampDataAdapter,
+    crate::data_adapters::bitstamp_data_adapter::{
+        BitstampDataAdapter, DexOrderConfig, OrderBatch,
+    },
     dango_genesis::{DexOption, GenesisOption},
     dango_testing::{BridgeOp, Preset, TestOption, setup_test_naive_with_custom_genesis},
     dango_types::{
