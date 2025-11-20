@@ -1,0 +1,24 @@
+- name: Ensure dir exists
+  file:
+    path: "{{ minio_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy templates
+  become: true
+  become_user: root
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ minio_dir }}/{{ item.dest }}"
+    owner: "{{ deploy_user }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: "env.j2", dest: ".env", mode: "0600" }
+    - { src: "docker-compose.yml", dest: "docker-compose.yml", mode: "0644" }
+
+- name: Launch minio stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ minio_dir }}"
+    pull: missing
+    state: present
+    recreate: always
