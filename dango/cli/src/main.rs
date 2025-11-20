@@ -22,18 +22,17 @@ use {
     clap::Parser,
     config::Config,
     config_parser::parse_config,
-    opentelemetry::{KeyValue, trace::TracerProvider},
-    opentelemetry::trace::TraceContextExt,
+    opentelemetry::{
+        KeyValue,
+        trace::{TraceContextExt, TracerProvider},
+    },
     opentelemetry_otlp::{ExportConfig, Protocol, SpanExporter, WithExportConfig},
     opentelemetry_sdk::{Resource, trace as sdktrace},
     sentry::integrations::tracing::layer as sentry_layer,
     std::path::PathBuf,
-    tracing_opentelemetry::{layer as otel_layer, OpenTelemetrySpanExt},
+    tracing_opentelemetry::{OpenTelemetrySpanExt, layer as otel_layer},
     tracing_subscriber::{
-        fmt::format::FmtSpan,
-        layer::{Context as LayerContext},
-        prelude::*,
-        registry::LookupSpan,
+        fmt::format::FmtSpan, layer::Context as LayerContext, prelude::*, registry::LookupSpan,
     },
 };
 
