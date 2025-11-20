@@ -149,6 +149,9 @@ metrics                     = "0.24"
 metrics-exporter-prometheus = "0.17"
 num-format                  = "0.4"
 num_cpus                    = "1"
+opentelemetry               = "0.31"
+opentelemetry-otlp          = { version = "0.31", features = ["grpc-tonic", "trace"] }
+opentelemetry_sdk           = { version = "0.31", features = ["rt-tokio"] }
 ouroboros                   = "0.18"
 p256                        = "0.13"
 parking_lot                 = { version = "0.12", features = ["arc_lock", "send_guard"] }
@@ -192,6 +195,7 @@ tower                       = "0.5"
 tower-abci                  = "0.19"
 tracing                     = "0.1"
 tracing-actix-web           = "0.7"
+tracing-opentelemetry       = "0.32"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
@@ -273,7 +277,7 @@ features = [
   "log",
   "opentelemetry",
   # see https://github.com/async-graphql/async-graphql/issues/1726
-  # "tracing",
+  "tracing",
   "unblock",
   "url",
   "uuid",

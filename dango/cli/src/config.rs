@@ -12,6 +12,7 @@ pub struct Config {
     pub tendermint: TendermintConfig,
     pub transactions: TransactionsConfig,
     pub sentry: SentryConfig,
+    pub trace: TraceConfig,
     pub log_level: String,
     pub log_format: LogFormat,
     pub pyth: PythLazerConfig,
@@ -137,4 +138,22 @@ impl Default for TransactionsConfig {
 pub struct PythLazerConfig {
     pub endpoints: Vec<String>,
     pub access_token: String,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct TraceConfig {
+    /// Whether to enable OpenTelemetry tracing export.
+    pub enabled: bool,
+    /// Collector endpoint (e.g. http://tempo:4317 for OTLP/gRPC).
+    pub endpoint: String,
+    /// Protocol used to export traces: "otlp_grpc" or "otlp_http".
+    pub protocol: TraceProtocol,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TraceProtocol {
+    #[default]
+    OtlpGrpc,
+    OtlpHttp,
 }

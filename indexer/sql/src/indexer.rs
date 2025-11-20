@@ -214,6 +214,7 @@ pub struct Indexer {
 pub const MAX_ROWS_INSERT: usize = 2048;
 
 impl Indexer {
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     async fn save_block(
         db: DatabaseConnection,
         event_cache: EventCacheWriter,
@@ -369,6 +370,7 @@ impl IndexerTrait for Indexer {
         Ok(last_indexed_block_height.map(|h| h as u64))
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn start(&mut self, _storage: &dyn Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "metrics")]
         crate::metrics::init_indexer_metrics();
@@ -384,6 +386,7 @@ impl IndexerTrait for Indexer {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
@@ -395,6 +398,7 @@ impl IndexerTrait for Indexer {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn post_indexing(
         &self,
         block_height: u64,
@@ -418,22 +422,8 @@ impl IndexerTrait for Indexer {
             ))?
             .clone();
 
-        // let block_to_index = self.find_or_fail(block_height)?;
-        // let blocks = self.blocks.clone();
-        // let keep_blocks = self.keep_blocks;
-        // let block_filename = self
-        //     .indexer_path
-        //     .block_path(block_to_index.block.info.height);
-
         #[cfg(feature = "tracing")]
         let id = self.id;
-
-        // TODO: remove this once we extracted the caching to its own crate
-        // ctx.insert(block_to_index.clone());
-
-        // ctx.insert(context.pubsub.clone());
-        // ctx.insert(block_to_index.block.clone());
-        // ctx.insert(block_to_index.block_outcome.clone());
 
         self.handle
             .block_on(async move {

@@ -2,6 +2,7 @@ use {
     crate::{
         config::{Config, GrugConfig, HttpdConfig, PythLazerConfig, TendermintConfig},
         home_directory::HomeDirectory,
+        telemetry,
     },
     anyhow::anyhow,
     clap::Parser,
@@ -362,10 +363,14 @@ impl StartCmd {
             },
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
+                telemetry::shutdown();
+                telemetry::shutdown_sentry();
                 Ok(())
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
+                telemetry::shutdown();
+                telemetry::shutdown_sentry();
                 Ok(())
             },
         }

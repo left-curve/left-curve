@@ -1,12 +1,10 @@
 #[cfg(feature = "metrics")]
 use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
+#[cfg(feature = "tracing")]
+use async_graphql::extensions as AsyncGraphqlExtensions;
 use {
     crate::context::Context,
-    async_graphql::{
-        Schema,
-        dataloader::DataLoader,
-        extensions::{self as AsyncGraphqlExtensions},
-    },
+    async_graphql::{Schema, dataloader::DataLoader},
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
         event_transaction::EventTransactionDataLoader,
@@ -79,13 +77,18 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         mutation::Mutation::default(),
         subscription::Subscription::default(),
     )
-    .extension(AsyncGraphqlExtensions::Logger)
-    // .extension(AsyncGraphqlExtensions::Tracing)
     .extension(SentryExtension);
 
     #[cfg(feature = "metrics")]
     {
         schema_builder = schema_builder.extension(MetricsExtension);
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        schema_builder = schema_builder
+            .extension(AsyncGraphqlExtensions::Tracing)
+            .extension(AsyncGraphqlExtensions::Logger);
     }
 
     schema_builder

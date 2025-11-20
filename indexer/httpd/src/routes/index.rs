@@ -10,6 +10,7 @@ use {
     std::env::var,
 };
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/up")]
 pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
     // This ensures that grug is working
@@ -40,6 +41,7 @@ pub async fn up(app_ctx: web::Data<Context>) -> Result<impl Responder, Error> {
     }))
 }
 
+#[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
 #[get("/sentry-raise")]
 pub async fn sentry_raise() -> Result<impl Responder, Error> {
     sentry::capture_message("Capturing a message before a crash", sentry::Level::Info);

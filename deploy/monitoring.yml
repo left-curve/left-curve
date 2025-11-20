@@ -13,4 +13,5 @@
     - loki
     - promtail
     - node-exporter
+    - tempo
     - grafana
