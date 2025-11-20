@@ -1,11 +1,11 @@
+#[cfg(feature = "tracing")]
+use async_graphql::extensions;
 #[cfg(feature = "metrics")]
 use indexer_httpd::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
+
 use {
     crate::context::Context,
-    async_graphql::{
-        EmptyMutation, EmptySubscription, Schema,
-        extensions::{self as AsyncGraphqlExtensions},
-    },
+    async_graphql::{EmptyMutation, EmptySubscription, Schema},
     indexer_httpd::graphql::telemetry::SentryExtension,
 };
 
@@ -19,18 +19,20 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
     init_graphql_metrics();
 
     #[allow(unused_mut)]
-    let mut schema_builder = Schema::build(
-        query::Query::default(),
-        EmptyMutation,
-        EmptySubscription,
-    )
-    .extension(AsyncGraphqlExtensions::Logger)
-    // .extension(AsyncGraphqlExtensions::Tracing)
-    .extension(SentryExtension);
+    let mut schema_builder =
+        Schema::build(query::Query::default(), EmptyMutation, EmptySubscription)
+            .extension(SentryExtension);
 
     #[cfg(feature = "metrics")]
     {
         schema_builder = schema_builder.extension(MetricsExtension);
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        schema_builder = schema_builder
+            .extension(extensions::Tracing)
+            .extension(extensions::Logger);
     }
 
     schema_builder
