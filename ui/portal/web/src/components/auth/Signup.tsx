@@ -227,7 +227,7 @@ const Credential: React.FC = () => {
           return { key, keyHash };
         })();
 
-        setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x100000000) });
+        setData({ key, keyHash, connectorId, seed: Math.floor(Math.random() * 0x10000) });
         nextStep();
       },
     },
