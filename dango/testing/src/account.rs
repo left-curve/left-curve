@@ -133,7 +133,7 @@ impl TestAccount<Undefined<Addr>, (SigningKey, Key)> {
     pub fn predict_address(
         self,
         factory: Addr,
-        seed: u16,
+        seed: u32,
         spot_code_hash: Hash256,
         new_user_salt: bool,
     ) -> TestAccount {
