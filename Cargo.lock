@@ -3395,6 +3395,7 @@ dependencies = [
  "dango-gateway",
  "dango-lending",
  "dango-oracle",
+ "dango-perps",
  "dango-taxman",
  "dango-types",
  "dango-vesting",
@@ -3569,6 +3570,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-perps"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "dango-account-factory",
+ "dango-oracle",
+ "dango-types",
+ "grug",
+]
+
+[[package]]
 name = "dango-proposal-preparer"
 version = "0.0.0"
 dependencies = [
@@ -3648,6 +3660,7 @@ dependencies = [
  "dango-lending",
  "dango-mock-httpd",
  "dango-oracle",
+ "dango-perps",
  "dango-proposal-preparer",
  "dango-taxman",
  "dango-types",
