@@ -1,5 +1,7 @@
-import { createConfig, graphql, passkey, privy, session } from "@left-curve/store";
+import { createAsyncStorage, createConfig, graphql, passkey, session } from "@left-curve/store";
+import { privy } from "@left-curve/applets-kit";
 import { captureException } from "@sentry/react";
+import { createIndexedDBStorage } from "./storage.config";
 
 import type { Config } from "@left-curve/store/types";
 import { serializeJson } from "@left-curve/dango/encoding";
@@ -75,10 +77,10 @@ export const config: Config = createConfig({
     privy({
       appId: PRIVY_APP_ID as string,
       clientId: PRIVY_CLIENT_ID as string,
-      storage: localStorage,
       loadIframe: true,
     }),
   ],
+  storage: createAsyncStorage({ storage: createIndexedDBStorage() }),
   onError: (e) => {
     let finalError: Error;
     const m = serializeJson(e);

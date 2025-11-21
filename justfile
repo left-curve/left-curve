@@ -42,7 +42,7 @@ check:
 
 # Perform linting
 lint:
-  cargo clippy --bins --tests --benches --examples --all-features --all-targets
+  cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
 
 # Perform formatting
 fmt:
@@ -84,19 +84,6 @@ optimize:
     --mount type=volume,source="$(basename "$(pwd)")_cache",target=/target \
     --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
     {{OPTIMIZER_NAME}}:{{OPTIMIZER_VERSION}}
-
-# ------------------------------- Cross Builder --------------------------------
-
-docker-build-builder-images:
-  docker buildx bake --push
-
-  # Combine the two into a manifest
-  docker manifest create ghcr.io/left-curve/left-curve/native-builder:latest \
-    --amend ghcr.io/left-curve/left-curve/native-builder:amd64 \
-    --amend ghcr.io/left-curve/left-curve/native-builder:arm64
-
-  # Push the manifest
-  docker manifest push ghcr.io/left-curve/left-curve/native-builder:latest
 
 # ----------------------------------- Debug ------------------------------------
 

@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   CoinSelector,
+  FormattedNumber,
   IconButton,
   IconChevronDownFill,
   IconUser,
@@ -122,6 +123,22 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               coins={[baseCoin, quoteCoin]}
             />
           }
+          insideBottomComponent={
+            <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular pl-4">
+              <div className="flex items-center gap-2">
+                <FormattedNumber number={availableCoin.amount} />
+                <Button
+                  type="button"
+                  variant="tertiary-red"
+                  size="xs"
+                  className="py-[2px] px-[6px] cursor-pointer"
+                  onClick={() => setValue("size", maxSizeAmount.toString())}
+                >
+                  {m["common.max"]()}
+                </Button>
+              </div>
+            </div>
+          }
         />
         <Range
           isDisabled={!isConnected || submission.isPending}
@@ -154,7 +171,7 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
               isLoading={submission.isPending}
               onClick={() => submission.mutateAsync()}
             >
-              {m["dex.protrade.spot.triggerAction"]({ action })}
+              {m["dex.protrade.spot.triggerAction"]({ action })} {baseCoin.symbol}
             </Button>
           ) : (
             <Button
@@ -207,43 +224,6 @@ const SpotTradeMenu: React.FC<TradeMenuProps> = ({ state, controllers }) => {
             </p>
           </div>
         </div>
-        {/*  <span className="w-full h-[1px] bg-outline-secondary-gray" />
-        <div className="px-4 flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <p className="diatype-xs-bold">Account Equity</p>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Spot</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Perps</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <p className="diatype-xs-bold">Perp Overview</p>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Balance</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Unrealized PNL</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Cross Margin Ratio</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">0.00%</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Maintenance</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">$10.00</p>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <p className="diatype-xs-regular text-ink-tertiary-500">Cross Account Leverage</p>
-              <p className="diatype-xs-medium text-ink-secondary-700">0.00x</p>
-            </div>
-          </div>
-        </div> */}
       </div>
     </div>
   );
@@ -293,12 +273,7 @@ const PerpsTradeMenu: React.FC<TradeMenuProps> = ({ state }) => {
           <div className="flex items-center justify-between gap-2 w-full h-[22px] text-ink-tertiary-500 diatype-sm-regular pl-4">
             <div className="flex items-center gap-2">
               <p>12.23</p>
-              <Button
-                type="button"
-                variant="secondary"
-                size="xs"
-                className="bg-primitives-red-light-50 text-primitives-red-light-500 hover:bg-primitives-red-light-100 focus:[box-shadow:0px_0px_0px_3px_#F575893D] py-[2px] px-[6px]"
-              >
+              <Button type="button" variant="tertiary-red" size="xs" className="py-[2px] px-[6px]">
                 {m["common.max"]()}
               </Button>
             </div>

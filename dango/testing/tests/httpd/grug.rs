@@ -26,7 +26,6 @@ async fn graphql_returns_config() -> anyhow::Result<()> {
                     None,
                     TestOption::default(),
                     GenesisOption::preset_test(),
-                    true,
                     None,
                 )
                 .await

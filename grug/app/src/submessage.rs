@@ -95,7 +95,7 @@ where
             trace_opt,
         );
 
-        match (&submsg.reply_on, result.clone().as_result()) {
+        match (&submsg.reply_on, result.clone().into_result()) {
             // Success - callback requested
             // Flush state changes, log events, give callback.
             (ReplyOn::Success(payload) | ReplyOn::Always(payload), Result::Ok(submsg_event)) => {

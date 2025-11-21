@@ -1,0 +1,15 @@
+---
+# WireGuard configuration defaults
+wireguard_port: 51820
+wireguard_persistent_keepalive: 25
+
+# Authorized peers (team members, personal devices, etc.)
+# These peers can connect to the mesh network
+wireguard_authorized_peers: []
+  # Example:
+  # - name: "alice-laptop"
+  #   public_key: "ABC123...="
+  #   allowed_ips: "10.99.0.100/32"
+  # - name: "bob-desktop"
+  #   public_key: "XYZ789...="
+  #   allowed_ips: "10.99.0.101/32"

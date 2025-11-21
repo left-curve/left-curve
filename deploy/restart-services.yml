@@ -68,11 +68,11 @@
         wait: true
 
     - debug:
-        msg: "Fetching http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/status"
+        msg: "Fetching http://{{ wireguard_ip }}:{{ cometbft_rpc_port }}/status"
 
     - name: Wait for CometBFT to sync
       uri:
-        url: "http://{{ tailscale_ip }}:{{ cometbft_rpc_port }}/status"
+        url: "http://{{ wireguard_ip }}:{{ cometbft_rpc_port }}/status"
         return_content: yes
       register: cometbft_status
       until: not (cometbft_status.json.result.sync_info.catching_up | default(true))

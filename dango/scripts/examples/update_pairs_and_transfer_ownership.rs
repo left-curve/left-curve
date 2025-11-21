@@ -1,5 +1,5 @@
 use {
-    dango_client::SingleSigner,
+    dango_client::{Secp256k1, Secret, SingleSigner},
     dango_types::{
         constants::{btc, btc_usdc, dango, eth, eth_usdc, sol, sol_usdc, usdc},
         dex::{
@@ -34,10 +34,10 @@ const NEW_OWNER: Addr = addr!("df8dbf9a60758b9913665b115174e0427202046b");
 async fn main() -> anyhow::Result<()> {
     let client = HttpClient::new("https://api-testnet.dango.zone/")?;
 
-    let mut owner = SingleSigner::from_private_key(
+    let mut owner = SingleSigner::new(
         CURRENT_OWNER_USERNAME,
         CURRENT_OWNER,
-        CURRENT_OWNER_PRIVATE_KEY,
+        Secp256k1::from_bytes(CURRENT_OWNER_PRIVATE_KEY)?,
     )?
     .with_query_nonce(&client)
     .await?;

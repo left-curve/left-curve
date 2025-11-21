@@ -45,13 +45,13 @@ impl IbcDb for DiskDb<MerkleTree> {
             // We simply look up the state storage to find the left and right
             // neighbors, and generate existence proof of them.
             None => {
-                let cf = cf_preimages(&self.inner.db);
+                let data = self.data.read();
+                let cf = cf_preimages(&data.db);
                 let key_hash = key.hash256();
 
-                let opts = new_read_options(Some(version), None, None);
+                let opts = new_read_options(None, None);
                 let mode = IteratorMode::From(&key_hash, Direction::Reverse);
-                let left = self
-                    .inner
+                let left = data
                     .db
                     .iterator_cf_opt(&cf, opts, mode)
                     .next()
@@ -62,10 +62,9 @@ impl IbcDb for DiskDb<MerkleTree> {
                     })
                     .transpose()?;
 
-                let opts = new_read_options(Some(version), None, None);
+                let opts = new_read_options(None, None);
                 let mode = IteratorMode::From(&key_hash, Direction::Forward);
-                let right = self
-                    .inner
+                let right = data
                     .db
                     .iterator_cf_opt(&cf, opts, mode)
                     .next()
@@ -262,24 +261,10 @@ mod tests {
             let root1 = maybe_root.unwrap().to_vec();
             assert_eq!(version1, 1);
 
-            // For each key in this batch,
-            // - generate and verify membership proof at verson 0, when the key
-            //   still existsed in the state;
-            // - generate and verify non-membership proof at version 1, after the
-            //   key has been deleted.
+            // For each key in this batch, generate and verify non-membership
+            // proof at version 1, after the key has been deleted.
             // Also update the state.
             for k in batch1.keys() {
-                // Prove in version 0
-                let proof = db.ics23_prove(k.clone(), Some(version0)).unwrap();
-                assert!(ics23::verify_membership::<HostFunctionsManager>(
-                    &proof,
-                    &ICS23_PROOF_SPEC,
-                    &root0,
-                    k,
-                    state.get(k).unwrap(),
-                ));
-
-                // Prove in version 1
                 let proof = db.ics23_prove(k.clone(), Some(version1)).unwrap();
                 assert!(ics23::verify_non_membership::<HostFunctionsManager>(
                     &proof,

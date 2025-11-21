@@ -51,6 +51,7 @@
 - name: Install base packages
   apt:
     name:
+      - iperf3
       - rsyslog
       - ufw
       - curl
@@ -66,6 +67,11 @@
       - btop
       - htop
       - jq
+      - libyaml-dev
+      - build-essential
+      - libssl-dev
+      - clang
+      - pkg-config
     state: present
     update_cache: yes
 

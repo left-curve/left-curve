@@ -39,7 +39,8 @@ services:
       - traefik
 {% if expose_ports %}
     ports:
-      - "${BINDING_IP}:${DB_METRICS_PORT:-0}:9187"
+      - "${TAILSCALE_IP}:${DB_METRICS_PORT:-0}:9187"
+      - "${WIREGUARD_IP}:${DB_METRICS_PORT:-0}:9187"
 {% endif %}
     depends_on:
       postgres:
@@ -92,7 +93,8 @@ services:
       # - "127.0.0.1:9000:9000" # Native TCP interface
       # - "127.0.0.1:9009:9009" # Inter-server communication (for clusters)
       # - "127.0.0.1:9004:9004" # MySQL compatibility interface
-      - "${BINDING_IP}:${CLICKHOUSE_METRICS_PORT:-0}:9126"
+      - "${TAILSCALE_IP}:${CLICKHOUSE_METRICS_PORT:-0}:9126"
+      - "${WIREGUARD_IP}:${CLICKHOUSE_METRICS_PORT:-0}:9126"
 {% endif %}
     environment:
       CLICKHOUSE_SKIP_USER_SETUP: 1
@@ -128,7 +130,8 @@ services:
 {% if expose_ports %}
     ports:
       - "${DANGO_PORT:-0}:8080"
-      - "${BINDING_IP}:${DANGO_METRICS_PORT:-0}:9191"
+      - "${TAILSCALE_IP}:${DANGO_METRICS_PORT:-0}:9191"
+      - "${WIREGUARD_IP}:${DANGO_METRICS_PORT:-0}:9191"
 {% endif %}
     networks:
       - default
@@ -274,9 +277,12 @@ services:
       - "${COMETBFT_DIRECTORY}:/root/.cometbft"
 {% if expose_ports %}
     ports:
-      - "${BINDING_IP}:${COMETBFT_P2P_PORT:-0}:26656"
-      - "${BINDING_IP}:${COMETBFT_RPC_PORT:-0}:26657"
-      - "${BINDING_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
+      - "${TAILSCALE_IP}:${COMETBFT_P2P_PORT:-0}:26656"
+      - "${TAILSCALE_IP}:${COMETBFT_RPC_PORT:-0}:26657"
+      - "${TAILSCALE_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
+      - "${WIREGUARD_IP}:${COMETBFT_P2P_PORT:-0}:26656"
+      - "${WIREGUARD_IP}:${COMETBFT_RPC_PORT:-0}:26657"
+      - "${WIREGUARD_IP}:${COMETBFT_METRICS_PORT:-0}:26660"
 {% endif %}
     networks:
       - default

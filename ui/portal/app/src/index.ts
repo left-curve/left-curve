@@ -9,6 +9,8 @@ import { createMMKVStorage } from "~/storage";
 import { configureReanimatedLogger, ReanimatedLogLevel } from "react-native-reanimated";
 
 global.localStorage = createMMKVStorage() as Storage;
+global.Intl = require("intl");
+require("intl/locale-data/jsonp/en.js");
 
 global.BroadcastChannel = class {
   constructor(public name: string) {}

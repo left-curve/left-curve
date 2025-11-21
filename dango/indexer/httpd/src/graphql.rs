@@ -1,7 +1,9 @@
+#[cfg(feature = "tracing")]
+use async_graphql::extensions;
 #[cfg(feature = "metrics")]
 use indexer_httpd::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
 use {
-    async_graphql::{Schema, dataloader::DataLoader, extensions},
+    async_graphql::{Schema, dataloader::DataLoader},
     indexer_httpd::graphql::{mutation::Mutation, telemetry::SentryExtension},
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
@@ -60,8 +62,9 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
 
     let file_transaction_loader = DataLoader::new(
         FileTransactionDataLoader {
-            indexer: dango_httpd_context
+            indexer_path: dango_httpd_context
                 .indexer_httpd_context
+                .indexer_cache_context
                 .indexer_path
                 .clone(),
         },
@@ -70,6 +73,7 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
 
     let indexer_path = dango_httpd_context
         .indexer_httpd_context
+        .indexer_cache_context
         .indexer_path
         .clone();
 
@@ -79,13 +83,18 @@ pub fn build_schema(dango_httpd_context: crate::context::Context) -> AppSchema {
         Mutation::default(),
         Subscription::default(),
     )
-    .extension(extensions::Logger)
-        // .extension(extensions::Tracing)
     .extension(SentryExtension);
 
     #[cfg(feature = "metrics")]
     {
         schema_builder = schema_builder.extension(MetricsExtension);
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        schema_builder = schema_builder
+            .extension(extensions::Tracing)
+            .extension(extensions::Logger);
     }
 
     schema_builder

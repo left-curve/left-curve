@@ -17,12 +17,12 @@
 
 - name: Check if deployment already exists
   stat:
-    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env"
+    path: "{{ deployment_dir }}/.env"
   register: env_file_exists
 
 - name: Read .env values
   shell: |
-    grep -E '^(CLICKHOUSE_DATABASE|POSTGRES_DATABASE|CLICKHOUSE_METRICS_PORT|DB_METRICS_PORT|DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|GRAPHIQL_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_METRICS_PORT|DANGO_DIRECTORY|COMETBFT_DIRECTORY)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+    grep -E '^(CLICKHOUSE_DATABASE|POSTGRES_DATABASE|CLICKHOUSE_METRICS_PORT|DB_METRICS_PORT|DANGO_PORT|DANGO_METRICS_PORT|FAUCET_PORT|DANGO_FRONTEND_PORT|QUEST_PORT|GRAPHIQL_PORT|COMETBFT_P2P_PORT|COMETBFT_RPC_PORT|COMETBFT_METRICS_PORT|DANGO_DIRECTORY|COMETBFT_DIRECTORY)=' {{ deployment_dir }}/.env | \
     awk -F= '{print tolower($1) "=" $2}'
   register: existing_port_pairs
   when: env_file_exists.stat.exists
@@ -43,7 +43,7 @@
   loop: ["{{ dango_directory }}/config", "{{ cometbft_directory }}/config"]
 
 - file:
-    path: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}/{{ item }}"
+    path: "{{ deployment_dir }}/{{ item }}"
     state: directory
   loop: ["clickhouse"]
   when: deploy_includes_clickhouse

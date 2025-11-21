@@ -1,23 +1,14 @@
+#[cfg(feature = "tracing")]
+use uuid::Uuid;
 #[cfg(feature = "metrics")]
-use grug_types::MetricsIterExt;
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use {crate::statistics, grug_types::MetricsIterExt};
 use {
-    crate::{DbError, DbResult, U64Comparator, U64Timestamp},
+    crate::{DbError, DbResult},
     grug_app::{Commitment, Db},
-    grug_types::{Batch, Buffer, Hash256, HashExt, HexBinary, Inner, Op, Order, Record, Storage},
-    ouroboros::self_referencing,
-    rocksdb::{
-        BoundColumnFamily, DBWithThreadMode, IteratorMode, MultiThreaded, Options, ReadOptions,
-        WriteBatch,
-    },
-    std::{
-        collections::BTreeMap,
-        marker::PhantomData,
-        ops::Bound,
-        path::Path,
-        sync::{Arc, RwLock, RwLockReadGuard},
-    },
+    grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
+    parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
+    rocksdb::{ColumnFamily, DB, IteratorMode, Options, ReadOptions, WriteBatch},
+    std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
 };
 
 /// We use three column families (CFs) for storing data.
@@ -37,58 +28,19 @@ pub const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 
 /// The state storage (SS) family stores raw, prehash key-value pair data.
 /// When performing normal read/write/remove/scan interactions, we use this CF.
-///
-/// It also utilize RocksDB's timestamping feature to provide historical state
-/// access, necessary for archive nodes:
-/// https://github.com/facebook/rocksdb/wiki/User-defined-Timestamp
-///
-/// Unfortunately the Rust API for RocksDB does not support timestamping,
-/// we have to add it in. Our fork is here, under the `0.21.0-cw` branch:
-/// https://github.com/left-curve/rust-rocksdb/tree/v0.21.0-cw
 pub const CF_NAME_STATE_STORAGE: &str = "state_storage";
 
 /// Storage key for the latest version.
 pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
 
-/// Storage key for the oldest version.
-pub const OLDEST_VERSION_KEY: &[u8] = b"oldest_version";
-
 #[cfg(feature = "metrics")]
 pub const DISK_DB_LABEL: &str = "grug.db.disk.duration";
 
 #[cfg(feature = "metrics")]
-pub const PRIORITY_DATA_LOCK_COUNT_LABEL: &str = "grug.db.disk.priority_data_lock_count";
+pub const PRIORITY_DATA_LABEL: &str = "priority_data";
 
-/// Configurations related to the disk DB.
-#[derive(Default, Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Config {
-    /// Records in this range will be loaded into memory. Reading and iterating
-    /// within this range will be done entirely in memory, without accessing the
-    /// disk.
-    ///
-    /// Lower bound is inclusive, upper bound is exclusive.
-    pub priority_range: Option<(HexBinary, HexBinary)>,
-    /// Options regarding auto-pruning.
-    pub pruning: PruningConfig,
-}
-
-#[derive(Default, Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct PruningConfig {
-    /// The interval of auto-pruning (i.e. perform a pruning every X versions).
-    /// 0 means no auto-pruning.
-    pub prune_interval: u64,
-    /// At each auto-pruning, how many recent versions to keep.
-    pub prune_keep_recent: u64,
-    /// The interval of manual compaction (i.e. perform a manual compaction
-    /// every X versions).
-    /// 0 means no manual compaction, which leaves it to RocksDB's internal
-    /// logic to decide when to compact. In our practical experience, in a live
-    /// network with a lot of read requests from RPC, RocksDB compacts infrequently
-    /// or not at all, resulting in performance degradation over time.
-    pub compact_interval: u64,
-}
+#[cfg(feature = "metrics")]
+pub const ROCKSDB_LABEL: &str = "rocksdb";
 
 /// The base storage primitive.
 ///
@@ -118,81 +70,76 @@ pub struct PruningConfig {
 /// have time to look into those advanced features yet. We will keep experimenting
 /// and maybe our implementation will converge with Sei's some time later.
 pub struct DiskDb<T> {
-    pub(crate) inner: Arc<DiskDbInner>,
-    prune: PruningConfig,
+    /// Data in the database.
+    pub(crate) data: Arc<RwLock<Data>>,
+    /// Data staged to, but not yet, be committed to the database.
+    pending: Arc<RwLock<Option<PendingData>>>,
+    /// The commitment scheme.
     _commitment: PhantomData<T>,
+    /// Worker for emitting RocksDB statistics.
+    #[cfg(feature = "metrics")]
+    _statistics: Arc<statistics::StatisticsWorker>,
 }
 
 #[derive(Debug)]
-pub(crate) struct DiskDbInner {
-    pub db: DBWithThreadMode<MultiThreaded>,
-    // Data that are ready to be persisted to the physical database.
-    // Ideally we want to just use a `rocksdb::WriteBatch` here, but it's not
-    // thread-safe.
-    pending_data: RwLock<Option<PendingData>>,
+pub(crate) struct Data {
+    /// Represents an on-disk RocksDB instance.
+    pub(crate) db: DB,
+    /// Portion of the state storage that is critical to the chain's performance,
+    /// loaded into memory. Reading these data doesn't need to touch the disk.
     priority_data: Option<PriorityData>,
-}
-
-#[derive(Debug)]
-pub(crate) struct PendingData {
-    version: u64,
-    state_commitment: Batch,
-    state_storage: Batch,
 }
 
 #[derive(Debug)]
 struct PriorityData {
     min: Vec<u8>, // inclusive
     max: Vec<u8>, // exclusive
-    records: RwLock<BTreeMap<Vec<u8>, Vec<u8>>>,
+    records: BTreeMap<Vec<u8>, Vec<u8>>,
+}
+
+#[derive(Debug)]
+struct PendingData {
+    version: u64,
+    state_commitment: Batch,
+    state_storage: Batch,
 }
 
 impl<T> DiskDb<T> {
-    /// Create a DiskDb instance by opening a physical RocksDB instance, using
-    /// the default configurations.
+    /// Create a DiskDb instance by opening a physical RocksDB instance.
     pub fn open<P>(data_dir: P) -> DbResult<Self>
     where
         P: AsRef<Path>,
     {
-        Self::open_with_cfg(data_dir, Config::default())
+        Self::open_with_priority(data_dir, None::<(&[u8], &[u8])>)
     }
 
-    /// Create a DiskDb instance by opening a physical RocksDB instance.
-    pub fn open_with_cfg<P>(data_dir: P, cfg: Config) -> DbResult<Self>
+    /// Create a DiskDb instance by opening a physical RocksDB instance,
+    /// optionally with a priority range. Records within the range will be
+    /// loaded into memory for better performance. The range's lower bound is
+    /// inclusive, the upper bound is exclusive.
+    pub fn open_with_priority<P, B>(data_dir: P, priority_range: Option<(B, B)>) -> DbResult<Self>
     where
         P: AsRef<Path>,
+        B: AsRef<[u8]>,
     {
-        // Note: For default and state commitment CFs, don't enable timestamping;
-        // for state storage column family, enable timestamping.
-        let db = DBWithThreadMode::open_cf_with_opts(&new_db_options(), data_dir, [
-            (CF_NAME_DEFAULT, Options::default()),
+        let opts = new_db_options();
+        let db = DB::open_cf(&opts, data_dir, [
+            CF_NAME_DEFAULT,
             #[cfg(feature = "ibc")]
-            (CF_NAME_PREIMAGES, new_cf_options_with_ts()),
-            (CF_NAME_STATE_STORAGE, new_cf_options_with_ts()),
-            (CF_NAME_STATE_COMMITMENT, Options::default()),
+            CF_NAME_PREIMAGES,
+            CF_NAME_STATE_STORAGE,
+            CF_NAME_STATE_COMMITMENT,
         ])?;
 
         // If `priority_range` is specified, load the data in that range into memory.
-        let priority_data = cfg.priority_range.map(|(min, max)| {
+        let priority_data = priority_range.map(|(min, max)| {
             #[cfg(feature = "tracing")]
             let mut size = 0;
 
-            // On a brand new database, where the `state_storage` column family
-            // is completely empty, with no data ever written into it yet, the
-            // iterator fails with:
-            //
-            // > Invalid argument: cannot call this method on column family
-            //   state_storage that enables timestamp
-            //
-            // Therefore, we check whether the `latest_version` exists, If not,
-            // it means the DB is new, then we default the priority data to an
-            // empty B-tree map.
-            let records = if let Some(latest_version) = read_version(&db, LATEST_VERSION_KEY) {
-                db.iterator_cf_opt(
-                    &cf_state_storage(&db),
-                    new_read_options(Some(latest_version), Some(min.as_ref()), Some(max.as_ref())),
-                    IteratorMode::Start,
-                )
+            let cf = cf_state_storage(&db);
+            let opts = new_read_options(Some(min.as_ref()), Some(max.as_ref()));
+            let records = db
+                .iterator_cf_opt(&cf, opts, IteratorMode::Start)
                 .map(|item| {
                     let (k, v) = item.unwrap_or_else(|err| {
                         panic!("failed to load record for priority data: {err}");
@@ -205,10 +152,7 @@ impl<T> DiskDb<T> {
 
                     (k.to_vec(), v.to_vec())
                 })
-                .collect::<BTreeMap<_, _>>()
-            } else {
-                BTreeMap::new()
-            };
+                .collect::<BTreeMap<_, _>>();
 
             #[cfg(feature = "tracing")]
             {
@@ -216,20 +160,23 @@ impl<T> DiskDb<T> {
             }
 
             PriorityData {
-                min: min.into_inner(),
-                max: max.into_inner(),
-                records: RwLock::new(records),
+                min: min.as_ref().to_vec(),
+                max: max.as_ref().to_vec(),
+                records,
             }
         });
 
+        let data = Arc::new(RwLock::new(Data { db, priority_data }));
+
+        #[cfg(feature = "metrics")]
+        let handle = statistics::StatisticsWorker::run(opts, Arc::clone(&data));
+
         Ok(Self {
-            inner: Arc::new(DiskDbInner {
-                db,
-                pending_data: RwLock::new(None),
-                priority_data,
-            }),
-            prune: cfg.pruning,
+            data,
+            pending: Arc::new(RwLock::new(None)),
             _commitment: PhantomData,
+            #[cfg(feature = "metrics")]
+            _statistics: Arc::new(handle),
         })
     }
 }
@@ -237,9 +184,11 @@ impl<T> DiskDb<T> {
 impl<T> Clone for DiskDb<T> {
     fn clone(&self) -> Self {
         Self {
-            inner: Arc::clone(&self.inner),
-            prune: self.prune,
+            data: Arc::clone(&self.data),
+            pending: Arc::clone(&self.pending),
             _commitment: PhantomData,
+            #[cfg(feature = "metrics")]
+            _statistics: Arc::clone(&self._statistics),
         }
     }
 }
@@ -254,60 +203,87 @@ where
     type StateStorage = StateStorage;
 
     fn state_commitment(&self) -> StateCommitment {
-        StateCommitment {
-            inner: Arc::clone(&self.inner),
-        }
+        StateCommitment::new(&self.data)
     }
 
     fn state_storage_with_comment(
         &self,
         version: Option<u64>,
-        #[cfg_attr(
-            not(any(feature = "tracing", feature = "metrics")),
-            allow(unused_variables)
-        )]
         comment: &'static str,
     ) -> DbResult<StateStorage> {
-        // Read the latest version.
-        // If it doesn't exist, this means not even a single batch has been
-        // written yet (e.g. during `InitChain`). In this case just use zero.
-        let latest_version = self.latest_version().unwrap_or(0);
-
         // If version is unspecified, use the latest version. Otherwise, make
         // sure it's no newer than the latest version.
-        let version = match version {
-            Some(version) => {
-                if version > latest_version {
-                    return Err(DbError::version_too_new(version, latest_version));
-                }
-                version
-            },
-            None => latest_version,
-        };
-
-        // If the oldest version record exists (meaning, pruning has been
-        // performed at least once), and the requested version is older than it,
-        // return error.
-        if let Some(oldest_version) = self.oldest_version() {
-            if version < oldest_version {
-                return Err(DbError::version_too_old(version, oldest_version));
+        if let Some(version) = version {
+            // Read the latest version.
+            // If it doesn't exist, this means not even a single batch has been
+            // written yet (e.g. during `InitChain`). In this case just use zero.
+            let latest_version = self.latest_version().unwrap_or(0);
+            if version != latest_version {
+                return Err(DbError::incorrect_version(version, latest_version));
             }
         }
 
-        Ok(StateStorage {
-            inner: Arc::clone(&self.inner),
-            version,
-            #[cfg(any(feature = "tracing", feature = "metrics"))]
-            comment,
-        })
+        Ok(StateStorage::new(&self.data, comment))
     }
 
     fn latest_version(&self) -> Option<u64> {
-        read_version(&self.inner.db, LATEST_VERSION_KEY)
+        #[cfg(feature = "tracing")]
+        let uuid = Uuid::new_v4().to_string();
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                kind = "read",
+                uuid,
+                comment = "latest_version",
+                "Locking data"
+            );
+        }
+
+        let latest_version = {
+            let data = self.data.read();
+
+            #[cfg(feature = "tracing")]
+            {
+                tracing::debug!(
+                    kind = "read",
+                    uuid,
+                    comment = "latest_version",
+                    "Locked data"
+                );
+            }
+
+            let bytes = data
+                .db
+                .get_cf(&cf_default(&data.db), LATEST_VERSION_KEY)
+                .unwrap_or_else(|err| {
+                    panic!("failed to read latest version from default column family: {err}");
+                })?
+                .try_into()
+                .unwrap_or_else(|bytes: Vec<u8>| {
+                    panic!("latest version is of incorrect length: {}", bytes.len());
+                });
+
+            Some(u64::from_le_bytes(bytes))
+        };
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                kind = "read",
+                uuid,
+                comment = "latest_version",
+                "Unlocked data"
+            );
+        }
+
+        latest_version
     }
 
     fn oldest_version(&self) -> Option<u64> {
-        read_version(&self.inner.db, OLDEST_VERSION_KEY)
+        // This database isn't archival, meaning it only keeps the most recent
+        // version, so the oldest available version is the same as the latest version.
+        self.latest_version()
     }
 
     fn root_hash(&self, version: Option<u64>) -> DbResult<Option<Hash256>> {
@@ -327,7 +303,7 @@ where
         // A write batch must not already exist. If it does, it means a batch
         // has been flushed, but not committed, then a next batch is flusehd,
         // which indicates some error in the ABCI app's logic.
-        if self.inner.pending_data.read()?.is_some() {
+        if self.pending.read().is_some() {
             return Err(DbError::pending_data_already_set());
         }
 
@@ -353,7 +329,7 @@ where
         let root_hash = T::apply(&mut buffer, old_version, new_version, &batch)?;
         let (_, pending) = buffer.disassemble();
 
-        *(self.inner.pending_data.write()?) = Some(PendingData {
+        *(self.pending.write()) = Some(PendingData {
             version: new_version,
             state_commitment: pending,
             state_storage: batch,
@@ -368,68 +344,51 @@ where
         Ok((new_version, root_hash))
     }
 
-    fn commit(&self) -> DbResult<()> {
+    fn commit(&self) -> DbResult<u64> {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
         let pending = self
-            .inner
-            .pending_data
-            .write()?
+            .pending
+            .write()
             .take()
             .ok_or(DbError::pending_data_not_set())?;
 
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(kind = "write", comment = "commit", "Locking data");
+        }
+
+        let mut data = self.data.write();
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(kind = "write", comment = "commit", "Locked data");
+        }
+
         // If priority data exists, apply the change set to it.
-        if let Some(data) = &self.inner.priority_data {
-            #[cfg(feature = "tracing")]
-            {
-                tracing::debug!("Attempting to acquire write lock on priority data");
-            }
-
-            let mut records = data.records.write().expect("priority data poisoned");
-
-            #[cfg(feature = "tracing")]
-            {
-                tracing::debug!("Acquired write lock on priority data");
-            }
-
-            #[cfg(feature = "metrics")]
-            {
-                metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "write").increment(1);
-            }
-
+        if let Some(priority) = &mut data.priority_data {
             for (k, op) in pending.state_storage.range::<[u8], _>((
-                Bound::Included(data.min.as_slice()),
-                Bound::Excluded(data.max.as_slice()),
+                Bound::Included(priority.min.as_slice()),
+                Bound::Excluded(priority.max.as_slice()),
             )) {
                 if let Op::Insert(v) = op {
-                    records.insert(k.clone(), v.clone());
+                    priority.records.insert(k.clone(), v.clone());
                 } else {
-                    records.remove(k);
+                    priority.records.remove(k);
                 }
-            }
-
-            #[cfg(feature = "tracing")]
-            {
-                tracing::debug!("Released write lock on priority data");
-            }
-
-            #[cfg(feature = "metrics")]
-            {
-                metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "write").decrement(1);
             }
         }
 
         // Now, prepare the write batch that will be written to RocksDB.
         let mut batch = WriteBatch::default();
-        let ts = U64Timestamp::from(pending.version);
 
         // Set the new version (note: use little endian)
-        let cf = cf_default(&self.inner.db);
+        let cf = cf_default(&data.db);
         batch.put_cf(&cf, LATEST_VERSION_KEY, pending.version.to_le_bytes());
 
         // Writes in state commitment
-        let cf = cf_state_commitment(&self.inner.db);
+        let cf = cf_state_commitment(&data.db);
         for (key, op) in pending.state_commitment {
             if let Op::Insert(value) = op {
                 batch.put_cf(&cf, key, value);
@@ -438,32 +397,38 @@ where
             }
         }
 
-        // Writes in preimages (note: don't forget timestamping, and deleting
-        // key hashes that are deleted in state storage - see Zellic audut).
+        // Writes in preimages (note: don't forget to delete key hashes that
+        // are deleted in state storage - see Zellic audit).
         // This is only necessary if the `ibc` feature is enabled.
         #[cfg(feature = "ibc")]
         {
-            let cf = cf_preimages(&self.inner.db);
+            let cf = cf_preimages(&data.db);
             for (key, op) in &pending.state_storage {
+                let key_hash = key.hash256();
                 if let Op::Insert(_) = op {
-                    batch.put_cf_with_ts(&cf, key.hash256(), ts, key);
+                    batch.put_cf(&cf, key_hash, key);
                 } else {
-                    batch.delete_cf_with_ts(&cf, key.hash256(), ts);
+                    batch.delete_cf(&cf, key_hash);
                 }
             }
         }
 
-        // Writes in state storage (note: don't forget timestamping)
-        let cf = cf_state_storage(&self.inner.db);
+        // Writes in state storage
+        let cf = cf_state_storage(&data.db);
         for (key, op) in pending.state_storage {
             if let Op::Insert(value) = op {
-                batch.put_cf_with_ts(&cf, key, ts, value);
+                batch.put_cf(&cf, key, value);
             } else {
-                batch.delete_cf_with_ts(&cf, key, ts);
+                batch.delete_cf(&cf, key);
             }
         }
 
-        self.inner.db.write(batch)?;
+        data.db.write(batch)?;
+
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(kind = "write", comment = "commit", "Unlocked data");
+        }
 
         #[cfg(feature = "metrics")]
         {
@@ -471,23 +436,7 @@ where
                 .record(duration.elapsed().as_secs_f64());
         }
 
-        // Perform auto-pruning if the configured interval is reached.
-        if self.prune.prune_interval != 0
-            && pending.version % self.prune.prune_interval == 0
-            && pending.version > self.prune.prune_keep_recent
-        {
-            self.prune(pending.version - self.prune.prune_keep_recent)?;
-        }
-
-        // Perform manual compaction if the configured interval is reached.
-        if self.prune.compact_interval != 0
-            && pending.version % self.prune.compact_interval == 0
-            && pending.version > self.prune.compact_interval
-        {
-            self.compact();
-        }
-
-        Ok(())
+        Ok(pending.version)
     }
 
     fn prune(&self, up_to_version: u64) -> DbResult<()> {
@@ -498,27 +447,6 @@ where
 
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
-
-        let ts = U64Timestamp::from(up_to_version);
-
-        // Prune state storage.
-        //
-        // We do this by increase the state storage column family's
-        // `full_history_ts_low` value, as in SeiDB:
-        // <https://github.com/sei-protocol/sei-db/blob/v0.0.41/ss/rocksdb/db.go#L186-L206>
-        //
-        // Note, this does _not_ incur an immediate full compaction, i.e. this
-        // performs a lazy prune. Future compactions will honor the increased
-        // `full_history_ts_low` and trim history when possible.
-        let cf = cf_state_storage(&self.inner.db);
-        self.inner.db.increase_full_history_ts_low(&cf, ts)?;
-
-        // Same for preimages.
-        #[cfg(feature = "ibc")]
-        {
-            let cf = cf_preimages(&self.inner.db);
-            self.inner.db.increase_full_history_ts_low(&cf, ts)?;
-        }
 
         // Prune state commitment.
         let mut buffer = Buffer::new(
@@ -531,20 +459,21 @@ where
 
         let (_, pending) = buffer.disassemble();
         let mut batch = WriteBatch::default();
-        let cf = cf_state_commitment(&self.inner.db);
-        for (key, op) in pending {
-            if let Op::Insert(value) = op {
-                batch.put_cf(&cf, key, value);
-            } else {
-                batch.delete_cf(&cf, key);
+
+        {
+            let data = self.data.write();
+
+            let cf = cf_state_commitment(&data.db);
+            for (key, op) in pending {
+                if let Op::Insert(value) = op {
+                    batch.put_cf(&cf, key, value);
+                } else {
+                    batch.delete_cf(&cf, key);
+                }
             }
+
+            data.db.write(batch)?;
         }
-
-        // Finally, update the oldest available version value.
-        let cf = cf_default(&self.inner.db);
-        batch.put_cf(&cf, OLDEST_VERSION_KEY, up_to_version.to_le_bytes());
-
-        self.inner.db.write(batch)?;
 
         #[cfg(feature = "metrics")]
         {
@@ -556,55 +485,97 @@ where
     }
 }
 
-impl<T> DiskDb<T> {
-    /// Force an immediate compaction of the timestamped column families.
-    pub fn compact(&self) {
+// ----------------------------- state commitment ------------------------------
+
+#[derive(Debug)]
+pub struct StateCommitment {
+    guard: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
+    #[cfg(feature = "tracing")]
+    uuid: String,
+}
+
+impl StateCommitment {
+    fn new(data: &Arc<RwLock<Data>>) -> Self {
+        #[cfg(feature = "tracing")]
+        let uuid = Uuid::new_v4().to_string();
+
         #[cfg(feature = "tracing")]
         {
-            tracing::info!("Compacting database");
-        }
-
-        #[cfg(feature = "metrics")]
-        let duration = std::time::Instant::now();
-
-        self.inner.db.compact_range_cf(
-            &cf_state_storage(&self.inner.db),
-            None::<&[u8]>,
-            None::<&[u8]>,
-        );
-
-        #[cfg(feature = "ibc")]
-        {
-            self.inner.db.compact_range_cf(
-                &cf_preimages(&self.inner.db),
-                None::<&[u8]>,
-                None::<&[u8]>,
+            tracing::debug!(
+                kind = "read",
+                comment = "state_commitment",
+                uuid,
+                "Locking data"
             );
         }
 
-        #[cfg(feature = "metrics")]
+        let guard = data.read_arc();
+
+        #[cfg(feature = "tracing")]
         {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "compact")
-                .record(duration.elapsed().as_secs_f64());
+            tracing::debug!(
+                kind = "read",
+                comment = "state_commitment",
+                uuid,
+                "Locked data"
+            );
+        }
+
+        Self {
+            guard: Arc::new(guard),
+            #[cfg(feature = "tracing")]
+            uuid,
         }
     }
 }
 
-// ----------------------------- state commitment ------------------------------
+// When cloning, instead of acquiring a new read-lock, we create a new shared
+// reference to the same read-lock. The idea is that there should be only one
+// lock through the entire lifetime of this `StateCommitment`.
+impl Clone for StateCommitment {
+    fn clone(&self) -> Self {
+        #[cfg(feature = "tracing")]
+        let uuid = Uuid::new_v4().to_string();
 
-#[derive(Clone, Debug)]
-pub struct StateCommitment {
-    inner: Arc<DiskDbInner>,
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                kind = "read",
+                comment = "state_commitment",
+                strong_count = Arc::strong_count(&self.guard),
+                from = self.uuid,
+                to = uuid,
+                "Lock cloned"
+            );
+        }
+
+        Self {
+            guard: Arc::clone(&self.guard),
+            #[cfg(feature = "tracing")]
+            uuid,
+        }
+    }
+}
+
+#[cfg(feature = "tracing")]
+impl Drop for StateCommitment {
+    fn drop(&mut self) {
+        tracing::debug!(
+            kind = "read",
+            comment = "state_commitment",
+            strong_count = Arc::strong_count(&self.guard),
+            uuid = self.uuid,
+            "Lock clone dropped"
+        );
+    }
 }
 
 impl Storage for StateCommitment {
     fn read(&self, key: &[u8]) -> Option<Vec<u8>> {
-        self.inner
-            .db
-            .get_cf(&cf_state_commitment(&self.inner.db), key)
-            .unwrap_or_else(|err| {
-                panic!("failed to read from state commitment: {err}");
-            })
+        let cf = cf_state_commitment(&self.guard.db);
+        self.guard.db.get_cf(&cf, key).unwrap_or_else(|err| {
+            panic!("failed to read from state commitment: {err}");
+        })
     }
 
     fn scan<'a>(
@@ -613,12 +584,12 @@ impl Storage for StateCommitment {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let opts = new_read_options(None, min, max);
+        let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .inner
+            .guard
             .db
-            .iterator_cf_opt(&cf_state_commitment(&self.inner.db), opts, mode)
+            .iterator_cf_opt(&cf_state_commitment(&self.guard.db), opts, mode)
             .map(|item| {
                 let (k, v) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state commitment: {err}");
@@ -634,12 +605,12 @@ impl Storage for StateCommitment {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(None, min, max);
+        let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .inner
+            .guard
             .db
-            .iterator_cf_opt(&cf_state_commitment(&self.inner.db), opts, mode)
+            .iterator_cf_opt(&cf_state_commitment(&self.guard.db), opts, mode)
             .map(|item| {
                 let (k, _) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state commitment: {err}");
@@ -655,12 +626,12 @@ impl Storage for StateCommitment {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        let opts = new_read_options(None, min, max);
+        let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
         let iter = self
-            .inner
+            .guard
             .db
-            .iterator_cf_opt(&cf_state_commitment(&self.inner.db), opts, mode)
+            .iterator_cf_opt(&cf_state_commitment(&self.guard.db), opts, mode)
             .map(|item| {
                 let (_, v) = item.unwrap_or_else(|err| {
                     panic!("failed to iterate in state commitment: {err}");
@@ -685,99 +656,79 @@ impl Storage for StateCommitment {
 
 // ------------------------------- state storage -------------------------------
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct StateStorage {
-    inner: Arc<DiskDbInner>,
-    version: u64,
-    #[cfg(any(feature = "tracing", feature = "metrics"))]
+    guard: Arc<ArcRwLockReadGuard<RawRwLock, Data>>,
     comment: &'static str,
+    #[cfg(feature = "tracing")]
+    uuid: String,
 }
 
 impl StateStorage {
-    fn create_iterator<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        // If priority data exists, and the iterator range completely falls
-        // within the priority range, then create a priority iterator.
-        // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
-        // are both exclusive.
-        if let (Some(data), Some(min), Some(max)) = (&self.inner.priority_data, min, max) {
-            if data.min.as_slice() <= min && max <= data.max.as_slice() {
-                return self.create_priority_iterator(data, min, max, order);
-            }
-        }
-
-        self.create_non_priority_iterator(min, max, order)
-    }
-
-    fn create_priority_iterator<'a>(
-        &'a self,
-        data: &'a PriorityData,
-        min: &[u8],
-        max: &[u8],
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
+    fn new(data: &Arc<RwLock<Data>>, comment: &'static str) -> Self {
         #[cfg(feature = "tracing")]
-        {
-            tracing::debug!(
-                operation = "scan",
-                comment = self.comment,
-                "Attempting to acquire read lock on priority data"
-            );
-        }
-
-        let records = data.records.read().expect("priority data poisoned");
+        let uuid = Uuid::new_v4().to_string();
 
         #[cfg(feature = "tracing")]
         {
-            tracing::debug!(
-                operation = "scan",
-                comment = self.comment,
-                "Acquired read lock on priority data"
-            );
+            tracing::debug!(kind = "read", uuid, comment, "Locking data");
         }
 
-        #[cfg(feature = "metrics")]
+        let guard = data.read_arc();
+
+        #[cfg(feature = "tracing")]
         {
-            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
+            tracing::debug!(kind = "read", uuid, comment, "Locked data");
         }
 
-        Box::new(PriorityDataIter {
-            inner: PriorityDataIterInner::new(records, |g| g.scan(Some(min), Some(max), order)),
+        Self {
+            guard: Arc::new(guard),
+            comment,
             #[cfg(feature = "tracing")]
-            comment: self.comment,
-        })
+            uuid,
+        }
     }
+}
 
-    fn create_non_priority_iterator<'a>(
-        &'a self,
-        min: Option<&[u8]>,
-        max: Option<&[u8]>,
-        order: Order,
-    ) -> Box<dyn Iterator<Item = Record> + 'a> {
-        let opts = new_read_options(Some(self.version), min, max);
-        let mode = into_iterator_mode(order);
-        let iter = self
-            .inner
-            .db
-            .iterator_cf_opt(&cf_state_storage(&self.inner.db), opts, mode)
-            .map(|item| {
-                let (k, v) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in state storage: {err}");
-                });
-                (k.to_vec(), v.to_vec())
-            });
+// When cloning, instead of acquiring a new read-lock, we create a new shared
+// reference to the same read-lock. The idea is that there should be only one
+// lock through the entire lifetime of this `StateStorage`.
+impl Clone for StateStorage {
+    fn clone(&self) -> Self {
+        #[cfg(feature = "tracing")]
+        let uuid = Uuid::new_v4().to_string();
 
-        #[cfg(feature = "metrics")]
-        let iter = iter.with_metrics(DISK_DB_LABEL, [
-            ("operation", "next"),
-            ("comment", self.comment),
-        ]);
+        #[cfg(feature = "tracing")]
+        {
+            tracing::debug!(
+                kind = "read",
+                comment = self.comment,
+                strong_count = Arc::strong_count(&self.guard),
+                from = self.uuid,
+                to = uuid,
+                "Lock cloned"
+            );
+        }
 
-        Box::new(iter)
+        Self {
+            guard: Arc::clone(&self.guard),
+            comment: self.comment,
+            #[cfg(feature = "tracing")]
+            uuid,
+        }
+    }
+}
+
+#[cfg(feature = "tracing")]
+impl Drop for StateStorage {
+    fn drop(&mut self) {
+        tracing::debug!(
+            kind = "read",
+            comment = self.comment,
+            strong_count = Arc::strong_count(&self.guard),
+            uuid = self.uuid,
+            "Lock clone dropped"
+        );
     }
 }
 
@@ -789,66 +740,44 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the disk.
         // Note: `min` is inclusive, while `max` is exclusive.
-        if let Some(data) = &self.inner.priority_data {
+        // TODO: the nested `if` statements can be simplified with rust edition 2024
+        if let Some(data) = &self.guard.priority_data {
             if data.min.as_slice() <= key && key < data.max.as_slice() {
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::debug!(
-                        operation = "read",
-                        comment = self.comment,
-                        "Attempting to acquire read lock on priority data"
-                    );
-                }
-
-                let records = data.records.read().expect("priority data poisoned");
-
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::debug!(
-                        operation = "read",
-                        comment = self.comment,
-                        "Acquired read lock on priority data"
-                    );
-                }
+                let value = data.records.get(key).cloned();
 
                 #[cfg(feature = "metrics")]
                 {
-                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").increment(1);
-                }
-
-                let value = records.get(key).cloned();
-
-                #[cfg(feature = "tracing")]
-                {
-                    tracing::debug!(
-                        operation = "read",
-                        comment = self.comment,
-                        "Released read lock on priority data"
-                    );
-                }
-
-                #[cfg(feature = "metrics")]
-                {
-                    metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
+                    metrics::histogram!(
+                        DISK_DB_LABEL,
+                        "operation" => "read",
+                        "comment" => self.comment,
+                        "source" => PRIORITY_DATA_LABEL
+                    )
+                    .record(duration.elapsed().as_secs_f64());
                 }
 
                 return value;
             }
         }
 
-        let opts = new_read_options(Some(self.version), None, None);
+        let opts = new_read_options(None, None);
         let value = self
-            .inner
+            .guard
             .db
-            .get_cf_opt(&cf_state_storage(&self.inner.db), key, &opts)
+            .get_cf_opt(&cf_state_storage(&self.guard.db), key, &opts)
             .unwrap_or_else(|err| {
                 panic!("failed to read from state storage: {err}");
             });
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "read", "comment" => self.comment)
-                .record(duration.elapsed().as_secs_f64());
+            metrics::histogram!(
+                DISK_DB_LABEL,
+                "operation" => "read",
+                "comment" => self.comment,
+                "source" => ROCKSDB_LABEL
+            )
+            .record(duration.elapsed().as_secs_f64());
         }
 
         value
@@ -863,15 +792,71 @@ impl Storage for StateStorage {
         #[cfg(feature = "metrics")]
         let duration = std::time::Instant::now();
 
-        let iter = self.create_iterator(min, max, order);
+        // If priority data exists, and the iterator range completely falls
+        // within the priority range, then create a priority iterator.
+        // Note: `min` and `data.min` are both inclusive; `max` and `data.max`
+        // are both exclusive.
+        // TODO: the nested `if` statements can be simplified with rust edition 2024
+        if let (Some(data), Some(min), Some(max)) = (&self.guard.priority_data, min, max) {
+            if data.min.as_slice() <= min && max <= data.max.as_slice() {
+                let iter = data.records.scan(Some(min), Some(max), order);
+
+                #[cfg(feature = "metrics")]
+                {
+                    let iter = iter.with_metrics(DISK_DB_LABEL, [
+                        ("operation", "next"),
+                        ("comment", self.comment),
+                        ("source", PRIORITY_DATA_LABEL),
+                    ]);
+
+                    metrics::histogram!(
+                        DISK_DB_LABEL,
+                        "operation" => "scan",
+                        "comment" => self.comment,
+                        "source" => PRIORITY_DATA_LABEL
+                    )
+                    .record(duration.elapsed().as_secs_f64());
+
+                    return Box::new(iter);
+                }
+
+                #[cfg(not(feature = "metrics"))]
+                return iter;
+            }
+        }
+
+        let opts = new_read_options(min, max);
+        let mode = into_iterator_mode(order);
+        let iter = self
+            .guard
+            .db
+            .iterator_cf_opt(&cf_state_storage(&self.guard.db), opts, mode)
+            .map(|item| {
+                let (k, v) = item.unwrap_or_else(|err| {
+                    panic!("failed to iterate in state storage: {err}");
+                });
+                (k.to_vec(), v.to_vec())
+            });
+
+        #[cfg(feature = "metrics")]
+        let iter = iter.with_metrics(DISK_DB_LABEL, [
+            ("operation", "next"),
+            ("comment", self.comment),
+            ("source", ROCKSDB_LABEL),
+        ]);
 
         #[cfg(feature = "metrics")]
         {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan", "comment" => self.comment)
-                .record(duration.elapsed().as_secs_f64());
+            metrics::histogram!(
+                DISK_DB_LABEL,
+                "operation" => "scan",
+                "comment" => self.comment,
+                "source" => ROCKSDB_LABEL
+            )
+            .record(duration.elapsed().as_secs_f64());
         }
 
-        iter
+        Box::new(iter)
     }
 
     fn scan_keys<'a>(
@@ -880,17 +865,7 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        #[cfg(feature = "metrics")]
-        let duration = std::time::Instant::now();
-
-        let iter = self.create_iterator(min, max, order).map(|(k, _)| k);
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_keys", "comment" => self.comment)
-                .record(duration.elapsed().as_secs_f64());
-        }
-
+        let iter = self.scan(min, max, order).map(|(k, _)| k);
         Box::new(iter)
     }
 
@@ -900,17 +875,7 @@ impl Storage for StateStorage {
         max: Option<&[u8]>,
         order: Order,
     ) -> Box<dyn Iterator<Item = Vec<u8>> + 'a> {
-        #[cfg(feature = "metrics")]
-        let duration = std::time::Instant::now();
-
-        let iter = self.create_iterator(min, max, order).map(|(_, v)| v);
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::histogram!(DISK_DB_LABEL, "operation" => "scan_values", "comment" => self.comment)
-                .record(duration.elapsed().as_secs_f64());
-        }
-
+        let iter = self.scan(min, max, order).map(|(_, v)| v);
         Box::new(iter)
     }
 
@@ -924,46 +889,6 @@ impl Storage for StateStorage {
 
     fn remove_range(&mut self, _min: Option<&[u8]>, _max: Option<&[u8]>) {
         unreachable!("write function called on read-only storage");
-    }
-}
-
-struct PriorityDataIter<'a> {
-    inner: PriorityDataIterInner<'a>,
-    #[cfg(feature = "tracing")]
-    comment: &'static str,
-}
-
-#[self_referencing]
-struct PriorityDataIterInner<'a> {
-    guard: RwLockReadGuard<'a, BTreeMap<Vec<u8>, Vec<u8>>>,
-    #[borrows(guard)]
-    #[covariant]
-    inner: Box<dyn Iterator<Item = Record> + 'this>,
-}
-
-impl<'a> Iterator for PriorityDataIter<'a> {
-    type Item = Record;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.with_inner_mut(|iter| iter.next())
-    }
-}
-
-impl<'a> Drop for PriorityDataIter<'a> {
-    fn drop(&mut self) {
-        #[cfg(feature = "tracing")]
-        {
-            tracing::debug!(
-                operation = "scan",
-                comment = self.comment,
-                "Released read lock on priority data"
-            );
-        }
-
-        #[cfg(feature = "metrics")]
-        {
-            metrics::gauge!(PRIORITY_DATA_LOCK_COUNT_LABEL, "type" => "read").decrement(1);
-        }
     }
 }
 
@@ -987,28 +912,11 @@ pub fn new_db_options() -> Options {
     opts
 }
 
-pub fn new_cf_options_with_ts() -> Options {
-    let mut opts = Options::default();
-    // Must use a timestamp-enabled comparator
-    opts.set_comparator_with_ts(
-        U64Comparator::NAME,
-        U64Timestamp::SIZE,
-        Box::new(U64Comparator::compare),
-        Box::new(U64Comparator::compare_ts),
-        Box::new(U64Comparator::compare_without_ts),
-    );
-    opts
-}
-
 pub(crate) fn new_read_options(
-    version: Option<u64>,
     iterate_lower_bound: Option<&[u8]>,
     iterate_upper_bound: Option<&[u8]>,
 ) -> ReadOptions {
     let mut opts = ReadOptions::default();
-    if let Some(version) = version {
-        opts.set_timestamp(U64Timestamp::from(version));
-    }
     if let Some(bound) = iterate_lower_bound {
         opts.set_iterate_lower_bound(bound);
     }
@@ -1018,40 +926,29 @@ pub(crate) fn new_read_options(
     opts
 }
 
-pub fn cf_default(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub fn cf_default(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_DEFAULT).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }
 
 #[cfg(feature = "ibc")]
-pub(crate) fn cf_preimages(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub(crate) fn cf_preimages(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
 }
 
-pub fn cf_state_storage(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub fn cf_state_storage(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_STATE_STORAGE).unwrap_or_else(|| {
         panic!("failed to find state storage column family");
     })
 }
 
-pub fn cf_state_commitment(db: &DBWithThreadMode<MultiThreaded>) -> Arc<BoundColumnFamily<'_>> {
+pub fn cf_state_commitment(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_STATE_COMMITMENT).unwrap_or_else(|| {
         panic!("failed to find state commitment column family");
     })
-}
-
-pub fn read_version(db: &DBWithThreadMode<MultiThreaded>, k: &[u8]) -> Option<u64> {
-    let cf = cf_default(db);
-    let bytes = db.get_cf(&cf, k).unwrap_or_else(|err| {
-        panic!("failed to read from default column family: {err}");
-    })?;
-    let array = bytes.try_into().unwrap_or_else(|bytes: Vec<u8>| {
-        panic!("version is of incorrect byte length: {}", bytes.len());
-    });
-    Some(u64::from_le_bytes(array))
 }
 
 // ------------------------ tests using JMT commitment -------------------------
@@ -1218,68 +1115,91 @@ mod tests_jmt {
         let path = TempDataDir::new("_grug_disk_db_works");
         let db = DiskDb::<MerkleTree>::open(&path).unwrap();
 
-        // Write a batch. The very first batch have version 0.
-        let batch = Batch::from([
-            (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
-            (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
-            (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
-            (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
-        ]);
-        let (version, root_hash) = db.flush_and_commit(batch).unwrap();
-        assert_eq!(version, 0);
-        assert_eq!(root_hash, Some(v0::ROOT_HASH));
+        // Version 0
+        {
+            // Write a batch.
+            let batch = Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"trump".to_vec())),
+                (b"jake".to_vec(), Op::Insert(b"shepherd".to_vec())),
+                (b"joe".to_vec(), Op::Insert(b"biden".to_vec())),
+                (b"larry".to_vec(), Op::Insert(b"engineer".to_vec())),
+            ]);
+            let (version, root_hash) = db.flush_and_commit(batch).unwrap();
+            assert_eq!(version, 0);
+            assert_eq!(root_hash, Some(v0::ROOT_HASH));
 
-        // Write another batch with version = 1.
-        let batch = Batch::from([
-            (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
-            (b"joe".to_vec(), Op::Delete),
-            (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
-        ]);
-        let (version, root_hash) = db.flush_and_commit(batch).unwrap();
-        assert_eq!(version, 1);
-        assert_eq!(root_hash, Some(v1::ROOT_HASH));
+            // Read single records.
+            for (key, value) in [
+                ("donald", Some("trump")),
+                ("jake", Some("shepherd")),
+                ("joe", Some("biden")),
+                ("larry", Some("engineer")),
+                ("pumpkin", None),
+            ] {
+                let found_value = db
+                    .state_storage(Some(0))
+                    .unwrap()
+                    .read(key.as_bytes())
+                    .map(|bz| String::from_utf8(bz).unwrap());
+                assert_eq!(found_value.as_deref(), value);
+            }
 
-        // Try query values at the two versions, respectively, from state storage.
-        for (version, key, value) in [
-            (0, "donald", Some("trump")),
-            (0, "jake", Some("shepherd")),
-            (0, "joe", Some("biden")),
-            (0, "larry", Some("engineer")),
-            (0, "pumpkin", None),
-            (1, "donald", Some("duck")),
-            (1, "jake", Some("shepherd")),
-            (1, "joe", None),
-            (1, "larry", Some("engineer")),
-            (1, "pumpkin", Some("cat")),
-        ] {
-            let found_value = db
-                .state_storage(Some(version))
-                .unwrap()
-                .read(key.as_bytes())
-                .map(|bz| String::from_utf8(bz).unwrap());
-            assert_eq!(found_value.as_deref(), value);
-        }
-
-        // Try iterating at the two versions, respectively.
-        for (version, items) in [
-            (0, [
-                ("donald", "trump"),
-                ("jake", "shepherd"),
-                ("joe", "biden"),
-                ("larry", "engineer"),
-            ]),
-            (1, [
-                ("donald", "duck"),
-                ("jake", "shepherd"),
-                ("larry", "engineer"),
-                ("pumpkin", "cat"),
-            ]),
-        ] {
+            // Iterator records.
             for ((found_key, found_value), (key, value)) in db
                 .state_storage(Some(version))
                 .unwrap()
                 .scan(None, None, Order::Ascending)
-                .zip(items)
+                .zip([
+                    ("donald", "trump"),
+                    ("jake", "shepherd"),
+                    ("joe", "biden"),
+                    ("larry", "engineer"),
+                ])
+            {
+                assert_eq!(found_key, key.as_bytes());
+                assert_eq!(found_value, value.as_bytes());
+            }
+        }
+
+        // Version 1
+        {
+            // Write a batch.
+            let batch = Batch::from([
+                (b"donald".to_vec(), Op::Insert(b"duck".to_vec())),
+                (b"joe".to_vec(), Op::Delete),
+                (b"pumpkin".to_vec(), Op::Insert(b"cat".to_vec())),
+            ]);
+            let (version, root_hash) = db.flush_and_commit(batch).unwrap();
+            assert_eq!(version, 1);
+            assert_eq!(root_hash, Some(v1::ROOT_HASH));
+
+            // Read single records.
+            for (key, value) in [
+                ("donald", Some("duck")),
+                ("jake", Some("shepherd")),
+                ("joe", None),
+                ("larry", Some("engineer")),
+                ("pumpkin", Some("cat")),
+            ] {
+                let found_value = db
+                    .state_storage(Some(1))
+                    .unwrap()
+                    .read(key.as_bytes())
+                    .map(|bz| String::from_utf8(bz).unwrap());
+                assert_eq!(found_value.as_deref(), value);
+            }
+
+            // Iterator records.
+            for ((found_key, found_value), (key, value)) in db
+                .state_storage(Some(version))
+                .unwrap()
+                .scan(None, None, Order::Ascending)
+                .zip([
+                    ("donald", "duck"),
+                    ("jake", "shepherd"),
+                    ("larry", "engineer"),
+                    ("pumpkin", "cat"),
+                ])
             {
                 assert_eq!(found_key, key.as_bytes());
                 assert_eq!(found_value, value.as_bytes());
@@ -1433,7 +1353,7 @@ mod tests_jmt {
             // Request state storage. Should fail with `DbError::VersionTooOld`.
             assert!(db.state_storage(Some(version)).is_err_and(|err| {
                 err.to_string()
-                    .contains("older than the oldest available version (3)")
+                    .contains("doesn't equal the current version (4)")
             }));
 
             // Prove a key. Should fail when attempting to load the root node of
@@ -1444,11 +1364,12 @@ mod tests_jmt {
             }));
         }
 
-        // Doing the same under versions 3, which haven't been pruned, should work.
+        // State storage doesn't exist for version 3, because we only keep the
+        // latest version, but proving at version 3 should work.
         // Proof doesn't work for version 4 though, because the tree is empty.
         // We can't proof anything if the tree is empty...
         {
-            assert!(db.state_storage(Some(3)).is_ok());
+            assert!(db.state_storage(Some(3)).is_err());
             assert!(db.prove(b"a", Some(3)).is_ok());
         }
 
@@ -1456,7 +1377,7 @@ mod tests_jmt {
         {
             assert!(db.state_storage(Some(5)).is_err_and(|err| {
                 err.to_string()
-                    .contains("newer than the latest version (4)")
+                    .contains("doesn't equal the current version (4)")
             }));
 
             assert!(db.prove(b"a", Some(5)).is_err_and(|err| {
@@ -1471,12 +1392,7 @@ mod tests_jmt {
 
 #[cfg(test)]
 mod tests_simple {
-    use {
-        super::*,
-        grug_app::SimpleCommitment,
-        grug_types::{ResultExt, btree_map, hash},
-        temp_rocksdb::TempDataDir,
-    };
+    use {super::*, grug_app::SimpleCommitment, grug_types::hash, temp_rocksdb::TempDataDir};
 
     // sha256(6 | donald | 1 | 5 | trump | 4 | jake | 1 | 8 | shepherd | 3 | joe | 1 | 5 | biden | 5 | larry | 1 | 8 | engineer)
     // = sha256(0006646f6e616c640100057472756d7000046a616b65010008736865706865726400036a6f65010005626964656e00056c61727279010008656e67696e656572)
@@ -1549,146 +1465,6 @@ mod tests_simple {
     }
 
     #[test]
-    fn prune_works() {
-        let path = TempDataDir::new("_grug_disk_db_lite_pruning_works");
-        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
-
-        for batch in [
-            // v0
-            Batch::from([(b"0".to_vec(), Op::Insert(b"0".to_vec()))]),
-            // v1
-            Batch::from([(b"1".to_vec(), Op::Insert(b"1".to_vec()))]),
-            // v2
-            Batch::from([(b"2".to_vec(), Op::Insert(b"2".to_vec()))]),
-            // v3
-            Batch::from([(b"3".to_vec(), Op::Insert(b"3".to_vec()))]),
-            // v4
-            Batch::from([(b"4".to_vec(), Op::Insert(b"4".to_vec()))]),
-        ] {
-            db.flush_and_commit(batch).unwrap();
-        }
-
-        let current_version = db.latest_version();
-        assert_eq!(current_version, Some(4));
-
-        let storage = db.state_storage(current_version).unwrap();
-        assert_eq!(storage.read(b"2"), Some(b"2".to_vec()));
-        assert_eq!(storage.read(b"4"), Some(b"4".to_vec()));
-
-        db.flush_and_commit(Batch::from([(b"2".to_vec(), Op::Insert(b"22".to_vec()))]))
-            .unwrap();
-
-        assert_eq!(
-            db.state_storage(Some(5)).unwrap().read(b"2"),
-            Some(b"22".to_vec())
-        );
-
-        assert_eq!(
-            db.state_storage(None).unwrap().read(b"2"),
-            Some(b"22".to_vec())
-        );
-
-        // Prune the db at 3, which is exclusive (3 becomes the oldest version)
-        // and force an immediate compaction.
-        db.prune(3).unwrap();
-        db.compact();
-
-        assert_eq!(
-            db.state_storage(Some(4)).unwrap().read(b"2"),
-            Some(b"2".to_vec())
-        );
-
-        assert_eq!(
-            db.state_storage(Some(3)).unwrap().read(b"2"),
-            Some(b"2".to_vec())
-        );
-
-        // Try to read at version = 2. We return an error trying create a storage at a pruned version.
-        // This is not ensuring that we really pruned the db, but that we saved the correct oldest version.
-        db.state_storage(Some(2)).should_fail_with_error(
-            "requested version (2) is older than the oldest available version (3)",
-        );
-
-        // Ensure that the prune really pruned the db.
-        db.inner
-            .db
-            .get_cf_opt(
-                &cf_state_storage(&db.inner.db),
-                b"2",
-                &new_read_options(Some(2), None, None),
-            )
-            .should_fail_with_error(
-                "Invalid argument: Read timestamp:  is smaller than full_history_ts_low",
-            );
-    }
-
-    #[test]
-    fn auto_pruning_and_manual_compaction_works() {
-        const KEY: &[u8] = b"data";
-
-        let path = TempDataDir::new("_grug_disk_db_auto_prune_works");
-        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            pruning: PruningConfig {
-                prune_interval: 2,
-                prune_keep_recent: 2,
-                compact_interval: 2,
-            },
-            ..Default::default()
-        })
-        .unwrap();
-
-        // Write four batches of versions 0, 1, 2, 3.
-        for version in 0..=3 {
-            db.flush_and_commit(btree_map! {
-                KEY.to_vec() => Op::Insert(vec![version]),
-            })
-            .unwrap();
-        }
-
-        // No pruning should have happened at this point. Oldest version should
-        // not have been set (it's only set the first time a pruning is performed),
-        // and we should be able to read the historical values.
-        assert_eq!(db.oldest_version(), None);
-        for version in 0..=3 {
-            assert_eq!(
-                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
-                vec![version as u8]
-            );
-        }
-
-        // Write a batch of version 4.
-        db.flush_and_commit(btree_map! {
-            KEY.to_vec() => Op::Insert(vec![4]),
-        })
-        .unwrap();
-
-        // A pruning should have happened. with `up_to_version` = 4 - 2 = 2
-        // (exclusive, meaning version 0 & 1 are gone, version 2 is kept).
-        assert_eq!(db.oldest_version(), Some(2));
-        for version in 0..=1 {
-            db.state_storage(Some(version))
-                .should_fail_with_error(DbError::version_too_old(version, 2));
-
-            db.inner
-                .db
-                .get_cf_opt(
-                    &cf_state_storage(&db.inner.db),
-                    KEY,
-                    &new_read_options(Some(version), None, None),
-                )
-                .should_fail_with_error(
-                    "Invalid argument: Read timestamp:  is smaller than full_history_ts_low",
-                );
-        }
-        for version in 2..=4 {
-            assert_eq!(
-                db.state_storage(Some(version)).unwrap().read(KEY).unwrap(),
-                vec![version as u8]
-            );
-        }
-    }
-
-    #[test]
     fn priority_data() {
         let path = TempDataDir::new("_grug_disk_db_priority_data");
 
@@ -1706,12 +1482,13 @@ mod tests_simple {
 
         // Enusre rockdb max is exclusive.
         {
+            let data = db.data.read();
+
             assert_eq!(
-                db.inner
-                    .db
+                data.db
                     .iterator_cf_opt(
-                        &cf_state_storage(&db.inner.db),
-                        new_read_options(Some(0), Some(b"000"), Some(b"004")),
+                        &cf_state_storage(&data.db),
+                        new_read_options(Some(b"000"), Some(b"004")),
                         IteratorMode::Start,
                     )
                     .map(|res| {
@@ -1728,11 +1505,10 @@ mod tests_simple {
             );
 
             assert_eq!(
-                db.inner
-                    .db
+                data.db
                     .iterator_cf_opt(
-                        &cf_state_storage(&db.inner.db),
-                        new_read_options(Some(0), Some(b"000"), Some(b"005")),
+                        &cf_state_storage(&data.db),
+                        new_read_options(Some(b"000"), Some(b"005")),
                         IteratorMode::Start,
                     )
                     .map(|res| {
@@ -1753,46 +1529,38 @@ mod tests_simple {
         drop(db);
 
         // Open the DB again, _with_ priority data this time.
-        let db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            priority_range: Some((b"000".to_vec().into(), b"004".to_vec().into())),
-            ..Default::default()
-        })
-        .unwrap();
+        let db =
+            DiskDb::<SimpleCommitment>::open_with_priority(&path, Some((b"000", b"004"))).unwrap();
 
         // In order to test the priorty data, we manually delete a key from the db.
         // This is not something that should happen in a normal use case but allows
         // us to test the priority data.
         // Remove the `002` key from the db.
         {
+            let data = db.data.read();
+
             assert_eq!(
-                db.inner
-                    .db
+                data.db
                     .get_cf_opt(
-                        &cf_state_storage(&db.inner.db),
+                        &cf_state_storage(&data.db),
                         b"002",
-                        &new_read_options(Some(0), None, None)
+                        &new_read_options(None, None)
                     )
                     .unwrap()
                     .unwrap(),
                 b"002"
             );
 
-            db.inner
-                .db
-                .delete_cf_with_ts(
-                    &cf_state_storage(&db.inner.db),
-                    b"002",
-                    U64Timestamp::from(0),
-                )
+            data.db
+                .delete_cf(&cf_state_storage(&data.db), b"002")
                 .unwrap();
 
             assert!(
-                db.inner
-                    .db
+                data.db
                     .get_cf_opt(
-                        &cf_state_storage(&db.inner.db),
+                        &cf_state_storage(&data.db),
                         b"002",
-                        &new_read_options(Some(0), None, None)
+                        &new_read_options(None, None)
                     )
                     .unwrap()
                     .is_none()
@@ -1837,10 +1605,185 @@ mod tests_simple {
         let path = TempDataDir::new("_grug_disk_db_priority_data_new_db");
 
         // Open a brand new DB with priority data. Should succeed.
-        let _db = DiskDb::<SimpleCommitment>::open_with_cfg(&path, Config {
-            priority_range: Some((b"000".to_vec().into(), b"004".to_vec().into())),
-            ..Default::default()
-        })
+        let _db =
+            DiskDb::<SimpleCommitment>::open_with_priority(&path, Some((b"000", b"004"))).unwrap();
+    }
+}
+
+// ------------------------------- deadlock test -------------------------------
+
+/// Reproduction of a deadlock issue we discovered in testnet-3.
+///
+/// Assume thread 1 represents the HTTPD server, thread 2 represents the ABCI
+/// server:
+///
+/// - Thread 1 serves a query that involves iterateing over an `IndexedMap`.
+///   The iterator acquires a read-lock to the `priority_data` map, and holds
+///   onto it until the iterator itself is dropped.
+/// - Thread 2 receives a `Commit` request from CometBFT. It attempts to acquire
+///   a write-lock of `priority_data`.
+/// - The iterator in thread 1 advances. Note that in `IndexedMap`, iteration
+///   involves first reading an index key from the index map (this uses the
+///   iterator's own read-lock), and then read from the primary map. To read
+///   from the primary map, the iterator attempts to acquire another read-lock.
+///   However, since thread 2 is already waiting for a write lock, according to
+///   the fairness rule, thread 1 has to wait after thread 2. Hence, deadlock.
+#[cfg(test)]
+mod test_deadlock {
+    use {
+        super::*,
+        grug_app::SimpleCommitment,
+        grug_storage::{Index, IndexList, IndexedMap, MultiIndex},
+        std::time::Duration,
+        temp_rocksdb::TempDataDir,
+    };
+
+    const PERSONS: IndexedMap<String, String, PersonIndexes> =
+        IndexedMap::new("person", PersonIndexes {
+            race: MultiIndex::new(|_name, race| race.clone(), "person", "person__race"),
+        });
+
+    struct PersonIndexes<'a> {
+        pub race: MultiIndex<'a, String, String, String>,
+    }
+
+    impl<'a> IndexList<String, String> for PersonIndexes<'a> {
+        fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<String, String>> + '_> {
+            let v: [&dyn Index<String, String>; 1] = [&self.race];
+            Box::new(v.into_iter())
+        }
+    }
+
+    #[test]
+    fn deadlock_problem() {
+        with_timeout(run_deadlock_test, Duration::from_secs(5));
+    }
+
+    /// Ensure the execution of a function doesn't take longer than the given timeout.
+    fn with_timeout<F>(f: F, timeout: Duration)
+    where
+        F: FnOnce() + Send + 'static,
+    {
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        std::thread::spawn(move || {
+            f();
+            tx.send(()).unwrap();
+        });
+
+        rx.recv_timeout(timeout).unwrap();
+    }
+
+    fn run_deadlock_test() {
+        let path = TempDataDir::new("_grug_disk_db_deadlock_problem");
+        let db = DiskDb::<SimpleCommitment>::open_with_priority(
+            &path,
+            Some(([0], [255])), // Simply use 0..255 as the priority range, so ALL data in the state storage is loaded into priority data.
+        )
         .unwrap();
+
+        // Batch 1: write some data into the index map.
+        {
+            let storage = db.state_storage(None).unwrap();
+            let mut buffer = Buffer::new_unnamed(storage, None);
+
+            for (name, race) in [
+                ("Ulfric Stormcloak", "Nord"),
+                ("General Tullius", "Imperial"),
+                ("Kodlak Whitemane", "Nord"),
+                ("Savos Aren", "Dark Elf"),
+                ("Mercer Frey", "Breton"),
+                ("Astrid", "Nord"),
+            ] {
+                PERSONS
+                    .save(&mut buffer, name.to_string(), &race.to_string())
+                    .unwrap();
+            }
+
+            let (_, batch) = buffer.disassemble();
+            db.flush_and_commit(batch).unwrap();
+        }
+
+        // Spawn two threads:
+        // - a "read thread" that mimics the httpd server;
+        // - a "write thread" that mimics the ABCI server.
+        std::thread::scope(|s| {
+            // Create a thread to iterate through the map.
+            let read_thread = s.spawn(|| {
+                let storage = db.state_storage(None).unwrap();
+                PERSONS
+                    .idx
+                    .race
+                    .prefix("Nord".to_string())
+                    .range(&storage, None, None, Order::Ascending) // Deadlock only happens with `range` and `values`, not with `keys`.
+                    .map(|res| {
+                        // Do the iteration slowly.
+                        std::thread::sleep(Duration::from_secs(1));
+
+                        let (name, _race) = res.unwrap();
+                        name
+                    })
+                    .collect::<Vec<_>>()
+            });
+
+            // Create another thread to write a new batch.
+            let write_thread = s.spawn(|| {
+                let storage = db.state_storage(None).unwrap();
+                let mut buffer = Buffer::new_unnamed(storage, None);
+
+                for (name, race) in [
+                    ("Aela the Huntress", "Nord"),
+                    ("Urag gro-Shub", "Orc"),
+                    ("Brynjolf", "Nord"),
+                    ("Farengar Secret-Fire", "Nord"),
+                    ("Balimund", "Nord"),
+                    ("Delphine", "Breton"),
+                ] {
+                    PERSONS
+                        .save(&mut buffer, name.to_string(), &race.to_string())
+                        .unwrap();
+                }
+
+                let (_, batch) = buffer.disassemble();
+                db.flush_but_not_commit(batch).unwrap();
+
+                // Wait a second, so that we commit when the read thread is half way
+                // through the iteration.
+                std::thread::sleep(Duration::from_secs(1));
+
+                db.commit().unwrap();
+            });
+
+            let names = read_thread.join().unwrap();
+            write_thread.join().unwrap();
+
+            // Names should only include those in batch 1, without those in batch 2.
+            assert_eq!(names, ["Astrid", "Kodlak Whitemane", "Ulfric Stormcloak"]);
+        });
+
+        // Read again. The records in batch 2 should now be included.
+        {
+            let storage = db.state_storage(None).unwrap();
+            let names = PERSONS
+                .idx
+                .race
+                .prefix("Nord".to_string())
+                .range(&storage, None, None, Order::Ascending)
+                .map(|res| {
+                    let (name, _race) = res.unwrap();
+                    name
+                })
+                .collect::<Vec<_>>();
+
+            assert_eq!(names, [
+                "Aela the Huntress",
+                "Astrid",
+                "Balimund",
+                "Brynjolf",
+                "Farengar Secret-Fire",
+                "Kodlak Whitemane",
+                "Ulfric Stormcloak",
+            ]);
+        }
     }
 }

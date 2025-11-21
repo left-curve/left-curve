@@ -2,7 +2,7 @@
 import { decodeBase64, decodeUtf8, encodeBase64, encodeUtf8 } from "@left-curve/dango/encoding";
 
 export class WebCryptoECDH {
-  static #subtle = window.crypto.subtle;
+  static #subtle = window?.crypto?.subtle;
   static #ecdhParams = { name: "ECDH", namedCurve: "P-256" };
   static #aesParams = { name: "AES-GCM", length: 256 };
 

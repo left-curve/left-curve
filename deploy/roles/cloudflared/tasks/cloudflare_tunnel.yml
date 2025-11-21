@@ -10,6 +10,8 @@
     method: GET
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: list_resp
+  retries: 3
+  delay: 5
 
 # create if missing
 - name: Create tunnel if missing
@@ -23,6 +25,8 @@
     body: { name: "{{ tunnel_name }}", config_src: "cloudflare" }
   register: create_resp
   when: (list_resp.json.result | length) == 0
+  retries: 3
+  delay: 5
 
 # set tunnel_id
 - name: Set tunnel_id with existing tunnel
@@ -43,6 +47,8 @@
     method: GET
     headers: { Authorization: "Bearer {{ cloudflare_api_token }}" }
   register: token_resp
+  retries: 3
+  delay: 5
 
 # set token (string or object-safe)
 - name: Set tunnel_token from fetched tunnel token
@@ -98,3 +104,5 @@
     state: present
     api_token: "{{ cloudflare_api_token }}"
   loop: "{{ dango_networks | product(['api','www','faucet','graphiql']) | list }}"
+  retries: 3
+  delay: 5

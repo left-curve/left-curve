@@ -1,15 +1,16 @@
 use {
-    crate::{block_to_index::BlockToIndex, entity, error::IndexerError, indexer_path::IndexerPath},
+    crate::{entity, error::IndexerError},
     anyhow::{anyhow, ensure},
     async_graphql::{dataloader::Loader, *},
     grug_types::{Cache, Tx, TxOutcome},
+    indexer_cache::{IndexerPath, cache_file::CacheFile},
     std::{collections::HashMap, sync::Arc},
 };
 
-type BlockCache<'a> = Cache<'a, u64, BlockToIndex, IndexerError>;
+type BlockCache<'a> = Cache<'a, u64, CacheFile, IndexerError>;
 
 pub struct FileTransactionDataLoader {
-    pub indexer: IndexerPath,
+    pub indexer_path: IndexerPath,
 }
 
 impl Loader<entity::transactions::Model> for FileTransactionDataLoader {
@@ -21,7 +22,8 @@ impl Loader<entity::transactions::Model> for FileTransactionDataLoader {
         keys: &[entity::transactions::Model],
     ) -> Result<HashMap<entity::transactions::Model, Self::Value>, Self::Error> {
         let mut cache = BlockCache::new(|block_height, _| {
-            BlockToIndex::load_from_disk(self.indexer.block_path(*block_height))
+            CacheFile::load_from_disk(self.indexer_path.block_path(*block_height))
+                .map_err(|e| IndexerError::from(anyhow!(e)))
         });
 
         keys.iter()

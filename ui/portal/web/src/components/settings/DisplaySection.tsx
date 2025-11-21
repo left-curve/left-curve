@@ -59,10 +59,7 @@ const ChartEngineSection: React.FC = () => {
         <IconDepth className="text-ink-tertiary-500" />
         <span className="diatype-m-bold text-ink-secondary-700">{m["settings.chart"]()}</span>
       </p>
-      <Select
-        value={chart}
-        onChange={(c) => changeSettings({ chart: c as "tradingview" | "chartiq" })}
-      >
+      <Select value={chart} onChange={(c) => changeSettings({ chart: c as "tradingview" })}>
         {["tradingview"].map((chart) => (
           <Select.Item key={chart} value={chart}>
             {m["settings.chartEngines"]({ chart })}

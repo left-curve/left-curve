@@ -50,6 +50,7 @@ members = [
   "hyperlane/mailbox",
   "hyperlane/testing",
   "hyperlane/va",
+  "indexer/cache",
   "indexer/client",
   "indexer/disk-saver",
   "indexer/hooked",
@@ -73,12 +74,12 @@ resolver = "2"
 authors       = ["Left Curve Software Limited (https://grug.build/about.html)"]
 categories    = ["cryptography::cryptocurrencies"]
 documentation = "https://grug.build/whitepaper.html"
-edition       = "2021"
+edition       = "2024"
 homepage      = "https://grug.build"
 keywords      = ["blockchain", "wasm"]
 license       = "TBD"
 repository    = "https://github.com/left-curve/left-curve"
-rust-version  = "1.80"
+rust-version  = "1.86" # async-graphql@7.0.17 requires rustc 1.86.0
 version       = "0.0.0"
 
 [workspace.dependencies]
@@ -96,7 +97,6 @@ actix-web-metrics           = "0.2"
 aes-gcm                     = "0.10"
 alloy                       = "1"
 anyhow                      = "1"
-anymap                      = "0.12"
 assert-json-diff            = "2"
 assertor                    = "0.0.4"
 async-graphql-actix-web     = "7.0"
@@ -149,8 +149,12 @@ metrics                     = "0.24"
 metrics-exporter-prometheus = "0.17"
 num-format                  = "0.4"
 num_cpus                    = "1"
+opentelemetry               = "0.31"
+opentelemetry-otlp          = { version = "0.31", features = ["grpc-tonic", "trace"] }
+opentelemetry_sdk           = { version = "0.31", features = ["rt-tokio"] }
 ouroboros                   = "0.18"
 p256                        = "0.13"
+parking_lot                 = { version = "0.12", features = ["arc_lock", "send_guard"] }
 paste                       = "1"
 pbkdf2                      = "0.12"
 proc-macro2                 = "1"
@@ -191,8 +195,8 @@ tower                       = "0.5"
 tower-abci                  = "0.19"
 tracing                     = "0.1"
 tracing-actix-web           = "0.7"
+tracing-opentelemetry       = "0.32"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
-typedmap                    = { version = "0.6", features = ["dashmap"] }
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
 wasmer                      = "5" # keep at v5 because there's license change for v6
@@ -252,6 +256,7 @@ hyperlane-mailbox           = { path = "hyperlane/mailbox" }
 hyperlane-testing           = { path = "hyperlane/testing" }
 hyperlane-types             = { path = "hyperlane/types" }
 hyperlane-va                = { path = "hyperlane/va" }
+indexer-cache               = { path = "indexer/cache" }
 indexer-client              = { path = "indexer/client" }
 indexer-disk-saver          = { path = "indexer/disk-saver" }
 indexer-hooked              = { path = "indexer/hooked" }
@@ -272,7 +277,7 @@ features = [
   "log",
   "opentelemetry",
   # see https://github.com/async-graphql/async-graphql/issues/1726
-  # "tracing",
+  "tracing",
   "unblock",
   "url",
   "uuid",

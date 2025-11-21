@@ -17,8 +17,7 @@ const coins = {
   "bridge/btc": {
     type: "native",
     name: "Bitcoin",
-    logoURI:
-      "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/bitcoin/images/btc.svg",
+    logoURI: "/images/coins/bitcoin.svg",
     symbol: "BTC",
     denom: "bridge/btc",
     decimals: 8,
@@ -27,8 +26,7 @@ const coins = {
   "bridge/eth": {
     type: "native",
     name: "Ether",
-    logoURI:
-      "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/ethereum/images/eth.svg",
+    logoURI: "/images/coins/eth.svg",
     symbol: "ETH",
     denom: "bridge/eth",
     decimals: 18,
@@ -36,9 +34,8 @@ const coins = {
   },
   "bridge/xrp": {
     type: "native",
-    name: "Ripple",
-    logoURI:
-      "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/xrpl/images/xrp.svg",
+    name: "XRP",
+    logoURI: "/images/coins/xrp.svg",
     symbol: "XRP",
     denom: "bridge/xrp",
     decimals: 6,
@@ -46,9 +43,8 @@ const coins = {
   },
   "bridge/usdc": {
     type: "native",
-    name: "Ethereum USD Circle",
-    logoURI:
-      "https://raw.githubusercontent.com/cosmos/chain-registry/master/noble/images/USDCoin.svg",
+    name: "USD Coin",
+    logoURI: "/images/coins/usdc.svg",
     symbol: "USDC",
     denom: "bridge/usdc",
     decimals: 6,
@@ -57,8 +53,7 @@ const coins = {
   "bridge/sol": {
     type: "native",
     name: "Solana",
-    logoURI:
-      "https://raw.githubusercontent.com/cosmos/chain-registry/refs/heads/master/_non-cosmos/solana/images/sol.svg",
+    logoURI: "/images/coins/sol.svg",
     symbol: "SOL",
     denom: "bridge/sol",
     decimals: 9,

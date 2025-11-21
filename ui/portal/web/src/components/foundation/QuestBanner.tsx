@@ -38,9 +38,7 @@ export const QuestBanner: React.FC = () => {
     queryKey: ["quests", account?.username],
     enabled: isConnected && isQuestBannerVisible,
     queryFn: () =>
-      fetch(`${window.dango.urls.questUrl}/check_username/${account?.username}`).then((res) =>
-        res.json(),
-      ),
+      fetch(`${window.dango.urls.questUrl}/${account?.username}`).then((res) => res.json()),
   });
 
   if (location.pathname === "/" && !isLg) return null;

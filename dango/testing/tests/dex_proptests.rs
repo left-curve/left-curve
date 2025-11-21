@@ -11,9 +11,9 @@ use {
     },
     grug::{
         Addressable, BlockOutcome, Bounded, Coin, Coins, Dec, Dec128_24, Denom, Duration, Inner,
-        IsZero, MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst,
-        QuerierExt, ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
-        ZeroInclusiveOneExclusive, btree_map, btree_set, coins,
+        IsZero, LengthBounded, MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number,
+        NumberConst, QuerierExt, ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128,
+        UniqueVec, ZeroInclusiveOneExclusive, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},
@@ -298,7 +298,7 @@ impl DexAction {
         accounts: &mut TestAccounts,
         contracts: &Contracts,
     ) -> Result<Option<BlockOutcome>, TestCaseError> {
-        println!("Executing action: {self:?}");
+        // println!("Executing action: {self:?}");
 
         let block_outcome = match self {
             DexAction::CreateLimitOrder {
@@ -757,14 +757,14 @@ fn swap_route() -> impl Strategy<Value = SwapRoute> {
         // Single pair route
         pair_id().prop_map(|pair| {
             let unique_vec = UniqueVec::new(vec![pair]).unwrap();
-            MaxLength::new(unique_vec).unwrap()
+            LengthBounded::new(unique_vec).unwrap()
         }),
         // Two pair route - select from all valid combinations of different pairs
         // Since all pairs use USDC as quote, any two different pairs are chainable
         select(vec![(0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1)]).prop_map(|(i, j)| {
             let pairs = pair_ids();
             let unique_vec = UniqueVec::new(vec![pairs[i].clone(), pairs[j].clone()]).unwrap();
-            MaxLength::new(unique_vec).unwrap()
+            LengthBounded::new(unique_vec).unwrap()
         })
     ]
 }
@@ -1061,14 +1061,14 @@ fn test_dex_actions(
     });
 
     // Print user address
-    println!("user1 address: {}", accounts.user1.address());
+    // println!("user1 address: {}", accounts.user1.address());
 
     // Print dex contract address
-    println!("dex contract address: {}", contracts.dex);
+    // println!("dex contract address: {}", contracts.dex);
 
     // Query the balances of the user1 account.
-    let balances = suite.query_balances(&accounts.user1)?;
-    println!("user1 balances: {balances:?}");
+    // let balances = suite.query_balances(&accounts.user1)?;
+    // println!("user1 balances: {balances:?}");
 
     // Register fixed prices for all denoms.
     let timestamp = Timestamp::from_nanos(u128::MAX); // Maximum time in the future to prevent oracle price from being outdated.

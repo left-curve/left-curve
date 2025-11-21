@@ -6,6 +6,7 @@ const medias = {
   lg: 1024,
   xl: 1280,
   "2xl": 1536,
+  "3xl": 2272,
 };
 
 type MediaQueries = {
@@ -14,6 +15,7 @@ type MediaQueries = {
   isLg: boolean;
   isXl: boolean;
   is2Xl: boolean;
+  is3Xl: boolean;
 };
 
 export const useMediaQuery = () => {
@@ -23,6 +25,7 @@ export const useMediaQuery = () => {
     isLg: window.innerWidth >= medias.lg,
     isXl: window.innerWidth >= medias.xl,
     is2Xl: window.innerWidth >= medias["2xl"],
+    is3Xl: window.innerWidth >= medias["3xl"],
   });
 
   useEffect(() => {
@@ -33,6 +36,7 @@ export const useMediaQuery = () => {
         isLg: window.innerWidth >= medias.lg,
         isXl: window.innerWidth >= medias.xl,
         is2Xl: window.innerWidth >= medias["2xl"],
+        is3Xl: window.innerWidth >= medias["3xl"],
       });
     };
     window.addEventListener("resize", handleResize);

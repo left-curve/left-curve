@@ -45,6 +45,8 @@
     }
   },
   "dependencies": {
+    "zustand": "catalog:",
+    "@privy-io/js-sdk-core": "^0.56.3",
     "@headlessui/react": "^2.1.10",
     "@left-curve/dango": "workspace:^",
     "@left-curve/foundation": "workspace:^",

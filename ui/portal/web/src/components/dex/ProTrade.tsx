@@ -70,7 +70,7 @@ const ProTradeContainer: React.FC<PropsWithChildren<ProTradeProps>> = ({
     m,
     controllers,
     pairId,
-    bucketRecords: isLg ? 11 : 16,
+    bucketRecords: isLg ? 10 : 16,
     onChangePairId,
     action,
     onChangeAction,
@@ -108,22 +108,16 @@ const ProTradeOverview: React.FC = () => {
   return <OrderBookOverview state={state} controllers={controllers} />;
 };
 
-const ChartIQ = lazy(() =>
-  import("../foundation/ChartIQ").then(({ ChartIQ }) => ({ default: ChartIQ })),
-);
-
 const TradingView = lazy(() =>
-  import("./TradingView").then(({ TradingView }) => ({ default: TradingView })),
+  import("./TradingView")
+    .then(({ TradingView }) => ({ default: TradingView }))
+    .catch(() => ({ default: () => <div>Chart</div> })),
 );
 
 const ProTradeChart: React.FC = () => {
   const { state } = useProTrade();
   const { isLg } = useMediaQuery();
-  const { settings } = useApp();
-  const { chart } = settings;
   const { baseCoin, quoteCoin, orders } = state;
-
-  const ChartComponent = chart === "tradingview" ? TradingView : ChartIQ;
 
   const mobileContainer = usePortalTarget("#chart-container-mobile");
 
@@ -135,9 +129,9 @@ const ProTradeChart: React.FC = () => {
 
   const Chart = (
     <Suspense fallback={<Spinner color="pink" size="md" />}>
-      <div className="flex w-full lg:min-h-[45vh] h-full" id="chart-container">
+      <div className="flex w-full lg:min-h-[32.875rem] h-full" id="chart-container">
         <ErrorBoundary fallback={<div className="p-4">Chart Engine</div>}>
-          <ChartComponent coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
+          <TradingView coins={{ base: baseCoin, quote: quoteCoin }} orders={ordersByPair} />
         </ErrorBoundary>
       </div>
     </Suspense>

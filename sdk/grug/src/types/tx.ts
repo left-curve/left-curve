@@ -2,6 +2,7 @@ import type { Address } from "./address.js";
 import type { ChainConfig } from "./app.js";
 import type { Coins, Funds } from "./coins.js";
 import type { Base64, Hex, Json } from "./encoding.js";
+import type { ExtractFromUnion, KeyOfUnion } from "./utils.js";
 
 export type TxOutcome = {
   gasLimit: number;
@@ -23,16 +24,33 @@ export type Tx<Credential = Json, Metadata = Json> = {
 export type UnsignedTx = Pick<Tx, "sender" | "msgs">;
 
 export type Message =
+  /**  Update the chain- and app-level configurations. */
   | { configure: MsgConfigure }
+  /**  Schedule a chain upgrade at a future block. */
+  | { upgrade: MsgUpgrade }
+  /**  Send coins to the given recipient address. */
   | { transfer: MsgTransfer }
+  /**  Upload a Wasm binary code and store it in the chain's state. */
   | { upload: MsgStoreCode }
+  /**  Instantiate a new contract. */
   | { instantiate: MsgInstantiate }
+  /**  Execute a contract. */
   | { execute: MsgExecute }
+  /**  Update the code hash associated with a contract. */
   | { migrate: MsgMigrate };
 
+export type GetTxMessage<K extends KeyOfUnion<Message>> = ExtractFromUnion<Message, K>;
+
+export type MsgUpgrade = {
+  height: number;
+  cargoVersion: string;
+  gitTag?: string;
+  url?: string;
+};
+
 export type MsgConfigure<AppConfig = Json> = {
-  newCfg: Partial<ChainConfig>;
-  newAppCfg: Partial<AppConfig>;
+  newCfg?: ChainConfig;
+  newAppCfg?: AppConfig;
 };
 
 export type MsgTransfer = Record<Address, Coins>;

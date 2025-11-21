@@ -37,7 +37,7 @@ fn main() -> anyhow::Result<()> {
     // Query app config.
     let res = app.do_query_app(
         Query::AppConfig(grug::QueryAppConfigRequest {}),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("app config: {}", res.to_json_string_pretty()?);
@@ -51,7 +51,7 @@ fn main() -> anyhow::Result<()> {
             }
             .to_json_value()?,
         }),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("ETH price: {}", res.to_json_string_pretty()?);
@@ -65,7 +65,7 @@ fn main() -> anyhow::Result<()> {
             }
             .to_json_value()?,
         }),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("USDC price: {}", res.to_json_string_pretty()?);
@@ -80,7 +80,7 @@ fn main() -> anyhow::Result<()> {
             }
             .to_json_value()?,
         }),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("ETH-USDC pool params: {}", res.to_json_string_pretty()?);
@@ -95,7 +95,7 @@ fn main() -> anyhow::Result<()> {
             }
             .to_json_value()?,
         }),
-        HEIGHT,
+        Some(HEIGHT),
         false,
     )?;
     println!("ETH-USDC pool reserve: {}", res.to_json_string_pretty()?);

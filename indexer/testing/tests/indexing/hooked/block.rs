@@ -8,7 +8,8 @@ use {
         ResultExt,
     },
     grug_vm_rust::ContractBuilder,
-    indexer_sql::{block_to_index::BlockToIndex, entity},
+    indexer_cache::cache_file::CacheFile,
+    indexer_sql::entity,
     indexer_testing::setup::create_hooked_indexer,
     replier::{ExecuteMsg, ReplyMsg},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
@@ -19,7 +20,7 @@ use {
 async fn index_block() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let (hooked_indexer, indexer_context, _) = create_hooked_indexer(false);
+    let (hooked_indexer, indexer_context, _) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(hooked_indexer)
         .add_account("owner", Coins::new())
@@ -85,7 +86,7 @@ async fn index_block() {
 async fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let (indexer, indexer_context, _) = create_hooked_indexer(true);
+    let (indexer, indexer_context, _) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -182,7 +183,7 @@ async fn parse_previous_block_after_restart() {
 async fn no_sql_index_error_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let (indexer, indexer_context, indexer_path) = create_hooked_indexer(false);
+    let (indexer, sql_indexer_context, cache_context) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -215,7 +216,7 @@ async fn no_sql_index_error_after_restart() {
 
     // 1. Verify the block height 1 is indexed
     let block = entity::blocks::Entity::find()
-        .one(&indexer_context.db)
+        .one(&sql_indexer_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
@@ -237,12 +238,14 @@ async fn no_sql_index_error_after_restart() {
         txs: vec![],
     };
 
-    let block_filename = indexer_path.block_path(block_info.height);
-    let block_to_index = BlockToIndex::new(block_filename, block, block_outcome);
+    let block_filename = cache_context.indexer_path.block_path(block_info.height);
+    let block_to_index = CacheFile::new(block_filename, block, block_outcome);
 
     block_to_index
         .save_to_disk()
         .expect("Can't save block on disk");
+
+    tracing::info!("Starting indexer again");
 
     // 3. Start the indexer
     suite
@@ -253,7 +256,7 @@ async fn no_sql_index_error_after_restart() {
 
     // 4. Verify the block height 1 is still indexed
     let block = entity::blocks::Entity::find()
-        .one(&indexer_context.db)
+        .one(&sql_indexer_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
@@ -278,7 +281,7 @@ async fn no_sql_index_error_after_restart() {
     // 6. Verify the block height 2 is indexed
     let block = entity::blocks::Entity::find()
         .order_by_desc(entity::blocks::Column::BlockHeight)
-        .one(&indexer_context.db)
+        .one(&sql_indexer_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_some();
@@ -292,7 +295,7 @@ async fn no_sql_index_error_after_restart() {
 /// Ensure that flatten events are indexed correctly.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn index_block_events() {
-    let (indexer, indexer_context, _) = create_hooked_indexer(false);
+    let (indexer, indexer_context, _) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coin::new("usdc", 100_000).unwrap())
