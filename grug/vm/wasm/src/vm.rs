@@ -11,8 +11,8 @@ use {
     grug_types::{BorshSerExt, Context, Hash256},
     std::{num::NonZeroUsize, sync::Arc},
     wasmer::{
-        CompilerConfig, Engine, Function, FunctionEnv, Module, NativeEngineExt, Singlepass, Store,
-        StoreMut, Target, WASM_PAGE_SIZE, imports, sys::BaseTunables,
+        Engine, Function, FunctionEnv, Module, Store, StoreMut, WASM_PAGE_SIZE, imports,
+        sys::{BaseTunables, CompilerConfig, NativeEngineExt, Singlepass, Target},
     },
     wasmer_middlewares::{Metering, metering::set_remaining_points},
 };

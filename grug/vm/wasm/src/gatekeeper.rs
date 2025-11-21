@@ -1,6 +1,7 @@
 use wasmer::{
-    FunctionMiddleware, LocalFunctionIndex, MiddlewareError, MiddlewareReaderState,
-    ModuleMiddleware, wasmparser::Operator,
+    LocalFunctionIndex,
+    sys::{FunctionMiddleware, MiddlewareError, MiddlewareReaderState, ModuleMiddleware},
+    wasmparser::Operator,
 };
 
 /// The name used in errors
@@ -783,6 +784,10 @@ impl FunctionMiddleware for FunctionGatekeeper {
                 let msg = format!("Memory control operation detected: {operator:?}. Memory control is not supported.");
                 Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
             },
+            _ => {
+                let msg = format!("New operator introduced in wasmer v6: {operator:?}. Such operators are not supported");
+                Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
+            }
         }
     }
 }
@@ -795,7 +800,10 @@ mod tests {
         super::*,
         std::sync::Arc,
         test_case::test_case,
-        wasmer::{CompileError, CompilerConfig, Module, Singlepass, Store},
+        wasmer::{
+            CompileError, Module, Store,
+            sys::{CompilerConfig, Singlepass},
+        },
     };
 
     #[test_case(
