@@ -37,13 +37,8 @@
     "cmdk": "^1.0.4",
     "zod": "catalog:"
   },
-  "peerDependencies": {
+  "optionalDependencies": {
     "@left-curve/tradingview": "^29.4.0"
-  },
-  "peerDependenciesMeta": {
-    "permissionless": {
-      "@left-curve/tradingview": true
-    }
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
