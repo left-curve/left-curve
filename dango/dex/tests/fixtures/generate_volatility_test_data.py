@@ -204,25 +204,6 @@ def save_volatility_estimates(
         print(f"Saved volatility estimates: {filename}")
 
 
-def save_index(
-    estimate_files: List[VolatilityEstimateFile],
-    output_dir: Path,
-):
-    """Save index file listing all volatility estimate files."""
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Index for volatility estimates
-    estimate_index = {
-        "volatility_estimates": [
-            f"volatility_estimates/{ef.name}.json" for ef in estimate_files
-        ],
-        "description": "Volatility estimate test data",
-    }
-    with open(output_dir / "volatility_estimates_index.json", "w") as f:
-        json.dump(estimate_index, f, indent=2)
-    print(f"Saved volatility estimates index")
-
-
 def main():
     """Load price paths and generate volatility estimates for all half-life configurations."""
     fixtures_dir = Path(__file__).parent
@@ -250,7 +231,6 @@ def main():
 
     # Save to fixtures directory
     save_volatility_estimates(estimate_files, fixtures_dir)
-    save_index(estimate_files, fixtures_dir)
 
     print(f"\nVolatility estimate files saved to {fixtures_dir}")
     print("Done!")
