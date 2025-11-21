@@ -11,9 +11,9 @@ use {
     },
     grug::{
         Addressable, BlockOutcome, Bounded, Coin, Coins, Dec, Dec128_24, Denom, Duration, Inner,
-        IsZero, LengthBounded, MaxLength, Message, MultiplyFraction, NonEmpty, NonZero, Number,
-        NumberConst, QuerierExt, ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128,
-        UniqueVec, ZeroInclusiveOneExclusive, btree_map, btree_set, coins,
+        IsZero, LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst,
+        QuerierExt, ResultExt, Signed, Signer, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
+        ZeroInclusiveOneExclusive, btree_map, btree_set, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::{ethereum, solana},

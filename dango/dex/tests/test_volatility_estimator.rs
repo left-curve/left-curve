@@ -10,7 +10,6 @@ use {
     dango_types::dex::Price,
     fixtures::{PricePathFile, VolatilityEstimateFile, fixtures_dir, load_all_price_paths},
     grug::{Denom, Duration, MockStorage, Number, NumberConst, Sign},
-    serde_json,
     std::{fs, str::FromStr},
 };
 
@@ -28,7 +27,7 @@ fn assert_price_approx_eq(actual: Price, expected: Price, tolerance: Price, mess
             actual == Price::ZERO,
             "{}: Expected ~0, got {}",
             message,
-            actual.to_string()
+            actual
         );
         return;
     }
@@ -41,10 +40,10 @@ fn assert_price_approx_eq(actual: Price, expected: Price, tolerance: Price, mess
         relative_error < tolerance,
         "{}: Relative error {} exceeds tolerance {}. Expected {}, got {}",
         message,
-        relative_error.to_string(),
-        tolerance.to_string(),
-        expected.to_string(),
-        actual.to_string()
+        relative_error,
+        tolerance,
+        expected,
+        actual
     );
 }
 

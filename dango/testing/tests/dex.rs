@@ -22,9 +22,9 @@ use {
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Dec, Denom, Duration,
-        Fraction, Inner, LengthBounded, MaxLength, Message, MultiplyFraction, NonEmpty, NonZero,
-        Number, NumberConst, Order, QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp,
-        Udec128, Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coin_pair, coins,
+        Fraction, Inner, LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, Number,
+        NumberConst, Order, QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128,
+        Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
