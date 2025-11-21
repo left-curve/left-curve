@@ -74,6 +74,7 @@ where
     }
 }
 
+
 #[derive(Parser)]
 #[command(author, version, about, next_display_order = None)]
 struct Cli {
@@ -142,8 +143,8 @@ async fn main() -> anyhow::Result<()> {
             .with_thread_ids(true)
             .with_file(true)
             .with_line_number(true)
-            // include the current span so recorded trace_id/span_id appear in JSON output
             .with_current_span(true)
+            .with_span_list(true)
             .boxed(),
         config::LogFormat::Text => tracing_subscriber::fmt::layer().boxed(),
     };
