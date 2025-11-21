@@ -46,40 +46,15 @@ fn assert_price_approx_eq(
     );
 }
 
-#[test]
-fn test_single_regime_halflife_1s() {
-    let scenario = TestScenario::load("single_regime_halflife_1s");
-    run_deterministic_test(&scenario, 0.02); // 2% tolerance
-}
-
-#[test]
-fn test_single_regime_halflife_5s() {
-    let scenario = TestScenario::load("single_regime_halflife_5s");
-    run_deterministic_test(&scenario, 0.02); // 2% tolerance
-}
-
-#[test]
-fn test_single_regime_halflife_15s() {
-    let scenario = TestScenario::load("single_regime_halflife_15s");
-    run_deterministic_test(&scenario, 0.02); // 2% tolerance
-}
-
-#[test]
-fn test_multi_phase_halflife_1s() {
-    let scenario = TestScenario::load("multi_phase_halflife_1s");
-    run_deterministic_test(&scenario, 0.02); // 2% tolerance
-}
-
-#[test]
-fn test_multi_phase_halflife_5s() {
-    let scenario = TestScenario::load("multi_phase_halflife_5s");
-    run_deterministic_test(&scenario, 0.02); // 2% tolerance
-}
-
-#[test]
-fn test_multi_phase_halflife_15s() {
-    let scenario = TestScenario::load("multi_phase_halflife_15s");
-    run_deterministic_test(&scenario, 0.02); // 2% tolerance
+#[test_case("single_regime_halflife_1s", 0.02 ; "single regime with 1s half-life")]
+#[test_case("single_regime_halflife_5s", 0.02 ; "single regime with 5s half-life")]
+#[test_case("single_regime_halflife_15s", 0.02 ; "single regime with 15s half-life")]
+#[test_case("multi_phase_halflife_1s", 0.02 ; "multi-phase with 1s half-life")]
+#[test_case("multi_phase_halflife_5s", 0.02 ; "multi-phase with 5s half-life")]
+#[test_case("multi_phase_halflife_15s", 0.02 ; "multi-phase with 15s half-life")]
+fn test_deterministic_scenario(scenario_name: &str, tolerance: f64) {
+    let scenario = TestScenario::load(scenario_name);
+    run_deterministic_test(&scenario, tolerance);
 }
 
 /// Run a complete deterministic test with a given scenario
