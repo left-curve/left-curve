@@ -1,5 +1,7 @@
 use {
-    crate::{Context, cache_file::CacheFile, indexer_path::IndexerPath, runtime::RuntimeHandler},
+    crate::{
+        Context, cache_file::CacheFile, indexer_path::IndexerPath, runtime::RuntimeHandler, s3,
+    },
     grug_types::BlockAndBlockOutcomeWithHttpDetails,
     std::{
         collections::HashMap,
@@ -245,12 +247,13 @@ impl grug_app::Indexer for Cache {
                 );
 
                 self.runtime_handler.block_on(async move {
+
                     #[cfg(feature = "metrics")]
                     metrics::counter!("indexer.s3.upload.attempts").increment(1);
 
                     let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
                     let start = std::time::Instant::now();
-                    match crate::s3::upload_file(cfg, key, &path).await {
+                    match s3::upload_file(cfg, key, &path).await {
                         Ok(()) => {
                             let elapsed = start.elapsed();
                             #[cfg(feature = "tracing")]
