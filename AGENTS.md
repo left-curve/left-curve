@@ -16,6 +16,7 @@ This document is a generic, evergreen guide for new agents working in this repos
   2) Update both config templates (local + deploy).
   3) Parse with `config_parser::parse_config` in the target binary.
 - Feature flags commonly gate tracing/metrics.
+- Always run `just fmt` and `just lint` when doing code changes.
 
 ## Versions & Compatibility (Examples that matter)
 - OpenTelemetry: `opentelemetry = 0.31`, `opentelemetry_sdk = 0.31`, `opentelemetry-otlp = 0.31` (`grpc-tonic`, `trace`), `tracing-opentelemetry = 0.32`.
@@ -52,4 +53,6 @@ If adding/upgrading these, align versions across crates to avoid trait/type mism
 - Typical `just` recipes: `just fmt`, `just lint`, `just test`
 
 ---
-If you need to add Jaeger protocol support, prefer OTLP path (Tempo supports OTLP). If still needed, add a config flag to select Jaeger exporter and wire the `opentelemetry-jaeger` crate accordingly, keeping versions aligned.
+If you need to add Jaeger protocol support, prefer OTLP path (Tempo supports
+OTLP). If still needed, add a config flag to select Jaeger exporter and wire
+the `opentelemetry-jaeger` crate accordingly, keeping versions aligned.

@@ -74,7 +74,6 @@ where
     }
 }
 
-
 #[derive(Parser)]
 #[command(author, version, about, next_display_order = None)]
 struct Cli {
