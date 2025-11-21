@@ -1,5 +1,5 @@
 use {
-    crate::{Context, cache_file::CacheFile, indexer_path::IndexerPath},
+    crate::{Context, cache_file::CacheFile, indexer_path::IndexerPath, runtime::RuntimeHandler},
     grug_types::BlockAndBlockOutcomeWithHttpDetails,
     std::{
         collections::HashMap,
@@ -18,6 +18,7 @@ use grug_types::{Hash256, HttpRequestDetails};
 #[derive(Default)]
 pub struct Cache {
     pub context: Context,
+    pub runtime_handler: RuntimeHandler,
     // This because the way indexer methods are called, we need to store the blocks
     // in memory between `pre_indexing`, `index_block` and `post_indexing`.
     blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
@@ -30,6 +31,7 @@ impl Cache {
                 indexer_path: IndexerPath::new_with_tempdir(),
                 ..Default::default()
             },
+            runtime_handler: RuntimeHandler::default(),
             ..Default::default()
         }
     }
@@ -40,6 +42,18 @@ impl Cache {
                 indexer_path: IndexerPath::new_with_dir(directory),
                 ..Default::default()
             },
+            runtime_handler: RuntimeHandler::default(),
+            ..Default::default()
+        }
+    }
+
+    pub fn new_with_dir_and_runtime(directory: PathBuf, runtime_handler: RuntimeHandler) -> Self {
+        Self {
+            context: Context {
+                indexer_path: IndexerPath::new_with_dir(directory),
+                ..Default::default()
+            },
+            runtime_handler,
             ..Default::default()
         }
     }
@@ -190,7 +204,79 @@ impl grug_app::Indexer for Cache {
         let file_path = self.context.indexer_path.block_path(block_height);
 
         if CacheFile::exists(file_path.clone()) {
-            CacheFile::compress_file(file_path)?;
+            let compressed_path = CacheFile::compress_file(file_path.clone())?;
+
+            // If S3 config present, upload compressed file in background
+            #[cfg(feature = "s3")]
+            if self.context.s3.enabled {
+                let cfg = self.context.s3.clone();
+                let blocks_root = self.context.indexer_path.blocks_path();
+                // Derive an S3 key relative to blocks/ directory
+                let mut key = match compressed_path.strip_prefix(&blocks_root) {
+                    Ok(rel) => rel.to_string_lossy().into_owned(),
+                    Err(_) => {
+                        // Fallback to expected relative structure using block height
+                        let mut rel_path = self.context.indexer_path.block_path(block_height);
+                        rel_path.set_extension("borsh.xz");
+                        rel_path
+                            .strip_prefix(&blocks_root)
+                            .unwrap_or(&rel_path)
+                            .to_string_lossy()
+                            .into_owned()
+                    },
+                };
+
+                // Prepend optional path/prefix within the bucket
+                if !cfg.path.is_empty() {
+                    let prefix = cfg.path.trim_matches('/');
+                    if !prefix.is_empty() {
+                        key = format!("{}/{}", prefix, key.trim_start_matches('/'));
+                    }
+                }
+
+                let path = compressed_path.clone();
+
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    block_height,
+                    key = %key,
+                    path = %path.display(),
+                    "Uploading cached block to S3"
+                );
+
+                self.runtime_handler.spawn(async move {
+                    #[cfg(feature = "metrics")]
+                    metrics::counter!("indexer.s3.upload.attempts").increment(1);
+
+                    let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                    let start = std::time::Instant::now();
+                    match crate::s3::upload_file(cfg, key, &path).await {
+                        Ok(()) => {
+                            let elapsed = start.elapsed();
+                            #[cfg(feature = "tracing")]
+                            tracing::info!(
+                                bytes = size,
+                                ms = %elapsed.as_millis(),
+                                file = %path.display(),
+                                "S3 upload succeeded"
+                            );
+                            #[cfg(feature = "metrics")]
+                            {
+                                metrics::counter!("indexer.s3.upload.success").increment(1);
+                                metrics::histogram!("indexer.s3.upload.bytes").record(size as f64);
+                                metrics::histogram!("indexer.s3.upload.duration")
+                                    .record(elapsed.as_secs_f64());
+                            }
+                        },
+                        Err(err) => {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error = %err, file = %path.display(), "S3 upload failed");
+                            #[cfg(feature = "metrics")]
+                            metrics::counter!("indexer.s3.upload.failure").increment(1);
+                        },
+                    }
+                });
+            }
         }
 
         Ok(())

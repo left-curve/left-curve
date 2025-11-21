@@ -200,9 +200,6 @@ impl StartCmd {
     )> {
         let mut hooked_indexer = HookedIndexer::new();
 
-        let indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
-        let indexer_cache_context = indexer_cache.context.clone();
-
         let sql_indexer = indexer_sql::IndexerBuilder::default()
             .with_database_url(&cfg.indexer.database.url)
             .with_database_max_connections(cfg.indexer.database.max_connections)
@@ -235,6 +232,15 @@ impl StartCmd {
             indexer_sql::indexer::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone()),
             clickhouse_context.clone(),
         );
+
+        // Create cache indexer with shared runtime handler
+        let cache_runtime =
+            indexer_cache::RuntimeHandler::from_handle(sql_indexer.handle.handle().clone());
+        let mut indexer_cache =
+            indexer_cache::Cache::new_with_dir_and_runtime(app_dir.indexer_dir(), cache_runtime);
+        // Pass S3 config to the cache indexer context
+        indexer_cache.context.s3 = cfg.indexer.s3.clone();
+        let indexer_cache_context = indexer_cache.context.clone();
 
         hooked_indexer.add_indexer(indexer_cache)?;
         hooked_indexer.add_indexer(sql_indexer)?;
