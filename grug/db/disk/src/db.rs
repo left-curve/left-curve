@@ -1056,6 +1056,15 @@ pub(crate) fn create_state_iter<'a>(
             (k.to_vec(), v.to_vec())
         });
 
+    #[cfg(feature = "tracing")]
+    {
+        tracing::warn!(
+            min = ?min.map(|m| String::from_utf8_lossy(m).to_owned()),
+            max = ?max.map(|m| String::from_utf8_lossy(m).to_owned()),
+            "state storage iter"
+        )
+    }
+
     #[cfg(feature = "metrics")]
     let iter = {
         metrics::histogram!(
@@ -1069,7 +1078,7 @@ pub(crate) fn create_state_iter<'a>(
         iter.with_metrics(DISK_DB_LABEL, [
             ("operation", "next"),
             ("comment", comment),
-            ("source", WASM_STORAGE_LABEL),
+            ("source", STATE_STORAGE_LABEL),
         ])
     };
 
