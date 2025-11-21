@@ -25,7 +25,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { publicVars } = loadEnv();
 
-const environment = process.env.CONFIG_ENVIRONMENT || "local";
+const environment = process.env.CONFIG_ENVIRONMENT || "test";
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
 
