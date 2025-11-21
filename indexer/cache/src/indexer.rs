@@ -244,7 +244,7 @@ impl grug_app::Indexer for Cache {
                     "Uploading cached block to S3"
                 );
 
-                self.runtime_handler.spawn(async move {
+                self.runtime_handler.block_on(async move {
                     #[cfg(feature = "metrics")]
                     metrics::counter!("indexer.s3.upload.attempts").increment(1);
 
