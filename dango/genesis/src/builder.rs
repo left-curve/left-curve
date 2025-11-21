@@ -70,7 +70,7 @@ where
             let salt = NewUserSalt {
                 key: user.key,
                 key_hash: user.key_hash,
-                seed: seed as u16,
+                seed: seed as u32,
             }
             .to_bytes();
             let address = Addr::derive(account_factory, account_spot_code_hash, &salt);
