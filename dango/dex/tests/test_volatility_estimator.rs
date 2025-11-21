@@ -22,6 +22,17 @@ fn assert_price_approx_eq(actual: Price, expected: Price, tolerance: Price, mess
         expected - actual
     };
 
+    // Handle zero case
+    if expected == Price::ZERO {
+        assert!(
+            actual == Price::ZERO,
+            "{}: Expected ~0, got {}",
+            message,
+            actual.to_string()
+        );
+        return;
+    }
+
     let relative_error = (abs_diff.checked_div(expected).unwrap())
         .checked_abs()
         .unwrap();
@@ -101,11 +112,12 @@ fn test_volatility_estimate_file(
         // Compare with expected value
         // Skip first estimate (always zero) for error calculation
         if i > 0 && expected_estimate > Price::ZERO {
-            let relative_error = actual_estimate
-                .checked_div(expected_estimate)
-                .unwrap()
-                .checked_abs()
-                .unwrap();
+            let abs_diff = if actual_estimate > expected_estimate {
+                actual_estimate - expected_estimate
+            } else {
+                expected_estimate - actual_estimate
+            };
+            let relative_error = abs_diff.checked_div(expected_estimate).unwrap();
             total_error.checked_add_assign(relative_error).unwrap();
             error_count += 1;
 
@@ -185,7 +197,7 @@ fn test_all_volatility_estimates() {
     });
 
     let mut test_count = 0;
-    let tolerance = 0.02; // 2% relative tolerance
+    let tolerance = Price::new_percent(2); // 2% relative tolerance
 
     // Loop over all volatility estimate files
     for entry in entries {
