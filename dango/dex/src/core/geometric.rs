@@ -410,11 +410,6 @@ mod tests {
         let usdc_reserve = Uint128::new(8);
         let mut storage = BTreeMap::<Vec<u8>, Vec<u8>>::new();
 
-        // Initialize volatility estimate in storage
-        LAST_VOLATILITY_ESTIMATE
-            .save(&mut storage, (&eth::DENOM, &usdc::DENOM), &Price::ZERO)
-            .unwrap();
-
         let (bids, asks) = reflect_curve(
             &storage,
             &mut OracleQuerier::new_mock(

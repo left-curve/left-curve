@@ -424,7 +424,9 @@ mod tests {
             dex::{AvellanedaStoikovParams, Geometric, Xyk},
             oracle::PrecisionedPrice,
         },
-        grug::{Bounded, Coins, Duration, Inner, Timestamp, coin_pair, coins, hash_map},
+        grug::{
+            Bounded, Coins, Duration, Inner, MockStorage, Timestamp, coin_pair, coins, hash_map,
+        },
         std::{
             collections::{BTreeSet, HashMap},
             str::FromStr,
@@ -637,9 +639,6 @@ mod tests {
         expected_asks: Vec<(Udec128, Uint128)>,
         order_size_tolerance: u128,
     ) {
-        // Check if it's a geometric pool before moving pool_type
-        let is_geometric = matches!(pool_type, PassiveLiquidity::Geometric(_));
-
         let pair = PairParams {
             pool_type,
             bucket_sizes: BTreeSet::new(),
@@ -665,15 +664,7 @@ mod tests {
         });
 
         let reserve = pool_liquidity.try_into().unwrap();
-        let mut storage = std::collections::BTreeMap::<Vec<u8>, Vec<u8>>::new();
-
-        // Initialize volatility estimate in storage for geometric pools
-        if is_geometric {
-            use crate::core::geometric::volatility_estimator::LAST_VOLATILITY_ESTIMATE;
-            LAST_VOLATILITY_ESTIMATE
-                .save(&mut storage, (&eth::DENOM, &usdc::DENOM), &Price::ZERO)
-                .unwrap();
-        }
+        let storage = MockStorage::new();
 
         let (bids, asks) = pair
             .reflect_curve(
@@ -751,13 +742,7 @@ mod tests {
             ),
         });
 
-        let mut storage = std::collections::BTreeMap::<Vec<u8>, Vec<u8>>::new();
-
-        // Initialize volatility estimate in storage
-        use crate::core::geometric::volatility_estimator::LAST_VOLATILITY_ESTIMATE;
-        LAST_VOLATILITY_ESTIMATE
-            .save(&mut storage, (&eth::DENOM, &usdc::DENOM), &Price::ZERO)
-            .unwrap();
+        let storage = MockStorage::new();
 
         let (bids, asks) = pair
             .reflect_curve(
@@ -1101,9 +1086,6 @@ mod tests {
         expected_output: Coin,
         expected_reserve_after_swap: CoinPair,
     ) {
-        // Check if it's a geometric pool before moving pool_type
-        let is_geometric = matches!(pool_type, PassiveLiquidity::Geometric(_));
-
         let pair = PairParams {
             pool_type,
             bucket_sizes: BTreeSet::new(),
@@ -1115,15 +1097,7 @@ mod tests {
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
         let mut oracle_querier = OracleQuerier::new_mock(oracle_prices);
-        let mut storage = std::collections::BTreeMap::<Vec<u8>, Vec<u8>>::new();
-
-        // Initialize volatility estimate in storage for geometric pools
-        if is_geometric {
-            use crate::core::geometric::volatility_estimator::LAST_VOLATILITY_ESTIMATE;
-            LAST_VOLATILITY_ESTIMATE
-                .save(&mut storage, (&eth::DENOM, &usdc::DENOM), &Price::ZERO)
-                .unwrap();
-        }
+        let storage = MockStorage::new();
 
         let (reserve, output) = pair
             .swap_exact_amount_in(
@@ -1491,9 +1465,6 @@ mod tests {
         expected_input: Coin,
         expected_reserve_after_swap: CoinPair,
     ) {
-        // Check if it's a geometric pool before moving pool_type
-        let is_geometric = matches!(pool_type, PassiveLiquidity::Geometric(_));
-
         let pair = PairParams {
             pool_type,
             bucket_sizes: BTreeSet::new(),
@@ -1505,15 +1476,7 @@ mod tests {
 
         // Mock the oracle to return a price of 1 with 6 decimals for both assets.
         let mut oracle_querier = OracleQuerier::new_mock(oracle_prices);
-        let mut storage = std::collections::BTreeMap::<Vec<u8>, Vec<u8>>::new();
-
-        // Initialize volatility estimate in storage for geometric pools
-        if is_geometric {
-            use crate::core::geometric::volatility_estimator::LAST_VOLATILITY_ESTIMATE;
-            LAST_VOLATILITY_ESTIMATE
-                .save(&mut storage, (&eth::DENOM, &usdc::DENOM), &Price::ZERO)
-                .unwrap();
-        }
+        let storage = MockStorage::new();
 
         let (reserve, input) = pair
             .swap_exact_amount_out(
