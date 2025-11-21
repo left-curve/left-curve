@@ -60,6 +60,7 @@ pub trait Secret: Sized {
 // --------------------------------- Secp256k1 ---------------------------------
 
 /// An Secp256k1 private key.
+#[derive(Debug, Clone)]
 pub struct Secp256k1 {
     inner: k256::ecdsa::SigningKey,
 }
@@ -124,6 +125,7 @@ impl Secret for Secp256k1 {
 // --------------------------------- Ethereum ----------------------------------
 
 /// An Secp256k1 private key that signs message in Ethereum EIP-712 format.
+#[derive(Debug, Clone)]
 pub struct Eip712 {
     inner: Secp256k1,
     // This means the Ethereum address, not the Dango address.
