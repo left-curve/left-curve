@@ -6,10 +6,10 @@
 mod fixtures;
 
 use {
-    dango_dex::core::geometric::volatilty_estimator::update_volatility_estimate,
+    dango_dex::core::geometric::volatility_estimator::update_volatility_estimate,
     dango_types::dex::Price,
     fixtures::{PricePathFile, VolatilityEstimateFile, fixtures_dir, load_all_price_paths},
-    grug::{Denom, Duration, Inner, MockStorage, Number, NumberConst, Sign},
+    grug::{Denom, Duration, MockStorage, Number, NumberConst, Sign},
     serde_json,
     std::{fs, str::FromStr},
 };

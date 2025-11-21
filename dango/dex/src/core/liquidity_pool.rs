@@ -669,7 +669,7 @@ mod tests {
 
         // Initialize volatility estimate in storage for geometric pools
         if is_geometric {
-            use crate::core::geometric::volatilty_estimator::LAST_VOLATILITY_ESTIMATE;
+            use crate::core::geometric::volatility_estimator::LAST_VOLATILITY_ESTIMATE;
             LAST_VOLATILITY_ESTIMATE
                 .save(&mut storage, (&eth::DENOM, &usdc::DENOM), &Price::ZERO)
                 .unwrap();
@@ -754,7 +754,7 @@ mod tests {
         let mut storage = std::collections::BTreeMap::<Vec<u8>, Vec<u8>>::new();
 
         // Initialize volatility estimate in storage
-        use crate::core::geometric::volatilty_estimator::LAST_VOLATILITY_ESTIMATE;
+        use crate::core::geometric::volatility_estimator::LAST_VOLATILITY_ESTIMATE;
         LAST_VOLATILITY_ESTIMATE
             .save(&mut storage, (&eth::DENOM, &usdc::DENOM), &Price::ZERO)
             .unwrap();
@@ -1119,7 +1119,7 @@ mod tests {
 
         // Initialize volatility estimate in storage for geometric pools
         if is_geometric {
-            use crate::core::geometric::volatilty_estimator::LAST_VOLATILITY_ESTIMATE;
+            use crate::core::geometric::volatility_estimator::LAST_VOLATILITY_ESTIMATE;
             LAST_VOLATILITY_ESTIMATE
                 .save(&mut storage, (&eth::DENOM, &usdc::DENOM), &Price::ZERO)
                 .unwrap();
@@ -1509,7 +1509,7 @@ mod tests {
 
         // Initialize volatility estimate in storage for geometric pools
         if is_geometric {
-            use crate::core::geometric::volatilty_estimator::LAST_VOLATILITY_ESTIMATE;
+            use crate::core::geometric::volatility_estimator::LAST_VOLATILITY_ESTIMATE;
             LAST_VOLATILITY_ESTIMATE
                 .save(&mut storage, (&eth::DENOM, &usdc::DENOM), &Price::ZERO)
                 .unwrap();

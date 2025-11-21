@@ -1,5 +1,5 @@
 use {
-    crate::core::geometric::volatilty_estimator::LAST_VOLATILITY_ESTIMATE,
+    crate::core::geometric::volatility_estimator::LAST_VOLATILITY_ESTIMATE,
     anyhow::{bail, ensure},
     dango_oracle::OracleQuerier,
     dango_types::dex::{AvellanedaStoikovParams, Geometric, Price},
@@ -12,7 +12,7 @@ use {
 
 mod avellaneda_stoikov;
 mod math;
-pub mod volatilty_estimator;
+pub mod volatility_estimator;
 
 /// When adding liquidity for the first time into an empty pool, we determine
 /// how many LP tokens to mint based on the USD value of the deposit.

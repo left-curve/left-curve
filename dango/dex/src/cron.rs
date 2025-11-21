@@ -4,7 +4,7 @@ use {
         RESTING_ORDER_BOOK, VOLUMES, VOLUMES_BY_USER,
         core::{
             FillingOutcome, MatchingOutcome, PassiveLiquidityPool, fill_orders,
-            geometric::{self, volatilty_estimator},
+            geometric::{self, volatility_estimator},
             match_orders,
             mean::safe_arithmetic_mean,
         },
@@ -243,7 +243,7 @@ fn clear_orders_of_pair(
             geometric::compute_marginal_price(oracle_querier, &base_denom, &quote_denom)?;
 
         // Update the volatility estimate.
-        volatilty_estimator::update_volatility_estimate(
+        volatility_estimator::update_volatility_estimate(
             storage,
             block_info.timestamp,
             &base_denom,
