@@ -75,7 +75,7 @@ impl Default for GatekeeperConfig {
             // https://github.com/CosmWasm/wasmvm/issues/687
             //
             // We don't want to be stuck at Rust 1.86 forever, so we enable this
-            // by default, and leave the the metering issue for later.
+            // by default, and leave the metering issue for later.
             //
             // Let's follow CosmWasm's progress of this topic at:
             // https://github.com/CosmWasm/cosmwasm/issues/2485
