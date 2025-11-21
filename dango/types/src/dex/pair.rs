@@ -4,7 +4,7 @@ use {
         Bounded, Dec, Denom, Duration, NonZero, Udec128, Uint128, ZeroExclusiveOneExclusive,
         ZeroExclusiveOneInclusive, ZeroInclusiveOneExclusive,
     },
-    std::{collections::BTreeSet, str::FromStr},
+    std::collections::BTreeSet,
 };
 
 /// Parameters of a trading pair.
