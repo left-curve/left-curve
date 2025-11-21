@@ -132,7 +132,7 @@ impl GenesisCodes for RustVm {
     }
 }
 
-// TODO: implement `GenesisCodes` for `WasmVm` and `HybridVm`. For now, we don't
-// want to include them here because wasmer-compiler-singlepass v6 has changed to
+// TODO: implement `GenesisCodes` for `WasmVm` and `HybridVm`.
+// For now, we don't want to include them here because wasmer v6 has changed to
 // the Business Source License. We want to make sure anything in the `dango/`
-// directory does NOT have any dependency on it.
+// directory does NOT have dependency on it.
