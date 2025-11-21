@@ -23,7 +23,7 @@
     "dev:portal-app": "turbo dev -F=./sdk/** -F=./ui/store -F=./ui/foundation -F @left-curve/portal-app",
     "build:sdk": "turbo build -F=./sdk/**",
     "build:graph": "turbo build --graph=build-graph.png",
-    "build:portal-web": "turbo build -F @left-curve/portal-web",
+    "build:portal-web": "NODE_OPTIONS='--max-old-space-size=8192' turbo build -F @left-curve/portal-web",
     "build:kit": "turbo build -F @left-curve/applets-kit",
     "build:portal-app": "pnpm portal-app build:ios",
     "storybook": "pnpm -F applets-kit sb:dev",
