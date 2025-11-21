@@ -35,6 +35,9 @@ use {
 
 pub const RESUBSCRIBE_ATTEMPTS: u32 = 5;
 
+/// Timeout in milliseconds that we wait for receiving data before trying to resubscribe.
+pub const DATA_RECEIVE_TIMEOUT_MS: u64 = 200;
+
 #[derive(Clone, Debug)]
 pub struct PythClient {
     endpoints: Vec<Url>,
@@ -118,6 +121,11 @@ impl PythClient {
         let subscribe_requests = ids_per_channel
             .into_iter()
             .map(|(channel, (subscribe_id, feed_ids))| {
+                info!(
+                    "Subscription ID: {} to channel: {} with feed IDs: {:?}",
+                    subscribe_id, channel, feed_ids
+                );
+
                 let params = Self::subscription_params(feed_ids, channel)?;
 
                 subscription_ids.push(subscribe_id);
@@ -202,9 +210,7 @@ impl PythClient {
 
             // If the number of data received is zero, it means the channel is closed and we need to resubscribe.
             if data_count == 0 {
-                // No data received, continue to the next iteration to check for resubscription.
                 error!("Pyth Lazer connection closed");
-
                 to_resubscribe = true;
                 continue;
             }
@@ -220,7 +226,7 @@ impl PythClient {
 
                             // Check if we have received data for all subscription IDs.
                             if data_per_ids.values().all(|&v| v) {
-                                info!("Successfully subscribed to all price feeds");
+                                info!("Received data from all price feeds");
                                 return Ok(());
                             }
                         }
@@ -248,7 +254,7 @@ impl PythClient {
                     },
                     AnyResponse::Json(WsResponse::Subscribed(subscription_response)) => {
                         info!(
-                            "Subscribed with ID: {}",
+                            "Subscription confirmed, ID: {}",
                             subscription_response.subscription_id.0
                         );
                     },
@@ -417,7 +423,7 @@ impl PythClientTrait for PythClient {
         // Create the buffer to pull data from the receiver.
         let buffer_capacity = 1000;
         let mut buffer = Vec::with_capacity(buffer_capacity);
-        let timeout = Duration::from_millis(500);
+        let timeout = Duration::from_millis(DATA_RECEIVE_TIMEOUT_MS);
 
         // Flag to indicate if we need to resubscribe.
         let mut to_resubscribe = false;
@@ -445,12 +451,11 @@ impl PythClientTrait for PythClient {
                     to_resubscribe = false;
 
                     let uptime = start_uptime.elapsed();
-                    info!("Uptime: {} seconds", uptime.as_secs());
 
                     #[cfg(feature = "metrics")]
                     histogram!(pyth_types::metrics::PYTH_UPTIME).record(uptime.as_secs_f64());
 
-                    info!("Resubscribing to Pyth Lazer...");
+                    info!("Uptime: {} seconds; resubscribing to Pyth Lazer...", uptime.as_secs());
 
                     let start_reconnection = Instant::now();
                     let mut backoff = ExponentialBackoff::new(
@@ -464,7 +469,7 @@ impl PythClientTrait for PythClient {
                         match Self::subscribe(&mut client, &mut receiver, ids_per_channel.clone()).await {
                             Ok(()) => {
                                 let reconnection_time = start_reconnection.elapsed();
-                                info!("Resubscribed successfully after {} seconds", reconnection_time.as_secs());
+                                info!("Resubscribed successfully after {} ms", reconnection_time.as_millis());
 
                                 #[cfg(feature = "metrics")]
                                 histogram!(pyth_types::metrics::PYTH_RECONNECTION_TIME).record(reconnection_time.as_secs_f64());
