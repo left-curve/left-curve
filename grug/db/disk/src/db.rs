@@ -1059,8 +1059,8 @@ pub(crate) fn create_state_iter<'a>(
     #[cfg(feature = "tracing")]
     {
         tracing::warn!(
-            min = ?min.map(|m| String::from_utf8_lossy(m).to_owned()),
-            max = ?max.map(|m| String::from_utf8_lossy(m).to_owned()),
+            min = ?min.map(|m| String::from_utf8_lossy(m).clone()),
+            max = ?max.map(|m| String::from_utf8_lossy(m).clone()),
             "state storage iter"
         )
     }
