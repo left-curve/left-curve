@@ -10,7 +10,7 @@ const MIDDLEWARE_NAME: &str = "Gatekeeper";
 // ----------------------------- module middleware -----------------------------
 
 #[derive(Debug, Clone, Copy)]
-struct GatekeeperConfig {
+pub struct GatekeeperConfig {
     /// True iff float operations are allowed.
     ///
     /// Note:
@@ -53,31 +53,51 @@ struct GatekeeperConfig {
     allow_feature_threads: bool,
 }
 
-/// A middleware that ensures only deterministic operations are used (i.e. no floats).
-/// It also disallows the use of Wasm features that are not explicitly enabled.
-#[derive(Debug)]
-pub struct Gatekeeper {
-    config: GatekeeperConfig,
-}
-
 // A custom configuration is potentially dangerous (non-final Wasm proposals,
 // floats in SIMD operation).
 //
 // For this reason, this is the only way to create a new `Gatekeeper`.
-impl Default for Gatekeeper {
+impl Default for GatekeeperConfig {
     fn default() -> Self {
-        Self {
-            config: GatekeeperConfig {
-                // In practice, floats must be allowed, otherwise deserializing
-                // JSON will fail.
-                allow_floats: true,
-                allow_feature_bulk_memory_operations: false,
-                allow_feature_reference_types: false,
-                allow_feature_simd: false,
-                allow_feature_exception_handling: false,
-                allow_feature_threads: false,
-            },
+        GatekeeperConfig {
+            // In practice, floats must be allowed, otherwise deserializing JSON
+            // will fail.
+            allow_floats: true,
+            // In CosmWasm, this is disabled by default, because it's difficult
+            // to correctly meter the gas cost of these operations.
+            //
+            // This is ok for Rust 1.86 and below: Rust compiler from these old
+            // versions don't make use of bulk-memory operators when building
+            // Wasm programs.
+            //
+            // However, since Rust 1.87+, the Rust compiler does make use of
+            // bulk-memory operators:
+            // https://github.com/CosmWasm/wasmvm/issues/687
+            //
+            // We don't want to be stuck at Rust 1.86 forever, so we enable this
+            // by default, and leave the the metering issue for later.
+            //
+            // Let's follow CosmWasm's progress of this topic at:
+            // https://github.com/CosmWasm/cosmwasm/issues/2485
+            allow_feature_bulk_memory_operations: true,
+            allow_feature_reference_types: false,
+            allow_feature_simd: false,
+            allow_feature_exception_handling: false,
+            allow_feature_threads: false,
         }
+    }
+}
+
+/// A middleware that ensures only deterministic operations are used (i.e. no floats).
+/// It also disallows the use of Wasm features that are not explicitly enabled.
+#[derive(Debug, Default)]
+pub struct Gatekeeper {
+    config: GatekeeperConfig,
+}
+
+impl Gatekeeper {
+    pub fn new(config: GatekeeperConfig) -> Self {
+        Self { config }
     }
 }
 
@@ -807,6 +827,7 @@ mod tests {
     };
 
     #[test_case(
+        GatekeeperConfig::default(),
         br#"
           (module
             (func (export "sum") (param i32 i32) (result i32)
@@ -821,6 +842,7 @@ mod tests {
         "valid wasm instance sanity"
     )]
     #[test_case(
+        GatekeeperConfig::default(),
         br#"
           (module
             (func $to_float (param i32) (result f32)
@@ -834,6 +856,10 @@ mod tests {
         "parser floats unallowed"
     )]
     #[test_case(
+        GatekeeperConfig {
+            allow_feature_bulk_memory_operations: false,
+            ..Default::default()
+        },
         br#"
           (module
             (memory (export "memory") 1)
@@ -852,12 +878,12 @@ mod tests {
         };
         "bulk operations unallowed"
     )]
-    fn gatekeeper<T>(wat: &[u8], callback: T)
+    fn gatekeeper<T>(config: GatekeeperConfig, wat: &[u8], callback: T)
     where
         T: Fn(Result<Module, CompileError>),
     {
         let mut compiler = Singlepass::new();
-        compiler.push_middleware(Arc::new(Gatekeeper::default()));
+        compiler.push_middleware(Arc::new(Gatekeeper::new(config)));
 
         let store = Store::new(compiler);
         let result = Module::new(&store, wat);
