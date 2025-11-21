@@ -218,7 +218,7 @@ fn onboard_new_user(
         key,
         key_hash,
         // We need to cast seed to u32, in order to keep compatibility
-        // with new user salt compatibility
+        // with new user salt
         seed: seed as u32,
     };
     let address = Addr::derive(factory, code_hash, &salt.to_bytes());
