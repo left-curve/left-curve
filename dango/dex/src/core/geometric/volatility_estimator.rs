@@ -25,7 +25,9 @@ pub const LAST_VOLATILITY_ESTIMATE: Map<(&Denom, &Denom), Price> =
 /// # Arguments
 ///
 /// * `storage` - The storage to save the last price and volatility estimate.
-/// * `pair_id` - The pair id for which to update the volatility estimate.
+/// * `block_time` - The current block time.
+/// * `base_denom` - The base denom of the pair for which to update the volatility estimate.
+/// * `quote_denom` - The quote denom of the pair for which to update the volatility estimate.
 /// * `price` - The latest price for the pair.
 /// * `half_life` - The half life of the weight of each sample in the volatility estimate.
 ///
