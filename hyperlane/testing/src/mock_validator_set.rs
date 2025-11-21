@@ -53,7 +53,7 @@ impl Nonce {
     /// Get the next nonce.
     pub fn next_nonce(&mut self) -> u32 {
         match self {
-            Self::Random => rand::thread_rng().gen(),
+            Self::Random => rand::thread_rng().r#gen(),
             Self::Sequential(nonce) => {
                 *nonce += 1;
                 *nonce
