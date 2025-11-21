@@ -125,6 +125,7 @@ async fn main() -> anyhow::Result<()> {
                     .ok()
                     .filter(|s| !s.is_empty())
             });
+
         if let Some(ns) = service_namespace {
             attrs.push(KeyValue::new("service.namespace", ns));
         }
@@ -141,10 +142,10 @@ async fn main() -> anyhow::Result<()> {
         }
 
         // Optional: host.name — read from HOSTNAME if provided
-        if let Ok(host) = std::env::var("HOSTNAME") {
-            if !host.is_empty() {
-                attrs.push(KeyValue::new("host.name", host));
-            }
+        if let Ok(host) = std::env::var("HOSTNAME")
+            && !host.is_empty()
+        {
+            attrs.push(KeyValue::new("host.name", host));
         }
 
         let resource = Resource::builder()
@@ -187,6 +188,7 @@ async fn main() -> anyhow::Result<()> {
         // Register provider in a global OnceLock so signal handlers can shut it down.
         let tracer = provider.tracer("dango");
         crate::telemetry::set_provider(provider);
+
         Some(otel_layer().with_tracer(tracer))
     } else {
         None
@@ -206,6 +208,7 @@ async fn main() -> anyhow::Result<()> {
         sentry::configure_scope(|scope| {
             scope.set_tag("chain-id", &cfg.transactions.chain_id);
         });
+
         Some(sentry_layer())
     } else {
         None
@@ -233,6 +236,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Flush and shutdown the tracer provider (if set) to avoid losing spans.
     crate::telemetry::shutdown();
+
     // Flush Sentry transport too.
     crate::telemetry::shutdown_sentry();
 

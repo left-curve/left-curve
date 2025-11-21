@@ -44,8 +44,13 @@ impl StartCmd {
         } else {
             tracing::info!("Sentry is disabled");
         }
+
         if cfg.trace.enabled {
-            tracing::info!(endpoint = %cfg.trace.endpoint, protocol = ?cfg.trace.protocol, "OpenTelemetry OTLP exporter initialized");
+            tracing::info!(
+                endpoint = %cfg.trace.endpoint,
+                protocol = ?cfg.trace.protocol,
+                "OpenTelemetry OTLP exporter initialized"
+            );
         } else {
             tracing::info!("OpenTelemetry OTLP exporter is disabled");
         }

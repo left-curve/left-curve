@@ -79,13 +79,13 @@ impl GasTracker {
             let used = inner.used + consumed;
 
             // If there is a limit, and the limit is exceeded, then throw error.
-            if let Some(limit) = inner.limit {
-                if used > limit {
-                    #[cfg(feature = "tracing")]
-                    tracing::warn!(limit = inner.limit, used, comment, "Out of gas");
+            if let Some(limit) = inner.limit
+                && used > limit
+            {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(limit = inner.limit, used, comment, "Out of gas");
 
-                    return Err(StdError::out_of_gas(limit, used, comment));
-                }
+                return Err(StdError::out_of_gas(limit, used, comment));
             }
 
             #[cfg(feature = "tracing")]

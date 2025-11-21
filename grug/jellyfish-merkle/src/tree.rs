@@ -571,12 +571,13 @@ fn prepare_batch_for_subtree(
         .into_iter()
         .filter_map(|(key_hash, op)| {
             // check if key hash match the leaf's
-            if let Some(leaf) = existing_leaf {
-                if key_hash == leaf.key_hash {
-                    maybe_op = Some(op);
-                    return None;
-                }
+            if let Some(leaf) = existing_leaf
+                && key_hash == leaf.key_hash
+            {
+                maybe_op = Some(op);
+                return None;
             }
+
             // keep inserts, remove deletes
             if let Op::Insert(value_hash) = op {
                 Some((key_hash, value_hash))
