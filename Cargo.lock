@@ -3576,9 +3576,7 @@ dependencies = [
  "dango-vesting",
  "dango-warp",
  "grug",
- "grug-vm-hybrid",
  "grug-vm-rust",
- "grug-vm-wasm",
  "hyperlane-ism",
  "hyperlane-mailbox",
  "hyperlane-types",
@@ -3836,9 +3834,7 @@ dependencies = [
  "grug-db-memory",
  "grug-testing",
  "grug-types",
- "grug-vm-hybrid",
  "grug-vm-rust",
- "grug-vm-wasm",
  "hex",
  "hex-literal",
  "home",
@@ -5301,24 +5297,6 @@ dependencies = [
  "tendermint-rpc",
  "test-case",
  "thiserror 2.0.12",
-]
-
-[[package]]
-name = "grug-vm-hybrid"
-version = "0.0.0"
-dependencies = [
- "error-backtrace",
- "grug-app",
- "grug-db-memory",
- "grug-math",
- "grug-tester",
- "grug-testing",
- "grug-types",
- "grug-vm-hybrid",
- "grug-vm-rust",
- "grug-vm-wasm",
- "thiserror 2.0.12",
- "tracing",
 ]
 
 [[package]]
