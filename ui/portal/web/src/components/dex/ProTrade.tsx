@@ -109,9 +109,7 @@ const ProTradeOverview: React.FC = () => {
 };
 
 const TradingView = lazy(() =>
-  import("./TradingView")
-    .then(({ TradingView }) => ({ default: TradingView }))
-    .catch(() => ({ default: () => <div>Chart</div> })),
+  import("./TradingView").then(({ TradingView }) => ({ default: TradingView })),
 );
 
 const ProTradeChart: React.FC = () => {

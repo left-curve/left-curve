@@ -25,9 +25,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { publicVars } = loadEnv();
 
-const environment = process.env.CONFIG_ENVIRONMENT || "local";
+const environment = process.env.CONFIG_ENVIRONMENT || "test";
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
+
+const tradingViewPath = path.resolve(
+  workspaceRoot,
+  "node_modules",
+  "@left-curve/tradingview/charting_library",
+);
 
 fs.copySync(
   path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
@@ -83,6 +89,15 @@ const envConfig = `window.dango = ${JSON.stringify(
   null,
   2,
 )};`;
+
+const copyPattern = [{ from: "./public/rmsw.js", to: "service-worker.js" }];
+
+if (fs.existsSync(tradingViewPath)) {
+  copyPattern.push({
+    from: path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/charting_library"),
+    to: "./static/charting_library",
+  });
+}
 
 export default defineConfig({
   resolve: {
@@ -145,17 +160,7 @@ export default defineConfig({
     distPath: {
       root: "build",
     },
-    copy: [
-      {
-        from: path.resolve(
-          workspaceRoot,
-          "node_modules",
-          "@left-curve/tradingview/charting_library",
-        ),
-        to: "./static/charting_library",
-      },
-      { from: "./public/rmsw.js", to: "service-worker.js" },
-    ],
+    copy: copyPattern,
     minify: {
       jsOptions: {
         exclude: [],

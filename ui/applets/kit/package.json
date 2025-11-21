@@ -53,11 +53,9 @@
     "@left-curve/store": "workspace:^",
     "@microlink/react-json-view": "^1.26.2",
     "@zxing/library": "^0.21.3",
-    "clsx": "^2.1.1",
-    "cmdk": "^1.0.4",
     "framer-motion": "catalog:",
     "qr-code-styling": "^1.7.2",
-    "tailwind-variants": "^0.2.1"
+    "tailwind-variants": "catalog:"
   },
   "devDependencies": {
     "@left-curve/config": "workspace:^",
