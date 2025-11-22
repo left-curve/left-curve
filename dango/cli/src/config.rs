@@ -66,6 +66,7 @@ pub struct IndexerConfig {
     pub keep_blocks: bool,
     pub database: IndexerDatabaseConfig,
     pub clickhouse: ClickhouseConfig,
+    pub s3: indexer_cache::S3Config,
 }
 
 #[derive(Serialize, Deserialize)]
