@@ -1,7 +1,5 @@
 use {
-    crate::{
-        Context, cache_file::CacheFile, indexer_path::IndexerPath, runtime::RuntimeHandler, s3,
-    },
+    crate::{Context, cache_file::CacheFile, indexer_path::IndexerPath, runtime::RuntimeHandler},
     grug_types::BlockAndBlockOutcomeWithHttpDetails,
     std::{
         collections::HashMap,
@@ -9,6 +7,9 @@ use {
         sync::{Arc, Mutex},
     },
 };
+
+#[cfg(feature = "s3")]
+use crate::s3;
 
 #[cfg(feature = "http-request-details")]
 use grug_types::{Hash256, HttpRequestDetails};
@@ -206,7 +207,7 @@ impl grug_app::Indexer for Cache {
         let file_path = self.context.indexer_path.block_path(block_height);
 
         if CacheFile::exists(file_path.clone()) {
-            let compressed_path = CacheFile::compress_file(file_path.clone())?;
+            let _compressed_path = CacheFile::compress_file(file_path.clone())?;
 
             // If S3 config present, upload compressed file in background
             #[cfg(feature = "s3")]
@@ -214,7 +215,7 @@ impl grug_app::Indexer for Cache {
                 let cfg = self.context.s3.clone();
                 let blocks_root = self.context.indexer_path.blocks_path();
                 // Derive an S3 key relative to blocks/ directory
-                let mut key = match compressed_path.strip_prefix(&blocks_root) {
+                let mut key = match _compressed_path.strip_prefix(&blocks_root) {
                     Ok(rel) => rel.to_string_lossy().into_owned(),
                     Err(_) => {
                         // Fallback to expected relative structure using block height
@@ -236,7 +237,7 @@ impl grug_app::Indexer for Cache {
                     }
                 }
 
-                let path = compressed_path.clone();
+                let path = _compressed_path.clone();
 
                 #[cfg(feature = "tracing")]
                 tracing::info!(
