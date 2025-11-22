@@ -807,7 +807,7 @@ impl FunctionMiddleware for FunctionGatekeeper {
             _ => {
                 let msg = format!("New operator introduced in wasmer v6: {operator:?}. Such operators are not supported");
                 Err(MiddlewareError::new(MIDDLEWARE_NAME, msg))
-            }
+            },
         }
     }
 }

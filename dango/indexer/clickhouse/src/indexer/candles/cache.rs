@@ -436,7 +436,9 @@ impl CandleCache {
 
                         candles = query_builder.fetch_all(clickhouse_client).await?.candles;
 
-                        if let Some(candle) = candles.first() &&  candle.max_block_height < highest_block_height {
+                        if let Some(candle) = candles.first()
+                            && candle.max_block_height < highest_block_height
+                        {
                             #[cfg(feature = "tracing")]
                             tracing::error!(
                                 %candle.max_block_height,
