@@ -9,7 +9,7 @@ use {
 };
 
 #[cfg(feature = "s3")]
-use crate::s3;
+use {crate::s3, std::time::Duration, std::time::Instant, tokio::time::sleep};
 
 #[cfg(feature = "http-request-details")]
 use grug_types::{Hash256, HttpRequestDetails};
@@ -248,36 +248,43 @@ impl grug_app::Indexer for Cache {
                 );
 
                 self.runtime_handler.block_on(async move {
-
                     #[cfg(feature = "metrics")]
                     metrics::counter!("indexer.s3.upload.attempts").increment(1);
 
-                    let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-                    let start = std::time::Instant::now();
-                    match s3::upload_file(cfg, key, &path).await {
-                        Ok(()) => {
-                            let elapsed = start.elapsed();
-                            #[cfg(feature = "tracing")]
-                            tracing::info!(
-                                bytes = size,
-                                ms = %elapsed.as_millis(),
-                                file = %path.display(),
-                                "S3 upload succeeded"
-                            );
-                            #[cfg(feature = "metrics")]
-                            {
-                                metrics::counter!("indexer.s3.upload.success").increment(1);
-                                metrics::histogram!("indexer.s3.upload.bytes").record(size as f64);
-                                metrics::histogram!("indexer.s3.upload.duration")
-                                    .record(elapsed.as_secs_f64());
-                            }
-                        },
-                        Err(err) => {
-                            #[cfg(feature = "tracing")]
-                            tracing::error!(error = %err, file = %path.display(), "S3 upload failed");
-                            #[cfg(feature = "metrics")]
-                            metrics::counter!("indexer.s3.upload.failure").increment(1);
-                        },
+                    // Retry logic, in case of network error.
+                    for _ in 0..=10 {
+                        let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+                        let start = Instant::now();
+                        match s3::upload_file(cfg.clone(), key.clone(), &path).await {
+                            Ok(()) => {
+                                let elapsed = start.elapsed();
+                                #[cfg(feature = "tracing")]
+                                tracing::info!(
+                                    block_height,
+                                    bytes = size,
+                                    ms = %elapsed.as_millis(),
+                                    file = %path.display(),
+                                    "S3 upload succeeded"
+                                );
+                                #[cfg(feature = "metrics")]
+                                {
+                                    metrics::counter!("indexer.s3.upload.success").increment(1);
+                                    metrics::histogram!("indexer.s3.upload.bytes").record(size as f64);
+                                    metrics::histogram!("indexer.s3.upload.duration")
+                                        .record(elapsed.as_secs_f64());
+                                }
+
+                                break;
+                            },
+                            Err(err) => {
+                                #[cfg(feature = "tracing")]
+                                tracing::error!(error = %err, file = %path.display(), "S3 upload failed");
+                                #[cfg(feature = "metrics")]
+                                metrics::counter!("indexer.s3.upload.failure").increment(1);
+
+                                sleep(Duration::from_secs(1)).await;
+                            },
+                        }
                     }
                 });
             }
