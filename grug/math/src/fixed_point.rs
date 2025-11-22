@@ -15,6 +15,8 @@ pub trait FixedPoint<U> {
     ///
     /// For `Dec<U>`, this is typically `Dec::raw(Int::<U>::ONE)`.
     const TICK: Self;
+
+    // TODO: compile time check that PRECISION != 0
 }
 
 // ------------------------------------ dec ------------------------------------

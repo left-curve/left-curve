@@ -139,7 +139,7 @@ impl MockValidatorSet {
             .validators
             .iter()
             .map(|sk| {
-                let signature = eth_utils::sign_digest(multisig_hash.into_inner(), sk);
+                let signature = eth_utils::sign_digest(multisig_hash.into_inner(), sk).unwrap();
                 HexByteArray::from_inner(signature)
             })
             .collect();

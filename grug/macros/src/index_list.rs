@@ -37,6 +37,10 @@ pub fn process(attrs: TokenStream, item: TokenStream) -> TokenStream {
         .clone()
         .into_iter()
         .map(|e| {
+            #[allow(
+                clippy::unwrap_used,
+                reason = "unwrapping in procedural macros is acceptible because it would panic at compile time"
+            )]
             let name = e.ident.unwrap();
             quote! { &self.#name }
         })

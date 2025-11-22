@@ -9,7 +9,10 @@ pub fn to_sized<const S: usize>(data: &[u8]) -> CryptoResult<[u8; S]> {
 }
 
 /// Truncate a slice to a fixed length array.
-/// Panic if the size is less than the fixed length.
+///
+/// ## Panics
+///
+/// Panic if the input slice's length is smaller than the output length.
 pub fn truncate<const S: usize>(data: &[u8]) -> [u8; S] {
     debug_assert!(
         data.len() >= S,
@@ -18,5 +21,9 @@ pub fn truncate<const S: usize>(data: &[u8]) -> [u8; S] {
         S
     );
 
+    #[allow(
+        clippy::unwrap_used,
+        reason = "we have ensured the slice has a length equal or greater than S; its index range 0..S necessarily has length S"
+    )]
     data[..S].try_into().unwrap()
 }

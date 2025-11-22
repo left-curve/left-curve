@@ -47,7 +47,14 @@ pub fn process(input: TokenStream) -> TokenStream {
         let return_type: Type = variant
             .attrs
             .iter()
-            .find(|attr| attr.path().get_ident().unwrap() == "returns")
+            .find(|attr| {
+                #[allow(
+                    clippy::unwrap_used,
+                    reason = "unwrapping in procedural macros is acceptible because it would panic at compile time"
+                )]
+                let ident = attr.path().get_ident().unwrap();
+                ident == "returns"
+            })
             .expect("returns attribute missing")
             .parse_args()
             .expect("only one type supported");

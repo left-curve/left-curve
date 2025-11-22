@@ -43,6 +43,8 @@ impl<'de> de::Deserialize<'de> for Key {
 
         // Deserialize the uncompressed key
         let temp = TempKey::deserialize(deserializer)?;
+
+        #[allow(clippy::unwrap_used, reason = "this code is only used in tests")]
         let uncompressed_byte = hex::decode(&temp.uncompressed).unwrap();
 
         // Since this struct is both used from the sepc256k1 and sepc256r1 tests,
