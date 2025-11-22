@@ -287,8 +287,8 @@ mod test {
         std::sync::Arc,
         test_case::test_case,
         wasmer::{
-            CompilerConfig, Engine, Instance, Module, RuntimeError, Singlepass, Store, Value,
-            imports,
+            Engine, Instance, Module, RuntimeError, Store, Value, imports,
+            sys::{CompilerConfig, Singlepass},
         },
         wasmer_middlewares::{Metering, metering::set_remaining_points},
     };

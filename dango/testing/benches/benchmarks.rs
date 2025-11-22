@@ -3,7 +3,7 @@ use {
         AxisScale, BatchSize, Criterion, PlotConfiguration, criterion_group, criterion_main,
     },
     dango_genesis::{Codes, Contracts},
-    dango_testing::{TestAccounts, TestSuite, setup_benchmark_hybrid, setup_benchmark_wasm},
+    dango_testing::{TestAccounts, TestSuite, setup_benchmark_rust},
     dango_types::{
         account::single,
         account_factory::{self, AccountParams, Salt},
@@ -125,37 +125,12 @@ fn sends(c: &mut Criterion) {
     group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Linear));
     group.measurement_time(MEASUREMENT_TIME);
 
-    group.bench_function("send-wasm", |b| {
+    group.bench_function("send-rust", |b| {
         b.iter_batched(
             || {
                 // Create a random folder for this iteration.
                 let dir = TempDataDir::new(&format!("__dango_bench_sends_{}", random_string(8)));
-                let (mut suite, accounts, codes, contracts, _) = setup_benchmark_wasm(&dir, 100);
-
-                let txs = do_send(&mut suite, accounts, codes, contracts);
-
-                // Note: `dir` must be passed to the routine, so that it's alive
-                // until the end of this iteration.
-                (dir, suite, txs)
-            },
-            |(_dir, mut suite, txs)| {
-                suite
-                    .make_block(txs)
-                    .block_outcome
-                    .tx_outcomes
-                    .into_iter()
-                    .all(|outcome| outcome.result.is_ok());
-            },
-            BatchSize::SmallInput,
-        );
-    });
-
-    group.bench_function("send-hybrid", |b| {
-        b.iter_batched(
-            || {
-                // Create a random folder for this iteration.
-                let dir = TempDataDir::new(&format!("__dango_bench_sends_{}", random_string(8)));
-                let (mut suite, accounts, codes, contracts, _) = setup_benchmark_hybrid(&dir, 100);
+                let (mut suite, accounts, codes, contracts, _) = setup_benchmark_rust(&dir);
 
                 let txs = do_send(&mut suite, accounts, codes, contracts);
 

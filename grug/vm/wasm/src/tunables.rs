@@ -1,10 +1,10 @@
 use {
     std::ptr::NonNull,
     wasmer::{
-        MemoryType, Pages, TableType, Tunables,
-        vm::{
-            MemoryError, MemoryStyle, TableStyle, VMMemory, VMMemoryDefinition, VMTable,
-            VMTableDefinition,
+        MemoryError, MemoryStyle, MemoryType, Pages, TableStyle, TableType,
+        sys::{
+            Tunables,
+            vm::{VMMemory, VMMemoryDefinition, VMTable, VMTableDefinition},
         },
     },
 };
@@ -145,7 +145,7 @@ mod tests {
     use {
         super::*,
         test_case::test_case,
-        wasmer::{Target, sys::BaseTunables},
+        wasmer::sys::{BaseTunables, Target},
     };
 
     const MOCK_LIMIT: u32 = 12;

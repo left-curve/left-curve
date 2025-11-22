@@ -96,10 +96,10 @@ where
     where
         I: AsKey + 'a,
     {
-        if let (Some(min), Some(max)) = (min, max) {
-            if min > max {
-                return Box::new(iter::empty());
-            }
+        if let (Some(min), Some(max)) = (min, max)
+            && min > max
+        {
+            return Box::new(iter::empty());
         }
 
         let min = min.map_or(Bound::Unbounded, |bytes| Bound::Included(bytes.to_vec()));

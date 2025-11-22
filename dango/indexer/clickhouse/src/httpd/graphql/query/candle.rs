@@ -58,22 +58,22 @@ impl CandleQuery {
                         interval,
                     );
 
-                    if candle_cache.date_interval_available(&cache_key, earlier_than, later_than) {
-                        if let Some(cached_candles) = candle_cache.get_candles(&cache_key) {
-                            let mut connection = Connection::new(false, true);
+                    if candle_cache.date_interval_available(&cache_key, earlier_than, later_than)
+                        && let Some(cached_candles) = candle_cache.get_candles(&cache_key)
+                    {
+                        let mut connection = Connection::new(false, true);
 
-                            connection
-                                .edges
-                                .extend(cached_candles.iter().rev().map(|candle| {
-                                    Edge::with_additional_fields(
-                                        OpaqueCursor(candle.clone().into()),
-                                        candle.clone(),
-                                        EmptyFields,
-                                    )
-                                }));
+                        connection
+                            .edges
+                            .extend(cached_candles.iter().rev().map(|candle| {
+                                Edge::with_additional_fields(
+                                    OpaqueCursor(candle.clone().into()),
+                                    candle.clone(),
+                                    EmptyFields,
+                                )
+                            }));
 
-                            return Ok::<_, async_graphql::Error>(connection);
-                        }
+                        return Ok::<_, async_graphql::Error>(connection);
                     }
                 }
 

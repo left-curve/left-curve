@@ -424,8 +424,8 @@ mod tests {
         std::{fmt::Debug, sync::Arc},
         test_case::test_case,
         wasmer::{
-            CompilerConfig, Engine, Function, FunctionEnv, FunctionEnvMut, Instance, Module,
-            Singlepass, Store, imports,
+            Engine, Function, FunctionEnv, FunctionEnvMut, Instance, Module, Store, imports,
+            sys::{CompilerConfig, Singlepass},
         },
         wasmer_middlewares::{Metering, metering::set_remaining_points},
     };

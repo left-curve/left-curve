@@ -86,16 +86,16 @@ impl Storage for MockStorage {
 
     fn remove_range(&mut self, min: Option<&[u8]>, max: Option<&[u8]>) {
         self.retain(|k, _| {
-            if let Some(min) = min {
-                if k.as_slice() < min {
-                    return true;
-                }
+            if let Some(min) = min
+                && k.as_slice() < min
+            {
+                return true;
             }
 
-            if let Some(max) = max {
-                if max <= k.as_slice() {
-                    return true;
-                }
+            if let Some(max) = max
+                && max <= k.as_slice()
+            {
+                return true;
             }
 
             false

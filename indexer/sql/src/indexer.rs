@@ -564,26 +564,26 @@ impl RuntimeHandler {
             self.handle.block_on(closure)
         } else {
             // Check if we're in an actix-web worker thread context
-            if let Some(name) = std::thread::current().name() {
-                if name.contains("actix-") {
-                    // For actix-web worker threads, use futures::executor::block_on
-                    // which doesn't require multi-threaded runtime
-                    #[cfg(feature = "tracing")]
-                    tracing::info!(
-                        "Using futures::executor::block_on for actix-web worker thread: {}",
-                        name
-                    );
+            if let Some(name) = std::thread::current().name()
+                && name.contains("actix-")
+            {
+                // For actix-web worker threads, use futures::executor::block_on
+                // which doesn't require multi-threaded runtime
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    "Using futures::executor::block_on for actix-web worker thread: {}",
+                    name
+                );
 
-                    let result = futures::executor::block_on(closure);
+                let result = futures::executor::block_on(closure);
 
-                    #[cfg(feature = "tracing")]
-                    tracing::info!(
-                        "futures::executor::block_on completed for actix-web worker thread: {}",
-                        name
-                    );
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    "futures::executor::block_on completed for actix-web worker thread: {}",
+                    name
+                );
 
-                    return result;
-                }
+                return result;
             }
 
             tokio::task::block_in_place(|| self.handle.block_on(closure))

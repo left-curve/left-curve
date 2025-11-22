@@ -7,27 +7,27 @@ use {
 // this workspace, due to a cyclic reference issue (see comments in `Cargo.toml`).
 #[cfg(all(target_arch = "wasm32", not(feature = "library")))]
 mod __wasm_exports {
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     extern "C" fn instantiate(ctx_ptr: usize, msg_ptr: usize) -> usize {
         grug_ffi::do_instantiate(&crate::instantiate, ctx_ptr, msg_ptr)
     }
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     extern "C" fn authenticate(ctx_ptr: usize, tx_ptr: usize) -> usize {
         grug_ffi::do_authenticate(&crate::authenticate, ctx_ptr, tx_ptr)
     }
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     extern "C" fn receive(ctx_ptr: usize) -> usize {
         grug_ffi::do_receive(&super::receive, ctx_ptr)
     }
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     extern "C" fn execute(ctx_ptr: usize, msg_ptr: usize) -> usize {
         grug_ffi::do_execute(&super::execute, ctx_ptr, msg_ptr)
     }
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     extern "C" fn query(ctx_ptr: usize, msg_ptr: usize) -> usize {
         grug_ffi::do_query(&super::query, ctx_ptr, msg_ptr)
     }

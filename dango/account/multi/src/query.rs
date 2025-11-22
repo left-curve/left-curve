@@ -43,10 +43,10 @@ fn query_proposal(ctx: ImmutableCtx, proposal_id: ProposalId) -> StdResult<Propo
 
     // If the proposal is in "voting" state, but voting period has already
     // finished, it means not enough vote is received. The proposal fails.
-    if let Status::Voting { until, .. } = &proposal.status {
-        if ctx.block.timestamp > *until {
-            proposal.status = Status::Failed;
-        }
+    if let Status::Voting { until, .. } = &proposal.status
+        && ctx.block.timestamp > *until
+    {
+        proposal.status = Status::Failed;
     }
 
     Ok(proposal)
@@ -66,10 +66,10 @@ fn query_proposals(
         .map(|res| {
             let (proposal_id, mut proposal) = res?;
 
-            if let Status::Voting { until, .. } = &proposal.status {
-                if ctx.block.timestamp > *until {
-                    proposal.status = Status::Failed;
-                }
+            if let Status::Voting { until, .. } = &proposal.status
+                && ctx.block.timestamp > *until
+            {
+                proposal.status = Status::Failed;
             }
 
             Ok((proposal_id, proposal))

@@ -110,27 +110,25 @@ where
             .events
             .into_iter()
             .filter_map(|event| {
-                if let Some(event_status) = self.event_status.maybe_inner() {
-                    if FlatEventStatusDiscriminants::from(event.event_status.clone())
+                if let Some(event_status) = self.event_status.maybe_inner()
+                    && FlatEventStatusDiscriminants::from(event.event_status.clone())
                         != *event_status
-                    {
-                        return None;
-                    }
+                {
+                    return None;
                 }
 
-                if let Some(commitment_status) = self.commitment_status.maybe_inner() {
-                    if event.commitment_status != *commitment_status {
-                        return None;
-                    }
+                if let Some(commitment_status) = self.commitment_status.maybe_inner()
+                    && event.commitment_status != *commitment_status
+                {
+                    return None;
                 }
 
                 let maybe_event = event.event.maybe_variant();
 
                 if let (Some(event), Some(predicate)) = (&maybe_event, self.predicate.maybe_inner())
+                    && !predicate(event)
                 {
-                    if !predicate(event) {
-                        return None;
-                    }
+                    return None;
                 }
 
                 maybe_event.map(|typed_event| FilteredEvent {

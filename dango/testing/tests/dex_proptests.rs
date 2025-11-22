@@ -1115,15 +1115,14 @@ fn test_dex_actions(
             .should_succeed();
 
         // Print block outcome if cron outcomes failed or if dex is paused
-        if let Some(block_outcome) = &block_outcome {
-            if block_outcome
+        if let Some(block_outcome) = &block_outcome
+            && (block_outcome
                 .cron_outcomes
                 .iter()
                 .any(|cron_outcome| cron_outcome.cron_event.as_result().is_err())
-                || is_paused
-            {
-                println!("Failed cron outcome or dex is paused. Block outcome: {block_outcome:?}");
-            }
+                || is_paused)
+        {
+            println!("Failed cron outcome or dex is paused. Block outcome: {block_outcome:?}");
         }
 
         // Ensure all cron outcomes succeeded

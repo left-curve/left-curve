@@ -32,12 +32,11 @@ impl PubSub<u64> for PostgresPubSub {
             loop {
                 match listener.recv().await {
                     Ok(notification) => {
-                        if let Ok(data) = serde_json::from_str::<serde_json::Value>(notification.payload()) {
-                            if let Some(block_height) = data.get("block_height") {
-                                if let Some(block_height) = block_height.as_u64() {
-                                    yield block_height;
-                                }
-                            }
+                        if let Ok(data) = serde_json::from_str::<serde_json::Value>(notification.payload())
+                            && let Some(block_height) = data.get("block_height")
+                            && let Some(block_height) = block_height.as_u64()
+                        {
+                            yield block_height;
                         }
                     },
                     Err(_e) => {

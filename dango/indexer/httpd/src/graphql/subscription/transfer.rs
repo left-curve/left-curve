@@ -24,24 +24,23 @@ impl TransferSubscription {
     ) -> Option<Vec<entity::transfers::Model>> {
         let mut filter = entity::transfers::Column::BlockHeight.is_in(block_heights);
 
-        if let Some(username) = username {
-            if let Ok(accounts) = entity::accounts::Entity::find()
+        if let Some(username) = username
+            && let Ok(accounts) = entity::accounts::Entity::find()
                 .find_also_related(entity::users::Entity)
                 .filter(entity::users::Column::Username.eq(username))
                 .all(&app_ctx.db)
                 .await
-            {
-                let addresses = accounts
-                    .into_iter()
-                    .map(|(account, _)| account.address)
-                    .collect::<Vec<_>>();
+        {
+            let addresses = accounts
+                .into_iter()
+                .map(|(account, _)| account.address)
+                .collect::<Vec<_>>();
 
-                filter = filter.and(
-                    entity::transfers::Column::FromAddress
-                        .is_in(&addresses)
-                        .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
-                );
-            }
+            filter = filter.and(
+                entity::transfers::Column::FromAddress
+                    .is_in(&addresses)
+                    .or(entity::transfers::Column::ToAddress.is_in(&addresses)),
+            );
         }
 
         if let Some(address) = address {

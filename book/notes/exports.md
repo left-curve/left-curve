@@ -9,10 +9,10 @@ This page lists all supported entry points, in _Rust pseudo-code_.
 These two are auto-implemented. They are used by the host to load data into the Wasm memory. The contract programmer should not try modifying them.
 
 ```rust
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn allocate(capacity: u32) -> u32;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn deallocate(region_ptr: u32);
 ```
 

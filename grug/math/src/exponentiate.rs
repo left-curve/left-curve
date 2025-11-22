@@ -64,7 +64,7 @@ where
             let mut y = Self::ONE;
 
             while exp > 1 {
-                if exp % 2 == 0 {
+                if exp.is_multiple_of(2) {
                     self = self.checked_mul(self)?;
                     exp /= 2;
                 } else {
