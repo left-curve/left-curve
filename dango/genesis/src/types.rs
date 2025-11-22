@@ -95,6 +95,7 @@ pub struct BankOption {
 pub struct DexOption {
     /// Initial Dango DEX trading pairs.
     pub pairs: Vec<PairUpdate>,
+    pub cron_frequency: Duration,
 }
 
 pub struct GatewayOption {

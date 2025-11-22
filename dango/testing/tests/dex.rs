@@ -12,19 +12,19 @@ use {
         config::AppConfig,
         constants::{atom, dango, eth, usdc, xrp},
         dex::{
-            self, CancelOrderRequest, CreateOrderRequest, Direction, Geometric, OrderId,
-            OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity, Price,
-            QueryLiquidityDepthRequest, QueryOrdersByPairRequest, QueryOrdersRequest,
+            self, AvellanedaStoikovParams, CancelOrderRequest, CreateOrderRequest, Direction,
+            Geometric, OrderId, OrderResponse, PairId, PairParams, PairUpdate, PassiveLiquidity,
+            Price, QueryLiquidityDepthRequest, QueryOrdersByPairRequest, QueryOrdersRequest,
             QueryReserveRequest, QueryRestingOrderBookStateRequest, RestingOrderBookState, Xyk,
         },
         gateway::Remote,
         oracle::{self, PrecisionlessPrice, PriceSource},
     },
     grug::{
-        Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
-        LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, Number, NumberConst, Order,
-        QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128, Udec128_6, Uint128,
-        UniqueVec, btree_map, btree_set, coin_pair, coins,
+        Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Dec, Denom, Duration,
+        Fraction, Inner, LengthBounded, Message, MultiplyFraction, NonEmpty, NonZero, Number,
+        NumberConst, Order, QuerierExt, ResultExt, Signer, StdError, StdResult, Timestamp, Udec128,
+        Udec128_6, Uint128, UniqueVec, btree_map, btree_set, coin_pair, coins,
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
@@ -1282,6 +1282,13 @@ fn only_owner_can_create_passive_pool() {
         spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
         limit: 10,
+        avellaneda_stoikov_params: AvellanedaStoikovParams {
+            gamma: Dec::from_str("1.0").unwrap(),
+            time_horizon: Duration::from_seconds(0),
+            k: Dec::from_str("1.0").unwrap(),
+            half_life: Duration::from_seconds(30),
+            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+        },
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
@@ -1300,6 +1307,13 @@ fn only_owner_can_create_passive_pool() {
         spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
         limit: 10,
+        avellaneda_stoikov_params: AvellanedaStoikovParams {
+            gamma: Dec::from_str("1.0").unwrap(),
+            time_horizon: Duration::from_seconds(0),
+            k: Dec::from_str("1.0").unwrap(),
+            half_life: Duration::from_seconds(30),
+            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+        },
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
@@ -1318,6 +1332,13 @@ fn only_owner_can_create_passive_pool() {
         spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
         limit: 10,
+        avellaneda_stoikov_params: AvellanedaStoikovParams {
+            gamma: Dec::from_str("1.0").unwrap(),
+            time_horizon: Duration::from_seconds(0),
+            k: Dec::from_str("1.0").unwrap(),
+            half_life: Duration::from_seconds(30),
+            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+        },
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
@@ -1336,6 +1357,13 @@ fn only_owner_can_create_passive_pool() {
         spacing: Udec128::ONE,
         ratio: Bounded::new_unchecked(Udec128::new_percent(50)),
         limit: 10,
+        avellaneda_stoikov_params: AvellanedaStoikovParams {
+            gamma: Dec::from_str("1.0").unwrap(),
+            time_horizon: Duration::from_seconds(0),
+            k: Dec::from_str("1.0").unwrap(),
+            half_life: Duration::from_seconds(30),
+            base_inventory_target_percentage: Bounded::new(Udec128::new_percent(50)).unwrap(),
+        },
     }),
     vec![
         (dango::DENOM.clone(), Udec128::new(2_000_000)),
@@ -1502,6 +1530,16 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                                 spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
                                 limit: 10,
+                                avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                    gamma: Dec::from_str("1.0").unwrap(),
+                                    time_horizon: Duration::from_seconds(0),
+                                    k: Dec::from_str("1.0").unwrap(),
+                                    half_life: Duration::from_seconds(30),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
+                                },
                             }),
                             min_order_size_quote: Uint128::ZERO,
                             min_order_size_base: Uint128::ZERO,
@@ -2457,6 +2495,16 @@ fn geometric_pool_swaps_fail_without_oracle_price() {
                                 spacing: Udec128::ONE,
                                 ratio: Bounded::new_unchecked(Udec128::ONE),
                                 limit: 10,
+                                avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                    gamma: Dec::from_str("1.0").unwrap(),
+                                    time_horizon: Duration::from_seconds(0),
+                                    k: Dec::from_str("1.0").unwrap(),
+                                    half_life: Duration::from_seconds(30),
+                                    base_inventory_target_percentage: Bounded::new(
+                                        Udec128::new_percent(50),
+                                    )
+                                    .unwrap(),
+                                },
                             }),
                             min_order_size_quote: Uint128::ZERO,
                             min_order_size_base: Uint128::ZERO,
@@ -5523,7 +5571,6 @@ fn market_order_clearing(
             limit: None,
         })
         .should_succeed_and(|orders| {
-            // println!("orders: {:?}", orders);
             assert_eq!(orders.len(), expected_limit_orders_after.len());
             expected_limit_orders_after.iter().all(
                 |(order_id, (direction, price, amount, remaining, user_index))| {
@@ -5930,6 +5977,16 @@ fn refund_left_over_market_bid() {
                             spacing: Udec128::new_percent(1),
                             ratio: Bounded::new_unchecked(Udec128::new(1)),
                             limit: 1,
+                            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                gamma: Dec::from_str("1.0").unwrap(),
+                                time_horizon: Duration::from_seconds(0),
+                                k: Dec::from_str("1.0").unwrap(),
+                                half_life: Duration::from_seconds(30),
+                                base_inventory_target_percentage: Bounded::new(
+                                    Udec128::new_percent(50),
+                                )
+                                .unwrap(),
+                            },
                         }),
                         bucket_sizes: BTreeSet::new(),
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
@@ -5937,6 +5994,7 @@ fn refund_left_over_market_bid() {
                         min_order_size_base: Uint128::ZERO,
                     },
                 }],
+                ..Preset::preset_test()
             },
             ..Preset::preset_test()
         });
@@ -6113,6 +6171,16 @@ fn refund_left_over_market_ask() {
                             spacing: Udec128::new_percent(1),
                             ratio: Bounded::new_unchecked(Udec128::new(1)),
                             limit: 1,
+                            avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                gamma: Dec::from_str("1.0").unwrap(),
+                                time_horizon: Duration::from_seconds(0),
+                                k: Dec::from_str("1.0").unwrap(),
+                                half_life: Duration::from_seconds(30),
+                                base_inventory_target_percentage: Bounded::new(
+                                    Udec128::new_percent(50),
+                                )
+                                .unwrap(),
+                            },
                         }),
                         bucket_sizes: BTreeSet::new(),
                         swap_fee_rate: Bounded::new_unchecked(Udec128::new_bps(30)),
@@ -6120,6 +6188,7 @@ fn refund_left_over_market_ask() {
                         min_order_size_base: Uint128::ZERO,
                     },
                 }],
+                ..Preset::preset_test()
             },
             ..Preset::preset_test()
         });

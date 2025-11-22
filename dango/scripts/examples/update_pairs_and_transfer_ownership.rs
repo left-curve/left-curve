@@ -2,11 +2,13 @@ use {
     dango_client::{Secp256k1, Secret, SingleSigner},
     dango_types::{
         constants::{btc, btc_usdc, dango, eth, eth_usdc, sol, sol_usdc, usdc},
-        dex::{self, Geometric, PairParams, PairUpdate, PassiveLiquidity, Xyk},
+        dex::{
+            self, AvellanedaStoikovParams, Geometric, PairParams, PairUpdate, PassiveLiquidity, Xyk,
+        },
     },
     grug::{
-        Addr, Bounded, BroadcastClientExt, Coins, Denom, GasOption, JsonSerExt, Message, NonEmpty,
-        QueryClientExt, SearchTxClient, Udec128, Uint128, addr, btree_set,
+        Addr, Bounded, BroadcastClientExt, Coins, Dec, Denom, GasOption, JsonSerExt, Message,
+        NonEmpty, NumberConst, QueryClientExt, SearchTxClient, Udec128, Uint128, addr, btree_set,
     },
     grug_app::GAS_COSTS,
     hex_literal::hex,
@@ -74,6 +76,19 @@ async fn main() -> anyhow::Result<()> {
                                     spacing: Udec128::new_bps(10), // means 10 USDC
                                     ratio: Bounded::new_unchecked(Udec128::new_percent(60)),
                                     limit: 5,
+                                    avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                        // gamma ≈ swap_fee_rate * price_in_base_units
+                                        // For BTC/USDC: price_in_base_units ≈ $100k * 10^6 / 10^8 = 1.0
+                                        // gamma ≈ 0.003 * 1.0 = 0.003
+                                        gamma: Dec::from_str("0.003").unwrap(),
+                                        time_horizon: grug::Duration::from_seconds(0),
+                                        k: Dec::ONE,
+                                        half_life: grug::Duration::from_seconds(30),
+                                        base_inventory_target_percentage: Bounded::new(
+                                            Udec128::new_percent(50),
+                                        )
+                                        .unwrap(),
+                                    },
                                 }),
                                 bucket_sizes: btree_set! {
                                     btc_usdc::ONE_HUNDREDTH,
@@ -97,6 +112,19 @@ async fn main() -> anyhow::Result<()> {
                                     spacing: Udec128::from_str("0.000000000005")?, // means 5 USDC
                                     ratio: Bounded::new_unchecked(Udec128::new_percent(60)),
                                     limit: 5,
+                                    avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                        // gamma ≈ swap_fee_rate * price_in_base_units
+                                        // For ETH/USDC: price_in_base_units ≈ $4k * 10^6 / 10^18 = 0.000000004
+                                        // gamma ≈ 0.003 * 0.000000004 = 0.000000000012
+                                        gamma: Dec::from_str("0.000000000012").unwrap(),
+                                        time_horizon: grug::Duration::from_seconds(0),
+                                        k: Dec::ONE,
+                                        half_life: grug::Duration::from_seconds(30),
+                                        base_inventory_target_percentage: Bounded::new(
+                                            Udec128::new_percent(50),
+                                        )
+                                        .unwrap(),
+                                    },
                                 }),
                                 bucket_sizes: btree_set! {
                                     eth_usdc::ONE_HUNDREDTH,
@@ -120,6 +148,19 @@ async fn main() -> anyhow::Result<()> {
                                     spacing: Udec128::new_bps(10), // means 1 USDC
                                     ratio: Bounded::new_unchecked(Udec128::new_percent(60)),
                                     limit: 5,
+                                    avellaneda_stoikov_params: AvellanedaStoikovParams {
+                                        // gamma ≈ swap_fee_rate * price_in_base_units
+                                        // For SOL/USDC: price_in_base_units ≈ $200 * 10^6 / 10^9 = 0.0002
+                                        // gamma ≈ 0.003 * 0.0002 = 0.0000006
+                                        gamma: Dec::from_str("0.0000006").unwrap(),
+                                        time_horizon: grug::Duration::from_seconds(0),
+                                        k: Dec::ONE,
+                                        half_life: grug::Duration::from_seconds(30),
+                                        base_inventory_target_percentage: Bounded::new(
+                                            Udec128::new_percent(50),
+                                        )
+                                        .unwrap(),
+                                    },
                                 }),
                                 bucket_sizes: btree_set! {
                                     sol_usdc::ONE_HUNDREDTH,

@@ -4,8 +4,9 @@ use crate::StdResult;
 use crate::serializers::JsonDeExt;
 use {
     crate::{
-        CommitmentStatus, Event, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron, EvtFinalize,
-        EvtWithhold, GenericResult, Hash256, ResultExt, Tx,
+        CommitmentStatus, Event, EventId, EventStatus, EvtAuthenticate, EvtBackrun, EvtCron,
+        EvtFinalize, EvtWithhold, FlatCategory, FlatEventInfo, GenericResult, Hash256, ResultExt,
+        SearchEvent, Tx, flatten_commitment_status,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     error_backtrace::BacktracedError,
@@ -96,6 +97,15 @@ impl CronOutcome {
             .unwrap()
             .value_bytes()
             .deserialize_json()
+    }
+}
+
+impl SearchEvent for CronOutcome {
+    fn flat(self) -> Vec<FlatEventInfo> {
+        flatten_commitment_status(
+            &mut EventId::new(0, FlatCategory::Cron, 0, 0),
+            self.cron_event,
+        )
     }
 }
 

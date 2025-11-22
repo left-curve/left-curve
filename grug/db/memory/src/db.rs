@@ -381,7 +381,7 @@ pub struct SharedIter<'a, S, T> {
     inner: Box<dyn Iterator<Item = T> + 'this>,
 }
 
-impl<'a, S, T> Iterator for SharedIter<'a, S, T> {
+impl<S, T> Iterator for SharedIter<'_, S, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {

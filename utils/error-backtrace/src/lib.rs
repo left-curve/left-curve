@@ -108,7 +108,7 @@ impl BorshDeserialize for BT {
 
 struct BTVisitor;
 
-impl<'de> Visitor<'de> for BTVisitor {
+impl Visitor<'_> for BTVisitor {
     type Value = BT;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

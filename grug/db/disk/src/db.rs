@@ -1647,7 +1647,7 @@ mod test_deadlock {
         pub race: MultiIndex<'a, String, String, String>,
     }
 
-    impl<'a> IndexList<String, String> for PersonIndexes<'a> {
+    impl IndexList<String, String> for PersonIndexes<'_> {
         fn get_indexes(&self) -> Box<dyn Iterator<Item = &'_ dyn Index<String, String>> + '_> {
             let v: [&dyn Index<String, String>; 1] = [&self.race];
             Box::new(v.into_iter())
