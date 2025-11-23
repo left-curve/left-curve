@@ -55,6 +55,7 @@ pub struct AppAddresses {
     pub hyperlane: Hyperlane<Addr>,
     pub lending: Addr,
     pub oracle: Addr,
+    pub perps: Addr,
     pub taxman: Addr,
     pub warp: Addr,
 }
@@ -70,6 +71,7 @@ impl Default for AppAddresses {
             hyperlane: Hyperlane::default(),
             lending: Addr::mock(0),
             oracle: Addr::mock(0),
+            perps: Addr::mock(0),
             taxman: Addr::mock(0),
             warp: Addr::mock(0),
         }
