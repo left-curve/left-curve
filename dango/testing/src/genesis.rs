@@ -31,7 +31,7 @@ use {
         MOCK_HYPERLANE_LOCAL_DOMAIN, MOCK_HYPERLANE_VALIDATOR_ADDRESSES,
     },
     hyperlane_types::{
-        constants::{arbitrum, base, ethereum, optimism, solana},
+        constants::{arbitrum, base, ethereum, ethereum_testnet, optimism, solana},
         isms::multisig::ValidatorSet,
     },
     pyth_types::constants::LAZER_TRUSTED_SIGNER,
@@ -576,7 +576,8 @@ impl Preset for HyperlaneOption {
                 base::DOMAIN     => mock_validator_set.clone(),
                 ethereum::DOMAIN => mock_validator_set.clone(),
                 optimism::DOMAIN => mock_validator_set.clone(),
-                solana::DOMAIN   => mock_validator_set,
+                solana::DOMAIN   => mock_validator_set.clone(),
+                ethereum_testnet::DOMAIN => mock_validator_set,
             },
             va_announce_fee_per_byte: Coin {
                 denom: usdc::DENOM.clone(),
