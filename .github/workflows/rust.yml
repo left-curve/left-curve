@@ -353,7 +353,8 @@ jobs:
         if: env.BACKEND_CHANGED == 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.91
+          # Commenting this out so we always use the latest toolchain.
+          # toolchain: 1.91
           components: clippy, llvm-tools-preview
 
       # - name: Create psql database
