@@ -38,7 +38,7 @@ where
     tracing::info!(%ip, port, "Starting indexer httpd server");
 
     #[cfg(feature = "metrics")]
-    let metrics = ActixWebMetricsBuilder::new().build().unwrap();
+    let metrics = ActixWebMetricsBuilder::new().build();
 
     #[cfg(feature = "metrics")]
     init_httpd_metrics();
@@ -99,7 +99,7 @@ where
     #[cfg(feature = "tracing")]
     tracing::info!(%ip, port, "Starting metrics httpd server");
 
-    let metrics = ActixWebMetricsBuilder::new().build().unwrap();
+    let metrics = ActixWebMetricsBuilder::new().build();
 
     let recorder = PrometheusBuilder::new().build_recorder();
     let metrics_handler2 = recorder.handle();

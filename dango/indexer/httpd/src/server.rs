@@ -91,9 +91,7 @@ where
     tracing::info!(%ip, port, "Starting dango httpd server");
 
     #[cfg(feature = "metrics")]
-    let metrics = actix_web_metrics::ActixWebMetricsBuilder::new()
-        .build()
-        .unwrap();
+    let metrics = actix_web_metrics::ActixWebMetricsBuilder::new().build();
 
     #[cfg(feature = "metrics")]
     indexer_httpd::middlewares::metrics::init_httpd_metrics();
