@@ -297,7 +297,7 @@ impl Cache {
 
         // Find the first missing block in the range
         if let Some(block_height) =
-            (last_synced_height..=to_height).find(|h| !s3_block_heights.contains_key(h))
+            ((last_synced_height + 1)..=to_height).find(|h| !s3_block_heights.contains_key(h))
         {
             #[cfg(feature = "tracing")]
             tracing::info!(
