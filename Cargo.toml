@@ -157,7 +157,7 @@ parking_lot                 = { version = "0.12", features = ["arc_lock", "send_
 paste                       = "1"
 pbkdf2                      = "0.12"
 proc-macro2                 = "1"
-prometheus                  = "0.13"
+prometheus                  = "0.14"
 proptest                    = "1"
 prost                       = "0.13"
 pyth-lazer-client           = "=8.4.1"
