@@ -103,14 +103,14 @@ pub enum AccountParams {
 macro_rules! generate_downcast {
     ($id:ident => $ret:ty) => {
         paste! {
-            pub fn [<as_$id:snake>](self) -> $ret {
+            pub fn [<into_$id:snake>](self) -> $ret {
                 match self {
                     AccountParams::$id(value) => value,
                     _ => panic!("AccountParams is not {}", stringify!($id)),
                 }
             }
 
-            pub fn [<is_$id:snake>](self) -> bool {
+            pub fn [<is_$id:snake>](&self) -> bool {
                 matches!(self, AccountParams::$id(_))
             }
         }

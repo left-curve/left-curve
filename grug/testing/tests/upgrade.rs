@@ -261,7 +261,7 @@ fn upgrading_with_calling_contract() {
                 },
                 TraceOption::LOUD,
             )
-            .as_result()
+            .into_result()
             .map(|_| ())
             .map_err(|(_evt, err)| err)
         }),

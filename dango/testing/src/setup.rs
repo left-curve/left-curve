@@ -10,15 +10,12 @@ use {
         warp,
     },
     grug::{
-        Addr, BlockInfo, Coins, ContractWrapper, Duration, HashExt, Message, TendermintRpcClient,
-        Uint128,
+        Addr, BlockInfo, Coins, ContractWrapper, Duration, Message, TendermintRpcClient, Uint128,
     },
     grug_app::{AppError, Db, Indexer, NaiveProposalPreparer, NullIndexer, SimpleCommitment, Vm},
     grug_db_disk::DiskDb,
     grug_db_memory::MemDb,
-    grug_vm_hybrid::HybridVm,
     grug_vm_rust::RustVm,
-    grug_vm_wasm::WasmVm,
     hyperlane_testing::MockValidatorSets,
     hyperlane_types::{Addr32, mailbox},
     indexer_hooked::HookedIndexer,
@@ -178,7 +175,6 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         .unwrap();
 
     let indexer_context = indexer.context.clone();
-    let indexer_path = indexer.indexer_path.clone();
 
     // Create a shared runtime handler that uses the same tokio runtime
     let shared_runtime_handle =
@@ -187,6 +183,9 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         indexer_sql::indexer::RuntimeHandler::from_handle(indexer.handle.handle().clone());
 
     let mut hooked_indexer = HookedIndexer::new();
+
+    let indexer_cache = indexer_cache::Cache::new_with_tempdir();
+    let indexer_cache_context = indexer_cache.context.clone();
 
     // Create a separate context for dango indexer (shares DB but has independent pubsub)
     let dango_context: dango_indexer_sql::context::Context = indexer
@@ -216,6 +215,7 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
         clickhouse_context = clickhouse_context.with_mock();
     }
 
+    hooked_indexer.add_indexer(indexer_cache).unwrap();
     hooked_indexer.add_indexer(indexer).unwrap();
     hooked_indexer.add_indexer(dango_indexer).unwrap();
 
@@ -243,10 +243,10 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     let consensus_client = Arc::new(TendermintRpcClient::new("http://localhost:26657").unwrap());
 
     let indexer_httpd_context = indexer_httpd::context::Context::new(
+        indexer_cache_context,
         indexer_context,
         Arc::new(suite.app.clone_without_indexer()),
         consensus_client,
-        indexer_path,
     );
 
     let dango_httpd_context = dango_httpd::context::Context::new(
@@ -268,40 +268,22 @@ pub async fn setup_test_with_indexer_and_custom_genesis(
     )
 }
 
-/// Set up a `TestSuite` with `DiskDbLite`, `HybridVm`, `NaiveProposalPreparer`, and
+/// Set up a `TestSuite` with `DiskDbLite`, `RustVm`, `NaiveProposalPreparer`, and
 /// `ContractWrapper` codes.
 ///
-/// Used for running benchmarks with the hybrid VM.
-pub fn setup_benchmark_hybrid(
+/// Used for running benchmarks with the Rust VM.
+pub fn setup_benchmark_rust(
     dir: &TempDataDir,
-    wasm_cache_size: usize,
 ) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, HybridVm, NullIndexer>,
+    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, RustVm, NullIndexer>,
     TestAccounts,
     Codes<ContractWrapper>,
     Contracts,
     MockValidatorSets,
 ) {
     let db = DiskDb::open(dir).unwrap();
-    let codes = HybridVm::genesis_codes();
-    let vm = HybridVm::new(wasm_cache_size, [
-        codes.account_factory.to_bytes().hash256(),
-        codes.account_margin.to_bytes().hash256(),
-        codes.account_multi.to_bytes().hash256(),
-        codes.account_spot.to_bytes().hash256(),
-        codes.bank.to_bytes().hash256(),
-        codes.bitcoin.to_bytes().hash256(),
-        codes.dex.to_bytes().hash256(),
-        codes.gateway.to_bytes().hash256(),
-        codes.hyperlane.ism.to_bytes().hash256(),
-        codes.hyperlane.mailbox.to_bytes().hash256(),
-        codes.hyperlane.va.to_bytes().hash256(),
-        codes.lending.to_bytes().hash256(),
-        codes.oracle.to_bytes().hash256(),
-        codes.taxman.to_bytes().hash256(),
-        codes.vesting.to_bytes().hash256(),
-        codes.warp.to_bytes().hash256(),
-    ]);
+    let codes = RustVm::genesis_codes();
+    let vm = RustVm::new();
 
     setup_suite_with_db_and_vm(
         db,
@@ -309,34 +291,6 @@ pub fn setup_benchmark_hybrid(
         NaiveProposalPreparer,
         NullIndexer,
         codes,
-        TestOption::default(),
-        GenesisOption::preset_test(),
-    )
-}
-
-/// Set up a `TestSuite` with `DiskDbLite`, `WasmVm`, `NaiveProposalPreparer`, and
-/// `Vec<u8>` codes.
-///
-/// Used for running benchmarks with the Wasm VM.
-pub fn setup_benchmark_wasm(
-    dir: &TempDataDir,
-    wasm_cache_size: usize,
-) -> (
-    TestSuite<NaiveProposalPreparer, DiskDb<SimpleCommitment>, WasmVm, NullIndexer>,
-    TestAccounts,
-    Codes<Vec<u8>>,
-    Contracts,
-    MockValidatorSets,
-) {
-    let db = DiskDb::open(dir).unwrap();
-    let vm = WasmVm::new(wasm_cache_size);
-
-    setup_suite_with_db_and_vm(
-        db,
-        vm,
-        NaiveProposalPreparer,
-        NullIndexer,
-        WasmVm::genesis_codes(),
         TestOption::default(),
         GenesisOption::preset_test(),
     )

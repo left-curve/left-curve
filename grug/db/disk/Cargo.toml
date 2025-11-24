@@ -12,8 +12,7 @@ version       = { workspace = true }
 [features]
 ibc     = ["grug-app/ibc", "grug-jmt/ibc", "ics23"]
 metrics = ["dep:metrics", "grug-types/metrics"]
-serde   = ["dep:serde"]
-tracing = ["dep:tracing"]
+tracing = ["dep:tracing", "dep:uuid"]
 
 [dependencies]
 error-backtrace = { workspace = true }
@@ -22,14 +21,15 @@ grug-jmt        = { workspace = true, optional = true }
 grug-types      = { workspace = true }
 ics23           = { workspace = true, optional = true }
 metrics         = { workspace = true, optional = true }
-ouroboros       = { workspace = true }
+parking_lot     = { workspace = true }
 rocksdb         = { workspace = true }
-serde           = { workspace = true, features = ["derive"], optional = true }
 thiserror       = { workspace = true }
 tracing         = { workspace = true, optional = true }
+uuid            = { workspace = true, optional = true }
 
 [dev-dependencies]
 grug-jmt     = { workspace = true }
+grug-storage = { workspace = true }
 hex-literal  = { workspace = true }
 proptest     = { workspace = true }
 temp-rocksdb = { workspace = true }

@@ -23,10 +23,10 @@ fn pick_operation_type(ops: &DocumentOperations, op_name: Option<&str>) -> Optio
     match ops {
         DocumentOperations::Single(def) => Some(def.node.ty), // only one
         DocumentOperations::Multiple(map) if !map.is_empty() => {
-            if let Some(name) = op_name {
-                if let Some(def) = map.get(name) {
-                    return Some(def.node.ty);
-                }
+            if let Some(name) = op_name
+                && let Some(def) = map.get(name)
+            {
+                return Some(def.node.ty);
             }
             map.values().next().map(|def| def.node.ty)
         },
@@ -45,10 +45,10 @@ impl Extension for MetricsExtension {
         // clone the Option<String> so we don’t borrow `request` immutably
         let op_name_owned = request.operation_name.clone();
 
-        if let Ok(doc) = request.parsed_query() {
-            if let Some(op_type) = pick_operation_type(&doc.operations, op_name_owned.as_deref()) {
-                request = request.data(op_type);
-            }
+        if let Ok(doc) = request.parsed_query()
+            && let Some(op_type) = pick_operation_type(&doc.operations, op_name_owned.as_deref())
+        {
+            request = request.data(op_type);
         }
 
         next.run(ctx, request).await

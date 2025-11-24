@@ -1,16 +1,20 @@
 import { useRouter } from "expo-router";
-import { View } from "react-native";
+import { useState } from "react";
+import { Image, View } from "react-native";
 import {
   AccountCard,
+  Activities,
   Button,
   GlobalText,
   IconAddCross,
   IconLogOut,
   IconSwitch,
+  Tabs,
 } from "~/components/foundation";
 
 export default function AccountMenuScreen() {
   const { navigate } = useRouter();
+  const [activeTab, setActiveTab] = useState("wallet");
 
   return (
     <View className="flex-1 flex bg-surface-primary-rice w-full flex-col gap-8 px-4 py-6">
@@ -55,6 +59,31 @@ export default function AccountMenuScreen() {
             onPress={() => navigate("/signin")}
             leftIcon={<IconLogOut className="w-5 h-5" />}
           />
+        </View>
+        <View className="flex-row gap-2 w-full min-h-[30px]">
+          <Tabs
+            color="line-red"
+            selectedTab={activeTab}
+            keys={["wallet", "activities"]}
+            fullWidth
+            onTabChange={setActiveTab}
+          />
+        </View>
+        <View>
+          {activeTab === "wallet" ? (
+            <View className="px-4 flex flex-col gap-6 items-center">
+              <Image
+                source={require("@left-curve/foundation/images/emojis/detailed/hamster.svg")}
+                resizeMode="contain"
+                style={{ height: 125, width: 125 }}
+              />
+              <View className="flex flex-col gap-2 items-center text-center">
+                <GlobalText className="exposure-m-italic">No tokens yet</GlobalText>
+              </View>
+            </View>
+          ) : (
+            <Activities />
+          )}
         </View>
       </View>
     </View>

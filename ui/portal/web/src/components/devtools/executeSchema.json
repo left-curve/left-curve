@@ -1,0 +1,177 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Message",
+  "description": "A message type for transactions, representing one of several possible operations.",
+  "oneOf": [
+    {
+      "type": "object",
+      "description": "Update the chain- and app-level configurations.",
+      "properties": {
+        "configure": { "$ref": "#/$defs/MsgConfigure" }
+      },
+      "required": ["configure"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "description": "Schedule a chain upgrade at a future block.",
+      "properties": {
+        "upgrade": { "$ref": "#/$defs/MsgUpgrade" }
+      },
+      "required": ["upgrade"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "transfer": { "$ref": "#/$defs/MsgTransfer" }
+      },
+      "required": ["transfer"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "upload": { "$ref": "#/$defs/MsgStoreCode" }
+      },
+      "required": ["upload"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "instantiate": { "$ref": "#/$defs/MsgInstantiate" }
+      },
+      "required": ["instantiate"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "execute": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/MsgExecute"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/MsgExecute"
+              }
+            }
+          ]
+        }
+      },
+      "required": ["execute"],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "migrate": { "$ref": "#/$defs/MsgMigrate" }
+      },
+      "required": ["migrate"],
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "Address": {
+      "type": "string",
+      "description": "A blockchain address."
+    },
+    "Hex": {
+      "type": "string",
+      "description": "A hexadecimal string."
+    },
+    "Base64": {
+      "type": "string",
+      "description": "A Base64 encoded string."
+    },
+    "Json": {
+      "type": "object",
+      "description": "A generic JSON object.",
+      "additionalProperties": true
+    },
+    "ChainConfig": {
+      "type": "object",
+      "description": "Chain configuration object.",
+      "additionalProperties": true
+    },
+    "Coins": {
+      "type": "object",
+      "description": "A collection of coins.",
+      "additionalProperties": true
+    },
+    "Funds": {
+      "type": "object",
+      "description": "Funds sent with a message (e.g., { 'denom': 'amount' }).",
+      "properties": {}
+    },
+    "MsgConfigure": {
+      "type": "object",
+      "properties": {
+        "newCfg": { "$ref": "#/$defs/ChainConfig" },
+        "newAppCfg": { "$ref": "#/$defs/Json" }
+      },
+      "additionalProperties": false
+    },
+    "MsgUpgrade": {
+      "type": "object",
+      "properties": {
+        "height": { "type": "integer" },
+        "cargoVersion": { "type": "string" },
+        "gitTag": { "type": "string" },
+        "url": { "type": "string" }
+      },
+      "required": ["height", "cargoVersion"],
+      "additionalProperties": false
+    },
+    "MsgTransfer": {
+      "type": "object",
+      "description": "A record of addresses to coins (Record<Address, Coins>).",
+      "additionalProperties": {
+        "$ref": "#/$defs/Coins"
+      }
+    },
+    "MsgStoreCode": {
+      "type": "object",
+      "properties": {
+        "code": { "$ref": "#/$defs/Base64" }
+      },
+      "required": ["code"],
+      "additionalProperties": false
+    },
+    "MsgInstantiate": {
+      "type": "object",
+      "properties": {
+        "codeHash": { "$ref": "#/$defs/Hex" },
+        "msg": { "$ref": "#/$defs/Json" },
+        "salt": { "$ref": "#/$defs/Base64" },
+        "funds": { "$ref": "#/$defs/Funds" },
+        "admin": { "type": "string" }
+      },
+      "required": ["codeHash", "msg", "salt"],
+      "additionalProperties": false
+    },
+    "MsgExecute": {
+      "type": "object",
+      "properties": {
+        "contract": { "$ref": "#/$defs/Address" },
+        "msg": { "$ref": "#/$defs/Json" },
+        "funds": { "$ref": "#/$defs/Funds" }
+      },
+      "required": ["contract", "msg"],
+      "additionalProperties": false
+    },
+    "MsgMigrate": {
+      "type": "object",
+      "properties": {
+        "contract": { "$ref": "#/$defs/Address" },
+        "newCodeHash": { "$ref": "#/$defs/Hex" },
+        "msg": { "$ref": "#/$defs/Json" }
+      },
+      "required": ["contract", "newCodeHash", "msg"],
+      "additionalProperties": false
+    }
+  }
+}

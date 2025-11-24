@@ -9,23 +9,23 @@ use {
     },
     dango_types::{
         constants::{
-            dango, eth,
+            btc, dango, eth,
             mock::{ONE, ONE_TENTH},
             usdc,
         },
         dex::{
             self, AmountOption, CreateOrderRequest, Direction, ExecuteMsg, Geometric,
-            LiquidityDepth, OrderId, OrdersByPairResponse, OrdersByUserResponse, PairParams,
-            PairUpdate, PassiveLiquidity, Price, PriceOption, QueryPairRequest, SwapRoute,
-            TimeInForce,
+            LiquidityDepth, OrderId, OrdersByPairResponse, OrdersByUserResponse, PairId,
+            PairParams, PairUpdate, PassiveLiquidity, Price, PriceOption, QueryPairRequest,
+            SwapRoute, TimeInForce,
         },
         gateway::{Remote, WarpRemote},
         oracle::{self, PriceSource},
     },
     grug::{
         BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Inner, NonZero, Number, NumberConst,
-        QuerierExt, ResultExt, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec, btree_map,
-        btree_set, coins,
+        QuerierExt, ResultExt, StdError, Timestamp, Udec128, Udec128_6, Uint128, UniqueVec,
+        btree_map, btree_set, coins,
     },
     grug_types::Addressable,
     hyperlane_types::constants::ethereum,
@@ -348,7 +348,13 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountIn {
-                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                route: SwapRoute::new_unchecked(
+                    UniqueVec::new(vec![PairId {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    }])
+                    .unwrap(),
+                ),
                 minimum_output: None,
             },
             Coins::new(),
@@ -360,7 +366,13 @@ fn issue_30_liquidity_operations_are_not_allowed_when_dex_is_paused() {
             &mut accounts.user1,
             contracts.dex,
             &dex::ExecuteMsg::SwapExactAmountOut {
-                route: SwapRoute::new_unchecked(UniqueVec::new(vec![]).unwrap()),
+                route: SwapRoute::new_unchecked(
+                    UniqueVec::new(vec![PairId {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    }])
+                    .unwrap(),
+                ),
                 output: NonZero::new_unchecked(Coin::new(eth::DENOM.clone(), 100).unwrap()),
             },
             Coins::new(),
@@ -860,4 +872,126 @@ fn issue_233_minimum_order_size_cannot_be_circumvented_for_ask_orders() {
             coins! { dango::DENOM.clone() => 1 },
         )
         .should_fail();
+}
+
+#[test]
+fn issue_296_provide_liquidity_query_uses_max_staleness_for_oracle_price() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(TestOption::default());
+
+    // Provide some liquidity with owner account
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 1000,
+                usdc::DENOM.clone() => 5,
+            },
+        )
+        .should_succeed();
+
+    // Feed oracle prices. Use 0 as Timestamp to ensure that the order price is stale.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.oracle,
+            &oracle::ExecuteMsg::RegisterPriceSources(btree_map! {
+                dango::DENOM.clone() => oracle::PriceSource::Fixed {
+                    humanized_price: Udec128::new(200),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(0),
+                },
+                usdc::DENOM.clone() => oracle::PriceSource::Fixed {
+                    humanized_price: Udec128::new(1),
+                    precision: 0,
+                    timestamp: Timestamp::from_nanos(0),
+                },
+            }),
+            Coins::new(),
+        )
+        .should_succeed();
+
+    // Query simulate provide liquidity with stale oracle price
+    suite
+        .query_wasm_smart(contracts.dex, dex::QuerySimulateProvideLiquidityRequest {
+            base_denom: dango::DENOM.clone(),
+            quote_denom: usdc::DENOM.clone(),
+            deposit: CoinPair::new_unchecked(
+                Coin::new(usdc::DENOM.clone(), 1000).unwrap(),
+                Coin::new(dango::DENOM.clone(), 5).unwrap(),
+            ),
+        })
+        .should_fail_with_error("price is too old!");
+}
+
+/// Prior to the fix, a zero length swap route was allowed, which resulted in charging a fee
+/// despite not having any swaps performed.
+#[test]
+fn issue_429_zero_length_or_three_length_swap_routes_are_not_allowed() {
+    let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
+
+    // Provide liquidity to the pool.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::ProvideLiquidity {
+                base_denom: dango::DENOM.clone(),
+                quote_denom: usdc::DENOM.clone(),
+                minimum_output: None,
+            },
+            coins! {
+                dango::DENOM.clone() => 100_000,
+                usdc::DENOM.clone() => 100_000,
+            },
+        )
+        .should_succeed();
+
+    // Attempt to swap with a zero length route.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: SwapRoute::new_unchecked(UniqueVec::new_unchecked(vec![])),
+                output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(StdError::length_out_of_range::<UniqueVec<PairId>>(
+            0, "<", 1,
+        ));
+
+    // Attempt to swap with a three length route.
+    suite
+        .execute(
+            &mut accounts.owner,
+            contracts.dex,
+            &dex::ExecuteMsg::SwapExactAmountOut {
+                route: SwapRoute::new_unchecked(UniqueVec::new_unchecked(vec![
+                    PairId {
+                        base_denom: dango::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    },
+                    PairId {
+                        base_denom: eth::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    },
+                    PairId {
+                        base_denom: btc::DENOM.clone(),
+                        quote_denom: usdc::DENOM.clone(),
+                    },
+                ])),
+                output: NonZero::new_unchecked(Coin::new(usdc::DENOM.clone(), 100).unwrap()),
+            },
+            Coins::new(),
+        )
+        .should_fail_with_error(StdError::length_out_of_range::<UniqueVec<PairId>>(
+            3, ">", 2,
+        ));
 }

@@ -1,6 +1,7 @@
 import type { Chain } from "./chain.js";
 import type { CometBftRpcSchema } from "./cometbft.js";
 import type { Prettify } from "./utils.js";
+import type { EventEmitter } from "eventemitter3";
 
 export type TransportSchema = readonly {
   Method: string;
@@ -59,7 +60,7 @@ export type RequestFn<transportSchema extends TransportSchema | undefined = unde
 export type SubscribeFn = (<T>(
   { query, variables }: { query: string; variables?: Record<string, unknown> },
   callback: SubscriptionCallbacks<T>,
-) => () => void) & { getClientStatus?: () => { isConnected: boolean } };
+) => () => void) & { getClientStatus?: () => { isConnected: boolean }; emitter?: EventEmitter };
 
 export type SubscriptionCallbacks<T = unknown> = {
   next: (data: T) => void;

@@ -1,5 +1,13 @@
 # deploy
 
+## Add a new user
+
+- Add the username in `group_vars/all/main.yml` in the `ssh_users` section
+
+- Add the public key in `roles/users/files/authorized_keys/<username>.pub`
+
+- Run `ansible-playbook users.yml`
+
 ## Install a new server
 
 - Add the host in `inventory` using its public IP

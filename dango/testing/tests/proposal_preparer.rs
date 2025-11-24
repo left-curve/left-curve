@@ -7,7 +7,7 @@ use {
     },
     grug::{
         Addr, Binary, Coins, Denom, Duration as GrugDuration, NonEmpty, QuerierExt, ResultExt,
-        btree_map, setup_tracing_subscriber,
+        btree_map,
     },
     pyth_client::{PythClientCache, PythClientTrait},
     pyth_types::{
@@ -19,7 +19,6 @@ use {
         thread::{self, sleep},
         time::Duration,
     },
-    tracing::Level,
 };
 
 const NOT_USED_ID_LAZER: PythLazerSubscriptionDetails = PythLazerSubscriptionDetails {
@@ -61,8 +60,6 @@ fn proposal_pyth() {
             .unwrap()
             .load_or_retrieve_data(NonEmpty::new_unchecked(pyth_ids));
     }
-
-    setup_tracing_subscriber(Level::INFO);
 
     let (mut suite, mut accounts, _, contracts, _) = setup_test(Default::default());
 

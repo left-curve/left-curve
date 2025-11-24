@@ -5,7 +5,8 @@ use {
         Batch, Buffer, Hash256, HashExt, MockStorage, Op, Order, Record, Shared, Storage,
     },
     ouroboros::self_referencing,
-    std::{collections::BTreeMap, marker::PhantomData, sync::RwLockReadGuard},
+    parking_lot::RwLockReadGuard,
+    std::{collections::BTreeMap, marker::PhantomData},
 };
 #[cfg(feature = "snapshot")]
 use {
@@ -217,7 +218,7 @@ where
         Ok((version, root_hash))
     }
 
-    fn commit(&self) -> DbResult<()> {
+    fn commit(&self) -> DbResult<u64> {
         self.inner.write_with(|mut inner| {
             let changeset = inner
                 .changeset
@@ -245,7 +246,7 @@ where
                 }
             }
 
-            Ok(())
+            Ok(changeset.version)
         })
     }
 

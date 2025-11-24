@@ -123,7 +123,7 @@ fn process(
             recipient,
             QueryRecipientRequest(RecipientQuery::InterchainSecurityModule {}),
         )?
-        .as_interchain_security_module()
+        .into_interchain_security_module()
         .unwrap_or(cfg.default_ism);
 
     // Query the ISM to verify the message.
@@ -135,7 +135,7 @@ fn process(
                 raw_metadata,
             }),
         )
-        .map(|res| res.as_verify())
+        .map(|res| res.into_verify())
         .map_err(|err| anyhow!("ISM verification failed: {err}"))?;
 
     // Mark the message as delivered.

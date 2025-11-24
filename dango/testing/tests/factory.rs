@@ -717,5 +717,5 @@ fn malicious_register_user() {
         .query_wasm_smart(contracts.account_factory, QueryAccountRequest {
             address: user.address(),
         })
-        .should_succeed_and(|account| account.params.clone().as_spot().owner == user.username);
+        .should_succeed_and(|account| account.params.clone().into_spot().owner == user.username);
 }

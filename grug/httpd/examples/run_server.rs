@@ -56,9 +56,10 @@ impl grug_httpd::traits::QueryApp for MockGrugApp {
         &self,
         _raw_req: grug_types::Query,
         _height: Option<u64>,
-    ) -> grug_app::AppResult<grug_types::QueryResponse> {
-        Ok(grug_types::QueryResponse::AppConfig(
-            grug_types::Json::null(),
+    ) -> grug_app::AppResult<(grug_types::QueryResponse, u64)> {
+        Ok((
+            grug_types::QueryResponse::AppConfig(grug_types::Json::null()),
+            0,
         ))
     }
 
@@ -67,8 +68,8 @@ impl grug_httpd::traits::QueryApp for MockGrugApp {
         _key: &[u8],
         _height: Option<u64>,
         _prove: bool,
-    ) -> grug_app::AppResult<(Option<Vec<u8>>, Option<Vec<u8>>)> {
-        Ok((Some(b"mock_value".to_vec()), None))
+    ) -> grug_app::AppResult<(Option<Vec<u8>>, Option<Vec<u8>>, u64)> {
+        Ok((Some(b"mock_value".to_vec()), None, 0))
     }
 
     async fn simulate(

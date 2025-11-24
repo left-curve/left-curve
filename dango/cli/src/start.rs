@@ -2,6 +2,7 @@ use {
     crate::{
         config::{Config, GrugConfig, HttpdConfig, PythLazerConfig, TendermintConfig},
         home_directory::HomeDirectory,
+        telemetry,
     },
     anyhow::anyhow,
     clap::Parser,
@@ -15,7 +16,6 @@ use {
     grug_types::GIT_COMMIT,
     grug_vm_rust::RustVm,
     indexer_hooked::HookedIndexer,
-    indexer_sql::indexer_path::IndexerPath,
     metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle},
     std::sync::Arc,
     tokio::signal::unix::{SignalKind, signal},
@@ -38,9 +38,23 @@ impl StartCmd {
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
 
+        // Emit startup logs now that the subscriber is initialized.
+        if cfg.sentry.enabled {
+            tracing::info!("Sentry initialized");
+        } else {
+            tracing::info!("Sentry is disabled");
+        }
+        if cfg.trace.enabled {
+            tracing::info!(endpoint = %cfg.trace.endpoint, protocol = ?cfg.trace.protocol, "OpenTelemetry OTLP exporter initialized");
+        } else {
+            tracing::info!("OpenTelemetry OTLP exporter is disabled");
+        }
+
         // Open disk DB.
-        let db =
-            DiskDb::<SimpleCommitment>::open_with_cfg(app_dir.data_dir(), cfg.grug.db.clone())?;
+        let db = DiskDb::<SimpleCommitment>::open_with_priority(
+            app_dir.data_dir(),
+            cfg.grug.priority_range.clone(),
+        )?;
 
         // We need to call `RustVm::genesis_codes()` to properly build the contract wrappers.
         let _codes = RustVm::genesis_codes();
@@ -79,29 +93,10 @@ impl StartCmd {
             env!("CARGO_PKG_VERSION"),
         );
 
-        let sql_indexer = indexer_sql::IndexerBuilder::default()
-            .with_keep_blocks(cfg.indexer.keep_blocks)
-            .with_database_url(&cfg.indexer.database.url)
-            .with_database_max_connections(cfg.indexer.database.max_connections)
-            .with_dir(app_dir.indexer_dir())
-            .with_sqlx_pubsub()
-            .build()
-            .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
-
-        let indexer_path = sql_indexer.indexer_path.clone();
-        let indexer_context = sql_indexer.context.clone();
-
         let app = Arc::new(app);
 
         let (hooked_indexer, _, dango_httpd_context) = self
-            .setup_indexer_stack(
-                &cfg,
-                sql_indexer,
-                indexer_context,
-                indexer_path,
-                app.clone(),
-                &cfg.tendermint.rpc_addr,
-            )
+            .setup_indexer_stack(app_dir, &cfg, app.clone(), &cfg.tendermint.rpc_addr)
             .await?;
 
         let indexer_clone = hooked_indexer.clone();
@@ -194,10 +189,8 @@ impl StartCmd {
     /// Setup the hooked indexer with both SQL and Dango indexers, and prepare contexts for HTTP servers
     async fn setup_indexer_stack(
         &self,
+        app_dir: HomeDirectory,
         cfg: &Config,
-        sql_indexer: indexer_sql::Indexer,
-        indexer_context: indexer_sql::context::Context,
-        indexer_path: IndexerPath,
         app: Arc<App<DiskDb<SimpleCommitment>, RustVm, NaiveProposalPreparer, NullIndexer>>,
         tendermint_rpc_addr: &str,
     ) -> anyhow::Result<(
@@ -206,6 +199,17 @@ impl StartCmd {
         dango_httpd::context::Context,
     )> {
         let mut hooked_indexer = HookedIndexer::new();
+
+        let indexer_cache = indexer_cache::Cache::new_with_dir(app_dir.indexer_dir());
+        let indexer_cache_context = indexer_cache.context.clone();
+
+        let sql_indexer = indexer_sql::IndexerBuilder::default()
+            .with_database_url(&cfg.indexer.database.url)
+            .with_database_max_connections(cfg.indexer.database.max_connections)
+            .with_sqlx_pubsub()
+            .build()
+            .map_err(|err| anyhow!("failed to build indexer: {err:?}"))?;
+        let indexer_context = sql_indexer.context.clone();
 
         // Create a separate context for dango indexer (shares DB but has independent pubsub)
         let dango_context: dango_indexer_sql::context::Context = sql_indexer
@@ -232,15 +236,16 @@ impl StartCmd {
             clickhouse_context.clone(),
         );
 
+        hooked_indexer.add_indexer(indexer_cache)?;
         hooked_indexer.add_indexer(sql_indexer)?;
         hooked_indexer.add_indexer(dango_indexer)?;
         hooked_indexer.add_indexer(clickhouse_indexer)?;
 
         let indexer_httpd_context = indexer_httpd::context::Context::new(
+            indexer_cache_context,
             indexer_context,
             app.clone(),
             Arc::new(TendermintRpcClient::new(tendermint_rpc_addr)?),
-            indexer_path,
         );
 
         let dango_httpd_context = dango_httpd::context::Context::new(
@@ -370,10 +375,14 @@ impl StartCmd {
             },
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
+                telemetry::shutdown();
+                telemetry::shutdown_sentry();
                 Ok(())
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
+                telemetry::shutdown();
+                telemetry::shutdown_sentry();
                 Ok(())
             },
         }

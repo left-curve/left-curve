@@ -54,6 +54,7 @@ export type MetadataType = [
 
 export type TxMessageType =
   | { name: "configure"; type: "Configure" }
+  | { name: "upgrade"; type: "Upgrade" }
   | { name: "transfer"; type: "Transfer" }
   | { name: "upload"; type: "Upload" }
   | { name: "instantiate"; type: "Instantiate" }

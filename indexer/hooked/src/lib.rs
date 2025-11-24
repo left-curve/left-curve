@@ -1,5 +1,6 @@
 use {
-    grug_app::{Indexer, IndexerResult},
+    grug_app::{APP_CONFIG, CONFIG, Indexer, IndexerResult, LAST_FINALIZED_BLOCK},
+    grug_types::{Config, Json},
     std::{
         collections::HashMap,
         sync::{
@@ -61,6 +62,100 @@ impl HookedIndexer {
             .map(|indexers| indexers.len())
             .unwrap_or(0)
     }
+
+    /// This will reindex all indexers from their last indexed block height
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
+    pub fn reindex(&self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
+        match LAST_FINALIZED_BLOCK.load(storage) {
+            Err(_err) => {
+                // This happens when the chain starts at genesis
+                #[cfg(feature = "tracing")]
+                tracing::warn!(error = %_err, "No `LAST_FINALIZED_BLOCK` found");
+            },
+            Ok(block) => {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(
+                    block_height = block.height,
+                    "Start called, found LAST_FINALIZED_BLOCK"
+                );
+
+                let mut indexers = self
+                    .indexers
+                    .write()
+                    .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?;
+
+                let cfg = CONFIG.load(storage).map_err(|e| {
+                    grug_app::IndexerError::storage(format!("Failed to load CONFIG: {e}"))
+                })?;
+
+                let app_cfg = APP_CONFIG.load(storage).map_err(|e| {
+                    grug_app::IndexerError::storage(format!("Failed to load APP_CONFIG: {e}"))
+                })?;
+
+                // 1. We get the lowest last indexed block height among all indexers,
+                let min_heights = indexers
+                    .iter_mut()
+                    .map(|indexer| indexer.last_indexed_block_height().ok().flatten())
+                    .collect::<Vec<_>>();
+
+                let min_height = min_heights
+                    .iter()
+                    .flatten()
+                    .min()
+                    .cloned()
+                    .unwrap_or_default();
+
+                if min_height >= block.height {
+                    #[cfg(feature = "tracing")]
+                    tracing::info!(
+                        block_height = block.height,
+                        "No reindexing needed, all indexers are up to date",
+                    );
+                    return Ok(());
+                }
+
+                let mut errors = Vec::new();
+
+                // 2. We run all indexers to reindex until the last finalized block, like it would
+                // have happened during normal operation but calling a different method.
+                for block_height in (min_height + 1)..=block.height {
+                    let mut ctx = grug_app::IndexerContext::new();
+                    for indexer in &mut indexers.iter_mut() {
+                        if let Err(err) = indexer.pre_indexing(block_height, &mut ctx) {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!("Error in start calling reindex: {:?}", err);
+                            errors.push(err.to_string());
+                        }
+                    }
+
+                    // NOTE: I skip `index_block` here because we don't have the actual block data and
+                    // it's only used to store data on disk, which we already have.
+                    // In the future this can be an issue if an indexer relies on `index_block`
+
+                    // I recreate a context like classic indexing code path
+                    let mut ctx = grug_app::IndexerContext::new();
+                    for indexer in &mut indexers.iter_mut() {
+                        if let Err(err) = indexer.post_indexing(
+                            block_height,
+                            cfg.clone(),
+                            app_cfg.clone(),
+                            &mut ctx,
+                        ) {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!("Error in start calling reindex: {:?}", err);
+                            errors.push(err.to_string());
+                        }
+                    }
+
+                    if !errors.is_empty() {
+                        return Err(grug_app::IndexerError::multiple(errors));
+                    }
+                }
+            },
+        }
+
+        Ok(())
+    }
 }
 
 impl Default for HookedIndexer {
@@ -70,6 +165,8 @@ impl Default for HookedIndexer {
 }
 
 impl Indexer for HookedIndexer {
+    /// Start all indexers
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn start(&mut self, storage: &dyn grug_types::Storage) -> IndexerResult<()> {
         if self.is_running.load(Ordering::Relaxed) {
             return Err(grug_app::IndexerError::already_running());
@@ -83,8 +180,8 @@ impl Indexer for HookedIndexer {
 
         let mut errors = Vec::new();
 
-        // Call start on all indexers
-        for indexer in &mut self
+        // Call start on all indexers, running required migrations
+        for indexer in self
             .indexers
             .write()
             .map_err(|_| grug_app::IndexerError::rwlock_poisoned())?
@@ -97,6 +194,8 @@ impl Indexer for HookedIndexer {
             }
         }
 
+        self.reindex(storage)?;
+
         self.is_running.store(true, Ordering::Relaxed);
 
         if !errors.is_empty() {
@@ -106,10 +205,14 @@ impl Indexer for HookedIndexer {
         Ok(())
     }
 
+    /// Shutdown all indexers in reverse order
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn shutdown(&mut self) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
             return Ok(()); // Already shut down
         }
+
+        self.wait_for_finish()?;
 
         // Call shutdown on all indexers in reverse order
         let mut errors = Vec::new();
@@ -137,6 +240,8 @@ impl Indexer for HookedIndexer {
         Ok(())
     }
 
+    /// Run pre_indexing for each block height
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn pre_indexing(
         &self,
         block_height: u64,
@@ -169,6 +274,8 @@ impl Indexer for HookedIndexer {
         Ok(())
     }
 
+    /// Index a block by calling all registered indexers
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn index_block(
         &self,
         block: &grug_types::Block,
@@ -200,10 +307,13 @@ impl Indexer for HookedIndexer {
         Ok(())
     }
 
+    /// Run post_indexing in a separate thread for each block height
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn post_indexing(
         &self,
         block_height: u64,
-        querier: Arc<dyn grug_app::QuerierProvider>,
+        cfg: Config,
+        app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> IndexerResult<()> {
         if !self.is_running.load(Ordering::Relaxed) {
@@ -236,7 +346,9 @@ impl Indexer for HookedIndexer {
                 })?
                 .iter()
             {
-                if let Err(err) = indexer.post_indexing(block_height, querier.clone(), &mut ctx) {
+                if let Err(err) =
+                    indexer.post_indexing(block_height, cfg.clone(), app_cfg.clone(), &mut ctx)
+                {
                     #[cfg(feature = "tracing")]
                     tracing::error!(
                         indexer = indexer.name(),
@@ -268,6 +380,8 @@ impl Indexer for HookedIndexer {
         Ok(())
     }
 
+    /// Wait for all indexers and post_indexing threads to finish
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn wait_for_finish(&self) -> IndexerResult<()> {
         #[cfg(feature = "tracing")]
         tracing::debug!("Waiting for indexer to finish");
@@ -369,7 +483,8 @@ mod tests {
         fn post_indexing(
             &self,
             _block_height: u64,
-            _querier: Arc<dyn grug_app::QuerierProvider>,
+            _cfg: Config,
+            _app_cfg: Json,
             _ctx: &mut grug_app::IndexerContext,
         ) -> IndexerResult<()> {
             self.record_call("post_indexing");
@@ -478,14 +593,6 @@ mod tests {
     }
 
     impl Indexer for DataProducerIndexer {
-        fn start(&mut self, _storage: &dyn grug_types::Storage) -> IndexerResult<()> {
-            Ok(())
-        }
-
-        fn shutdown(&mut self) -> IndexerResult<()> {
-            Ok(())
-        }
-
         fn pre_indexing(
             &self,
             block_height: u64,
@@ -493,28 +600,6 @@ mod tests {
         ) -> IndexerResult<()> {
             // Store some data that other indexers can use
             ctx.insert(format!("data_from_{}_at_height_{}", self.id, block_height));
-            Ok(())
-        }
-
-        fn index_block(
-            &self,
-            _block: &grug_types::Block,
-            _block_outcome: &grug_types::BlockOutcome,
-            _ctx: &mut grug_app::IndexerContext,
-        ) -> IndexerResult<()> {
-            Ok(())
-        }
-
-        fn post_indexing(
-            &self,
-            _block_height: u64,
-            _querier: Arc<dyn grug_app::QuerierProvider>,
-            _ctx: &mut grug_app::IndexerContext,
-        ) -> IndexerResult<()> {
-            Ok(())
-        }
-
-        fn wait_for_finish(&self) -> IndexerResult<()> {
             Ok(())
         }
     }
@@ -534,22 +619,6 @@ mod tests {
     }
 
     impl Indexer for DataConsumerIndexer {
-        fn start(&mut self, _storage: &dyn grug_types::Storage) -> IndexerResult<()> {
-            Ok(())
-        }
-
-        fn shutdown(&mut self) -> IndexerResult<()> {
-            Ok(())
-        }
-
-        fn pre_indexing(
-            &self,
-            _block_height: u64,
-            _ctx: &mut grug_app::IndexerContext,
-        ) -> IndexerResult<()> {
-            Ok(())
-        }
-
         fn index_block(
             &self,
             _block: &grug_types::Block,
@@ -560,19 +629,6 @@ mod tests {
             if let Some(data) = ctx.get::<String>() {
                 self.consumed_data.lock().unwrap().push(data.clone());
             }
-            Ok(())
-        }
-
-        fn post_indexing(
-            &self,
-            _block_height: u64,
-            _querier: Arc<dyn grug_app::QuerierProvider>,
-            _ctx: &mut grug_app::IndexerContext,
-        ) -> IndexerResult<()> {
-            Ok(())
-        }
-
-        fn wait_for_finish(&self) -> IndexerResult<()> {
             Ok(())
         }
     }

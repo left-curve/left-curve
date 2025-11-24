@@ -42,6 +42,7 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
       filled_quote,
       refund_base,
       refund_quote,
+      remaining,
     } = activity.data;
     const { settings, showModal } = useApp();
     const { navigate } = useRouter();
@@ -125,22 +126,21 @@ export const ActivityOrderFilled = forwardRef<ActivityRef, ActivityOrderFilledPr
                 {base.symbol}-{quote.symbol}
               </span>
             </div>
-            {averagePrice ? (
-              <div className="flex w-full gap-1">
-                <span>{m["activities.activity.orderCreated.atPrice"]()}</span>
-                <span className="diatype-m-bold">
-                  {averagePrice} {quote.symbol}
-                </span>
-              </div>
-            ) : null}
+
+            <div className="flex w-full gap-1">
+              <span>{m["activities.activity.orderCreated.atPrice"]()}</span>
+              <span className="diatype-m-bold">
+                {averagePrice} {quote.symbol}
+              </span>
+            </div>
           </div>
-          {/* {false ? (
+          {!cleared && (
             <div className="flex gap-1 text-ink-tertiary-500">
               <span>{m["common.width"]()}</span>
-              <span className="diatype-m-bold">{base.symbol}</span>
+              <span className="diatype-m-bold">{`${formatNumber(formatUnits(remaining, base.decimals), formatNumberOptions)} ${base.symbol}`}</span>
               <span>{m["activities.activity.orderFilled.remaining"]()}</span>
             </div>
-          ) : null} */}
+          )}
         </div>
       </OrderActivity>
     );

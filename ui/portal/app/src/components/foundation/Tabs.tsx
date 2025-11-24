@@ -4,6 +4,7 @@ import { View, Pressable, Text, Animated, type LayoutChangeEvent } from "react-n
 import { tv, type VariantProps } from "tailwind-variants";
 import { twMerge } from "@left-curve/foundation";
 import { useControlledState } from "@left-curve/foundation";
+import { GlobalText } from "./GlobalText";
 
 type ReactChildren = React.PropsWithChildren<{}>["children"];
 
@@ -124,8 +125,8 @@ export const Tabs: React.FC<React.PropsWithChildren<TabsProps>> = ({
 
 const tabsVariants = tv({
   slots: {
-    base: "flex flex-row text-base relative items-center p-1 rounded-md exposure-sm-italic",
-    button: "relative capitalize transition-all flex items-center justify-center py-2 px-4",
+    base: "flex flex-row text-base relative items-center p-1 rounded-md  ",
+    button: "relative capitalize transition-all flex items-center justify-center px-4",
     "animated-element": "absolute w-full rounded-[10px]",
   },
   variants: {
@@ -176,14 +177,14 @@ export const Tab: React.FC<React.PropsWithChildren<TabProps>> = ({
   children,
 }) => {
   const styles = tabVariants({ color, isActive, fullWidth });
-  return <Text className={twMerge(styles)}>{children ? children : title}</Text>;
+  return <GlobalText className={twMerge(styles)}>{children ? children : title}</GlobalText>;
 };
 
 const tabVariants = tv({
-  base: "transition-all relative z-10 whitespace-nowrap outline-none",
+  base: "transition-all relative z-10 whitespace-nowrap outline-none capitalize py-2 exposure-sm-italic",
   variants: {
     color: { green: "", red: "", "light-green": "", "line-red": "" },
-    fullWidth: { true: "flex-1", false: "" },
+    fullWidth: { true: "flex-1 w-full text-center", false: "" },
     isActive: { true: "", false: "" },
   },
   defaultVariants: {

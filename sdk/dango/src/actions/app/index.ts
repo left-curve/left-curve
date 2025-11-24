@@ -52,6 +52,18 @@ export {
   transfer,
 } from "./mutations/transfer.js";
 
+export {
+  type UpgradeParameters,
+  type UpgradeReturnType,
+  upgrade,
+} from "./mutations/upgrade.js";
+
+export {
+  type ConfigureParameters,
+  type ConfigureReturnType,
+  configure,
+} from "./mutations/configure.js";
+
 /* -------------------------------------------------------------------------- */
 /*                               Builder Action                               */
 /* -------------------------------------------------------------------------- */

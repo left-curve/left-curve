@@ -44,15 +44,11 @@ pub enum Event {
 macro_rules! generate_downcast {
     ($id:ident => $ret:ty) => {
         paste! {
-            pub fn [<as_$id:snake>](self) -> $ret {
+            pub fn [<into_$id:snake>](self) -> $ret {
                 match self {
                     Event::$id(value) => value,
                     _ => panic!("Event is not {}", stringify!($id)),
                 }
-            }
-
-            pub fn [<is_$id:snake>](self) -> bool {
-                matches!(self, Event::$id(_))
             }
         }
     };

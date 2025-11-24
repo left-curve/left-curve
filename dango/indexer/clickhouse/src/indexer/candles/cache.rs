@@ -58,10 +58,10 @@ impl CandleCache {
         heights.sort_unstable();
 
         for window in heights.windows(2) {
-            if let [a, b] = window {
-                if *b != *a + 1 {
-                    return true;
-                }
+            if let [a, b] = window
+                && *b != *a + 1
+            {
+                return true;
             }
         }
 
@@ -344,16 +344,16 @@ impl CandleCache {
                 return false;
             }
 
-            if let Some(earlier_than) = earlier_than {
-                if candles.last().is_some_and(|c| c.time_start > earlier_than) {
-                    return false;
-                }
+            if let Some(earlier_than) = earlier_than
+                && candles.last().is_some_and(|c| c.time_start > earlier_than)
+            {
+                return false;
             }
 
-            if let Some(later_than) = later_than {
-                if candles.first().is_some_and(|c| c.time_start < later_than) {
-                    return false;
-                }
+            if let Some(later_than) = later_than
+                && candles.first().is_some_and(|c| c.time_start < later_than)
+            {
+                return false;
             }
 
             return true;
@@ -436,17 +436,18 @@ impl CandleCache {
 
                         candles = query_builder.fetch_all(clickhouse_client).await?.candles;
 
-                        if let Some(candle) = candles.first() {
-                            if candle.max_block_height < highest_block_height {
-                                #[cfg(feature = "tracing")]
-                                tracing::error!(
-                                    %candle.max_block_height,
-                                    %highest_block_height,
-                                    %key.base_denom,
-                                    %key.quote_denom,
-                                    %key.interval,
-                                    "Candle is older than latest price, process was not properly shutdown before.",);
-                            }
+                        if let Some(candle) = candles.first()
+                            && candle.max_block_height < highest_block_height
+                        {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(
+                                %candle.max_block_height,
+                                %highest_block_height,
+                                %key.base_denom,
+                                %key.quote_denom,
+                                %key.interval,
+                                "Candle is older than latest price, process was not properly shutdown before."
+                            );
                         }
 
                         candles.reverse(); // Most recent first -> most recent last

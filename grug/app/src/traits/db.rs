@@ -96,10 +96,11 @@ pub trait Db {
     /// This is typically invoked in the ABCI `FinalizeBlock` call.
     fn flush_but_not_commit(&self, batch: Batch) -> Result<(u64, Option<Hash256>), Self::Error>;
 
-    /// Persist pending data added in the `flush` method to disk.
+    /// Persist pending data added in the `flush` method to disk. Return the new
+    /// version.
     ///
     /// This is typically invoked in the ABCI `Commit` call.
-    fn commit(&self) -> Result<(), Self::Error>;
+    fn commit(&self) -> Result<u64, Self::Error>;
 
     /// Flush and commit in one go.
     ///

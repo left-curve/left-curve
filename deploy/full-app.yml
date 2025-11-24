@@ -62,7 +62,7 @@
               {%- set port = (traefik_enabled | default(false))
                             | ternary(traefik[dango_network].ports.cometbft_p2p_port,
                                       hostvars[host].cometbft_p2p_port) -%}
-              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].tailscale_ip ~ ':' ~ port -%}
+              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].wireguard_ip ~ ':' ~ port -%}
               {{- peers.append(peer) or '' -}}
             {%- endif -%}
           {%- endfor -%}
@@ -83,9 +83,6 @@
   collections:
     - community.docker
     - community.clickhouse
-  roles:
-    - cosign
-    - full-app
   pre_tasks:
     - name: Load postgres vars
       include_vars: "roles/full-app/vars/included_postgres.yml"
@@ -112,13 +109,51 @@
       set_fact:
         dango_host: "{{ deployment_name }}-dango-1"
         cometbft_host: "{{ deployment_name }}-cometbft-1"
-  post_tasks:
-    - name: Log deployment complete
-      community.general.syslogger:
-        msg: "[{{ deployment_name }}] Finished deployment"
-        facility: local0
-        priority: info
-        ident: dango
+
+  tasks:
+    - block:
+        - name: Run cosign role
+          import_role:
+            name: cosign
+
+        - name: Run full-app role
+          import_role:
+            name: full-app
+
+      rescue:
+        - name: Stop and remove stack
+          community.docker.docker_compose_v2:
+            project_name: "{{ deployment_name }}"
+            project_src: "{{ deployment_dir }}"
+            state: absent
+          ignore_errors: true
+
+        # I want to keep files if I need to dig further using `docker compose logs`
+        # - name: Remove deployment directory
+        #   become: true
+        #   become_user: root
+        #   file:
+        #     path: "~{{ deploy_user }}/deployments/{{ deployment_name }}"
+        #     state: absent
+
+        - name: Log deployment failure
+          community.general.syslogger:
+            msg: "[{{ deployment_name }}] Deployment FAILED"
+            facility: local0
+            priority: err
+            ident: dango
+
+        - name: Fail the task
+          fail:
+            msg: "Deployment failed, please look at the logs. You can also ssh to any of the servers, to {{ deployment_dir }} and run `docker compose logs`"
+
+      always:
+        - name: Log deployment finished
+          community.general.syslogger:
+            msg: "[{{ deployment_name }}] Finished deployment"
+            facility: local0
+            priority: info
+            ident: dango
 
 - hosts: monitoring
   become: true
@@ -133,7 +168,7 @@
         - name: Create Dango prometheus targets
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].dango_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].dango_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'dango'
@@ -147,7 +182,7 @@
         - name: Create Cometbft prometheus targets
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].cometbft_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].cometbft_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'cometbft'
@@ -162,7 +197,7 @@
           when: deploy_includes_postgres
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].db_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].db_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'postgres'
@@ -177,7 +212,7 @@
           when: deploy_includes_clickhouse
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].clickhouse_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].clickhouse_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'clickhouse'

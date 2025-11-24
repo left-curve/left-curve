@@ -800,7 +800,7 @@ fn vote_edge_cases() {
             address: multi_address,
         })
         .should_succeed_and(|account| {
-            let members = account.params.clone().as_multi().members;
+            let members = account.params.clone().into_multi().members;
             !members.contains_key(&accounts.user3.username)
                 && members.contains_key(&accounts.user4.username)
         });

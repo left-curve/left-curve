@@ -30,3 +30,11 @@ export const ASSETS = {
   notifications: require("@left-curve/foundation/images/emojis/simple/notifications.svg"),
   devtool: require("@left-curve/foundation/images/emojis/simple/factory-2.svg"),
 };
+
+export const COINS = {
+  SOL: require("@left-curve/foundation/images/coins/sol.svg"),
+  USDC: require("@left-curve/foundation/images/coins/usdc.svg"),
+  ETH: require("@left-curve/foundation/images/coins/eth.svg"),
+  XRP: require("@left-curve/foundation/images/coins/xrp.svg"),
+  BTC: require("@left-curve/foundation/images/coins/bitcoin.svg"),
+};

@@ -1,12 +1,10 @@
 #[cfg(feature = "metrics")]
 use crate::graphql::extensions::metrics::{MetricsExtension, init_graphql_metrics};
+#[cfg(feature = "tracing")]
+use async_graphql::extensions as AsyncGraphqlExtensions;
 use {
     crate::context::Context,
-    async_graphql::{
-        Schema,
-        dataloader::DataLoader,
-        extensions::{self as AsyncGraphqlExtensions},
-    },
+    async_graphql::{Schema, dataloader::DataLoader},
     indexer_sql::dataloaders::{
         block_events::BlockEventsDataLoader, block_transactions::BlockTransactionsDataLoader,
         event_transaction::EventTransactionDataLoader,
@@ -22,7 +20,6 @@ pub mod mutation;
 pub mod query;
 pub mod subscription;
 pub mod telemetry;
-pub mod types;
 
 pub(crate) type AppSchema = Schema<query::Query, mutation::Mutation, subscription::Subscription>;
 
@@ -67,12 +64,12 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
 
     let file_transaction_loader = DataLoader::new(
         FileTransactionDataLoader {
-            indexer: app_ctx.indexer_path.clone(),
+            indexer_path: app_ctx.indexer_cache_context.indexer_path.clone(),
         },
         tokio::spawn,
     );
 
-    let indexer_path = app_ctx.indexer_path.clone();
+    let indexer_path = app_ctx.indexer_cache_context.indexer_path.clone();
 
     #[allow(unused_mut)]
     let mut schema_builder = Schema::build(
@@ -80,13 +77,18 @@ pub fn build_schema(app_ctx: Context) -> AppSchema {
         mutation::Mutation::default(),
         subscription::Subscription::default(),
     )
-    .extension(AsyncGraphqlExtensions::Logger)
-    // .extension(AsyncGraphqlExtensions::Tracing)
     .extension(SentryExtension);
 
     #[cfg(feature = "metrics")]
     {
         schema_builder = schema_builder.extension(MetricsExtension);
+    }
+
+    #[cfg(feature = "tracing")]
+    {
+        schema_builder = schema_builder
+            .extension(AsyncGraphqlExtensions::Tracing)
+            .extension(AsyncGraphqlExtensions::Logger);
     }
 
     schema_builder

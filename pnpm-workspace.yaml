@@ -12,6 +12,7 @@ minimumReleaseAgeExclude:
   - "@privy-io/public-api"
 
 catalog:
+  "eventemitter3": "^5.0.1"
   "typescript": "^5.6.3"
   # CF Workers
   "wrangler": "^4.0.0"
@@ -37,6 +38,7 @@ catalog:
   # Animations
   "framer-motion": "^11.11.7"
   # CSS
+  "tailwind-variants": "^0.2.1"
   "tailwindcss": "^3.4.13"
   "autoprefixer": "^10.4.20"
   "postcss": "^8"

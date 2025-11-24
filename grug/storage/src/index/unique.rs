@@ -47,12 +47,8 @@ where
         }
     }
 
-    pub fn has_raw(&self, storage: &dyn Storage, ik_raw: &[u8]) -> bool {
-        self.index_map.has_raw(storage, ik_raw)
-    }
-
-    pub fn has(&self, storage: &dyn Storage, idx: IK) -> bool {
-        self.index_map.has(storage, idx)
+    pub fn is_empty(&self, storage: &dyn Storage) -> bool {
+        self.index_map.is_empty(storage)
     }
 
     /// Given an index value, which may or may not exist, load the corresponding
@@ -270,5 +266,9 @@ where
         let idx = (self.indexer)(&pk, old_data);
 
         self.index_map.remove(storage, idx)
+    }
+
+    fn clear_all(&self, storage: &mut dyn Storage) {
+        self.index_map.clear(storage, None, None)
     }
 }

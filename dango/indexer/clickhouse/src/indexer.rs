@@ -1,7 +1,8 @@
 use {
     crate::{context::Context, error::IndexerError},
-    dango_types::DangoQuerier,
+    dango_types::config::AppConfig,
     futures::try_join,
+    grug::{Config, Json, JsonDeExt},
     grug_app::Indexer as IndexerTrait,
     indexer_sql::indexer::RuntimeHandler,
 };
@@ -32,6 +33,12 @@ impl Indexer {
 }
 
 impl grug_app::Indexer for Indexer {
+    fn last_indexed_block_height(&self) -> grug_app::IndexerResult<Option<u64>> {
+        // TODO: Implement last_indexed_block_height using `pair_prices` table.
+        Ok(None)
+    }
+
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "testing")]
         if self.context.is_mocked() {
@@ -39,10 +46,11 @@ impl grug_app::Indexer for Indexer {
             tracing::info!("Clickhouse indexer is mocked");
             return Ok(());
         }
+
         #[cfg(feature = "tracing")]
         tracing::info!("Clickhouse indexer started");
 
-        let handle = self.runtime_handler.spawn({
+        self.runtime_handler.block_on({
             let clickhouse_client = self.context.clickhouse_client().clone();
             async move {
                 for migration in crate::migrations::candle_builder::migrations()
@@ -68,17 +76,14 @@ impl grug_app::Indexer for Indexer {
 
                 Ok::<(), grug_app::IndexerError>(())
             }
-        });
-
-        self.runtime_handler
-            .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
+        })?;
 
         self.indexing = true;
 
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn wait_for_finish(&self) -> grug_app::IndexerResult<()> {
         if !self.indexing {
             return Ok(());
@@ -96,6 +101,7 @@ impl grug_app::Indexer for Indexer {
         })
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn shutdown(&mut self) -> grug_app::IndexerResult<()> {
         // Avoid running this twice when called manually and from `Drop`
         if !self.indexing {
@@ -120,27 +126,12 @@ impl grug_app::Indexer for Indexer {
         Ok(())
     }
 
-    fn pre_indexing(
-        &self,
-        _block_height: u64,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
-        Ok(())
-    }
-
-    fn index_block(
-        &self,
-        _block: &grug_types::Block,
-        _block_outcome: &grug_types::BlockOutcome,
-        _ctx: &mut grug_app::IndexerContext,
-    ) -> grug_app::IndexerResult<()> {
-        Ok(())
-    }
-
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn post_indexing(
         &self,
         #[allow(unused_variables)] block_height: u64,
-        querier: std::sync::Arc<dyn grug_app::QuerierProvider>,
+        _cfg: Config,
+        app_cfg: Json,
         ctx: &mut grug_app::IndexerContext,
     ) -> grug_app::IndexerResult<()> {
         if !self.indexing {
@@ -150,19 +141,18 @@ impl grug_app::Indexer for Indexer {
         #[cfg(feature = "tracing")]
         tracing::debug!(block_height, "`post_indexing` work started");
 
-        let querier = querier.clone();
         let ctx = ctx.clone();
         let context = self.context.clone();
 
-        let handle = self.runtime_handler.spawn(async move {
+        self.runtime_handler.block_on(async move {
             #[cfg(feature = "metrics")]
             let start = Instant::now();
 
-            let dex_addr = querier.as_ref().query_dex()?;
+            let app_cfg: AppConfig = app_cfg.deserialize_json()?;
 
             try_join!(
-                Self::store_candles(&dex_addr, &ctx, &context),
-                Self::store_trades(&dex_addr, &ctx, &context)
+                Self::store_candles(&app_cfg.addresses.dex, &ctx, &context),
+                Self::store_trades(&app_cfg.addresses.dex, &ctx, &context)
             )?;
 
             #[cfg(feature = "metrics")]
@@ -181,11 +171,7 @@ impl grug_app::Indexer for Indexer {
             tracing::debug!(block_height, "`post_indexing` async work finished");
 
             Ok::<(), IndexerError>(())
-        });
-
-        self.runtime_handler
-            .block_on(handle)
-            .map_err(|e| grug_app::IndexerError::hook(e.to_string()))??;
+        })?;
 
         Ok(())
     }

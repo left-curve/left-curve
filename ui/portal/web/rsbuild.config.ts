@@ -25,9 +25,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const { publicVars } = loadEnv();
 
-const environment = process.env.CONFIG_ENVIRONMENT || "local";
+const environment = process.env.CONFIG_ENVIRONMENT || "test";
 
 const workspaceRoot = path.resolve(__dirname, "../../../");
+
+const tradingViewPath = path.resolve(
+  workspaceRoot,
+  "node_modules",
+  "@left-curve/tradingview/charting_library",
+);
 
 fs.copySync(
   path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
@@ -43,18 +49,18 @@ const chain = {
 
 const urls = {
   local: {
-    faucetUrl: "http://localhost:8082",
-    questUrl: "http://localhost:8081",
+    faucetUrl: "http://localhost:8082/mint",
+    questUrl: "http://localhost:8081/check_username",
     upUrl: "http://localhost:8080/up",
   },
   dev: {
-    faucetUrl: "https://faucet-devnet-ovh2.dango.zone",
-    questUrl: "https://quest-bot-devnet.dango.zone",
+    faucetUrl: "https://faucet-devnet-ovh2.dango.zone/mint",
+    questUrl: "https://quest-bot-devnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
   },
   test: {
-    faucetUrl: "https://faucet-testnet-ovh2.dango.zone",
-    questUrl: "https://quest-bot-testnet.dango.zone",
+    faucetUrl: "https://faucet-testnet-ovh2.dango.zone/mint",
+    questUrl: "https://quest-bot-testnet.dango.zone/check_username",
     upUrl: `${chain.urls.indexer}/up`,
   },
 }[environment]!;
@@ -84,6 +90,15 @@ const envConfig = `window.dango = ${JSON.stringify(
   2,
 )};`;
 
+const copyPattern = [{ from: "./public/rmsw.js", to: "service-worker.js" }];
+
+if (fs.existsSync(tradingViewPath)) {
+  copyPattern.push({
+    from: path.resolve(workspaceRoot, "node_modules", "@left-curve/tradingview/charting_library"),
+    to: "./static/charting_library",
+  });
+}
+
 export default defineConfig({
   resolve: {
     aliasStrategy: "prefer-alias",
@@ -93,7 +108,6 @@ export default defineConfig({
       "~/mock": path.resolve(__dirname, "./mockData.ts"),
       "~/store": path.resolve(__dirname, "./store.config.ts"),
       "~/images": path.resolve(__dirname, "node_modules", "@left-curve/foundation/images"),
-      "~/chartiq": path.resolve(__dirname, "./chartiq.config.ts"),
       "~/datafeed": path.resolve(__dirname, "./datafeed.config.ts"),
       "~": path.resolve(__dirname, "./src"),
     },
@@ -146,17 +160,7 @@ export default defineConfig({
     distPath: {
       root: "build",
     },
-    copy: [
-      {
-        from: path.resolve(
-          workspaceRoot,
-          "node_modules",
-          "@left-curve/tradingview/charting_library",
-        ),
-        to: "./static/charting_library",
-      },
-      { from: "./public/rmsw.js", to: "service-worker.js" },
-    ],
+    copy: copyPattern,
     minify: {
       jsOptions: {
         exclude: [],

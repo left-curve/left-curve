@@ -2,6 +2,9 @@ mod db;
 mod error;
 #[cfg(feature = "ibc")]
 mod ics23;
-mod timestamp;
+#[cfg(feature = "metrics")]
+mod statistics;
 
-pub use {db::*, error::*, timestamp::*};
+#[cfg(feature = "metrics")]
+pub use statistics::*;
+pub use {db::*, error::*};

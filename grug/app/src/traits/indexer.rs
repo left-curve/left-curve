@@ -1,9 +1,8 @@
 use {
-    grug_types::{Block, BlockOutcome, Storage},
-    std::{any::type_name, sync::Arc},
+    crate::IndexerError,
+    grug_types::{Block, BlockOutcome, Config, Json, Storage},
+    std::any::type_name,
 };
-
-use crate::{IndexerError, QuerierProvider};
 
 /// Result type for indexer operations
 pub type IndexerResult<T> = Result<T, IndexerError>;
@@ -80,27 +79,37 @@ pub trait Indexer {
     }
 
     /// Called when indexing a block, allowing to create a new DB transaction
-    fn pre_indexing(&self, block_height: u64, ctx: &mut IndexerContext) -> IndexerResult<()>;
+    fn pre_indexing(&self, _block_height: u64, _ctx: &mut IndexerContext) -> IndexerResult<()> {
+        Ok(())
+    }
 
     /// Called when indexing the block, happens at the end of the block creation
     fn index_block(
         &self,
-        block: &Block,
-        block_outcome: &BlockOutcome,
-        ctx: &mut IndexerContext,
-    ) -> IndexerResult<()>;
+        _block: &Block,
+        _block_outcome: &BlockOutcome,
+        _ctx: &mut IndexerContext,
+    ) -> IndexerResult<()> {
+        Ok(())
+    }
 
     /// Called after indexing the block, allowing for DB transactions to be committed
-    /// Uses owned querier to allow spawning in background threads
     fn post_indexing(
         &self,
-        block_height: u64,
-        querier: Arc<dyn QuerierProvider>,
-        ctx: &mut IndexerContext,
-    ) -> IndexerResult<()>;
+        _block_height: u64,
+        _cfg: Config,
+        _app_cfg: Json,
+        _ctx: &mut IndexerContext,
+    ) -> IndexerResult<()> {
+        Ok(())
+    }
 
     /// Wait for the indexer to finish indexing
     fn wait_for_finish(&self) -> IndexerResult<()> {
         Ok(())
+    }
+
+    fn last_indexed_block_height(&self) -> IndexerResult<Option<u64>> {
+        Ok(None)
     }
 }

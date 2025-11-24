@@ -1,4 +1,7 @@
-use serde::{Deserialize, Serialize};
+use {
+    grug_types::HexBinary,
+    serde::{Deserialize, Serialize},
+};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -9,6 +12,7 @@ pub struct Config {
     pub tendermint: TendermintConfig,
     pub transactions: TransactionsConfig,
     pub sentry: SentryConfig,
+    pub trace: TraceConfig,
     pub log_level: String,
     pub log_format: LogFormat,
     pub pyth: PythLazerConfig,
@@ -34,7 +38,7 @@ pub enum LogFormat {
 pub struct GrugConfig {
     pub wasm_cache_capacity: usize,
     pub query_gas_limit: u64,
-    pub db: grug_db_disk::Config,
+    pub priority_range: Option<(HexBinary, HexBinary)>,
 }
 
 impl Default for GrugConfig {
@@ -42,7 +46,7 @@ impl Default for GrugConfig {
         Self {
             wasm_cache_capacity: 1000,
             query_gas_limit: 100_000_000,
-            db: Default::default(),
+            priority_range: None,
         }
     }
 }
@@ -134,4 +138,22 @@ impl Default for TransactionsConfig {
 pub struct PythLazerConfig {
     pub endpoints: Vec<String>,
     pub access_token: String,
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct TraceConfig {
+    /// Whether to enable OpenTelemetry tracing export.
+    pub enabled: bool,
+    /// Collector endpoint (e.g. http://tempo:4317 for OTLP/gRPC).
+    pub endpoint: String,
+    /// Protocol used to export traces: "otlp_grpc" or "otlp_http".
+    pub protocol: TraceProtocol,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TraceProtocol {
+    #[default]
+    OtlpGrpc,
+    OtlpHttp,
 }

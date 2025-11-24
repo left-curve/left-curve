@@ -7,20 +7,19 @@ use {
         ResultExt,
     },
     grug_vm_rust::ContractBuilder,
-    indexer_sql::{block_to_index::BlockToIndex, entity},
+    indexer_cache::cache_file::CacheFile,
+    indexer_sql::entity,
+    indexer_testing::setup::create_hooked_indexer,
     replier::{ExecuteMsg, ReplyMsg},
     sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder},
     std::str::FromStr,
 };
 
-#[test]
-fn index_block() {
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn index_block() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let indexer = indexer_sql::IndexerBuilder::default()
-        .with_memory_database()
-        .build()
-        .expect("Can't create indexer");
+    let (indexer, sql_indexer_context, ..) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -29,8 +28,6 @@ fn index_block() {
         .build();
 
     let to = accounts["owner"].address;
-
-    assert_that!(suite.app.indexer.indexing).is_true();
 
     suite
         .send_message_with_gas(
@@ -48,39 +45,37 @@ fn index_block() {
         .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
-    suite.app.indexer.handle.block_on(async {
-        let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
-        assert_that!(block).is_some();
-        assert_that!(block.unwrap().block_height).is_equal_to(1);
+    let block = entity::blocks::Entity::find()
+        .one(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch blocks");
+    assert_that!(block).is_some();
+    assert_that!(block.unwrap().block_height).is_equal_to(1);
 
-        let transactions = entity::transactions::Entity::find()
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch transactions");
-        assert_that!(transactions).is_not_empty();
+    let transactions = entity::transactions::Entity::find()
+        .all(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch transactions");
+    assert_that!(transactions).is_not_empty();
 
-        let messages = entity::messages::Entity::find()
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch messages");
+    let messages = entity::messages::Entity::find()
+        .all(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch messages");
 
-        assert_that!(messages).is_not_empty();
+    assert_that!(messages).is_not_empty();
 
-        let events = entity::events::Entity::find()
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch events");
+    let events = entity::events::Entity::find()
+        .all(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch events");
 
-        // Verify message_id is set correctly based on message_idx
-        for event in events.iter() {
-            assert_that!(event.message_id.is_some()).is_equal_to(event.message_idx.is_some());
-        }
+    // Verify message_id is set correctly based on message_idx
+    for event in events.iter() {
+        assert_that!(event.message_id.is_some()).is_equal_to(event.message_idx.is_some());
+    }
 
-        assert_that!(events).is_not_empty();
-    });
+    assert_that!(events).is_not_empty();
 }
 
 /// This test is to ensure the indexer will index previous block not yet indexed.
@@ -90,11 +85,7 @@ fn index_block() {
 async fn parse_previous_block_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let indexer = indexer_sql::IndexerBuilder::default()
-        .with_keep_blocks(true)
-        .with_memory_database()
-        .build()
-        .expect("Can't create indexer");
+    let (indexer, sql_indexer_context, ..) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -120,13 +111,13 @@ async fn parse_previous_block_after_restart() {
         .expect("Can't shutdown indexer");
 
     // 1. Delete database block height 1
-    entity::blocks::Entity::delete_block_and_data(&suite.app.indexer.context.db, 1)
+    entity::blocks::Entity::delete_block_and_data(&sql_indexer_context.db, 1)
         .await
         .unwrap();
 
     // 1 bis. Verify the block height 1 is deleted
     let block = entity::blocks::Entity::find()
-        .one(&suite.app.indexer.context.db)
+        .one(&sql_indexer_context.db)
         .await
         .expect("Can't fetch blocks");
     assert_that!(block).is_none();
@@ -141,14 +132,12 @@ async fn parse_previous_block_after_restart() {
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is indexed
-    suite.app.indexer.handle.block_on(async {
-        let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
-        assert_that!(block).is_some();
-        assert_that!(block.unwrap().block_height).is_equal_to(1);
-    });
+    let block = entity::blocks::Entity::find()
+        .one(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch blocks");
+    assert_that!(block).is_some();
+    assert_that!(block.unwrap().block_height).is_equal_to(1);
 
     // 5. Send a transaction
     suite
@@ -167,30 +156,23 @@ async fn parse_previous_block_after_restart() {
         .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
-    suite.app.indexer.handle.block_on(async {
-        let block = entity::blocks::Entity::find()
-            .order_by_desc(entity::blocks::Column::BlockHeight)
-            .one(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
-        assert_that!(block).is_some();
-        assert_that!(block.unwrap().block_height).is_equal_to(2);
-    });
+    let block = entity::blocks::Entity::find()
+        .order_by_desc(entity::blocks::Column::BlockHeight)
+        .one(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch blocks");
+    assert_that!(block).is_some();
+    assert_that!(block.unwrap().block_height).is_equal_to(2);
 }
 
 /// This test is to ensure the indexer will reindex previous block already indexed.
 /// This happens if the process crash after the block was saved on disk,
 /// after it was indexed, and before the tmp file was deleted.
-#[test]
-fn no_sql_index_error_after_restart() {
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn no_sql_index_error_after_restart() {
     let denom = Denom::from_str("ugrug").unwrap();
 
-    let indexer = indexer_sql::IndexerBuilder::default()
-        .with_memory_database()
-        .build()
-        .expect("Can't create indexer");
-
-    let indexer_path = indexer.indexer_path.clone();
+    let (indexer, sql_indexer_context, cache_context) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coins::new())
@@ -216,13 +198,11 @@ fn no_sql_index_error_after_restart() {
         .expect("Can't shutdown indexer");
 
     // 1. Verify the block height 1 is indexed
-    suite.app.indexer.handle.block_on(async {
-        let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
-        assert_that!(block).is_some();
-    });
+    let block = entity::blocks::Entity::find()
+        .one(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch blocks");
+    assert_that!(block).is_some();
 
     // 2. Manually create a block in cache with block height 1
     let block_info = BlockInfo {
@@ -241,8 +221,8 @@ fn no_sql_index_error_after_restart() {
         txs: vec![],
     };
 
-    let block_filename = indexer_path.block_path(block_info.height);
-    let block_to_index = BlockToIndex::new(block_filename, block, block_outcome);
+    let block_filename = cache_context.indexer_path.block_path(block_info.height);
+    let block_to_index = CacheFile::new(block_filename, block, block_outcome);
 
     block_to_index
         .save_to_disk()
@@ -256,14 +236,12 @@ fn no_sql_index_error_after_restart() {
         .expect("Can't start indexer");
 
     // 4. Verify the block height 1 is still indexed
-    suite.app.indexer.handle.block_on(async {
-        let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
-        assert_that!(block).is_some();
-        assert_that!(block.unwrap().block_height).is_equal_to(1);
-    });
+    let block = entity::blocks::Entity::find()
+        .one(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch blocks");
+    assert_that!(block).is_some();
+    assert_that!(block.unwrap().block_height).is_equal_to(1);
 
     // 5. Send a transaction
     suite
@@ -282,19 +260,17 @@ fn no_sql_index_error_after_restart() {
         .expect("Can't wait for indexer to finish");
 
     // 6. Verify the block height 2 is indexed
-    suite.app.indexer.handle.block_on(async {
-        let block = entity::blocks::Entity::find()
-            .order_by_desc(entity::blocks::Column::BlockHeight)
-            .one(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
-        assert_that!(block).is_some();
+    let block = entity::blocks::Entity::find()
+        .order_by_desc(entity::blocks::Column::BlockHeight)
+        .one(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch blocks");
+    assert_that!(block).is_some();
 
-        let block = block.unwrap();
-        assert_that!(block.block_height).is_equal_to(2);
+    let block = block.unwrap();
+    assert_that!(block.block_height).is_equal_to(2);
 
-        assert!(!block.app_hash.is_empty());
-    });
+    assert!(!block.app_hash.is_empty());
 }
 
 pub mod replier {
@@ -435,12 +411,9 @@ pub mod replier {
 }
 
 /// Ensure that flatten events are indexed correctly.
-#[test]
-fn index_block_events() {
-    let indexer = indexer_sql::IndexerBuilder::default()
-        .with_memory_database()
-        .build()
-        .expect("Can't create indexer");
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn index_block_events() {
+    let (indexer, sql_indexer_context, ..) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coin::new("usdc", 100_000).unwrap())
@@ -477,8 +450,6 @@ fn index_block_events() {
         .execute(&mut accounts["owner"], replier_addr, &msg, Coins::default())
         .should_succeed();
 
-    assert_that!(suite.app.indexer.indexing).is_true();
-
     // Force the runtime to wait for the async indexer task to finish
     suite
         .app
@@ -487,57 +458,51 @@ fn index_block_events() {
         .expect("Can't wait for indexer to finish");
 
     // ensure block was saved
-    suite.app.indexer.handle.block_on(async {
-        let block = entity::blocks::Entity::find()
-            .one(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch blocks");
-        assert_that!(block).is_some();
-        assert_that!(block.unwrap().block_height).is_equal_to(1);
+    let block = entity::blocks::Entity::find()
+        .one(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch blocks");
+    assert_that!(block).is_some();
+    assert_that!(block.unwrap().block_height).is_equal_to(1);
 
-        let transactions = entity::transactions::Entity::find()
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch transactions");
-        assert_that!(transactions).is_not_empty();
+    let transactions = entity::transactions::Entity::find()
+        .all(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch transactions");
+    assert_that!(transactions).is_not_empty();
 
-        let messages = entity::messages::Entity::find()
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch messages");
-        assert_that!(messages).is_not_empty();
+    let messages = entity::messages::Entity::find()
+        .all(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch messages");
+    assert_that!(messages).is_not_empty();
 
-        let events = entity::events::Entity::find()
-            .filter(entity::events::Column::BlockHeight.eq(2))
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch events");
-        assert_that!(events).is_not_empty();
+    let events = entity::events::Entity::find()
+        .filter(entity::events::Column::BlockHeight.eq(2))
+        .all(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch events");
+    assert_that!(events).is_not_empty();
 
-        // Check for gaps
-        let event_idxs = events.iter().map(|e| e.event_idx).collect::<Vec<_>>();
-        let min_idx = event_idxs[0];
-        let max_idx = event_idxs[event_idxs.len() - 1];
-        assert_that!(event_idxs.len() as i32).is_equal_to(max_idx - min_idx + 1);
+    // Check for gaps
+    let event_idxs = events.iter().map(|e| e.event_idx).collect::<Vec<_>>();
+    let min_idx = event_idxs[0];
+    let max_idx = event_idxs[event_idxs.len() - 1];
+    assert_that!(event_idxs.len() as i32).is_equal_to(max_idx - min_idx + 1);
 
-        // check for parent events
-        let events = entity::events::Entity::find()
-            .filter(entity::events::Column::ParentId.is_not_null())
-            .all(&suite.app.indexer.context.db)
-            .await
-            .expect("Can't fetch events");
-        assert_that!(events).is_not_empty();
-    });
+    // check for parent events
+    let events = entity::events::Entity::find()
+        .filter(entity::events::Column::ParentId.is_not_null())
+        .all(&sql_indexer_context.db)
+        .await
+        .expect("Can't fetch events");
+    assert_that!(events).is_not_empty();
 }
 
 /// Ensure the indexed blocks are compressed on disk.
 #[test]
 fn blocks_on_disk_compressed() {
-    let indexer = indexer_sql::IndexerBuilder::default()
-        .with_memory_database()
-        .with_keep_blocks(true)
-        .build()
-        .expect("Can't create indexer");
+    let (indexer, _, cache_context) = create_hooked_indexer();
 
     let (mut suite, mut accounts) = TestBuilder::new_with_indexer(indexer)
         .add_account("owner", Coin::new("usdc", 100_000).unwrap())
@@ -572,7 +537,7 @@ fn blocks_on_disk_compressed() {
         .wait_for_finish()
         .expect("Can't wait for indexer to finish");
 
-    let mut block_path = suite.app.indexer.indexer_path.block_path(1);
+    let mut block_path = cache_context.indexer_path.block_path(1);
 
     block_path.set_extension("borsh.xz");
 

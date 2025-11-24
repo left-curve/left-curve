@@ -56,7 +56,6 @@ macro_rules! generate_types {
                                     None,
                                     TestOption::default(),
                                     GenesisOption::preset_test(),
-                                    true,
                                     None,
                                 )
                                 .await

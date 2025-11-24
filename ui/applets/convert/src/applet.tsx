@@ -123,7 +123,7 @@ const ConvertHeader: React.FC = () => {
 const ConvertForm: React.FC = () => {
   const { state, controllers } = useConvert();
   const { revalidate } = controllers;
-  const [activeInput, setActiveInput] = useState<"from" | "to">();
+  const [activeInput, setActiveInput] = useState<"from" | "to">("from");
 
   const { isReverse, fromCoin, toCoin, changePair, toggleDirection, submission } = state;
 
@@ -148,7 +148,7 @@ const ConvertForm: React.FC = () => {
         isDisabled={submission.isPending}
         isLoading={activeInput !== "from" ? simulation.isPending : false}
         onFocus={() => setActiveInput("from")}
-        shouldValidate={!isReverse}
+        shouldValidate
         showRange
         showCoinSelector={isReverse}
         onSelectCoin={changePair}
@@ -161,9 +161,10 @@ const ConvertForm: React.FC = () => {
         type="button"
         disabled={submission.isPending}
         className="flex items-center justify-center border border-primitives-gray-light-300 rounded-full h-5 w-5 cursor-pointer mt-4"
-        onClick={() => {
+        onClick={async () => {
           toggleDirection();
-          setActiveInput(activeInput === "from" ? "to" : "from");
+          await simulate(activeInput);
+          revalidate();
         }}
       >
         <IconArrowDown className="h-3 w-3 text-primitives-gray-light-300" />
@@ -176,7 +177,6 @@ const ConvertForm: React.FC = () => {
         isDisabled={submission.isPending}
         isLoading={activeInput !== "to" ? simulation.isPending : false}
         onFocus={() => setActiveInput("to")}
-        shouldValidate={isReverse}
         showCoinSelector={!isReverse}
         onSelectCoin={changePair}
         triggerSimulation={async (reverse) => {

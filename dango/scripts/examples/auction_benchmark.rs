@@ -83,8 +83,8 @@ fn main() -> anyhow::Result<()> {
     );
 
     ensure!(
-        app.do_query_app(Query::status(), 0, false)?
-            .as_status()
+        app.do_query_app(Query::status(), None, false)?
+            .into_status()
             .last_finalized_block
             .height
             == FROM_HEIGHT,

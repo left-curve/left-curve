@@ -53,8 +53,12 @@ fn main() -> anyhow::Result<()> {
     );
 
     let status = app
-        .do_query_app(Query::Status(QueryStatusRequest {}), FROM_HEIGHT, false)?
-        .as_status();
+        .do_query_app(
+            Query::Status(QueryStatusRequest {}),
+            Some(FROM_HEIGHT),
+            false,
+        )?
+        .into_status();
 
     let mut suite = TestSuite::new_with_app(
         app,

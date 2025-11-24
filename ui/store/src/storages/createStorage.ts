@@ -30,9 +30,6 @@ export function createStorage<inner extends Record<string, unknown> = Record<str
     removeItem(key) {
       storage.removeItem(`${prefix}.${key as string}`);
     },
-    keys() {
-      return Array.from({ length: storage.length }, (_, index) => storage.key(index)) as string[];
-    },
   };
 }
 
@@ -67,9 +64,6 @@ export function createAsyncStorage<inner extends Record<string, unknown> = Recor
     },
     async removeItem(key) {
       await unwrap(storage.removeItem(`${prefix}.${key as string}`));
-    },
-    keys() {
-      return Array.from({ length: storage.length }, (_, index) => storage.key(index)) as string[];
     },
   };
 }

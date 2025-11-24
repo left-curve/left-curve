@@ -4,20 +4,26 @@ import {
   JsonVisualizer,
   ResizerContainer,
   Tabs,
+  useApp,
   useTheme,
 } from "@left-curve/applets-kit";
 import {
   useAccount,
   useAppConfig,
+  useBalances,
   usePublicClient,
   useSigningClient,
   useSubmitTx,
 } from "@left-curve/store";
 import { Editor } from "@monaco-editor/react";
 import { useMutation } from "@tanstack/react-query";
+import { tryCatch } from "@left-curve/dango/utils";
+import { upgrade, configure } from "@left-curve/dango/actions";
 
 import { useState, type PropsWithChildren } from "react";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
+import querySchema from "./querySchema.json";
+import executeSchema from "./executeSchema.json";
 
 type MsgBuilderProps = {
   currentTab: "execute" | "query";
@@ -61,15 +67,34 @@ const QueryMsg: React.FC = () => {
     data: queryResponse,
   } = useMutation({
     mutationFn: () =>
-      client.queryWasmSmart(JSON.parse(queryMsg)).catch((e: any) => {
-        return { error: e.details };
-      }),
+      client
+        .queryApp({ query: JSON.parse(queryMsg) })
+        .then((r) => ({ response: r }))
+        .catch((e: any) => {
+          return { error: e.details };
+        }),
   });
   if (currentTab !== "query" || !config) return null;
 
   const addresses = Object.fromEntries(
     Object.entries(config.addresses).filter(([key]) => !key.includes("0x")),
   );
+
+  querySchema.$defs.Address = {
+    anyOf: [
+      {
+        type: "string",
+        enum: Object.values(addresses),
+        enumDescriptions: Object.keys(addresses).map((k) =>
+          m["explorer.contracts.contractDescription"]({ contract: k }),
+        ),
+      },
+      {
+        type: "string",
+      },
+    ],
+    description: "The address of the contract to which the query will be sent.",
+  } as unknown as { type: string; description: string };
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -86,34 +111,7 @@ const QueryMsg: React.FC = () => {
                   {
                     uri: "",
                     fileMatch: ["*"],
-                    schema: {
-                      type: "object",
-                      properties: {
-                        contract: {
-                          anyOf: [
-                            {
-                              type: "string",
-                              enum: Object.values(addresses),
-                              enumDescriptions: Object.keys(addresses).map((k) =>
-                                m["explorer.contracts.contractDescription"]({ contract: k }),
-                              ),
-                            },
-                            {
-                              type: "string",
-                            },
-                          ],
-                          description:
-                            "The address of the contract to which the query will be sent.",
-                        },
-                        msg: {
-                          type: "object",
-                          description:
-                            "The query message in JSON format that will be sent to the contract.",
-                          additionalProperties: true,
-                        },
-                      },
-                      required: ["contract", "msg"],
-                    },
+                    schema: querySchema,
                   },
                 ],
               });
@@ -143,7 +141,7 @@ const QueryMsg: React.FC = () => {
         {queryResponse ? (
           <div className="min-h-[60vh] lg:min-h-full p-4 bg-surface-tertiary-rice shadow-account-card  rounded-xl  flex-1 w-full lg:w-auto overflow-auto">
             <div className="overflow-hidden rounded-lg p-2 bg-[#453d39] h-[61vh] overflow-y-scroll scrollbar-none">
-              <JsonVisualizer json={JSON.stringify(queryResponse)} collapsed={1} />
+              <JsonVisualizer json={queryResponse} collapsed={1} />
             </div>
           </div>
         ) : null}
@@ -156,25 +154,87 @@ const QueryMsg: React.FC = () => {
 };
 
 const ExecuteMsg: React.FC = () => {
+  const { toast } = useApp();
   const { currentTab } = useMsgBuilder();
   const { data: signingClient } = useSigningClient();
   const { isConnected, account } = useAccount();
+  const { data: balances = {} } = useBalances({ address: account?.address });
   const [executeMsg, setExecuteMsg] = useState<string>("");
   const { theme } = useTheme();
 
   const { isPending, mutateAsync: execute } = useSubmitTx({
+    toast: {
+      error: (error) => toast.error({ title: m["common.error"](), description: String(error) }),
+    },
     mutation: {
       mutationFn: async () => {
         if (!signingClient || !account) {
           throw new Error("Signing client or account address is not available");
         }
 
-        await signingClient.execute({ sender: account.address, execute: JSON.parse(executeMsg) });
+        const { data: message } = tryCatch(() => JSON.parse(executeMsg));
+        if (!message) throw new Error("Invalid execute message");
+
+        if ("execute" in message) {
+          return await signingClient.execute({ sender: account.address, execute: message.execute });
+        }
+
+        if ("migrate" in message) {
+          return await signingClient.migrate({ sender: account.address, ...message.migrate });
+        }
+
+        if ("instantiate" in message) {
+          return await signingClient.instantiate({
+            sender: account.address,
+            ...message.instantiate,
+          });
+        }
+
+        if ("transfer" in message) {
+          return await signingClient.transfer({ sender: account.address, ...message.transfer });
+        }
+
+        if ("upload" in message) {
+          return await signingClient.storeCode({
+            sender: account.address,
+            code: message.upload.code,
+          });
+        }
+
+        if ("upgrade" in message) {
+          return await upgrade(signingClient, {
+            sender: account.address,
+            ...message.upgrade,
+          });
+        }
+
+        if ("configure" in message) {
+          return await configure(signingClient, {
+            sender: account.address,
+            ...message.configure,
+          });
+        }
+
+        throw new Error("Unsupported message type");
       },
     },
   });
+
   if (currentTab !== "execute") return null;
 
+  executeSchema.$defs.Funds = {
+    type: "object",
+    description: "(Optional) Funds (coins) to be sent with the execution.",
+    properties: Object.fromEntries(
+      Object.entries(balances).map(([denom, balance]) => [
+        denom,
+        {
+          type: "string",
+          description: `Available balance: ${balance}`,
+        },
+      ]),
+    ),
+  };
   return (
     <div className="flex flex-col gap-4 w-full">
       <ResizerContainer
@@ -190,43 +250,7 @@ const ExecuteMsg: React.FC = () => {
                   {
                     uri: "",
                     fileMatch: ["*"],
-                    schema: {
-                      $defs: {
-                        execute: {
-                          type: "object",
-                          properties: {
-                            contract: {
-                              type: "string",
-                              description:
-                                "The address of the contract to which the message will be sent.",
-                            },
-                            msg: {
-                              type: "object",
-                              description:
-                                "The message in JSON format that will be sent to the contract.",
-                              additionalProperties: true,
-                            },
-                            funds: {
-                              type: "object",
-                              description:
-                                "(Optional) Funds (coins) to be sent with the execution.",
-                            },
-                          },
-                          required: ["contract", "msg"],
-                        },
-                      },
-                      oneOf: [
-                        {
-                          $ref: "#/$defs/execute",
-                        },
-                        {
-                          type: "array",
-                          items: {
-                            $ref: "#/$defs/execute",
-                          },
-                        },
-                      ],
-                    },
+                    schema: executeSchema,
                   },
                 ],
               });

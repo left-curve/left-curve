@@ -38,7 +38,7 @@ export async function migrate<transport extends Transport>(
     extraTypes: {
       Migrate: [
         { name: "contract", type: "address" },
-        { name: "newCodeHash", type: "string" },
+        { name: "new_code_hash", type: "string" },
         { name: "msg", type: "MigrateMessage" },
       ],
       MigrateMessage: type,

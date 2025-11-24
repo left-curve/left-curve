@@ -92,6 +92,8 @@ export type OrderFilledEvent = {
   fee_quote: string;
   clearing_price: string;
   cleared: boolean;
+  total: string;
+  remaining: string;
 };
 
 export type EventData = ContractEvent | ExecuteEvent | TransferEvent;
