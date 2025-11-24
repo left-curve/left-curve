@@ -14,7 +14,7 @@ import Privy, {
 
 import type { Eip712Signature } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
-import type { EIP1193Provider } from "@left-curve/store/types";
+import type { EIP1193Provider } from "../types/eip1193.js";
 
 const ETHEREUM_HEX_CHAIN_ID = "0x1";
 
