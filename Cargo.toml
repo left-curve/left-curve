@@ -118,18 +118,13 @@ clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
 config                      = "0.15"
-config-parser               = { path = "utils/config-parser" }
 criterion                   = "0.7"
 data-encoding               = "2"
 dialoguer                   = "0.12"
 digest                      = "0.10"
 dyn-clone                   = "1"
-dyn-event                   = { path = "utils/dyn-event" }
 ed25519-dalek               = "2"
 elsa                        = "1"
-error-backtrace             = { path = "utils/error-backtrace" }
-error-backtrace-derive      = { path = "utils/error-backtrace/derive" }
-eth-utils                   = { path = "utils/eth" }
 futures                     = "0.3"
 futures-util                = "0.3"
 glob                        = "0.3"
@@ -139,7 +134,6 @@ hex-literal                 = "1"
 home                        = "0.5"
 http                        = "1"
 ics23                       = "0.12"
-identity                    = { path = "utils/identity" }
 itertools                   = "0.14"
 k256                        = "0.13"
 lzma-rs                     = "0.3"
@@ -181,7 +175,6 @@ sqlx                        = "0.8"
 strum                       = "0.27"
 strum_macros                = "0.27"
 syn                         = "2"
-temp-rocksdb                = { path = "utils/temp-rocksdb" }
 tempfile                    = "3"
 tendermint                  = "0.40.4"
 tendermint-rpc              = "0.40.4"
@@ -266,6 +259,14 @@ indexer-sql-migration       = { path = "indexer/sql-migration" }
 indexer-testing             = { path = "indexer/testing" }
 pyth-client                 = { path = "pyth/client" }
 pyth-types                  = { path = "pyth/types" }
+
+# Utils
+config-parser   = { path = "utils/config-parser" }
+dyn-event       = { path = "utils/dyn-event" }
+error-backtrace = { path = "utils/error-backtrace" }
+eth-utils       = { path = "utils/eth" }
+identity        = { path = "utils/identity" }
+temp-rocksdb    = { path = "utils/temp-rocksdb" }
 
 [profile.release]
 codegen-units    = 1

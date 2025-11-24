@@ -16,7 +16,7 @@ derive  = ["dep:error-backtrace-derive"]
 [dependencies]
 anyhow                 = { workspace = true }
 borsh                  = { workspace = true, features = ["derive"] }
-error-backtrace-derive = { workspace = true, optional = true }
+error-backtrace-derive = { path = "./derive", optional = true }
 serde                  = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
