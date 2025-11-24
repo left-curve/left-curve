@@ -4,7 +4,7 @@ use {
         runtime::RuntimeHandler,
     },
     grug_types::BlockAndBlockOutcomeWithHttpDetails,
-    serde::Serialize,
+    serde::{Deserialize, Serialize},
     std::{
         collections::HashMap,
         io::Write,
@@ -14,10 +14,17 @@ use {
 };
 
 #[cfg(feature = "s3")]
-use {crate::s3, std::time::Duration, std::time::Instant, tokio::time::sleep};
+use {
+    crate::error::IndexerError, crate::s3, std::time::Duration, std::time::Instant,
+    tokio::time::sleep,
+};
 
 #[cfg(feature = "http-request-details")]
 use grug_types::{Hash256, HttpRequestDetails};
+
+#[cfg(feature = "s3")]
+const S3_HIGHEST_BLOCK_FILENAME: &str = "s3_highest_block.json";
+const HIGHEST_BLOCK_FILENAME: &str = "last_block.json";
 
 // TODO: need to add `keep_blocks` configuration to allow choosing if we keep blocks
 // or not, to save disk space. `app.toml` could also add a u64 field to limit the
@@ -32,7 +39,7 @@ pub struct Cache {
     blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct LastBlockHeight {
     block_height: u64,
 }
@@ -103,20 +110,151 @@ impl Cache {
         Ok(http_request_details)
     }
 
-    fn store_last_block_height(&self, block_height: u64) -> Result<()> {
+    fn store_last_block_height(&self, block_height: u64, filename: &str) -> Result<()> {
         let dir = self.context.indexer_path.blocks_path();
         let mut tmp = tempfile::NamedTempFile::new_in(dir)?;
         let payload = LastBlockHeight { block_height };
         serde_json::to_writer(&mut tmp, &payload)?;
         tmp.flush()?;
-        tmp.persist(self.context.indexer_path.blocks_path().join("last.json"))
+        tmp.persist(self.context.indexer_path.blocks_path().join(filename))
             .map(|_| ())
             .map_err(|e| e.error.into())
+    }
+
+    fn read_last_block_height(&self, filename: &str) -> Result<Option<u64>> {
+        let path = self.context.indexer_path.blocks_path().join(filename);
+
+        if !path.exists() {
+            return Ok(None);
+        }
+
+        let file = std::fs::File::open(path)?;
+        let payload: LastBlockHeight = serde_json::from_reader(file)?;
+
+        Ok(Some(payload.block_height))
+    }
+
+    #[cfg(feature = "s3")]
+    fn sync_to_s3(&self, from_height: u64, to_height: u64) -> Result<()> {
+        let blocks_root = self.context.indexer_path.blocks_path();
+        let s3_cfg = self.context.s3.clone();
+
+        self.runtime_handler.block_on(async move {
+            // NOTE: for simplification I don't do those uploads in parallel,
+            // we could easily do it but need to handle errors properly like:
+            //
+            // - Do not write the highest block height locally if any failed
+            // - Have a maximum number of concurrent uploads
+            //
+            for block_height in from_height..=to_height {
+                let cfg = s3_cfg.clone();
+
+                let block_path = self.context.indexer_path.block_path(block_height);
+                let file_path = CacheFile::file_path(block_path);
+
+                let mut s3_key = file_path
+                    .strip_prefix(&blocks_root)
+                    .map(|rel| rel.to_string_lossy().into_owned())?;
+
+                // Prepend optional path/prefix within the bucket
+                if !cfg.path.is_empty() {
+                    let prefix = cfg.path.trim_matches('/');
+                    if !prefix.is_empty() {
+                        s3_key = format!("{}/{}", prefix, s3_key.trim_start_matches('/'));
+                    }
+                }
+
+                let path = file_path.clone();
+
+                #[cfg(feature = "tracing")]
+                tracing::info!(
+                    block_height,
+                    key = %s3_key,
+                    path = %path.display(),
+                    "Uploading cached block to S3"
+                );
+
+                #[cfg(feature = "metrics")]
+                metrics::counter!("indexer.s3.upload.attempts").increment(1);
+
+                // Retry logic, in case of network error.
+                for _ in 0..=10 {
+                    let size = std::fs::metadata(&file_path).map(|m| m.len()).unwrap_or(0);
+                    let start = Instant::now();
+                    // Create an S3 client per attempt to preserve previous behavior
+                    let client = match s3::Client::new(cfg.clone()).await {
+                        Ok(c) => c,
+                        Err(err) => {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error = %err, "S3 client init failed");
+                            #[cfg(feature = "metrics")]
+                            metrics::counter!("indexer.s3.upload.failure").increment(1);
+                            sleep(Duration::from_secs(1)).await;
+                            continue;
+                        },
+                    };
+
+                    match client.upload_file(s3_key.clone(), &file_path).await {
+                        Ok(()) => {
+                            let elapsed = start.elapsed();
+                            #[cfg(feature = "tracing")]
+                            tracing::info!(
+                                block_height,
+                                bytes = size,
+                                ms = %elapsed.as_millis(),
+                                file = %file_path.display(),
+                                "S3 upload succeeded"
+                            );
+                            #[cfg(feature = "metrics")]
+                            {
+                                metrics::counter!("indexer.s3.upload.success").increment(1);
+                                metrics::histogram!("indexer.s3.upload.bytes").record(size as f64);
+                                metrics::histogram!("indexer.s3.upload.duration")
+                                    .record(elapsed.as_secs_f64());
+                            }
+
+                            break;
+                        },
+                        Err(err) => {
+                            #[cfg(feature = "tracing")]
+                            tracing::error!(error = %err, file = %file_path.display(), "S3 upload failed");
+                            #[cfg(feature = "metrics")]
+                            metrics::counter!("indexer.s3.upload.failure").increment(1);
+
+                            sleep(Duration::from_secs(1)).await;
+                        },
+                    }
+                }
+            }
+
+            Ok::<(), IndexerError>(())
+        })?;
+
+        self.store_last_block_height(to_height, S3_HIGHEST_BLOCK_FILENAME)?;
+
+        Ok(())
     }
 }
 
 impl grug_app::Indexer for Cache {
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
+        #[cfg(feature = "s3")]
+        if self.context.s3.enabled {
+            let last_s3_sync_height = self.read_last_block_height("last_s3_sync_height.json")?;
+            let Some(last_s3_sync_height) = last_s3_sync_height else {
+                return Ok(());
+            };
+
+            let last_written_height = self.read_last_block_height(HIGHEST_BLOCK_FILENAME)?;
+            let Some(last_written_height) = last_written_height else {
+                return Ok(());
+            };
+
+            if last_s3_sync_height < last_written_height {
+                self.sync_to_s3(last_s3_sync_height, last_written_height)?;
+            }
+        }
+
         // NOTE: might need to create caching directory, but working so far.
         Ok(())
     }
@@ -228,88 +366,13 @@ impl grug_app::Indexer for Cache {
         let file_path = self.context.indexer_path.block_path(block_height);
 
         if CacheFile::exists(file_path.clone()) {
-            let _compressed_path = CacheFile::compress_file(file_path.clone())?;
+            CacheFile::compress_file(file_path.clone())?;
 
-            self.store_last_block_height(block_height)?;
+            self.store_last_block_height(block_height, HIGHEST_BLOCK_FILENAME)?;
 
-            // If S3 config present, upload compressed file in background
             #[cfg(feature = "s3")]
             if self.context.s3.enabled {
-                let cfg = self.context.s3.clone();
-                let blocks_root = self.context.indexer_path.blocks_path();
-                // Derive an S3 key relative to blocks/ directory
-                let mut key = match _compressed_path.strip_prefix(&blocks_root) {
-                    Ok(rel) => rel.to_string_lossy().into_owned(),
-                    Err(_) => {
-                        // Fallback to expected relative structure using block height
-                        let mut rel_path = self.context.indexer_path.block_path(block_height);
-                        rel_path.set_extension("borsh.xz");
-                        rel_path
-                            .strip_prefix(&blocks_root)
-                            .unwrap_or(&rel_path)
-                            .to_string_lossy()
-                            .into_owned()
-                    },
-                };
-
-                // Prepend optional path/prefix within the bucket
-                if !cfg.path.is_empty() {
-                    let prefix = cfg.path.trim_matches('/');
-                    if !prefix.is_empty() {
-                        key = format!("{}/{}", prefix, key.trim_start_matches('/'));
-                    }
-                }
-
-                let path = _compressed_path.clone();
-
-                #[cfg(feature = "tracing")]
-                tracing::info!(
-                    block_height,
-                    key = %key,
-                    path = %path.display(),
-                    "Uploading cached block to S3"
-                );
-
-                self.runtime_handler.block_on(async move {
-                    #[cfg(feature = "metrics")]
-                    metrics::counter!("indexer.s3.upload.attempts").increment(1);
-
-                    // Retry logic, in case of network error.
-                    for _ in 0..=10 {
-                        let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-                        let start = Instant::now();
-                        match s3::upload_file(cfg.clone(), key.clone(), &path).await {
-                            Ok(()) => {
-                                let elapsed = start.elapsed();
-                                #[cfg(feature = "tracing")]
-                                tracing::info!(
-                                    block_height,
-                                    bytes = size,
-                                    ms = %elapsed.as_millis(),
-                                    file = %path.display(),
-                                    "S3 upload succeeded"
-                                );
-                                #[cfg(feature = "metrics")]
-                                {
-                                    metrics::counter!("indexer.s3.upload.success").increment(1);
-                                    metrics::histogram!("indexer.s3.upload.bytes").record(size as f64);
-                                    metrics::histogram!("indexer.s3.upload.duration")
-                                        .record(elapsed.as_secs_f64());
-                                }
-
-                                break;
-                            },
-                            Err(err) => {
-                                #[cfg(feature = "tracing")]
-                                tracing::error!(error = %err, file = %path.display(), "S3 upload failed");
-                                #[cfg(feature = "metrics")]
-                                metrics::counter!("indexer.s3.upload.failure").increment(1);
-
-                                sleep(Duration::from_secs(1)).await;
-                            },
-                        }
-                    }
-                });
+                self.sync_to_s3(block_height, block_height)?;
             }
         }
 

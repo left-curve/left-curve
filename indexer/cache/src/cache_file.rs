@@ -87,6 +87,10 @@ impl CacheFile {
         DiskPersistence::new(file_path, false).exists()
     }
 
+    pub fn file_path(file_path: PathBuf) -> PathBuf {
+        DiskPersistence::new(file_path, false).file_path
+    }
+
     pub fn delete_from_disk(file_path: PathBuf) -> error::Result<()> {
         Ok(DiskPersistence::new(file_path, false).delete()?)
     }
