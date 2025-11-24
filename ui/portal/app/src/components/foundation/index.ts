@@ -13,8 +13,10 @@ export { Badge } from "./Badge";
 export { AccountCard } from "../AccountMenu/AccountCard";
 export { TextCopy } from "./TextCopy";
 export { Tabs } from "./Tabs";
-export { PairAssets } from "./PairAssets";
+export { Tab } from "./Tabs";
 export { Activities } from "./activities/Activities";
+export { PairAssets } from "./PairAssets";
+export { ShadowContainer } from "./ShadowContainer";
 
 /* ---------------------------------- Icons --------------------------------- */
 
