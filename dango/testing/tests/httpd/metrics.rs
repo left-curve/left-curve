@@ -40,7 +40,9 @@ async fn metrics_server_exposes_metrics() -> anyhow::Result<()> {
     // Uncomment the line below to print the metrics response for debugging
     // println!("Metrics response:\n{}", metrics_body);
 
-    assert_that!(metrics_body).contains("http_requests_total");
+    // In actix-web-metrics v4, the label `http_requests_total` is dropped and
+    // replaced by `http_server_request_duration_count`.
+    assert_that!(metrics_body).contains("http_server_request_duration_count");
 
     Ok(())
 }
