@@ -17,7 +17,6 @@ pub enum IndexerError {
     #[backtrace(new)]
     StripPrefixError(std::path::StripPrefixError),
 
-    #[cfg(feature = "s3")]
     #[error("byte stream error: {error}")]
     #[backtrace(new)]
     ByteStream { error: String },
@@ -86,7 +85,6 @@ impl From<IndexerError> for grug_app::IndexerError {
                 parse_error!(Generic, error, backtrace)
             },
             IndexerError::Runtime { error, backtrace } => parse_error!(Generic, error, backtrace),
-            #[cfg(feature = "s3")]
             IndexerError::ByteStream { error, backtrace } => {
                 parse_error!(Generic, error, backtrace)
             },

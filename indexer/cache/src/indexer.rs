@@ -38,6 +38,7 @@ pub struct Cache {
     // in memory between `pre_indexing`, `index_block` and `post_indexing`.
     blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
     // This ensures all blocks are synced before writing cache
+    #[cfg(feature = "s3")]
     s3_block_heights: Arc<Mutex<HashMap<u64, bool>>>,
 }
 
