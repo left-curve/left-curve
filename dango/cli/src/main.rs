@@ -141,10 +141,10 @@ async fn main() -> anyhow::Result<()> {
         }
 
         // Optional: host.name — read from HOSTNAME if provided
-        if let Ok(host) = std::env::var("HOSTNAME") {
-            if !host.is_empty() {
-                attrs.push(KeyValue::new("host.name", host));
-            }
+        if let Ok(host) = std::env::var("HOSTNAME")
+            && !host.is_empty()
+        {
+            attrs.push(KeyValue::new("host.name", host));
         }
 
         let resource = Resource::builder()
