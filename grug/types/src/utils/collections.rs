@@ -9,7 +9,7 @@ macro_rules! btree_map {
 }
 
 /// Builds a [`HashMap`](std::collections::HashMap) with the given key-value pairs.
-// TODO: delete after the same macro is stablized in std: https://github.com/rust-lang/rust/issues/144032
+// TODO: delete after the same macro is stabilized in std: https://github.com/rust-lang/rust/issues/144032
 #[macro_export]
 macro_rules! hash_map {
     ($($key:expr => $value:expr),* $(,)?) => {{
