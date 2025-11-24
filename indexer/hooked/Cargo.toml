@@ -28,7 +28,6 @@ futures       = { workspace = true }
 grug-app      = { workspace = true }
 grug-types    = { workspace = true, features = ["chrono", "sea-orm"] }
 http          = { workspace = true }
-itertools     = { workspace = true }
 metrics       = { workspace = true, optional = true }
 sea-orm       = { workspace = true }
 serde         = { workspace = true }

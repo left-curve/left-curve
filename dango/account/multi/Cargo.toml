@@ -15,11 +15,11 @@ version       = { workspace = true }
 library = []
 
 [dependencies]
-anyhow                = { workspace = true }
-dango-account-factory = { workspace = true, features = ["library"] }
-dango-auth            = { workspace = true }
-dango-types           = { workspace = true }
-grug                  = { workspace = true }
+anyhow      = { workspace = true }
+dango-auth  = { workspace = true }
+dango-types = { workspace = true }
+grug        = { workspace = true }
 
 [dev-dependencies]
-test-case = { workspace = true }
+dango-account-factory = { workspace = true, features = ["library"] }
+test-case             = { workspace = true }

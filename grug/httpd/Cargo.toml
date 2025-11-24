@@ -15,7 +15,6 @@ metrics = [
   "dep:futures-util",
   "dep:metrics",
   "dep:metrics-exporter-prometheus",
-  "dep:prometheus",
 ]
 testing = ["dep:grug-testing"]
 tracing = ["dep:tracing"]
@@ -23,7 +22,6 @@ tracing = ["dep:tracing"]
 [dependencies]
 actix                       = { workspace = true }
 actix-cors                  = { workspace = true }
-actix-files                 = { workspace = true }
 actix-web                   = { workspace = true }
 actix-web-metrics           = { workspace = true, optional = true }
 anyhow                      = { workspace = true }
@@ -37,9 +35,6 @@ grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
 metrics                     = { workspace = true, optional = true }
 metrics-exporter-prometheus = { workspace = true, optional = true }
-num_cpus                    = { workspace = true }
-prometheus                  = { workspace = true, optional = true }
-sentry                      = { workspace = true }
 sentry-actix                = { workspace = true }
 serde                       = { workspace = true }
 serde_json                  = { workspace = true }
