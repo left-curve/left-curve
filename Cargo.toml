@@ -187,7 +187,6 @@ toml                        = "0.9"
 tower                       = "0.5"
 tower-abci                  = "0.19"
 tracing                     = "0.1"
-tracing-actix-web           = "0.7"
 tracing-opentelemetry       = "0.32"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 url                         = "2.5.4"

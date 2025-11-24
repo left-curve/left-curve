@@ -49,7 +49,6 @@ tendermint-rpc              = { workspace = true, features = ["http-client"] }
 thiserror                   = { workspace = true }
 tokio                       = { workspace = true }
 tracing                     = { workspace = true, optional = true }
-tracing-actix-web           = { workspace = true }
 tracing-subscriber          = { workspace = true }
 uuid                        = { workspace = true }
 
