@@ -34,7 +34,6 @@ anyhow                      = { workspace = true }
 async-graphql               = { workspace = true }
 async-graphql-actix-web     = { workspace = true }
 async-trait                 = { workspace = true }
-base64                      = { workspace = true }
 chrono                      = { workspace = true }
 clap                        = { workspace = true }
 error-backtrace             = { workspace = true }

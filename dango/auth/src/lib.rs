@@ -4,7 +4,6 @@ use {
         primitives::{U160, U256, address, uint},
     },
     anyhow::{bail, ensure},
-    base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD},
     dango_types::{
         DangoQuerier,
         account_factory::RegisterUserData,
@@ -13,6 +12,7 @@ use {
             StandardCredential,
         },
     },
+    data_encoding::BASE64URL_NOPAD,
     grug::{
         Addr, Api, AuthCtx, AuthMode, Inner, Item, JsonDeExt, JsonSerExt, QuerierExt, SignData,
         StdError, StdResult, Storage, StorageQuerier, Tx,
@@ -358,7 +358,7 @@ pub fn verify_signature(
                 let client_data: ClientData = cred.client_data.deserialize_json()?;
 
                 let sign_data = data.to_sign_data()?;
-                let sign_data_base64 = URL_SAFE_NO_PAD.encode(sign_data);
+                let sign_data_base64 = BASE64URL_NOPAD.encode(&sign_data);
 
                 ensure!(
                     client_data.challenge == sign_data_base64,
