@@ -79,7 +79,7 @@ homepage      = "https://grug.build"
 keywords      = ["blockchain", "wasm"]
 license       = "TBD"
 repository    = "https://github.com/left-curve/left-curve"
-rust-version  = "1.86" # async-graphql@7.0.17 requires rustc 1.86.0
+rust-version  = "1.89" # clickhouse-rs 0.14 requires rust 1.89+
 version       = "0.0.0"
 
 [workspace.dependencies]
@@ -95,7 +95,7 @@ actix-web                   = "4"
 actix-web-lab               = "0"
 actix-web-metrics           = "0.2"
 aes-gcm                     = "0.10"
-alloy                       = "1"
+alloy                       = "1.1"
 anyhow                      = "1"
 assert-json-diff            = "2"
 assertor                    = "0.0.4"
@@ -115,7 +115,7 @@ bnum                        = "0.13"
 borsh                       = "1"
 chrono                      = "0.4"
 clap                        = { version = "4", features = ["derive"] }
-clickhouse                  = { version = "0.13", git = "https://github.com/ClickHouse/clickhouse-rs", rev = "8cf3d2e138dd121367fa10e875d3f91374b075b2" } # TODO: use crates.io once the latest version is published
+clickhouse                  = "0.14"
 clru                        = "0.6"
 colored                     = "3"
 colored_json                = "5"
@@ -199,8 +199,8 @@ tracing-opentelemetry       = "0.32"
 tracing-subscriber          = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 url                         = "2.5.4"
 uuid                        = { version = "1", features = ["serde", "v4"] }
-wasmer                      = "5" # keep at v5 because there's license change for v6
-wasmer-middlewares          = "5" # keep at v5 because there's license change for v6
+wasmer                      = "6"
+wasmer-middlewares          = "6"
 
 # S3 client (AWS SDK v1)
 aws-config                  = "1"

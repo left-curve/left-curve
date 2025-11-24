@@ -104,6 +104,7 @@
     "@types/big.js": "^6.2.2"
   },
   "dependencies": {
+    "eventemitter3": "catalog:",
     "@noble/curves": "^1.6.0",
     "@noble/hashes": "^1.4.0",
     "@scure/bip32": "^1.4.0",
