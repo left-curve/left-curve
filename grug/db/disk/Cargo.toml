@@ -19,6 +19,7 @@ error-backtrace = { workspace = true }
 grug-app        = { workspace = true }
 grug-jmt        = { workspace = true, optional = true }
 grug-types      = { workspace = true }
+hex             = { workspace = true }
 ics23           = { workspace = true, optional = true }
 metrics         = { workspace = true, optional = true }
 parking_lot     = { workspace = true }

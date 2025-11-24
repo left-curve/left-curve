@@ -5056,6 +5056,7 @@ dependencies = [
  "grug-jmt",
  "grug-storage",
  "grug-types",
+ "hex",
  "hex-literal",
  "ics23",
  "metrics",

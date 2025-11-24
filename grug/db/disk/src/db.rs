@@ -4,7 +4,7 @@ use uuid::Uuid;
 use {crate::statistics, grug_types::MetricsIterExt};
 use {
     crate::{DbError, DbResult},
-    grug_app::{Commitment, Db},
+    grug_app::{CONTRACT_NAMESPACE, Commitment, Db},
     grug_types::{Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
     rocksdb::{ColumnFamily, DB, IteratorMode, Options, ReadOptions, WriteBatch},
@@ -28,7 +28,21 @@ pub const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 
 /// The state storage (SS) family stores raw, prehash key-value pair data.
 /// When performing normal read/write/remove/scan interactions, we use this CF.
+///
+/// As a performance optimization, all records of which the keys start with "wasm"
+/// are stored in a separate column family (see below).
 pub const CF_NAME_STATE_STORAGE: &str = "state_storage";
+
+/// A column family for all the records in the state storage that starts with "wasm".
+///
+/// We store these records in a separate column family, because RocksDB iteration
+/// is much faster is all records in a column family share a common prefix.
+pub const CF_NAME_WASM: &str = "wasm";
+
+/// The upper bound (exclusive) of keys that go into the "wasm" column family.
+///
+/// It equals `increment_last_byte(grug_app::CONTRACT_NAMESPACE)`.
+pub const CONTRACT_NAMESPACE_PLUS_ONE: &[u8] = b"wasn";
 
 /// Storage key for the latest version.
 pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
@@ -128,15 +142,25 @@ impl<T> DiskDb<T> {
             #[cfg(feature = "ibc")]
             CF_NAME_PREIMAGES,
             CF_NAME_STATE_STORAGE,
+            CF_NAME_WASM,
             CF_NAME_STATE_COMMITMENT,
         ])?;
 
         // If `priority_range` is specified, load the data in that range into memory.
         let priority_data = priority_range.map(|(min, max)| {
+            // For now, we only support priority ranges that fall completely
+            // within the "wasm" range. If not, panic.
+            assert!(
+                CONTRACT_NAMESPACE <= min.as_ref() && max.as_ref() <= CONTRACT_NAMESPACE_PLUS_ONE,
+                "priority range does not fall completely within the wasm range! min = {}, max = {}",
+                hex::encode(min.as_ref()),
+                hex::encode(max.as_ref())
+            );
+
             #[cfg(feature = "tracing")]
             let mut size = 0;
 
-            let cf = cf_state_storage(&db);
+            let cf = cf_wasm(&db);
             let opts = new_read_options(Some(min.as_ref()), Some(max.as_ref()));
             let records = db
                 .iterator_cf_opt(&cf, opts, IteratorMode::Start)
@@ -413,9 +437,16 @@ where
             }
         }
 
-        // Writes in state storage
-        let cf = cf_state_storage(&data.db);
+        // Writes in state storage and wasm.
+        let cf_state_storage = cf_state_storage(&data.db);
+        let cf_wasm = cf_wasm(&data.db);
         for (key, op) in pending.state_storage {
+            let cf = if key.starts_with(CONTRACT_NAMESPACE) {
+                cf_wasm
+            } else {
+                cf_state_storage
+            };
+
             if let Op::Insert(value) = op {
                 batch.put_cf(&cf, key, value);
             } else {
@@ -761,11 +792,19 @@ impl Storage for StateStorage {
             return value;
         }
 
+        // If the key is prefixed with `b"wasm"`, the read from the `wasm` column
+        // family. Otherwise, read from the `app` column family.
+        let cf = if key.starts_with(CONTRACT_NAMESPACE) {
+            cf_wasm(&self.guard.db)
+        } else {
+            cf_state_storage(&self.guard.db)
+        };
+
         let opts = new_read_options(None, None);
         let value = self
             .guard
             .db
-            .get_cf_opt(&cf_state_storage(&self.guard.db), key, &opts)
+            .get_cf_opt(&cf, key, &opts)
             .unwrap_or_else(|err| {
                 panic!("failed to read from state storage: {err}");
             });
@@ -827,18 +866,40 @@ impl Storage for StateStorage {
             return iter;
         }
 
+        let cf = match (min, max) {
+            // Iteration bounds fall completely within the wasm range.
+            // Iterate in the `wasm` column family.
+            (Some(min), Some(max))
+                if CONTRACT_NAMESPACE <= min && max <= CONTRACT_NAMESPACE_PLUS_ONE =>
+            {
+                cf_wasm(&self.guard.db)
+            },
+            // Iteration bounds are either completely smaller or completely bigger
+            // than the wasm range. Iterate in the `app` volumn famly.
+            (_, Some(max)) if max <= CONTRACT_NAMESPACE => cf_state_storage(&self.guard.db),
+            (Some(min), _) if min >= CONTRACT_NAMESPACE_PLUS_ONE => {
+                cf_state_storage(&self.guard.db)
+            },
+            // Iteration bounds across the boundry of the wasm range.
+            // It's technically possible to support this case, but we don't need
+            // it in practice. So here we leave it unimplemented.
+            _ => {
+                unimplemented!(
+                    "iteration bounds potentially cross wasm boundry! min = {:?}, max = {:?}",
+                    min.map(hex::encode),
+                    max.map(hex::encode)
+                );
+            },
+        };
+
         let opts = new_read_options(min, max);
         let mode = into_iterator_mode(order);
-        let iter = self
-            .guard
-            .db
-            .iterator_cf_opt(&cf_state_storage(&self.guard.db), opts, mode)
-            .map(|item| {
-                let (k, v) = item.unwrap_or_else(|err| {
-                    panic!("failed to iterate in state storage: {err}");
-                });
-                (k.to_vec(), v.to_vec())
+        let iter = self.guard.db.iterator_cf_opt(&cf, opts, mode).map(|item| {
+            let (k, v) = item.unwrap_or_else(|err| {
+                panic!("failed to iterate in state storage: {err}");
             });
+            (k.to_vec(), v.to_vec())
+        });
 
         #[cfg(feature = "metrics")]
         let iter = iter.with_metrics(DISK_DB_LABEL, [
@@ -944,6 +1005,12 @@ pub(crate) fn cf_preimages(db: &DB) -> &ColumnFamily {
 pub fn cf_state_storage(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_STATE_STORAGE).unwrap_or_else(|| {
         panic!("failed to find state storage column family");
+    })
+}
+
+pub fn cf_wasm(db: &DB) -> &ColumnFamily {
+    db.cf_handle(CF_NAME_WASM).unwrap_or_else(|| {
+        panic!("failed to find wasm column family");
     })
 }
 
