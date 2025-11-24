@@ -13,6 +13,10 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
+    "@formatjs/intl-getcanonicallocales": "^2.5.6",
+    "@formatjs/intl-locale": "^4.2.13",
+    "@formatjs/intl-numberformat": "^8.15.6",
+    "@formatjs/intl-pluralrules": "^5.4.6",
     "@left-curve/config": "workspace:*",
     "@left-curve/dango": "workspace:*",
     "@left-curve/foundation": "workspace:*",
@@ -33,7 +37,6 @@
     "expo-status-bar": "~2.0.1",
     "expo-symbols": "~0.2.2",
     "expo-web-browser": "~14.0.2",
-    "intl": "^1.2.5",
     "moti": "^0.30.0",
     "nativewind": "^4.1.23",
     "react": "catalog:",
@@ -51,11 +54,13 @@
     "react-native-svg-transformer": "^1.5.1",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "text-encoding": "^0.7.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "catalog:",
+    "@types/text-encoding": "^0.0.40",
     "expo-dev-client": "~5.0.10",
     "expo-system-ui": "~4.0.9"
   },
