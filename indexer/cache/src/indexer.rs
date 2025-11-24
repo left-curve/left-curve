@@ -302,6 +302,9 @@ impl Cache {
             #[cfg(feature = "tracing")]
             tracing::info!(
                 block_height = block_height,
+                last_synced_height = last_synced_height,
+                to_height = to_height,
+                all_blocks = s3_block_heights.len(),
                 "S3 sync not up-to-date, missing blocks"
             );
 
