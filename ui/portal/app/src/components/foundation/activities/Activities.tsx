@@ -1,15 +1,9 @@
 import type React from "react";
 import { useMemo, useState, useCallback } from "react";
-import {
-  View,
-  SectionList,
-  ActivityIndicator,
-  type ListRenderItemInfo,
-  ScrollView,
-} from "react-native";
+import { View, SectionList, ActivityIndicator, type ListRenderItemInfo } from "react-native";
 import { useActivities } from "@left-curve/store";
 import { isToday } from "date-fns";
-import { twMerge, formatDate } from "@left-curve/foundation";
+import { twMerge, formatDate, useApp } from "@left-curve/foundation";
 import { m } from "@left-curve/foundation/paraglide/messages.js";
 import { MotiView } from "moti";
 import HamsterEmoji from "@left-curve/foundation/images/emojis/detailed/hamster.svg";
@@ -27,11 +21,10 @@ type ActivitiesProps = {
 type Section = { title: string; data: ActivityRecord[] };
 
 export const Activities: React.FC<ActivitiesProps> = ({ className, activitiesPerCall = 5 }) => {
-  // TODO: change to dateFormat configured on settings
-  const dateFormat = "MM/dd/yyyy";
+  const { settings } = useApp();
+  const { dateFormat } = settings;
 
   const { userActivities, hasActivities, totalActivities } = useActivities();
-
   const [visible, setVisible] = useState(activitiesPerCall);
   const hasMore = visible < totalActivities;
 
@@ -89,8 +82,10 @@ export const Activities: React.FC<ActivitiesProps> = ({ className, activitiesPer
     <GlobalText className="text-sm text-ink-tertiary-500 mx-2 my-1">{section.title}</GlobalText>
   );
 
+  const Separator: React.FC = () => <View className="h-6" />;
+
   return (
-    <ScrollView className={twMerge("flex flex-col gap-6 h-[52vh]", className)}>
+    <View className={twMerge("flex flex-col h-[52vh]", className)}>
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
@@ -106,11 +101,12 @@ export const Activities: React.FC<ActivitiesProps> = ({ className, activitiesPer
             </View>
           ) : null
         }
+        SectionSeparatorComponent={Separator}
         initialNumToRender={10}
         windowSize={10}
         removeClippedSubviews
         stickySectionHeadersEnabled={false}
       />
-    </ScrollView>
+    </View>
   );
 };
