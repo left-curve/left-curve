@@ -1,13 +1,13 @@
-use serde::Serialize;
-use std::io::Write;
 use {
     crate::{
         Context, cache_file::CacheFile, error::Result, indexer_path::IndexerPath,
         runtime::RuntimeHandler,
     },
     grug_types::BlockAndBlockOutcomeWithHttpDetails,
+    serde::Serialize,
     std::{
         collections::HashMap,
+        io::Write,
         path::PathBuf,
         sync::{Arc, Mutex},
     },
