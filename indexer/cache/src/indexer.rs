@@ -37,6 +37,8 @@ pub struct Cache {
     // This because the way indexer methods are called, we need to store the blocks
     // in memory between `pre_indexing`, `index_block` and `post_indexing`.
     blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
+    // This ensures all blocks are synced before writing cache
+    s3_block_heights: Arc<Mutex<HashMap<u64, bool>>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -110,7 +112,15 @@ impl Cache {
         Ok(http_request_details)
     }
 
+    /// Store the last block height in the cache.
     fn store_last_block_height(&self, block_height: u64, filename: &str) -> Result<()> {
+        // We don't store if existing block height is greater
+        if let Some(existing_block_height) = self.read_last_block_height(filename)?
+            && existing_block_height >= block_height
+        {
+            return Ok(());
+        }
+
         let dir = self.context.indexer_path.blocks_path();
         let mut tmp = tempfile::NamedTempFile::new_in(dir)?;
         let payload = LastBlockHeight { block_height };
@@ -121,6 +131,7 @@ impl Cache {
             .map_err(|e| e.error.into())
     }
 
+    /// Read the last block height from the cache.
     fn read_last_block_height(&self, filename: &str) -> Result<Option<u64>> {
         let path = self.context.indexer_path.blocks_path().join(filename);
 
@@ -136,10 +147,16 @@ impl Cache {
 
     #[cfg(feature = "s3")]
     fn sync_to_s3(&self, from_height: u64, to_height: u64) -> Result<()> {
+        if !self.context.s3.enabled {
+            return Ok(());
+        }
+
         let blocks_root = self.context.indexer_path.blocks_path();
         let s3_cfg = self.context.s3.clone();
 
         self.runtime_handler.block_on(async move {
+            let s3_client = s3::Client::new(s3_cfg.clone()).await?;
+
             // NOTE: for simplification I don't do those uploads in parallel,
             // we could easily do it but need to handle errors properly like:
             //
@@ -166,6 +183,35 @@ impl Cache {
 
                 let path = file_path.clone();
 
+                // When restarting the node, we could have some already copied over blocks. Skipping those.
+                match s3_client.exists(&s3_key).await {
+                    Ok(false) => {
+                        // File does not exist in S3, proceed with upload
+                    },
+                    Ok(true) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::info!(
+                            block_height,
+                            key = %s3_key,
+                            path = %path.display(),
+                            "Cached block already exists in S3"
+                        );
+                        continue;
+                    }
+                    Err(err) => {
+                        #[cfg(feature = "tracing")]
+                        tracing::error!(
+                            block_height,
+                            key = %s3_key,
+                            path = %path.display(),
+                            error = %err,
+                            "Failed to check if cached block exists in S3"
+                        );
+
+                        // Error occurred, proceed with upload
+                    }
+                }
+
                 #[cfg(feature = "tracing")]
                 tracing::info!(
                     block_height,
@@ -177,24 +223,12 @@ impl Cache {
                 #[cfg(feature = "metrics")]
                 metrics::counter!("indexer.s3.upload.attempts").increment(1);
 
-                // Retry logic, in case of network error.
+                // Naive retries, in case of network error.
                 for _ in 0..=10 {
                     let size = std::fs::metadata(&file_path).map(|m| m.len()).unwrap_or(0);
                     let start = Instant::now();
-                    // Create an S3 client per attempt to preserve previous behavior
-                    let client = match s3::Client::new(cfg.clone()).await {
-                        Ok(c) => c,
-                        Err(err) => {
-                            #[cfg(feature = "tracing")]
-                            tracing::error!(error = %err, "S3 client init failed");
-                            #[cfg(feature = "metrics")]
-                            metrics::counter!("indexer.s3.upload.failure").increment(1);
-                            sleep(Duration::from_secs(1)).await;
-                            continue;
-                        },
-                    };
 
-                    match client.upload_file(s3_key.clone(), &file_path).await {
+                    match s3_client.upload_file(s3_key.clone(), &file_path).await {
                         Ok(()) => {
                             let elapsed = start.elapsed();
                             #[cfg(feature = "tracing")]
@@ -213,6 +247,12 @@ impl Cache {
                                     .record(elapsed.as_secs_f64());
                             }
 
+                            // We mark this block as uploaded
+                            self
+                                .s3_block_heights
+                                .lock()
+                                .map_err(|e| crate::error::IndexerError::mutex_poisoned(e.to_string()))?.insert(block_height, true);
+
                             break;
                         },
                         Err(err) => {
@@ -230,7 +270,58 @@ impl Cache {
             Ok::<(), IndexerError>(())
         })?;
 
+        let last_synced_height = self.read_last_block_height(S3_HIGHEST_BLOCK_FILENAME)?;
+
+        // This happens when the indexer is started for the first time,
+        // we don't want to sync since genesis but we'll
+        // start syncing from now
+        // TODO: Implement a command to sync older existing blocks to ensure
+        // 100% coverage of backed up blocks on S3
+        let Some(last_synced_height) = last_synced_height else {
+            self.store_last_block_height(to_height, S3_HIGHEST_BLOCK_FILENAME)?;
+
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                block_height = to_height,
+                "Started S3 syncing for the first time"
+            );
+
+            return Ok(());
+        };
+
+        let mut s3_block_heights = self
+            .s3_block_heights
+            .lock()
+            .map_err(|e| crate::error::IndexerError::mutex_poisoned(e.to_string()))?;
+
+        // Find the first missing block in the range
+        if let Some(block_height) =
+            (last_synced_height..=to_height).find(|h| !s3_block_heights.contains_key(h))
+        {
+            #[cfg(feature = "tracing")]
+            tracing::info!(
+                block_height = block_height,
+                "S3 sync not up-to-date, missing blocks"
+            );
+
+            #[cfg(feature = "metrics")]
+            metrics::gauge!("indexer.s3.blocks_cache").set(s3_block_heights.len() as u32);
+
+            return Ok(());
+        }
+
+        // All blocks are present
+        s3_block_heights.clear();
+
+        #[cfg(feature = "metrics")]
+        metrics::gauge!("indexer.s3.blocks_cache").set(0);
+
+        drop(s3_block_heights);
+
         self.store_last_block_height(to_height, S3_HIGHEST_BLOCK_FILENAME)?;
+
+        #[cfg(feature = "tracing")]
+        tracing::info!("S3 sync up-to-date");
 
         Ok(())
     }
@@ -240,7 +331,7 @@ impl grug_app::Indexer for Cache {
     fn start(&mut self, _storage: &dyn grug_types::Storage) -> grug_app::IndexerResult<()> {
         #[cfg(feature = "s3")]
         if self.context.s3.enabled {
-            let last_s3_sync_height = self.read_last_block_height("last_s3_sync_height.json")?;
+            let last_s3_sync_height = self.read_last_block_height(S3_HIGHEST_BLOCK_FILENAME)?;
             let Some(last_s3_sync_height) = last_s3_sync_height else {
                 return Ok(());
             };

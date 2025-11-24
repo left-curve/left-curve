@@ -7,11 +7,8 @@ pub enum IndexerError {
     #[backtrace(new)]
     Join(tokio::task::JoinError),
 
-    #[error("indexing error: {error}")]
-    Indexing { error: String },
-
-    #[error("mutex poison error: {error}")]
-    Poison { error: String },
+    #[error("mutex is poisoned: {error}")]
+    MutexPoisoned { error: String },
 
     #[error("runtime error: {error}")]
     Runtime { error: String },
@@ -84,8 +81,10 @@ impl From<IndexerError> for grug_app::IndexerError {
         match err {
             IndexerError::StripPrefixError(e) => parse_error!(Generic, e),
             IndexerError::Join(e) => parse_error!(Generic, e),
-            IndexerError::Indexing { error, backtrace } => parse_error!(Generic, error, backtrace),
-            IndexerError::Poison { error, backtrace } => parse_error!(Generic, error, backtrace),
+            // IndexerError::Indexing { error, backtrace } => parse_error!(Generic, error, backtrace),
+            IndexerError::MutexPoisoned { error, backtrace } => {
+                parse_error!(Generic, error, backtrace)
+            },
             IndexerError::Runtime { error, backtrace } => parse_error!(Generic, error, backtrace),
             #[cfg(feature = "s3")]
             IndexerError::ByteStream { error, backtrace } => {
