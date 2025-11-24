@@ -83,7 +83,6 @@ rust-version  = "1.89" # clickhouse-rs 0.14 requires rust 1.89+
 version       = "0.0.0"
 
 [workspace.dependencies]
-# Dependencies
 actix                       = "0.13"
 actix-codec                 = "0.5"
 actix-cors                  = "0.7"
@@ -98,6 +97,7 @@ alloy                       = "1.1"
 anyhow                      = "1"
 assert-json-diff            = "2"
 assertor                    = "0.0.4"
+async-graphql               = { version = "7.0", features = ["apollo_persisted_queries", "apollo_tracing", "chrono", "dataloader", "decimal", "log", "opentelemetry", "tracing", "unblock", "url", "uuid"] } # see https://github.com/async-graphql/async-graphql/issues/1726
 async-graphql-actix-web     = "7.0"
 async-std                   = { version = "1", features = ["attributes", "tokio1"] }
 async-stream                = "0.3"
@@ -168,6 +168,8 @@ reqwest                     = { version = "0.12", features = ["stream"] }
 reqwest-eventsource         = "0.6.0"
 ripemd                      = "0.1"
 rocksdb                     = "0.24"
+sea-orm                     = { version = "1", features = ["runtime-tokio-rustls", "sea-orm-internal", "sqlx-postgres", "sqlx-sqlite", "with-bigdecimal", "with-chrono", "with-json", "with-time", "with-uuid"] }
+sea-orm-migration           = { version = "1", features = ["runtime-tokio-rustls", "sqlx-postgres", "sqlx-sqlite", "with-chrono", "with-json", "with-uuid"] }
 sentry                      = { version = "0.45", features = ["log", "tracing"] }
 sentry-actix                = "0.45"
 serde                       = "1"
@@ -265,48 +267,6 @@ indexer-sql-migration       = { path = "indexer/sql-migration" }
 indexer-testing             = { path = "indexer/testing" }
 pyth-client                 = { path = "pyth/client" }
 pyth-types                  = { path = "pyth/types" }
-
-[workspace.dependencies.async-graphql]
-features = [
-  "apollo_persisted_queries",
-  "apollo_tracing",
-  "chrono",
-  "dataloader",
-  "decimal",
-  "log",
-  "opentelemetry",
-  # see https://github.com/async-graphql/async-graphql/issues/1726
-  "tracing",
-  "unblock",
-  "url",
-  "uuid",
-]
-version = "7.0"
-
-[workspace.dependencies.sea-orm]
-features = [
-  "runtime-tokio-rustls",
-  "sea-orm-internal",
-  "sqlx-postgres",
-  "sqlx-sqlite",
-  "with-bigdecimal",
-  "with-chrono",
-  "with-json",
-  "with-time",
-  "with-uuid",
-]
-version = "1"
-
-[workspace.dependencies.sea-orm-migration]
-features = [
-  "runtime-tokio-rustls",
-  "sqlx-postgres",
-  "sqlx-sqlite",
-  "with-chrono",
-  "with-json",
-  "with-uuid",
-]
-version = "1"
 
 [profile.release]
 codegen-units    = 1
