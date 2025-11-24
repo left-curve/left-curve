@@ -1,5 +1,10 @@
+use serde::Serialize;
+use std::io::Write;
 use {
-    crate::{Context, cache_file::CacheFile, indexer_path::IndexerPath, runtime::RuntimeHandler},
+    crate::{
+        Context, cache_file::CacheFile, error::Result, indexer_path::IndexerPath,
+        runtime::RuntimeHandler,
+    },
     grug_types::BlockAndBlockOutcomeWithHttpDetails,
     std::{
         collections::HashMap,
@@ -25,6 +30,11 @@ pub struct Cache {
     // This because the way indexer methods are called, we need to store the blocks
     // in memory between `pre_indexing`, `index_block` and `post_indexing`.
     blocks: Arc<Mutex<HashMap<u64, BlockAndBlockOutcomeWithHttpDetails>>>,
+}
+
+#[derive(Serialize)]
+struct LastBlockHeight {
+    block_height: u64,
 }
 
 impl Cache {
@@ -91,6 +101,17 @@ impl Cache {
         drop(transaction_hash_details);
 
         Ok(http_request_details)
+    }
+
+    fn store_last_block_height(&self, block_height: u64) -> Result<()> {
+        let dir = self.context.indexer_path.blocks_path();
+        let mut tmp = tempfile::NamedTempFile::new_in(dir)?;
+        let payload = LastBlockHeight { block_height };
+        serde_json::to_writer(&mut tmp, &payload)?;
+        tmp.flush()?;
+        tmp.persist(self.context.indexer_path.blocks_path().join("last.json"))
+            .map(|_| ())
+            .map_err(|e| e.error.into())
     }
 }
 
@@ -208,6 +229,8 @@ impl grug_app::Indexer for Cache {
 
         if CacheFile::exists(file_path.clone()) {
             let _compressed_path = CacheFile::compress_file(file_path.clone())?;
+
+            self.store_last_block_height(block_height)?;
 
             // If S3 config present, upload compressed file in background
             #[cfg(feature = "s3")]
