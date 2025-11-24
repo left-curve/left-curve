@@ -8,6 +8,7 @@ import { IconSearch } from "./icons/IconSearch";
 import { IconWallet } from "./icons/IconWallet";
 
 import type React from "react";
+import { ShadowContainer } from "./ShadowContainer";
 
 export const Menu: React.FC = () => {
   const { navigate } = useRouter();
@@ -17,20 +18,24 @@ export const Menu: React.FC = () => {
         accessibilityRole="header"
         className="w-full flex flex-row items-center justify-between gap-4 p-4"
       >
-        <Pressable
-          onPress={() => navigate("/search")}
-          className="flex-1 h-[44px] flex justify-center p-2 pl-4 shadow shadow-btn-shadow-gradient bg-surface-secondary-rice rounded-md"
-        >
-          <View className="relative flex flex-row gap-2 items-center">
-            <IconSearch className="text-ink-tertiary-500" />
-            <View className="flex flex-row gap-1 items-center relative">
-              <GlobalText>Search for</GlobalText>
-              <TextLoop
-                texts={["blocks", "applets", "accounts", "transactions", "usernames", "tokens"]}
-              />
-            </View>
-          </View>
-        </Pressable>
+        <View className="flex-1 h-[44px] rounded-md">
+          <ShadowContainer style={{ borderRadius: 12, width: "100%" }}>
+            <Pressable
+              onPress={() => navigate("/search")}
+              className="h-[44px] flex justify-center p-2 pl-4 bg-surface-secondary-rice rounded-md"
+            >
+              <View className="relative flex flex-row gap-2 items-center">
+                <IconSearch className="text-ink-tertiary-500" />
+                <View className="flex flex-row gap-1 items-center relative">
+                  <GlobalText>Search for</GlobalText>
+                  <TextLoop
+                    texts={["blocks", "applets", "accounts", "transactions", "usernames", "tokens"]}
+                  />
+                </View>
+              </View>
+            </Pressable>
+          </ShadowContainer>
+        </View>
         <Button
           variant="utility"
           size="icon"

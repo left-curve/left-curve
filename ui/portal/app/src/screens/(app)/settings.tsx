@@ -25,7 +25,6 @@ export default function Settings() {
         <DisplaySection.DateFormat />
         <DisplaySection.TimeFormat />
         <DisplaySection.TimeZone />
-        <DisplaySection.ChartEngine />
         <DisplaySection.Theme />
       </DisplaySection>
     </View>
