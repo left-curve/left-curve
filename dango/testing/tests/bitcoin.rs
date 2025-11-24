@@ -146,7 +146,7 @@ pub fn sign_inputs(
         .enumerate()
         .map(|(i, (amount, address_index))| {
             // Create the correct multisig.
-            let multisig = MultisigWallet::new(&multisig_settings, address_index);
+            let multisig = MultisigWallet::new(multisig_settings, address_index);
 
             let sighash = cache
                 .p2wsh_signature_hash(
@@ -1430,23 +1430,22 @@ fn multiple_outbound_tx() {
 
     let mut events = vec![];
     for cron in outcome.block_outcome.cron_outcomes {
-        if let CommitmentStatus::Committed(EventStatus::Ok(cron_event)) = &cron.cron_event {
-            if cron_event.contract == contracts.bitcoin {
-                if let EventStatus::Ok(guest) = &cron_event.guest_event {
-                    events.extend(
-                        guest
-                            .contract_events
-                            .iter()
-                            .map(|e| {
-                                e.data
-                                    .clone()
-                                    .deserialize_json::<OutboundRequested>()
-                                    .unwrap()
-                            })
-                            .collect::<Vec<_>>(),
-                    );
-                }
-            }
+        if let CommitmentStatus::Committed(EventStatus::Ok(cron_event)) = &cron.cron_event
+            && cron_event.contract == contracts.bitcoin
+            && let EventStatus::Ok(guest) = &cron_event.guest_event
+        {
+            events.extend(
+                guest
+                    .contract_events
+                    .iter()
+                    .map(|e| {
+                        e.data
+                            .clone()
+                            .deserialize_json::<OutboundRequested>()
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>(),
+            );
         }
     }
 
