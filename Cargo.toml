@@ -158,7 +158,6 @@ pyth-lazer-protocol         = "0.22"
 quote                       = "1"
 rand                        = "0.8" # can't use 0.9 because RustCrypto libraries still depend on 0.8
 reqwest                     = { version = "0.12", features = ["stream"] }
-reqwest-eventsource         = "0.6.0"
 ripemd                      = "0.1"
 rocksdb                     = "0.24"
 sea-orm                     = { version = "1", features = ["runtime-tokio-rustls", "sea-orm-internal", "sqlx-postgres", "sqlx-sqlite", "with-bigdecimal", "with-chrono", "with-json", "with-time", "with-uuid"] }
