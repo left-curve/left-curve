@@ -153,11 +153,7 @@ fn query_deposit_address(ctx: ImmutableCtx, address: Addr) -> anyhow::Result<Bit
 
     let config = CONFIG.load(ctx.storage)?;
 
-    let user_script = MultisigWallet::new(
-        config.multisig.threshold(),
-        config.multisig.pub_keys(),
-        Some(deposit_index),
-    )?;
+    let user_script = MultisigWallet::new(&config.multisig, Some(deposit_index));
 
     Ok(user_script.address(config.network).to_string())
 }

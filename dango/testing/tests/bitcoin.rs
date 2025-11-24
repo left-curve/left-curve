@@ -134,7 +134,7 @@ fn advance_ten_minutes(suite: &mut TestSuite<NaiveProposalPreparer>) -> MakeBloc
 }
 
 // Sign the inputs of a Bitcoin transaction with the given secret key and redeem script.
-pub fn sing_inputs(
+pub fn sign_inputs(
     tx: &BtcTransaction,
     sk: &SigningKey,
     multisig_settings: &MultisigSettings,
@@ -146,12 +146,7 @@ pub fn sing_inputs(
         .enumerate()
         .map(|(i, (amount, address_index))| {
             // Create the correct multisig.
-            let multisig = MultisigWallet::new(
-                multisig_settings.threshold(),
-                multisig_settings.pub_keys(),
-                address_index,
-            )
-            .unwrap();
+            let multisig = MultisigWallet::new(&multisig_settings, address_index);
 
             let sighash = cache
                 .p2wsh_signature_hash(
@@ -1018,17 +1013,17 @@ fn authorize_outbound() {
 
     let btc_transaction = outbound_tx.to_btc_transaction(config.network).unwrap();
 
-    let signatures1 = sing_inputs(&btc_transaction, &sk1, &config.multisig, vec![
+    let signatures1 = sign_inputs(&btc_transaction, &sk1, &config.multisig, vec![
         (deposit_amount1.into_inner() as u64, Some(address_index)),
         (deposit_amount2.into_inner() as u64, Some(address_index)),
     ]);
 
-    let signatures2 = sing_inputs(&btc_transaction, &sk2, &config.multisig, vec![
+    let signatures2 = sign_inputs(&btc_transaction, &sk2, &config.multisig, vec![
         (deposit_amount1.into_inner() as u64, Some(address_index)),
         (deposit_amount2.into_inner() as u64, Some(address_index)),
     ]);
 
-    let signatures3 = sing_inputs(&btc_transaction, &sk3, &config.multisig, vec![
+    let signatures3 = sign_inputs(&btc_transaction, &sk3, &config.multisig, vec![
         (deposit_amount1.into_inner() as u64, Some(address_index)),
         (deposit_amount2.into_inner() as u64, Some(address_index)),
     ]);
@@ -1262,8 +1257,10 @@ fn multisig_address() {
     )
     .unwrap();
 
-    let multisig =
-        MultisigWallet::new(2, &NonEmpty::new(btree_set!(pk1, pk2, pk3,)).unwrap(), None).unwrap();
+    let multisig_settings =
+        MultisigSettings::new(2, NonEmpty::new(btree_set!(pk1, pk2, pk3,)).unwrap()).unwrap();
+
+    let multisig = MultisigWallet::new(&multisig_settings, None);
 
     assert_eq!(
         multisig.address(Network::Regtest).to_string(),
@@ -1290,12 +1287,7 @@ fn fee() {
         .query_wasm_smart(contracts.bitcoin, QueryConfigRequest {})
         .unwrap();
 
-    let multisig_wallet = MultisigWallet::new(
-        bitcoin_config.multisig.threshold(),
-        bitcoin_config.multisig.pub_keys(),
-        None,
-    )
-    .unwrap();
+    let multisig_wallet = MultisigWallet::new(&bitcoin_config.multisig, None);
 
     // Create 2 deposits to user1.
     let amount1 = Uint128::new(20_000);
@@ -1334,12 +1326,12 @@ fn fee() {
 
     let mut btc_tx = tx.to_btc_transaction(bitcoin_config.network).unwrap();
 
-    let signature1 = sing_inputs(&btc_tx, &sk1, &bitcoin_config.multisig, vec![
+    let signature1 = sign_inputs(&btc_tx, &sk1, &bitcoin_config.multisig, vec![
         (amount1.into_inner() as u64, Some(address_index)),
         (amount2.into_inner() as u64, Some(address_index)),
     ]);
 
-    let signature2 = sing_inputs(&btc_tx, &sk2, &bitcoin_config.multisig, vec![
+    let signature2 = sign_inputs(&btc_tx, &sk2, &bitcoin_config.multisig, vec![
         (amount1.into_inner() as u64, Some(address_index)),
         (amount2.into_inner() as u64, Some(address_index)),
     ]);

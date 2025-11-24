@@ -37,11 +37,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     check_bitcoin_address(&msg.config.vault, msg.config.network)?;
 
     // Ensure the vault address matches the one derived from the pub keys.
-    let multisig_wallet = MultisigWallet::new(
-        msg.config.multisig.threshold(),
-        msg.config.multisig.pub_keys(),
-        None,
-    )?;
+    let multisig_wallet = MultisigWallet::new(&msg.config.multisig, None);
     ensure!(
         msg.config.vault == multisig_wallet.address(msg.config.network).to_string(),
         "vault address must match the one derived from the multisig public keys;
@@ -78,7 +74,9 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
             let credential: InboundCredential = tx.credential.deserialize_json()?;
 
             ensure!(
-                cfg.multisig.pub_keys().contains(&inbound_msg.pub_key),
+                cfg.multisig
+                    .pub_keys_as_bytes_array()
+                    .contains(&inbound_msg.pub_key),
                 "public key `{}` is not a valid multisig public key",
                 inbound_msg.pub_key.to_string()
             );
@@ -102,7 +100,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
             let tx = OUTBOUNDS.load(ctx.storage, id)?;
 
             ensure!(
-                cfg.multisig.pub_keys().contains(&pub_key),
+                cfg.multisig.pub_keys_as_bytes_array().contains(&pub_key),
                 "public key `{}` is not a valid multisig public key",
                 pub_key.to_string()
             );
@@ -122,11 +120,7 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
                 // Remove the last byte, which is the sighash type.
                 let signature = Signature::from_der(&signature[..signature.len() - 1])?;
 
-                let multisig = MultisigWallet::new(
-                    cfg.multisig.threshold(),
-                    cfg.multisig.pub_keys(),
-                    *user_index,
-                )?;
+                let multisig = MultisigWallet::new(&cfg.multisig, *user_index);
 
                 let sighash = cache.p2wsh_signature_hash(
                     i,

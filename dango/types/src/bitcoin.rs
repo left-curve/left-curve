@@ -61,6 +61,12 @@ impl MultisigSettings {
             );
         }
 
+        // Since the public keys will not change, we validate them once during the initialization on the contract
+        // instead of validating them every time we use them.
+        for pubkey in pub_keys.iter() {
+            PublicKey::from_slice(pubkey)?;
+        }
+
         Ok(Self {
             threshold,
             pub_keys,
@@ -73,7 +79,20 @@ impl MultisigSettings {
     }
 
     /// Returns the public keys of the guardians in the multisig wallet.
-    pub fn pub_keys(&self) -> &NonEmpty<BTreeSet<HexByteArray<33>>> {
+    pub fn pub_keys(&self) -> NonEmpty<BTreeSet<PublicKey>> {
+        // Safe to unwrap since we validated the public keys during initialization.
+        let pub_keys = self
+            .pub_keys
+            .iter()
+            .map(|pk| PublicKey::from_slice(pk).unwrap())
+            .collect::<BTreeSet<_>>();
+
+        // Safe to unwrap since we have a NonEmpty set.
+        NonEmpty::new(pub_keys).unwrap()
+    }
+
+    /// Returns the public keys of the guardians in the multisig wallet as hex byte arrays.
+    pub fn pub_keys_as_bytes_array(&self) -> &NonEmpty<BTreeSet<HexByteArray<33>>> {
         &self.pub_keys
     }
 }
@@ -87,27 +106,17 @@ pub struct MultisigWallet {
 }
 
 impl MultisigWallet {
-    pub fn new(
-        threshold: u8,
-        pub_keys: &NonEmpty<BTreeSet<HexByteArray<33>>>,
-        index: Option<u64>,
-    ) -> anyhow::Result<Self> {
-        if threshold < 1 || threshold > pub_keys.len() as u8 {
-            bail!(
-                "Invalid multisig parameters: threshold = {}, pub_keys = {}",
-                threshold,
-                pub_keys.len()
-            );
-        }
-
+    pub fn new(multisig_settings: &MultisigSettings, index: Option<u64>) -> Self {
         // Create the script for the multisig.
         // The redeem script is a P2WSH script is created as:
         // threshold - pubkeys - num_pub_keys - OP_CHECKMULTISIG.
         // To generate unique addresses per user, we append the index and OP_DROP (if provided).
-        let mut builder = Builder::new().push_int(threshold as i64);
+        let mut builder = Builder::new().push_int(multisig_settings.threshold() as i64);
+
+        let pub_keys = multisig_settings.pub_keys();
 
         for pubkey in pub_keys.iter() {
-            builder = builder.push_key(&PublicKey::from_slice(pubkey)?);
+            builder = builder.push_key(pubkey);
         }
 
         builder = builder
@@ -119,10 +128,10 @@ impl MultisigWallet {
             builder = builder.push_int(index as i64).push_opcode(OP_DROP);
         }
 
-        Ok(Self {
+        Self {
             script: builder.into_script(),
             index,
-        })
+        }
     }
 
     /// Returns the Bitcoin address of the multisig wallet.
