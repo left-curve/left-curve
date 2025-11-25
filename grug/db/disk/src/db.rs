@@ -770,7 +770,6 @@ impl Storage for StateStorage {
         // If the key falls in the priority data range, read the value from
         // priority data, without accessing the disk.
         // Note: `min` is inclusive, while `max` is exclusive.
-        // TODO: the nested `if` statements can be simplified with rust edition 2024
         if let Some(data) = &self.guard.priority_data
             && data.min.as_slice() <= key
             && key < data.max.as_slice()
@@ -912,7 +911,7 @@ impl Storage for StateStorage {
     }
 }
 
-// ---------------------------------- helpers ----------------------------------
+// --------------------------------- iteration ---------------------------------
 
 fn create_rocksdb_storage_iter<'a>(
     db: &'a DB,
@@ -948,7 +947,6 @@ fn create_rocksdb_storage_iter<'a>(
                 comment,
             ),
         },
-
         _ => create_merged_iter(
             db,
             min,
@@ -983,7 +981,14 @@ fn create_wasm_iter<'a>(
         });
 
     #[cfg(feature = "metrics")]
-    let iter = {
+    let iter = iter.with_metrics(DISK_DB_LABEL, [
+        ("operation", "next"),
+        ("comment", comment),
+        ("source", WASM_STORAGE_LABEL),
+    ]);
+
+    #[cfg(feature = "metrics")]
+    {
         metrics::histogram!(
             DISK_DB_LABEL,
             "operation" => "scan",
@@ -991,18 +996,12 @@ fn create_wasm_iter<'a>(
             "source" => WASM_STORAGE_LABEL
         )
         .record(duration.elapsed().as_secs_f64());
-
-        iter.with_metrics(DISK_DB_LABEL, [
-            ("operation", "next"),
-            ("comment", comment),
-            ("source", WASM_STORAGE_LABEL),
-        ])
     };
 
     Box::new(iter)
 }
 
-pub(crate) fn create_state_iter<'a>(
+fn create_state_iter<'a>(
     db: &'a DB,
     min: Option<&[u8]>,
     max: Option<&[u8]>,
@@ -1024,17 +1023,15 @@ pub(crate) fn create_state_iter<'a>(
             (k.to_vec(), v.to_vec())
         });
 
-    #[cfg(feature = "tracing")]
-    {
-        tracing::warn!(
-            min = ?min.map(|m| String::from_utf8_lossy(m).clone()),
-            max = ?max.map(|m| String::from_utf8_lossy(m).clone()),
-            "state storage iter"
-        )
-    }
+    #[cfg(feature = "metrics")]
+    let iter = iter.with_metrics(DISK_DB_LABEL, [
+        ("operation", "next"),
+        ("comment", comment),
+        ("source", STATE_STORAGE_LABEL),
+    ]);
 
     #[cfg(feature = "metrics")]
-    let iter = {
+    {
         metrics::histogram!(
             DISK_DB_LABEL,
             "operation" => "scan",
@@ -1042,12 +1039,6 @@ pub(crate) fn create_state_iter<'a>(
             "source" => STATE_STORAGE_LABEL
         )
         .record(duration.elapsed().as_secs_f64());
-
-        iter.with_metrics(DISK_DB_LABEL, [
-            ("operation", "next"),
-            ("comment", comment),
-            ("source", STATE_STORAGE_LABEL),
-        ])
     };
 
     Box::new(iter)
@@ -1085,8 +1076,10 @@ fn create_merged_iter<'a>(
 }
 
 fn is_wasm_key(key: &[u8]) -> bool {
-    key.starts_with(b"wasm") && key.len() >= 4 + 20
+    key.starts_with(CONTRACT_NAMESPACE) && key.len() >= WASM_PREFIX_LEN
 }
+
+// ---------------------------------- helpers ----------------------------------
 
 #[inline]
 fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
@@ -1096,10 +1089,9 @@ fn into_iterator_mode(order: Order) -> IteratorMode<'static> {
     }
 }
 
-// TODO: rocksdb tuning? see:
+// Reference for RocksDB tuning:
 // https://github.com/sei-protocol/sei-db/blob/main/ss/rocksdb/opts.go#L29-L65
 // https://github.com/turbofish-org/merk/blob/develop/src/merk/mod.rs#L84-L102
-
 pub fn new_db_options() -> Options {
     let mut opts = Options::default();
 
@@ -1912,16 +1904,16 @@ mod tests_simple {
         let (_, b) = buffer.disassemble().disassemble();
 
         let mut k = Vec::with_capacity(4 + 20 + 2 + 3 + 3);
-
         k.extend_from_slice(b"wasm");
         k.extend_from_slice(&Addr::mock(0));
         k.extend_from_slice(&("map".len() as u16).to_be_bytes());
         k.extend_from_slice(b"map");
         k.extend_from_slice(b"foo");
 
-        assert_eq!(b, btree_map! {
-         k => Op::Insert(1_u64.to_borsh_vec().unwrap()),
-        })
+        assert_eq!(
+            b,
+            btree_map! { k => Op::Insert(1_u64.to_borsh_vec().unwrap()) }
+        );
     }
 
     #[test]
