@@ -56,6 +56,16 @@ pub mod contract_bindings {
         }
     }
 
+    pub mod hyp_native {
+        use alloy::sol;
+
+        sol! {
+            #[sol(rpc)]
+            HypNative,
+            "../../dependencies/hyperlane-monorepo/solidity/artifacts/contracts/token/HypNative.sol/HypNative.json"
+        }
+    }
+
     pub mod proxy {
         use alloy::sol;
 
