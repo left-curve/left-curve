@@ -47,7 +47,7 @@ pub mod contract_bindings {
         sol! {
             #[sol(rpc)]
             HypERC20Collateral,
-            "../../dependencies/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20Collateral.sol/HypERC20Collateral.json"
+            "artifacts/evm/HypERC20Collateral.json"
         }
     }
 
@@ -57,7 +57,7 @@ pub mod contract_bindings {
         sol! {
             #[sol(rpc)]
             HypERC20,
-            "../../dependencies/hyperlane-monorepo/solidity/artifacts/contracts/token/HypERC20.sol/HypERC20.json"
+            "artifacts/evm/HypERC20.json"
         }
     }
 
@@ -67,7 +67,7 @@ pub mod contract_bindings {
         sol! {
             #[sol(rpc)]
             HypNative,
-            "../../dependencies/hyperlane-monorepo/solidity/artifacts/contracts/token/HypNative.sol/HypNative.json"
+            "artifacts/evm/HypNative.json"
         }
     }
 
@@ -77,13 +77,13 @@ pub mod contract_bindings {
         sol! {
             #[sol(rpc)]
             ProxyAdmin,
-            "../../dependencies/hyperlane-monorepo/node_modules/@arbitrum/token-bridge-contracts/node_modules/@openzeppelin/contracts/build/contracts/ProxyAdmin.json"
+            "artifacts/evm/ProxyAdmin.json"
         }
 
         sol! {
             #[sol(rpc)]
             TransparentUpgradeableProxy,
-            "../../dependencies/hyperlane-monorepo/node_modules/@arbitrum/token-bridge-contracts/node_modules/@openzeppelin/contracts/build/contracts/TransparentUpgradeableProxy.json"
+            "artifacts/evm/TransparentUpgradeableProxy.json"
         }
     }
 }
