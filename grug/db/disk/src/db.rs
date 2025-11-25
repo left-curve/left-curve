@@ -970,17 +970,7 @@ fn create_wasm_iter<'a>(
     #[cfg(feature = "metrics")]
     let duration = std::time::Instant::now();
 
-    let mut opts = new_read_options(min, max);
-
-    // Enable prefix mode only if min & max share the exact same wasm+addr prefix
-    if let (Some(min), Some(max)) = (min, max)
-        && min.len() >= WASM_PREFIX_LEN
-        && max.len() >= WASM_PREFIX_LEN
-        && min[..WASM_PREFIX_LEN] == max[..WASM_PREFIX_LEN]
-    {
-        opts.set_prefix_same_as_start(true);
-    }
-
+    let opts = new_wasm_read_options(new_read_options(min, max), min, max);
     let mode = into_iterator_mode(order);
 
     let iter = db
@@ -1132,7 +1122,7 @@ pub fn new_db_options() -> Options {
     opts
 }
 
-/// Create tuned default `Options` for a colume family.
+/// Create a tuned default `Options` for a colume family.
 pub fn new_state_cf_options() -> Options {
     let mut opts = Options::default();
 
@@ -1170,7 +1160,8 @@ pub fn new_wasm_cf_options(mut opts: Options) -> Options {
     opts
 }
 
-pub(crate) fn new_read_options(
+/// Create a tuned default `ReadOptions`.
+pub fn new_read_options(
     iterate_lower_bound: Option<&[u8]>,
     iterate_upper_bound: Option<&[u8]>,
 ) -> ReadOptions {
@@ -1189,6 +1180,25 @@ pub(crate) fn new_read_options(
     opts
 }
 
+/// Create a `ReadOptions` specifically for iteration in the Wasm column family,
+/// given an existing `ReadOptions`.
+pub fn new_wasm_read_options(
+    mut opts: ReadOptions,
+    min: Option<&[u8]>,
+    max: Option<&[u8]>,
+) -> ReadOptions {
+    // Enable prefix mode only if `min` & `max` share the exact same "wasm" + addr prefix.
+    if let (Some(min), Some(max)) = (min, max)
+        && min.len() >= WASM_PREFIX_LEN
+        && max.len() >= WASM_PREFIX_LEN
+        && min[..WASM_PREFIX_LEN] == max[..WASM_PREFIX_LEN]
+    {
+        opts.set_prefix_same_as_start(true);
+    }
+
+    opts
+}
+
 pub fn cf_default(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_DEFAULT).unwrap_or_else(|| {
         panic!("failed to find default column family");
@@ -1196,7 +1206,7 @@ pub fn cf_default(db: &DB) -> &ColumnFamily {
 }
 
 #[cfg(feature = "ibc")]
-pub(crate) fn cf_preimages(db: &DB) -> &ColumnFamily {
+pub fn cf_preimages(db: &DB) -> &ColumnFamily {
     db.cf_handle(CF_NAME_PREIMAGES).unwrap_or_else(|| {
         panic!("failed to find default column family");
     })
