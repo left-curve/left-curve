@@ -1,5 +1,7 @@
 - block:
     - name: Ensure boto3 is installed locally
+      become: true
+      become_user: root
       ansible.builtin.pip:
         name:
           - boto3
@@ -13,4 +15,3 @@
         aws_access_key: "{{ s3_access_key }}"
         aws_secret_key: "{{ s3_secret_key }}"
   run_once: true
-  delegate_to: localhost
