@@ -4,40 +4,40 @@ import { createKeyHash, createSignerClient, toAccount } from "@left-curve/dango"
 import { getAccountsByUsername, getKeysByUsername } from "@left-curve/dango/actions";
 
 import { composeArbitraryTypedData } from "@left-curve/dango/utils";
-import { createConnector, createStorage } from "@left-curve/store";
+import { createConnector } from "./createConnector.js";
 
 import Privy, {
   getEntropyDetailsFromUser,
   getUserEmbeddedEthereumWallet,
+  LocalStorage,
 } from "@privy-io/js-sdk-core";
 
 import type { Eip712Signature } from "@left-curve/dango/types";
 import type { Address } from "@left-curve/dango/types";
-import type { AbstractStorage, EIP1193Provider } from "@left-curve/store/types";
+import type { EIP1193Provider } from "../types/eip1193.js";
 
 const ETHEREUM_HEX_CHAIN_ID = "0x1";
 
+type MessagePoster = {
+  reload: () => void;
+  postMessage: (message: unknown, targetOrigin: string, transfer?: Transferable) => void;
+};
+
 type PrivyConnectorParameters = {
+  icon?: string;
   appId: string;
   clientId: string;
-  loadIframe?: boolean;
-  storage?: AbstractStorage;
-  icon?: string;
+  poster: (url: string) => MessagePoster;
+  listener: (callback: (data: any) => void) => void;
 };
 
 export function privy(parameters: PrivyConnectorParameters) {
-  const { appId, clientId, loadIframe, storage: _storage_, icon } = parameters;
-  const storage = createStorage({ storage: _storage_ });
+  const { appId, clientId, poster, listener, icon } = parameters;
 
   const privy = new Privy({
     appId,
     clientId,
-    storage: {
-      get: (key) => storage.getItem(key),
-      getKeys: () => storage.keys(),
-      put: (key, value) => storage.setItem(key, value),
-      del: (key: string) => storage.removeItem(key),
-    },
+    storage: new LocalStorage(),
   });
 
   return createConnector<EIP1193Provider>(({ transport, emitter, getUsername, chain }) => {
@@ -48,32 +48,9 @@ export function privy(parameters: PrivyConnectorParameters) {
       icon,
       privy,
       async setup() {
-        if (window && loadIframe) {
-          const existIframe = document.getElementById("privy-iframe");
-          if (existIframe) return;
+        privy.setMessagePoster(poster(privy.embeddedWallet.getURL()));
+        listener((data) => privy.embeddedWallet.onMessage(data));
 
-          const iframe = window.document.createElement("iframe");
-          iframe.style.display = "none";
-          iframe.src = privy.embeddedWallet.getURL();
-          iframe.id = "privy-iframe";
-          window.document.body.appendChild(iframe);
-          const iframeWindow = (iframe as HTMLIFrameElement).contentWindow!;
-
-          privy.setMessagePoster({
-            reload: () => iframeWindow.location.reload(),
-            postMessage: (message, targetOrigin, transfer) =>
-              iframeWindow.postMessage(message, targetOrigin, transfer ? [transfer] : undefined),
-          });
-
-          window.addEventListener("message", (event: MessageEvent) => {
-            if (event.origin !== "https://auth.privy.io") return;
-            try {
-              privy.embeddedWallet.onMessage(event.data);
-            } catch (err) {
-              console.error("Error handling iframe message:", err);
-            }
-          });
-        }
         await privy.initialize();
       },
       async connect({ username, chainId, keyHash: _keyHash_ }) {

@@ -799,7 +799,7 @@ async fn graphql_returns_address_balance() -> anyhow::Result<()> {
             false,
         )
         .unwrap()
-        .as_balance();
+        .into_balance();
 
     suite.app.indexer.wait_for_finish()?;
 

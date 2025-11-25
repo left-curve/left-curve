@@ -83,6 +83,7 @@ impl grug_app::Indexer for Cache {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn pre_indexing(
         &self,
         block_height: u64,
@@ -105,6 +106,7 @@ impl grug_app::Indexer for Cache {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn index_block(
         &self,
         block: &grug_types::Block,
@@ -158,6 +160,7 @@ impl grug_app::Indexer for Cache {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     fn post_indexing(
         &self,
         block_height: u64,

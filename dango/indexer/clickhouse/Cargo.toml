@@ -37,7 +37,6 @@ grug            = { workspace = true }
 grug-app        = { workspace = true }
 grug-httpd      = { workspace = true }
 grug-types      = { workspace = true, features = ["chrono"] }
-indexer-hooked  = { workspace = true }
 indexer-httpd   = { workspace = true, optional = true }
 indexer-sql     = { workspace = true }
 itertools       = { workspace = true }

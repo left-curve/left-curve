@@ -139,7 +139,7 @@ fn propose(
             address: ctx.contract,
         })?
         .params
-        .as_multi();
+        .into_multi();
 
     let proposal = Proposal {
         title,

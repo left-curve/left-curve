@@ -43,9 +43,13 @@
     "@left-curve/dango": "workspace:^",
     "eventemitter3": "catalog:",
     "use-sync-external-store": "^1.2.2",
-    "zustand": "catalog:"
+    "zustand": "catalog:",
+    "fuzzysort": "^3.1.0",
+    "@privy-io/js-sdk-core": "^0.56.3"
   },
   "devDependencies": {
+    "react": "catalog:",
+    "@types/react": "catalog:",
     "@left-curve/config": "workspace:^",
     "@tanstack/query-core": "^5.56.2",
     "@tanstack/react-query": "catalog:",
@@ -54,8 +58,7 @@
   "peerDependencies": {
     "@tanstack/query-core": ">=5.0.0",
     "@tanstack/react-query": ">=5.0.0",
-    "react": "^18",
-    "react-dom": "^18"
+    "react": "^18"
   },
   "peerDependenciesMeta": {
     "@tanstack/query-core": {

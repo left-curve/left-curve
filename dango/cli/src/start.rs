@@ -2,6 +2,7 @@ use {
     crate::{
         config::{Config, GrugConfig, HttpdConfig, PythLazerConfig, TendermintConfig},
         home_directory::HomeDirectory,
+        telemetry,
     },
     anyhow::anyhow,
     clap::Parser,
@@ -36,6 +37,18 @@ impl StartCmd {
 
         // Parse the config file.
         let cfg: Config = parse_config(app_dir.config_file())?;
+
+        // Emit startup logs now that the subscriber is initialized.
+        if cfg.sentry.enabled {
+            tracing::info!("Sentry initialized");
+        } else {
+            tracing::info!("Sentry is disabled");
+        }
+        if cfg.trace.enabled {
+            tracing::info!(endpoint = %cfg.trace.endpoint, protocol = ?cfg.trace.protocol, "OpenTelemetry OTLP exporter initialized");
+        } else {
+            tracing::info!("OpenTelemetry OTLP exporter is disabled");
+        }
 
         // Open disk DB.
         let db = DiskDb::<SimpleCommitment>::open_with_priority(
@@ -362,10 +375,14 @@ impl StartCmd {
             },
             _ = sigint.recv() => {
                 tracing::info!("Received SIGINT, shutting down");
+                telemetry::shutdown();
+                telemetry::shutdown_sentry();
                 Ok(())
             },
             _ = sigterm.recv() => {
                 tracing::info!("Received SIGTERM, shutting down");
+                telemetry::shutdown();
+                telemetry::shutdown_sentry();
                 Ok(())
             },
         }

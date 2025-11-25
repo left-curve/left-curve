@@ -62,7 +62,7 @@
               {%- set port = (traefik_enabled | default(false))
                             | ternary(traefik[dango_network].ports.cometbft_p2p_port,
                                       hostvars[host].cometbft_p2p_port) -%}
-              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].tailscale_ip ~ ':' ~ port -%}
+              {%- set peer = hostvars[host].cometbft_node_id ~ '@' ~ hostvars[host].wireguard_ip ~ ':' ~ port -%}
               {{- peers.append(peer) or '' -}}
             {%- endif -%}
           {%- endfor -%}
@@ -124,7 +124,7 @@
         - name: Stop and remove stack
           community.docker.docker_compose_v2:
             project_name: "{{ deployment_name }}"
-            project_src: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"
+            project_src: "{{ deployment_dir }}"
             state: absent
           ignore_errors: true
 
@@ -145,7 +145,7 @@
 
         - name: Fail the task
           fail:
-            msg: "Deployment failed, please look at the logs. You can also ssh to the server, to the PR directory and run `docker compose logs`"
+            msg: "Deployment failed, please look at the logs. You can also ssh to any of the servers, to {{ deployment_dir }} and run `docker compose logs`"
 
       always:
         - name: Log deployment finished
@@ -168,7 +168,7 @@
         - name: Create Dango prometheus targets
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].dango_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].dango_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'dango'
@@ -182,7 +182,7 @@
         - name: Create Cometbft prometheus targets
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].cometbft_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].cometbft_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'cometbft'
@@ -197,7 +197,7 @@
           when: deploy_includes_postgres
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].db_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].db_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'postgres'
@@ -212,7 +212,7 @@
           when: deploy_includes_clickhouse
           copy:
             content: |
-              - targets: ['{{ hostvars[item].tailscale_ip }}:{{ hostvars[item].clickhouse_metrics_port }}']
+              - targets: ['{{ hostvars[item].wireguard_ip }}:{{ hostvars[item].clickhouse_metrics_port }}']
                 labels:
                   deployment: '{{ deployment_name }}'
                   service: 'clickhouse'

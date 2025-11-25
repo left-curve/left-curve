@@ -54,7 +54,7 @@ impl<T> EventResult<T> {
         }
     }
 
-    pub fn as_result(self) -> Result<T, (T, AppError)> {
+    pub fn into_result(self) -> Result<T, (T, AppError)> {
         match self {
             EventResult::Ok(val) => Ok(val),
             EventResult::Err { event, error } | EventResult::NestedErr { event, error } => {

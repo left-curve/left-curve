@@ -182,7 +182,7 @@ where
         }
     }
 
-    #[tracing::instrument("abci::finalize_block", skip_all)]
+    #[tracing::instrument("abci::finalize_block", skip_all, fields(height = req.height.value(), hash = ?req.hash))]
     fn tower_finalize_block(
         &self,
         req: request::FinalizeBlock,

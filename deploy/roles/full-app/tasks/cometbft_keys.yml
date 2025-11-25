@@ -83,4 +83,4 @@
     - "Validator Public Key: {{ cometbft_validator_public_key }}"
     - "Validator Private Key: [{{ cometbft_validator_private_key | length }} chars]"
     - "Validator Address: {{ cometbft_validator_address }}"
-    - "P2P Address: {{ cometbft_node_id }}@{{ tailscale_ip }}:{{ cometbft_p2p_port }}"
+    - "P2P Address: {{ cometbft_node_id }}@{{ wireguard_ip }}:{{ cometbft_p2p_port }}"

@@ -13,6 +13,10 @@ export { Badge } from "./Badge";
 export { AccountCard } from "../AccountMenu/AccountCard";
 export { TextCopy } from "./TextCopy";
 export { Tabs } from "./Tabs";
+export { Tab } from "./Tabs";
+export { Activities } from "./activities/Activities";
+export { PairAssets } from "./PairAssets";
+export { ShadowContainer } from "./ShadowContainer";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -32,3 +36,13 @@ export { IconClose } from "./icons/IconClose";
 export { IconChevronDownFill } from "./icons/IconChevronDownFill";
 export { IconCopyCheck } from "./icons/IconCopyCheck";
 export { IconCopyNoCheck } from "./icons/IconCopyNoCheck";
+export { IconNewAccount } from "./icons/IconNewAccount";
+export { IconMarketOrder } from "./icons/IconMarketOrder";
+export { IconLimitOrder } from "./icons/IconLimitOrder";
+export { IconSent } from "./icons/IconSent";
+export { IconTheme } from "./icons/IconTheme";
+export { IconMoon } from "./icons/IconMoon";
+export { IconLanguage } from "./icons/IconLanguage";
+export { IconFormatNumber } from "./icons/IconFormatNumber";
+export { IconDepth } from "./icons/IconDepth";
+export { IconCalendar } from "./icons/IconCalendar";

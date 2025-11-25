@@ -9,13 +9,6 @@ export const storage = new MMKV({
 
 export function createMMKVStorage(): AbstractStorage {
   return {
-    get length() {
-      return storage.size;
-    },
-    key(index) {
-      const keys = [...storage.getAllKeys()];
-      return keys[index];
-    },
     getItem<T>(key: string): T | null {
       const result = storage.getString(key);
       if (!result) return null;
@@ -26,9 +19,6 @@ export function createMMKVStorage(): AbstractStorage {
     },
     removeItem(key: string): void {
       storage.delete(key);
-    },
-    clear() {
-      storage.clearAll();
     },
   };
 }

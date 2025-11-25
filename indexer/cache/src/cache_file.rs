@@ -46,10 +46,12 @@ impl CacheFile {
         }
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn save_to_disk(&self) -> error::Result<()> {
         Ok(DiskPersistence::new(self.filename.clone(), false).save(self)?)
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn compress_file(file_path: PathBuf) -> error::Result<()> {
         #[cfg(feature = "tracing")]
         tracing::debug!(?file_path, "Compressing block file");
@@ -69,12 +71,14 @@ impl CacheFile {
         Ok(())
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub fn load_from_disk(file_path: PathBuf) -> error::Result<Self> {
         let mut block_to_index: Self = DiskPersistence::new(file_path.clone(), false).load()?;
         block_to_index.filename = file_path;
         Ok(block_to_index)
     }
 
+    #[cfg_attr(feature = "tracing", tracing::instrument(skip_all))]
     pub async fn load_from_disk_async(file_path: PathBuf) -> error::Result<Self> {
         tokio::task::spawn_blocking(move || Self::load_from_disk(file_path)).await?
     }

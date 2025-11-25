@@ -1,12 +1,13 @@
 import { useRouter } from "expo-router";
 
-import { GlobalText, IconAddCross } from "../foundation";
+import { GlobalText, IconAddCross, ShadowContainer } from "../foundation";
 import { View, Text, Pressable } from "react-native";
 
 import { APPLETS, ASSETS } from "~/constants";
 
 import type React from "react";
 import type { AppletMetadata } from "@left-curve/store/types";
+import { Shadow } from "react-native-shadow-2";
 
 interface AppletSquareProps {
   applet: AppletMetadata;
@@ -21,14 +22,16 @@ const AppletSquare: React.FC<AppletSquareProps> = ({ applet }) => {
 
   return (
     <View key={`applets.section.${id}`} className="items-center flex-col flex gap-2 w-[96px]">
-      <Pressable
-        onPress={() => push(path)}
-        accessibilityRole="button"
-        accessibilityLabel={title}
-        className="h-20 w-20 rounded-xl p-2.5 shadow-account-card bg-surface-primary-red active:opacity-80 flex items-center justify-center"
-      >
-        <AppletImage width="44" height="44" />
-      </Pressable>
+      <ShadowContainer>
+        <Pressable
+          onPress={() => push(path)}
+          accessibilityRole="button"
+          accessibilityLabel={title}
+          className="h-20 w-20 rounded-xl p-2.5 bg-surface-primary-red active:opacity-80 flex items-center justify-center"
+        >
+          <AppletImage width="44" height="44" />
+        </Pressable>
+      </ShadowContainer>
 
       <GlobalText
         ellipsizeMode="clip"
@@ -52,14 +55,16 @@ export const AppletsSection: React.FC = () => {
       ))}
 
       <View className="w-[96px] flex items-center">
-        <Pressable
-          onPress={() => push("/search")}
-          accessibilityRole="button"
-          accessibilityLabel="Add applet"
-          className="h-20 w-20 rounded-xl p-2.5 shadow shadow-account-card border border-outline-tertiary-rice bg-surface-primary-rice items-center justify-center"
-        >
-          <IconAddCross className="w-8 h-8 text-outline-tertiary-rice" />
-        </Pressable>
+        <ShadowContainer>
+          <Pressable
+            onPress={() => push("/search")}
+            accessibilityRole="button"
+            accessibilityLabel="Add applet"
+            className="h-20 w-20 rounded-xl p-2.5 border border-outline-tertiary-rice bg-surface-primary-rice items-center justify-center"
+          >
+            <IconAddCross className="w-8 h-8 text-outline-tertiary-rice" />
+          </Pressable>
+        </ShadowContainer>
         <Text className="min-h-6" />
       </View>
     </View>

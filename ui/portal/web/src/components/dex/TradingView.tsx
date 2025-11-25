@@ -173,5 +173,5 @@ export const TradingView: React.FC<TradingViewProps> = ({ coins, orders }) => {
     });
   }, [orders]);
 
-  return <div id="tv-container" className="w-full lg:min-h-[45vh] h-full" />;
+  return <div id="tv-container" className="w-full lg:min-h-[32.875rem] h-full" />;
 };

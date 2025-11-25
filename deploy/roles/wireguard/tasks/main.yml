@@ -1,0 +1,172 @@
+---
+# Validate that wireguard_ip is set for this host
+- name: Check that wireguard_ip is defined
+  assert:
+    that:
+      - wireguard_ip is defined
+      - wireguard_ip | length > 0
+    fail_msg: "wireguard_ip must be defined in host_vars for {{ inventory_hostname }}"
+    success_msg: "wireguard_ip is set to {{ wireguard_ip }}"
+
+#roles/wireguard/tasks/main.yml Install WireGuard packages
+- name: Install WireGuard and wireguard-tools
+  apt:
+    name:
+      - wireguard
+      - wireguard-tools
+    state: present
+    update_cache: yes
+
+- name: Load WireGuard kernel module
+  modprobe:
+    name: wireguard
+    state: present
+
+# Fetch public IP for each server (stored in memory, not committed to git)
+- name: Fetch server public IP
+  shell: curl -s https://api.ipify.org
+  register: server_public_ip
+  changed_when: false
+
+- name: Set public IP fact
+  set_fact:
+    public_ip: "{{ server_public_ip.stdout }}"
+
+# Configure UFW to allow WireGuard UDP port from all other servers
+- name: Configure UFW to allow WireGuard port from other servers
+  ufw:
+    rule: allow
+    direction: in
+    port: "{{ wireguard_port }}"
+    proto: udp
+    from_ip: "{{ item }}"
+  loop: "{{ groups['all'] | map('extract', hostvars, 'public_ip') | select('defined') | list }}"
+  when:
+    - item != public_ip
+    - item is defined
+  notify: reload ufw
+
+- name: Allow any port on wg0
+  ufw:
+    rule: allow
+    direction: in
+    interface: wg0
+
+# Generate WireGuard private key if it doesn't exist
+- name: Check if WireGuard private key exists
+  stat:
+    path: /etc/wireguard/privatekey
+  register: privatekey_stat
+
+- name: Generate WireGuard private key
+  shell: wg genkey > /etc/wireguard/privatekey
+  when: not privatekey_stat.stat.exists
+
+- name: Set private key permissions
+  file:
+    path: /etc/wireguard/privatekey
+    mode: '0600'
+
+# Generate WireGuard public key if it doesn't exist
+- name: Check if WireGuard public key exists
+  stat:
+    path: /etc/wireguard/publickey
+  register: publickey_stat
+
+- name: Generate WireGuard public key from private key
+  shell: wg pubkey < /etc/wireguard/privatekey > /etc/wireguard/publickey
+  when: not publickey_stat.stat.exists
+
+- name: Set public key permissions
+  file:
+    path: /etc/wireguard/publickey
+    mode: '0644'
+
+# Read the public key
+- name: Read WireGuard public key
+  slurp:
+    src: /etc/wireguard/publickey
+  register: wg_public_key_content
+
+- name: Set WireGuard public key fact
+  set_fact:
+    wg_public_key: "{{ wg_public_key_content.content | b64decode | trim }}"
+    cacheable: yes
+
+# Wait for all hosts to have their facts set
+- name: Ensure all hosts have completed key generation
+  wait_for:
+    timeout: 1
+  when: groups['all'] | length > 1
+
+# Read the private key for config template
+- name: Read WireGuard private key
+  slurp:
+    src: /etc/wireguard/privatekey
+  register: wg_private_key_content
+
+- name: Set WireGuard private key fact
+  set_fact:
+    wg_private_key: "{{ wg_private_key_content.content | b64decode | trim }}"
+
+# Create WireGuard configuration file
+- name: Generate WireGuard configuration file
+  template:
+    src: wg0.conf.j2
+    dest: /etc/wireguard/wg0.conf
+    mode: '0600'
+  notify: restart wireguard
+  register: wg_config_result
+
+# Enable and start WireGuard
+- name: Enable WireGuard interface
+  systemd:
+    name: wg-quick@wg0
+    enabled: yes
+    state: started
+
+# Ensure handlers run before testing connectivity
+- name: Flush handlers
+  meta: flush_handlers
+
+# Wait for WireGuard to be up
+- name: Wait for WireGuard interface to be up
+  wait_for:
+    timeout: 5
+  delegate_to: localhost
+  become: false
+
+# Ping all other nodes to verify connectivity
+- name: Ping all other WireGuard nodes
+  command: ping -c 1 -W 2 {{ hostvars[item].wireguard_ip }}
+  loop: "{{ groups['all'] }}"
+  when:
+    - item != inventory_hostname
+    - hostvars[item].wireguard_ip is defined
+  register: ping_result
+  failed_when: ping_result.rc != 0
+  changed_when: false
+  ignore_errors: yes
+
+- name: Report ping failures
+  debug:
+    msg: "WARNING: Failed to ping {{ item.item }} at {{ hostvars[item.item].wireguard_ip }}"
+  loop: "{{ ping_result.results }}"
+  when:
+    - item.rc is defined
+    - item.rc != 0
+  loop_control:
+    label: "{{ item.item | default('N/A') }}"
+
+# Update /etc/hosts with WireGuard IPs for all hosts
+- name: Add WireGuard IPs to /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: "^{{ hostvars[item].wireguard_ip }}\\s+{{ hostvars[item].hostname }}"
+    line: "{{ hostvars[item].wireguard_ip }} {{ hostvars[item].hostname }}"
+    state: present
+  loop: "{{ groups['all'] }}"
+  when:
+    - item != inventory_hostname
+    - hostvars[item].wireguard_ip is defined
+    - hostvars[item].hostname is defined
