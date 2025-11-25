@@ -1,13 +1,9 @@
-use std::sync::LazyLock;
-
-use crate::migrations;
 #[cfg(feature = "tracing")]
 use uuid::Uuid;
-
 #[cfg(feature = "metrics")]
 use {crate::statistics, grug_types::MetricsIterExt};
 use {
-    crate::{DbError, DbResult},
+    crate::{DbError, DbResult, migrations},
     grug_app::{CONTRACT_NAMESPACE, Commitment, Db, StorageProvider},
     grug_types::{Addr, Batch, Buffer, Hash256, HashExt, MockStorage, Op, Order, Record, Storage},
     itertools::Itertools,
@@ -16,7 +12,13 @@ use {
         BlockBasedOptions, Cache, ColumnFamily, ColumnFamilyDescriptor, CompactionPri, DB,
         DBCompactionStyle, IteratorMode, Options, ReadOptions, SliceTransform, WriteBatch,
     },
-    std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
+    std::{
+        collections::BTreeMap,
+        marker::PhantomData,
+        ops::Bound,
+        path::Path,
+        sync::{Arc, LazyLock},
+    },
 };
 
 /// We use three column families (CFs) for storing data.
