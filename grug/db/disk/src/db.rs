@@ -1132,7 +1132,7 @@ pub fn new_db_options() -> Options {
     opts
 }
 
-/// Returns tuned default ColumnFamilyOptions for a state CF.
+/// Create tuned default `Options` for a colume family.
 pub fn new_state_cf_options() -> Options {
     let mut opts = Options::default();
 
@@ -1163,6 +1163,8 @@ pub fn new_state_cf_options() -> Options {
     opts
 }
 
+/// Create an `Options` specifically for the Wasm column family, given an existing
+/// base `Options`.
 pub fn new_wasm_cf_options(mut opts: Options) -> Options {
     opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(WASM_PREFIX_LEN));
     opts
