@@ -142,19 +142,26 @@
         ident: dango
       when: delete_clickhouse_database_at_merge
 
-    - name: Delete Backblaze bucket
-      when:
-        - delete_s3_backup_at_merge
-      environment:
-        AWS_ACCESS_KEY_ID: "{{ s3_access_key }}"
-        AWS_SECRET_ACCESS_KEY: "{{ s3_secret_key }}"
-        AWS_DEFAULT_REGION: "auto"
-      amazon.aws.s3_bucket:
-        name: "{{ s3_bucket }}"
-        state: absent
-        endpoint_url: "{{ s3_endpoint }}"
-        aws_access_key: "{{ s3_access_key }}"
-        aws_secret_key: "{{ s3_secret_key }}"
+    - block:
+        - name: Ensure boto3 is installed locally
+          ansible.builtin.pip:
+            name:
+              - boto3
+              - botocore
+
+        - name: Delete Backblaze bucket
+          when:
+            - delete_s3_backup_at_merge
+          environment:
+            AWS_DEFAULT_REGION: "auto"
+          amazon.aws.s3_bucket:
+            name: "{{ s3_bucket }}"
+            state: absent
+            endpoint_url: "{{ s3_endpoint }}"
+            aws_access_key: "{{ s3_access_key }}"
+            aws_secret_key: "{{ s3_secret_key }}"
+      run_once: true
+      delegate_to: localhost
 
     - set_fact:
         pr_tunnel_name: "{{ deployment_name }}-{{ hostname }}"
