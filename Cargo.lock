@@ -6169,7 +6169,6 @@ dependencies = [
  "grug-types",
  "indexer-cache",
  "indexer-sql",
- "indexer-sql-migration",
  "itertools 0.14.0",
  "metrics",
  "metrics-exporter-prometheus",

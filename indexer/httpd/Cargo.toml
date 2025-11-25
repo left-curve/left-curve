@@ -58,6 +58,3 @@ tokio                       = { workspace = true }
 tracing                     = { workspace = true, optional = true }
 tracing-subscriber          = { workspace = true }
 uuid                        = { workspace = true }
-
-[dev-dependencies]
-indexer-sql-migration = { workspace = true }
