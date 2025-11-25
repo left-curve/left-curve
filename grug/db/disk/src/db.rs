@@ -1667,7 +1667,7 @@ mod tests_simple {
         super::*,
         grug_app::{SimpleCommitment, StorageProvider},
         grug_storage::Map,
-        grug_types::{BorshSerExt, MockStorage, Shared, btree_map, hash},
+        grug_types::{BorshSerExt, MockStorage, Shared, btree_map, btree_set, hash},
         temp_rocksdb::TempDataDir,
     };
 
@@ -1957,6 +1957,128 @@ mod tests_simple {
             WASM_PREFIX_LEN,
             "storage provider prefix length is not the expected value"
         );
+    }
+
+    #[test]
+    fn iterator_works() {
+        // -------------------------- prepare the DB ---------------------------
+
+        let not_wasm_0 = concat(&[CONTRACT_NAMESPACE, &[0; 10], b"foo"]);
+        assert!(!is_wasm_key(&not_wasm_0));
+
+        let wasm_1 = concat(&[CONTRACT_NAMESPACE, &[1; 20], b"foo"]);
+        assert!(is_wasm_key(&wasm_1));
+
+        let not_wasm_2 = concat(&[CONTRACT_NAMESPACE, &[2; 10], b"foo"]);
+        assert!(!is_wasm_key(&not_wasm_2));
+
+        let wasm_3 = concat(&[CONTRACT_NAMESPACE, &[3; 20], b"foo"]);
+        assert!(is_wasm_key(&wasm_3));
+
+        let not_wasm_4 = concat(&[CONTRACT_NAMESPACE, &[4; 10], b"foo"]);
+        assert!(!is_wasm_key(&not_wasm_4));
+
+        let keys = btree_set! {
+            // A record smaller than "wasm".
+            b"foo".to_vec(),
+            // An "illegal" record that starts with the "wasm" prefix but isn't
+            // followed by a contract address. This doesn't happen in practice,
+            // but let's make sure the DB works in even this case.
+            not_wasm_0,
+            // A record in wasm contract 0x11..11.
+            wasm_1,
+            // Another "illegal" record between 0x11..11 and 0x33..33.
+            not_wasm_2,
+            // A record in wasm contract 0x33..33.
+            wasm_3,
+            // Another "illegal" record that is bigger than 0x33.33.
+            not_wasm_4,
+            // A record bigger than "wasm".
+            b"xxxfoo".to_vec(),
+        };
+
+        let path = TempDataDir::new("_grug_disk_db_lite_iterator_works");
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        let batch = keys
+            .iter()
+            .map(|k| (k.clone(), Op::Insert(b"bar".to_vec())))
+            .collect();
+        let (version, _root_hash) = db.flush_and_commit(batch).unwrap();
+
+        let storage = db.state_storage(Some(version)).unwrap();
+
+        // -------------------- iterate all possible cases ---------------------
+
+        let min_not_wasm = concat(&[CONTRACT_NAMESPACE, &[1; 10]]);
+        assert!(!is_wasm_key(&min_not_wasm));
+
+        let min_wasm = concat(&[CONTRACT_NAMESPACE, &[1; 20]]);
+        assert!(is_wasm_key(&min_wasm));
+
+        let max_not_wasm = concat(&[CONTRACT_NAMESPACE, &[3; 10]]);
+        assert!(!is_wasm_key(&max_not_wasm));
+
+        let max_wasm = concat(&[CONTRACT_NAMESPACE, &[3; 20]]);
+        assert!(is_wasm_key(&max_wasm));
+
+        for (min, max) in [
+            // max < wasm
+            (None, Some(b"fuzz".as_slice())),
+            // min < wasm < max (NOT a wasm key)
+            (None, Some(max_not_wasm.as_slice())),
+            // min < wasm < max (a wasm key)
+            (None, Some(max_wasm.as_slice())),
+            // min < wasm < wasn < max
+            (None, None),
+            // wasm < min (NOT a wasm key) < max (NOT a wasm key) < wasn
+            (Some(min_not_wasm.as_slice()), Some(max_not_wasm.as_slice())),
+            // wasm < min (NOT a wasm key) < max (a wasm key) < wasn
+            (Some(min_not_wasm.as_slice()), Some(max_wasm.as_slice())),
+            // wasm < min (a wasm key) < max (NOT a wasm key) < wasn
+            (Some(min_wasm.as_slice()), Some(max_not_wasm.as_slice())),
+            // wasm < min (a wasm key) < max (a wasm key) < wasn
+            (Some(min_wasm.as_slice()), Some(max_wasm.as_slice())),
+            // wasm < min (NOT a wasm key) < wasn < max
+            (Some(min_not_wasm.as_slice()), None),
+            // wasm < min (a wasm key) < wasn < max
+            (Some(min_wasm.as_slice()), None),
+            // wasn < min
+            (Some(b"wb".as_slice()), None),
+        ] {
+            let lower = match min {
+                Some(s) => Bound::Included(s),
+                None => Bound::Unbounded,
+            };
+
+            let upper = match max {
+                Some(s) => Bound::Excluded(s),
+                None => Bound::Unbounded,
+            };
+
+            let expect = keys
+                .range::<[u8], _>((lower, upper))
+                .map(|k| k.clone())
+                .collect::<Vec<_>>();
+
+            let actual = storage
+                .scan_keys(min.as_deref(), max.as_deref(), Order::Ascending)
+                .collect::<Vec<_>>();
+
+            assert_eq!(
+                actual, expect,
+                "actual and expect do not match! min = {min:?}, max = {max:?}"
+            );
+        }
+    }
+
+    fn concat(slices: &[&[u8]]) -> Vec<u8> {
+        let len = slices.iter().map(|slice| slice.len()).sum();
+        let mut vec = Vec::with_capacity(len);
+        for slice in slices {
+            vec.extend_from_slice(*slice);
+        }
+        vec
     }
 }
 
