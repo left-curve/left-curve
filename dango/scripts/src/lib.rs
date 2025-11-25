@@ -1,8 +1,12 @@
 pub mod addresses {
     pub mod sepolia {
+        use alloy::primitives::{Address, address};
+
         pub const WARP_DOMAIN: u32 = 11155111;
+        pub const HYPERLANE_MAILBOX: Address = address!("fFAEF09B3cd11D9b20d1a19bECca54EEC2884766");
+
         pub mod hyperlane_deployments {
-            use alloy::primitives::{Address, address};
+            use super::*;
 
             pub mod eth {
                 use super::*;
@@ -27,7 +31,7 @@ pub mod addresses {
         }
 
         pub mod erc20s {
-            use alloy::primitives::{Address, address};
+            use super::*;
 
             pub const USDC: Address = address!("0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238");
         }
