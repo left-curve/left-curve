@@ -4,21 +4,15 @@ use uuid::Uuid;
 use {crate::statistics, grug_types::MetricsIterExt};
 use {
     crate::{DbError, DbResult},
-    grug_app::{CONTRACT_NAMESPACE, Commitment, Db, StorageProvider},
-    grug_types::{Addr, Batch, Buffer, Hash256, HashExt, MockStorage, Op, Order, Record, Storage},
+    grug_app::{CONTRACT_NAMESPACE, Commitment, Db},
+    grug_types::{Addr, Batch, Buffer, Hash256, HashExt, Op, Order, Record, Storage},
     itertools::Itertools,
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
     rocksdb::{
         BlockBasedOptions, Cache, ColumnFamily, ColumnFamilyDescriptor, CompactionPri, DB,
         DBCompactionStyle, IteratorMode, Options, ReadOptions, SliceTransform, WriteBatch,
     },
-    std::{
-        collections::BTreeMap,
-        marker::PhantomData,
-        ops::Bound,
-        path::Path,
-        sync::{Arc, LazyLock},
-    },
+    std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
 };
 
 /// We use three column families (CFs) for storing data.
@@ -60,14 +54,7 @@ pub const WASM_STORAGE_LABEL: &str = "wasm";
 #[cfg(feature = "metrics")]
 pub const STATE_STORAGE_LABEL: &str = "state";
 
-static WASM_PREFIX_LEN: LazyLock<usize> = LazyLock::new(|| {
-    StorageProvider::new(Box::new(MockStorage::new()), &[
-        CONTRACT_NAMESPACE,
-        &Addr::mock(0),
-    ])
-    .namespace()
-    .len()
-});
+const WASM_PREFIX_LEN: usize = CONTRACT_NAMESPACE.len() + Addr::LENGTH;
 
 /// The base storage primitive.
 ///
@@ -994,9 +981,9 @@ fn create_wasm_iter<'a>(
 
     // Enable prefix mode only if min & max share the exact same wasm+addr prefix
     if let (Some(min), Some(max)) = (min, max)
-        && min.len() >= *WASM_PREFIX_LEN
-        && max.len() >= *WASM_PREFIX_LEN
-        && min[..*WASM_PREFIX_LEN] == max[..*WASM_PREFIX_LEN]
+        && min.len() >= WASM_PREFIX_LEN
+        && max.len() >= WASM_PREFIX_LEN
+        && min[..WASM_PREFIX_LEN] == max[..WASM_PREFIX_LEN]
     {
         opts.set_prefix_same_as_start(true);
     }
@@ -1185,10 +1172,8 @@ pub fn new_state_cf_options() -> Options {
 
 pub fn new_wasm_cf_options(base_opts: Option<Options>) -> Options {
     let mut opts = base_opts.unwrap_or_default();
-
     // Prefix extractor per b"wasm" (4 bytes) + address (20 bytes)
-
-    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(*WASM_PREFIX_LEN));
+    opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(WASM_PREFIX_LEN));
     opts
 }
 
@@ -1685,9 +1670,9 @@ mod tests_jmt {
 mod tests_simple {
     use {
         super::*,
-        grug_app::SimpleCommitment,
+        grug_app::{SimpleCommitment, StorageProvider},
         grug_storage::Map,
-        grug_types::{BorshSerExt, Shared, btree_map, hash},
+        grug_types::{BorshSerExt, MockStorage, Shared, btree_map, hash},
         temp_rocksdb::TempDataDir,
     };
 
@@ -1958,6 +1943,24 @@ mod tests_simple {
                 .merge_by(r.into_iter(), |a, b| a > b)
                 .collect::<Vec<_>>(),
             [6, 5, 4, 3, 2, 1]
+        );
+    }
+
+    /// The logic of the DB assumes records in the wasm column family have a 24-byte
+    /// prefix (= 4 bytes of "wasm" + 20 bytes of contract address).
+    /// We need to make sure this is true (in case a change in `StorageProvider`
+    /// changes how storage is laid out).
+    #[test]
+    fn storage_provider_prefix_length_is_correct() {
+        assert_eq!(
+            StorageProvider::new(Box::new(MockStorage::new()), &[
+                CONTRACT_NAMESPACE,
+                &Addr::mock(0),
+            ])
+            .namespace()
+            .len(),
+            WASM_PREFIX_LEN,
+            "storage provider prefix length is not the expected value"
         );
     }
 }
