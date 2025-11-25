@@ -1,7 +1,16 @@
-- name: Create Backblaze bucket if missing
-  amazon.aws.s3_bucket:
-    name: "{{ s3_bucket }}"
-    state: present
-    endpoint_url: "{{ s3_endpoint }}"
-    aws_access_key: "{{ s3_access_key }}"
-    aws_secret_key: "{{ s3_secret_key }}"
+- block:
+    - name: Ensure boto3 is installed locally
+      ansible.builtin.pip:
+        name:
+          - boto3
+          - botocore
+
+    - name: Create Backblaze bucket if missing
+      amazon.aws.s3_bucket:
+        name: "{{ s3_bucket }}"
+        state: present
+        endpoint_url: "{{ s3_endpoint }}"
+        aws_access_key: "{{ s3_access_key }}"
+        aws_secret_key: "{{ s3_secret_key }}"
+  run_once: true
+  delegate_to: localhost
