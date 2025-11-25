@@ -143,12 +143,6 @@
       when: delete_clickhouse_database_at_merge
 
     - block:
-        - name: Ensure boto3 is installed locally
-          ansible.builtin.pip:
-            name:
-              - boto3
-              - botocore
-
         - name: Delete Backblaze bucket
           when:
             - delete_s3_backup_at_merge
@@ -158,10 +152,9 @@
             name: "{{ s3_bucket }}"
             state: absent
             endpoint_url: "{{ s3_endpoint }}"
-            aws_access_key: "{{ s3_access_key }}"
-            aws_secret_key: "{{ s3_secret_key }}"
+            aws_access_key: "{{ s3_master_access_key }}"
+            aws_secret_key: "{{ s3_master_secret_key }}"
       run_once: true
-      delegate_to: localhost
 
     - set_fact:
         pr_tunnel_name: "{{ deployment_name }}-{{ hostname }}"

@@ -14,6 +14,6 @@
         name: "{{ s3_bucket }}"
         state: present
         endpoint_url: "{{ s3_endpoint }}"
-        aws_access_key: "{{ s3_access_key }}"
-        aws_secret_key: "{{ s3_secret_key }}"
+        aws_access_key: "{{ s3_master_access_key }}"
+        aws_secret_key: "{{ s3_master_secret_key }}"
   run_once: true
