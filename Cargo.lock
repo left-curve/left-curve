@@ -3444,8 +3444,8 @@ version = "0.0.0"
 dependencies = [
  "alloy",
  "anyhow",
- "base64 0.22.1",
  "dango-types",
+ "data-encoding",
  "grug",
  "hex",
  "serde",

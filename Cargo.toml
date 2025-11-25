@@ -105,7 +105,6 @@ async-trait                 = "0"
 awc                         = "3"
 axum                        = { version = "0.8", features = ["ws"] }
 backtrace                   = "0.3"
-base64                      = "0.22"
 bigdecimal                  = "0.4"
 bip32                       = "0.5"
 blake2                      = "0.10"
