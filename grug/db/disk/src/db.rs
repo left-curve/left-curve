@@ -3,7 +3,7 @@ use uuid::Uuid;
 #[cfg(feature = "metrics")]
 use {crate::statistics, grug_types::MetricsIterExt};
 use {
-    crate::{DbError, DbResult, migrations},
+    crate::{DbError, DbResult},
     grug_app::{CONTRACT_NAMESPACE, Commitment, Db, StorageProvider},
     grug_types::{Addr, Batch, Buffer, Hash256, HashExt, MockStorage, Op, Order, Record, Storage},
     itertools::Itertools,
@@ -41,8 +41,6 @@ pub const CF_NAME_STATE_COMMITMENT: &str = "state_commitment";
 pub const CF_NAME_STATE_STORAGE: &str = "state_storage";
 
 pub const CF_NAME_WASM_STORAGE: &str = "wasm_storage";
-
-pub const CF_NAME_MIGRATIONS: &str = "migrations";
 
 /// Storage key for the latest version.
 pub const LATEST_VERSION_KEY: &[u8] = b"latest_version";
@@ -159,7 +157,6 @@ impl<T> DiskDb<T> {
             data_dir,
             [
                 (CF_NAME_DEFAULT, Options::default()),
-                (CF_NAME_MIGRATIONS, Options::default()),
                 #[cfg(feature = "ibc")]
                 (CF_NAME_PREIMAGES, Options::default()),
                 (CF_NAME_STATE_STORAGE, cf_opts.clone()),
@@ -170,8 +167,6 @@ impl<T> DiskDb<T> {
             .map(|(name, cf_opt)| ColumnFamilyDescriptor::new(name.to_string(), cf_opt))
             .collect::<Vec<_>>(),
         )?;
-
-        migrations::run_migrations(&db)?;
 
         // If `priority_range` is specified, load the data in that range into memory.
         let priority_data = priority_range.map(|(min, max)| {
