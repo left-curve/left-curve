@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "scripts": {
+    "eas-build-pre-install": "npm install -g pnpm@10.16.1",
     "build:android": "eas build -p android -e development",
     "dev:android": "eas build:run -p android -e development --latest && expo start --android",
     "build:ios": "eas build -p ios -e development",
@@ -22,6 +23,7 @@
     "@left-curve/foundation": "workspace:*",
     "@left-curve/store": "workspace:*",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-picker/picker": "^2.11.4",
     "@tanstack/react-query": "catalog:",
     "babel-plugin-module-resolver": "^5.0.2",
     "expo": "~52.0.47",

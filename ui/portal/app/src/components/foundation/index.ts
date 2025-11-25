@@ -13,8 +13,10 @@ export { Badge } from "./Badge";
 export { AccountCard } from "../AccountMenu/AccountCard";
 export { TextCopy } from "./TextCopy";
 export { Tabs } from "./Tabs";
-export { PairAssets } from "./PairAssets";
+export { Tab } from "./Tabs";
 export { Activities } from "./activities/Activities";
+export { PairAssets } from "./PairAssets";
+export { ShadowContainer } from "./ShadowContainer";
 
 /* ---------------------------------- Icons --------------------------------- */
 
@@ -38,4 +40,9 @@ export { IconNewAccount } from "./icons/IconNewAccount";
 export { IconMarketOrder } from "./icons/IconMarketOrder";
 export { IconLimitOrder } from "./icons/IconLimitOrder";
 export { IconSent } from "./icons/IconSent";
-export { IconReceived } from "./icons/IconReceived";
+export { IconTheme } from "./icons/IconTheme";
+export { IconMoon } from "./icons/IconMoon";
+export { IconLanguage } from "./icons/IconLanguage";
+export { IconFormatNumber } from "./icons/IconFormatNumber";
+export { IconDepth } from "./icons/IconDepth";
+export { IconCalendar } from "./icons/IconCalendar";

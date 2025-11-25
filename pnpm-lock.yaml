@@ -402,6 +402,9 @@ importers:
       '@react-native-async-storage/async-storage':
         specifier: ^2.2.0
         version: 2.2.0(react-native@0.76.9(@babel/core@7.26.8)(@babel/preset-env@7.28.3(@babel/core@7.26.8))(@types/react@18.3.11)(encoding@0.1.13)(react@18.3.1))
+      '@react-native-picker/picker':
+        specifier: ^2.11.4
+        version: 2.11.4(react-native@0.76.9(@babel/core@7.26.8)(@babel/preset-env@7.28.3(@babel/core@7.26.8))(@types/react@18.3.11)(encoding@0.1.13)(react@18.3.1))(react@18.3.1)
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.59.0(react@18.3.1)
@@ -3265,6 +3268,12 @@ packages:
     resolution: {integrity: sha512-gvRvjR5JAaUZF8tv2Kcq/Gbt3JHwbKFYfmb445rhOj6NUMx3qPLixmDx5pZAyb9at1bYvJ4/eTUipU5aki45xw==}
     peerDependencies:
       react-native: ^0.0.0-0 || >=0.65 <1.0
+
+  '@react-native-picker/picker@2.11.4':
+    resolution: {integrity: sha512-Kf8h1AMnBo54b1fdiVylP2P/iFcZqzpMYcglC28EEFB1DEnOjsNr6Ucqc+3R9e91vHxEDnhZFbYDmAe79P2gjA==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
 
   '@react-native/assets-registry@0.76.9':
     resolution: {integrity: sha512-pN0Ws5xsjWOZ8P37efh0jqHHQmq+oNGKT4AyAoKRpxBDDDmlAmpaYjer9Qz7PpDKF+IUyRjF/+rBsM50a8JcUg==}
@@ -12647,6 +12656,11 @@ snapshots:
   '@react-native-async-storage/async-storage@2.2.0(react-native@0.76.9(@babel/core@7.26.8)(@babel/preset-env@7.28.3(@babel/core@7.26.8))(@types/react@18.3.11)(encoding@0.1.13)(react@18.3.1))':
     dependencies:
       merge-options: 3.0.4
+      react-native: 0.76.9(@babel/core@7.26.8)(@babel/preset-env@7.28.3(@babel/core@7.26.8))(@types/react@18.3.11)(encoding@0.1.13)(react@18.3.1)
+
+  '@react-native-picker/picker@2.11.4(react-native@0.76.9(@babel/core@7.26.8)(@babel/preset-env@7.28.3(@babel/core@7.26.8))(@types/react@18.3.11)(encoding@0.1.13)(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
       react-native: 0.76.9(@babel/core@7.26.8)(@babel/preset-env@7.28.3(@babel/core@7.26.8))(@types/react@18.3.11)(encoding@0.1.13)(react@18.3.1)
 
   '@react-native/assets-registry@0.76.9': {}
