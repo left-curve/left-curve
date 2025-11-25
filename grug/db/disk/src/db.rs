@@ -9,8 +9,8 @@ use {
     itertools::Itertools,
     parking_lot::{ArcRwLockReadGuard, RawRwLock, RwLock},
     rocksdb::{
-        BlockBasedOptions, Cache, ColumnFamily, ColumnFamilyDescriptor, CompactionPri, DB,
-        DBCompactionStyle, IteratorMode, Options, ReadOptions, SliceTransform, WriteBatch,
+        BlockBasedOptions, Cache, ColumnFamily, CompactionPri, DB, DBCompactionStyle, IteratorMode,
+        Options, ReadOptions, SliceTransform, WriteBatch,
     },
     std::{collections::BTreeMap, marker::PhantomData, ops::Bound, path::Path, sync::Arc},
 };
@@ -139,21 +139,14 @@ impl<T> DiskDb<T> {
         let opts = new_db_options();
         let cf_opts = new_state_cf_options();
         let wasm_cf_opts = new_wasm_cf_options(Some(cf_opts.clone()));
-        let db = DB::open_cf_descriptors(
-            &opts,
-            data_dir,
-            [
-                (CF_NAME_DEFAULT, Options::default()),
-                #[cfg(feature = "ibc")]
-                (CF_NAME_PREIMAGES, Options::default()),
-                (CF_NAME_STATE_STORAGE, cf_opts.clone()),
-                (CF_NAME_STATE_COMMITMENT, cf_opts),
-                (CF_NAME_WASM_STORAGE, wasm_cf_opts),
-            ]
-            .into_iter()
-            .map(|(name, cf_opt)| ColumnFamilyDescriptor::new(name.to_string(), cf_opt))
-            .collect::<Vec<_>>(),
-        )?;
+        let db = DB::open_cf_with_opts(&opts, data_dir, [
+            (CF_NAME_DEFAULT, Options::default()),
+            #[cfg(feature = "ibc")]
+            (CF_NAME_PREIMAGES, Options::default()),
+            (CF_NAME_STATE_STORAGE, cf_opts.clone()),
+            (CF_NAME_STATE_COMMITMENT, cf_opts),
+            (CF_NAME_WASM_STORAGE, wasm_cf_opts),
+        ])?;
 
         // If `priority_range` is specified, load the data in that range into memory.
         let priority_data = priority_range.map(|(min, max)| {
