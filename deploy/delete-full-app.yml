@@ -29,7 +29,7 @@
 
     - name: Read .env values
       shell: |
-        grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE|DELETE_POSTGRES_DATABASE_AT_MERGE|DELETE_CLICKHOUSE_DATABASE_AT_MERGE)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
+        grep -E '^(POSTGRES_DATABASE|CLICKHOUSE_DATABASE|DELETE_S3_BACKUP_AT_MERGE|S3_BUCKET|DELETE_POSTGRES_DATABASE_AT_MERGE|DELETE_CLICKHOUSE_DATABASE_AT_MERGE)=' {{ ansible_env.HOME }}/deployments/{{ deployment_name }}/.env | \
         awk -F= '{print tolower($1) "=" $2}'
       register: existing_env_variables
       when: env_file_exists.stat.exists
@@ -37,6 +37,7 @@
     - set_fact:
         delete_postgres_database_at_merge: false
         delete_clickhouse_database_at_merge: false
+        delete_s3_backup_at_merge: false
 
     - name: Set facts from existing .env
       set_fact:
@@ -140,6 +141,20 @@
         priority: info
         ident: dango
       when: delete_clickhouse_database_at_merge
+
+    - name: Delete Backblaze bucket
+      when:
+        - delete_s3_backup_at_merge
+      environment:
+        AWS_ACCESS_KEY_ID: "{{ s3_access_key }}"
+        AWS_SECRET_ACCESS_KEY: "{{ s3_secret_key }}"
+        AWS_DEFAULT_REGION: "auto"
+      amazon.aws.s3_bucket:
+        name: "{{ s3_bucket }}"
+        state: absent
+        endpoint_url: "{{ s3_endpoint }}"
+        aws_access_key: "{{ s3_access_key }}"
+        aws_secret_key: "{{ s3_secret_key }}"
 
     - set_fact:
         pr_tunnel_name: "{{ deployment_name }}-{{ hostname }}"

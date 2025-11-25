@@ -1,0 +1,7 @@
+- name: Create Backblaze bucket if missing
+  amazon.aws.s3_bucket:
+    name: "{{ s3_bucket }}"
+    state: present
+    endpoint_url: "{{ s3_endpoint }}"
+    aws_access_key: "{{ s3_access_key }}"
+    aws_secret_key: "{{ s3_secret_key }}"

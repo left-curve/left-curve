@@ -23,6 +23,10 @@ deploy_includes_postgres: true
 delete_postgres_database_at_merge: false
 deploy_includes_clickhouse: true
 delete_clickhouse_database_at_merge: false
+delete_s3_backup_at_merge: false
+s3_bucket: "dango-{{ chain_id }}"
+s3_path: "dango/indexer/blocks/"
+s3_enabled: true
 postgres_database: "dango_{{ timestamp }}"
 clickhouse_database: "dango_{{ timestamp }}"
 deployment_dir: "{{ ansible_env.HOME }}/deployments/{{ deployment_name }}"

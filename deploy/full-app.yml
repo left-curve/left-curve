@@ -24,10 +24,11 @@
         priority: info
         ident: dango
 
-    - name: Set system wide cometbft and dango directories
+    - name: Set system wide cometbft and dango directories and overwrite s3_bucket
       set_fact:
         dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
         cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
+        s3_bucket: "dango-{{ dango_network }}-{{ timestamp }}"
       when: system_wide_directories
 
     - name: Read current deploy
@@ -83,6 +84,7 @@
   collections:
     - community.docker
     - community.clickhouse
+    - amazon.aws
   pre_tasks:
     - name: Load postgres vars
       include_vars: "roles/full-app/vars/included_postgres.yml"

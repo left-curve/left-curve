@@ -15,10 +15,10 @@ provision:
 
 # Set up Python environment and install Ansible + role
 setup:
-  python3 -m venv .venv
-  source .venv/bin/activate && pip install --upgrade pip
-  source .venv/bin/activate && pip install ansible
-  source .venv/bin/activate && ansible-galaxy collection install -r requirements.yml
+  uv venv .venv
+  source .venv/bin/activate
+  uv pip install ansible
+  ansible-galaxy collection install -r requirements.yml
 
 deploy-github-runners:
   ansible-playbook setup-github-runner-hosts.yml
