@@ -1,11 +1,13 @@
 - block:
-    - name: Ensure boto3 is installed locally
+    - name: Install boto3 and botocore from apt
+      ansible.builtin.apt:
+        name:
+          - python3-boto3
+          - python3-botocore
+        state: present
+        update_cache: yes
       become: true
       become_user: root
-      ansible.builtin.pip:
-        name:
-          - boto3
-          - botocore
 
     - name: Create Backblaze bucket if missing
       amazon.aws.s3_bucket:
