@@ -17,7 +17,7 @@ use {
         rpc::types::TransactionRequest,
         signers::local::{MnemonicBuilder, coins_bip39::English},
     },
-    dango_scripts::{
+    dango_hyperlane_deployment::{
         addresses::sepolia::hyperlane_deployments::eth,
         contract_bindings::{hyp_native::HypNative, proxy::TransparentUpgradeableProxy},
     },

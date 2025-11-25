@@ -18,7 +18,7 @@ use {
         signers::local::{MnemonicBuilder, coins_bip39::English},
         sol_types::SolCall,
     },
-    dango_scripts::{
+    dango_hyperlane_deployment::{
         addresses::sepolia::{HYPERLANE_MAILBOX, erc20s, hyperlane_deployments::eth},
         contract_bindings::{
             hyp_erc20_collateral::HypERC20Collateral,

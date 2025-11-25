@@ -33,9 +33,9 @@ const DANGO_OWNER_PRIVATE_KEY: [u8; 32] =
 const CHAIN_ID: &str = "pr-1414";
 
 const SUBDENOM: &str = "sepoliaETH";
-const REMOTE_DOMAIN: u32 = dango_scripts::addresses::sepolia::WARP_DOMAIN;
+const REMOTE_DOMAIN: u32 = dango_hyperlane_deployment::addresses::sepolia::WARP_DOMAIN;
 const REMOTE_WARP_ADDRESS: Address =
-    dango_scripts::addresses::sepolia::hyperlane_deployments::eth::WARP_ROUTE_PROXY;
+    dango_hyperlane_deployment::addresses::sepolia::hyperlane_deployments::eth::WARP_ROUTE_PROXY;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
