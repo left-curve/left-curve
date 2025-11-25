@@ -1,5 +1,6 @@
 pub mod addresses {
     pub mod sepolia {
+        pub const WARP_DOMAIN: u32 = 11155111;
         pub mod hyperlane_deployments {
             use alloy::primitives::{Address, address};
 
