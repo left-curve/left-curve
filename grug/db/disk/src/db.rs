@@ -993,13 +993,12 @@ fn create_wasm_iter<'a>(
     let mut opts = new_read_options(min, max);
 
     // Enable prefix mode only if min & max share the exact same wasm+addr prefix
-    if let (Some(min), Some(max)) = (min, max) {
-        if min.len() >= *WASM_PREFIX_LEN
-            && max.len() >= *WASM_PREFIX_LEN
-            && min[..*WASM_PREFIX_LEN] == max[..*WASM_PREFIX_LEN]
-        {
-            opts.set_prefix_same_as_start(true);
-        }
+    if let (Some(min), Some(max)) = (min, max)
+        && min.len() >= *WASM_PREFIX_LEN
+        && max.len() >= *WASM_PREFIX_LEN
+        && min[..*WASM_PREFIX_LEN] == max[..*WASM_PREFIX_LEN]
+    {
+        opts.set_prefix_same_as_start(true);
     }
 
     let mode = into_iterator_mode(order);
