@@ -2062,7 +2062,7 @@ mod tests_simple {
                 .collect::<Vec<_>>();
 
             let actual = storage
-                .scan_keys(min.as_deref(), max.as_deref(), Order::Ascending)
+                .scan_keys(min, max, Order::Ascending)
                 .collect::<Vec<_>>();
 
             assert_eq!(
