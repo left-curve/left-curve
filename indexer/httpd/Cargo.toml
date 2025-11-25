@@ -60,5 +60,4 @@ tracing-subscriber          = { workspace = true }
 uuid                        = { workspace = true }
 
 [dev-dependencies]
-assertor              = { workspace = true }
 indexer-sql-migration = { workspace = true }

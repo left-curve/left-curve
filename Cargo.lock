@@ -5099,7 +5099,6 @@ dependencies = [
  "actix-web",
  "actix-web-metrics",
  "anyhow",
- "assertor",
  "async-graphql",
  "async-graphql-actix-web",
  "async-trait",
@@ -6124,7 +6123,6 @@ name = "indexer-hooked"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "assertor",
  "async-graphql",
  "async-stream",
  "async-trait",
@@ -6158,7 +6156,6 @@ dependencies = [
  "actix-web",
  "actix-web-metrics",
  "anyhow",
- "assertor",
  "async-graphql",
  "async-graphql-actix-web",
  "async-trait",
