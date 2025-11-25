@@ -10,18 +10,12 @@ rust-version  = { workspace = true }
 version       = { workspace = true }
 
 [features]
-async-graphql = [
-  "dep:actix-web",
-  "dep:async-graphql",
-  "grug-types/async-graphql",
-  "indexer-sql/async-graphql",
-]
-metrics = ["dep:metrics"]
-testing = []
-tracing = ["dep:tracing"]
+async-graphql = ["dep:async-graphql", "grug-types/async-graphql", "indexer-sql/async-graphql"]
+metrics       = ["dep:metrics"]
+testing       = []
+tracing       = ["dep:tracing"]
 
 [dependencies]
-actix-web                   = { workspace = true, optional = true }
 anyhow                      = { workspace = true }
 async-graphql               = { workspace = true, optional = true }
 async-trait                 = { workspace = true }

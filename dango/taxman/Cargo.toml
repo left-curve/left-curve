@@ -18,5 +18,3 @@ library = []
 anyhow      = { workspace = true }
 dango-types = { workspace = true }
 grug        = { workspace = true }
-
-[dev-dependencies]

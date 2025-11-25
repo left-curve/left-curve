@@ -44,6 +44,15 @@ check:
 lint:
   cargo clippy --bins --tests --benches --examples --all-features --all-targets -- -D warnings
 
+# Perform linting but with `--no-default-features` enabled for each crate
+lint-without-features:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  for crate in $(cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'); do
+    echo "Checking $crate..."
+    cargo clippy -p "$crate" --bins --tests --benches --examples --no-default-features --all-targets -- -D warnings
+  done
+
 # Perform formatting
 fmt:
   cargo +nightly fmt --all
