@@ -18,23 +18,19 @@ metrics = [
   "dep:futures-util",
   "dep:metrics",
   "dep:metrics-exporter-prometheus",
-  "dep:prometheus",
   "grug-httpd/metrics",
 ]
-testing = ["dep:grug-testing"]
 tracing = ["dep:tracing", "grug-app/tracing", "indexer-sql/tracing"]
 
 [dependencies]
 actix                       = { workspace = true }
 actix-cors                  = { workspace = true }
-actix-files                 = { workspace = true }
 actix-web                   = { workspace = true }
 actix-web-metrics           = { workspace = true, optional = true }
 anyhow                      = { workspace = true }
 async-graphql               = { workspace = true }
 async-graphql-actix-web     = { workspace = true }
 async-trait                 = { workspace = true }
-base64                      = { workspace = true }
 chrono                      = { workspace = true }
 clap                        = { workspace = true }
 error-backtrace             = { workspace = true }
@@ -42,7 +38,6 @@ futures                     = { workspace = true }
 futures-util                = { workspace = true, optional = true }
 grug-app                    = { workspace = true }
 grug-httpd                  = { workspace = true }
-grug-testing                = { workspace = true, optional = true }
 grug-types                  = { workspace = true, features = ["async-graphql", "chrono", "tendermint"] }
 indexer-cache               = { workspace = true }
 indexer-sql                 = { workspace = true, features = ["async-graphql"] }
@@ -50,7 +45,6 @@ itertools                   = { workspace = true }
 metrics                     = { workspace = true, optional = true }
 metrics-exporter-prometheus = { workspace = true, optional = true }
 num_cpus                    = { workspace = true }
-prometheus                  = { workspace = true, optional = true }
 sea-orm                     = { workspace = true }
 sentry                      = { workspace = true }
 sentry-actix                = { workspace = true }
@@ -62,7 +56,6 @@ tendermint-rpc              = { workspace = true, features = ["http-client"] }
 thiserror                   = { workspace = true }
 tokio                       = { workspace = true }
 tracing                     = { workspace = true, optional = true }
-tracing-actix-web           = { workspace = true }
 tracing-subscriber          = { workspace = true }
 uuid                        = { workspace = true }
 
