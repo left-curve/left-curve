@@ -490,13 +490,6 @@ where
             )
             .collect::<StdResult<Vec<_>>>()?;
 
-        // Delete these cronjobs. They will be scheduled a new time.
-        NEXT_CRONJOBS.prefix_clear(
-            &mut buffer,
-            None,
-            Some(PrefixBound::Inclusive(block.info.timestamp)),
-        );
-
         // Perform the cronjobs.
         #[cfg_attr(not(feature = "tracing"), allow(clippy::unused_enumerate_index))]
         for (_idx, (time, contract)) in jobs.into_iter().enumerate() {
@@ -531,14 +524,17 @@ where
                 cron_buffer.disassemble().commit();
             }
 
-            // Schedule the next time this cronjob is to be performed.
-            schedule_cronjob(&mut buffer, contract, next_time)?;
-
             cron_outcomes.push(CronOutcome::new(
                 cron_gas_tracker.limit(),
                 cron_gas_tracker.used(),
                 cron_event.into_commitment_status(),
             ));
+
+            // Delete the current cronjob, since it has been completed.
+            NEXT_CRONJOBS.remove(&mut buffer, (time, contract));
+
+            // Schedule the next time this cronjob is to be performed.
+            schedule_cronjob(&mut buffer, contract, next_time)?;
         }
 
         // Remove orphaned codes (those that are not used by any contract) that
