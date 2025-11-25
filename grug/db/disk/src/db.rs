@@ -138,7 +138,7 @@ impl<T> DiskDb<T> {
     {
         let opts = new_db_options();
         let cf_opts = new_state_cf_options();
-        let wasm_cf_opts = new_wasm_cf_options(Some(cf_opts.clone()));
+        let wasm_cf_opts = new_wasm_cf_options(cf_opts.clone());
         let db = DB::open_cf_with_opts(&opts, data_dir, [
             (CF_NAME_DEFAULT, Options::default()),
             #[cfg(feature = "ibc")]
@@ -1163,9 +1163,7 @@ pub fn new_state_cf_options() -> Options {
     opts
 }
 
-pub fn new_wasm_cf_options(base_opts: Option<Options>) -> Options {
-    let mut opts = base_opts.unwrap_or_default();
-    // Prefix extractor per b"wasm" (4 bytes) + address (20 bytes)
+pub fn new_wasm_cf_options(mut opts: Options) -> Options {
     opts.set_prefix_extractor(SliceTransform::create_fixed_prefix(WASM_PREFIX_LEN));
     opts
 }
