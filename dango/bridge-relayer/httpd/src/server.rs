@@ -1,5 +1,6 @@
 use {
     super::error::Error,
+    crate::context::Context,
     actix_cors::Cors,
     actix_web::{
         App, HttpResponse, HttpServer, http,
@@ -17,6 +18,7 @@ pub async fn run_server<I>(
     ip: I,
     port: u16,
     cors_allowed_origin: Option<String>,
+    context: Context,
 ) -> Result<(), Error>
 where
     I: ToString + std::fmt::Display,
@@ -56,7 +58,8 @@ where
             .wrap(Sentry::new())
             .wrap(Logger::default())
             .wrap(Compress::default())
-            .wrap(cors);
+            .wrap(cors)
+            .app_data(web::Data::new(context.clone()));
 
         #[cfg(feature = "metrics")]
         let app = app.wrap(metrics.clone());

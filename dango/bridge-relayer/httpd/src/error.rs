@@ -22,4 +22,7 @@ pub enum Error {
     #[error(transparent)]
     #[backtrace(new)]
     PrometheusBuilder(metrics_exporter_prometheus::BuildError),
+
+    #[error("anyhow error: {0}")]
+    Anyhow(anyhow::Error),
 }

@@ -22,8 +22,11 @@ tracing = ["dep:tracing"]
 actix-cors                  = { workspace = true }
 actix-web                   = { workspace = true }
 actix-web-metrics           = { workspace = true, optional = true }
+anyhow                      = { workspace = true }
+dango-types                 = { workspace = true }
 error-backtrace             = { workspace = true }
 grug                        = { workspace = true }
+indexer-client              = { workspace = true }
 metrics                     = { workspace = true, optional = true }
 metrics-exporter-prometheus = { workspace = true, optional = true }
 sea-orm                     = { workspace = true }
