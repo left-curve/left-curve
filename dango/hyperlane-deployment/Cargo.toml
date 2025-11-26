@@ -14,8 +14,8 @@ name = "evm_deploy_hwr_sepolia"
 path = "src/bin/evm/deploy_hwr.rs"
 
 [[bin]]
-name = "evm_warp_eth_sepolia_to_dango"
-path = "src/bin/evm/warp_eth_to_dango.rs" 
+name = "evm_warp_to_dango"
+path = "src/bin/evm/warp_to_dango.rs" 
 
 [[bin]]
 name = "evm_enroll_dango_domain"
