@@ -116,3 +116,5 @@ export { IconToastSuccess } from "./icons/IconToastSuccess";
 export { IconToastInfo } from "./icons/IconToastInfo";
 export { IconToastError } from "./icons/IconToastError";
 export { IconToastWarning } from "./icons/IconToastWarning";
+export { IconWorld } from "./icons/IconWorld";
+export { IconTime } from "./icons/IconTime";
