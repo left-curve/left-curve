@@ -13,9 +13,9 @@ use {
     dango_types::{
         DangoQuerier,
         bitcoin::{
-            AddressIndex, BitcoinSignature, Config, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD,
-            InboundConfirmed, InboundCredential, InstantiateMsg, MultisigWallet, Network,
-            OUTPUT_SIZE, OutboundConfirmed, OutboundRequested, SIGNATURE_SIZE, Transaction, Vout,
+            BitcoinSignature, Config, ExecuteMsg, INPUT_SIGNATURES_OVERHEAD, InboundConfirmed,
+            InboundCredential, InstantiateMsg, MultisigWallet, Network, OUTPUT_SIZE,
+            OutboundConfirmed, OutboundRequested, Recipient, SIGNATURE_SIZE, Transaction, Vout,
             create_tx_in,
         },
         gateway::{
@@ -37,7 +37,7 @@ pub fn instantiate(ctx: MutableCtx, msg: InstantiateMsg) -> anyhow::Result<Respo
     check_bitcoin_address(&msg.config.vault, msg.config.network)?;
 
     // Ensure the vault address matches the one derived from the pub keys.
-    let multisig_wallet = MultisigWallet::new(&msg.config.multisig, None);
+    let multisig_wallet = MultisigWallet::new(&msg.config.multisig, &Recipient::Vault);
     ensure!(
         msg.config.vault == multisig_wallet.address(msg.config.network).to_string(),
         "vault address must match the one derived from the multisig public keys;
@@ -115,12 +115,12 @@ pub fn authenticate(ctx: AuthCtx, tx: Tx) -> anyhow::Result<AuthResponse> {
             // Validate the signatures.
             let mut cache = SighashCache::new(tx.to_btc_transaction(cfg.network)?);
 
-            for (i, (_, (amount, user_index))) in tx.inputs.iter().enumerate() {
+            for (i, (_, (amount, recipient))) in tx.inputs.iter().enumerate() {
                 let signature = signatures.get(i).unwrap();
                 // Remove the last byte, which is the sighash type.
                 let signature = Signature::from_der(&signature[..signature.len() - 1])?;
 
-                let multisig = MultisigWallet::new(&cfg.multisig, *user_index);
+                let multisig = MultisigWallet::new(&cfg.multisig, recipient);
 
                 let sighash = cache.p2wsh_signature_hash(
                     i,
@@ -156,7 +156,7 @@ pub fn execute(ctx: MutableCtx, msg: ExecuteMsg) -> anyhow::Result<Response> {
             inbound_msg.transaction_hash,
             inbound_msg.vout,
             inbound_msg.amount,
-            inbound_msg.address_index,
+            inbound_msg.recipient,
             inbound_msg.pub_key,
         ),
         ExecuteMsg::Bridge(BridgeMsg::TransferRemote { req, amount }) => {
@@ -225,7 +225,7 @@ fn observe_inbound(
     hash: Hash256,
     vout: Vout,
     amount: Uint128,
-    address_index: Option<AddressIndex>,
+    recipient: Recipient,
     pub_key: HexByteArray<33>,
 ) -> anyhow::Result<Response> {
     let cfg = CONFIG.load(ctx.storage)?;
@@ -250,8 +250,10 @@ fn observe_inbound(
         "transaction `{hash}` already exists in UTXO set"
     );
 
-    let inbound = (hash, vout, amount, address_index);
-    let mut voters = INBOUNDS.may_load(ctx.storage, inbound)?.unwrap_or_default();
+    let inbound = (hash, vout, amount, recipient.clone());
+    let mut voters = INBOUNDS
+        .may_load(ctx.storage, inbound.clone())?
+        .unwrap_or_default();
 
     ensure!(
         voters.insert(pub_key),
@@ -267,44 +269,51 @@ fn observe_inbound(
     } else {
         // The threshold has been reached:
         //
-        // 1. Mint Bitcoin tokens to the recipient, if present.
+        // 1. Mint Bitcoin tokens to the recipient, if it's a user.
         // 2. Add the transaction to the available UTXO set.
         // 3. Add the UTXO to the processed UTXOs set (to prevent double spending).
         //
-        // Note that, if the recipient is None, we cannot mint tokens, since
+        // Note that, if the recipient is Vault, we cannot mint tokens, since
         // it's the change of a withdrawal transaction.
         PROCESSED_UTXOS.insert(ctx.storage, (hash, vout))?;
-        UTXOS.save(ctx.storage, (amount, hash, vout), &address_index)?;
+        UTXOS.save(ctx.storage, (amount, hash, vout), &recipient)?;
         INBOUNDS.remove(ctx.storage, inbound);
 
         // If there's an address index, mint the Bitcoin tokens to the user.
-        let maybe_msg = if let Some(address_index) = address_index {
-            let gateway = ctx.querier.query_gateway()?;
+        let gateway = ctx.querier.query_gateway()?;
 
-            // Load the deposit address related to the address index.
-            let (recipient, _) = ADDRESSES
-                .idx
-                .address_index
-                .load(ctx.storage, address_index)?;
+        let maybe_msg = match recipient {
+            Recipient::Vault => None,
+            Recipient::Index(index) => {
+                // Load the deposit address related to the address index.
+                let (addr, _) = ADDRESSES.idx.address_index.load(ctx.storage, index)?;
 
-            Some(Message::execute(
+                Some(Message::execute(
+                    gateway,
+                    &gateway::ExecuteMsg::ReceiveRemote {
+                        remote: Remote::Bitcoin,
+                        amount,
+                        recipient: addr,
+                    },
+                    Coins::new(),
+                )?)
+            },
+            Recipient::Address(addr) => Some(Message::execute(
                 gateway,
                 &gateway::ExecuteMsg::ReceiveRemote {
                     remote: Remote::Bitcoin,
                     amount,
-                    recipient,
+                    recipient: addr,
                 },
                 Coins::new(),
-            )?)
-        } else {
-            None
+            )?),
         };
 
         let event = InboundConfirmed {
             transaction_hash: hash,
             vout,
             amount,
-            address_index,
+            recipient,
         };
 
         (maybe_msg, Some(event))
@@ -543,11 +552,11 @@ fn select_best_utxos(
         };
 
         // Select the UTXO with the lowest delta.
-        let (amount, hash, vout, recipient_index) = {
+        let (amount, hash, vout, recipient) = {
             // If the remaining amount is less than 10_000 sats, we select the bigger one, in order
             // to avoid to iterating too much in the UTXO set.
-            if let (Some(bigger), true) = (maybe_bigger, remaining_amount < Uint128::new(10_000)) {
-                bigger
+            if let (Some(bigger), true) = (&maybe_bigger, remaining_amount < Uint128::new(10_000)) {
+                bigger.clone()
             } else {
                 match (maybe_bigger, maybe_lower) {
                     (Some(bigger), Some(lower)) => {
@@ -569,7 +578,7 @@ fn select_best_utxos(
         };
 
         // Add the selected input to the transaction.
-        transaction_builder.add_input(hash, vout, amount, recipient_index)?;
+        transaction_builder.add_input(hash, vout, amount, recipient)?;
     }
     Ok(transaction_builder)
 }
@@ -578,7 +587,7 @@ fn select_best_utxos(
 struct TransactionBuilder {
     tx: BtcTransaction,
     signature_size_per_input: Uint128,
-    inputs: BTreeMap<(Hash256, Vout), (Uint128, Option<u64>)>,
+    inputs: BTreeMap<(Hash256, Vout), (Uint128, Recipient)>,
     inputs_amount: Uint128,
     sats_per_vbyte: Uint128,
     withdraw_amount: Uint128,
@@ -616,13 +625,13 @@ impl TransactionBuilder {
         hash: Hash256,
         vout: Vout,
         amount: Uint128,
-        recipient_index: Option<u64>,
+        recipient: Recipient,
     ) -> anyhow::Result<()> {
         if self.input_already_used(hash, vout) {
             bail!("input `{hash}:{vout}` already exists in the transaction");
         }
 
-        self.inputs.insert((hash, vout), (amount, recipient_index));
+        self.inputs.insert((hash, vout), (amount, recipient));
         self.tx.input.push(create_tx_in(&hash, vout));
         self.inputs_amount += amount;
 

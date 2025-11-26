@@ -3,7 +3,8 @@ use {
         ADDRESS_INDEX, ADDRESSES, CONFIG, OUTBOUND_ID, OUTBOUND_QUEUE, OUTBOUNDS, SIGNATURES, UTXOS,
     },
     dango_types::bitcoin::{
-        BitcoinAddress, BitcoinSignature, Config, MultisigWallet, QueryMsg, Transaction, Utxo,
+        BitcoinAddress, BitcoinSignature, Config, MultisigWallet, QueryMsg, Recipient, Transaction,
+        Utxo,
     },
     grug::{
         Addr, Bound, DEFAULT_PAGE_LIMIT, HexByteArray, ImmutableCtx, Json, JsonSerExt, Order,
@@ -153,7 +154,7 @@ fn query_deposit_address(ctx: ImmutableCtx, address: Addr) -> anyhow::Result<Bit
 
     let config = CONFIG.load(ctx.storage)?;
 
-    let user_script = MultisigWallet::new(&config.multisig, Some(deposit_index));
+    let user_script = MultisigWallet::new(&config.multisig, &Recipient::Index(deposit_index));
 
     Ok(user_script.address(config.network).to_string())
 }

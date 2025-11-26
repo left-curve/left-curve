@@ -1,6 +1,7 @@
 use {
     crate::gateway::bridge::BridgeMsg,
     anyhow::bail,
+    borsh::{BorshDeserialize, BorshSerialize},
     corepc_client::bitcoin::{
         Address, Amount, OutPoint, PublicKey, ScriptBuf, Sequence, Transaction as BtcTransaction,
         TxIn, TxOut, Txid, Witness,
@@ -11,8 +12,8 @@ use {
         transaction::Version,
     },
     grug::{
-        Addr, BorshSerExt, Hash256, HashExt, HexBinary, HexByteArray, Inner, NonEmpty, Order,
-        StdResult, Uint128,
+        Addr, Binary, BorshSerExt, Hash256, HashExt, HexBinary, HexByteArray, Inner, NonEmpty,
+        Order, PrimaryKey, RawKey, StdError, StdResult, Uint128,
     },
     serde::{Deserialize, Serialize, Serializer},
     std::{
@@ -38,8 +39,54 @@ pub type BitcoinSignature = HexBinary;
 /// The index of the output in a Bitcoin transaction.
 pub type Vout = u32;
 
-/// The index associated at a dango address for generating unique bitcoin address.
-pub type AddressIndex = u64;
+/// The recipient of a Bitcoin transaction.
+#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug, Clone, Eq, PartialEq)]
+pub enum Recipient {
+    Vault,
+    Index(u64),
+    Address(Addr),
+}
+
+impl PrimaryKey for Recipient {
+    type Output = Recipient;
+    type Prefix = ();
+    type Suffix = ();
+
+    const KEY_ELEMS: u8 = 2;
+
+    fn raw_keys(&self) -> Vec<RawKey<'_>> {
+        match self {
+            Recipient::Vault => vec![RawKey::Fixed8([0])],
+            Recipient::Index(index) => vec![
+                RawKey::Fixed8([1]),
+                RawKey::Owned(index.to_be_bytes().to_vec()),
+            ],
+            Recipient::Address(addr) => {
+                vec![RawKey::Fixed8([2]), RawKey::Owned(addr.inner().to_vec())]
+            },
+        }
+    }
+
+    fn from_slice(bytes: &[u8]) -> StdResult<Self::Output> {
+        let (tag, rest) = bytes.split_at(1);
+        match tag {
+            [0] => Ok(Recipient::Vault),
+            [1] => {
+                let index = u64::from_be_bytes(rest.try_into()?);
+                Ok(Recipient::Index(index))
+            },
+            [2] => {
+                let addr = Addr::from_slice(rest)?;
+                Ok(Recipient::Address(addr))
+            },
+            tag => Err(StdError::deserialize::<Self::Output, _, Binary>(
+                "key",
+                format!("unknown tag: {tag:?}"),
+                bytes.into(),
+            )),
+        }
+    }
+}
 
 /// Multisig settings.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,11 +149,10 @@ impl MultisigSettings {
 /// the end of a standard multisig script.
 pub struct MultisigWallet {
     script: ScriptBuf,
-    index: Option<u64>,
 }
 
 impl MultisigWallet {
-    pub fn new(multisig_settings: &MultisigSettings, index: Option<u64>) -> Self {
+    pub fn new(multisig_settings: &MultisigSettings, recipient: &Recipient) -> Self {
         // Create the script for the multisig.
         // The redeem script is a P2WSH script is created as:
         // threshold - pubkeys - num_pub_keys - OP_CHECKMULTISIG.
@@ -124,13 +170,18 @@ impl MultisigWallet {
             .push_opcode(OP_CHECKMULTISIG);
 
         // Append the index if provided.
-        if let Some(index) = index {
-            builder = builder.push_int(index as i64).push_opcode(OP_DROP);
+        match recipient {
+            Recipient::Vault => {},
+            Recipient::Index(index) => {
+                builder = builder.push_int(*index as i64).push_opcode(OP_DROP);
+            },
+            Recipient::Address(addr) => {
+                builder = builder.push_slice(addr.into_inner()).push_opcode(OP_DROP);
+            },
         }
 
         Self {
             script: builder.into_script(),
-            index,
         }
     }
 
@@ -142,11 +193,6 @@ impl MultisigWallet {
     /// Returns the script of the multisig wallet.
     pub fn script(&self) -> &ScriptBuf {
         &self.script
-    }
-
-    /// Returns the index of the address.
-    pub fn index(&self) -> Option<u64> {
-        self.index
     }
 }
 
@@ -177,7 +223,7 @@ pub struct Transaction {
     )]
     /// The inputs of the transaction. The inputs are ordered by (transaction_hash, vout) so
     /// that the transaction can be reconstructed deterministically.
-    pub inputs: BTreeMap<(Hash256, Vout), (Uint128, Option<AddressIndex>)>,
+    pub inputs: BTreeMap<(Hash256, Vout), (Uint128, Recipient)>,
     /// The outputs of the transaction.
     pub outputs: BTreeMap<BitcoinAddress, Uint128>,
     /// The fee of the transaction.
@@ -185,38 +231,36 @@ pub struct Transaction {
 }
 
 fn serialize_inputs<S>(
-    inputs: &BTreeMap<(Hash256, Vout), (Uint128, Option<AddressIndex>)>,
+    inputs: &BTreeMap<(Hash256, Vout), (Uint128, Recipient)>,
     serializer: S,
 ) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    let converted: BTreeMap<String, (&Uint128, &Option<AddressIndex>)> = inputs
+    let converted: BTreeMap<String, (&Uint128, &Recipient)> = inputs
         .iter()
-        .map(|((hash, vout), (amount, recipient_index))| {
-            (format!("{hash}/{vout}"), (amount, recipient_index))
-        })
+        .map(|((hash, vout), (amount, recipient))| (format!("{hash}/{vout}"), (amount, recipient)))
         .collect();
-    converted.serialize(serializer)
+    serde::Serialize::serialize(&converted, serializer)
 }
 
 fn deserialize_inputs<'de, D>(
     deserializer: D,
-) -> Result<BTreeMap<(Hash256, Vout), (Uint128, Option<AddressIndex>)>, D::Error>
+) -> Result<BTreeMap<(Hash256, Vout), (Uint128, Recipient)>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let map: BTreeMap<String, (Uint128, Option<AddressIndex>)> =
-        BTreeMap::deserialize(deserializer)?;
+    let map: BTreeMap<String, (Uint128, Recipient)> =
+        serde::Deserialize::deserialize(deserializer)?;
     map.into_iter()
-        .map(|(key, (amount, recipient_index))| {
+        .map(|(key, (amount, recipient))| {
             let parts: Vec<&str> = key.split('/').collect();
             if parts.len() != 2 {
                 return Err(serde::de::Error::custom("invalid input key format"));
             }
             let hash = Hash256::from_str(parts[0]).map_err(serde::de::Error::custom)?;
             let vout = parts[1].parse::<Vout>().map_err(serde::de::Error::custom)?;
-            Ok(((hash, vout), (amount, recipient_index)))
+            Ok(((hash, vout), (amount, recipient)))
         })
         .collect()
 }
@@ -283,9 +327,8 @@ pub struct InboundMsg {
     pub vout: Vout,
     /// The transaction's UTXO amount.
     pub amount: Uint128,
-    /// The address index of the inbound transfer, used to identify the recipient.
-    /// If `None`, the recipient is the vault.
-    pub address_index: Option<u64>,
+    /// The recipient of the inbound transfer.
+    pub recipient: Recipient,
     /// Pubkey of the guardian observing the inbound transaction.
     pub pub_key: HexByteArray<33>,
 }
@@ -410,7 +453,7 @@ pub struct InboundConfirmed {
     pub transaction_hash: Hash256,
     pub vout: Vout,
     pub amount: Uint128,
-    pub address_index: Option<AddressIndex>,
+    pub recipient: Recipient,
 }
 
 /// Event indicating an outbound transaction has been requested, pending signatures
@@ -434,4 +477,41 @@ pub struct OutboundConfirmed {
     pub id: u32,
     pub transaction: Transaction,
     pub signatures: BTreeMap<HexByteArray<33>, Vec<BitcoinSignature>>,
+}
+
+#[cfg(test)]
+mod test {
+    use {
+        crate::bitcoin::Recipient,
+        grug::{Addr, Item, MockStorage},
+    };
+
+    #[test]
+
+    fn test_example() {
+        let item = Item::<Recipient>::new("recipient");
+
+        let mut storage = MockStorage::new();
+
+        // Vault
+        let data = Recipient::Vault;
+        item.save(&mut storage, &data).unwrap();
+
+        let decoded = item.load(&storage).unwrap();
+        assert_eq!(decoded, data);
+
+        // UserIndex
+        let data = Recipient::Index(4587);
+        item.save(&mut storage, &data).unwrap();
+
+        let decoded = item.load(&storage).unwrap();
+        assert_eq!(decoded, data);
+
+        // UserAddress
+        let data = Recipient::Address(Addr::mock(20));
+        item.save(&mut storage, &data).unwrap();
+
+        let decoded = item.load(&storage).unwrap();
+        assert_eq!(decoded, data);
+    }
 }
