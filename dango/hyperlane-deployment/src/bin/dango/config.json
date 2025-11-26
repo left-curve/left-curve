@@ -1,0 +1,28 @@
+{
+  "dango_api_url": "https://api-pr-1414-ovh2.dango.zone/",
+  "dango_chain_id": "pr-1414",
+  "routes": [
+    {
+      "origin": {
+        "remote": "sepoliaETH"
+      },
+      "remote": {
+        "warp": {
+          "domain": 11155111,
+          "contract": "00000000000000000000000034dc3f292fc04e3dcc2830ac69bb5d4cd5e8f654"
+        }
+      }
+    },
+    {
+      "origin": {
+        "remote": "sepoliaUSDC"
+      },
+      "remote": {
+        "warp": {
+          "domain": 11155111,
+          "contract": "0000000000000000000000006ba100453e826b903de1a7aecdb7a3396670ae51"
+        }
+      }
+    }
+  ]
+}
