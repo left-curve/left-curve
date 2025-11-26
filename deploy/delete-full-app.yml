@@ -149,17 +149,12 @@
             state: present
             update_cache: yes
           become: true
+          become_user: root
 
-        - name: Ensure pipx bin dir is in PATH
-          ansible.builtin.lineinfile:
-            path: /etc/profile.d/pipx.sh
-            line: 'export PATH="$HOME/.local/bin:$PATH"'
-          become: true
-
-        - name: Install Backblaze b2 CLI
-          community.general.pipx:
-            name: b2
-            state: latest
+        - name: Install Backblaze b2 via pipx
+          ansible.builtin.command: pipx install b2
+          args:
+            creates: "{{ ansible_env.HOME }}/.local/bin/b2"
 
         # NOTE: doing this because you can't delete a bucket which has files,
         # and removing files takes forever. So I set files to be deleted, and
@@ -170,7 +165,7 @@
             delete_after_days: 1
             lifecycle_prefix: ""
           ansible.builtin.command: >
-            b2 bucket update
+            $HOME/.local/bin/b2 bucket update
             "{{ s3_bucket }}"
             allPrivate
             --lifecycle-rules '[{"fileNamePrefix":"{{ lifecycle_prefix }}",
