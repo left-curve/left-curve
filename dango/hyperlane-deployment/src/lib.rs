@@ -87,3 +87,6 @@ pub mod contract_bindings {
         }
     }
 }
+
+pub mod config;
+pub mod setup;

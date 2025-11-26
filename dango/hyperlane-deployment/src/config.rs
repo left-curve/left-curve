@@ -1,7 +1,5 @@
 use std::fs;
 
-use grug::Addr;
-
 use {dango_types::gateway::Origin, serde::Serialize};
 
 use {dango_types::gateway::Remote, serde::Deserialize};
@@ -13,33 +11,35 @@ pub struct Route {
 }
 
 #[derive(Deserialize)]
-pub struct Config {
+pub struct DangoConfig {
     pub dango_api_url: String,
     pub dango_chain_id: String,
     pub routes: Vec<Route>,
 }
 
-pub fn load_config() -> anyhow::Result<Config> {
+pub fn load_dango_config() -> anyhow::Result<DangoConfig> {
     let config_path = format!("{}/src/bin/dango/config.json", env!("CARGO_MANIFEST_DIR"));
     println!("loading config from: {}", config_path);
     let config = fs::read_to_string(config_path)?;
     println!("config: {}", config);
-    let config: Config = serde_json::from_str(&config)?;
+    let config: DangoConfig = serde_json::from_str(&config)?;
     Ok(config)
 }
 
 #[cfg(test)]
 mod tests {
     use {
-        dango_hyperlane_deployment::addresses::sepolia::hyperlane_deployments::usdc, grug::addr,
-        hex_literal::hex, hyperlane_types::Addr32,
+        crate::addresses::sepolia::hyperlane_deployments::usdc,
+        grug::{Addr, addr},
+        hex_literal::hex,
+        hyperlane_types::Addr32,
     };
 
     use super::*;
 
     #[test]
-    fn test_load_config() {
-        let config = load_config().unwrap();
+    fn test_load_dango_config() {
+        load_dango_config().unwrap();
     }
 
     #[test]

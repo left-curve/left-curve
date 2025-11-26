@@ -10,20 +10,18 @@
 //! ```
 
 use {
+    dango_hyperlane_deployment::setup,
     dango_types::{config::AppConfig, gateway},
     dotenvy::dotenv,
     grug::{BroadcastClientExt, Coins, GasOption, QueryClientExt, btree_set},
     tokio::time::sleep,
 };
 
-mod config;
-mod setup;
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenv()?;
 
-    let (dango_client, mut dango_owner, config) = setup::setup().await?;
+    let (dango_client, mut dango_owner, config) = setup::setup_dango().await?;
 
     let app_cfg: AppConfig = dango_client.query_app_config(None).await?;
 
