@@ -33,5 +33,3 @@ thiserror       = { workspace = true }
 tower           = { workspace = true, optional = true }
 tower-abci      = { workspace = true, optional = true }
 tracing         = { workspace = true, optional = true }
-
-[dev-dependencies]

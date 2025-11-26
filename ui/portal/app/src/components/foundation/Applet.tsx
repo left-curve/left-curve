@@ -42,7 +42,10 @@ export const Applet: React.FC<AppletProps> = ({ uri }) => {
           break;
         case "toast": {
           const [arg0, ...rest] = args;
-          toast[arg0 as "success" | "error"](...rest);
+          (toast[arg0 as "success" | "error"] as (...args: unknown[]) => void).apply(
+            toast,
+            rest as unknown[],
+          );
           break;
         }
         case "connector":

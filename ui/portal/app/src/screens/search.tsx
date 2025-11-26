@@ -4,9 +4,10 @@ import { useFavApplets, useSearchBar } from "@left-curve/store";
 
 import { TextInput, View } from "react-native";
 import { SearchMenu } from "~/components/Search/SearchMenu";
-import { Button, IconChevronDown } from "~/components/foundation";
+import { Button, IconChevronDown, ShadowContainer } from "~/components/foundation";
 
 import { APPLETS } from "~/constants";
+import { Shadow } from "react-native-shadow-2";
 
 export default function SearchScreen() {
   const { theme } = useTheme();
@@ -29,13 +30,17 @@ export default function SearchScreen() {
           onPress={back}
           rightIcon={<IconChevronDown className="text-ink-tertiary-500" />}
         />
-        <TextInput
-          value={searchText}
-          onChangeText={(t) => setSearchText(t)}
-          placeholderTextColor={theme === "dark" ? "#6A5D42" : "#EFDAA4"}
-          selectionColor={theme === "dark" ? "#6A5D42" : "#EFDAA4"}
-          className="flex-1 h-[44px] flex justify-center p-2  pl-4 shadow shadow-btn-shadow-gradient bg-surface-secondary-rice rounded-md text-ink-primary-900"
-        />
+        <View className="flex-1 h-[44px] rounded-md">
+          <ShadowContainer style={{ borderRadius: 12, flexGrow: 1, height: 44, width: "100%" }}>
+            <TextInput
+              value={searchText}
+              onChangeText={(t) => setSearchText(t)}
+              placeholderTextColor={theme === "dark" ? "#6A5D42" : "#EFDAA4"}
+              selectionColor={theme === "dark" ? "#6A5D42" : "#EFDAA4"}
+              className="w-full h-full flex justify-center p-2 pl-4 bg-surface-secondary-rice rounded-md text-ink-primary-900"
+            />
+          </ShadowContainer>
+        </View>
       </View>
       <View className="flex-1 w-full">
         <SearchMenu.Body

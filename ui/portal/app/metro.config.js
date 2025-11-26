@@ -17,12 +17,29 @@ config.resolver.nodeModulesPaths = [
 config.transformer = {
   ...config.transformer,
   babelTransformerPath: require.resolve("react-native-svg-transformer"),
-}
+};
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === "crypto") {
     // when importing crypto, resolve to react-native-quick-crypto
-    return context.resolveRequest(context, "react-native-quick-crypto", platform);
+    return context.resolveRequest(
+      context,
+      "react-native-quick-crypto",
+      platform,
+    );
+  }
+
+  if (moduleName === "jose") {
+    const josePackageJsonPath = require.resolve("jose/package.json");
+
+    const joseRootPath = path.dirname(josePackageJsonPath);
+
+    const browserFilePath = path.join(joseRootPath, "dist/browser/index.js");
+
+    return {
+      filePath: browserFilePath,
+      type: "sourceFile",
+    };
   }
   // otherwise chain to the standard Metro resolver.
   return context.resolveRequest(context, moduleName, platform);
@@ -30,7 +47,9 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 
 config.resolver.unstable_enablePackageExports = true;
 
-config.resolver.assetExts = config.resolver.assetExts.filter((ext) => ext !== "svg");
+config.resolver.assetExts = config.resolver.assetExts.filter(
+  (ext) => ext !== "svg",
+);
 config.resolver.sourceExts.push("svg");
 
 module.exports = withNativeWind(config, { input: "./assets/global.css" });

@@ -696,6 +696,7 @@
     "display": "Display",
     "language": "Language",
     "theme": "Theme",
+    "system": "System",
     "chart": "Chart Engine",
     "session": {
       "title": "Current Session",

@@ -18,5 +18,3 @@ library = []
 anyhow          = { workspace = true }
 grug            = { workspace = true }
 hyperlane-types = { workspace = true }
-
-[dev-dependencies]
