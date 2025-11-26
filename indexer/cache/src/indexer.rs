@@ -320,12 +320,16 @@ impl Cache {
         #[cfg(feature = "metrics")]
         metrics::gauge!("indexer.s3.blocks_cache").set(0);
 
-        drop(s3_block_heights);
-
         self.store_last_block_height(to_height, S3_HIGHEST_BLOCK_FILENAME)?;
 
+        drop(s3_block_heights);
+
         #[cfg(feature = "tracing")]
-        tracing::info!("S3 sync up-to-date");
+        tracing::info!(
+            to_height = to_height,
+            last_synced_height = last_synced_height,
+            "S3 sync up-to-date"
+        );
 
         Ok(())
     }
