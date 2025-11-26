@@ -5054,6 +5054,7 @@ dependencies = [
  "grug-jmt",
  "grug-storage",
  "grug-types",
+ "hex",
  "hex-literal",
  "ics23",
  "itertools 0.14.0",

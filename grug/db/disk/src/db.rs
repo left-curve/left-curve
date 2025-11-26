@@ -54,7 +54,19 @@ pub const WASM_STORAGE_LABEL: &str = "wasm";
 #[cfg(feature = "metrics")]
 pub const STATE_STORAGE_LABEL: &str = "state";
 
-const WASM_PREFIX_LEN: usize = CONTRACT_NAMESPACE.len() + Addr::LENGTH;
+/// We assume all keys within the wasm range has the following format:
+///
+/// ```plain
+/// b"wasm" | address | sub_key
+/// ```
+///
+/// `address` is exactly 20 bytes. `sub_key` is 0 or more bytes.
+///
+/// As such, we can say that each `sub_key` is prefixed by exactly 24 bytes.
+const WASM_PREFIX_LEN: usize = CONTRACT_NAMESPACE.len() + Addr::LENGTH; // = 4 + 20 = 24
+
+/// The upper bound (exclusive) of the wasm range. Equals `increment_last_bytes(CONTRACT_NAMESPACE)`.
+const CONTRACT_NAMESPACE_PLUS_ONE: &[u8] = b"wasn";
 
 /// The base storage primitive.
 ///
@@ -328,6 +340,16 @@ where
         // which indicates some error in the ABCI app's logic.
         if self.pending.read().is_some() {
             return Err(DbError::pending_data_already_set());
+        }
+
+        // We assume Grug App has the following behavior: for each key that is
+        // prefixed with `b"wasm"`, it must be a wasm key. See the comments of
+        // `WASM_PREFIX_LEN` and the `is_wasm_key` function for explanation.
+        if let Some(key) = batch
+            .keys()
+            .find(|k| k.starts_with(CONTRACT_NAMESPACE) && !is_wasm_key(k))
+        {
+            return Err(DbError::not_wasm_key(key.clone()));
         }
 
         let (old_version, new_version) = match self.latest_version() {
@@ -921,32 +943,40 @@ fn create_rocksdb_storage_iter<'a>(
     #[cfg(feature = "metrics")] comment: &'static str,
 ) -> Box<dyn Iterator<Item = Record> + 'a> {
     match (min, max) {
-        (Some(min), Some(max)) => match (is_wasm_key(min), is_wasm_key(max)) {
-            (true, true) => create_wasm_iter(
+        // If the range falls within the wasm range, iterate only the wasm CF.
+        (Some(min), Some(max))
+            if CONTRACT_NAMESPACE <= min && max <= CONTRACT_NAMESPACE_PLUS_ONE =>
+        {
+            create_wasm_iter(
                 db,
                 Some(min),
                 Some(max),
                 order,
                 #[cfg(feature = "metrics")]
                 comment,
-            ),
-            (false, false) => create_state_iter(
-                db,
-                Some(min),
-                Some(max),
-                order,
-                #[cfg(feature = "metrics")]
-                comment,
-            ),
-            _ => create_merged_iter(
-                db,
-                Some(min),
-                Some(max),
-                order,
-                #[cfg(feature = "metrics")]
-                comment,
-            ),
+            )
         },
+        // If the range is completely bigger than the wasm range, iterate only
+        // the storage CF.
+        (Some(min), max) if CONTRACT_NAMESPACE_PLUS_ONE <= min => create_state_iter(
+            db,
+            Some(min),
+            max,
+            order,
+            #[cfg(feature = "metrics")]
+            comment,
+        ),
+        // If the range is completely smaller than the wasm range, iterate only
+        // the storage CF.
+        (min, Some(max)) if max <= CONTRACT_NAMESPACE => create_state_iter(
+            db,
+            min,
+            Some(max),
+            order,
+            #[cfg(feature = "metrics")]
+            comment,
+        ),
+        // In all other cases, iterate BOTH the wasm and storage CFs.
         _ => create_merged_iter(
             db,
             min,
@@ -1667,7 +1697,7 @@ mod tests_simple {
         super::*,
         grug_app::{SimpleCommitment, StorageProvider},
         grug_storage::Map,
-        grug_types::{BorshSerExt, MockStorage, Shared, btree_map, btree_set, hash},
+        grug_types::{BorshSerExt, MockStorage, ResultExt, Shared, btree_map, btree_set, hash},
         temp_rocksdb::TempDataDir,
     };
 
@@ -1959,42 +1989,37 @@ mod tests_simple {
         );
     }
 
+    /// Should throw error if the batch contains a key that starts with `b"wasm"`
+    /// but doesn't have the expected format of wasm keys.
+    #[test]
+    fn rejecting_non_wasm_key() {
+        // Prepare a key that is not a wasm key. The contract address should be
+        // 20 bytes, but here we only have 10 bytes.
+        let not_wasm = concat(&[CONTRACT_NAMESPACE, &[0; 10], b"foo"]);
+        assert!(!is_wasm_key(&not_wasm));
+
+        let path = TempDataDir::new("_grug_disk_db_lite_iterator_works");
+        let db = DiskDb::<SimpleCommitment>::open(&path).unwrap();
+
+        db.flush_but_not_commit(btree_map! { not_wasm.clone() => Op::Delete })
+            .should_fail_with_error(DbError::not_wasm_key(not_wasm));
+    }
+
     #[test]
     fn iterator_works() {
         // -------------------------- prepare the DB ---------------------------
 
-        let not_wasm_0 = concat(&[CONTRACT_NAMESPACE, &[0; 10], b"foo"]);
-        assert!(!is_wasm_key(&not_wasm_0));
-
         let wasm_1 = concat(&[CONTRACT_NAMESPACE, &[1; 20], b"foo"]);
         assert!(is_wasm_key(&wasm_1));
-
-        let not_wasm_2 = concat(&[CONTRACT_NAMESPACE, &[2; 10], b"foo"]);
-        assert!(!is_wasm_key(&not_wasm_2));
 
         let wasm_3 = concat(&[CONTRACT_NAMESPACE, &[3; 20], b"foo"]);
         assert!(is_wasm_key(&wasm_3));
 
-        let not_wasm_4 = concat(&[CONTRACT_NAMESPACE, &[4; 10], b"foo"]);
-        assert!(!is_wasm_key(&not_wasm_4));
-
         let keys = btree_set! {
-            // A record smaller than "wasm".
-            b"foo".to_vec(),
-            // An "illegal" record that starts with the "wasm" prefix but isn't
-            // followed by a contract address. This doesn't happen in practice,
-            // but let's make sure the DB works in even this case.
-            not_wasm_0,
-            // A record in wasm contract 0x11..11.
-            wasm_1,
-            // Another "illegal" record between 0x11..11 and 0x33..33.
-            not_wasm_2,
-            // A record in wasm contract 0x33..33.
-            wasm_3,
-            // Another "illegal" record that is bigger than 0x33.33.
-            not_wasm_4,
-            // A record bigger than "wasm".
-            b"xxxfoo".to_vec(),
+            b"foo".to_vec(),    // A record smaller than "wasm".
+            wasm_1,             // A record in wasm contract 0x11..11.
+            wasm_3,             // A record in wasm contract 0x33..33.
+            b"xxxfoo".to_vec(), // A record bigger than "wasn".
         };
 
         let path = TempDataDir::new("_grug_disk_db_lite_iterator_works");
@@ -2016,10 +2041,10 @@ mod tests_simple {
         let min_wasm = concat(&[CONTRACT_NAMESPACE, &[1; 20]]);
         assert!(is_wasm_key(&min_wasm));
 
-        let max_not_wasm = concat(&[CONTRACT_NAMESPACE, &[3; 10]]);
+        let max_not_wasm = concat(&[CONTRACT_NAMESPACE, &[2; 10]]);
         assert!(!is_wasm_key(&max_not_wasm));
 
-        let max_wasm = concat(&[CONTRACT_NAMESPACE, &[3; 20]]);
+        let max_wasm = concat(&[CONTRACT_NAMESPACE, &[2; 20]]);
         assert!(is_wasm_key(&max_wasm));
 
         for (min, max) in [
@@ -2058,7 +2083,7 @@ mod tests_simple {
 
             let expect = keys
                 .range::<[u8], _>((lower, upper))
-                .map(|k| k.clone())
+                .cloned()
                 .collect::<Vec<_>>();
 
             let actual = storage
@@ -2076,7 +2101,7 @@ mod tests_simple {
         let len = slices.iter().map(|slice| slice.len()).sum();
         let mut vec = Vec::with_capacity(len);
         for slice in slices {
-            vec.extend_from_slice(*slice);
+            vec.extend_from_slice(slice);
         }
         vec
     }
