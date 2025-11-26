@@ -3551,6 +3551,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dango-bridge-relayer-httpd"
+version = "0.0.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "actix-web-metrics",
+ "error-backtrace",
+ "grug",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "sea-orm",
+ "sentry-actix",
+ "test-case",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "dango-cli"
 version = "0.2.0"
 dependencies = [

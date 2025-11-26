@@ -7,6 +7,7 @@ members = [
   "dango/auth",
   "dango/bank",
   "dango/bitcoin",
+  "dango/bridge-relayer/httpd",
   "dango/cli",
   "dango/client",
   "dango/dex",
