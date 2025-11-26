@@ -16,6 +16,7 @@
       set_fact:
         deployment_name: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
         timestamp: "{{ hostvars[groups['full-app'][0]]['timestamp'] }}"
+        s3_bucket: "dango-{{ dango_network }}-{{ timestamp }}"
 
     - name: Log deployment start
       community.general.syslogger:
@@ -28,7 +29,6 @@
       set_fact:
         dango_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/dango"
         cometbft_directory: "{{ ansible_env.HOME }}/{{ dango_network }}/{{ timestamp }}/cometbft"
-        s3_bucket: "dango-{{ dango_network }}-{{ timestamp }}"
       when: system_wide_directories
 
     - name: Read current deploy

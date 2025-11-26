@@ -52,7 +52,7 @@
       vars:
         key: "{{ item.split('=')[0] }}"
         value: "{{ item.split('=')[1] }}"
-      when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0 and key not in ['delete_postgres_database_at_merge', 'delete_clickhouse_database_at_merge']
+      when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0 and key not in ['delete_postgres_database_at_merge', 'delete_clickhouse_database_at_merge', 'delete_s3_backup_at_merge']
 
     - name: Set boolean facts from existing .env
       set_fact:
@@ -61,7 +61,7 @@
       vars:
         key: "{{ item.split('=')[0] }}"
         value: "{{ item.split('=')[1] }}"
-      when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0 and key in ['delete_postgres_database_at_merge', 'delete_clickhouse_database_at_merge']
+      when: env_file_exists.stat.exists and existing_env_variables.stdout_lines | length > 0 and key in ['delete_postgres_database_at_merge', 'delete_clickhouse_database_at_merge', 'delete_s3_backup_at_merge']
 
     - name: Check if deployment directory exists
       stat:
@@ -143,18 +143,45 @@
       when: delete_clickhouse_database_at_merge
 
     - block:
-        - name: Delete Backblaze bucket
-          when:
-            - delete_s3_backup_at_merge
+        - name: Install pipx
+          ansible.builtin.apt:
+            name: pipx
+            state: present
+            update_cache: yes
+          become: true
+
+        - name: Ensure pipx bin dir is in PATH
+          ansible.builtin.lineinfile:
+            path: /etc/profile.d/pipx.sh
+            line: 'export PATH="$HOME/.local/bin:$PATH"'
+          become: true
+
+        - name: Install Backblaze b2 CLI
+          community.general.pipx:
+            name: b2
+            state: latest
+
+        # NOTE: doing this because you can't delete a bucket which has files,
+        # and removing files takes forever. So I set files to be deleted, and
+        # we'll write a cron job to remove any empty buckets.
+        - name: Set files to be deleted on Backblaze
+          vars:
+            hide_after_days: 1
+            delete_after_days: 1
+            lifecycle_prefix: ""
+          ansible.builtin.command: >
+            b2 bucket update
+            "{{ s3_bucket }}"
+            allPrivate
+            --lifecycle-rules '[{"fileNamePrefix":"{{ lifecycle_prefix }}",
+                                 "daysFromUploadingToHiding":{{ hide_after_days }},
+                                 "daysFromHidingToDeleting":{{ delete_after_days }}}]'
           environment:
-            AWS_DEFAULT_REGION: "auto"
-          amazon.aws.s3_bucket:
-            name: "{{ s3_bucket }}"
-            state: absent
-            endpoint_url: "{{ s3_endpoint }}"
-            aws_access_key: "{{ s3_master_access_key }}"
-            aws_secret_key: "{{ s3_master_secret_key }}"
+            B2_APPLICATION_KEY_ID: "{{ s3_master_access_key }}"
+            B2_APPLICATION_KEY: "{{ s3_master_secret_key }}"
       run_once: true
+      when:
+        - delete_s3_backup_at_merge
 
     - set_fact:
         pr_tunnel_name: "{{ deployment_name }}-{{ hostname }}"
@@ -171,6 +198,10 @@
     - name: Set PR tunnel_id
       set_fact:
         pr_tunnel_id: "{{ (cf_list.json.result[0].id) if (cf_list.json.result|length)>0 else omit }}"
+      when:
+        - cf_list is defined
+        - cf_list.json is defined
+        - (cf_list.json.result | default([])) | length > 0
       ignore_errors: true
 
     - name: Delete PR tunnel (Cloudflare)
