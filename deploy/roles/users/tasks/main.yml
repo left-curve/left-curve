@@ -23,12 +23,11 @@
   loop: "{{ ssh_users }}"
 
 - name: Copy ssh keys for ssh_users
-  authorized_key:
-    user: "{{ item }}"
-    state: present
-    key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
+  include_tasks: add_ssh_keys.yml
   vars:
-    ssh_key_path: "{{ item }}.pub"
+    authorized_user: "{{ user }}"
+  loop_control:
+    loop_var: user
   loop: "{{ ssh_users }}"
 
 - name: Create deploy user
@@ -40,13 +39,11 @@
     state: present
     create_home: yes
 
-- name: Copy deploy ssh keys user
-  authorized_key:
-    user: "{{ ansible_user }}"
-    state: present
-    key: "{{ lookup('file', 'authorized_keys/' ~ ssh_key_path) }}"
+- name: Copy deploy ssh keys
+  include_tasks: add_ssh_keys.yml
   vars:
-    ssh_key_path: "deploy.pub"
+    authorized_user: "{{ ansible_user }}"
+    user: "deploy"
 
 - name: Ensure .ssh directory exists for deploy_user
   file:
@@ -57,19 +54,19 @@
     mode: '0700'
 
 - name: Add all ssh_users’ keys to deploy_user
-  authorized_key:
-    user: "{{ deploy_user }}"
-    state: present
-    key: "{{ lookup('file', role_path ~ '/files/authorized_keys/' ~ item ~ '.pub') }}"
-    manage_dir: true
+  include_tasks: add_ssh_keys.yml
+  vars:
+    authorized_user: "{{ deploy_user }}"
+  loop_control:
+    loop_var: user
   loop: "{{ ssh_users }}"
 
 - name: Add all ssh_users’ keys to ansible_user
-  authorized_key:
-    user: "{{ ansible_user }}"
-    state: present
-    key: "{{ lookup('file', role_path ~ '/files/authorized_keys/' ~ item ~ '.pub') }}"
-    manage_dir: true
+  include_tasks: add_ssh_keys.yml
+  vars:
+    authorized_user: "{{ ansible_user }}"
+  loop_control:
+    loop_var: user
   loop: "{{ ssh_users }}"
 
 - name: Disable SSH root login
