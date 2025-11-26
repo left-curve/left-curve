@@ -25,6 +25,10 @@ path = "src/bin/evm/enroll_dango_domain_in_remote_hwr.rs"
 name = "dango_set_routes"
 path = "src/bin/dango/set_routes.rs"
 
+[[bin]]
+name = "dango_set_ism_validator_set"
+path = "src/bin/dango/dango_set_ism_validator_set.rs"
+
 [dependencies]
 alloy           = { workspace = true, features = ["full", "signer-mnemonic", "contract"] }
 anyhow          = { workspace = true }
