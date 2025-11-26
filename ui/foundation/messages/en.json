@@ -691,6 +691,9 @@
       "continueWithdraw": "Continue Withdraw"
     }
   },
+  "bridge": {
+    "title": "Deposit & Withdraw"
+  },
   "settings": {
     "title": "Settings",
     "display": "Display",
