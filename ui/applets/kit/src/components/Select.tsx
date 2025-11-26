@@ -24,7 +24,9 @@ export interface SelectProps extends VariantProps<typeof selectVariants> {
   defaultValue?: string;
   onChange?: (value: string) => void;
   value?: string;
+  label?: string;
   variant?: "boxed" | "plain";
+  placeholder?: string;
   classNames?: {
     base?: string;
     listboxWrapper?: string;
@@ -46,6 +48,8 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
     defaultValue,
     isDisabled,
     variant = "boxed",
+    label,
+    placeholder,
   } = props;
 
   const selectRef = useRef<HTMLDivElement>(null);
@@ -71,22 +75,30 @@ const Root: React.FC<PropsWithChildren<SelectProps>> = (props) => {
         <NativeSelect classNames={classNames} variant={variant}>
           {children}
         </NativeSelect>
-
+        {label ? (
+          <label className="exposure-sm-italic text-ink-secondary-700" htmlFor={label}>
+            {label}
+          </label>
+        ) : null}
         <div className="hidden md:block relative w-full" ref={selectRef}>
           <button
             type="button"
             onClick={() => !isDisabled && setIsOpen((prev) => !prev)}
             className={trigger({ className: classNames?.trigger })}
           >
-            <span>
-              {
-                (
-                  Children.toArray(children).find(
-                    (e) => isValidElement(e) && selected === (e as ReactElement).props.value,
-                  ) as { props: { children: ReactElement } }
-                )?.props.children
-              }
-            </span>
+            {placeholder && !selected ? (
+              <span>{placeholder}</span>
+            ) : (
+              <span>
+                {
+                  (
+                    Children.toArray(children).find(
+                      (e) => isValidElement(e) && selected === (e as ReactElement).props.value,
+                    ) as { props: { children: ReactElement } }
+                  )?.props.children
+                }
+              </span>
+            )}
             <IconChevronDownFill
               className={twMerge(icon(), classNames?.icon, { "rotate-180": isOpen })}
             />
@@ -194,7 +206,7 @@ export const NativeSelect: React.FC<PropsWithChildren<NativeSelectProps>> = ({
 
 const selectVariants = tv({
   slots: {
-    base: "group inline-flex flex-col relative w-fit leading-none",
+    base: "group inline-flex flex-col gap-1 relative w-fit leading-none",
     listboxWrapper:
       "overflow-hidden max-h-[12rem] transition-all z-50 shadow-account-card bg-surface-secondary-rice absolute min-w-full w-max",
     listBoxContainer:
