@@ -301,10 +301,10 @@ impl Cache {
         {
             #[cfg(feature = "tracing")]
             tracing::info!(
-                block_height = block_height,
+                missing_block_height = block_height,
                 last_synced_height = last_synced_height,
                 to_height = to_height,
-                all_blocks = s3_block_heights.len(),
+                s3_blocks_heights_len = s3_block_heights.len(),
                 "S3 sync not up-to-date, missing blocks"
             );
 
@@ -315,12 +315,16 @@ impl Cache {
         }
 
         // All blocks are present
+
+        // This because we could have non-ordered blocks, and block 14 could be saved after 15,
+        // we should then store 15 as the last saved block height.
+        let max_height = s3_block_heights.keys().max().cloned().unwrap_or(to_height);
         s3_block_heights.clear();
 
         #[cfg(feature = "metrics")]
         metrics::gauge!("indexer.s3.blocks_cache").set(0);
 
-        self.store_last_block_height(to_height, S3_HIGHEST_BLOCK_FILENAME)?;
+        self.store_last_block_height(max_height, S3_HIGHEST_BLOCK_FILENAME)?;
 
         drop(s3_block_heights);
 
