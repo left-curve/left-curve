@@ -171,23 +171,17 @@ impl<T> DiskDb<T> {
                 Some(max.as_ref()),
                 Order::Ascending,
                 #[cfg(feature = "metrics")]
-                "priority_data_init",
-            );
+                "priority_data/init",
+            )
+            .map(|(k, v)| {
+                #[cfg(feature = "tracing")]
+                {
+                    size += k.len() + v.len();
+                }
 
-            #[cfg(feature = "tracing")]
-            let records = records
-                .map(|(k, v)| {
-                    #[cfg(feature = "tracing")]
-                    {
-                        size += k.len() + v.len();
-                    }
-
-                    (k, v)
-                })
-                .collect::<BTreeMap<_, _>>();
-
-            #[cfg(not(feature = "tracing"))]
-            let records = records.collect::<BTreeMap<_, _>>();
+                (k, v)
+            })
+            .collect::<BTreeMap<_, _>>();
 
             #[cfg(feature = "tracing")]
             {
