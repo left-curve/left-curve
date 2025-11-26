@@ -89,6 +89,8 @@ impl IbcDb for DiskDb<MerkleTree> {
 mod tests {
     use {
         super::*,
+        crate::is_wasm_key,
+        grug_app::CONTRACT_NAMESPACE,
         grug_types::{Batch, Op},
         ics23::HostFunctionsManager,
         proptest::prelude::*,
@@ -224,7 +226,17 @@ mod tests {
 
             let batch0 = inserts1
                 .into_iter()
-                .map(|(k, v)| (k.into_bytes(), Op::Insert(v.into_bytes())))
+                .map(|(k, v)| {
+                    // If we come cross a key that is prefixed with "wasm" but
+                    // isn't a wasm key, we suffix 20 bytes to it to make it a
+                    // wasm key.
+                    let mut k = k.into_bytes();
+                    if k.starts_with(CONTRACT_NAMESPACE) && !is_wasm_key(&k) {
+                        k.extend([0; 20]);
+                    }
+
+                    (k, Op::Insert(v.into_bytes()))
+                })
                 .collect::<Batch>();
             let (version0, maybe_root) = db.flush_and_commit(batch0.clone()).unwrap();
             let root0 = maybe_root.unwrap().to_vec();
@@ -254,7 +266,12 @@ mod tests {
                 .into_iter()
                 .map(|s| {
                     let (k, _) = s.select(&batch0);
-                    (k.clone(), Op::Delete)
+                    let mut k = k.clone();
+                    if k.starts_with(CONTRACT_NAMESPACE) && !is_wasm_key(&k) {
+                        k.extend([0; 20]);
+                    }
+
+                    (k, Op::Delete)
                 })
                 .collect::<Batch>();
             let (version1, maybe_root) = db.flush_and_commit(batch1.clone()).unwrap();
@@ -283,12 +300,24 @@ mod tests {
                 .into_iter()
                 .map(|s| {
                     let (k, _) = s.select(&batch0);
-                    (k.clone(), Op::Delete)
+                    let mut k = k.clone();
+                    if k.starts_with(CONTRACT_NAMESPACE) && !is_wasm_key(&k) {
+                        k.extend([0; 20]);
+                    }
+
+                    (k, Op::Delete)
                 })
                 .collect::<Batch>();
             let batch2 = inserts2
                 .into_iter()
-                .map(|(k, v)| (k.into_bytes(), Op::Insert(v.into_bytes())))
+                .map(|(k, v)| {
+                    let mut k = k.into_bytes();
+                    if k.starts_with(CONTRACT_NAMESPACE) && !is_wasm_key(&k) {
+                        k.extend([0; 20]);
+                    }
+
+                    (k, Op::Insert(v.into_bytes()))
+                })
                 .chain(deletes2.clone())
                 .collect::<Batch>();
             let (version2, maybe_root) = db.flush_and_commit(batch2.clone()).unwrap();

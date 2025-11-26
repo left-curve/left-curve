@@ -1105,7 +1105,7 @@ fn create_merged_iter<'a>(
     }
 }
 
-fn is_wasm_key(key: &[u8]) -> bool {
+pub fn is_wasm_key(key: &[u8]) -> bool {
     key.starts_with(CONTRACT_NAMESPACE) && key.len() >= WASM_PREFIX_LEN
 }
 
