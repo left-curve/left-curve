@@ -8,7 +8,7 @@ pub struct Map<'a, K, T, C = Borsh>
 where
     C: Codec<T>,
 {
-    pub namespace: &'a [u8],
+    namespace: &'a [u8],
     key: PhantomData<K>,
     data: PhantomData<T>,
     codec: PhantomData<C>,
