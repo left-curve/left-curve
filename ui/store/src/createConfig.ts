@@ -338,7 +338,17 @@ export function createConfig<
 
   function getCoinInfo(denom: Denom): AnyCoin {
     const allCoins = coins.getState()!;
-    if (!denom.includes("dex")) return allCoins.byDenom[denom];
+    const coin = allCoins.byDenom[denom];
+    if (coin) return coin;
+    if (!coin && !denom.includes("dex")) {
+      return {
+        type: "native",
+        symbol: denom.toUpperCase(),
+        name: denom,
+        denom,
+        decimals: 0,
+      };
+    }
     const [_, __, baseDenom, quoteDenom] = denom.split("/");
     const coinsArray = Object.values(allCoins.byDenom);
     const baseCoin = coinsArray.find((x) => x.denom.includes(baseDenom))!;
