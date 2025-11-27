@@ -1,7 +1,7 @@
 use {
     dango_dex::{MAX_VOLUME_AGE, MINIMUM_LIQUIDITY, VOLUMES, VOLUMES_BY_USER},
     dango_genesis::{Contracts, DexOption, GenesisOption},
-    dango_oracle::{PRICE_SOURCES, PYTH_PRICES},
+    dango_oracle::PRICE_SOURCES,
     dango_testing::{
         BridgeOp, Preset, TestAccount, TestOption, TestSuite, setup_test_naive,
         setup_test_naive_with_custom_genesis,
@@ -18,7 +18,7 @@ use {
             QueryReserveRequest, QueryRestingOrderBookStateRequest, RestingOrderBookState, Xyk,
         },
         gateway::Remote,
-        oracle::{self, PrecisionlessPrice, PriceSource},
+        oracle::{self, PriceSource},
     },
     grug::{
         Addr, Addressable, BalanceChange, Bounded, Coin, CoinPair, Coins, Denom, Fraction, Inner,
@@ -28,7 +28,6 @@ use {
     },
     grug_app::NaiveProposalPreparer,
     hyperlane_types::constants::ethereum,
-    pyth_types::constants::USDC_USD_ID,
     std::{
         collections::{BTreeMap, BTreeSet},
         str::FromStr,
@@ -1165,7 +1164,7 @@ fn query_orders_by_pair(
 fn only_owner_can_create_passive_pool() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
-    let lp_denom = Denom::try_from("dex/pool/xrp/usdc").unwrap();
+    let lp_denom = Denom::try_from("dex/pool/xrp/usd").unwrap();
 
     // Attempt to create pair as non-owner. Should fail.
     suite
@@ -1353,7 +1352,7 @@ fn provide_liquidity(
 ) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
-    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
+    let lp_denom = Denom::try_from("dex/pool/dango/usd").unwrap();
 
     // Owner first provides some initial liquidity.
     let initial_reserves = coins! {
@@ -1513,6 +1512,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
             true
         });
 
+    // USD has a fixed price, but DANGO doesn't have a price source at all.
     // Since there is no oracle price, liquidity provision should fail.
     suite
         .execute(
@@ -1528,8 +1528,8 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
                 usd::DENOM.clone() => 100_000,
             },
         )
-        .should_fail_with_error(StdError::data_not_found::<PrecisionlessPrice>(
-            PYTH_PRICES.path(USDC_USD_ID.id).storage_key(),
+        .should_fail_with_error(StdError::data_not_found::<PriceSource>(
+            PRICE_SOURCES.path(&dango::DENOM).storage_key(),
         ));
 }
 
@@ -1554,7 +1554,7 @@ fn provide_liquidity_to_geometric_pool_should_fail_without_oracle_price() {
 fn withdraw_liquidity(lp_burn_amount: Uint128, swap_fee: Udec128, expected_funds_returned: Coins) {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
-    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
+    let lp_denom = Denom::try_from("dex/pool/dango/usd").unwrap();
 
     // Owner first provides some initial liquidity.
     let initial_reserves = coins! {
@@ -5925,7 +5925,7 @@ fn refund_left_over_market_bid() {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usd::DENOM.clone(),
                     params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        lp_denom: Denom::from_str("dex/pool/dango/usd").unwrap(),
                         pool_type: PassiveLiquidity::Geometric(Geometric {
                             spacing: Udec128::new_percent(1),
                             ratio: Bounded::new_unchecked(Udec128::new(1)),
@@ -6108,7 +6108,7 @@ fn refund_left_over_market_ask() {
                     base_denom: dango::DENOM.clone(),
                     quote_denom: usd::DENOM.clone(),
                     params: PairParams {
-                        lp_denom: Denom::from_str("dex/pool/dango/usdc").unwrap(),
+                        lp_denom: Denom::from_str("dex/pool/dango/usd").unwrap(),
                         pool_type: PassiveLiquidity::Geometric(Geometric {
                             spacing: Udec128::new_percent(1),
                             ratio: Bounded::new_unchecked(Udec128::new(1)),
@@ -7677,7 +7677,7 @@ fn provide_liquidity_fails_when_minimum_output_is_not_met() {
 fn withdraw_liquidity_fails_when_minimum_output_is_not_met() {
     let (mut suite, mut accounts, _, contracts, _) = setup_test_naive(Default::default());
 
-    let lp_denom = Denom::try_from("dex/pool/dango/usdc").unwrap();
+    let lp_denom = Denom::try_from("dex/pool/dango/usd").unwrap();
 
     suite
         .execute(

@@ -5,10 +5,10 @@ use {
         constants::{atom, bch, bnb, btc, doge, eth, ltc, sol, usd, xrp},
         oracle::PriceSource,
     },
-    grug::{Denom, btree_map},
+    grug::{Denom, Timestamp, Udec128, btree_map},
     pyth_types::constants::{
         ATOM_USD_ID, BCH_USD_ID, BNB_USD_ID, BTC_USD_ID, DOGE_USD_ID, ETH_USD_ID, LTC_USD_ID,
-        SOL_USD_ID, USDC_USD_ID, XRP_USD_ID,
+        SOL_USD_ID, XRP_USD_ID,
     },
     std::{collections::BTreeMap, sync::LazyLock},
 };
@@ -55,11 +55,11 @@ pub static PYTH_PRICE_SOURCES: LazyLock<BTreeMap<Denom, PriceSource>> = LazyLock
             channel: SOL_USD_ID.channel,
             precision: 9,
         },
-        // TODO: Right now, we use the price of USDC for alloyed USD.
-        usd::DENOM.clone() => PriceSource::Pyth {
-            id: USDC_USD_ID.id,
-            channel: USDC_USD_ID.channel,
+        // Fix the price of USD to $1.
+        usd::DENOM.clone() => PriceSource::Fixed {
+            humanized_price: Udec128::new(1),
             precision: 6,
+            timestamp: Timestamp::from_nanos(u128::MAX),
         },
         xrp::DENOM.clone() => PriceSource::Pyth {
             id: XRP_USD_ID.id,
