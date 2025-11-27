@@ -1,21 +1,47 @@
+- debug:
+    msg: "Setting SSH keys for {{ authorized_user }}"
+
+- name: Get home directory for {{ authorized_user }}
+  getent:
+    database: passwd
+    key: "{{ authorized_user }}"
+  register: passwd_entry
+
+- name: Reset authorized_keys
+  file:
+    path: "{{ passwd_entry.ansible_facts.getent_passwd[authorized_user][4] }}/.ssh/authorized_keys"
+    state: absent
+
+# 1) Many keys: roles/users/files/authorized_keys/{{ user }}/*.pub
+- name: Collect multi-key pubfiles for {{ user }}
+  set_fact:
+    user_multi_keys: >-
+      {{ lookup('fileglob', role_path + '/files/authorized_keys/' + user + '/*.pub', wantlist=True) }}
+  delegate_to: localhost
+  run_once: true
+
 - name: Add all keys for {{ user }}
   authorized_key:
     user: "{{ authorized_user }}"
     state: present
     key: "{{ lookup('file', item) }}"
     manage_dir: true
-  with_fileglob:
-    - "authorized_keys/{{ user }}/*.pub"
+  loop: "{{ user_multi_keys }}"
+  when: user_multi_keys | length > 0
 
-- name: Check for single pubkey file
-  stat:
-    path: "authorized_keys/{{ user }}.pub"
-  register: single_key
+# 2) Single key: roles/users/files/authorized_keys/{{ user }}.pub
+- name: Read single pubkey if present
+  set_fact:
+    user_single_key: >-
+      {{ lookup('file', role_path + '/files/authorized_keys/' + user + '.pub', errors='ignore') }}
+  delegate_to: localhost
+  run_once: true
 
 - name: Add single pubkey for {{ user }}
   authorized_key:
     user: "{{ authorized_user }}"
     state: present
-    key: "{{ lookup('file', 'authorized_keys/' ~ user ~ '.pub') }}"
+    key: "{{ user_single_key }}"
     manage_dir: true
-  when: single_key.stat.exists
+  when:
+    - user_single_key != ''

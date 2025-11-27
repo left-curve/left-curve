@@ -56,3 +56,7 @@ deploy-db:
 
 deploy-clickhouse:
   ansible-playbook clickhouse.yml
+
+add-deploy-key:
+  ./deploy-key.sh | ssh-add - >/dev/null
+  @echo "Deploy key added to ssh-agent. You can now run ansible-playbook normally."
