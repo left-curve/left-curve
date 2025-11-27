@@ -173,13 +173,11 @@ impl<T> DiskDb<T> {
                 #[cfg(feature = "metrics")]
                 "priority_data/init",
             )
-            .map(|(k, v)| {
+            .inspect(|(_k, _v)| {
                 #[cfg(feature = "tracing")]
                 {
-                    size += k.len() + v.len();
+                    size += _k.len() + _v.len();
                 }
-
-                (k, v)
             })
             .collect::<BTreeMap<_, _>>();
 
