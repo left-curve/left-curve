@@ -1,7 +1,7 @@
 use {
     crate::{
         context::Context,
-        entity::{self, prelude::DepositAddress},
+        entity::{self},
     },
     actix_web::{
         Result,
@@ -9,7 +9,7 @@ use {
         post, web,
     },
     chrono::Utc,
-    dango_types::bitcoin::MultisigWallet,
+    dango_types::bitcoin::{MultisigWallet, Recipient},
     grug::Addr,
     sea_orm::{ActiveValue::Set, EntityTrait, SqlErr},
     std::str::FromStr,
@@ -17,11 +17,13 @@ use {
 
 #[post("/deposit-address/{dango_address}")]
 async fn deposit_address(path: web::Path<String>, context: web::Data<Context>) -> Result<String> {
-    let _dango_address = Addr::from_str(&path.into_inner()).map_err(ErrorBadRequest)?;
+    let dango_address = Addr::from_str(&path.into_inner()).map_err(ErrorBadRequest)?;
 
-    // TODO: Pass in dango address once MultisigWallet is updated to accept it instead of index.
-    let multisig_wallet = MultisigWallet::new(&context.multisig_settings, None);
-
+    // Create the bitcoin deposit address.
+    let multisig_wallet = MultisigWallet::new(
+        &context.multisig_settings,
+        &Recipient::Address(dango_address),
+    );
     let bitcoin_deposit_address = multisig_wallet.address(context.network);
 
     // Store the deposit address in the database.
